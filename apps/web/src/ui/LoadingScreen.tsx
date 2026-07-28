@@ -56,6 +56,8 @@ export default function LoadingScreen({
                         alt="Loading..."
                         fill
                         sizes="48px"
+                        loading="eager"
+                        priority
                         className="object-contain"
                         suppressHydrationWarning
                     />
@@ -68,6 +70,8 @@ export default function LoadingScreen({
                         alt="Loading..."
                         fill
                         sizes="48px"
+                        loading="eager"
+                        priority
                         className="object-contain"
                         suppressHydrationWarning
                     />

@@ -53,6 +53,12 @@ export function buildShareUrl(rawUrl: string, options: ShareLinkOptions = {}) {
 
 export function buildInviteUrl(rawOrigin: string, referralCode: string) {
     try {
+        const code = referralCode.toUpperCase();
+        const joinHost = process.env.NEXT_PUBLIC_JOIN_WEB_HOST || process.env.JOIN_WEB_HOST;
+        if (joinHost) {
+            return `https://${joinHost.replace(/^https?:\/\//i, '')}/${code}`;
+        }
+
         const configuredShareBase = getConfiguredShareBase();
         let base = rawOrigin;
         try {
@@ -60,10 +66,8 @@ export function buildInviteUrl(rawOrigin: string, referralCode: string) {
             base = shareBase.origin;
         } catch { /* keep rawOrigin */ }
 
-        return `${base}/r/${referralCode.toUpperCase()}`;
+        return `${base}/r/${code}`;
     } catch {
         return rawOrigin;
     }
 }
-
-

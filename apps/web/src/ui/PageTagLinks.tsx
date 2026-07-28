@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { slugify } from '@fresherflow/utils/slugify';
+import { Card } from '@/ui/Card';
+import { Badge } from '@/ui/Badge';
 
 interface TagLink {
     label: string;
@@ -20,9 +22,6 @@ interface PageTagLinksProps {
     maxItems?: number;
 }
 
-const TAG_CLASS = 'text-[10px] font-semibold px-2 py-0.5 rounded-md bg-muted hover:bg-primary/10 hover:text-primary border border-border transition-colors capitalize';
-const LABEL_CLASS = 'text-[10px] font-bold uppercase tracking-wider text-muted-foreground shrink-0 w-20';
-
 function resolveTagLink(item: string | TagLink, prefix: string): TagLink {
     if (typeof item === 'string') {
         return { label: item, url: `/${prefix}/${slugify(item)}` };
@@ -35,58 +34,70 @@ export function PageTagLinks({ skills = [], locations = [], companies = [], maxI
     if (!hasAny) return null;
 
     return (
-        <div className="border-t border-border/60 pt-6 space-y-3">
-            {companies.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2">
-                    <span className={LABEL_CLASS}>Companies</span>
-                    {companies.slice(0, maxItems).map((company) => (
-                        <Link
-                            key={company.slug}
-                            href={`/companies/${company.slug}`}
-                            className="flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-muted hover:bg-primary/10 hover:text-primary border border-border transition-colors"
-                        >
-                            {company.logoUrl && (
-                                /* eslint-disable-next-line @next/next/no-img-element */
-                                <img
-                                    src={company.logoUrl}
-                                    alt={company.name}
-                                    className="w-3.5 h-3.5 rounded object-contain shrink-0"
-                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                                />
-                            )}
-                            {company.name}
-                        </Link>
-                    ))}
-                </div>
-            )}
+        <Card className="p-4 md:p-5 space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Related Topics & Directories</h3>
+            
+            <div className="space-y-3">
+                {companies.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-semibold text-muted-foreground shrink-0 w-24">Companies:</span>
+                        <div className="flex flex-wrap gap-1.5 flex-1">
+                            {companies.slice(0, maxItems).map((company) => (
+                                <Link key={company.slug} href={`/companies/${company.slug}`}>
+                                    <Badge variant="outline" className="gap-1.5 hover:border-primary/40 hover:text-primary transition-colors cursor-pointer">
+                                        {company.logoUrl && (
+                                            /* eslint-disable-next-line @next/next/no-img-element */
+                                            <img
+                                                src={company.logoUrl}
+                                                alt={company.name}
+                                                className="w-3.5 h-3.5 rounded object-contain shrink-0"
+                                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                            />
+                                        )}
+                                        <span>{company.name}</span>
+                                    </Badge>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
-            {skills.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2">
-                    <span className={LABEL_CLASS}>Skills</span>
-                    {skills.slice(0, maxItems).map((item) => {
-                        const { label, url } = resolveTagLink(item, 'skills');
-                        return (
-                            <Link key={url} href={url} className={TAG_CLASS}>
-                                {label}
-                            </Link>
-                        );
-                    })}
-                </div>
-            )}
+                {skills.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-semibold text-muted-foreground shrink-0 w-24">Key Skills:</span>
+                        <div className="flex flex-wrap gap-1.5 flex-1">
+                            {skills.slice(0, maxItems).map((item) => {
+                                const { label, url } = resolveTagLink(item, 'skills');
+                                return (
+                                    <Link key={url} href={url}>
+                                        <Badge variant="secondary" className="hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer capitalize">
+                                            {label}
+                                        </Badge>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
-            {locations.length > 0 && (
-                <div className="flex flex-wrap items-center gap-2">
-                    <span className={LABEL_CLASS}>Locations</span>
-                    {locations.slice(0, maxItems).map((item) => {
-                        const { label, url } = resolveTagLink(item, 'location');
-                        return (
-                            <Link key={url} href={url} className={TAG_CLASS}>
-                                {label}
-                            </Link>
-                        );
-                    })}
-                </div>
-            )}
-        </div>
+                {locations.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-semibold text-muted-foreground shrink-0 w-24">Locations:</span>
+                        <div className="flex flex-wrap gap-1.5 flex-1">
+                            {locations.slice(0, maxItems).map((item) => {
+                                const { label, url } = resolveTagLink(item, 'location');
+                                return (
+                                    <Link key={url} href={url}>
+                                        <Badge variant="outline" className="hover:border-primary/40 hover:text-primary transition-colors cursor-pointer capitalize">
+                                            {label}
+                                        </Badge>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </Card>
     );
 }
