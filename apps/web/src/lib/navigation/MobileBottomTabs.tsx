@@ -12,8 +12,11 @@ export function MobileBottomTabs() {
     const pathname = usePathname();
     const context = useContext(AuthContext);
     const user = context?.user;
+    const [isMounted, setIsMounted] = useState(false);
     const [isVisible, setIsVisible] = useState(true);
     const mobileTabs = getNavRoutes().filter(r => r.showInMobileTabs);
+
+    useEffect(() => { setIsMounted(true); }, []);
 
     useEffect(() => {
         if (!user) return;
@@ -34,7 +37,9 @@ export function MobileBottomTabs() {
         return () => window.removeEventListener('scroll', handleScroll);
     }, [user]);
 
-    if (!user) return null;
+    const isAuthRoute = pathname === '/login' || pathname === '/register' || pathname === '/choose-username';
+    // Return null on server AND first client render so SSR/CSR output matches
+    if (!isMounted || !user || isAuthRoute) return null;
 
     return (
         <div className={cn(
@@ -55,7 +60,7 @@ export function MobileBottomTabs() {
                             }}
                             aria-current={isActive ? 'page' : undefined}
                             className={cn(
-                                'flex flex-col items-center justify-center flex-1 h-full gap-1',
+                                'flex flex-col items-center justify-center flex-1 h-full gap-1 active:scale-[0.97] transition-all duration-150 ease-out',
                                 isActive ? 'text-primary' : 'text-muted-foreground'
                             )}
                         >

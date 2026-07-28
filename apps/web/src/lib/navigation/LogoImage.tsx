@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useTheme } from '@/lib/providers/ThemeContext';
+import { cn } from '@/lib/utils/utils';
 
 interface LogoImageProps {
     width: number;
@@ -10,22 +10,23 @@ interface LogoImageProps {
 }
 
 export function LogoImage({ width, height, className }: LogoImageProps) {
-    const { theme } = useTheme();
-    const src = theme === 'dark' ? '/logo-white-optimized.png' : '/logo-optimized.png';
-
     return (
-        <Image
-            src={src}
-            alt=""
-            width={width}
-            height={height}
-            priority
-            className={className}
-            suppressHydrationWarning
-        />
+        <div className="flex items-center justify-center rounded-lg bg-zinc-900 dark:bg-zinc-900 p-1 shrink-0 shadow-sm">
+            <Image
+                src="/logo-white-optimized.png"
+                alt="FresherFlow Logo"
+                width={width}
+                height={height}
+                priority
+                className={cn("object-contain", className)}
+                suppressHydrationWarning
+            />
+        </div>
     );
 }
+
 export default LogoImage;
+
 
 
 

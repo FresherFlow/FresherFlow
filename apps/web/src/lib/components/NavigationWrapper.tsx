@@ -49,7 +49,9 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
         normalizedPathname.startsWith('/batch') ||
         normalizedPathname.startsWith('/roles');
 
-    const hideNav = isAdminRoute || isCaptionsPage || isPendingPage;
+    const isRecruiterRoute = normalizedPathname.startsWith('/recruiter');
+    const isPublicProfileRoute = normalizedPathname === '/u';
+    const hideNav = isAdminRoute || isCaptionsPage || isPendingPage || isRecruiterRoute || isPublicProfileRoute;
     const isHomePage = pathname === '/';
 
     const authContext = useContext(AuthContext);
@@ -67,10 +69,10 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
 
             <main className={cn(
                 "relative w-full overflow-x-hidden flex-1 flex flex-col",
-                !isAdminRoute && !isCaptionsPage && !isPendingPage && "pt-[calc(3.75rem+env(safe-area-inset-top))]",
-                !isAdminRoute && !isCaptionsPage && !isPendingPage && (isHomePage ? "md:pt-[4.75rem]" : "md:pt-0"),
-                !isAdminRoute && !isCaptionsPage && !isPendingPage && !isHomePage && isAuthenticated && "pb-20 md:pb-8",
-                !isAdminRoute && !isCaptionsPage && !isPendingPage && !isHomePage && !isAuthenticated && "pb-4 md:pb-8",
+                !hideNav && "pt-[calc(3.75rem+env(safe-area-inset-top))]",
+                !hideNav && "md:pt-[4.75rem]",
+                !hideNav && !isHomePage && isAuthenticated && "pb-20 md:pb-8",
+                !hideNav && !isHomePage && !isAuthenticated && "pb-4 md:pb-8",
                 "min-h-screen"
             )}>
                 <div className={cn(
@@ -79,7 +81,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
                     {children}
                 </div>
             </main>
-            {!isAdminRoute && !isAuthRoute && !isCaptionsPage && !isPendingPage && (
+            {!isAdminRoute && !isAuthRoute && !isCaptionsPage && !isPendingPage && !isRecruiterRoute && !isPublicProfileRoute && !normalizedPathname.startsWith('/u/') && !isAuthenticated && (
                 <>
                     {/* Desktop/Tablet View */}
                     <div className="hidden md:block">
@@ -88,7 +90,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
 
                     {/* Mobile View */}
                     <div className="md:hidden">
-                        {isDetailPage ? null : isJobRelatedPage ? <MiniFooter /> : <Footer />}
+                        {(isDetailPage || isJobRelatedPage) ? null : <Footer />}
                     </div>
                 </>
             )}

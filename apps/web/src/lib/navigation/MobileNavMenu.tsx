@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useAuth } from '@/lib/auth/AuthContext';
 import UserIcon from '@heroicons/react/24/outline/UserIcon';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import BellIcon from '@heroicons/react/24/outline/BellIcon';
@@ -23,6 +24,7 @@ import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 import BuildingLibraryIcon from '@heroicons/react/24/outline/BuildingLibraryIcon';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
+import Squares2X2Icon from '@heroicons/react/24/outline/Squares2X2Icon';
 
 function TelegramIcon({ className }: { className?: string }) {
     return <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"><path d="M12 0C5.371 0 0 5.372 0 12s5.371 12 12 12 12-5.372 12-12S18.629 0 12 0Zm5.861 8.233-1.97 9.294c-.149.657-.538.818-1.088.51l-3.009-2.219-1.451 1.396c-.16.16-.295.295-.603.295l.213-3.049 5.549-5.012c.24-.213-.053-.333-.373-.12L8.27 13.65l-2.957-.922c-.642-.203-.656-.642.135-.949l11.557-4.456c.536-.198 1.006.12.856.91Z" /></svg>;
@@ -58,6 +60,7 @@ interface MobileNavMenuProps {
 
 export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onClose }: MobileNavMenuProps) {
     const pathname = usePathname();
+    const { logout } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const { canInstall, promptInstall } = useInstallPrompt();
 
@@ -72,12 +75,12 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
 
     const topMenu = [
         { href: '/profile', label: 'My Profile', icon: UserIcon },
-        { href: '/account/saved', label: 'My Saved', icon: BookmarkIcon },
-        { href: '/account/tracker', label: 'Tracker', icon: ClipboardDocumentCheckIcon },
+        { href: '/saved', label: 'My Saved', icon: BookmarkIcon },
+        { href: '/tracker', label: 'Tracker', icon: ClipboardDocumentCheckIcon },
     ];
 
     const engageMenu = [
-        { href: '/submit-link', label: 'Submit Job Link', icon: LinkIcon },
+        { href: '/contribute', label: 'Submit Job Link', icon: LinkIcon },
         { href: '/referral', label: 'Invite Friends', icon: UserGroupIcon },
         { href: '/alerts', label: 'Alerts', icon: BellIcon },
         { href: '/feedback', label: 'Feedback', icon: PaperAirplaneIcon },
@@ -92,7 +95,7 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
     ];
 
     const renderMenuItem = (item: { href: string; label: string; icon: React.ElementType }) => {
-        const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(`${item.href}/`)) || (item.href === '/account/saved' && pathname === '/saved');
+        const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(`${item.href}/`));
         const isAlerts = item.href === '/alerts';
 
         return (
@@ -101,7 +104,7 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
                 href={item.href}
                 onClick={onClose}
                 className={cn(
-                    "flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-colors group",
+                    "flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-all duration-150 ease-out active:scale-[0.97] group",
                     isActive
                         ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
                         : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -131,21 +134,35 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
 
     return (
         <div className="md:hidden fixed inset-0 z-[100] flex">
+            <style dangerouslySetInnerHTML={{__html: `
+                .menu-backdrop {
+                    transition: opacity 300ms ease-out;
+                    opacity: 1;
+                }
+                .menu-drawer {
+                    transition: transform 300ms cubic-bezier(0.23, 1, 0.32, 1);
+                    transform: translateX(0);
+                }
+                @starting-style {
+                    .menu-backdrop { opacity: 0; }
+                    .menu-drawer { transform: translateX(-100%); }
+                }
+            `}} />
             {/* Backdrop overlay */}
             <div
-                className="absolute inset-0 bg-background/80 backdrop-blur-sm animate-in fade-in duration-300"
+                className="absolute inset-0 bg-background/80 backdrop-blur-sm menu-backdrop"
                 aria-label="Close menu"
                 onClick={onClose}
             />
 
             {/* Sidebar Drawer */}
-            <div className="relative z-10 w-[70%] max-w-[280px] h-full bg-background shadow-2xl flex flex-col animate-in slide-in-from-left duration-300 border-r border-border">
+            <div className="relative z-10 w-[70%] max-w-[280px] h-full bg-background shadow-2xl flex flex-col menu-drawer border-r border-border">
 
                 {/* Header / Brand Area */}
                 <div className="flex items-center gap-3 px-5 py-5 border-b border-border/40">
                     <LogoImage width={32} height={32} className="w-8 h-8 object-contain shrink-0" />
                     <span className="text-base font-bold tracking-tight leading-none text-foreground">FresherFlow</span>
-                    <button onClick={onClose} aria-label="Close menu" className="ml-auto p-2 -mr-2 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted/50 transition-colors">
+                    <button onClick={onClose} aria-label="Close menu" className="ml-auto p-2 -mr-2 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted/50 transition-all duration-150 ease-out active:scale-[0.90]">
                         <XMarkIcon className="w-5 h-5" />
                     </button>
                 </div>
@@ -179,7 +196,7 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
                                     promptInstall('navbar');
                                     onClose();
                                 }}
-                                className="flex items-center gap-3.5 w-full px-3 py-3 rounded-2xl text-sm font-medium text-primary hover:bg-primary/5 transition-colors"
+                                className="flex items-center gap-3.5 w-full px-3 py-3 rounded-2xl text-sm font-medium text-primary hover:bg-primary/5 transition-all duration-150 ease-out active:scale-[0.97]"
                             >
                                 <ArrowDownTrayIcon className="w-5 h-5 text-primary" />
                                 <span>Install App</span>
@@ -189,7 +206,7 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
                             <Link
                                 href="/app"
                                 onClick={onClose}
-                                className="flex items-center gap-3.5 w-full px-3 py-3 rounded-2xl text-sm font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+                                className="flex items-center gap-3.5 w-full px-3 py-3 rounded-2xl text-sm font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all duration-150 ease-out active:scale-[0.97]"
                             >
                                 <DevicePhoneMobileIcon className="w-5 h-5 text-muted-foreground" />
                                 <span>Get App</span>
@@ -202,7 +219,7 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
                         <div className="flex items-center justify-between px-3 gap-1">
                             {socialLinks.map((s) => (
                                 <a key={s.href} href={s.href} target="_blank" rel="noopener noreferrer"
-                                    className="h-8 w-8 rounded-lg border border-divider bg-muted/30 flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:border-transparent transition-all hover:scale-105 hover:shadow-sm shrink-0"
+                                    className="h-8 w-8 rounded-lg border border-divider bg-muted/30 flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:border-transparent transition-all duration-150 ease-out active:scale-[0.90] hover:shadow-sm shrink-0"
                                     aria-label={s.label}>
                                     <s.Icon className="w-3.5 h-3.5" />
                                 </a>
@@ -222,13 +239,13 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
 
                     {user && (
                         <>
-                            <Link href="/logout" onClick={onClose}
-                                className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-bold text-muted-foreground hover:text-destructive transition-all rounded-xl hover:bg-destructive/5 border border-transparent hover:border-destructive/10 capitalize tracking-widest" aria-label="Sign Out">
+                            <button onClick={() => { if (logout) void logout('/login'); onClose(); }}
+                                className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-bold text-muted-foreground hover:text-destructive transition-all duration-150 ease-out active:scale-[0.97] rounded-xl hover:bg-destructive/5 border border-transparent hover:border-destructive/10 capitalize tracking-widest" aria-label="Sign Out">
                                 <ArrowRightOnRectangleIcon className="w-4 h-4" />
                                 Sign out
-                            </Link>
+                            </button>
 
-                            <Link href="/profile" onClick={onClose} className="group flex items-center gap-3 p-3 rounded-2xl bg-muted/40 hover:bg-muted/70 transition-all border border-transparent hover:border-border">
+                            <Link href="/profile" onClick={onClose} className="group flex items-center gap-3 p-3 rounded-2xl bg-muted/40 hover:bg-muted/70 transition-all duration-150 ease-out active:scale-[0.97] border border-transparent hover:border-border">
                                 <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shrink-0 capitalize font-bold text-lg shadow-sm">
                                     {user.fullName?.[0] || user.email?.[0] || 'U'}
                                 </div>
@@ -236,6 +253,15 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
                                     <h3 className="text-sm font-semibold tracking-tight truncate group-hover:text-primary transition-colors">{user.fullName || 'User Profile'}</h3>
                                     <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                                 </div>
+                            </Link>
+
+                            <Link
+                                href="/account"
+                                onClick={onClose}
+                                className="flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl bg-primary/10 hover:bg-primary/15 text-primary text-xs font-bold transition-all duration-150 ease-out active:scale-[0.97] border border-primary/20 cursor-pointer"
+                            >
+                                <Squares2X2Icon className="w-4 h-4" />
+                                <span>Account Hub</span>
                             </Link>
                         </>
                     )}

@@ -3,6 +3,7 @@ import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 import BuildingLibraryIcon from '@heroicons/react/24/outline/BuildingLibraryIcon';
+import UserCircleIcon from '@heroicons/react/24/outline/UserCircleIcon';
 import type { SVGProps } from 'react';
 
 export type NavRoute = {
@@ -11,6 +12,7 @@ export type NavRoute = {
     mobileTitle?: string;
     showInDesktop?: boolean;
     showInMobileTabs?: boolean;
+    requiresAuth?: boolean;
     icon?: React.ComponentType<SVGProps<SVGSVGElement>>;
     mobileLabel?: string;
 };
@@ -25,6 +27,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
                 mobileLabel: 'Home',
                 showInDesktop: true,
                 showInMobileTabs: true,
+                requiresAuth: true,
                 icon: HomeIcon,
             },
             {
@@ -82,10 +85,11 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
                 icon: BriefcaseIcon,
             },
             {
-                href: '/account/saved',
+                href: '/saved',
                 label: 'Saved',
                 mobileTitle: 'Saved',
                 showInDesktop: true,
+                requiresAuth: true,
             },
         ];
     }
@@ -98,6 +102,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             mobileLabel: 'Home',
             showInDesktop: true,
             showInMobileTabs: true,
+            requiresAuth: true,
             icon: HomeIcon,
         },
         {
@@ -106,7 +111,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             mobileTitle: 'Opportunities Feed',
             mobileLabel: 'Feed',
             showInDesktop: true,
-            showInMobileTabs: true,
+            showInMobileTabs: false,
             icon: MagnifyingGlassIcon,
         },
         {
@@ -133,29 +138,41 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             mobileTitle: 'Remote Jobs Feed',
             mobileLabel: 'Remote',
             showInDesktop: true,
-            showInMobileTabs: true,
+            showInMobileTabs: false,
             icon: BriefcaseIcon,
         },
         {
             href: '/government-jobs',
             label: 'Govt Jobs',
             mobileTitle: 'Govt Jobs',
-            mobileLabel: 'Govt Jobs',
+            mobileLabel: 'Govt',
             showInDesktop: true,
             showInMobileTabs: true,
             icon: BuildingLibraryIcon,
         },
         {
-            href: '/account/tracker',
+            href: '/profile',
+            label: 'Account',
+            mobileTitle: 'Profile & Account',
+            mobileLabel: 'Account',
+            showInDesktop: false,
+            showInMobileTabs: true,
+            requiresAuth: true,
+            icon: UserCircleIcon,
+        },
+        {
+            href: '/tracker',
             label: 'Tracker',
             mobileTitle: 'Tracker',
             showInDesktop: true,
+            requiresAuth: true,
         },
         {
-            href: '/account/saved',
+            href: '/saved',
             label: 'Saved',
             mobileTitle: 'Saved',
             showInDesktop: true,
+            requiresAuth: true,
         },
     ];
 }
