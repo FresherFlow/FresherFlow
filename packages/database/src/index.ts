@@ -32,7 +32,9 @@ const globalForPrisma = globalThis as unknown as {
     prisma: PrismaClientSingleton | undefined;
 };
 
-const prisma = (() => {
+let _prismaInstance: PrismaClientSingleton | undefined;
+
+function getPrismaClient(): PrismaClientSingleton {
     if (process.env.MAINTENANCE_MODE === 'true') {
         console.log('[database] MAINTENANCE_MODE is active. Prisma client will not be initialized.');
         return new Proxy({} as PrismaClientSingleton, {
@@ -41,11 +43,20 @@ const prisma = (() => {
             }
         });
     }
-    return globalForPrisma.prisma ?? prismaClientSingleton();
-})();
+    if (!_prismaInstance) {
+        _prismaInstance = globalForPrisma.prisma ?? prismaClientSingleton();
+        if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = _prismaInstance;
+    }
+    return _prismaInstance;
+}
+
+const prisma = new Proxy({} as PrismaClientSingleton, {
+    get(_target, prop, receiver) {
+        const client = getPrismaClient();
+        const value = Reflect.get(client, prop, receiver);
+        return typeof value === 'function' ? value.bind(client) : value;
+    }
+});
 
 export { prisma };
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
-
 export default prisma;

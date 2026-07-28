@@ -28,7 +28,7 @@ export function generateAccessToken(userId: string): string {
 
 export function generateRefreshToken(userId: string): { token: string; hash: string } {
     const expiry = '90d';
-    const token = jwt.sign({ userId, type: 'refresh' }, getRefreshSecret(), { expiresIn: expiry });
+    const token = jwt.sign({ userId, type: 'refresh', jti: crypto.randomUUID() }, getRefreshSecret(), { expiresIn: expiry });
 
     // Hash for DB storage
     const hash = crypto.createHash('sha256').update(token as string).digest('hex');

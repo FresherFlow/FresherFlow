@@ -31,6 +31,22 @@ router.put('/', requireAuth, async (req: Request, res: Response, next: NextFunct
     }
 });
 
+// PATCH /api/profile/visibility
+router.patch('/visibility', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { visibility } = req.body;
+        const allowed = ['PUBLIC', 'UNLISTED', 'PRIVATE'];
+        if (!visibility || !allowed.includes(visibility)) {
+            return next(new AppError('visibility must be PUBLIC, UNLISTED, or PRIVATE', 400));
+        }
+        const { profile } = await ProfileService.updateProfile(req.userId as string, { visibility });
+        res.json({ profile, message: `Visibility updated to ${visibility}` });
+    } catch (error) {
+        next(error);
+    }
+});
+
+
 // PUT /api/profile/education
 router.put('/education', requireAuth, validate(educationSchema.extend({ fullName: z.string().min(1, 'Full name is required').optional() })), async (req: Request, res: Response, next: NextFunction) => {
     try {

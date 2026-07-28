@@ -26,8 +26,7 @@ const ADMIN_ACCESS_TOKEN_KEY = 'ff_admin_access_token_v1';
 function logClientWarning(message: string, error?: unknown) {
     if (process.env.NODE_ENV === 'development') {
         if (error instanceof Error && error.message.includes('status 500')) {
-            console.warn(`[Client] ${message} ${error.message} (Backend may be offline)`);
-            return;
+            return; // Silence backend-offline terminal spam
         }
         console.warn(`[Client] ${message}`, error);
     }

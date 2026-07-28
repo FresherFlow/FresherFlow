@@ -1,5 +1,5 @@
 import prisma from '../database/prisma';
-import { Prisma, EducationLevel, OpportunityType, WorkMode, Availability } from '@prisma/client';
+import { Prisma, EducationLevel, OpportunityType, WorkMode, Availability, ProfileVisibility } from '@prisma/client';
 import { Profile, Gender, ReservationCategory } from '@fresherflow/types';
 import { calculateCompletion, normalizeProfileEducation, normalizeSkills } from '@fresherflow/domain';
 import { areOpportunityUrlsEquivalent, getOpportunityUrlAliases, normalizeOpportunityUrl } from '@fresherflow/utils';
@@ -7,6 +7,8 @@ import { AppError } from '../../middleware/errorHandler';
 import TelegramService from './telegram.service';
 import { StaticFeedService } from './staticFeed.service';
 import { FirebaseDbService } from './firebaseDb.service';
+import { StorageService } from './storage.service';
+import { logger } from '@fresherflow/logger';
 
 export interface ProfileUpdateData {
     fullName?: string;
@@ -15,14 +17,20 @@ export interface ProfileUpdateData {
     githubUrl?: string | null;
     linkedinUrl?: string | null;
     portfolioUrl?: string | null;
+    avatarUrl?: string | null;
+    githubPinnedRepos?: unknown | null;
     openToRecruiters?: boolean | null;
     profilePublic?: boolean | null;
+    visibility?: ProfileVisibility | null;
     educationLevel?: EducationLevel;
     tenthYear?: number;
     twelfthYear?: number;
     gradCourse?: string;
     gradSpecialization?: string;
     gradYear?: number;
+    collegeId?: string | null;
+    collegeName?: string | null;
+    collegeState?: string | null;
     pgCourse?: string;
     pgSpecialization?: string;
     pgYear?: number;
@@ -138,8 +146,11 @@ export class ProfileService {
         if (profileData.githubUrl !== undefined) updateObject.githubUrl = profileData.githubUrl;
         if (profileData.linkedinUrl !== undefined) updateObject.linkedinUrl = profileData.linkedinUrl;
         if (profileData.portfolioUrl !== undefined) updateObject.portfolioUrl = profileData.portfolioUrl;
+        if (profileData.avatarUrl !== undefined) updateObject.avatarUrl = profileData.avatarUrl;
+        if (profileData.githubPinnedRepos !== undefined) updateObject.githubPinnedRepos = profileData.githubPinnedRepos;
         if (profileData.openToRecruiters !== undefined) updateObject.openToRecruiters = profileData.openToRecruiters;
         if (profileData.profilePublic !== undefined) updateObject.profilePublic = profileData.profilePublic;
+        if (profileData.visibility !== undefined && profileData.visibility !== null) updateObject.visibility = profileData.visibility;
 
         if (profileData.educationLevel !== undefined) updateObject.educationLevel = profileData.educationLevel;
         if (profileData.tenthYear !== undefined) updateObject.tenthYear = profileData.tenthYear;
@@ -152,6 +163,9 @@ export class ProfileService {
         }
 
         if (profileData.gradYear !== undefined) updateObject.gradYear = profileData.gradYear;
+        if (profileData.collegeId !== undefined) updateObject.collegeId = profileData.collegeId;
+        if (profileData.collegeName !== undefined) updateObject.collegeName = profileData.collegeName;
+        if (profileData.collegeState !== undefined) updateObject.collegeState = profileData.collegeState;
 
         if (profileData.pgCourse !== undefined || profileData.pgSpecialization !== undefined) {
             const normalizedPg = normalizeProfileEducation(profileData.pgCourse, profileData.pgSpecialization);
@@ -202,6 +216,8 @@ export class ProfileService {
             });
         }
 
+        void ProfileService.pushProfileToR2(userId);
+
         return {
             profile: profile as unknown as Profile,
             newCompletion
@@ -210,7 +226,6 @@ export class ProfileService {
 
     static async updateEducation(userId: string, data: ProfileUpdateData): Promise<{ profile: Profile, newCompletion: number }> {
         const {
-            fullName,
             educationLevel,
             tenthYear,
             twelfthYear,
@@ -271,6 +286,8 @@ export class ProfileService {
             });
         }
 
+        void ProfileService.pushProfileToR2(userId);
+
         return {
             profile: profile as unknown as Profile,
             newCompletion
@@ -301,6 +318,8 @@ export class ProfileService {
             data: { completionPercentage: newCompletion }
         });
 
+        void ProfileService.pushProfileToR2(userId);
+
         return {
             profile: profile as unknown as Profile,
             newCompletion
@@ -325,6 +344,8 @@ export class ProfileService {
             where: { userId },
             data: { completionPercentage: newCompletion }
         });
+
+        void ProfileService.pushProfileToR2(userId);
 
         return {
             profile: profile as unknown as Profile,
@@ -675,5 +696,28 @@ export class ProfileService {
             },
             projects: user.projects
         };
+    }
+
+    /**
+     * Fire-and-forget: push public profile JSON to R2 CDN after any profile update.
+     * Web public page reads from cdn.fresherflow.in/profiles/{username}.json — zero Render hits.
+     */
+    private static async pushProfileToR2(userId: string): Promise<void> {
+        try {
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { username: true }
+            });
+            if (!user?.username) return;
+
+            const data = await ProfileService.getPublicProfileByUsername(user.username);
+            await StorageService.uploadToR2(
+                `profiles/${user.username}.json`,
+                JSON.stringify(data),
+                'application/json'
+            );
+        } catch (err) {
+            logger.warn('[ProfileService] pushProfileToR2 failed — non-fatal', err);
+        }
     }
 }

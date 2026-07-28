@@ -25,7 +25,6 @@
         "@fresherflow/types": "*",
         "@fresherflow/constants": "*",
         "@fresherflow/logger": "*",
-        "@fresherflow/database": "*",
         "@fresherflow/utils": "*",
         "country-state-city": "^3.2.1"
     },

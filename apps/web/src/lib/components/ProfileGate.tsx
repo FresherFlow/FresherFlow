@@ -10,12 +10,16 @@ import LoadingScreen from '@/ui/LoadingScreen';
  */
 export function ProfileGate({ children }: { children: React.ReactNode }) {
     const { isLoading } = useAuth();
+    const [mounted, setMounted] = React.useState(false);
+    
+    React.useEffect(() => {
+        setMounted(true);
+    }, []);
 
-    if (isLoading) {
+    if (!mounted || isLoading) {
         return (
-            <div className="relative w-full">
+            <div className="relative w-full h-screen flex flex-col items-center justify-center">
                 <LoadingScreen message="Loading..." fullScreen={true} className="z-[40] bg-background/95 backdrop-blur-xl" />
-                <div className="opacity-0 pointer-events-none">{children}</div>
             </div>
         );
     }
@@ -30,9 +34,14 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     const { user, isLoading, skipUsernameSetup } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
+    const [mounted, setMounted] = React.useState(false);
+
+    React.useEffect(() => {
+        setMounted(true);
+    }, []);
 
     useEffect(() => {
-        if (!isLoading) {
+        if (mounted && !isLoading) {
             if (!user) {
                 if (typeof window !== 'undefined') {
                     localStorage.removeItem('ff_cached_session_v1');
@@ -43,13 +52,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 router.push('/choose-username');
             }
         }
-    }, [user, isLoading, skipUsernameSetup, pathname, router]);
+    }, [user, isLoading, skipUsernameSetup, pathname, router, mounted]);
 
-    if (isLoading) {
+    if (!mounted || isLoading) {
         return (
-            <div className="relative w-full">
+            <div className="relative w-full h-screen flex flex-col items-center justify-center">
                 <LoadingScreen message="Loading..." fullScreen={true} className="z-[40] bg-background/95 backdrop-blur-xl" />
-                <div className="opacity-0 pointer-events-none">{children}</div>
             </div>
         );
     }

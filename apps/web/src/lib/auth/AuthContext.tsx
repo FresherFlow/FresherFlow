@@ -315,7 +315,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 }
             }
         } catch (error) {
-            console.error('[Auth] loadUser failed:', error);
+            const isOfflineSpam = error instanceof Error && error.message.includes('status 500');
+            if (!isOfflineSpam) {
+                console.error('[Auth] loadUser failed:', error);
+            }
             const isUnauthorized = error instanceof UnauthorizedError || (error as any)?.status === 401;
             
             if (isUnauthorized) {

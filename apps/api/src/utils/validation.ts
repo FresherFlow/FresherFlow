@@ -96,6 +96,9 @@ export const educationSchema = z.object({
     gradCourse: z.string().min(1, 'Course name is required'),
     gradSpecialization: z.string().min(1, 'Specialization is required'),
     gradYear: z.number().int().min(1000, 'Year must be 4 digits').max(9999, 'Year must be 4 digits'),
+    collegeId: z.string().optional().nullable(),
+    collegeName: z.string().optional().nullable(),
+    collegeState: z.string().optional().nullable(),
 
     // PG (Optional)
     pgCourse: z.string().optional(),

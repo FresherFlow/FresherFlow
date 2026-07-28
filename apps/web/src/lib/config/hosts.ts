@@ -7,9 +7,7 @@ export function handleHostRouting(req: NextRequest) {
     const normalizedHost = hostname.toLowerCase();
     const { PUBLIC_WEB_HOST, ADMIN_WEB_HOST, USER_LOGIN_HOST } = resolveHosts(req);
     const hostRole = getHostRole(normalizedHost, req);
-    const isProd = process.env.NODE_ENV === 'production';
-
-    if (!isProd) {
+    if (hostRole === 'other') {
         return null;
     }
 
@@ -64,9 +62,17 @@ export function handleHostRouting(req: NextRequest) {
         return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${ADMIN_WEB_HOST}${plainPath}${search}`);
     }
 
-    // 3. Public Host handling
-    // NOTE: app.fresherflow.in is temporarily disabled.
-    // All paths serve directly from fresherflow.in — no redirects to app subdomain.
+    // 3. App Host handling (app.fresherflow.in / app.fresherflow.com)
+    if (hostRole === 'app') {
+        if (pathname === '/') {
+            const rewriteUrl = req.nextUrl.clone();
+            rewriteUrl.pathname = '/dashboard';
+            return NextResponse.rewrite(rewriteUrl);
+        }
+        return null;
+    }
+
+    // 4. Public Host handling
     if (hostRole === 'public') {
         if (pathname === '/login') {
             return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${USER_LOGIN_HOST}${pathname}${search}`);

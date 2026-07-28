@@ -1,30 +1,6 @@
 import { ActionType } from '@fresherflow/types';
 import { apiClient } from './_core';
 
-const GROWTH_SESSION_KEY = 'ff_growth_session_v1';
-
-function getGrowthSessionId(): string {
-    if (typeof window === 'undefined') return 'server';
-    try {
-        const existing = window.sessionStorage.getItem(GROWTH_SESSION_KEY);
-        if (existing && existing.length > 0) return existing;
-        
-        let randStr = '';
-        if (typeof window !== 'undefined' && window.crypto) {
-            const array = new Uint32Array(2);
-            window.crypto.getRandomValues(array);
-            randStr = Array.from(array).map(n => n.toString(36)).join('');
-        } else {
-            randStr = Date.now().toString(36);
-        }
-        
-        const next = `g-${Date.now()}-${randStr.slice(0, 8)}`;
-        window.sessionStorage.setItem(GROWTH_SESSION_KEY, next);
-        return next;
-    } catch {
-        return 'session-unavailable';
-    }
-}
 
 export const growthApi = {
     trackEvent: (
@@ -42,17 +18,7 @@ export const growthApi = {
         options?: {
             opportunityId?: string;
         }
-    ) =>
-        apiClient('/api/public/growth/event', {
-            method: 'POST',
-            body: JSON.stringify({
-                event,
-                source,
-                route: typeof window !== 'undefined' ? window.location.pathname : undefined,
-                sessionId: getGrowthSessionId(),
-                opportunityId: options?.opportunityId,
-            })
-        })
+    ) => Promise.resolve()
 };
 
 // Actions API calls
@@ -108,10 +74,7 @@ export const dashboardApi = {
 export const alertsApi = {
     getPreferences: () => apiClient('/api/alerts/preferences').catch(() => ({ enabled: true, emailEnabled: false, dailyDigest: true, closingSoon: true })),
     getFeed: (kind: 'all' | 'DAILY_DIGEST' | 'CLOSING_SOON' | 'HIGHLIGHT' | 'APP_UPDATE' | 'NEW_JOB' | 'EVENT_REMINDER' = 'all', limit = 50) => {
-        const query = new URLSearchParams();
-        query.set('kind', kind);
-        query.set('limit', String(limit));
-        return apiClient(`/api/alerts/feed?${query.toString()}`).catch(() => ({ deliveries: [] }));
+        return Promise.resolve({ deliveries: [], unreadCount: 0, total: 0, hasMore: false });
     },
     updatePreferences: (data: {
         enabled?: boolean;
@@ -126,7 +89,7 @@ export const alertsApi = {
             method: 'PUT',
             body: JSON.stringify(data)
         }).catch(() => ({ success: true })),
-    getUnreadCount: () => apiClient<{ count: number }>('/api/alerts/unread-count').catch(() => ({ count: 0 })),
+    getUnreadCount: () => Promise.resolve({ count: 0 }),
     markAllRead: () => apiClient('/api/alerts/mark-all-read', { method: 'POST' }).catch(() => ({ success: true })),
     markRead: (id: string) => apiClient(`/api/alerts/${id}/read`, { method: 'POST' }),
     dismiss: (id: string) => apiClient(`/api/alerts/${id}`, { method: 'DELETE' }),

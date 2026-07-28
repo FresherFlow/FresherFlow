@@ -55,7 +55,6 @@ import adminQueuesRoutes from './routes/admin/queues';
 import adminPushRoutes from './routes/admin/push';
 import adminUsersRoutes from './routes/admin/users';
 import healthRoutes from './routes/public/health';
-import growthRoutes from './routes/public/growth';
 import companyRoutes from './routes/public/companies';
 import sitemapRoutes from './routes/public/sitemap';
 import opportunityClickRoutes from './routes/public/opportunityClicks';
@@ -269,7 +268,6 @@ const sessionCheckLimiter = rateLimit({
 // Apply default rate limiting
 app.use(defaultLimiter);
 if (isUserMode) {
-    app.use('/api/public/growth', growthRoutes);
     app.use('/api/public', opportunityClickRoutes);
     app.use('/api/public/stats', publicStatsRoutes);
     app.use('/api/cron', cronRoutes);
@@ -336,7 +334,7 @@ app.get('/bootstrap-feed.min.json', async (req, res) => {
         res.json(results);
 
         // Background refresh to create the file
-        void StaticFeedService.refresh();
+        StaticFeedService.scheduleRefresh();
     } catch (error) {
         logger.error('Failed to serve bootstrap feed', error);
         res.status(500).json({ error: 'Internal server error' });

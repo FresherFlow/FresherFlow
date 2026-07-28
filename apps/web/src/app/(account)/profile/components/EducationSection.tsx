@@ -274,7 +274,7 @@ export const EducationSection = ({
                                                         </button>
                                                     ))
                                                 ) : (
-                                                    <p className="text-xs text-muted-foreground p-3 text-center">No colleges found matching "{collegeName}".</p>
+                                                    <p className="text-xs text-muted-foreground p-3 text-center">No colleges found matching &quot;{collegeName}&quot;.</p>
                                                 )}
                                             </div>
                                         )}
@@ -287,7 +287,7 @@ export const EducationSection = ({
                             </div>
 
                             <div className="space-y-3">
-                                <label className="text-xs font-semibold text-foreground uppercase tracking-wider">Postgraduate / Master's Degree (Optional)</label>
+                                <label className="text-xs font-semibold text-foreground uppercase tracking-wider">Postgraduate / Master&apos;s Degree (Optional)</label>
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div>
                                         <label className="text-xs text-muted-foreground font-medium mb-1 block">PG Course</label>

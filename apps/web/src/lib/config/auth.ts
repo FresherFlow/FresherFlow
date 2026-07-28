@@ -25,14 +25,8 @@ export function handleAuth(req: NextRequest) {
         }
     }
 
-    const isLocal = normalizedHost === 'localhost' || normalizedHost === '127.0.0.1' || process.env.NODE_ENV !== 'production';
-
     if (isUserPath(pathname) && hostRole !== 'admin') {
-        if (!isLocal) {
-            return NextResponse.redirect(new URL('/app', req.url), 307);
-        }
-
-        // In local development, enforce the standard login auth gate
+        // Enforce the standard login auth gate for user paths
         const loggedIn = req.cookies.has("accessToken") || req.cookies.has("ff_logged_in");
         if (!loggedIn) {
             const loginUrl = new URL(`${req.nextUrl.protocol}//${req.nextUrl.host}/login`);

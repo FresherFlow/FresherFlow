@@ -39,14 +39,20 @@ export const authApi = {
 
     me: () => apiClient('/api/auth/me'),
 
-    handshake: (idToken: string, ref?: string) =>
-        apiClient<AuthResponse>('/api/auth/handshake', {
+    handshake: async (idToken: string, ref?: string) => {
+        const response = await fetch('/api/auth/local-session', {
             method: 'POST',
             headers: {
+                'Content-Type': 'application/json',
                 Authorization: `Bearer ${idToken}`
             },
             body: JSON.stringify({ ref })
-        })
+        });
+        if (!response.ok) {
+            throw new Error(`Handshake failed: ${response.statusText}`);
+        }
+        return response.json() as Promise<AuthResponse>;
+    }
 };
 
 // Admin Auth API calls

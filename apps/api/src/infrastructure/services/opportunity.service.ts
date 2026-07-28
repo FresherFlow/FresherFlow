@@ -1,5 +1,5 @@
 import prisma, { Prisma, OpportunityStatus as DbOpportunityStatus, EducationLevel as DbEducationLevel, WorkMode as DbWorkMode } from '../../lib/prisma';
-import { OpportunityStatus, OpportunityType, EducationLevel, WorkMode, Availability, Opportunity, Profile } from '@fresherflow/types';
+import { OpportunityStatus, OpportunityType, Opportunity, Profile } from '@fresherflow/types';
 import { calculateOpportunityMatch } from '@fresherflow/domain';
 import { generateSlug, generateCompanyLogoUrl } from '@fresherflow/utils';
 import { searchOpportunitiesQuery, SearchResult, SearchOptions } from '@fresherflow/search';

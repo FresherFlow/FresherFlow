@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { UserIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 import PublicProfileClient from './PublicProfileClient';
-import { PublicProfileHeader } from './PublicProfileHeader';
 
 type Props = {
     params: Promise<{ username: string }>;
@@ -165,7 +164,6 @@ export default async function PublicProfilePage({ params }: Props) {
     if (!data) {
         return (
             <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
-                <PublicProfileHeader />
                 <div className="flex-1 py-16 px-4 flex items-center justify-center">
                     <div className="max-w-md w-full bg-card border border-border rounded-3xl p-8 text-center space-y-4 shadow-sm">
                         <div className="w-16 h-16 bg-muted text-muted-foreground font-bold text-2xl rounded-2xl flex items-center justify-center mx-auto border border-border/50">

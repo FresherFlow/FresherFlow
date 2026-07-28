@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
 
 const config: Config = {
     content: [
@@ -20,6 +21,11 @@ const config: Config = {
                 "3xl": ["30px", "38px"],
             },
             colors: {
+                border: "hsl(var(--border))",
+                input: "hsl(var(--input))",
+                ring: "hsl(var(--ring))",
+                background: "hsl(var(--background))",
+                foreground: "hsl(var(--foreground))",
                 primary: {
                     DEFAULT: "hsl(var(--primary))",
                     foreground: "hsl(var(--primary-foreground))",
@@ -28,33 +34,32 @@ const config: Config = {
                     DEFAULT: "hsl(var(--secondary))",
                     foreground: "hsl(var(--secondary-foreground))",
                 },
-                background: "hsl(var(--background))",
-                foreground: "hsl(var(--foreground))",
-                card: {
-                    DEFAULT: "hsl(var(--card))",
-                    foreground: "hsl(var(--card-foreground))",
+                destructive: {
+                    DEFAULT: "hsl(var(--destructive))",
+                    foreground: "hsl(var(--destructive-foreground))",
                 },
                 muted: {
-                    DEFAULT: "hsl(var(--muted, 210 40% 96.1%))",
-                    foreground: "hsl(var(--muted-foreground, 215.4 16.3% 46.9%))",
+                    DEFAULT: "hsl(var(--muted))",
+                    foreground: "hsl(var(--muted-foreground))",
                 },
                 accent: {
                     DEFAULT: "hsl(var(--accent))",
                     foreground: "hsl(var(--accent-foreground))",
                 },
                 popover: {
+                    DEFAULT: "hsl(var(--popover))",
+                    foreground: "hsl(var(--popover-foreground))",
+                },
+                card: {
                     DEFAULT: "hsl(var(--card))",
                     foreground: "hsl(var(--card-foreground))",
                 },
-                border: "hsl(var(--border))",
-                input: "hsl(var(--input))",
-                ring: "hsl(var(--ring))",
                 neutral: {
-                    50: "#FAFAFA",
-                    100: "#F5F5F5",
-                    200: "#E5E5E5",
-                    300: "#D4D4D4",
-                    400: "#A3A3A3",
+                    50: "#fafafa",
+                    100: "#f5f5f5",
+                    200: "#e5e5e5",
+                    300: "#d4d4d4",
+                    400: "#a3a3a3",
                     500: "#737373",
                     600: "#525252",
                     700: "#404040",
@@ -71,7 +76,7 @@ const config: Config = {
             },
         },
     },
-    plugins: [require("tailwindcss-animate")],
+    plugins: [tailwindcssAnimate],
 };
 
 export default config;
