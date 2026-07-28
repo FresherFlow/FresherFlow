@@ -32,7 +32,7 @@ For monorepo-wide rules, architecture, and shared patterns, read the root [`AGEN
 - Feed data flows through `syncModule.ts` only — do not bypass it.
 - All API calls go through `packages/api-client` typed functions — never raw `fetch`.
 - Local persistence uses MMKV (`src/utils/storage.ts`) — never AsyncStorage.
-- Auth state lives in `src/contexts/AuthContext` — do not duplicate it in screens.
+- Auth state source of truth is `src/store/useAuthStore.ts` (MMKV-backed Zustand store); `src/contexts/AuthContext` exposes it to the React tree.
 - Scoring (`calculateOpportunityMatch`) runs client-side after feed download — never server-side.
 
 ## 3) Initialization & Configuration Map
@@ -90,11 +90,38 @@ For monorepo-wide rules, architecture, and shared patterns, read the root [`AGEN
 | Social | `src/screens/social/` |
 | Resources | `src/screens/resources/` |
 
+### Shared module → package mapping
+
+Before building new logic, check if it already exists in a shared package.
+
+| Feature | Package | Function |
+|---|---|---|
+| Opportunity matching | `packages/domain/opportunity` | `calculateOpportunityMatch()` |
+| Eligibility rules | `packages/domain/eligibility` | `isEligible()`, `scoreEligibility()` |
+| Profile strength | `packages/domain/profile` | `calculateProfileStrength()` |
+| Referral logic | `packages/domain/referral` | `calculateReferralLevel()` |
+| API calls | `packages/api-client` | All typed API wrappers |
+| Shared types | `packages/types` | Request/response interfaces |
+| Slug, fingerprint | `packages/utils` | `slugify()`, `fingerprint()` |
+
+**Rule:** Never duplicate business logic already implemented in `packages/domain`. Import from the package. If the logic doesn't exist yet, add it to `packages/domain` — not to `src/` inside the mobile app.
+
 ### Navigation
 
 - Root navigator: `src/navigation/RootNavigator.tsx` — **high risk, edit carefully**
 - Tab navigator: `src/navigation/TabNavigator.tsx`
 - Auth stack: `src/navigation/AuthStack.tsx`
+
+**Navigator ownership — which navigator owns which flow:**
+
+| Navigator | Owns |
+|---|---|
+| `RootNavigator` | Auth vs app split — top-level gate |
+| `AuthStack` | Login, register, onboarding screens |
+| `TabNavigator` | Dashboard / Feed / Profile — tab bar |
+| Stack navigators inside tabs | Detail pages (job detail, company detail, etc.) |
+
+When adding a new screen, first decide which navigator owns it. Do not add screens to RootNavigator directly.
 
 ### Feed sync (critical path)
 
@@ -155,3 +182,32 @@ Run `pnpm typecheck` + `pnpm build` (see root AGENTS.md). Then also:
 - Verify loading and error states render for any screen that fetches data.
 - Verify navigation back/forward works for any new screen.
 - For feed changes: verify both PRIVATE and GOVERNMENT sector flows.
+
+## 9) Mobile Security & CodeQL Guidelines
+
+- **URL Domain Parsing**: In screens or helpers (e.g. `syncModule.ts`, resource screens), NEVER use `.includes('google.com')` on raw URL strings for domain checks or trust logic. ALWAYS use parsed hostnames via `new URL()`:
+  ```typescript
+  const host = new URL(urlStr).hostname.toLowerCase();
+  if (host === 'youtube.com' || host === 'www.youtube.com' || host.endsWith('.youtube.com')) { ... }
+  ```
+- **Unbiased Randomness**: In client-side utilities or ID generation, NEVER use `Math.random()`. Use safe array/crypto techniques or `Date.now().toString(36)`.
+- **Sensitive Data Handling**: Never log user tokens, JWTs, or full feed payload contents to `console.log` in production builds.
+
+## 10) Subagents for This App
+
+Agents that work in `apps/mobile`. Run `manage_subagents list` before spawning — reuse if already alive.
+
+| Role | TypeName | What they do here |
+|---|---|---|
+| `mobile-engineer` | `self` | All work in this folder — screens, navigation, hooks, MMKV state, feed sync. |
+
+### Delegation example
+
+```
+Role: mobile-engineer
+Prompt: "Add empty state to the Resources screen.
+  - Screen: apps/mobile/src/screens/resources/ResourcesScreen.tsx:L55
+  - Use theme.colors.textMuted (src/theme/index.ts)
+  - Handle loading, error, empty states — all three
+  After: pnpm typecheck && pnpm build"
+```

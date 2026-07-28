@@ -21,6 +21,7 @@ interface AppPreferencesState {
   feedTabsOrder: FeedTabId[];
   customFeedTabs: CustomFeedTab[];
   bottomNavStyle: 'classic' | 'floating';
+  feedCardStyle: 'classic' | 'twitter';
   hasHydrated: boolean;
   toggleTabVisibility: (tabId: TabId) => void;
   toggleFeedTabVisibility: (tabId: FeedTabId) => void;
@@ -28,6 +29,7 @@ interface AppPreferencesState {
   addCustomFeedTab: (tab: CustomFeedTab) => void;
   removeCustomFeedTab: (id: string) => void;
   setBottomNavStyle: (style: 'classic' | 'floating') => void;
+  setFeedCardStyle: (style: 'classic' | 'twitter') => void;
   hydrate: () => void;
 }
 
@@ -37,6 +39,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>((set, get) => 
   feedTabsOrder: [],
   customFeedTabs: [],
   bottomNavStyle: 'classic',
+  feedCardStyle: 'classic',
   hasHydrated: false,
 
   toggleTabVisibility: (tabId) => {
@@ -92,6 +95,11 @@ export const useAppPreferencesStore = create<AppPreferencesState>((set, get) => 
     set({ bottomNavStyle: style });
   },
 
+  setFeedCardStyle: (style) => {
+    setString('feed_card_style_pref', style);
+    set({ feedCardStyle: style });
+  },
+
   hydrate: () => {
     try {
       // Schema version guard: if stored version doesn't match, reset to defaults.
@@ -104,7 +112,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>((set, get) => 
         setString('feed_tabs_order_pref', JSON.stringify([]));
         setString('custom_feed_tabs_pref', JSON.stringify([]));
         setString('bottom_nav_style_pref', 'classic');
-        set({ hiddenTabs: [], hiddenFeedTabs: ['walkins'], feedTabsOrder: [], customFeedTabs: [], bottomNavStyle: 'classic', hasHydrated: true });
+        setString('feed_card_style_pref', 'classic');
+        set({ hiddenTabs: [], hiddenFeedTabs: ['walkins'], feedTabsOrder: [], customFeedTabs: [], bottomNavStyle: 'classic', feedCardStyle: 'classic', hasHydrated: true });
         return;
       }
 
@@ -123,16 +132,20 @@ export const useAppPreferencesStore = create<AppPreferencesState>((set, get) => 
       const storedBottomNavStyle = getString('bottom_nav_style_pref');
       const parsedBottomNavStyle = (storedBottomNavStyle === 'classic' || storedBottomNavStyle === 'floating') ? storedBottomNavStyle : 'classic';
 
+      const storedFeedCardStyle = getString('feed_card_style_pref');
+      const parsedFeedCardStyle = (storedFeedCardStyle === 'classic' || storedFeedCardStyle === 'twitter') ? storedFeedCardStyle : 'classic';
+
       set({
         hiddenTabs: Array.isArray(parsedTabs) ? parsedTabs : [],
         hiddenFeedTabs: Array.isArray(parsedFeedTabs) ? parsedFeedTabs : [],
         feedTabsOrder: Array.isArray(parsedOrder) ? parsedOrder : [],
         customFeedTabs: Array.isArray(parsedCustomTabs) ? parsedCustomTabs : [],
         bottomNavStyle: parsedBottomNavStyle,
+        feedCardStyle: parsedFeedCardStyle,
         hasHydrated: true,
       });
     } catch {
-      set({ hiddenTabs: [], hiddenFeedTabs: ['walkins'], feedTabsOrder: [], customFeedTabs: [], bottomNavStyle: 'classic', hasHydrated: true });
+      set({ hiddenTabs: [], hiddenFeedTabs: ['walkins'], feedTabsOrder: [], customFeedTabs: [], bottomNavStyle: 'classic', feedCardStyle: 'classic', hasHydrated: true });
     }
   },
 }));

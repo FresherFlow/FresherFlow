@@ -154,19 +154,26 @@ export const OpportunityCard = memo(({
                   );
                 })()}
 
-                {((effectiveMatchScore !== undefined && effectiveMatchScore > 0) || opportunity.isEligible === false) && (
-                    <View style={[
-                        styles.verifiedBadge,
-                        { backgroundColor: alpha((opportunity.isEligible === false) ? currentTheme.colors.error : currentTheme.colors.success, 0.05) }
-                    ]}>
-                        <Text style={[
-                            styles.verifiedText,
-                            { color: (opportunity.isEligible === false) ? currentTheme.colors.error : currentTheme.colors.success }
-                        ]}>
-                            {(opportunity.isEligible === false) ? 'Ineligible' : `${effectiveMatchScore}% Match`}
-                        </Text>
-                    </View>
-                )}
+                {(() => {
+                  if (opportunity.isEligible === false) {
+                    return (
+                      <View style={[styles.verifiedBadge, { backgroundColor: alpha(currentTheme.colors.error, 0.08) }]}>
+                        <Text style={[styles.verifiedText, { color: currentTheme.colors.error }]}>❌ Ineligible</Text>
+                      </View>
+                    );
+                  }
+                  if (effectiveMatchScore !== undefined && effectiveMatchScore > 0) {
+                    const isHighMatch = effectiveMatchScore >= 70;
+                    const badgeColor = isHighMatch ? currentTheme.colors.success : currentTheme.colors.warning;
+                    const badgeLabel = isHighMatch ? `✅ ${effectiveMatchScore}% Match` : `⚠️ ${effectiveMatchScore}% Check`;
+                    return (
+                      <View style={[styles.verifiedBadge, { backgroundColor: alpha(badgeColor, 0.08) }]}>
+                        <Text style={[styles.verifiedText, { color: badgeColor }]}>{badgeLabel}</Text>
+                      </View>
+                    );
+                  }
+                  return null;
+                })()}
             </View>
             <View style={styles.companyRow}>
                 {/* @ts-expect-error - sharedTransitionTag typing mismatch */}

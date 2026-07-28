@@ -17,6 +17,8 @@ import { AppTheme } from '@/contexts/ThemeContext';
 
 import { PremiumRefreshControl, ScrollToTopButton } from '@/system/components/PremiumPrimitives';
 import { JobCard } from '@/system/components/OpportunityCard';
+import { JobPost } from './JobPost';
+import { useAppPreferencesStore } from '@/store/useAppPreferencesStore';
 import { UsernameNudgeCard } from '@/system/components/UsernameNudgeCard';
 import { SectorSwitchCard } from '@/system/components/SectorSwitchCard';
 import { mScale, SPACING, RADIUS, SCREEN_WIDTH } from '@/system/constants/dimensions';
@@ -147,6 +149,8 @@ export const FeedTabContent = memo(({
       toggleSave(opportunity);
   }, [toggleSave]);
 
+  const feedCardStyle = useAppPreferencesStore(s => s.feedCardStyle);
+
   const renderItem = useCallback(({ item }: { item: FeedItem }) => {
     switch (item.type) {
       case 'stats':
@@ -165,6 +169,17 @@ export const FeedTabContent = memo(({
             </View>
         );
       case 'opportunity':
+        if (feedCardStyle === 'twitter') {
+          return (
+            <JobPost
+              opportunity={item.data}
+              onPress={handleJobPress}
+              onApply={handleJobPress}
+              onSave={handleJobSave}
+              isSaved={isSaved(item.data.id)}
+            />
+          );
+        }
         return (
             <JobCard
                 opportunity={item.data}

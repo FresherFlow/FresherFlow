@@ -8,7 +8,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Check, Palette, Moon, Sun, Smartphone, Zap, PanelBottom, AppWindow } from 'lucide-react-native';
+import { Check, Palette, Moon, Sun, Smartphone, Zap, PanelBottom, AppWindow, LayoutGrid, MessageSquare } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
@@ -33,9 +33,7 @@ const alpha = (color: string, opacity: number) => {
 const AppearanceScreen = ({ navigation }: Props) => {
   const insets = useSafeAreaInsets();
   const { currentTheme, themeMode, setThemeMode, isAmoled, toggleAmoled } = useTheme();
-  const { bottomNavStyle, setBottomNavStyle } = useAppPreferencesStore();
-
-
+  const { bottomNavStyle, setBottomNavStyle, feedCardStyle, setFeedCardStyle } = useAppPreferencesStore();
 
   const handleModeSelect = useCallback((mode: 'light' | 'dark' | 'system') => {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -50,6 +48,11 @@ const AppearanceScreen = ({ navigation }: Props) => {
     void Haptics.selectionAsync();
     setBottomNavStyle(style);
   }, [setBottomNavStyle]);
+
+  const handleFeedCardStyleSelect = useCallback((style: 'classic' | 'twitter') => {
+    void Haptics.selectionAsync();
+    setFeedCardStyle(style);
+  }, [setFeedCardStyle]);
 
   const isDarkMode = currentTheme.mode === 'dark';
 
@@ -110,6 +113,26 @@ const AppearanceScreen = ({ navigation }: Props) => {
                 />
             </View>
         )}
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>Feed Layout Style</Text>
+          <View style={styles.modeGrid}>
+            <ModeCard 
+              label="Classic Cards" 
+              active={feedCardStyle === 'classic'} 
+              icon={LayoutGrid} 
+              onPress={() => handleFeedCardStyleSelect('classic')} 
+              currentTheme={currentTheme}
+            />
+            <ModeCard 
+              label="Twitter Posts" 
+              active={feedCardStyle === 'twitter'} 
+              icon={MessageSquare} 
+              onPress={() => handleFeedCardStyleSelect('twitter')} 
+              currentTheme={currentTheme}
+            />
+          </View>
+        </View>
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>Navigation Style</Text>

@@ -4,6 +4,7 @@ import { Search, Bell, X } from 'lucide-react-native';
 import { PremiumHeader } from '@/system/components/PremiumPrimitives';
 import { mScale, SPACING, SCREEN_WIDTH, RADIUS } from '@/system/constants/dimensions';
 import { AppTheme } from '@/contexts/ThemeContext';
+import { haptic } from '@/utils/haptics';
 
 const alpha = (color: string, opacity: number) => {
     if (color.startsWith('rgba')) return color;
@@ -108,7 +109,10 @@ export const FeedHeader = memo(({
                                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                                     onLayout={(e) => handleTabLayout(index, e)}
                                     style={[styles.feedTab, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
-                                    onPress={() => handleTabPress(index)}
+                                    onPress={() => {
+                                        haptic.light();
+                                        handleTabPress(index);
+                                    }}
                                 >
                                     <Text style={[
                                         styles.feedTabText,
