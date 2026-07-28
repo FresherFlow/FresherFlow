@@ -128,3 +128,28 @@ npx tsx index.ts --test    # dry run, no R2 uploads, no Telegram
 - Check `RunStats` output in console — verify `total_found`, per-provider counts.
 - Verify `ats_rejected_scorer` and `agg_rejected_scorer` didn't spike unexpectedly.
 - Verify no unhandled promise rejections in Playwright browser pool.
+
+## 11) Pipeline Security & CodeQL Guidelines
+
+- **URL & Domain Verification**: In verifiers and detectors (`verifier.ts`, `ats-detector.ts`), NEVER use `url.includes('google.com')` on raw URL strings to verify ATS domains or account check bypasses. ALWAYS parse via `new URL(url).hostname`.
+- **Sanitization & Escaping**: In HTML parsers (e.g. Greenhouse adapter), replace entities with spaces `' '` instead of empty strings `''` to prevent multi-character sanitization issues, and avoid nested regex patterns on scraped HTML content.
+
+## 12) Subagents for This Script
+
+Agents that work in `scripts/job-discovery`. Run `manage_subagents list` before spawning — reuse if already alive.
+
+| Role | TypeName | What they do here |
+|---|---|---|
+| `pipeline-engineer` | `self` | All work in this folder — ATS providers, aggregator scraping, NLP scorer, verifier, R2 storage, Telegram notifier. |
+
+### Delegation example
+
+```
+Role: pipeline-engineer
+Prompt: "Add Instahyre as a new ATS provider.
+  - Add fetch logic: scripts/job-discovery/src/ats/instahyre.ts (new file)
+  - Register in: scripts/job-discovery/src/ats/index.ts:L22
+  - Filter with isLocationIndiaOrRemote before queueing candidates
+  - Test: npx tsx index.ts --test
+  After: pnpm typecheck"
+```

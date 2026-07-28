@@ -98,3 +98,4 @@ scripts/job-discovery/adapter-tests/
 .agents
 
 skills-lock.json
+.vercel

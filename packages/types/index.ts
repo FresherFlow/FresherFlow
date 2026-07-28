@@ -211,6 +211,9 @@ export interface Profile {
     gradCourse: string | null;
     gradSpecialization: string | null;
     gradYear: number | null;
+    collegeId?: string | null;
+    collegeName?: string | null;
+    collegeState?: string | null;
     pgCourse: string | null;
     pgSpecialization: string | null;
     pgYear: number | null;
@@ -239,8 +242,11 @@ export interface Profile {
     githubUrl?: string | null;
     linkedinUrl?: string | null;
     portfolioUrl?: string | null;
+    avatarUrl?: string | null;
+    githubPinnedRepos?: any | null;
     openToRecruiters?: boolean | null;
     profilePublic?: boolean | null;
+    visibility?: 'PUBLIC' | 'UNLISTED' | 'PRIVATE' | null;
     projects?: Project[];
 }
 

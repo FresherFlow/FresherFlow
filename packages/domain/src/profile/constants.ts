@@ -18,6 +18,7 @@ export {
 };
 
 export const EDUCATION_LEVELS = ['TENTH', 'INTER', 'DIPLOMA', 'DEGREE', 'PG'];
+export const TOP_TECH_HUBS = ['Bangalore', 'Hyderabad', 'Pune', 'Mumbai', 'Delhi-NCR', 'Chennai'];
 export const OPPORTUNITY_TYPES = ['JOB', 'INTERNSHIP', 'WALKIN'];
 export const WORK_MODES = ['ONSITE', 'HYBRID', 'REMOTE'];
 

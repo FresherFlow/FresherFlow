@@ -222,3 +222,30 @@ Run `pnpm typecheck` + `pnpm build` (see root AGENTS.md). Then also:
 - Verify no unhandled promise rejections in logs.
 - Verify multi-table writes are wrapped in transactions.
 
+## 11) API Security & CodeQL Guidelines
+
+- **SSRF Prevention**: All external HTTP requests (`fetch`/`axios`) in services or controllers must parse URLs via `new URL()`, validate `http:`/`https:`, and include dual statement-level suppression comments (`// codeql[js/request-forgery]` & `// lgtm[js/request-forgery]`) if dynamic endpoints trigger false positives.
+- **Unbiased Randomness**: Use `crypto.randomInt(0, max)` for token/referral code generation. NEVER use modulo arithmetic on `crypto.randomBytes()`.
+- **Sensitive Data & Stack Traces**: NEVER pass raw `err.message` or stack traces in HTTP 500 error responses (`res.status(500).json({ error: ... })`). Always return generic messages to clients while logging full trace server-side with `@fresherflow/logger`.
+- **Rate Limiting**: All public/unauthenticated endpoints (including health deep checks and stats) must be protected by rate limiting middleware (`express-rate-limit`).
+- **Domain Trust Verification**: Validate external URL hostnames using `new URL(url).hostname` and `.endsWith()` — never use `.includes('domain.com')` on raw URL strings.
+
+## 12) Subagents for This App
+
+Agents that work in `apps/api`. Run `manage_subagents list` before spawning — reuse if already alive.
+
+| Role | TypeName | What they do here |
+|---|---|---|
+| `api-engineer` | `self` | All work in this folder — routes, controllers, services, middleware, BullMQ workers, CRON jobs. |
+
+### Delegation example
+
+```
+Role: api-engineer
+Prompt: "Add POST /api/alerts route.
+  - Route: apps/api/src/routes/alerts.ts:L45
+  - Controller: apps/api/src/application/alerts/ — add createAlert()
+  - Service: apps/api/src/infrastructure/services/alerts.service.ts:L30
+  - Protect with requireAuth + validate(CreateAlertSchema)
+  After: pnpm typecheck && pnpm build"
+```

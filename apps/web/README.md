@@ -1,45 +1,37 @@
-# FresherFlow Web App (Next.js)
+# FresherFlow Web
 
-The user-facing web portal for FresherFlow, built with **Next.js** using the App Router, optimized for fast page loads and eligibility matchmaking.
+Next.js 16 App Router web portal.
 
----
+- **Port**: `3000`
+- **Styling**: Tailwind CSS with CSS variable tokens
+- **Data**: CDN bootstrap feed (Cloudflare R2) + Express API via `packages/api-client`
+- **Auth**: Firebase + JWT cookies
 
-## 🚀 Tech Stack
+## Run locally
 
-- **Framework**: Next.js 16 (React 19)
-- **Styling**: Tailwind CSS
-- **Routing**: App Router with sub-domain resolution and rewrites
-- **Data Hydration**: CDN-first, caching static data using R2 and local caches
+```bash
+pnpm dev:web
+```
 
----
+## Environment
 
-## ⚙️ Environment Variables
-
-Copy `.env.example` to `.env` (or `.env.local` for local development):
 ```bash
 cp .env.example .env.local
 ```
 
-Key environment variables:
-- `NEXT_PUBLIC_API_URL`: Root endpoint of the API gateway (e.g. `http://localhost:5000`).
-- `NEXT_PUBLIC_ADMIN_WEB_HOST`: Hostname for the admin portal (e.g. `admin.localhost`).
-- `NEXT_PUBLIC_APP_WEB_HOST`: Hostname for the user app (e.g. `localhost`).
+Minimum required: `NEXT_PUBLIC_API_URL`, `API_URL`.
 
----
+See root [QUICKSTART.md](../../QUICKSTART.md) for the full local setup guide.
 
-## 🏃 Run Development
+## Structure
 
-To run only the web client:
-```bash
-pnpm --filter fresherflow-web dev
 ```
-The server will start on [http://localhost:3000](http://localhost:3000).
-
----
-
-## 📂 Structure
-
-- `src/app`: Page routing, layouts, and API proxies.
-- `src/components`: Generic UI elements.
-- `src/features`: Component-driven feature folders (e.g., `jobs`, `opportunities`, `landing`).
-- `src/proxy`: Middleware host-rewriting logic.
+src/
+├── app/            # App Router pages, layouts, API routes
+├── features/       # Self-contained feature modules (opportunities, profile, auth...)
+├── ui/             # Generic reusable components (Button, Badge, Card, Skeleton...)
+├── hooks/          # Client-side hooks wrapping api-client
+└── lib/
+    ├── api/        # Server-side data fetching, CDN feed client, server-client
+    └── utils/      # Formatting, sanitization, runtime config
+```

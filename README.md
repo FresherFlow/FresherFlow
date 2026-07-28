@@ -5,7 +5,7 @@
     </td>
     <td valign="center" style="border: none; padding-left: 20px;">
       <h1 style="margin: 0; padding: 0; border: none;">FresherFlow</h1>
-      <p style="margin: 5px 0; font-size: 1.1em;">A verified, high-performance job and walk-in discovery engine for graduates and students across India. Built as a fully type-safe TypeScript monorepo.</p>
+      <p style="margin: 5px 0; font-size: 1.1em;">Find verified fresher jobs, internships, and walk-ins directly from company career portals—before they get buried on job boards.</p>
     </td>
   </tr>
 </table>

@@ -111,3 +111,22 @@ npx tsx index.ts --input test-jobs.json --no-submit   # process without submitti
 - Check no unhandled errors for edge-case job descriptions (missing salary, no location, etc.).
 - Verify dedup logic correctly skips already-processed URLs.
 - For provider changes: test against 3–5 real URLs from that provider.
+
+## 9) Subagents for This Script
+
+Agents that work in `scripts/job-processor`. Run `manage_subagents list` before spawning — reuse if already alive. `pipeline-engineer` is shared with `scripts/job-discovery` — check the list and reuse the same agent.
+
+| Role | TypeName | What they do here |
+|---|---|---|
+| `pipeline-engineer` | `self` | All work in this folder — ATS native scrapers, Playwright providers, LLM enrichment, normalizer, API submission. |
+
+### Delegation example
+
+```
+Role: pipeline-engineer
+Prompt: "Fix Workday provider — description truncated at 500 chars.
+  - Provider: scripts/job-processor/src/providers.ts — Workday section at L188
+  - Fix: description slice at L201 cuts mid-sentence, increase to 2000
+  - Test: npx tsx index.ts --input test-jobs.json --no-submit
+  After: pnpm typecheck"
+```

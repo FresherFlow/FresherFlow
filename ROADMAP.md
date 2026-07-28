@@ -23,18 +23,20 @@
 
 ## Phase 1 — Data Engine Reliability 🔴 In Progress
 
-*"I can reliably fetch and update jobs from hundreds of companies."*
+*"I can reliably fetch and update jobs from 1,000+ companies faster than LinkedIn or Naukri."*
 
-The pipeline exists but needs to scale and harden.
+The pipeline exists but needs to scale coverage across standard and regional Indian ATS platforms.
 
 - [ ] Company → ATS Registry — structured, verified, with ATS type per company
-- [ ] ATS native API fetchers — Greenhouse, Lever, Ashby, Workday, SmartRecruiters
-- [ ] ATS native API fetchers — SAP SuccessFactors, iCIMS, Taleo, BambooHR, DarwinBox
+- [ ] Scale target: Expand coverage from ~200 to 500, then 1,000+ active hiring companies
+- [ ] ATS native API fetchers — Greenhouse, Lever, Ashby, Workday, SmartRecruiters, iCIMS, Eightfold
+- [ ] ATS native API fetchers — SAP SuccessFactors, Taleo/Oracle, BambooHR, DarwinBox, Teamtailor, Recruitee
+- [ ] Indian & Regional ATS Expansion — Zoho Recruit, Keka, Freshteam, Workable, Dayforce, Comeet, Rippling
 - [ ] Job normalization — single internal schema regardless of ATS source
 - [ ] Deduplication — R2-backed fingerprinting, no Redis dependency
 - [ ] URL validity checking — dead link detection before publish
-- [ ] Scheduled sync — active companies re-checked every 15–30 min
-- [ ] Ingestion pipeline: Supabase staging DB migration (keep Neon compute for users)
+- [ ] Scheduled sync — active companies re-checked every 15–30 min (10–15 min for tier-1 SDE roles)
+- [ ] Brand positioning alignment — "Tracks 1,000+ company career sites" & "Find jobs before they reach Naukri and LinkedIn"
 
 ---
 

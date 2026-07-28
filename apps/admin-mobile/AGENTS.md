@@ -101,3 +101,22 @@ Run `pnpm typecheck` + `pnpm build` (see root AGENTS.md). Then also:
 - Verify confirmation dialogs appear before all destructive actions.
 - Verify admin-only routes reject non-admin users.
 - Verify loading and error states render for every screen that fetches data.
+
+## 8) Subagents for This App
+
+Agents that work in `apps/admin-mobile`. Run `manage_subagents list` before spawning — reuse if already alive.
+
+| Role | TypeName | What they do here |
+|---|---|---|
+| `admin-engineer` | `self` | All work in this folder — moderation screens, review queues, publish flows, captions, user management. |
+
+### Delegation example
+
+```
+Role: admin-engineer
+Prompt: "Add bulk-reject action to the moderation queue.
+  - Screen: apps/admin-mobile/src/features/moderation/ModerationQueueScreen.tsx:L120
+  - Add multi-select mode with a 'Reject Selected' button
+  - Confirmation dialog required before executing (admin rules §5)
+  After: pnpm typecheck && pnpm build"
+```

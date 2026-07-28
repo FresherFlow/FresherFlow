@@ -19,6 +19,9 @@ export const profileApi = {
         gradCourse: string;
         gradSpecialization: string;
         gradYear: number;
+        collegeId?: string | null;
+        collegeName?: string | null;
+        collegeState?: string | null;
         // Optional PG fields
         pgCourse?: string;
         pgSpecialization?: string;
