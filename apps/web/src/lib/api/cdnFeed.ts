@@ -195,7 +195,7 @@ export async function fetchBootstrapFeed(forceLive = false, customTags?: string[
 
         let res = await fetch(signedUrl, getCDNFetchOptions({
             cache: forceLive ? 'no-store' : 'force-cache',
-            ...(!forceLive && !untracked ? { next: { revalidate: 60, tags: customTags ?? ['homepage-feed'] } } : {}),
+            ...(!forceLive && !untracked ? { next: { revalidate: false, tags: customTags ?? ['homepage-feed'] } } : {}),
             signal: controller.signal,
         }));
 
