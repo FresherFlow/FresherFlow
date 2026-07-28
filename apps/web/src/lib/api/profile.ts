@@ -18,6 +18,9 @@ export const profileApi = {
         gradCourse: string;
         gradSpecialization: string;
         gradYear: number;
+        collegeId?: string | null;
+        collegeName?: string | null;
+        collegeState?: string | null;
         // Optional PG fields
         pgCourse?: string;
         pgSpecialization?: string;
@@ -42,6 +45,18 @@ export const profileApi = {
         apiClient('/api/profile/readiness', {
             method: 'PUT',
             body: JSON.stringify(data)
+        }),
+
+    claimUsername: (username: string) =>
+        apiClient<{ success: boolean; username: string; message?: string }>('/api/profile/username/claim', {
+            method: 'POST',
+            body: JSON.stringify({ username })
+        }),
+
+    updateVisibility: (visibility: 'PUBLIC' | 'UNLISTED' | 'PRIVATE') =>
+        apiClient('/api/profile/visibility', {
+            method: 'PATCH',
+            body: JSON.stringify({ visibility })
         }),
 
     getCompletion: () => apiClient('/api/profile/completion')

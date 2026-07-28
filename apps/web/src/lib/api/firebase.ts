@@ -15,6 +15,8 @@ const firebaseConfig = {
     databaseURL: process.env.NEXT_PUBLIC_FIREBASE_DATABASE_URL || (isProd
         ? 'https://fresherflow-3604b-default-rtdb.asia-southeast1.firebasedatabase.app'
         : 'https://fresherflow-dev-staging-default-rtdb.asia-southeast1.firebasedatabase.app'),
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || (isProd ? 'fresherflow-3604b' : 'fresherflow-dev-staging'),
+    appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || (isProd ? '1:436004959357:web:...' : '1:162796656158:web:a204518c1de7bf86e4800f'),
 };
 
 // Singleton pattern to ensure we initialize only once

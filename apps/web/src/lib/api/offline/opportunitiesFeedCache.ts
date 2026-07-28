@@ -93,3 +93,37 @@ export function readFeedCache(scope?: string | null): FeedCachePayload | null {
         return null;
     }
 }
+
+const SINGLE_OPPS_CACHE_KEY = 'ff_single_opps_cache_v1';
+
+export function saveOpportunityToCache(opp: Partial<Opportunity> & { id: string }) {
+    if (typeof window === 'undefined' || !opp || (!opp.id && !opp.slug)) return;
+    try {
+        const raw = localStorage.getItem(SINGLE_OPPS_CACHE_KEY);
+        const map: Record<string, Opportunity> = raw ? JSON.parse(raw) : {};
+        if (opp.id) map[opp.id] = { ...map[opp.id], ...(opp as Opportunity) };
+        if (opp.slug) map[opp.slug] = { ...map[opp.slug], ...(opp as Opportunity) };
+        localStorage.setItem(SINGLE_OPPS_CACHE_KEY, JSON.stringify(map));
+    } catch {
+        // ignore storage errors
+    }
+}
+
+export function getOpportunityFromCache(idOrSlug: string): Opportunity | null {
+    if (typeof window === 'undefined' || !idOrSlug) return null;
+    try {
+        const raw = localStorage.getItem(SINGLE_OPPS_CACHE_KEY);
+        if (raw) {
+            const map: Record<string, Opportunity> = JSON.parse(raw);
+            if (map[idOrSlug]) return map[idOrSlug];
+        }
+        const feedPayload = readFeedCache();
+        if (feedPayload?.opportunities) {
+            const found = feedPayload.opportunities.find((o) => o.id === idOrSlug || o.slug === idOrSlug);
+            if (found) return found;
+        }
+        return null;
+    } catch {
+        return null;
+    }
+}

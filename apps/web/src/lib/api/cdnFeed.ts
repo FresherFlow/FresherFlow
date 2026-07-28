@@ -63,14 +63,15 @@ async function signMessage(message: string, secret: string): Promise<string> {
  * Used for the bootstrap feed on the web/Next.js server side.
  */
 async function signUrlWithVersion(url: string, version: string): Promise<string> {
-    const secret = process.env.CDN_SIGNATURE_SECRET || process.env.EXPO_PUBLIC_CDN_SIGNATURE_SECRET;
-    if (!secret) return url;
+    const secret = process.env.CDN_SIGNATURE_SECRET || process.env.NEXT_PUBLIC_CDN_SIGNATURE_SECRET || process.env.EXPO_PUBLIC_CDN_SIGNATURE_SECRET;
     try {
         const parsedUrl = new URL(url, CDN_URL);
+        parsedUrl.searchParams.set('v', version);
+        if (!secret) return parsedUrl.toString();
+
         const pathname = parsedUrl.pathname;
         const message = `${pathname}:${version}`;
         const sig = await signMessage(message, secret);
-        parsedUrl.searchParams.set('v', version);
         parsedUrl.searchParams.set('sig', sig);
         return parsedUrl.toString();
     } catch (err) {
@@ -88,28 +89,46 @@ async function signUrlIfServer(url: string): Promise<string> {
     const IS_SERVER = typeof window === 'undefined';
     if (!IS_SERVER) return url;
 
-    const secret = process.env.CDN_SIGNATURE_SECRET;
-    if (secret) {
-        try {
-            const parsedUrl = new URL(url, CDN_URL);
-            const pathname = parsedUrl.pathname;
-            const isProtected = pathname === '/taken-usernames.min.json' ||
-                                pathname === '/companies-directory.min.json' ||
-                                pathname.startsWith('/categories/');
+    const secret = process.env.CDN_SIGNATURE_SECRET || process.env.NEXT_PUBLIC_CDN_SIGNATURE_SECRET || process.env.EXPO_PUBLIC_CDN_SIGNATURE_SECRET;
+    try {
+        const parsedUrl = new URL(url, CDN_URL);
+        if (!secret) return parsedUrl.toString();
 
-            if (isProtected) {
-                const t = Math.floor(Date.now() / 1000 / 120) * 120;
-                const message = `${pathname}:${t}`;
-                const sig = await signMessage(message, secret);
-                parsedUrl.searchParams.set('t', t.toString());
-                parsedUrl.searchParams.set('sig', sig);
-                return parsedUrl.toString();
-            }
-        } catch (err) {
-            console.error('Failed to sign CDN url on server:', err);
+        const pathname = parsedUrl.pathname;
+        const isProtected = pathname === '/bootstrap-feed.min.json' ||
+                            pathname === '/taken-usernames.min.json' ||
+                            pathname === '/companies-directory.min.json' ||
+                            pathname.startsWith('/categories/');
+
+        if (isProtected) {
+            const t = Math.floor(Date.now() / 1000 / 120) * 120;
+            const message = `${pathname}:${t}`;
+            const sig = await signMessage(message, secret);
+            parsedUrl.searchParams.set('t', t.toString());
+            parsedUrl.searchParams.set('sig', sig);
         }
+        return parsedUrl.toString();
+    } catch (err) {
+        console.error('Failed to sign CDN url on server:', err);
+        return url;
     }
-    return url;
+}
+
+export async function signProtectedCdnUrl(urlOrPath: string): Promise<string> {
+    const secret = process.env.NEXT_PUBLIC_CDN_SIGNATURE_SECRET || process.env.EXPO_PUBLIC_CDN_SIGNATURE_SECRET || process.env.CDN_SIGNATURE_SECRET;
+    if (!secret) return urlOrPath;
+    try {
+        const parsedUrl = new URL(urlOrPath, CDN_URL);
+        const pathname = parsedUrl.pathname;
+        const t = Math.floor(Date.now() / 1000 / 120) * 120;
+        const message = `${pathname}:${t}`;
+        const sig = await signMessage(message, secret);
+        parsedUrl.searchParams.set('t', t.toString());
+        parsedUrl.searchParams.set('sig', sig);
+        return parsedUrl.toString();
+    } catch {
+        return urlOrPath;
+    }
 }
 
 /**
@@ -158,47 +177,51 @@ export async function fetchFeedVersion(untracked = false): Promise<FeedVersion> 
 }
 
 /**
- * Fetches the static bootstrap feed from the CDN.
- * This is used for "Zero-Spinner" instant discovery and SEO.
+ * Fetches the static bootstrap feed from the CDN (or local API fallback in development).
+ * Used for "Zero-Spinner" instant discovery and SEO.
  */
 export async function fetchBootstrapFeed(forceLive = false, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> {
     try {
-        const shouldBypassDevFeed = true;
-        if (process.env.NODE_ENV === 'development' && !forceLive && !shouldBypassDevFeed) {
-            try {
-                const res = await fetch(`${API_URL}/bootstrap-feed.min.json`, { cache: 'no-store' });
-                if (res.ok) {
-                    return await res.json() as BootstrapFeedResponse;
-                }
-            } catch (err) {
-                console.warn('Failed to fetch live bootstrap feed from local API server, falling back to dummy-feed.json:', err);
-            }
-            const res = await fetch(`${SITE_URL}/dummy-feed.json`, { cache: 'no-store' });
-            return await res.json() as BootstrapFeedResponse;
-        }
-
         const feedVersion = await fetchFeedVersion(untracked);
-
-        // Sign using the stable version string — URL stays identical until next publish event,
-        // allowing Vercel / Cloudflare edges to cache it indefinitely (immutable).
         const IS_SERVER = typeof window === 'undefined';
+        const rawUrl = BOOTSTRAP_FEED_URL;
         const signedUrl = IS_SERVER
-            ? await signUrlWithVersion(BOOTSTRAP_FEED_URL, feedVersion.version)
-            : `${BOOTSTRAP_FEED_URL}?v=${feedVersion.version}`;
+            ? await signUrlWithVersion(rawUrl, feedVersion.version)
+            : `${rawUrl}?v=${feedVersion.version}`;
 
         const controller = new AbortController();
         // 10s timeout — a cache hit should respond in <100ms; this guards only cold misses
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-        const res = await fetch(signedUrl, getCDNFetchOptions({
-            // Cache only stable feed-version URLs. If feed-version.json is down,
-            // use no-store so a fallback URL cannot create repeated cache writes.
-            cache: feedVersion.stable ? 'force-cache' : 'no-store',
-            ...(feedVersion.stable && !untracked ? { next: { revalidate: false, tags: customTags ?? ['homepage-feed'] } } : {}),
+        let res = await fetch(signedUrl, getCDNFetchOptions({
+            cache: forceLive ? 'no-store' : 'force-cache',
+            ...(!forceLive && !untracked ? { next: { revalidate: 60, tags: customTags ?? ['homepage-feed'] } } : {}),
             signal: controller.signal,
         }));
 
         clearTimeout(timeoutId);
+
+        // Fallback if CDN fetch fails in development mode (e.g. 403 due to missing local signature secret)
+        if (!res.ok && process.env.NODE_ENV === 'development') {
+            try {
+                // First try live API for live data in local development
+                const liveApiRes = await fetch('https://api.fresherflow.in/bootstrap-feed.min.json', { cache: 'no-store' });
+                if (liveApiRes.ok) {
+                    const liveData = await liveApiRes.json();
+                    if (liveData && Array.isArray(liveData.opportunities) && liveData.opportunities.length > 0) {
+                        return liveData as BootstrapFeedResponse;
+                    }
+                }
+                // Then fall back to local API
+                const localApiUrl = `${API_URL}/bootstrap-feed.min.json`;
+                const localRes = await fetch(localApiUrl, { cache: 'no-store' });
+                if (localRes.ok) {
+                    res = localRes;
+                }
+            } catch {
+                // Ignore fallback error
+            }
+        }
 
         if (!res.ok) {
             console.error(`Failed to fetch bootstrap feed: ${res.status} ${res.statusText}`);
@@ -215,6 +238,21 @@ export async function fetchBootstrapFeed(forceLive = false, customTags?: string[
 
         return data;
     } catch (err) {
+        // Fallback to local Express API server in development mode if network fetch threw an exception
+        if (process.env.NODE_ENV === 'development') {
+            try {
+                const localApiUrl = `${API_URL}/bootstrap-feed.min.json`;
+                const localRes = await fetch(localApiUrl, { cache: 'no-store' });
+                if (localRes.ok) {
+                    const data = await localRes.json() as BootstrapFeedResponse;
+                    if (data && Array.isArray(data.opportunities)) {
+                        return data;
+                    }
+                }
+            } catch {
+                // Ignore fallback error
+            }
+        }
         console.warn('Bootstrap CDN fetch failed:', err instanceof Error ? err.message : err);
         return null;
     }
@@ -271,17 +309,6 @@ export async function fetchExpiredFeed(customTags?: string[], untracked = false)
  */
 export async function fetchGovernmentFeed(forceLive = false, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> {
     try {
-        if (process.env.NODE_ENV === 'development' && !forceLive) {
-            try {
-                const res = await fetch(`${API_URL}/government-feed.json`, { cache: 'no-store' });
-                if (res.ok) {
-                    return await res.json() as BootstrapFeedResponse;
-                }
-            } catch (err) {
-                console.warn('Failed to fetch live government feed from local API server, falling back:', err);
-            }
-        }
-
         const feedVersion = await fetchFeedVersion(untracked);
 
         const IS_SERVER = typeof window === 'undefined';

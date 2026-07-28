@@ -25,19 +25,24 @@ const ADMIN_ACCESS_TOKEN_KEY = 'ff_admin_access_token_v1';
 
 function logClientWarning(message: string, error?: unknown) {
     if (process.env.NODE_ENV === 'development') {
-        console.warn(message, error);
+        if (error instanceof Error && error.message.includes('status 500')) {
+            console.warn(`[Client] ${message} ${error.message} (Backend may be offline)`);
+            return;
+        }
+        console.warn(`[Client] ${message}`, error);
     }
 }
 
 function shouldLogClientError(error: unknown): boolean {
     const err = error as { statusCode?: number; code?: string; message?: string };
     if (error instanceof OfflineError || error instanceof UnauthorizedError) return false;
-    if (err.code === 'TIMEOUT') return false;
+    if (err.code === 'TIMEOUT' || err.code === 'ECONNREFUSED') return false;
     if (err.statusCode === 401 || err.statusCode === 403 || err.statusCode === 429) return false;
     if (typeof err.message === 'string') {
         if (err.message === 'Refresh failed') return false;
         if (err.message.includes('Server is temporarily unavailable')) return false;
         if (err.message.includes('Gateway Timeout')) return false;
+        if (err.message.includes('ECONNREFUSED') || err.message.includes('Request failed with status 500')) return false;
     }
     return true;
 }
@@ -259,7 +264,7 @@ export async function apiClient<T = unknown>(
     endpoint: string,
     options: RequestInit = {}
 ): Promise<T> {
-    if (isUserProtectedEndpoint(endpoint) && (isUserLoggingOut() || !hasCookie('ff_logged_in'))) {
+    if (isUserProtectedEndpoint(endpoint) && isUserLoggingOut()) {
         throw new UnauthorizedError();
     }
     if (isAdminProtectedEndpoint(endpoint) && isAdminLoggingOut()) {
@@ -281,7 +286,15 @@ export async function apiClient<T = unknown>(
     }
 
     if (isUserProtectedEndpoint(endpoint)) {
-        const userAccessToken = getUserAccessToken();
+        let userAccessToken = getUserAccessToken();
+        if (!userAccessToken && typeof window !== 'undefined') {
+            try {
+                const { auth } = await import('@/lib/api/firebase');
+                if (auth.currentUser) {
+                    userAccessToken = await auth.currentUser.getIdToken();
+                }
+            } catch {}
+        }
         if (userAccessToken && !headers.Authorization) {
             headers.Authorization = `Bearer ${userAccessToken}`;
         }

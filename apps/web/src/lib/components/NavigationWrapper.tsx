@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useContext } from 'react';
+import { Suspense, useContext, useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Navbar, MobileNav } from '@/lib/navigation/Navigation';
 import { Footer } from '@/ui/Footer';
@@ -54,8 +54,24 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
     const hideNav = isAdminRoute || isCaptionsPage || isPendingPage || isRecruiterRoute || isPublicProfileRoute;
     const isHomePage = pathname === '/';
 
+    const isAccountOrDashboardRoute = normalizedPathname.startsWith('/dashboard') || 
+                                      normalizedPathname.startsWith('/profile') || 
+                                      normalizedPathname.startsWith('/settings') || 
+                                      normalizedPathname.startsWith('/saved') || 
+                                      normalizedPathname.startsWith('/tracker') || 
+                                      normalizedPathname.startsWith('/alerts') || 
+                                      normalizedPathname.startsWith('/notifications') ||
+                                      normalizedPathname.startsWith('/account');
+
     const authContext = useContext(AuthContext);
     const isAuthenticated = !!authContext?.user;
+
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    const showFooter = !isAdminRoute && !isAuthRoute && !isCaptionsPage && !isPendingPage && !isRecruiterRoute && !isPublicProfileRoute && !normalizedPathname.startsWith('/u/') && !isAccountOrDashboardRoute && (mounted ? !isAuthenticated : true);
 
     return (
         <>
@@ -71,8 +87,8 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
                 "relative w-full overflow-x-hidden flex-1 flex flex-col",
                 !hideNav && "pt-[calc(3.75rem+env(safe-area-inset-top))]",
                 !hideNav && "md:pt-[4.75rem]",
-                !hideNav && !isHomePage && isAuthenticated && "pb-20 md:pb-8",
-                !hideNav && !isHomePage && !isAuthenticated && "pb-4 md:pb-8",
+                !hideNav && !isHomePage && (isAccountOrDashboardRoute || (mounted && isAuthenticated)) && "pb-20 md:pb-8",
+                !hideNav && !isHomePage && !(isAccountOrDashboardRoute || (mounted && isAuthenticated)) && "pb-4 md:pb-8",
                 "min-h-screen"
             )}>
                 <div className={cn(
@@ -81,8 +97,8 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
                     {children}
                 </div>
             </main>
-            {!isAdminRoute && !isAuthRoute && !isCaptionsPage && !isPendingPage && !isRecruiterRoute && !isPublicProfileRoute && !normalizedPathname.startsWith('/u/') && !isAuthenticated && (
-                <>
+            {showFooter && (
+                <div>
                     {/* Desktop/Tablet View */}
                     <div className="hidden md:block">
                         {(isDetailPage || isJobRelatedPage) ? <MiniFooter /> : <Footer />}
@@ -92,7 +108,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
                     <div className="md:hidden">
                         {(isDetailPage || isJobRelatedPage) ? null : <Footer />}
                     </div>
-                </>
+                </div>
             )}
             {!hideNav && (
                 <Suspense fallback={null}>
@@ -102,3 +118,4 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
         </>
     );
 }
+
