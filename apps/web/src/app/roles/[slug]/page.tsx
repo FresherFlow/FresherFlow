@@ -8,7 +8,7 @@ import { unstable_noStore } from 'next/cache';
 import { extractHubRelations } from '@/features/opportunities/utils/hubLinking';
 
 export const revalidate = false;
-export const dynamicParams = true;
+export const dynamicParams = false;
 
 const VALID_ROLES = {
     'software-engineer': {
@@ -112,8 +112,10 @@ export default async function RolePage({ params }: Props) {
         roleInfo = { label, keywords: [label.toLowerCase()] };
     }
 
-    const feed = await fetchBootstrapFeed(false, undefined, true);
+    const feed = await fetchBootstrapFeed(false, undefined, false);
     const opportunities = feed?.opportunities || [];
+
+    const keywordRegexes = roleInfo.keywords.map(kw => new RegExp(`\\b${kw}\\b`, 'i'));
 
     const filtered = opportunities.filter(opp => {
         // 1. Check tags
@@ -129,10 +131,7 @@ export default async function RolePage({ params }: Props) {
 
         // 3. Check title keywords
         const titleLower = opp.title.toLowerCase();
-        const matchesKeyword = roleInfo.keywords.some((keyword: string) => {
-            const regex = new RegExp(`\\b${keyword}\\b`, 'i');
-            return regex.test(titleLower);
-        });
+        const matchesKeyword = keywordRegexes.some(regex => regex.test(titleLower));
         if (matchesKeyword) return true;
 
         // 4. Fallback to title string mapping

@@ -3,6 +3,7 @@ import CategoryPage from '@/features/opportunities/components/CategoryPage';
 import { OpportunityType } from '@fresherflow/types';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 
+// On-demand revalidation via /api/revalidate — called when jobs are published/expired.
 export const revalidate = false;
 
 export const metadata: Metadata = {
@@ -17,21 +18,22 @@ export const metadata: Metadata = {
 export default async function RemotePage() {
     const bootstrapData = await fetchBootstrapFeed();
     const initialData = bootstrapData ? {
-        // Since we are temporarily showing remote jobs via the JOB type, 
-        // we'll filter by 'remote' in the location if possible, or just return all jobs 
-        // as a fallback if the location string doesn't reliably contain "remote" for all.
-        // For a true remote page, we'd ideally filter properly:
-        opportunities: bootstrapData.opportunities.filter(o => 
-            o.type === OpportunityType.JOB && 
-            o.locations?.some(loc => loc.toLowerCase().includes('remote') || loc.toLowerCase().includes('wfh'))
-        ),
-        total: bootstrapData.opportunities.filter(o => 
-            o.type === OpportunityType.JOB && 
-            o.locations?.some(loc => loc.toLowerCase().includes('remote') || loc.toLowerCase().includes('wfh'))
-        ).length,
+        opportunities: bootstrapData.opportunities.filter(o => {
+            const isRemote = (o.locations || []).some(loc => {
+                const l = loc.toLowerCase();
+                return l.includes('remote') || l.includes('wfh') || l.includes('work from home');
+            }) || (o as any).workMode === 'REMOTE' || o.title.toLowerCase().includes('remote');
+            return isRemote;
+        }),
+        total: bootstrapData.opportunities.filter(o => {
+            const isRemote = (o.locations || []).some(loc => {
+                const l = loc.toLowerCase();
+                return l.includes('remote') || l.includes('wfh') || l.includes('work from home');
+            }) || (o as any).workMode === 'REMOTE' || o.title.toLowerCase().includes('remote');
+            return isRemote;
+        }).length,
         cachedAt: new Date(bootstrapData.generatedAt).getTime(),
     } : null;
 
-    // We can still use CategoryPage with REMOTE type, and it will render the remote jobs
     return <CategoryPage type={OpportunityType.REMOTE} initialData={initialData} />;
 }

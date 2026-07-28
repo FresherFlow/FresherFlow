@@ -2,16 +2,20 @@ import type { Metadata } from 'next';
 import { permanentRedirect, notFound } from 'next/navigation';
 import { logRouteResult } from '@/lib/observability';
 import JobCard from '@/features/opportunities/components/JobCard';
-import { GlobeAltIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
+import { GlobeAltIcon, BriefcaseIcon, CheckBadgeIcon, BuildingOffice2Icon } from '@heroicons/react/24/outline';
 
 import Link from 'next/link';
 import CompanyLogo from '@/ui/CompanyLogo';
+import { Card } from '@/ui/Card';
+import { Badge } from '@/ui/Badge';
 import { PageTagLinks } from '@/ui/PageTagLinks';
 import { Breadcrumb } from '@/ui/Breadcrumb';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
+import { detectAtsProvider } from '@/features/companies/utils/atsDetector';
 import { getCompanyDescription, TIER_A_SLUGS } from '@/features/companies/utils/companyContent';
 import { fetchCompanyShard, fetchCompaniesMetadata } from '@/lib/api/cdnFeed';
+import CompanyFollowButton from '@/features/companies/components/CompanyFollowButton';
 
 export const revalidate = false;
 export const dynamicParams = true;
@@ -80,14 +84,18 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     const rawSlug = decodeURIComponent(rawSlugParam);
     const properSlug = slugify(rawSlug);
 
-    const companyDirectory = await fetchCompaniesMetadata(true);
+    if (rawSlug !== properSlug) {
+        logRouteResult('/companies/[slug]', '308');
+        permanentRedirect(`/companies/${properSlug}`);
+    }
+
+    const companyDirectory = await fetchCompaniesMetadata();
     let targetSlug = properSlug;
+    let shouldRedirectTo: string | null = null;
 
     if (companyDirectory && companyDirectory.length > 0) {
-        // 1. Check direct match by c.slug
         let matched = companyDirectory.find(c => c && c.slug === properSlug);
 
-        // 2. Check match by slugifying c.name
         if (!matched) {
             matched = companyDirectory.find(c => c && c.name && slugify(c.name) === properSlug);
         }
@@ -96,7 +104,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
             const canonicalSlug = matched.slug || slugify(matched.name || '');
             if (canonicalSlug && canonicalSlug !== properSlug) {
                 logRouteResult('/companies/[slug]', '308');
-                permanentRedirect(`/companies/${canonicalSlug}`);
+                shouldRedirectTo = canonicalSlug;
             }
             targetSlug = canonicalSlug;
         } else {
@@ -112,8 +120,20 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         }
     }
 
-    const feed = await fetchCompanyShard(targetSlug, undefined, true);
-    const companyJobs = feed?.opportunities || [];
+    if (shouldRedirectTo) {
+        permanentRedirect(`/companies/${shouldRedirectTo}`);
+    }
+
+    let feed = await fetchCompanyShard(targetSlug);
+    let companyJobs = feed?.opportunities || [];
+
+    if (companyJobs.length === 0 && targetSlug !== properSlug) {
+        feed = await fetchCompanyShard(properSlug);
+        companyJobs = feed?.opportunities || [];
+        if (companyJobs.length > 0) {
+            targetSlug = properSlug;
+        }
+    }
 
     const companyName = (feed as any)?.company || companyJobs[0]?.company ||
         targetSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -128,45 +148,48 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         roles: Array.from(new Set(companyJobs.map(j => j.jobFunction || j.title))).filter(Boolean),
     };
 
+    const firstJob = companyJobs[0];
+    const atsProvider = detectAtsProvider([
+        firstJob?.companyWebsite,
+        ...companyJobs.flatMap(j => [j.applyLink, j.sourceLink])
+    ]);
+
     const companyDescriptionHtml = getCompanyDescription(targetSlug, companyName, stats);
 
-    // ── Empty state ───────────────────────────────────────────────────────────
     if (companyJobs.length === 0) {
         logRouteResult('/companies/[slug]', '200');
         return (
             <div className="min-h-screen bg-background pb-20">
                 <main className="max-w-7xl mx-auto px-4 md:px-6 py-16 space-y-8">
-                    <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: companyName }]} />
-                    <div className="text-center space-y-4 py-20">
-                        <h1 className="text-3xl font-black tracking-tight text-foreground">{companyName}</h1>
-                        <p className="text-sm text-muted-foreground">No active listings right now. Check back soon.</p>
+                    <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Companies', href: '/companies' }, { label: companyName }]} />
+                    <Card className="text-center space-y-4 py-16 p-8">
+                        <h1 className="text-3xl font-bold tracking-tight text-foreground">{companyName}</h1>
+                        <p className="text-sm text-muted-foreground">No active fresher listings right now. Check back soon.</p>
                         <Link href="/" className="inline-block mt-2 text-sm font-semibold text-primary hover:underline">Browse all opportunities →</Link>
-                    </div>
-                    <div className="border-t border-border/50 pt-8 max-w-3xl space-y-3">
+                    </Card>
+                    <Card className="p-6 md:p-8 space-y-3">
                         <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">About {companyName}</h2>
                         <div
                             className="text-sm text-muted-foreground leading-relaxed space-y-3 company-description-prose"
                             dangerouslySetInnerHTML={{ __html: companyDescriptionHtml }}
                         />
-                    </div>
+                    </Card>
                 </main>
             </div>
         );
     }
 
-    const firstJob = companyJobs[0];
-
     logRouteResult('/companies/[slug]', '200');
 
     return (
-        <div className="min-h-screen bg-background pb-20">
+        <div className="min-h-screen bg-background pb-20 font-sans">
             <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 space-y-8">
 
                 {/* Breadcrumbs */}
                 <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Companies', href: '/companies' }, { label: companyName }]} />
 
-                {/* Company Header */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8">
+                {/* Single Elegant Company Header */}
+                <Card className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div className="flex items-center gap-4">
                         <CompanyLogo
                             companyName={companyName}
@@ -174,12 +197,23 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                             companyLogoUrl={firstJob.companyLogoUrl}
                             applyLink={firstJob.applyLink}
                             isGovernment={firstJob.type === 'GOVERNMENT' || Boolean(firstJob.governmentJobDetails)}
-                            className="w-14 h-14 md:w-16 md:h-16 rounded-[1.25rem] shrink-0"
+                            className="w-16 h-16 md:w-20 md:h-20 rounded-2xl shrink-0"
                         />
-                        <div className="space-y-1.5">
-                            <h1 className="text-2xl md:text-3xl font-black tracking-tight text-foreground">
-                                {companyName}
-                            </h1>
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+                                    {companyName}
+                                </h1>
+                                <Badge variant="default" className="gap-1 px-2.5 py-0.5 text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                                    <CheckBadgeIcon className="w-3.5 h-3.5" /> Verified Hirer
+                                </Badge>
+                                {atsProvider && !['direct ats', 'official portal', 'unknown', 'direct'].includes(atsProvider.toLowerCase().trim()) && (
+                                    <Badge variant="outline" className="gap-1 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                                        <BuildingOffice2Icon className="w-3.5 h-3.5" /> {atsProvider}
+                                    </Badge>
+                                )}
+                            </div>
+
                             <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground font-medium">
                                 {firstJob.companyWebsite && (
                                     <a
@@ -194,43 +228,50 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                                 )}
                                 <span className="flex items-center gap-1.5">
                                     <BriefcaseIcon className="w-3.5 h-3.5" />
-                                    {companyJobs.length} Active Listings
+                                    {companyJobs.length} Active {companyJobs.length === 1 ? 'Opening' : 'Openings'}
                                 </span>
                             </div>
                         </div>
                     </div>
-                </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                        <CompanyFollowButton companySlug={targetSlug} companyName={companyName} />
+                    </div>
+                </Card>
 
                 {/* Job Cards — full width grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
-                    {companyJobs.map((job) => (
-                        <JobCard
-                            key={job.id}
-                            job={{
-                                ...job,
-                                company: companyName,
-                                normalizedRole: job.title,
-                                salary: (job.salaryMin !== undefined && job.salaryMax !== undefined)
-                                    ? { min: job.salaryMin, max: job.salaryMax }
-                                    : undefined,
-                            }}
-                            jobId={job.id}
-                            isApplied={(job.actions || []).some((a: { actionType: string }) => a.actionType === 'APPLIED')}
-                        />
-                    ))}
+                <div className="space-y-3">
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Active Roles at {companyName}</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
+                        {companyJobs.map((job) => (
+                            <JobCard
+                                key={job.id}
+                                job={{
+                                    ...job,
+                                    company: companyName,
+                                    normalizedRole: job.title,
+                                    salary: (job.salaryMin !== undefined && job.salaryMax !== undefined)
+                                        ? { min: job.salaryMin, max: job.salaryMax }
+                                        : undefined,
+                                }}
+                                jobId={job.id}
+                                isApplied={(job.actions || []).some((a: { actionType: string }) => a.actionType === 'APPLIED')}
+                            />
+                        ))}
+                    </div>
                 </div>
 
-                {/* Skills & Locations */}
+                {/* Tech Stack & Tags */}
                 <PageTagLinks skills={allSkills} locations={allLocations} />
 
-                {/* About — prose at the bottom */}
-                <div className="border-t border-border/50 pt-8 max-w-3xl space-y-3">
-                    <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">About {companyName}</h2>
+                {/* About — clean content card at the bottom */}
+                <Card className="p-6 md:p-8 space-y-3">
+                    <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">About {companyName}</h2>
                     <div
                         className="text-sm text-muted-foreground leading-relaxed space-y-3 company-description-prose"
                         dangerouslySetInnerHTML={{ __html: companyDescriptionHtml }}
                     />
-                </div>
+                </Card>
 
             </main>
         </div>

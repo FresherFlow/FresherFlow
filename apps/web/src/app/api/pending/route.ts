@@ -1,152 +1,153 @@
 import { NextResponse } from 'next/server';
-import { S3Client, ListObjectsV2Command, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 
 export const dynamic = 'force-dynamic';
 
-const getS3Client = () => {
-    if (!process.env.R2_ENDPOINT || !process.env.R2_ACCESS_KEY_ID) return null;
-    return new S3Client({
-        region: 'auto',
-        endpoint: process.env.R2_ENDPOINT,
-        credentials: {
-            accessKeyId: process.env.R2_ACCESS_KEY_ID,
-            secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-        },
-    });
-};
-
-export async function GET() {
-    const s3Client = getS3Client();
-    if (!s3Client) {
-        return NextResponse.json({ error: 'R2 credentials missing' }, { status: 500 });
-    }
-
-    try {
-        const bucketName = process.env.R2_BUCKET_NAME;
-        const jobs: any[] = [];
-        
-        const prefixes = ['jobs/ats/', 'jobs/non-ats/', 'jobs/aggregators/'];
-        const listPromises = prefixes.map(async (prefix) => {
-            try {
-                let isTruncated = true;
-                let continuationToken: string | undefined = undefined;
-                const allContents: any[] = [];
-
-                while (isTruncated) {
-                    const listCommand: any = new ListObjectsV2Command({
-                        Bucket: bucketName,
-                        Prefix: prefix,
-                        ContinuationToken: continuationToken,
-                    });
-                    const response: any = await s3Client.send(listCommand);
-                    if (response.Contents) {
-                        allContents.push(...response.Contents);
-                    }
-                    isTruncated = response.IsTruncated || false;
-                    continuationToken = response.NextContinuationToken;
-                }
-                return allContents;
-            } catch (err) {
-                console.error(`Failed to list prefix ${prefix}:`, err);
-                return [];
-            }
-        });
-
-        const listResults = await Promise.all(listPromises);
-        const allContents = listResults.flat();
-
-        if (allContents.length > 0) {
-            const sortedContents = allContents.sort((a, b) => {
-                const timeA = a.LastModified?.getTime() || 0;
-                const timeB = b.LastModified?.getTime() || 0;
-                return timeB - timeA;
-            });
-
-            // Get the most recent 30 jobs to load extremely fast
-            const recentKeys = sortedContents
-                .filter(obj => obj.Key && obj.Key.endsWith('.json') && !obj.Key.includes('discovery/'))
-                .map(obj => obj.Key!)
-                .slice(0, 30);
-
-            const fetchPromises = recentKeys.map(async (key) => {
-                try {
-                    const getCommand = new GetObjectCommand({
-                        Bucket: bucketName,
-                        Key: key,
-                    });
-                    const getResponse = await s3Client.send(getCommand);
-                    const bodyString = await getResponse.Body?.transformToString();
-                    if (bodyString) {
-                        try {
-                            const parsedJob = JSON.parse(bodyString);
-                            parsedJob._r2Key = key;
-                            
-                            if (key.startsWith('jobs/ats/')) {
-                                const parts = key.split('/');
-                                parsedJob._sourceType = 'ats';
-                                parsedJob._provider = parts[2];
-                                parsedJob._companyFolder = parts[3];
-                            } else if (key.startsWith('jobs/non-ats/')) {
-                                const parts = key.split('/');
-                                parsedJob._sourceType = 'non-ats';
-                                parsedJob._provider = 'direct';
-                                parsedJob._companyFolder = parts[2];
-                            } else if (key.startsWith('jobs/aggregators/')) {
-                                const parts = key.split('/');
-                                parsedJob._sourceType = 'aggregators';
-                                parsedJob._provider = 'aggregator';
-                                parsedJob._dateFolder = parts[2];
-                            } else {
-                                parsedJob._sourceType = 'unknown';
-                            }
-                            
-                            return parsedJob;
-                        } catch {
-                            console.error('Error parsing JSON for object:', key);
-                        }
-                    }
-                } catch {
-                    console.error('Error fetching/parsing object:', key);
-                }
-                return null;
-            });
-
-            const results = await Promise.all(fetchPromises);
-            for (const res of results) {
-                if (res) jobs.push(res);
-            }
-        }
-
-        return NextResponse.json({ jobs }, { status: 200 });
-    } catch (error: any) {
-        console.error('Error fetching jobs from R2:', error);
-        return NextResponse.json({ error: error.message || 'Failed to fetch pending jobs' }, { status: 500 });
-    }
-}
-
-export async function DELETE(request: Request) {
-    const s3Client = getS3Client();
-    if (!s3Client) {
-        return NextResponse.json({ error: 'R2 credentials missing' }, { status: 500 });
+export async function GET(request: Request) {
+    const supabaseUrl = process.env.SUPABASE_URL || '';
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
+    
+    // Graceful fallback to avoid 500 when credentials are missing locally
+    if (!supabaseUrl || !supabaseKey) {
+        console.warn('Missing Supabase credentials for pending jobs API.');
+        return NextResponse.json({ jobs: [], runs: [] }, { status: 200 });
     }
 
     try {
         const { searchParams } = new URL(request.url);
-        const key = searchParams.get('key');
-        if (!key) {
-            return NextResponse.json({ error: 'Missing object key' }, { status: 400 });
+        const statusParam = searchParams.get('status');
+
+        let jobsQuery = `${supabaseUrl}/rest/v1/processed_jobs?order=created_at.desc&limit=200`;
+        if (statusParam && statusParam !== 'all') {
+            jobsQuery = `${supabaseUrl}/rest/v1/processed_jobs?status=eq.${encodeURIComponent(statusParam)}&order=created_at.desc&limit=200`;
         }
 
-        const bucketName = process.env.R2_BUCKET_NAME ;
-        const command = new DeleteObjectCommand({
-            Bucket: bucketName,
-            Key: key,
+        // Fetch processed jobs from Supabase
+        const resJobs = await fetch(jobsQuery, {
+            headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+            },
         });
+
+        if (!resJobs.ok) {
+            const errText = await resJobs.text();
+            throw new Error(`Failed to fetch discovered jobs: ${errText}`);
+        }
+
+        const jobs = await resJobs.json();
         
-        await s3Client.send(command);
-        return NextResponse.json({ success: true, key }, { status: 200 });
+        // Compute domain for logos
+        const mappedJobs = jobs.map((job: any) => {
+            const applyLink = job.apply_link || '';
+            let domain = '';
+            try {
+                if (applyLink) {
+                    domain = new URL(applyLink).hostname.toLowerCase().replace(/^www\./, '');
+                }
+            } catch {}
+
+            return {
+                ...job,
+                companyLogoUrl: job.company_logo_url || (domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : undefined),
+                createdAt: job.created_at,
+                applyLink: job.apply_link,
+                sourceType: job.type || 'JOB',
+                status: job.status || 'PENDING_REVIEW',
+            };
+        });
+
+        // Fetch recent crawler runs from Supabase discovery_runs table
+        const resRuns = await fetch(`${supabaseUrl}/rest/v1/discovery_runs?order=started_at.desc&limit=30`, {
+            headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+            },
+        });
+
+        const runs = resRuns.ok ? await resRuns.json() : [];
+
+        return NextResponse.json({ jobs: mappedJobs, runs }, { status: 200 });
     } catch (error: any) {
-        console.error('Error deleting job from R2:', error);
+        console.error('Error fetching pending data from Supabase:', error);
+        return NextResponse.json({ error: error.message || 'Failed to fetch pending data' }, { status: 500 });
+    }
+}
+
+export async function PATCH(request: Request) {
+    const supabaseUrl = process.env.SUPABASE_URL || '';
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
+    
+    if (!supabaseUrl || !supabaseKey) {
+        return NextResponse.json({ error: 'Supabase credentials missing' }, { status: 500 });
+    }
+
+    try {
+        const body = await request.json();
+        const { id, status } = body;
+        
+        if (!id || !status) {
+            return NextResponse.json({ error: 'Missing job ID or status' }, { status: 400 });
+        }
+
+        // Update status in Supabase processed_jobs table
+        const res = await fetch(`${supabaseUrl}/rest/v1/processed_jobs?id=eq.${encodeURIComponent(id)}`, {
+            method: 'PATCH',
+            headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=representation'
+            },
+            body: JSON.stringify({ status, updated_at: new Date().toISOString() })
+        });
+
+        if (!res.ok) {
+            const errText = await res.text();
+            throw new Error(`Failed to update job status: ${errText}`);
+        }
+
+        const updated = await res.json();
+        return NextResponse.json({ success: true, job: updated[0] || { id, status } }, { status: 200 });
+    } catch (error: any) {
+        console.error('Error updating pending job in Supabase:', error);
+        return NextResponse.json({ error: error.message || 'Failed to update job' }, { status: 500 });
+    }
+}
+
+export async function DELETE(request: Request) {
+    const supabaseUrl = process.env.SUPABASE_URL || '';
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
+    
+    if (!supabaseUrl || !supabaseKey) {
+        return NextResponse.json({ error: 'Supabase credentials missing' }, { status: 500 });
+    }
+
+    try {
+        const { searchParams } = new URL(request.url);
+        const id = searchParams.get('id');
+        
+        if (!id) {
+            return NextResponse.json({ error: 'Missing job ID' }, { status: 400 });
+        }
+
+        // Delete from Supabase processed_jobs table where id matches
+        const res = await fetch(`${supabaseUrl}/rest/v1/processed_jobs?id=eq.${encodeURIComponent(id)}`, {
+            method: 'DELETE',
+            headers: {
+                'apikey': supabaseKey,
+                'Authorization': `Bearer ${supabaseKey}`,
+            },
+        });
+
+        if (!res.ok) {
+            const errText = await res.text();
+            throw new Error(`Failed to delete job: ${errText}`);
+        }
+
+        return NextResponse.json({ success: true, id }, { status: 200 });
+    } catch (error: any) {
+        console.error('Error deleting pending job from Supabase:', error);
         return NextResponse.json({ error: error.message || 'Failed to delete job' }, { status: 500 });
     }
 }
+

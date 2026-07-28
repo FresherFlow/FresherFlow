@@ -97,6 +97,7 @@ export default async function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
+        <meta name="color-scheme" content="light dark" />
         <meta name="theme-color" content="#e2eaf2" id="theme-color-meta" />
         <HeadInjections />
         <link rel="manifest" href="/manifest.webmanifest" id="ff-manifest-link" />
@@ -130,6 +131,9 @@ export default async function RootLayout({
         />
       </head>
       <body className={`${inter.variable} min-h-screen flex flex-col antialiased bg-background text-foreground selection:bg-primary/20`} suppressHydrationWarning>
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-background focus:text-foreground focus-visible:ring-2 focus-visible:ring-primary focus:outline-none">
+          Skip to content
+        </a>
         <ThemeProvider>
             <PageTransitionWrapper>
               <AuthFormDataProvider>

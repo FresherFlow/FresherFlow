@@ -1,9 +1,8 @@
 import PendingTool from './components/PendingTool';
 import { Metadata } from 'next';
-import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
 
 export const metadata: Metadata = {
-    title: 'Pending Jobs - FresherFlow Admin',
+    title: 'Pending Opportunities - FresherFlow Admin',
     description: 'Verify and view pending jobs',
     robots: {
         index: false,
@@ -13,102 +12,70 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic';
 
-const getS3Client = () => {
-    if (!process.env.R2_ENDPOINT || !process.env.R2_ACCESS_KEY_ID) return null;
-    return new S3Client({
-        region: 'auto',
-        endpoint: process.env.R2_ENDPOINT,
-        credentials: {
-            accessKeyId: process.env.R2_ACCESS_KEY_ID,
-            secretAccessKey: process.env.R2_SECRET_ACCESS_KEY!,
-        },
-    });
-};
-
 export default async function PendingJobsPage() {
-    const jobs: any[] = [];
-    
-    const s3Client = getS3Client();
-    if (!s3Client) {
-        console.error('R2 credentials missing, skipping fetch');
-    } else {
+    let initialJobs: any[] = [];
+    let initialRuns: any[] = [];
+
+    const supabaseUrl = process.env.SUPABASE_URL || '';
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
+
+    if (supabaseUrl && supabaseKey) {
         try {
-            const bucketName = process.env.R2_BUCKET_NAME;
-        const listCommand = new ListObjectsV2Command({
-            Bucket: bucketName,
-            Prefix: 'jobs/',
-        });
-        const listResponse = await s3Client.send(listCommand);
-        
-        if (listResponse.Contents) {
-            // Get only the most recent 100 jobs to prevent UI overload and timeouts
-            const recentKeys = listResponse.Contents
-                .filter(obj => obj.Key && obj.Key.endsWith('.json'))
-                .sort((a, b) => (b.LastModified?.getTime() || 0) - (a.LastModified?.getTime() || 0))
-                .map(obj => obj.Key!)
-                .slice(0, 100);
+            // Server-side fetch for processed jobs (up to 200 items across statuses)
+            const resJobs = await fetch(`${supabaseUrl}/rest/v1/processed_jobs?order=created_at.desc&limit=200`, {
+                headers: {
+                    'apikey': supabaseKey,
+                    'Authorization': `Bearer ${supabaseKey}`,
+                },
+                next: { revalidate: 0 } // ensure dynamic data
+            });
 
-            // Fetch in chunks of 10 to prevent ECONNRESET and connection pool exhaustion
-            for (let i = 0; i < recentKeys.length; i += 10) {
-                const chunk = recentKeys.slice(i, i + 10);
-                const fetchPromises = chunk.map(async (key) => {
+            if (resJobs.ok) {
+                const raw = await resJobs.json();
+                initialJobs = raw.map((job: any) => {
+                    const applyLink = job.apply_link || '';
+                    let domain = '';
                     try {
-                        const getCommand = new GetObjectCommand({
-                            Bucket: bucketName,
-                            Key: key,
-                        });
-                        const getResponse = await s3Client.send(getCommand);
-                        const bodyString = await getResponse.Body?.transformToString();
-                        if (bodyString) {
-                            try {
-                                const parsedJob = JSON.parse(bodyString);
-                                parsedJob._r2Key = key;
-                                // Group by discoveredAt date embedded in the JSON payload
-                                parsedJob._date = parsedJob.discoveredAt || new Date().toISOString().split('T')[0];
-                                
-                                // Extract UI helper fields from the R2 key structure
-                                // e.g. jobs/ats/[adapter]/[company]/[jobId].json
-                                // or jobs/non-ats/[company]/[jobId].json
-                                // or jobs/aggregators/[date]/[time]/[safeName].json
-                                const keyParts = key.split('/');
-                                if (keyParts[1] === 'ats') {
-                                    parsedJob._sourceType = 'ats';
-                                    parsedJob._provider = keyParts[2];
-                                    parsedJob._companyFolder = keyParts[3];
-                                } else if (keyParts[1] === 'non-ats') {
-                                    parsedJob._sourceType = 'non-ats';
-                                    parsedJob._companyFolder = keyParts[2];
-                                } else if (keyParts[1] === 'aggregators') {
-                                    parsedJob._sourceType = 'aggregators';
-                                    parsedJob._dateFolder = keyParts[2];
-                                    parsedJob._date = keyParts[2]; // Use date from folder if discoveredAt is missing
-                                }
-                                return parsedJob;
-                            } catch {
-                                console.error('Error parsing JSON for object:', key);
-                            }
+                        if (applyLink) {
+                            domain = new URL(applyLink).hostname.toLowerCase().replace(/^www\./, '');
                         }
-                    } catch {
-                        console.error('Error fetching/parsing object:', key);
-                    }
-                    return null;
-                });
+                    } catch {}
 
-                const results = await Promise.all(fetchPromises);
-                for (const res of results) {
-                    if (res) jobs.push(res);
-                }
+                    return {
+                        ...job,
+                        applyLink: job.apply_link,
+                        url: job.apply_link,
+                        fresherScore: job.fresher_score,
+                        companyLogoUrl: job.company_logo_url || (domain ? `https://icons.duckduckgo.com/ip3/${domain}.ico` : undefined),
+                        sourceType: job.type || 'JOB',
+                        source: job.company,
+                        createdAt: job.created_at,
+                        status: job.status || 'PENDING_REVIEW',
+                    };
+                });
             }
-        }
-        }
-        catch (error) {
-            console.error('Error fetching jobs from R2:', error);
+
+            // Server-side fetch for crawler runs (up to 30 runs)
+            const resRuns = await fetch(`${supabaseUrl}/rest/v1/discovery_runs?order=started_at.desc&limit=30`, {
+                headers: {
+                    'apikey': supabaseKey,
+                    'Authorization': `Bearer ${supabaseKey}`,
+                },
+                next: { revalidate: 0 }
+            });
+
+            if (resRuns.ok) {
+                initialRuns = await resRuns.json();
+            }
+        } catch (err) {
+            console.error('Error fetching initial pending jobs from Supabase:', err);
         }
     }
 
     return (
         <div className="flex-1 w-full p-0 sm:p-4 lg:p-6 max-w-[1600px] mx-auto flex flex-col h-[calc(100vh)] lg:h-screen min-h-0 overflow-hidden">
-            <PendingTool initialJobs={jobs} />
+            <PendingTool initialJobs={initialJobs} initialRuns={initialRuns} />
         </div>
     );
 }
+

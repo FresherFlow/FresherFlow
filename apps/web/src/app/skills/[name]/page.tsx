@@ -8,7 +8,7 @@ import { unstable_noStore } from 'next/cache';
 import { extractHubRelations } from '@/features/opportunities/utils/hubLinking';
 
 export const revalidate = false;
-export const dynamicParams = true;
+export const dynamicParams = false;
 
 const TOP_SKILLS = [
     'java',
@@ -121,7 +121,7 @@ export default async function SkillPage({ params }: Props) {
     const slug = properSlug;
 
     const label = formatSkillLabel(slug);
-    const feed = await fetchBootstrapFeed(false, undefined, true);
+    const feed = await fetchBootstrapFeed(false, undefined, false);
     const opportunities = feed?.opportunities || [];
     
     const filtered = opportunities.filter(opp => 

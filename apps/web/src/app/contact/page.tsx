@@ -57,7 +57,7 @@ export default function ContactPage() {
                         <div className="font-semibold text-foreground">Feedback page</div>
                         <div className="text-sm text-muted-foreground mt-1">Share bugs, missing features, or product suggestions directly.</div>
                     </Link>
-                    <Link href="/submit-link" className="rounded-2xl border border-border px-5 py-4 hover:border-primary/30 transition-colors">
+                    <Link href="/contribute" className="rounded-2xl border border-border px-5 py-4 hover:border-primary/30 transition-colors">
                         <div className="font-semibold text-foreground">Submit a job link</div>
                         <div className="text-sm text-muted-foreground mt-1">Send us roles you want reviewed and added to the platform.</div>
                     </Link>

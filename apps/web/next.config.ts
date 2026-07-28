@@ -4,6 +4,22 @@ import path from "node:path";
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
+// Clean up Next.js proxy spam in development
+if (!IS_PRODUCTION) {
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    if (typeof args[0] === 'string' && args[0].includes('Failed to proxy')) {
+      const url = args[0].replace('Failed to proxy ', '').split(' ')[0];
+      originalConsoleError(`\x1b[33m[Proxy] Failed to reach backend at ${url} (ECONNREFUSED)\x1b[0m`);
+      return;
+    }
+    // Next.js sometimes passes the AggregateError as the first argument instead
+    if (args[0] && args[0].name === 'AggregateError' && args[0].message?.includes('ECONNREFUSED')) {
+      return; // Suppress dangling AggregateError traces
+    }
+    originalConsoleError(...args);
+  };
+}
 function resolveHost(value: string | undefined, fallback: string): string {
   const raw = (value || '').trim();
   if (!raw) return fallback;

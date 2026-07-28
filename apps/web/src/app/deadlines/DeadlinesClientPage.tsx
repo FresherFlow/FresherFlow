@@ -1,12 +1,14 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
-import { savedApi } from '@/lib/api/client';
 import type { Opportunity } from '@fresherflow/types';
 import { AuthGate, ProfileGate } from '@/lib/components/ProfileGate';
 import JobCard from '@/features/opportunities/components/JobCard';
 import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
+import toast from 'react-hot-toast';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { useFirebaseSaved } from '@/lib/hooks/useFirebaseSaved';
 
 type JobCardOpportunity = Opportunity & { matchScore?: number; matchReason?: string };
 
@@ -15,7 +17,10 @@ interface DeadlinesClientPageProps {
 }
 
 export default function DeadlinesClientPage({ initialOpportunities }: DeadlinesClientPageProps) {
-    const [items, setItems] = useState<Opportunity[]>(() => {
+    const { user } = useAuth();
+    const { savedJobsMap, toggleSavedJob } = useFirebaseSaved(user?.id);
+
+    const items = useMemo(() => {
         const now = new Date();
         const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
         return initialOpportunities.filter((o) => {
@@ -23,19 +28,25 @@ export default function DeadlinesClientPage({ initialOpportunities }: DeadlinesC
             const expiryDate = new Date(o.expiresAt);
             return expiryDate >= now && expiryDate <= threeDaysFromNow;
         });
-    });
+    }, [initialOpportunities]);
 
-    const sorted = useMemo(
-        () => [...items].sort((a, b) => new Date(a.expiresAt as string).getTime() - new Date(b.expiresAt as string).getTime()),
-        [items]
-    );
+    const sorted = useMemo(() => {
+        return items
+            .map((opp) => ({ ...opp, isSaved: !!savedJobsMap[opp.id] }))
+            .sort((a, b) => new Date(a.expiresAt as string).getTime() - new Date(b.expiresAt as string).getTime());
+    }, [items, savedJobsMap]);
 
     const toggleSave = async (opportunityId: string) => {
+        if (!user) {
+            toast.error('Please log in to save opportunities');
+            window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+            return;
+        }
         try {
-            const result = await savedApi.toggle(opportunityId) as { saved: boolean };
-            setItems((prev) => prev.map((opp) => (opp.id === opportunityId ? { ...opp, isSaved: result.saved } : opp)));
+            await toggleSavedJob(opportunityId);
+            toast.success(savedJobsMap[opportunityId] ? 'Removed from bookmarks' : 'Added to bookmarks');
         } catch {
-            // no-op
+            toast.error('Bookmark update failed');
         }
     };
 

@@ -1,6 +1,9 @@
 import { ActionType, type Opportunity, type User, type OpportunityEvent } from '@fresherflow/types';
 import { cn } from '@repo/ui/utils/cn';
 import { Button } from '@/ui/Button';
+import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
+import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
+import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
 import Link from 'next/link';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import UsersIcon from '@heroicons/react/24/outline/UsersIcon';
@@ -32,6 +35,10 @@ interface DetailSidebarActionsProps {
     listingState: string;
     formatDeadline: (opp: Opportunity) => string | null;
     isMobile?: boolean;
+    handleApply: () => void;
+    handleToggleSave: () => void;
+    handleShare: () => void;
+    handleCopyLink: () => void;
 }
 
 export function DetailSidebarActions({
@@ -45,7 +52,10 @@ export function DetailSidebarActions({
     isCampusDrive,
     timelineEvents,
     jumpToTimeline,
+    listingState,
     formatDeadline,
+    handleApply,
+    handleToggleSave,
 }: DetailSidebarActionsProps) {
     const locationsGrouped = getGroupedLocations(opp.locations);
 
@@ -141,6 +151,60 @@ export function DetailSidebarActions({
                                 </p>
                             </div>
                         </div>
+                    )}
+
+                    {hasApplyLink ? (
+                        <div className="space-y-2">
+                            {isCampusDrive && timelineEvents.length > 0 && (
+                                <button
+                                    onClick={jumpToTimeline}
+                                    className="w-full h-10 rounded-lg border border-primary/25 bg-primary/5 text-primary hover:bg-primary/10 transition-all text-xs font-bold uppercase tracking-widest"
+                                >
+                                    Track Updates
+                                </button>
+                            )}
+                            {listingState === 'EXPIRED' ? (
+                                <div className="w-full h-12 rounded-xl border border-destructive/30 bg-destructive/5 flex items-center justify-center gap-2 text-destructive text-sm font-bold uppercase tracking-tight cursor-not-allowed select-none">
+                                    <span className="w-2 h-2 rounded-full bg-destructive" />
+                                    Applications Closed
+                                </div>
+                            ) : (
+                                <div className="flex gap-2">
+                                    <Button
+                                        onClick={handleApply}
+                                        className="flex-1 h-12 text-base bg-primary/70 text-primary-foreground border border-primary/60 hover:bg-primary/80 rounded-xl flex items-center justify-center gap-2 font-bold uppercase tracking-tight shadow-lg hover:shadow-xl transition-all"
+                                    >
+                                        Apply Now
+                                        <ArrowTopRightOnSquareIcon className="w-5 h-5" />
+                                    </Button>
+                                    <button
+                                        onClick={handleToggleSave}
+                                        className={cn(
+                                            "w-12 h-12 rounded-xl border flex items-center justify-center transition-all shrink-0",
+                                            opp.isSaved
+                                                ? "bg-primary/10 border-primary/20 text-primary shadow-sm"
+                                                : "bg-background border-border text-muted-foreground hover:border-primary/30"
+                                        )}
+                                        aria-label={opp.isSaved ? "Remove from saved" : "Save opportunity"}
+                                    >
+                                        {opp.isSaved ? <BookmarkSolidIcon className="w-5 h-5" /> : <BookmarkIcon className="w-5 h-5" />}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <button
+                            onClick={handleToggleSave}
+                            className={cn(
+                                "w-full h-12 rounded-xl border flex items-center justify-center gap-2 font-bold text-sm transition-all",
+                                opp.isSaved
+                                    ? "bg-primary/10 border-primary/20 text-primary shadow-sm"
+                                    : "bg-background border-border text-muted-foreground hover:border-primary/30"
+                            )}
+                        >
+                            {opp.isSaved ? <BookmarkSolidIcon className="w-5 h-5" /> : <BookmarkIcon className="w-5 h-5" />}
+                            {opp.isSaved ? 'Saved' : 'Save Opportunity'}
+                        </button>
                     )}
                 </div>
             </div>

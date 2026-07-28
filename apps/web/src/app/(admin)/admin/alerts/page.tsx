@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { adminApi } from '@/lib/api/admin';
+import { Select } from '@/ui/Select';
 
 type DispatchStatus = 'INITIATED' | 'SENT' | 'FAILED' | 'SKIPPED';
 type DispatchKind = 'DAILY_DIGEST' | 'CLOSING_SOON' | 'HIGHLIGHT' | 'APP_UPDATE' | 'NEW_JOB' | 'EVENT_REMINDER';
@@ -95,27 +96,27 @@ export default function AdminAlertsPage() {
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-6 rounded-lg border bg-card p-4">
         <label className="text-sm space-y-1">
           <span className="text-muted-foreground">Status</span>
-          <select className="w-full rounded border bg-secondary/20 px-2 py-1" value={status} onChange={(e) => setStatus(e.target.value as DispatchStatus | 'ALL')}>
+          <Select className="h-9 w-full text-xs px-2 py-1 bg-card border-border" value={status} onChange={(e) => setStatus(e.target.value as DispatchStatus | 'ALL')}>
             {STATUS_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
+          </Select>
         </label>
         <label className="text-sm space-y-1">
           <span className="text-muted-foreground">Kind</span>
-          <select className="w-full rounded border bg-secondary/20 px-2 py-1" value={kind} onChange={(e) => setKind(e.target.value as DispatchKind | 'ALL')}>
+          <Select className="h-9 w-full text-xs px-2 py-1 bg-card border-border" value={kind} onChange={(e) => setKind(e.target.value as DispatchKind | 'ALL')}>
             {KIND_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
+          </Select>
         </label>
         <label className="text-sm space-y-1">
           <span className="text-muted-foreground">Channel</span>
-          <select className="w-full rounded border bg-secondary/20 px-2 py-1" value={channel} onChange={(e) => setChannel(e.target.value as DispatchChannel | 'ALL')}>
+          <Select className="h-9 w-full text-xs px-2 py-1 bg-card border-border" value={channel} onChange={(e) => setChannel(e.target.value as DispatchChannel | 'ALL')}>
             {CHANNEL_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
+          </Select>
         </label>
         <label className="text-sm space-y-1">
           <span className="text-muted-foreground">Reason</span>
-          <select className="w-full rounded border bg-secondary/20 px-2 py-1" value={reason} onChange={(e) => setReason(e.target.value as DispatchReason | 'ALL')}>
+          <Select className="h-9 w-full text-xs px-2 py-1 bg-card border-border" value={reason} onChange={(e) => setReason(e.target.value as DispatchReason | 'ALL')}>
             {REASON_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
+          </Select>
         </label>
         <label className="text-sm space-y-1">
           <span className="text-muted-foreground">Since hours</span>

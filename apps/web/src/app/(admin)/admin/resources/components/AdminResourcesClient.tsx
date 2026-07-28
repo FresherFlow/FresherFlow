@@ -404,15 +404,37 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
     };
 
     const handleUrlChange = (url: string, index: number) => {
-        const lowerUrl = url.toLowerCase();
         let detectedType = 'LINK';
-        if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) detectedType = 'YOUTUBE';
-        else if (lowerUrl.endsWith('.pdf')) detectedType = 'PDF';
-        else if (lowerUrl.includes('roadmap.sh')) detectedType = 'ROADMAP';
-        else if (
-            lowerUrl.includes('drive.google.com') || lowerUrl.includes('dropbox.com') ||
-            lowerUrl.includes('onedrive') || lowerUrl.includes('box.com') || lowerUrl.includes('sharepoint')
-        ) detectedType = 'FILE';
+        try {
+            const parsed = new URL(url);
+            const host = parsed.hostname.toLowerCase();
+            const pathname = parsed.pathname.toLowerCase();
+
+            if (host === 'youtube.com' || host.endsWith('.youtube.com') || host === 'youtu.be') {
+                detectedType = 'YOUTUBE';
+            } else if (pathname.endsWith('.pdf')) {
+                detectedType = 'PDF';
+            } else if (host === 'roadmap.sh' || host.endsWith('.roadmap.sh')) {
+                detectedType = 'ROADMAP';
+            } else if (
+                host === 'drive.google.com' || host.endsWith('.drive.google.com') ||
+                host === 'dropbox.com' || host.endsWith('.dropbox.com') ||
+                host.split('.').includes('onedrive') ||
+                host === 'box.com' || host.endsWith('.box.com') ||
+                host.split('.').includes('sharepoint')
+            ) {
+                detectedType = 'FILE';
+            }
+        } catch {
+            const lowerUrl = url.toLowerCase();
+            if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) detectedType = 'YOUTUBE';
+            else if (lowerUrl.endsWith('.pdf')) detectedType = 'PDF';
+            else if (lowerUrl.includes('roadmap.sh')) detectedType = 'ROADMAP';
+            else if (
+                lowerUrl.includes('drive.google.com') || lowerUrl.includes('dropbox.com') ||
+                lowerUrl.includes('onedrive') || lowerUrl.includes('box.com') || lowerUrl.includes('sharepoint')
+            ) detectedType = 'FILE';
+        }
 
         setFormState(f => {
             const items = [...f.items];

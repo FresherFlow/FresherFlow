@@ -108,7 +108,7 @@ export default async function LocationPage({ params }: Props) {
         aliases: [decodedCity.replace(/-/g, ' ').toLowerCase(), decodedCity.toLowerCase()]
     };
 
-    const feed = await fetchBootstrapFeed(false, undefined, true);
+    const feed = await fetchBootstrapFeed(false, undefined, false);
     const opportunities = feed?.opportunities || [];
 
     const filtered = opportunities.filter(opp => {

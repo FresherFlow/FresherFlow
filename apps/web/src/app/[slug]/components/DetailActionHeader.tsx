@@ -22,7 +22,7 @@ interface DetailActionHeaderProps {
 }
 
 export function DetailActionHeader({
-    user,
+    user: _user,
     opp,
     router,
     handleShare,
@@ -32,8 +32,6 @@ export function DetailActionHeader({
     reportMenuRef,
     handleReport
 }: DetailActionHeaderProps) {
-    if (!user) return null;
-
     return (
         <div className="flex items-center justify-between">
             <button

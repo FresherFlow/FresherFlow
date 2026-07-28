@@ -1,6 +1,6 @@
-const SW_VERSION = '1.9.2';
+const SW_VERSION = '2.0.0';
 const STATIC_CACHE = `fresherflow-static-${SW_VERSION}`;
-const API_CACHE = `fresherflow-api-${SW_VERSION}`;
+const CDN_CACHE = `fresherflow-cdn-${SW_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 const OFFLINE_FALLBACK_HTML = `<!doctype html>
 <html>
@@ -23,7 +23,7 @@ const OFFLINE_FALLBACK_HTML = `<!doctype html>
   </body>
 </html>`;
 
-// Assets that should be cached on install
+// Pages to cache on install — these load from CDN/static, zero compute
 const PRECACHE_ASSETS = [
   OFFLINE_URL,
   '/',
@@ -32,28 +32,24 @@ const PRECACHE_ASSETS = [
   '/jobs',
   '/internships',
   '/walk-ins',
+  '/deadlines',
+  '/account',
   '/favicon.ico',
-  '/manifest.webmanifest'
+  '/manifest.webmanifest',
 ];
 
-const API_CACHE_PREFIXES = [
-  '/api/opportunities',
-  '/api/dashboard/highlights',
-  '/api/dashboard/deadlines',
-  '/api/public',
-  '/api/profile',
-  '/api/auth/me',
-  '/api/saved',
-  '/api/actions',
-  '/api/alerts',
+// CDN domains to cache (feed JSON lives here)
+const CDN_DOMAINS = [
+  'cdn.fresherflow.in',
+  'cdn.fresherflow.com',
 ];
 
-function isCacheableApiRequest(url) {
-  return API_CACHE_PREFIXES.some((prefix) => url.pathname.startsWith(prefix));
+function isCDNRequest(url) {
+  return CDN_DOMAINS.some(domain => url.hostname === domain || url.hostname.endsWith('.' + domain));
 }
 
 async function cleanupOldCaches() {
-  const valid = new Set([STATIC_CACHE, API_CACHE]);
+  const valid = new Set([STATIC_CACHE, CDN_CACHE]);
   const keys = await caches.keys();
   await Promise.all(
     keys.map((key) => (valid.has(key) ? Promise.resolve() : caches.delete(key)))
@@ -88,9 +84,35 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(event.request.url);
   const isSameOrigin = url.origin === self.location.origin;
-  const isApiRequest = url.pathname.startsWith('/api');
   const isNavigation = event.request.mode === 'navigate';
-  // Handle navigation requests
+
+  // ── CDN: stale-while-revalidate for feed JSON ──────────────────────────────
+  if (isCDNRequest(url)) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(CDN_CACHE);
+        const cached = await cache.match(event.request);
+        const networkFetch = fetch(event.request)
+          .then((res) => {
+            if (res && res.ok) cache.put(event.request, res.clone());
+            return res;
+          })
+          .catch(() => null);
+
+        if (cached) {
+          event.waitUntil(networkFetch);
+          return cached;
+        }
+        return (await networkFetch) || new Response(JSON.stringify({ error: 'offline' }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      })()
+    );
+    return;
+  }
+
+  // ── Navigation: network-first, cache fallback ──────────────────────────────
   if (isNavigation) {
     event.respondWith(
       (async () => {
@@ -103,20 +125,16 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         } catch {
-          // Offline — serve from cache in priority order:
-          // 1. The exact path that was previously cached online
           const cachedExact = await cache.match(navigationKey);
           if (cachedExact) return cachedExact;
 
-          // 2. App shell root '/' — Next.js will rehydrate to the right route
+          // Try root shell (Next.js will rehydrate to correct route)
           const appShell = await cache.match(new Request('/', { method: 'GET' }));
           if (appShell) return appShell;
 
-          // 3. Explicit offline fallback page
           const offlinePage = await caches.match(OFFLINE_URL);
           if (offlinePage) return offlinePage;
 
-          // 4. Inline fallback
           return new Response(OFFLINE_FALLBACK_HTML, {
             status: 200,
             headers: { 'Content-Type': 'text/html; charset=utf-8' },
@@ -127,91 +145,43 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-
-  // Cache key ignores tracking params so the same feed/search request can be reused.
+  // Normalize cache keys (strip UTM + tracking params)
   const normalizedUrl = new URL(url.pathname + url.search, self.location.origin);
-  normalizedUrl.searchParams.delete('utm_source');
-  normalizedUrl.searchParams.delete('utm_medium');
-  normalizedUrl.searchParams.delete('utm_campaign');
-  normalizedUrl.searchParams.delete('utm_term');
-  normalizedUrl.searchParams.delete('utm_content');
-  normalizedUrl.searchParams.delete('ref');
+  ['utm_source','utm_medium','utm_campaign','utm_term','utm_content','ref'].forEach(p => {
+    normalizedUrl.searchParams.delete(p);
+  });
   const cacheKey = new Request(normalizedUrl.toString(), { method: 'GET' });
 
-  // Only cache same-origin static assets
+  // ── Static assets: cache-first for images/fonts, network-first for JS/CSS ──
   const dest = event.request.destination;
   const isStaticAsset = isSameOrigin && ['style', 'script', 'image', 'font'].includes(dest);
 
-  if (isStaticAsset && !isApiRequest) {
+  if (isStaticAsset) {
     event.respondWith(
       (async () => {
         const cache = await caches.open(STATIC_CACHE);
-        const isCriticalAsset = dest === 'style' || dest === 'script';
+        const isCritical = dest === 'style' || dest === 'script';
 
-        // JS/CSS must stay fresh to avoid stale UI states after deploy.
-        if (isCriticalAsset) {
+        if (isCritical) {
+          // JS/CSS: network-first to avoid stale UI after deploy
           try {
-            const networkResponse = await fetch(event.request);
-            if (networkResponse && networkResponse.status === 200) {
-              cache.put(cacheKey, networkResponse.clone());
-            }
-            return networkResponse;
+            const res = await fetch(event.request);
+            if (res && res.status === 200) cache.put(cacheKey, res.clone());
+            return res;
           } catch {
-            const cachedResponse = await cache.match(cacheKey);
-            if (cachedResponse) return cachedResponse;
+            const cached = await cache.match(cacheKey);
+            if (cached) return cached;
             throw new Error('critical_asset_unavailable_offline');
           }
         }
 
-        // Non-critical static assets can be served stale-while-revalidate.
-        const cachedResponse = await cache.match(cacheKey);
-        const fetchPromise = fetch(event.request).then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200) {
-            cache.put(cacheKey, networkResponse.clone());
-          }
-          return networkResponse;
-        });
-        return cachedResponse || fetchPromise;
-      })()
-    );
-    return;
-  }
-
-  // Deeper offline support for feed/search/deadline/profile APIs
-  if (isSameOrigin && isApiRequest && isCacheableApiRequest(url)) {
-    event.respondWith(
-      (async () => {
-        const cache = await caches.open(API_CACHE);
+        // Images/fonts: stale-while-revalidate
         const cached = await cache.match(cacheKey);
-
-        const networkFetch = fetch(event.request)
-          .then((networkResponse) => {
-            if (networkResponse && networkResponse.ok && networkResponse.type !== 'opaqueredirect') {
-              cache.put(cacheKey, networkResponse.clone());
-            }
-            return networkResponse;
-          })
-          .catch(() => null);
-
-        // Stale-while-revalidate: instant cached response, refresh in background.
-        if (cached) {
-          event.waitUntil(networkFetch);
-          return cached;
-        }
-
-        const networkResponse = await networkFetch;
-        if (networkResponse) return networkResponse;
-
-        return new Response(
-          JSON.stringify({
-            error: 'Offline and no cached data available yet',
-            offline: true,
-          }),
-          {
-            status: 503,
-            headers: { 'Content-Type': 'application/json' },
-          }
-        );
+        const fetchPromise = fetch(event.request).then((res) => {
+          if (res && res.status === 200) cache.put(cacheKey, res.clone());
+          return res;
+        });
+        return cached || fetchPromise;
       })()
     );
   }
@@ -235,7 +205,7 @@ self.addEventListener('push', (event) => {
 
   const title = payload?.title || 'FresherFlow';
   const body = payload?.body || 'You have a new alert.';
-  const url = payload?.url || '/alerts';
+  const url = payload?.url || '/account/notifications';
 
   event.waitUntil(
     self.registration.showNotification(title, {
@@ -249,7 +219,7 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = event.notification?.data?.url || '/alerts';
+  const targetUrl = event.notification?.data?.url || '/account/notifications';
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {

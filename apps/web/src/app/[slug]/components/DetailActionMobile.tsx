@@ -2,7 +2,9 @@ import { type Opportunity, type User } from '@fresherflow/types';
 import { TimelineEventView } from '@/features/opportunities/utils/detailUtils';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/ui/Button';
-// removed bookmark icons
+import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
+import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
+import { cn } from '@repo/ui/utils/cn';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
@@ -25,10 +27,12 @@ interface DetailActionMobileProps {
 
 export function DetailActionMobile({
     user,
+    opp,
     isCampusDrive,
     timelineEvents,
     hasApplyLink,
     handleApply,
+    handleToggleSave,
     handleShare,
     handleCopyLink,
     jumpToTimeline,
@@ -44,14 +48,41 @@ export function DetailActionMobile({
                     Track Updates
                 </button>
             )}
-            {hasApplyLink && (
-                <Button
-                    onClick={handleApply}
-                    className="w-full h-12 text-sm bg-primary/70 text-primary-foreground border border-primary/60 hover:bg-primary/80 rounded-lg flex items-center justify-center gap-2 font-bold uppercase tracking-wide shadow-md"
+            {hasApplyLink ? (
+                <div className="flex gap-2">
+                    <Button
+                        onClick={handleApply}
+                        className="flex-1 h-12 text-sm bg-primary/70 text-primary-foreground border border-primary/60 hover:bg-primary/80 rounded-lg flex items-center justify-center gap-2 font-bold uppercase tracking-wide shadow-md"
+                    >
+                        Apply Now
+                        <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                    </Button>
+                    <button
+                        onClick={handleToggleSave}
+                        className={cn(
+                            "w-12 h-12 rounded-lg border flex items-center justify-center transition-all shrink-0",
+                            opp.isSaved
+                                ? "bg-primary/10 border-primary/20 text-primary shadow-sm"
+                                : "bg-background border-border text-muted-foreground hover:border-primary/30"
+                        )}
+                        aria-label={opp.isSaved ? "Remove from saved" : "Save opportunity"}
+                    >
+                        {opp.isSaved ? <BookmarkSolidIcon className="w-4 h-4" /> : <BookmarkIcon className="w-4 h-4" />}
+                    </button>
+                </div>
+            ) : (
+                <button
+                    onClick={handleToggleSave}
+                    className={cn(
+                        "w-full h-12 rounded-lg border flex items-center justify-center gap-2 font-bold text-xs uppercase tracking-wider transition-all",
+                        opp.isSaved
+                            ? "bg-primary/10 border-primary/20 text-primary shadow-sm"
+                            : "bg-background border-border text-muted-foreground hover:border-primary/30"
+                    )}
                 >
-                    Apply Now
-                    <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-                </Button>
+                    {opp.isSaved ? <BookmarkSolidIcon className="w-4 h-4" /> : <BookmarkIcon className="w-4 h-4" />}
+                    {opp.isSaved ? 'Saved' : 'Save Opportunity'}
+                </button>
             )}
 
              {!user && (

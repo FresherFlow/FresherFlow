@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import dynamic from 'next/dynamic';
 import { HeroSection } from '@/features/landing/HeroSection';
+import { HomeAuthGuard } from '@/features/auth/components/HomeAuthGuard';
 const CorporateCollections = dynamic(() => import('@/features/landing/CorporateCollections').then(m => m.CorporateCollections));
 const ExamCategories = dynamic(() => import('@/features/landing/ExamCategories').then(m => m.ExamCategories));
 const GovtNoticeBoard = dynamic(() => import('@/features/landing/GovtNoticeBoard').then(m => m.GovtNoticeBoard));
@@ -45,6 +46,7 @@ export const metadata: Metadata = {
 export const revalidate = false;
 
 export default async function LandingPage() {
+
     // ZERO-BLOCKING STRATEGY:
     // Race data fetching against a 500ms timeout so a slow CDN never
     // causes a "circling" hang — we render with defaults instead.
@@ -95,6 +97,7 @@ export default async function LandingPage() {
 
     return (
         <>
+            <HomeAuthGuard />
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}

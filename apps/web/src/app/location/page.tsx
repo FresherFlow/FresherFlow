@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { slugify } from '@fresherflow/utils/slugify';
 import { Breadcrumb } from '@/ui/Breadcrumb';
+import { Badge } from '@/ui/Badge';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
 export const revalidate = false;
@@ -50,7 +51,6 @@ export default async function LocationIndexPage() {
         .filter(([, count]) => count >= 1)
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 
-
     // Group alphabetically
     const groups: Record<string, { location: string; count: number; slug: string }[]> = {};
     for (const [location, count] of sorted) {
@@ -70,26 +70,26 @@ export default async function LocationIndexPage() {
     const totalJobs = opportunities.length;
 
     return (
-        <div className="min-h-screen bg-background pb-20">
-            <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 space-y-8">
+        <div className="min-h-screen bg-background pb-20 font-sans">
+            <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
 
                 <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Locations' }]} />
 
                 {/* Header */}
-                <div className="border-b border-border/60 pb-6 space-y-2">
-                    <h1 className="text-2xl md:text-4xl font-black tracking-tight text-foreground">
-                        Browse by Location
+                <div className="pb-4 border-b border-border/40 space-y-2">
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                        Browse Jobs by Location
                     </h1>
                     <p className="text-sm text-muted-foreground font-medium max-w-2xl">
                         Find verified fresher jobs and internships in your preferred city.
                     </p>
-                    <div className="flex flex-wrap gap-3 pt-2 text-xs font-medium text-muted-foreground">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 font-semibold">
+                    <div className="flex flex-wrap gap-2 pt-1">
+                        <Badge variant="default" className="text-xs font-semibold px-3 py-1">
                             {totalLocations} locations listed
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted border border-border">
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs font-semibold px-3 py-1">
                             {totalJobs} active listings
-                        </span>
+                        </Badge>
                     </div>
                 </div>
 
@@ -99,7 +99,7 @@ export default async function LocationIndexPage() {
                         <a
                             key={letter}
                             href={`#loc-${letter}`}
-                            className="w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold bg-muted hover:bg-primary/10 hover:text-primary border border-border transition-colors"
+                            className="w-8 h-8 flex items-center justify-center rounded-lg text-xs font-semibold bg-card hover:bg-accent text-foreground hover:text-primary border border-border/70 transition-all shadow-2xs"
                         >
                             {letter}
                         </a>
@@ -107,27 +107,27 @@ export default async function LocationIndexPage() {
                 </div>
 
                 {/* Location groups */}
-                <div className="space-y-10">
+                <div className="space-y-8">
                     {letters.map(letter => (
                         <div key={letter} id={`loc-${letter}`} className="scroll-mt-24 space-y-3">
                             <div className="flex items-center gap-3">
-                                <span className="text-xl font-black text-foreground">{letter}</span>
+                                <span className="text-lg font-bold text-foreground">{letter}</span>
                                 <span className="text-xs font-semibold text-muted-foreground">{groups[letter].length}</span>
-                                <div className="flex-1 h-px bg-border/60" />
+                                <div className="flex-1 h-px bg-border/40" />
                             </div>
                             <div className="flex flex-wrap gap-2">
                                 {groups[letter].map(({ location, count, slug }) => (
                                     <Link
                                         key={slug}
                                         href={`/location/${slug}`}
-                                        className="group flex items-center gap-2 px-3 py-1.5 rounded-lg bg-card hover:bg-primary/5 border border-border hover:border-primary/30 transition-all"
+                                        className="group flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-card hover:bg-accent border border-border/70 hover:border-border transition-all shadow-2xs"
                                     >
                                         <span className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
                                             {location}
                                         </span>
-                                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">
+                                        <Badge variant="secondary" className="text-xs font-semibold px-2 py-0.5 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
                                             {count}
-                                        </span>
+                                        </Badge>
                                     </Link>
                                 ))}
                             </div>

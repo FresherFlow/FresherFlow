@@ -12,6 +12,7 @@ import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
 import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
+import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 
 import { DriveMetadata } from '@/lib/utils/driveTimeline';
 
@@ -119,6 +120,15 @@ export function DetailHeroSection({
                             {listingState.charAt(0).toUpperCase() + listingState.slice(1).toLowerCase()}
                         </div>
                     )}
+                    <Link
+                        href="/resources"
+                        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-all group"
+                        title="Practice Interview Questions & Tech Skills for this Role"
+                    >
+                        <AcademicCapIcon className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" />
+                        <span>Practice Interview Questions & Tech Skills for this Role</span>
+                        <span className="text-amber-600 dark:text-amber-400 font-bold ml-0.5">→</span>
+                    </Link>
                 </div>
                 {driveDateItems.length > 0 && (
                     <div className="flex flex-wrap items-center gap-2">
@@ -174,7 +184,7 @@ export function DetailHeroSection({
                             <div>
                                 <div className="flex flex-wrap items-center gap-1.5">
                                     <h2 className="text-base font-semibold text-foreground tracking-tight leading-none">
-                                        <Link href={`/companies/${slugify(opp.company)}`} className="hover:text-primary transition-colors">
+                                        <Link href={`/companies/${(opp as any).companySlug || slugify(opp.company)}`} className="hover:text-primary transition-colors">
                                             {opp.company}
                                         </Link>
                                     </h2>

@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { Breadcrumb } from '@/ui/Breadcrumb';
+import { Card, CardContent } from '@/ui/Card';
+import { Badge } from '@/ui/Badge';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
 export const revalidate = false;
@@ -34,43 +36,48 @@ export default async function BatchIndexPage() {
     const totalJobs = opportunities.length;
 
     return (
-        <div className="min-h-screen bg-background pb-20">
-            <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 space-y-8">
+        <div className="min-h-screen bg-background pb-20 font-sans">
+            <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
 
                 <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Batches' }]} />
 
                 {/* Header */}
-                <div className="border-b border-border/60 pb-6 space-y-2">
-                    <h1 className="text-2xl md:text-4xl font-black tracking-tight text-foreground">
-                        Browse by Graduation Batch
+                <div className="pb-4 border-b border-border/40 space-y-2">
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                        Browse Jobs by Graduation Batch
                     </h1>
                     <p className="text-sm text-muted-foreground font-medium max-w-2xl">
                         Find verified fresher jobs and internships matched to your specific graduation year.
                     </p>
-                    <div className="flex flex-wrap gap-3 pt-2 text-xs font-medium text-muted-foreground">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 font-semibold">
+                    <div className="flex flex-wrap gap-2 pt-1">
+                        <Badge variant="default" className="text-xs font-semibold px-3 py-1">
                             {sorted.length} batches listed
-                        </span>
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted border border-border">
+                        </Badge>
+                        <Badge variant="secondary" className="text-xs font-semibold px-3 py-1">
                             {totalJobs} active listings
-                        </span>
+                        </Badge>
                     </div>
                 </div>
 
                 {/* Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
                     {sorted.map(([batch, count]) => (
-                        <Link
-                            key={batch}
-                            href={`/batch/${batch}`}
-                            className="group flex flex-col justify-center gap-1 p-4 rounded-xl bg-card hover:bg-primary/5 border border-border hover:border-primary/30 transition-all"
-                        >
-                            <span className="text-lg font-black text-foreground group-hover:text-primary transition-colors">
-                                {batch} Batch
-                            </span>
-                            <span className="text-xs font-semibold text-muted-foreground">
-                                {count} active listing{count !== 1 ? 's' : ''}
-                            </span>
+                        <Link key={batch} href={`/batch/${batch}`} className="group">
+                            <Card className="border-border/70 hover:border-border hover:bg-accent/40 transition-all shadow-2xs">
+                                <CardContent className="p-5 flex items-center justify-between gap-3">
+                                    <div className="space-y-1">
+                                        <h2 className="text-base font-bold text-foreground group-hover:text-primary transition-colors">
+                                            {batch} Batch
+                                        </h2>
+                                        <p className="text-sm text-muted-foreground">
+                                            {count} active listing{count !== 1 ? 's' : ''}
+                                        </p>
+                                    </div>
+                                    <Badge variant="secondary" className="text-xs font-semibold px-2.5 py-1 shrink-0 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                                        View →
+                                    </Badge>
+                                </CardContent>
+                            </Card>
                         </Link>
                     ))}
                 </div>

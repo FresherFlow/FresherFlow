@@ -260,7 +260,7 @@ export default function OpportunityDetailClient({
                             {opp.type === 'INTERNSHIP' ? 'Internships' : opp.type === 'WALKIN' ? 'Walk-ins' : 'Jobs'}
                         </Link>
                         <span className="text-muted-foreground/40">/</span>
-                        <Link href={`/companies/${slugify(opp.company)}`} className="hover:text-primary transition-colors truncate max-w-[120px]">
+                        <Link href={`/companies/${(opp as any).companySlug || slugify(opp.company)}`} className="hover:text-primary transition-colors truncate max-w-[120px]">
                             {opp.company}
                         </Link>
                         <span className="text-muted-foreground/40">/</span>
@@ -341,7 +341,7 @@ export default function OpportunityDetailClient({
                             <h3 className="text-base font-bold text-foreground tracking-tight">Explore Related Placements</h3>
                             <div className="flex flex-wrap gap-2 text-xs">
                                 {/* Company Link */}
-                                <Link href={`/companies/${slugify(opp.company)}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/5 hover:bg-primary/10 text-primary font-semibold border border-primary/10 transition-colors">
+                                <Link href={`/companies/${(opp as any).companySlug || slugify(opp.company)}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/5 hover:bg-primary/10 text-primary font-semibold border border-primary/10 transition-colors">
                                     <BriefcaseIcon className="w-3.5 h-3.5" />
                                     {opp.company} Careers
                                 </Link>
@@ -424,7 +424,6 @@ export default function OpportunityDetailClient({
                         )}
                     </div>
 
-                    {/* Right Column (40% width on Desktop, Hidden on Mobile) */}
                     <aside className="hidden lg:block lg:col-span-2 space-y-4 md:space-y-6 lg:sticky lg:top-24">
                         <DetailSidebarActions
                             user={user}
@@ -440,6 +439,10 @@ export default function OpportunityDetailClient({
                             loginFromDetailHref={ds.loginFromDetailHref}
                             listingState={ds.listingState}
                             formatDeadline={ds.formatDeadline}
+                            handleApply={handleApply}
+                            handleToggleSave={handleToggleSave}
+                            handleShare={handleShare}
+                            handleCopyLink={handleCopyLink}
                         />
 
 

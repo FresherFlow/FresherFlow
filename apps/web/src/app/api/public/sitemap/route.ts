@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CDN_URL, SITE_URL } from '@/lib/utils/runtimeConfig';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = false;
 
 export async function GET(request: NextRequest) {
     try {
