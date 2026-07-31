@@ -10,8 +10,11 @@ import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 
 import { INDIAN_CITIES, INDIAN_STATES } from '@fresherflow/constants';
 
-const CORP_LOCATIONS = [...INDIAN_CITIES.slice(0, 5), 'Remote'];
-const GOVT_LOCATIONS = ['All India', ...INDIAN_STATES.slice(0, 5)];
+const PRIMARY_CITIES = ['Remote', 'Bengaluru', 'Mumbai', 'Delhi NCR', 'Hyderabad', 'Pune', 'Chennai', 'Noida', 'Gurugram', 'Kolkata'];
+const OTHER_CITIES = INDIAN_CITIES.filter(c => !PRIMARY_CITIES.includes(c));
+
+const PRIMARY_STATES = ['All India', 'Delhi NCR', 'Karnataka', 'Maharashtra', 'Tamil Nadu', 'Telangana', 'Uttar Pradesh'];
+const OTHER_STATES = INDIAN_STATES.filter(s => !PRIMARY_STATES.includes(s));
 
 export interface FilterBarFilters {
     location: string | null;
@@ -31,10 +34,9 @@ interface FilterDropdownBarProps {
     filters: FilterBarFilters;
     setFilters: (f: FilterBarFilters) => void;
     isLoggedIn: boolean;
-    // Optional: type selector (only on /opportunities page)
     selectedType?: string | null;
     onTypeChange?: (type: string | null) => void;
-    pageType?: string; // e.g. 'GOVERNMENT'
+    pageType?: string;
 }
 
 type OpenPanel = 'location' | 'year' | 'type' | 'sector' | 'qualification' | 'course' | null;
@@ -62,33 +64,42 @@ function useClickOutside(ref: React.RefObject<HTMLElement | null>, handler: () =
     }, [ref, handler]);
 }
 
-const chipBase = 'h-9 px-3.5 rounded-xl border text-[12px] font-medium flex items-center gap-1.5 transition-all whitespace-nowrap select-none';
+const chipBase = 'h-9 px-3.5 rounded-xl border text-[12px] font-medium flex items-center gap-1.5 transition-all whitespace-nowrap select-none cursor-pointer';
 const chipDefault = 'bg-background border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground';
-const chipActive = 'bg-primary/10 text-primary border-primary/30';
+const chipActive = 'bg-primary/10 text-primary border-primary/30 font-semibold';
 
 export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeChange, pageType }: FilterDropdownBarProps) {
     const [open, setOpen] = useState<OpenPanel>(null);
+    const [locSearch, setLocSearch] = useState('');
     const barRef = useRef<HTMLDivElement>(null);
 
-    useClickOutside(barRef, () => setOpen(null));
+    useClickOutside(barRef, () => { setOpen(null); setLocSearch(''); });
 
-    // Close on scroll
     useEffect(() => {
-        const onScroll = () => setOpen(null);
+        const onScroll = () => { setOpen(null); setLocSearch(''); };
         window.addEventListener('scroll', onScroll, { passive: true });
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
 
-    const toggle = (panel: OpenPanel) =>
+    const toggle = (panel: OpenPanel) => {
         setOpen(prev => (prev === panel ? null : panel));
+        if (panel !== 'location') setLocSearch('');
+    };
 
     const hasAnyFilter = !!(filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course);
     const isGovt = pageType === 'GOVERNMENT';
 
+    const primaryList = isGovt ? PRIMARY_STATES : PRIMARY_CITIES;
+    const secondaryList = isGovt ? OTHER_STATES : OTHER_CITIES;
+
+    const query = locSearch.trim().toLowerCase();
+    const filteredPrimary = query ? primaryList.filter(l => l.toLowerCase().includes(query)) : primaryList;
+    const filteredSecondary = query ? secondaryList.filter(l => l.toLowerCase().includes(query)) : secondaryList;
+
     return (
         <div ref={barRef} className="hidden lg:flex items-center gap-2 flex-wrap">
 
-            {/* Type dropdown — only when prop provided */}
+            {/* Type dropdown */}
             {onTypeChange && (
                 <div className="relative">
                     <button
@@ -102,7 +113,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                         <ChevronDownIcon className={cn('w-3 h-3 transition-transform', open === 'type' && 'rotate-180')} />
                     </button>
                     {open === 'type' && (
-                        <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-44 z-50">
+                        <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-1.5 w-44 z-50 overscroll-contain">
                             {[
                                 { label: 'All types', value: null },
                                 { label: 'Jobs', value: 'JOB' },
@@ -113,9 +124,9 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                     key={opt.label}
                                     onClick={() => { onTypeChange(opt.value); setOpen(null); }}
                                     className={cn(
-                                        'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
+                                        'w-full text-left px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all cursor-pointer',
                                         selectedType === opt.value
-                                            ? 'bg-primary/10 text-primary'
+                                            ? 'bg-primary/10 text-primary font-bold'
                                             : 'text-foreground hover:bg-muted/60'
                                     )}
                                 >
@@ -140,35 +151,97 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                 </button>
 
                 {open === 'location' && (
-                    <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-52 z-50">
-                        {(isGovt ? GOVT_LOCATIONS : CORP_LOCATIONS).map(loc => (
+                    <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl p-2 w-64 z-50 space-y-1.5 overscroll-contain">
+                        <div className="px-1">
+                            <input
+                                type="text"
+                                value={locSearch}
+                                onChange={e => setLocSearch(e.target.value)}
+                                placeholder="Search city or state..."
+                                className="w-full h-8 px-2.5 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                autoFocus
+                            />
+                        </div>
+
+                        <div className="max-h-60 overflow-y-auto overscroll-contain space-y-0.5 pr-1">
+                            {/* Option for All Locations */}
                             <button
-                                key={loc}
                                 onClick={() => {
-                                    setFilters({ ...filters, location: filters.location === loc ? null : loc });
+                                    setFilters({ ...filters, location: null });
                                     setOpen(null);
+                                    setLocSearch('');
                                 }}
                                 className={cn(
-                                    'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
-                                    filters.location === loc
-                                        ? 'bg-primary/10 text-primary'
-                                        : 'text-foreground hover:bg-muted/60'
+                                    'w-full text-left px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all flex items-center justify-between cursor-pointer',
+                                    filters.location === null
+                                        ? 'bg-primary/10 text-primary font-bold'
+                                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
                                 )}
                             >
-                                {loc}
+                                <span>All Locations</span>
+                                {filters.location === null && <span className="text-primary text-xs">✓</span>}
                             </button>
-                        ))}
-                        {filters.location && (
-                            <>
-                                <div className="my-1 border-t border-border" />
-                                <button
-                                    onClick={() => { setFilters({ ...filters, location: null }); setOpen(null); }}
-                                    className="w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium text-muted-foreground hover:bg-muted/60 transition-all"
-                                >
-                                    Clear
-                                </button>
-                            </>
-                        )}
+
+                            {/* Main Hubs / Top Cities */}
+                            {filteredPrimary.length > 0 && (
+                                <>
+                                    <div className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                                        {isGovt ? 'Top States' : 'Top Tech Hubs'}
+                                    </div>
+                                    {filteredPrimary.map(loc => (
+                                        <button
+                                            key={loc}
+                                            onClick={() => {
+                                                setFilters({ ...filters, location: filters.location === loc ? null : loc });
+                                                setOpen(null);
+                                                setLocSearch('');
+                                            }}
+                                            className={cn(
+                                                'w-full text-left px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all flex items-center justify-between cursor-pointer',
+                                                filters.location === loc
+                                                    ? 'bg-primary/10 text-primary font-bold'
+                                                    : 'text-foreground hover:bg-muted/60'
+                                            )}
+                                        >
+                                            <span>{loc}</span>
+                                            {filters.location === loc && <span className="text-primary text-xs">✓</span>}
+                                        </button>
+                                    ))}
+                                </>
+                            )}
+
+                            {/* Other Cities / States */}
+                            {filteredSecondary.length > 0 && (
+                                <>
+                                    <div className="px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                                        {isGovt ? 'Other States' : 'Other Cities'}
+                                    </div>
+                                    {filteredSecondary.map(loc => (
+                                        <button
+                                            key={loc}
+                                            onClick={() => {
+                                                setFilters({ ...filters, location: filters.location === loc ? null : loc });
+                                                setOpen(null);
+                                                setLocSearch('');
+                                            }}
+                                            className={cn(
+                                                'w-full text-left px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all flex items-center justify-between cursor-pointer',
+                                                filters.location === loc
+                                                    ? 'bg-primary/10 text-primary font-bold'
+                                                    : 'text-foreground hover:bg-muted/60'
+                                            )}
+                                        >
+                                            <span>{loc}</span>
+                                            {filters.location === loc && <span className="text-primary text-xs">✓</span>}
+                                        </button>
+                                    ))}
+                                </>
+                            )}
+
+                            {filteredPrimary.length === 0 && filteredSecondary.length === 0 && (
+                                <p className="text-[11px] text-muted-foreground text-center py-3">No matching cities found</p>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

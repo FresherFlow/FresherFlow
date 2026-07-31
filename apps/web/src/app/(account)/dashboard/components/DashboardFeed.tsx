@@ -89,7 +89,7 @@ export const DashboardFeed = ({
                         </Button>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                    <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
                         {opportunities.slice(0, desktopLimit).map((opp) => (
                             <JobCard
                                 key={`desk-${opp.id}`}

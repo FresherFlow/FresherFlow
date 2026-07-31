@@ -99,3 +99,9 @@ scripts/job-discovery/adapter-tests/
 
 skills-lock.json
 .vercel
+
+# Local Pipeline generated client & SQLite files
+scripts/pipeline/pipeline-client/
+scripts/pipeline-client/
+*.db-journal
+

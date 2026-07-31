@@ -7,8 +7,11 @@ import { cn } from '@repo/ui/utils/cn';
 
 import { INDIAN_CITIES, INDIAN_STATES } from '@fresherflow/constants';
 
-const CORP_LOCATIONS = [...INDIAN_CITIES.slice(0, 5), 'Remote'];
-const GOVT_LOCATIONS = ['All India', ...INDIAN_STATES.slice(0, 5)];
+const PRIMARY_CITIES = ['Remote', 'Bengaluru', 'Mumbai', 'Delhi NCR', 'Hyderabad', 'Pune', 'Chennai', 'Noida', 'Gurugram', 'Kolkata'];
+const OTHER_CITIES = INDIAN_CITIES.filter(c => !PRIMARY_CITIES.includes(c));
+
+const PRIMARY_STATES = ['All India', 'Delhi NCR', 'Karnataka', 'Maharashtra', 'Tamil Nadu', 'Telangana', 'Uttar Pradesh'];
+const OTHER_STATES = INDIAN_STATES.filter(s => !PRIMARY_STATES.includes(s));
 
 const TYPE_OPTIONS = [
     { label: 'All', value: '' },
@@ -72,7 +75,7 @@ function Section({
             <button
                 type="button"
                 onClick={onToggle}
-                className="w-full flex items-center justify-between py-4 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
+                className="w-full flex items-center justify-between py-4 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none cursor-pointer"
             >
                 <span className="text-sm font-semibold text-foreground">{title}</span>
                 <ChevronDownIcon className={cn('w-4 h-4 text-muted-foreground transition-transform', isOpen && 'rotate-180')} />
@@ -99,8 +102,8 @@ function Pill({
             onClick={onClick}
             disabled={disabled}
             className={cn(
-                'px-4 py-2 rounded-full text-sm transition focus-visible:ring-2 focus-visible:ring-primary focus:outline-none',
-                active ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground hover:bg-muted/80',
+                'px-3.5 py-1.5 rounded-full text-xs transition cursor-pointer focus-visible:ring-2 focus-visible:ring-primary focus:outline-none select-none',
+                active ? 'bg-primary text-primary-foreground font-semibold shadow-sm' : 'bg-muted/70 text-foreground hover:bg-muted',
                 disabled && 'opacity-50 cursor-not-allowed'
             )}
         >
@@ -131,6 +134,7 @@ export function MobileFilterDrawer({
     onClear,
 }: MobileFilterDrawerProps) {
     const [openSection, setOpenSection] = useState<OpenSection>(setDraftType ? 'type' : 'location');
+    const [locSearch, setLocSearch] = useState('');
 
     useEffect(() => {
         if (!isOpen) return;
@@ -156,11 +160,19 @@ export function MobileFilterDrawer({
         draftShowOnlySaved ? 'saved' : null,
     ].filter(Boolean).length;
 
+    const isGovt = pageType === 'GOVERNMENT';
+    const primaryList = isGovt ? PRIMARY_STATES : PRIMARY_CITIES;
+    const secondaryList = isGovt ? OTHER_STATES : OTHER_CITIES;
+
+    const query = locSearch.trim().toLowerCase();
+    const filteredPrimary = query ? primaryList.filter(l => l.toLowerCase().includes(query)) : primaryList;
+    const filteredSecondary = query ? secondaryList.filter(l => l.toLowerCase().includes(query)) : secondaryList;
+
     return (
         <div className="fixed inset-0 z-90 lg:hidden" role="dialog" aria-modal="true" aria-labelledby="mobile-filter-title">
             <div className="absolute inset-0 bg-black/40 animate-in fade-in duration-300 ease-out" onClick={onClose} />
 
-            <div className="absolute bottom-0 pb-[env(safe-area-inset-bottom)] left-0 right-0 max-h-[85vh] rounded-t-3xl bg-background border-t border-border shadow-2xl flex flex-col animate-in slide-in-from-bottom-[100%] duration-400 ease-[cubic-bezier(0.32,0.72,0,1)]">
+            <div className="absolute bottom-0 pb-[env(safe-area-inset-bottom)] left-0 right-0 max-h-[85vh] rounded-t-3xl bg-background border-t border-border shadow-2xl flex flex-col animate-in slide-in-from-bottom-[100%] duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] overscroll-contain">
                 <div className="flex justify-center py-3">
                     <div className="h-1.5 w-10 rounded-full bg-muted" />
                 </div>
@@ -180,7 +192,7 @@ export function MobileFilterDrawer({
                     </button>
                 </div>
 
-                <div className="px-5 overflow-y-auto flex-1">
+                <div className="px-5 overflow-y-auto overscroll-contain flex-1">
                     {setDraftType ? (
                         <Section
                             title="Type"
@@ -206,17 +218,53 @@ export function MobileFilterDrawer({
                         isOpen={openSection === 'location'}
                         onToggle={() => setOpenSection(openSection === 'location' ? null : 'location')}
                     >
-                        <div className="flex flex-wrap gap-2">
-                            <Pill active={draftLoc === null} onClick={() => setDraftLoc(null)}>Any</Pill>
-                            {(pageType === 'GOVERNMENT' ? GOVT_LOCATIONS : CORP_LOCATIONS).map((location) => (
-                                <Pill
-                                    key={location}
-                                    active={draftLoc === location}
-                                    onClick={() => setDraftLoc(location)}
-                                >
-                                    {location}
-                                </Pill>
-                            ))}
+                        <div className="space-y-3">
+                            <input
+                                type="text"
+                                value={locSearch}
+                                onChange={e => setLocSearch(e.target.value)}
+                                placeholder="Search city or state..."
+                                className="w-full h-9 px-3 rounded-xl border border-border bg-card text-xs text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                            />
+                            <div className="space-y-3 max-h-52 overflow-y-auto overscroll-contain pr-1">
+                                <div className="flex flex-wrap gap-2">
+                                    <Pill active={draftLoc === null} onClick={() => setDraftLoc(null)}>All Locations</Pill>
+                                </div>
+
+                                {filteredPrimary.length > 0 && (
+                                    <div className="space-y-1.5">
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">{isGovt ? 'Top States' : 'Top Tech Hubs'}</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {filteredPrimary.map((location) => (
+                                                <Pill
+                                                    key={location}
+                                                    active={draftLoc === location}
+                                                    onClick={() => setDraftLoc(location)}
+                                                >
+                                                    {location}
+                                                </Pill>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {filteredSecondary.length > 0 && (
+                                    <div className="space-y-1.5 pt-1">
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">{isGovt ? 'Other States' : 'Other Cities'}</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {filteredSecondary.map((location) => (
+                                                <Pill
+                                                    key={location}
+                                                    active={draftLoc === location}
+                                                    onClick={() => setDraftLoc(location)}
+                                                >
+                                                    {location}
+                                                </Pill>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </Section>
 

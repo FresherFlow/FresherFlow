@@ -94,7 +94,7 @@ function SavedJobsPageContent() {
         <div className="w-full max-w-7xl mx-auto px-3 md:px-6 py-4 md:py-8 space-y-4 md:space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border/40">
                 <div className="space-y-1">
-                    <button type="button" onClick={() => router.back()} className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors cursor-pointer">
+                    <button type="button" onClick={() => router.back()} className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-primary active:scale-[0.97] transition-all duration-150 ease-out cursor-pointer">
                         <ArrowLeftIcon className="w-3.5 h-3.5" />
                         Back
                     </button>
@@ -115,13 +115,13 @@ function SavedJobsPageContent() {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Filter by company or role..."
-                            className="w-full h-9 pl-9 pr-3 text-xs bg-card/60 border border-border/60 rounded-xl placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+                            className="w-full h-9 pl-9 pr-3 text-xs bg-card/60 border border-border/60 backdrop-blur-xl rounded-xl placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary hover:border-border transition-all duration-150 ease-out shadow-sm"
                         />
                     </div>
                     
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-9 gap-2 bg-card/60">
+                            <Button variant="outline" size="sm" className="h-9 gap-2 bg-card/60 border-border/60 backdrop-blur-xl shadow-sm hover:bg-accent/50 active:scale-[0.97] transition-all duration-150 ease-out font-medium">
                                 <FunnelIcon className="h-4 w-4" />
                                 {sortBy === 'recent' ? 'Most Recent' : 'A-Z'}
                             </Button>
@@ -139,45 +139,52 @@ function SavedJobsPageContent() {
             </div>
 
             {isLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                     {[1, 2, 3].map((i) => (
                         <SkeletonJobCard key={i} />
                     ))}
                 </div>
             ) : savedOpportunities.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center space-y-4 max-w-xl mx-auto">
-                    <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto text-muted-foreground/50">
+                <div className="rounded-2xl border border-dashed border-border/60 bg-card/60 backdrop-blur-xl shadow-md p-12 text-center space-y-4 max-w-xl mx-auto animate-in fade-in-0 zoom-in-95 duration-200">
+                    <div className="w-12 h-12 bg-muted/80 rounded-full flex items-center justify-center mx-auto text-muted-foreground/60">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                         </svg>
                     </div>
                     <div className="space-y-2">
-                        <h2 className="text-base font-bold text-foreground">No saved opportunities</h2>
+                        <h2 className="text-base font-bold tracking-tight text-foreground">No saved opportunities yet</h2>
                         <p className="text-muted-foreground text-xs leading-relaxed max-w-xs mx-auto">
-                            Bookmark opportunities from the feed and they will show up here.
+                            Bookmark verified opportunities from the feed to compare and apply later.
                         </p>
                     </div>
                     <Link
                         href="/opportunities"
-                        className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold capitalize tracking-widest text-[11px] rounded-lg hover:bg-primary/90 transition-all shadow"
+                        className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold text-xs rounded-lg hover:bg-primary/90 active:scale-[0.97] transition-all duration-150 ease-out shadow-sm"
                     >
-                        Browse feed
+                        Browse Verified Jobs →
                     </Link>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {savedOpportunities.map((opp) => (
-                        <JobCard
-                            key={opp.id}
-                            job={{
-                                ...opp,
-                                normalizedRole: opp.title,
-                                salary: (opp.salaryMin !== undefined && opp.salaryMax !== undefined) ? { min: opp.salaryMin, max: opp.salaryMax } : undefined,
-                            }}
-                            jobId={opp.id}
-                            isSaved={true}
-                            onToggleSave={() => toggleSavedJob(opp.id)}
-                        />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                    {savedOpportunities.map((opp, index) => (
+                        <div 
+                            key={opp.id} 
+                            role="listitem" 
+                            className="animate-in fade-in-0 zoom-in-95 duration-200 fill-mode-both"
+                            style={{ animationDelay: `${Math.min(index * 50, 250)}ms` }}
+                        >
+                            <JobCard
+                                job={{
+                                    ...opp,
+                                    normalizedRole: opp.title,
+                                    salary: (opp.salaryMin !== undefined && opp.salaryMax !== undefined) ? { min: opp.salaryMin, max: opp.salaryMax } : undefined,
+                                }}
+                                jobId={opp.id}
+                                isSaved={true}
+                                onToggleSave={() => toggleSavedJob(opp.id)}
+                                className="bg-card/60 border-border/60 backdrop-blur-xl shadow-md hover:shadow-lg hover:border-primary/40 active:scale-[0.97] transition-all duration-150 ease-out"
+                            />
+                        </div>
                     ))}
                 </div>
             )}

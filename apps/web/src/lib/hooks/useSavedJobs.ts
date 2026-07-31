@@ -100,7 +100,22 @@ export function useSavedJobs(userId?: string) {
     const unsubscribe = onValue(
       savedRef,
       (snapshot) => {
-        const remoteVal = (snapshot.val() || {}) as Record<string, boolean>;
+        const rawVal = snapshot.val();
+        const remoteVal: Record<string, boolean> = {};
+        if (Array.isArray(rawVal)) {
+          rawVal.forEach((id) => {
+            if (typeof id === 'string' && id) {
+              remoteVal[id] = true;
+            }
+          });
+        } else if (rawVal && typeof rawVal === 'object') {
+          Object.entries(rawVal as Record<string, boolean>).forEach(([key, val]) => {
+            if (val) {
+              remoteVal[key] = true;
+            }
+          });
+        }
+
         const currentLocal = getLocalSaved();
         const merged = { ...currentLocal, ...sharedSavedJobsMap, ...remoteVal };
         setSharedSavedJobsMap(merged);

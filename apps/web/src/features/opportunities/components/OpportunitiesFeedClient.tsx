@@ -165,11 +165,21 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         initialData,
     });
 
-    // Reset whenever filters or search change
+    // Reset visible count when filters change
     useEffect(() => {
         setVisibleCount(PAGE_SIZE);
-        setSelectedOpp(null);
     }, [search, selectedType, filters.location, filters.sector, filters.qualification, filters.course, filters.year, filters.closingSoon, filters.saved]);
+
+    // Keep selectedOpp in sync with filteredOpps on desktop without flashing null/skeleton
+    useEffect(() => {
+        if (isDesktop === true) {
+            if (filteredOpps.length === 0) {
+                setSelectedOpp(null);
+            } else if (!selectedOpp || !filteredOpps.some(o => o.id === selectedOpp.id)) {
+                setSelectedOpp(filteredOpps[0]);
+            }
+        }
+    }, [isDesktop, filteredOpps, selectedOpp]);
 
     // Infinite scroll trigger
     useEffect(() => {
@@ -407,7 +417,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                             </div>
 
                             {/* Right Column: Detail Panel / Empty State (Desktop only) */}
-                            <div className="hidden lg:flex flex-col sticky top-24 h-[calc(100vh-8rem)] bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-[20px] duration-400 ease-[cubic-bezier(0.32,0.72,0,1)]">
+                            <div className="hidden lg:flex flex-col sticky top-24 h-[calc(100vh-8rem)] bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm">
                                 {selectedOpp ? (
                                     <div className="flex-1 overflow-y-auto custom-scrollbar">
                                         <OpportunityDetailPane

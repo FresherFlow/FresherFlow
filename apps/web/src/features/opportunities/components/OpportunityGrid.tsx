@@ -65,7 +65,7 @@ export function OpportunityGrid({
         return (
             <ErrorMessage
                 title="No results found"
-                message="Try adjusting your filters or search keywords to find matching opportunities."
+                message="Try adjusting your filters or search keywords to find matching verified opportunities."
                 onRetry={onClearFilters}
                 variant="card"
             />
@@ -79,7 +79,11 @@ export function OpportunityGrid({
                 isSplitView ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3"
             )} role="list" aria-label="Job listings">
                 {opportunities.map((opp) => (
-                    <div key={opp.id} role="listitem" data-opp-id={opp.id}>
+                    <div 
+                        key={opp.id} 
+                        role="listitem" 
+                        data-opp-id={opp.id}
+                    >
                         <JobCard
                             job={{
                                 ...opp,
@@ -94,6 +98,7 @@ export function OpportunityGrid({
                             isSelected={opp.id === selectedOppId || opp.slug === selectedOppId}
                             variant={isSplitView ? "compact" : "default"}
                             searchQuery={searchQuery}
+                            className="bg-card/60 border-border/60 backdrop-blur-xl shadow-md hover:shadow-lg hover:border-primary/40 active:scale-[0.97] transition-all duration-150 ease-out"
                             onClick={(e) => {
                                 if (onSelectOpportunity) {
                                     e.preventDefault();

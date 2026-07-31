@@ -2,7 +2,7 @@ name: Job Processing Bot
 
 on:
   workflow_run:
-    workflows: ["Job Discovery Bot"]
+    workflows: ["Job Discovery Bot", "Job Scraper Sweep (Search Engine)"]
     types:
       - completed
   workflow_dispatch: # Allow manual trigger from GitHub UI

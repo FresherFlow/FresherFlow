@@ -184,7 +184,7 @@ function DashboardStats({ savedCount, trackerCount }: DashboardStatsProps) {
     return (
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             <Link href="/saved" className="group">
-                <Card className="hover:border-primary/40 transition-all hover:shadow-sm cursor-pointer border-border/60 bg-card/80 backdrop-blur-sm">
+                <Card className="hover:border-primary/40 transition-all duration-150 ease-out active:scale-[0.97] hover:shadow-sm cursor-pointer border-border/60 bg-card/80 backdrop-blur-sm">
                     <CardContent className="px-3.5 py-2 flex items-center gap-2.5">
                         <div className="p-1.5 w-fit rounded-lg bg-blue-500/10 text-blue-500 group-hover:scale-105 transition-transform">
                             <BookmarkIcon className="w-4 h-4" />
@@ -198,7 +198,7 @@ function DashboardStats({ savedCount, trackerCount }: DashboardStatsProps) {
             </Link>
 
             <Link href="/tracker" className="group">
-                <Card className="hover:border-primary/40 transition-all hover:shadow-sm cursor-pointer border-border/60 bg-card/80 backdrop-blur-sm">
+                <Card className="hover:border-primary/40 transition-all duration-150 ease-out active:scale-[0.97] hover:shadow-sm cursor-pointer border-border/60 bg-card/80 backdrop-blur-sm">
                     <CardContent className="px-3.5 py-2 flex items-center gap-2.5">
                         <div className="p-1.5 w-fit rounded-lg bg-amber-500/10 text-amber-500 group-hover:scale-105 transition-transform">
                             <BriefcaseIcon className="w-4 h-4" />
@@ -540,7 +540,7 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
                                 {searchQuery && (
                                     <button
                                         onClick={() => setSearchQuery('')}
-                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-all duration-150 ease-out active:scale-[0.97]"
                                         aria-label="Clear search"
                                     >
                                         <XMarkIcon className="w-4 h-4" />

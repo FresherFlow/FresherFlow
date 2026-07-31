@@ -132,7 +132,7 @@ export default function AccountHubPage() {
     return (
         <AuthGate>
             <ProfileGate>
-                <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-8 space-y-6">
+                <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 py-4 md:py-8 space-y-4 sm:space-y-6">
                     {/* Header Title */}
                     <div className="flex items-center gap-3">
                         <button
@@ -153,11 +153,11 @@ export default function AccountHubPage() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start">
                         {/* LEFT COLUMN: Identity & Visibility */}
                         <div className="lg:col-span-4 space-y-4">
                             {/* Card 1: Profile Identity & Completion */}
-                            <div className="bg-card border border-border/60 rounded-2xl p-5 shadow-sm space-y-4">
+                            <div className="bg-card border border-border/60 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
                                 <div className="flex items-center gap-3.5">
                                     {profile?.avatarUrl ? (
                                         <img src={profile.avatarUrl} alt={user?.fullName || ''} className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-sm" />
@@ -234,7 +234,7 @@ export default function AccountHubPage() {
                             {profile && <VisibilitySettingsCard />}
 
                             {/* Card 3: Quick Actions (Share & Sign Out) */}
-                            <div className="bg-card border border-border/60 rounded-2xl p-5 shadow-sm space-y-4">
+                            <div className="bg-card border border-border/60 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
                                 <div>
                                     <h3 className="text-xs font-bold text-foreground">Invite Friends & Community</h3>
                                     <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
@@ -266,19 +266,19 @@ export default function AccountHubPage() {
                         {/* RIGHT COLUMN: Grouped Account Links Grid */}
                         <div className="lg:col-span-8 space-y-5">
                             {/* Section 1: Your Activity */}
-                            <div className="bg-card border border-border/60 rounded-2xl p-5 shadow-sm space-y-4">
+                            <div className="bg-card border border-border/60 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3 sm:space-y-4">
                                 <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                     Your Activity
                                 </h2>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
                                     {activityLinks.map((item) => {
                                         const Icon = item.icon;
                                         return (
                                             <Link
                                                 key={item.href}
                                                 href={item.href}
-                                                className="group bg-background border border-border/60 hover:border-primary/40 rounded-xl p-4 shadow-2xs hover:shadow-sm transition-all flex items-start gap-3.5"
+                                                className="group bg-background border border-border/60 hover:border-primary/40 rounded-xl p-3 sm:p-4 shadow-2xs hover:shadow-sm transition-all flex items-start gap-3 sm:gap-3.5"
                                             >
                                                 <div className="p-2.5 rounded-xl border border-border/40 bg-muted/60 text-foreground shrink-0 group-hover:border-primary/40 group-hover:text-primary group-hover:scale-105 transition-all">
                                                     <Icon className="w-4.5 h-4.5" />
@@ -302,19 +302,19 @@ export default function AccountHubPage() {
                             </div>
 
                             {/* Section 2: Platform & Help */}
-                            <div className="bg-card border border-border/60 rounded-2xl p-5 shadow-sm space-y-4">
+                            <div className="bg-card border border-border/60 rounded-2xl p-4 sm:p-5 shadow-sm space-y-3 sm:space-y-4">
                                 <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                     Platform & Help
                                 </h2>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
                                     {platformLinks.map((item) => {
                                         const Icon = item.icon;
                                         return (
                                             <Link
                                                 key={item.href}
                                                 href={item.href}
-                                                className="group bg-background border border-border/60 hover:border-primary/40 rounded-xl p-4 shadow-2xs hover:shadow-sm transition-all flex items-start gap-3.5"
+                                                className="group bg-background border border-border/60 hover:border-primary/40 rounded-xl p-3 sm:p-4 shadow-2xs hover:shadow-sm transition-all flex items-start gap-3 sm:gap-3.5"
                                             >
                                                 <div className="p-2.5 rounded-xl border border-border/40 bg-muted/60 text-foreground shrink-0 group-hover:border-primary/40 group-hover:text-primary group-hover:scale-105 transition-all">
                                                     <Icon className="w-4.5 h-4.5" />

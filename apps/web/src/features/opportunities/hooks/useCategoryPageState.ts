@@ -142,12 +142,16 @@ export function useCategoryPageState({ type, initialData }: UseCategoryPageState
         return true;
     });
 
-    // Auto-select first job on desktop
+    // Keep selectedOpp in sync with visibleOpps on desktop without flashing null/skeleton
     useEffect(() => {
-        if (isDesktop === true && !selectedOpp && visibleOpps.length > 0 && type !== OpportunityType.GOVERNMENT) {
-            setSelectedOpp(visibleOpps[0]);
+        if (isDesktop === true && type !== OpportunityType.GOVERNMENT) {
+            if (visibleOpps.length === 0) {
+                setSelectedOpp(null);
+            } else if (!selectedOpp || !visibleOpps.some(o => o.id === selectedOpp.id)) {
+                setSelectedOpp(visibleOpps[0]);
+            }
         }
-    }, [isDesktop, selectedOpp, visibleOpps, type]);
+    }, [isDesktop, visibleOpps, selectedOpp, type]);
 
     const showGroupedView = type === OpportunityType.GOVERNMENT && govtPhase === 'ALL' && !search && !filters.saved;
 

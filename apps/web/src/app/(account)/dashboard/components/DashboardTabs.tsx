@@ -28,7 +28,7 @@ export const DashboardTabs = ({
                     <button
                         key={s.key}
                         onClick={() => setActiveTab(s.key)}
-                        className={`relative whitespace-nowrap px-3 py-2 text-[12px] font-semibold transition-colors ${activeTab === s.key ? 'text-foreground' : 'text-muted-foreground'} flex items-center gap-1.5`}
+                        className={`relative whitespace-nowrap px-3 py-2 text-[12px] font-semibold transition-all duration-150 ease-out active:scale-[0.97] ${activeTab === s.key ? 'text-foreground' : 'text-muted-foreground'} flex items-center gap-1.5`}
                     >
                         {s.title}
                         {s.key === 'latest' && latestBadgeCount > 0 && (
@@ -46,7 +46,7 @@ export const DashboardTabs = ({
                     <button
                         key={`dt-${s.key}`}
                         onClick={() => setActiveTab(s.key)}
-                        className={`relative pb-3 text-sm font-semibold transition-all ${activeTab === s.key ? 'text-primary' : 'text-muted-foreground hover:text-foreground'} flex items-center gap-1.5`}
+                        className={`relative pb-3 text-sm font-semibold transition-all duration-150 ease-out active:scale-[0.97] ${activeTab === s.key ? 'text-primary' : 'text-muted-foreground hover:text-foreground'} flex items-center gap-1.5`}
                     >
                         {s.title}
                         {s.key === 'latest' && latestBadgeCount > 0 && (

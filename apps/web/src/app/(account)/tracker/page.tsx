@@ -140,7 +140,7 @@ function TrackerNotesDialog({ jobId, companyName }: { jobId: string; companyName
                 <button
                     type="button"
                     className={cn(
-                        'p-1.5 rounded-lg border transition-colors flex items-center gap-1 text-xs font-medium',
+                        'p-1.5 rounded-lg border flex items-center gap-1 text-xs font-medium active:scale-[0.95] transition-all duration-150 ease-out',
                         hasNotes
                             ? 'bg-primary/10 border-primary/30 text-primary'
                             : 'bg-card border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/40'
@@ -151,7 +151,7 @@ function TrackerNotesDialog({ jobId, companyName }: { jobId: string; companyName
                     {hasNotes && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
                 </button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[425px] animate-in fade-in-0 zoom-in-95 duration-150">
                 <DialogHeader>
                     <DialogTitle className="text-base font-bold">Notes for {companyName}</DialogTitle>
                 </DialogHeader>
@@ -360,7 +360,7 @@ function TrackerPageContent() {
                             type="button"
                             onClick={() => setActiveTab(tab.key)}
                             className={cn(
-                                'px-3.5 py-2 text-xs font-semibold rounded-xl whitespace-nowrap border transition-all flex items-center gap-2 cursor-pointer',
+                                'px-3.5 py-2 text-xs font-semibold rounded-xl whitespace-nowrap border flex items-center gap-2 cursor-pointer active:scale-[0.97] transition-all duration-150 ease-out',
                                 isActive
                                     ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                                     : 'bg-card/40 border-border/50 text-muted-foreground hover:text-foreground hover:bg-card/80'
@@ -475,7 +475,7 @@ function TrackerPageContent() {
                                                     <button
                                                         type="button"
                                                         className={cn(
-                                                            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-bold transition-all cursor-pointer',
+                                                            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-bold cursor-pointer active:scale-[0.95] transition-all duration-150 ease-out',
                                                             currentConfig.badgeStyle
                                                         )}
                                                     >
@@ -483,7 +483,7 @@ function TrackerPageContent() {
                                                         <ChevronDownIcon className="w-3 h-3 opacity-70" />
                                                     </button>
                                                 </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="start" className="w-40 bg-card border border-border/80 shadow-xl z-50">
+                                                <DropdownMenuContent align="start" className="w-40 bg-card border border-border/80 shadow-xl z-50 animate-in fade-in-0 zoom-in-95 duration-150">
                                                     {Object.values(STATUS_CONFIGS).map((cfg) => (
                                                         <DropdownMenuItem
                                                             key={cfg.key}
@@ -514,7 +514,7 @@ function TrackerPageContent() {
                                                 <Link
                                                     href={`/${item.slug || item.id}`}
                                                     target="_blank"
-                                                    className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/40 transition-colors"
+                                                    className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/40 active:scale-[0.95] transition-all duration-150 ease-out"
                                                     title="View Opportunity"
                                                 >
                                                     <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
@@ -523,7 +523,7 @@ function TrackerPageContent() {
                                                 <button
                                                     type="button"
                                                     onClick={() => void handleRemove(item.id)}
-                                                    className="p-1.5 text-muted-foreground hover:text-rose-500 rounded-lg hover:bg-rose-500/10 transition-colors"
+                                                    className="p-1.5 text-muted-foreground hover:text-rose-500 rounded-lg hover:bg-rose-500/10 active:scale-[0.95] transition-all duration-150 ease-out"
                                                     title="Remove from tracker"
                                                 >
                                                     <TrashIcon className="w-3.5 h-3.5" />

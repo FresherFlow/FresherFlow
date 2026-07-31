@@ -389,7 +389,7 @@ export default function JobCard({
         return (
             <div
                 className={cn(
-                    "group relative bg-card border rounded-xl p-3.5 shadow-sm transition-all duration-200 ease-out hover:shadow-md hover:border-primary/40 hover:bg-card active:scale-[0.98] flex flex-col gap-2.5 overflow-hidden shrink-0 h-full",
+                    "group relative bg-card border rounded-xl p-3.5 shadow-sm transition-all duration-200 ease-out hover:shadow-md hover:border-primary/40 hover:bg-card flex flex-col gap-2.5 overflow-hidden shrink-0 h-full",
                     isSelected
                         ? "border-primary/70 ring-1 ring-primary/15 shadow-sm"
                         : "border-border/60",
@@ -520,7 +520,7 @@ export default function JobCard({
     return (
         <div
             className={cn(
-                "group relative bg-card border rounded-2xl p-4 md:p-5 shadow-sm transition-all duration-200 ease-out hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/35 active:scale-[0.98] flex flex-col gap-3 overflow-hidden shrink-0 h-full",
+                "group relative bg-card border rounded-2xl p-4 md:p-5 shadow-sm transition-all duration-200 ease-out hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/35 flex flex-col gap-3 overflow-hidden shrink-0 h-full",
                 isSelected
                     ? "border-primary/70 ring-2 ring-primary/10 shadow-md"
                     : "border-border/60",
@@ -628,7 +628,7 @@ export default function JobCard({
                                     setShowReportMenu(!showReportMenu);
                                 }}
                                 className={cn(
-                                    "relative z-20 h-9 w-9 rounded-lg transition-all border shrink-0 flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary outline-none",
+                                    "relative z-20 h-9 w-9 rounded-lg transition-all duration-150 ease-out active:scale-[0.93] border shrink-0 flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary outline-none",
                                     showReportMenu
                                         ? "bg-destructive/10 border-destructive/20 text-destructive shadow-sm"
                                         : "bg-background dark:bg-muted/35 border-transparent dark:border-border/60 text-muted-foreground hover:border-destructive/30 hover:text-destructive"
@@ -639,7 +639,7 @@ export default function JobCard({
                                 <FlagIcon className="w-4 h-4" aria-hidden="true" />
                             </button>
                             {showReportMenu && (
-                                <div className="absolute top-full right-0 mt-1 w-44 bg-card border border-border rounded-xl shadow-xl z-50 p-1.5 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                                <div className="absolute top-full right-0 mt-1 w-44 bg-card border border-border rounded-xl shadow-xl z-50 p-1.5 space-y-0.5 animate-in fade-in-0 zoom-in-95 duration-150">
                                     <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/40 mb-1">
                                         Report Listing
                                     </div>
@@ -652,7 +652,7 @@ export default function JobCard({
                                         <button
                                             key={item.id}
                                             onClick={(e) => handleReportClick(e, item.id)}
-                                            className="w-full text-left px-2 py-1.5 rounded-lg text-xs font-semibold text-foreground hover:bg-muted transition-colors flex items-center justify-between"
+                                            className="w-full text-left px-2 py-1.5 rounded-lg text-xs font-semibold text-foreground hover:bg-muted active:scale-[0.97] transition-all duration-150 flex items-center justify-between"
                                         >
                                             <span>{item.label}</span>
                                         </button>
@@ -662,7 +662,7 @@ export default function JobCard({
                         </div>
                         <button
                             onClick={handleShareClick}
-                            className="relative z-20 h-9 w-9 rounded-lg transition-all border border-transparent dark:border-border/60 bg-background dark:bg-muted/35 text-muted-foreground hover:border-primary/30 hover:text-primary flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none"
+                            className="relative z-20 h-9 w-9 rounded-lg transition-all duration-150 ease-out active:scale-[0.93] border border-transparent dark:border-border/60 bg-background dark:bg-muted/35 text-muted-foreground hover:border-primary/30 hover:text-primary flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none"
                             title="Share listing"
                             aria-label={`Share ${job.title}`}
                         >
@@ -671,7 +671,7 @@ export default function JobCard({
                         <button
                             onClick={handleSaveClick}
                             className={cn(
-                                "relative z-20 h-9 w-9 rounded-lg transition-all border shrink-0 flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none",
+                                "relative z-20 h-9 w-9 rounded-lg transition-all duration-150 ease-out active:scale-[0.93] border shrink-0 flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none",
                                 isJobSaved
                                     ? "bg-primary/10 border-primary/20 text-primary shadow-sm"
                                     : "bg-background dark:bg-muted/35 border-transparent dark:border-border/60 text-muted-foreground hover:border-primary/30"
@@ -790,7 +790,7 @@ export default function JobCard({
                     <button
                         type="button"
                         onClick={handleApplyClick}
-                        className="relative z-20 inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all cursor-pointer shadow-sm pointer-events-auto"
+                        className="relative z-20 inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.95] transition-all duration-150 ease-out cursor-pointer shadow-sm pointer-events-auto"
                         title="Apply to job"
                     >
                         <span>Apply Now</span>
