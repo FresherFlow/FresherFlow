@@ -4,7 +4,7 @@ import {
     extractExperience,
     extractWorkMode,
 } from '@fresherflow/parser';
-import { AtsJob } from '../ats/BaseAdapter.js';
+import { AtsJob } from '@fresherflow/plugins';
 import { EnrichedJobPayload } from './enricher-schema.js';
 import { validateAndCleanPayload } from './validator.js';
 

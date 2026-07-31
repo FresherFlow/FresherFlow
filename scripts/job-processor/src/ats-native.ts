@@ -12,6 +12,7 @@ import { Page } from 'playwright';
 
 import { parseGreenhouseHtml, filterRealLocations } from './parsers/greenhouse-parser.js';
 import { CANONICAL_CITIES_MAP } from './metadata.js';
+import { PLUGIN_REGISTRY } from '@fresherflow/plugins';
 
 /**
  * Normalizes raw ATS location strings to canonical city names.
@@ -591,6 +592,16 @@ export async function extractNativeAtsData(
     companySlug?: string
 ): Promise<NativeAtsData | null> {
     try {
+        // ── Check @fresherflow/plugins Registry first ─────────────────────────
+        const plugin = PLUGIN_REGISTRY[(source || '').toLowerCase()];
+        if (plugin && plugin.fetchJobDetails) {
+            const details = await plugin.fetchJobDetails({ applyLink: url, title: '', company: '', source: source || '', descriptionSource: 'API', sourceType: 'ATS' });
+            if (details && details.length > 100) {
+                console.log(`[Native] @fresherflow/plugins (${plugin.providerName}) fetchJobDetails success`);
+                return { ...EMPTY, text: details, title: '', html: details, locations: [] };
+            }
+        }
+
         const urlObj = new URL(url);
         const host = urlObj.hostname.toLowerCase();
 

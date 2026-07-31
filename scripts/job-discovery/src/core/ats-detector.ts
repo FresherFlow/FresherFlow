@@ -77,7 +77,36 @@ export function extractAtsBoard(urlStr: string): { provider: keyof AtsRegistry, 
             if (companyId) return { provider: 'successfactors', boardId: companyId };
         }
 
+        
+        // Darwinbox: company.darwinbox.com
+        if (host.endsWith('.darwinbox.com')) return { provider: 'darwinbox', boardId: host.split('.')[0] };
+        // Keka: company.keka.com
+        if (host.endsWith('.keka.com')) return { provider: 'keka', boardId: host.split('.')[0] };
+        // Freshteam: company.freshteam.com
+        if (host.endsWith('.freshteam.com')) return { provider: 'freshteam', boardId: host.split('.')[0] };
+        // Zoho Recruit
+        if (host === 'recruit.zoho.in' || host === 'recruit.zoho.com') return { provider: 'zohorecruit', boardId: new URL(urlStr).searchParams.get('department') ?? 'default' };
+        // GreytHR: company.greythr.com
+        if (host.endsWith('.greythr.com')) return { provider: 'greythr', boardId: host.split('.')[0] };
+        // PeopleStrong
+        if (host.endsWith('.peoplestrong.com')) return { provider: 'peoplestrong', boardId: host.split('.')[0] };
+        // HROne
+        if (host.endsWith('.hrone.cloud')) return { provider: 'hrone', boardId: host.split('.')[0] };
+        // TurboHire
+        if (host.endsWith('.turbohire.co')) return { provider: 'turbohire', boardId: host.split('.')[0] };
+        // Oorwin
+        if (host.endsWith('.oorwin.com')) return { provider: 'oorwin', boardId: host.split('.')[0] };
+        // Zimyo
+        if (host.endsWith('.zimyo.com')) return { provider: 'zimyo', boardId: host.split('.')[0] };
+        // Zwayam
+        if (host.endsWith('.zwayam.com')) return { provider: 'zwayam', boardId: host.split('.')[0] };
+        // ISmartRecruit
+        if (host.endsWith('.ismartrecruit.com')) return { provider: 'ismartrecruit', boardId: host.split('.')[0] };
+        // HREasily
+        if (host.endsWith('.hreasily.com')) return { provider: 'hreasily', boardId: host.split('.')[0] };
+        
         return null;
+
     } catch {
         return null;
     }

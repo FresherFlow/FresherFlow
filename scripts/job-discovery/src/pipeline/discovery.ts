@@ -52,8 +52,8 @@ export async function discoverAtsJobs(state: DiscoveryState) {
             console.log(`  [ATS] Skipping — invalid link: ${job.applyLink}`);
             continue;
         }
-        if (!(job as any).isTestBypass && job.location && !isLocationIndiaOrRemote(job.location)) {
-            console.log(`  [ATS] Skipping — foreign location "${job.location}": ${job.title}`);
+        if (!(job as any).isTestBypass && !isLocationIndiaOrRemote(job.location || '', job.title)) {
+            console.log(`  [ATS] Skipping — foreign location "${job.location || 'No Loc'}": ${job.title}`);
             atsRejected++;
             continue;
         }

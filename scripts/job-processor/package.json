@@ -12,6 +12,7 @@
     "@aws-sdk/client-s3": "^3.600.0",
     "@fresherflow/constants": "workspace:*",
     "@fresherflow/parser": "workspace:*",
+    "@fresherflow/plugins": "workspace:*",
     "@google/genai": "^2.10.0",
     "@supabase/supabase-js": "^2.110.7",
     "playwright": "^1.44.0",

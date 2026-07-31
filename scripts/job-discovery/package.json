@@ -9,6 +9,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@fresherflow/plugins": "workspace:*",
     "@fresherflow/types": "workspace:*",
     "@fresherflow/parser": "workspace:*",
     "@supabase/supabase-js": "^2.110.7",

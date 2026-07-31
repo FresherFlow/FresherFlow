@@ -1,14 +1,64 @@
-import { AtsJob, sleep } from './BaseAdapter.js';
-import { GreenhouseAdapter } from './GreenhouseAdapter.js';
-import { LeverAdapter } from './LeverAdapter.js';
-import { WorkdayAdapter } from './WorkdayAdapter.js';
-import { AshbyAdapter } from './AshbyAdapter.js';
-import { SmartRecruitersAdapter } from './SmartRecruitersAdapter.js';
-import { OracleAdapter } from './OracleAdapter.js';
-import { ICimsAdapter } from './ICimsAdapter.js';
-import { SuccessFactorsAdapter } from './SuccessFactorsAdapter.js';
-import { RecruiteeAdapter } from './RecruiteeAdapter.js';
-import { WorkableAdapter } from './WorkableAdapter.js';
+import {
+    AtsJob,
+    AtsAdapter,
+    sleep,
+    GreenhouseAdapter,
+    LeverAdapter,
+    WorkdayAdapter,
+    AshbyAdapter,
+    SmartRecruitersAdapter,
+    OracleAdapter,
+    ICimsAdapter,
+    SuccessFactorsAdapter,
+    RecruiteeAdapter,
+    WorkableAdapter,
+    DarwinboxAdapter,
+    KekaAdapter,
+    FreshteamAdapter,
+    ZohoRecruitAdapter,
+    GreythrAdapter,
+    HROneAdapter,
+    PeoplestrongAdapter,
+    TurboHireAdapter,
+    OorwinAdapter,
+    ZimyoAdapter,
+    ZwayamAdapter,
+    ISmartRecruitAdapter,
+    BambooHRAdapter,
+    BreezyHRAdapter,
+    PersonioAdapter,
+    JobviteAdapter,
+    TaleoAdapter,
+    PyjamaHRAdapter,
+    CeipalAdapter,
+    RecruitCrmAdapter,
+    RecruiterflowAdapter,
+    SnaphuntAdapter,
+    MercorAdapter,
+    EightfoldAdapter,
+    PhenomAdapter,
+    BullhornAdapter,
+    InternshalaAdapter,
+    HasjobAdapter,
+    IndeedAdapter,
+    LinkedinAdapter,
+    GlassdoorAdapter,
+    BaytAdapter,
+    WellfoundAdapter,
+    HackerNewsAdapter,
+    RemoteOkAdapter,
+    WeWorkRemotelyAdapter,
+
+    GoogleAdapter,
+    AmazonAdapter,
+    MicrosoftAdapter,
+    IbmAdapter,
+    AppleAdapter,
+    UberAdapter,
+    StripeAdapter,
+    MetaAdapter,
+} from '@fresherflow/plugins';
+
 import { isPotentialFresherJob, isLocationIndiaOrRemote } from '../filters/ats-filters.js';
 import { scoreJobDescription } from '../filters/scorer.js';
 import type { RunStats } from '../pipeline/state.js';
@@ -27,9 +77,53 @@ export interface AtsRegistry {
     successfactors?: Record<string, string>;
     recruitee?: Record<string, string>;
     workable?: Record<string, string>;
+    darwinbox?: Record<string, string>;
+    keka?: Record<string, string>;
+    freshteam?: Record<string, string>;
+    zohorecruit?: Record<string, string>;
+    greythr?: Record<string, string>;
+    peoplestrong?: Record<string, string>;
+    hrone?: Record<string, string>;
+    turbohire?: Record<string, string>;
+    oorwin?: Record<string, string>;
+    zimyo?: Record<string, string>;
+    zwayam?: Record<string, string>;
+    ismartrecruit?: Record<string, string>;
+    bamboohr?: Record<string, string>;
+    breezyhr?: Record<string, string>;
+    personio?: Record<string, string>;
+    jobvite?: Record<string, string>;
+    taleo?: Record<string, string>;
+    pyjamahr?: Record<string, string>;
+    ceipal?: Record<string, string>;
+    recruitcrm?: Record<string, string>;
+    recruiterflow?: Record<string, string>;
+    snaphunt?: Record<string, string>;
+    mercor?: Record<string, string>;
+    eightfold?: Record<string, string>;
+    phenom?: Record<string, string>;
+    bullhorn?: Record<string, string>;
+    internshala?: Record<string, string>;
+    hasjob?: Record<string, string>;
+    indeed?: Record<string, string>;
+    linkedin?: Record<string, string>;
+    glassdoor?: Record<string, string>;
+    bayt?: Record<string, string>;
+    wellfound?: Record<string, string>;
+    hackernews?: Record<string, string>;
+    remoteok?: Record<string, string>;
+    weworkremotely?: Record<string, string>;
+    google?: Record<string, string>;
+    amazon?: Record<string, string>;
+    microsoft?: Record<string, string>;
+    ibm?: Record<string, string>;
+    tiktok?: Record<string, string>;
+    apple?: Record<string, string>;
+    uber?: Record<string, string>;
+    stripe?: Record<string, string>;
+    meta?: Record<string, string>;
 }
 
-// ─── Simple concurrency limiter ───────────────────────────────────────────────
 export async function withConcurrency<T>(
     tasks: (() => Promise<T>)[],
     limit: number
@@ -48,10 +142,9 @@ export async function withConcurrency<T>(
     return results;
 }
 
-// ─── Per-provider runner ──────────────────────────────────────────────────────
 async function runProvider(
     name: string,
-    adapter: import('./BaseAdapter.js').AtsAdapter,
+    adapter: AtsAdapter,
     data: Record<string, string>,
     delay: number,
     companyConcurrency: number,
@@ -71,9 +164,9 @@ async function runProvider(
         const jobs = await adapter.fetchJobs(companyId, companyName);
         totalRaw += jobs.length;
 
-        const fresherJobs = jobs.filter(j =>
+        const fresherJobs = jobs.filter((j: AtsJob) =>
             isPotentialFresherJob(j.title) &&
-            (!j.location || isLocationIndiaOrRemote(j.location))
+            isLocationIndiaOrRemote(j.location || '', j.title)
         );
         totalPassedFilter += fresherJobs.length;
 
@@ -127,7 +220,6 @@ async function runProvider(
     return allJobs;
 }
 
-// ─── Main entry ───────────────────────────────────────────────────────────────
 export async function runAtsDiscovery(
     registry: AtsRegistry,
     stats: RunStats,
@@ -139,7 +231,7 @@ export async function runAtsDiscovery(
 
     const adapters: Array<{
         name: string;
-        adapter: import('./BaseAdapter.js').AtsAdapter;
+        adapter: AtsAdapter;
         data?: Record<string, string>;
         delay: number;
         companyConcurrency: number;
@@ -154,7 +246,51 @@ export async function runAtsDiscovery(
         { name: 'SuccessFactors',  adapter: new SuccessFactorsAdapter(),  data: registry.successfactors,                    delay: 1500, companyConcurrency: 4 },
         { name: 'Recruitee',       adapter: new RecruiteeAdapter(),       data: registry.recruitee,                         delay: 800,  companyConcurrency: 4 },
         { name: 'Workable',        adapter: new WorkableAdapter(),        data: registry.workable,                          delay: 1000, companyConcurrency: 3 },
+        { name: 'Darwinbox',       adapter: new DarwinboxAdapter(),       data: registry.darwinbox,                         delay: 800,  companyConcurrency: 4 },
+        { name: 'Keka',            adapter: new KekaAdapter(),            data: registry.keka,                              delay: 800,  companyConcurrency: 4 },
+        { name: 'Freshteam',       adapter: new FreshteamAdapter(),       data: registry.freshteam,                         delay: 800,  companyConcurrency: 4 },
+        { name: 'ZohoRecruit',     adapter: new ZohoRecruitAdapter(),     data: registry.zohorecruit,                       delay: 800,  companyConcurrency: 4 },
+        { name: 'GreytHR',         adapter: new GreythrAdapter(),         data: registry.greythr,                           delay: 800,  companyConcurrency: 4 },
+        { name: 'HROne',           adapter: new HROneAdapter(),           data: registry.hrone,                             delay: 800,  companyConcurrency: 4 },
+        { name: 'PeopleStrong',    adapter: new PeoplestrongAdapter(),    data: registry.peoplestrong,                      delay: 1000, companyConcurrency: 4 },
+        { name: 'TurboHire',       adapter: new TurboHireAdapter(),       data: registry.turbohire,                         delay: 800,  companyConcurrency: 4 },
+        { name: 'Oorwin',          adapter: new OorwinAdapter(),          data: registry.oorwin,                            delay: 800,  companyConcurrency: 4 },
+        { name: 'Zimyo',           adapter: new ZimyoAdapter(),           data: registry.zimyo,                             delay: 800,  companyConcurrency: 4 },
+        { name: 'Zwayam',          adapter: new ZwayamAdapter(),          data: registry.zwayam,                            delay: 800,  companyConcurrency: 4 },
+        { name: 'iSmartRecruit',   adapter: new ISmartRecruitAdapter(),   data: registry.ismartrecruit,                     delay: 800,  companyConcurrency: 4 },
+        { name: 'BambooHR',        adapter: new BambooHRAdapter(),        data: registry.bamboohr,                          delay: 800,  companyConcurrency: 4 },
+        { name: 'BreezyHR',        adapter: new BreezyHRAdapter(),        data: registry.breezyhr,                          delay: 800,  companyConcurrency: 4 },
+        { name: 'Personio',        adapter: new PersonioAdapter(),        data: registry.personio,                          delay: 800,  companyConcurrency: 4 },
+        { name: 'Jobvite',         adapter: new JobviteAdapter(),         data: registry.jobvite,                           delay: 800,  companyConcurrency: 4 },
+        { name: 'Taleo',           adapter: new TaleoAdapter(),           data: registry.taleo,                             delay: 1000, companyConcurrency: 4 },
+        { name: 'PyjamaHR',        adapter: new PyjamaHRAdapter(),        data: registry.pyjamahr,                          delay: 800,  companyConcurrency: 4 },
+        { name: 'Ceipal',          adapter: new CeipalAdapter(),          data: registry.ceipal,                            delay: 800,  companyConcurrency: 4 },
+        { name: 'RecruitCRM',      adapter: new RecruitCrmAdapter(),      data: registry.recruitcrm,                        delay: 800,  companyConcurrency: 4 },
+        { name: 'Recruiterflow',   adapter: new RecruiterflowAdapter(),   data: registry.recruiterflow,                     delay: 800,  companyConcurrency: 4 },
+        { name: 'Snaphunt',        adapter: new SnaphuntAdapter(),        data: registry.snaphunt,                          delay: 800,  companyConcurrency: 4 },
+        { name: 'Mercor',          adapter: new MercorAdapter(),          data: registry.mercor,                            delay: 800,  companyConcurrency: 4 },
+        { name: 'Eightfold',       adapter: new EightfoldAdapter(),       data: registry.eightfold,                         delay: 800,  companyConcurrency: 4 },
+        { name: 'Phenom',          adapter: new PhenomAdapter(),          data: registry.phenom,                            delay: 800,  companyConcurrency: 4 },
+        { name: 'Internshala',     adapter: new InternshalaAdapter(),     data: registry.internshala,                       delay: 800,  companyConcurrency: 4 },
+        { name: 'Hasjob',          adapter: new HasjobAdapter(),          data: registry.hasjob,                            delay: 800,  companyConcurrency: 4 },
+        { name: 'Indeed',          adapter: new IndeedAdapter(),          data: registry.indeed,                            delay: 800,  companyConcurrency: 4 },
+        { name: 'LinkedIn',        adapter: new LinkedinAdapter(),        data: registry.linkedin,                          delay: 800,  companyConcurrency: 4 },
+        { name: 'Glassdoor',       adapter: new GlassdoorAdapter(),       data: registry.glassdoor,                         delay: 800,  companyConcurrency: 4 },
+        { name: 'Bayt',            adapter: new BaytAdapter(),            data: registry.bayt,                              delay: 800,  companyConcurrency: 4 },
+        { name: 'Google',          adapter: new GoogleAdapter(),          data: registry.google,                            delay: 800,  companyConcurrency: 4 },
+        { name: 'Amazon',          adapter: new AmazonAdapter(),          data: registry.amazon,                            delay: 800,  companyConcurrency: 4 },
+        { name: 'Microsoft',       adapter: new MicrosoftAdapter(),       data: registry.microsoft,                         delay: 800,  companyConcurrency: 4 },
+        { name: 'IBM',             adapter: new IbmAdapter(),             data: registry.ibm,                               delay: 800,  companyConcurrency: 4 },        { name: 'Bullhorn',        adapter: new BullhornAdapter(),        data: registry.bullhorn,                          delay: 800,  companyConcurrency: 4 },
+        { name: 'Wellfound',       adapter: new WellfoundAdapter(),       data: registry.wellfound,                         delay: 800,  companyConcurrency: 4 },
+        { name: 'HackerNews',      adapter: new HackerNewsAdapter(),      data: registry.hackernews,                        delay: 800,  companyConcurrency: 4 },
+        { name: 'RemoteOk',        adapter: new RemoteOkAdapter(),        data: registry.remoteok,                          delay: 800,  companyConcurrency: 4 },
+        { name: 'WeWorkRemotely',  adapter: new WeWorkRemotelyAdapter(),  data: registry.weworkremotely,                    delay: 800,  companyConcurrency: 4 },
+        { name: 'Apple',           adapter: new AppleAdapter(),           data: registry.apple,                             delay: 800,  companyConcurrency: 4 },
+        { name: 'Uber',            adapter: new UberAdapter(),            data: registry.uber,                              delay: 800,  companyConcurrency: 4 },
+        { name: 'Stripe',          adapter: new StripeAdapter(),          data: registry.stripe,                            delay: 800,  companyConcurrency: 4 },
+        { name: 'Meta',            adapter: new MetaAdapter(),            data: registry.meta,                              delay: 800,  companyConcurrency: 4 },
     ];
+
 
     const providerFilter = process.env.ATS_PROVIDER?.toLowerCase().trim();
     const activeAdapters = adapters.filter(a => {

@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { setCdnMetadata } from '@fresherflow/parser';
 
+import { extractExperience, extractSalary } from '@fresherflow/plugins';
+
 import {
     jobSchema,
     normalizeRawJson,
@@ -176,38 +178,29 @@ async function run(): Promise<void> {
 
     const ai = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
 
+
+    const statePath = path.join(process.cwd(), 'processed_urls.json');
+    const processedUrls = await loadProcessedUrls(statePath);
+
     const args = process.argv.slice(2);
     const positionalArgs = args.filter((arg, idx) =>
         !arg.startsWith('--') &&
         !['--chunk', '--limit', '--batch-size', '--batch-delay'].includes(args[idx - 1])
     );
 
-    let jobsPath = positionalArgs[0] || path.join(process.cwd(), 'jobs.json');
-    if (!(await fileExists(jobsPath))) {
-        jobsPath = path.join(process.cwd(), '../job-discovery/discovered_jobs.json');
-    }
-    if (!(await fileExists(jobsPath))) {
-        console.log(`No discovered jobs file found at ${jobsPath}. Nothing to process.`);
-        process.exit(0);
-    }
-
-    const statePath = path.join(process.cwd(), 'processed_urls.json');
-    const processedUrls = await loadProcessedUrls(statePath);
-
-    console.log(`Reading jobs from: ${jobsPath}`);
-    const fileContent = await fs.readFile(jobsPath, 'utf8');
-    let parsedData: any;
-    try {
-        parsedData = JSON.parse(fileContent);
-    } catch (err) {
-        console.error('Failed to parse jobs.json:', (err as Error).message);
+    let jobs: any[] = [];
+    if (positionalArgs[0] && await fileExists(positionalArgs[0])) {
+        console.log(`Reading jobs from file: ${positionalArgs[0]}`);
+        const fileContent = await fs.readFile(positionalArgs[0], 'utf8');
+        const parsedData = JSON.parse(fileContent);
+        jobs = Array.isArray(parsedData) ? parsedData : (parsedData.jobs || []);
+        jobs = jobs.filter((j: any) => !processedUrls.has(j.applyLink));
+    } else {
+        console.error(`❌ No input file provided. Usage: pnpm start <discovered_jobs.json>`);
         process.exit(1);
     }
 
-    let jobs = Array.isArray(parsedData) ? parsedData : (parsedData.jobs || []);
-    const totalDiscovered = jobs.length;
-    jobs = jobs.filter((j: any) => !processedUrls.has(j.applyLink));
-    console.log(`Loaded ${totalDiscovered} jobs. ${totalDiscovered - jobs.length} already processed. ${jobs.length} remaining.`);
+    console.log(`Loaded ${jobs.length} unprocessed jobs remaining to process.`);
 
     // --limit / --chunk
     const limitIndex = process.argv.findIndex(a => a === '--limit' || a === '--chunk');
@@ -240,7 +233,7 @@ async function run(): Promise<void> {
         process.exit(0);
     }
 
-    const saveState = async (url: string) => {
+    const saveState = async (url: string, status: string = 'PROCESSED') => {
         processedUrls.add(url);
         await saveProcessedUrls(processedUrls, statePath);
     };
@@ -276,11 +269,11 @@ async function run(): Promise<void> {
                 let atsContent = { title: '', text: '', html: '' };
                 let nativeData = null;
 
-                if (job.atsText && job.atsText.length > 50) {
-                    // Pre-supplied text from discovery phase (Naukri/LinkedIn aggregator)
-                    atsContent.text = job.atsText;
+                if ((job.atsText && job.atsText.length > 50) || (job.description && job.description.length > 50)) {
+                    // Pre-supplied text from discovery phase
+                    atsContent.text = job.atsText || job.description;
                     atsContent.title = job.title;
-                    console.log(`Pre-supplied ATS text (${job.atsText.length} chars).`);
+                    console.log(`Pre-supplied ATS text (${atsContent.text.length} chars). Skipping Playwright.`);
                     
                     // Try to get structured API data (Greenhouse/Lever etc) without browser
                     const companySlug = GREENHOUSE_COMPANY_TO_SLUG.get((job.company || '').toLowerCase().trim())
@@ -327,6 +320,7 @@ async function run(): Promise<void> {
                 if (!textForLlm || textForLlm.length < 50) {
                     console.error('Insufficient job description text obtained.');
                     failureList.push({ url: job.applyLink, reason: 'Insufficient page text extracted' });
+                    await saveState(job.applyLink, 'FAILED');
                     continue;
                 }
 
@@ -345,26 +339,37 @@ async function run(): Promise<void> {
                     employmentType: nativeData?.employmentType,
                 });
 
-                // 2b. Build job from native structured data + rules
+                const dbLocations = job.location ? [job.location] : (job.locationCity ? [job.locationCity] : []);
+                const dbSalary = job.salaryMin ? `${job.salaryCurrency || 'INR'} ${job.salaryMin}${job.salaryMax ? '-' + job.salaryMax : ''} / ${job.salaryInterval || 'year'}` : '';
+                const dbWorkMode = job.workFromHomeType ? (job.workFromHomeType.toUpperCase().includes('REMOTE') ? 'REMOTE' : job.workFromHomeType.toUpperCase().includes('HYBRID') ? 'HYBRID' : 'ONSITE') : (job.isRemote ? 'REMOTE' : null);
+
+                const extractedExp = extractExperience(textForLlm);
+                const extractedSal = extractSalary(textForLlm);
+                const pluginSalary = extractedSal ? `${extractedSal.currency || 'INR'} ${extractedSal.minSalary || ''}${extractedSal.maxSalary ? '-' + extractedSal.maxSalary : ''} / ${extractedSal.interval || 'year'}` : '';
+
+                // 2b. Build job from native structured data + local pipeline.db enriched data + rules
                 const nativeJob: Record<string, unknown> = {
                     type: rules.type ?? 'JOB',
                     title: nativeData?.title || atsContent.title || job.title || '',
                     company: nativeData?.company || job.company || '',
                     companyId: job.companyId || job.company_id || null,
+                    companyWebsite: job.companyUrl || job.companyWebsite || '',
+                    companyLogoUrl: job.companyLogo || job.companyLogoUrl || '',
                     applyLink: job.applyLink,
-                    locations: nativeData?.locations ?? [],
-                    requiredSkills: nativeData?.nativeSkills ?? [],
-                    workMode: nativeData?.workplaceType ?? rules.workMode ?? null,
-                    experienceMin: nativeData?.experienceMin ?? rules.experienceMin ?? 0,
-                    experienceMax: nativeData?.experienceMax ?? rules.experienceMax ?? 0,
-                    employmentType: rules.employmentType ?? nativeData?.employmentType ?? '',
-                    salaryRange: nativeData?.salaryRange ?? '',
-                    allowedPassoutYears: rules.inferredBatches ?? [],
-                    allowedDegrees: nativeData?.allowedDegrees ?? [],
+                    locations: (nativeData?.locations && nativeData.locations.length > 0) ? nativeData.locations : dbLocations,
+                    requiredSkills: (nativeData?.nativeSkills && nativeData.nativeSkills.length > 0) ? nativeData.nativeSkills : (Array.isArray(job.skills) ? job.skills : []),
+                    workMode: nativeData?.workplaceType ?? dbWorkMode ?? rules.workMode ?? null,
+                    experienceMin: nativeData?.experienceMin ?? (typeof job.experienceYears === 'number' ? job.experienceYears : (rules.experienceMin ?? extractedExp?.minExperienceYears ?? 0)),
+                    experienceMax: nativeData?.experienceMax ?? (typeof job.experienceYears === 'number' ? job.experienceYears + 2 : (rules.experienceMax ?? extractedExp?.maxExperienceYears ?? 0)),
+                    employmentType: rules.employmentType || nativeData?.employmentType || job.employmentType || '',
+                    salaryRange: nativeData?.salaryRange || dbSalary || pluginSalary || '',
+                    allowedPassoutYears: rules.inferredBatches ?? (job.batchYear ? [parseInt(job.batchYear, 10)].filter(n => !isNaN(n)) : []),
+                    allowedDegrees: nativeData?.allowedDegrees ?? (job.degree ? [job.degree] : []),
                     allowedCourses: nativeData?.allowedCourses ?? [],
                     incentives: nativeData?.incentives ?? '',
                     selectionProcess: nativeData?.selectionProcess ?? '',
-                    description: stripBoilerplate(nativeData?.text || atsContent.text || textForLlm, job.company),
+                    jobFunction: job.jobFunction || job.department || null,
+                    description: stripBoilerplate(nativeData?.text || atsContent.text || job.atsText || textForLlm, job.company),
                 };
 
                 // 2c. CDN matcher: fill remaining fields using CDN JSON data
@@ -469,19 +474,21 @@ async function run(): Promise<void> {
                     const apiSuccess = await saveJobToSupabase(extracted, job.aggregatorUrl || job.applyLink, job.applyLink);
                     if (apiSuccess) {
                         successList.push({ title: extracted.title, company: extracted.company, url: job.applyLink });
+                        await saveState(job.applyLink, 'PROCESSED');
                     } else {
                         failureList.push({ url: job.applyLink, reason: 'Supabase insert rejected' });
+                        await saveState(job.applyLink, 'REJECTED');
                     }
                 } else {
                     console.log('Dry-run: skipping API upload.');
                     successList.push({ title: extracted.title, company: extracted.company, url: job.applyLink });
+                    await saveState(job.applyLink, 'PROCESSED');
                 }
 
             } catch (jobErr) {
                 console.error(`[CRITICAL] Error processing ${job.applyLink}:`, jobErr);
                 failureList.push({ url: job.applyLink, reason: `Crash: ${(jobErr as Error).message}` });
-            } finally {
-                await saveState(job.applyLink);
+                await saveState(job.applyLink, 'FAILED');
             }
 
             // Cooldown between batches
@@ -525,6 +532,7 @@ async function run(): Promise<void> {
         JSON.stringify(allExtracted, null, 2),
         'utf8'
     );
+
 }
 
 run().catch(console.error);

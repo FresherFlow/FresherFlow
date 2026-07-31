@@ -43,6 +43,19 @@ import { State, City, Country } from 'country-state-city';
 // Pre-compute sets of valid Indian cities and states (lowercase for case-insensitive matching)
 const INDIAN_STATES = new Set((State.getStatesOfCountry('IN') || []).map(s => s.name.toLowerCase()));
 const INDIAN_CITIES = new Set((City.getCitiesOfCountry('IN') || []).map(c => c.name.toLowerCase()));
+
+// Add common aliases, variations, and tech hubs that country-state-city misses or spells differently
+const EXTRA_INDIAN_CITIES = [
+    'bangalore', 'banglore', 'bengaluru', 'mumbai', 'bombay', 'delhi', 'new delhi', 'ncr', 'delhi ncr',
+    'noida', 'gurgaon', 'gurugram', 'hyderabad', 'pune', 'chennai', 'madras', 'kolkata', 'calcutta',
+    'ahmedabad', 'ahemdabad', 'jaipur', 'kochi', 'cochin', 'mysore', 'mysuru', 'chandigarh', 'tricity',
+    'trivandrum', 'thiruvananthapuram', 'vadodara', 'indore', 'coimbatore', 'visakhapatnam', 'vizag',
+    'nagpur', 'lucknow', 'surat', 'bhubaneswar', 'goa', 'kanpur', 'bhopal', 'nashik', 'raipur', 'madurai', 'guwahati'
+];
+for (const city of EXTRA_INDIAN_CITIES) {
+    INDIAN_CITIES.add(city);
+}
+
 const FOREIGN_COUNTRIES = (Country.getAllCountries() || [])
     .map(c => c.name.toLowerCase())
     .filter(c => c !== 'india');
@@ -53,17 +66,20 @@ FOREIGN_COUNTRIES.push('us', 'usa', 'uk', 'dubai', 'uae', 'emea', 'americas', 'a
 const foreignCountriesPattern = FOREIGN_COUNTRIES.map(c => c.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1")).join('|');
 const foreignMegaRegex = new RegExp(`\\b(${foreignCountriesPattern})\\b`, 'i');
 
-export function isLocationIndiaOrRemote(location: string): boolean {
-    // Empty/missing location = Assumed India/Remote for ATS discovery.
-    // Companies like Binance, Capco etc. have hundreds of jobs with no location field in the list API.
-    // We pass them through to the detail API or Playwright verification phase.
+// Major foreign cities and states/regions that might bypass country checks
+const foreignCitiesRegex = /\b(london|berlin|paris|amsterdam|san francisco|seattle|boston|chicago|toronto|sydney|melbourne|dublin|kuala lumpur|taiwan|taipei|manila|bangkok|seoul|cape town|stockholm|tokyo|singapore|hong kong|beijing|shanghai|jakarta|osaka|madrid|rome|vienna|lisbon|helsinki|oslo|california|texas|new york|florida|sf|nyc|sao paulo|saopaulo|buenos aires|johannesburg|nairobi|cairo|vancouver|montreal|calgary|zurich|geneva|brussels|munich|nashville|nashvile|dallas|austin|atlanta|charlotte|denver|phoenix|miami|orlando|detroit|philadelphia|minneapolis|portland|washington)\b/i;
+
+export function isLocationIndiaOrRemote(location: string, title?: string): boolean {
+    const titleLower = (title || '').toLowerCase();
+    if (titleLower && (foreignMegaRegex.test(titleLower) || foreignCitiesRegex.test(titleLower))) {
+        if (!titleLower.includes('india') && !/\b(in|ind)\b/i.test(titleLower) && !titleLower.includes('remote india')) {
+            return false;
+        }
+    }
+
+    // Empty/missing location = Assumed India/Remote for ATS discovery (if title didn't advertise a foreign location).
     if (!location || location.trim() === '') return true;
     const loc = location.toLowerCase();
-    
-    // Explicitly reject common non-India locations and terms using word boundaries
-    // This prevents "us" from matching "campus" while catching "Remote - US"
-    // Also includes major foreign cities that might bypass country checks
-    const foreignCitiesRegex = /\b(london|berlin|paris|amsterdam|san francisco|seattle|boston|chicago|toronto|sydney|melbourne|dublin|kuala lumpur|taiwan|taipei|manila|bangkok|seoul)\b/i;
 
     if (foreignMegaRegex.test(loc) || foreignCitiesRegex.test(loc)) {
         if (!loc.includes('india') && !/\bin\b/i.test(loc)) {
@@ -94,6 +110,7 @@ export function isLocationIndiaOrRemote(location: string): boolean {
     // Fallback basic keywords
     const BASIC_KEYWORDS = [
         /\bindia\b/i, /\bremote\b/i, /\bwork from home\b/i, /\bwfh\b/i, /\banywhere\b/i, /\bhome based\b/i, /\bhome-based\b/i,
+        /\bvirtual\b/i, /\bonline\b/i, /\bhybrid\b/i, /\btelecommute\b/i, /\bdistributed\b/i, /\bpan india\b/i, /\bflexible\b/i,
     ];
     for (const regex of BASIC_KEYWORDS) {
         if (regex.test(loc)) {
@@ -107,5 +124,48 @@ export function isLocationIndiaOrRemote(location: string): boolean {
     }
 
     // If no Indian city/state or basic keyword matched, it's a foreign location
+    return false;
+}
+
+/**
+ * Strictly verify that a job title or department belongs to technology / engineering / data / product / IT.
+ */
+export function isTechJob(title: string, department?: string): boolean {
+    const textLower = `${title} ${department || ''}`.toLowerCase();
+
+    const NON_TECH_KEYWORDS = [
+        'sales', 'account executive', 'business development', 'buyer', 'merchandiser', 'procurement',
+        'recruiter', 'recruiting', 'talent acquisition', 'human resources', 'hr generalist', 'hr specialist',
+        'accountant', 'accounting', 'tax', 'auditor', 'bookkeeper', 'counsel', 'attorney', 'paralegal', 'legal',
+        'facilities', 'facility', 'security guard', 'receptionist', 'executive assistant', 'administrative assistant',
+        'driver', 'warehouse', 'clerk', 'customer service', 'customer support', 'content associate',
+        'social media', 'copywriter', 'brand manager', 'pr manager', 'payroll', 'claims', 'underwriter',
+        'risk management', 'editorial', 'medical', 'nursing', 'clinical', 'supply chain', 'logistics'
+    ];
+
+    for (const kw of NON_TECH_KEYWORDS) {
+        const regex = new RegExp(`\\b${kw}\\b`, 'i');
+        if (regex.test(textLower)) {
+            return false;
+        }
+    }
+
+    const TECH_KEYWORDS = [
+        'software', 'engineer', 'engineering', 'developer', 'programmer', 'data', 'analytics', 'analyst',
+        'science', 'scientist', 'machine learning', 'ai', 'ml', 'qa', 'test', 'testing', 'sdet', 'devops',
+        'cloud', 'infrastructure', 'security', 'cyber', 'network', 'systems', 'it', 'information technology',
+        'product', 'designer', 'ui', 'ux', 'frontend', 'backend', 'fullstack', 'full-stack', 'mobile',
+        'ios', 'android', 'web', 'embedded', 'firmware', 'hardware', 'technical', 'tech', 'platform',
+        'automation', 'site reliability', 'sre', 'database', 'dba', 'computer', 'application', 'apps',
+        'intern', 'internship', 'trainee', 'apprentice', 'graduate'
+    ];
+
+    for (const kw of TECH_KEYWORDS) {
+        const regex = new RegExp(`\\b${kw}\\b`, 'i');
+        if (regex.test(textLower)) {
+            return true;
+        }
+    }
+
     return false;
 }

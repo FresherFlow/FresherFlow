@@ -191,3 +191,5 @@ export const PLUGIN_REGISTRY: Record<string, AtsAdapter> = {
   'meta': new MetaAdapter(),
   'nvidia': new NvidiaAdapter()
 };
+
+export * from './common/experience.js';

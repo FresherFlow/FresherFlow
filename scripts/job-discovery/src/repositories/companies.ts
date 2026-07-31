@@ -14,6 +14,22 @@ function toAtsProviderEnum(source: string): string {
     if (s.includes('SUCCESSFACTORS')) return 'SUCCESSFACTORS';
     if (s.includes('RECRUITEE')) return 'RECRUITEE';
     if (s.includes('WORKABLE')) return 'WORKABLE';
+    if (s.includes('DARWINBOX')) return 'DARWINBOX';
+    if (s.includes('KEKA')) return 'KEKA';
+    if (s.includes('FRESHTEAM')) return 'FRESHTEAM';
+    if (s.includes('ZOHORECRUIT')) return 'ZOHORECRUIT';
+    if (s.includes('GREYTHR')) return 'GREYTHR';
+    if (s.includes('PEOPLESTRONG')) return 'PEOPLESTRONG';
+    if (s.includes('HRONE')) return 'HRONE';
+    if (s.includes('TURBOHIRE')) return 'TURBOHIRE';
+    if (s.includes('OORWIN')) return 'OORWIN';
+    if (s.includes('ZIMYO')) return 'ZIMYO';
+    if (s.includes('ZWAYAM')) return 'ZWAYAM';
+    if (s.includes('ISMARTRECRUIT')) return 'ISMARTRECRUIT';
+    if (s.includes('HREASILY')) return 'HREASILY';
+    if (s.includes('BAMBOOHR')) return 'BAMBOOHR';
+    if (s.includes('BREEZYHR')) return 'BREEZYHR';
+
     return 'CUSTOM';
 }
 

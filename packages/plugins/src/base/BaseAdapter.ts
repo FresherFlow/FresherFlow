@@ -10,31 +10,57 @@ export interface ParsedLocation {
 }
 
 export interface AtsJob {
-    id?: string;                   // Stable provider ID for deduplication
+    id?: string;
     title: string;
     applyLink: string;
+    applyUrl?: string;
+    jobUrlDirect?: string;
     company: string;
     companyUrl?: string;
+    companyUrlDirect?: string;
     companyIndustry?: string;
-    location?: string;             // Flat string for downstream filter (backward compat)
+    companyDescription?: string;
+    companyLogo?: string;
+    companyNumEmployees?: string;
+    companyRevenue?: string;
+    companyRating?: number;
+    companyReviewsCount?: number;
+    companyAddresses?: string;
+    bannerPhotoUrl?: string;
+    location?: string;
     parsedLocation?: ParsedLocation;
     workFromHomeType?: string;
+    isRemote?: boolean;
     description?: string;
     descriptionSource: 'API' | 'HTML' | 'NONE';
-    postedAt?: string;             // ISO date string
+    postedAt?: string;
+    publishedAt?: string | null;
     department?: string;
+    team?: string;
     employmentType?: string;
+    jobType?: string[];
+    listingType?: string;
+    jobLevel?: string;
+    jobFunction?: string;
     batchYear?: string;
     degree?: string;
     experienceLevel?: string;
+    experienceRange?: string;
     experienceYears?: number;
+    vacancyCount?: number;
     skills?: string[];
     emails?: string[];
     compensation?: { interval: string; minAmount?: number; maxAmount?: number; currency?: string; };
+    salarySource?: string;
     rawPayload?: unknown;
-    source: string;                // e.g. 'ATS_GREENHOUSE', 'ATS_LEVER'
+    source: string;
     sourceType: 'ATS' | 'AGGREGATOR';
+    site?: string;
+    atsId?: string;
+    atsType?: string;
     boardToken?: string;
+    liveness?: { state: 'active' | 'expired' | 'uncertain'; checkedAt?: string; } | null;
+    legitimacy?: { state: 'verified' | 'likely' | 'uncertain'; reasons?: string[]; } | null;
 }
 
 export interface AtsAdapter {
@@ -303,19 +329,38 @@ export function toAtsJob(
     }
 
     return {
-        id: job.id || undefined,
+        id: job.id || job.atsId || undefined,
         title: job.title || 'Unknown Title',
-        applyLink: job.jobUrl || job.jobUrlDirect || '',
+        applyLink: job.jobUrl || job.applyLink || '',
+        applyUrl: job.applyUrl || undefined,
+        jobUrlDirect: job.jobUrlDirect || undefined,
         company: companyName || job.companyName || '',
         companyUrl: job.companyUrl || undefined,
+        companyUrlDirect: job.companyUrlDirect || undefined,
         companyIndustry: job.companyIndustry || undefined,
+        companyDescription: job.companyDescription || undefined,
+        companyLogo: job.companyLogo || undefined,
+        companyNumEmployees: job.companyNumEmployees || undefined,
+        companyRevenue: job.companyRevenue || undefined,
+        companyRating: job.companyRating || undefined,
+        companyReviewsCount: job.companyReviewsCount || undefined,
+        companyAddresses: job.companyAddresses || undefined,
+        bannerPhotoUrl: job.bannerPhotoUrl || undefined,
         location: locStr || undefined,
         workFromHomeType: job.workFromHomeType || (job.isRemote ? 'Remote' : undefined),
+        isRemote: job.isRemote ?? undefined,
         description: job.description || undefined,
         descriptionSource: job.description ? 'API' : 'NONE',
         postedAt,
         department: job.department || undefined,
+        team: job.team || undefined,
         employmentType: job.employmentType || undefined,
+        jobType: job.jobType || undefined,
+        listingType: job.listingType || undefined,
+        jobLevel: job.jobLevel || undefined,
+        jobFunction: job.jobFunction || undefined,
+        experienceRange: job.experienceRange || undefined,
+        vacancyCount: job.vacancyCount || undefined,
         skills: job.skills || undefined,
         emails: job.emails || undefined,
         compensation: job.compensation ? {
@@ -324,7 +369,14 @@ export function toAtsJob(
             maxAmount: job.compensation.maxAmount || undefined,
             currency: job.compensation.currency || 'USD'
         } : undefined,
+        salarySource: job.salarySource || undefined,
         source: 'ATS_' + providerName.toUpperCase().replace(/[^A-Z0-9]/g, '_'),
-        sourceType
+        sourceType,
+        site: job.site || providerName.toLowerCase(),
+        atsId: job.atsId || undefined,
+        atsType: job.atsType || undefined,
+        boardToken: job.boardToken || undefined,
+        liveness: job.liveness || undefined,
+        legitimacy: job.legitimacy || undefined,
     };
 }
