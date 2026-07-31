@@ -1,0 +1,79 @@
+
+import {
+  IScraper, ScraperInputDto, JobResponseDto, JobPostDto, Site, LocationDto,
+} from '../../../base/models/index.js';
+import { createHttpClient, stripHtmlTags } from '../../../common/index.js';
+
+/** Stripe uses Greenhouse for their careers page */
+const API_URL = 'https://api.greenhouse.io/v1/boards/stripe/jobs';
+
+export class StripeService implements IScraper {
+  
+
+  async scrape(input: ScraperInputDto): Promise<JobResponseDto> {
+    const jobs: JobPostDto[] = [];
+    const resultsWanted = input.resultsWanted ?? 50;
+
+    try {
+      const client = createHttpClient({
+        proxies: input.proxies,
+        timeout: input.requestTimeout ?? 30,
+      });
+
+      const url = `${API_URL}?content=true`;
+      console.log(`Stripe: fetching ${url}`);
+
+      const { data } = await client.get<any>(url);
+      const listings = data?.jobs ?? [];
+
+      for (const listing of listings) {
+        if (jobs.length >= resultsWanted) break;
+
+        const title = listing.title ?? '';
+        if (!title) continue;
+
+        // Filter by search term if provided
+        if (input.searchTerm) {
+          const term = input.searchTerm.toLowerCase();
+          const titleMatch = title.toLowerCase().includes(term);
+          const deptMatch = (listing.departments?.[0]?.name ?? '').toLowerCase().includes(term);
+          if (!titleMatch && !deptMatch) continue;
+        }
+
+        const jobId = listing.id ?? '';
+        const id = `stripe-${jobId}`;
+
+        const locationStr = listing.location?.name ?? null;
+        const location = locationStr
+          ? new LocationDto({ city: locationStr })
+          : null;
+
+        // Filter by location if provided
+        if (input.location && locationStr) {
+          if (!locationStr.toLowerCase().includes(input.location.toLowerCase())) continue;
+        }
+
+        jobs.push(
+          new JobPostDto({
+            id,
+            site: Site.STRIPE,
+            title,
+            companyName: 'Stripe',
+            jobUrl: listing.absolute_url ?? `https://stripe.com/jobs/listing/${listing.id}`,
+            location,
+            description: listing.content ? stripHtmlTags(listing.content) : null,
+            datePosted: listing.updated_at ?? null,
+            isRemote: locationStr?.toLowerCase().includes('remote') ?? false,
+            department: listing.departments?.[0]?.name ?? null,
+          }),
+        );
+      }
+
+      console.log(`Stripe: scraped ${jobs.length} jobs`);
+    } catch (err: any) {
+      console.error(`Stripe scrape failed: ${err.message}`);
+    }
+
+    return { jobs };
+  }
+}

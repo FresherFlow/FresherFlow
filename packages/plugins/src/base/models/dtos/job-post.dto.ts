@@ -1,0 +1,77 @@
+import { JobType } from '../enums/job-type.enum';
+import { LocationDto } from './location.dto';
+import { CompensationDto } from './compensation.dto';
+
+export class JobPostDto {
+  id?: string | null;
+  title!: string;
+  companyName?: string | null;
+  jobUrl!: string;
+  jobUrlDirect?: string | null;
+  location?: LocationDto | null;
+
+  description?: string | null;
+  companyUrl?: string | null;
+  companyUrlDirect?: string | null;
+
+  jobType?: JobType[] | null;
+  compensation?: CompensationDto | null;
+  datePosted?: Date | string | null;
+  emails?: string[] | null;
+  isRemote?: boolean | null;
+  listingType?: string | null;
+
+  // LinkedIn specific
+  jobLevel?: string | null;
+
+  // LinkedIn and Indeed specific
+  companyIndustry?: string | null;
+
+  // Indeed specific
+  companyAddresses?: string | null;
+  companyNumEmployees?: string | null;
+  companyRevenue?: string | null;
+  companyDescription?: string | null;
+  companyLogo?: string | null;
+  bannerPhotoUrl?: string | null;
+
+  // LinkedIn only
+  jobFunction?: string | null;
+
+  // originally for Naukri; may be be used by others
+  skills?: string[] | null;
+  experienceRange?: string | null;
+  companyRating?: number | null;
+  companyReviewsCount?: number | null;
+  vacancyCount?: number | null;
+  workFromHomeType?: string | null;  // e.g. for Hybrid
+
+  // Salary enrichment metadata (set during post-processing)
+  salarySource?: string | null;
+
+  // ATS-specific metadata
+  department?: string | null;
+  team?: string | null;
+  atsId?: string | null;
+  atsType?: string | null;
+  employmentType?: string | null;
+  applyUrl?: string | null;
+
+  // Site identifier (filled in during aggregation)
+  site?: string | null;
+
+  // Corpus signals (Spec 740) — opt-in via ?liveness=true / ?legitimacy=true; absent by default.
+  // Shapes mirror what the Hust frontend already consumes (forward-compatible).
+  liveness?: {
+    state: 'active' | 'expired' | 'uncertain';
+    checkedAt?: string;
+  } | null;
+  legitimacy?: {
+    state: 'verified' | 'likely' | 'uncertain';
+    reasons?: string[];
+  } | null;
+
+  constructor(partial?: Partial<JobPostDto>) {
+    Object.assign(this, partial);
+  }
+}
