@@ -180,38 +180,76 @@ Standard scale in use:
 
 ---
 
-## Common Components (use before building)
+## Common Components & UI Catalog
 
-Check `src/ui/` for existing components before building a new one.
+Always inspect `src/ui/` for existing components before building custom UI element wrappers.
 
-| Component | Import | Use |
-|---|---|---|
-| `JobCard` | `src/features/opportunities/components/JobCard.tsx` | Job listing card — full featured, use as-is |
-| `CompanyLogo` | `src/ui/CompanyLogo.tsx` | Logo with CDN fallback. Always use for company logos |
-| `Badge` | `src/ui/Badge.tsx` | Tag/status pills |
-| `Button` | `src/ui/Button.tsx` | All button variants (primary, secondary, ghost, destructive) |
-| `Card` | `src/ui/Card.tsx` | Generic card wrapper with consistent border and padding |
-| `Skeleton` | `src/ui/Skeleton.tsx` | Loading skeletons — variants for card, text, avatar |
-| `EmptyState` | `src/ui/EmptyState.tsx` | Empty state with icon and message |
-| `ErrorMessage` | `src/ui/ErrorMessage.tsx` | Error display with optional retry callback |
-| `PageTagLinks` | `src/ui/PageTagLinks.tsx` | Linked tag cloud (roles, skills, locations) |
-| `MatchScoreGauge` | `src/ui/MatchScoreGauge.tsx` | Visual match score display |
-| `cn()` | `src/ui/cn.ts` | Tailwind class merging — always use for conditional classes |
+### UI Primitive Catalog (`src/ui/`)
 
-### Usage examples
+| Component | Import Path | Underlying Library | Use Case |
+|---|---|---|---|
+| `Button` | `src/ui/Button.tsx` | Custom / cva | Buttons with `default`, `secondary`, `outline`, `ghost`, `destructive`, `link` variants |
+| `Card` | `src/ui/Card.tsx` | Custom | Styled card container with `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter` |
+| `Badge` | `src/ui/Badge.tsx` | Custom / cva | Status tags and pills (`default`, `secondary`, `destructive`, `outline`, `success`, `warning`) |
+| `Dialog` | `src/ui/Dialog.tsx` | `@radix-ui/react-dialog` | Modal dialogs with accessible backdrop blur, title, description, close button |
+| `Sheet` | `src/ui/Sheet.tsx` | `@radix-ui/react-dialog` | Slide-over drawer panels (`top`, `bottom`, `left`, `right`) for mobile nav and side detail views |
+| `DropdownMenu` | `src/ui/DropdownMenu.tsx` | `@radix-ui/react-dropdown-menu` | Action dropdowns, user menus, context options with keyboard accessibility |
+| `Popover` | `src/ui/Popover.tsx` | `@radix-ui/react-popover` | Lightweight floating cards, notification bell popups, contextual filters |
+| `Tabs` | `src/ui/Tabs.tsx` | `@radix-ui/react-tabs` | Segmented tab views with `TabsList`, `TabsTrigger`, `TabsContent` |
+| `Tooltip` | `src/ui/Tooltip.tsx` | `@radix-ui/react-tooltip` | Hover tooltips for icon buttons, badges, and truncated text |
+| `Command` | `src/ui/Command.tsx` | `cmdk` | Quick search command palette, comboboxes, and filter selectors |
+| `Input` | `src/ui/Input.tsx` | Custom | Standard form input with focus ring and semantic border tokens |
+| `Select` | `src/ui/Select.tsx` | Custom | Native/styled dropdown select input |
+| `Skeleton` | `src/ui/Skeleton.tsx` | Custom | Skeleton loading states for cards, text rows, avatars, list items |
+| `EmptyState` | `src/ui/EmptyState.tsx` | Custom | Contextual empty state with icon, headline, description, and action button |
+| `ErrorMessage` | `src/ui/ErrorMessage.tsx` | Custom | Error banner with retry callback |
+| `CompanyLogo` | `src/ui/CompanyLogo.tsx` | Custom | Company logo loader with Cloudflare R2 / Google favicon fallback |
+| `JobCard` | `src/ui/` / `src/features/` | Custom | Standard opportunity listing card with match score and fast actions |
+| `MatchScoreGauge` | `src/ui/MatchScoreGauge.tsx` | Custom | Visual match percentage ring/gauge |
+| `PageTagLinks` | `src/ui/PageTagLinks.tsx` | Custom | Linked skill, role, or location tag cloud |
+| `AppPromoBanner` | `src/ui/AppPromoBanner.tsx` | Custom | Mobile app download promotion banner |
+| `Breadcrumb` | `src/ui/Breadcrumb.tsx` | Custom | Navigation breadcrumb trails |
+| `ScrollToTop` | `src/ui/ScrollToTop.tsx` | Custom | Floating back-to-top button |
+| `ThemeToggle` | `src/ui/ThemeToggle.tsx` | Custom | Dark/light theme switcher |
+| `Toasts` | `sonner` / `react-hot-toast` | `sonner` | Toast notifications (notifications, success alerts, copy feedback) |
+
+### Icon Libraries
+- **Lucide Icons**: `lucide-react` (Primary line icon set for new UI components)
+- **Heroicons**: `@heroicons/react` (Legacy icon set)
+
+---
+
+## Animation & Motion System
+
+Motion in FresherFlow must be **fast**, **restrained**, and **purposeful**. Follow Emil Kowalski's UI principles and the gate rules in `find-animation-opportunities`.
+
+### Budget & Timing Guidelines
+
+| Surface | Duration | Easing Curve | CSS Utility / Config |
+|---|---|---|---|
+| Press feedback (`:active`) | 100–160ms | `ease-out` | `active:scale-[0.97] transition-all duration-150 ease-out` |
+| Tooltips & Popovers | 125–200ms | `cubic-bezier(0.16, 1, 0.3, 1)` | `animate-in fade-in-0 zoom-in-95 duration-150` |
+| Dropdowns & Menus | 150–200ms | `cubic-bezier(0.16, 1, 0.3, 1)` | `animate-in fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-2` |
+| Slide-over Sheets / Drawers | 250–350ms | `cubic-bezier(0.32, 0.72, 0, 1)` | `transition-transform duration-300 ease-out` |
+| Modals & Dialogs | 200–300ms | `cubic-bezier(0.16, 1, 0.3, 1)` | `animate-in fade-in-0 zoom-in-95 duration-200` |
+| Staggered list entrances | 30–60ms / item | `ease-out` | Staggered entrance on list load (max 5 items) |
+
+### Hard Animation Rules
+
+1. **Never animate from `scale(0)`**: Always enter from `scale(0.95)` or `scale(0.97)` to keep elements feeling solid.
+2. **High-frequency UI stays instant**: Never add open/close delay to command palettes, main tabs, or keyboard shortcuts.
+3. **Use transform & opacity only**: Avoid animating `width`, `height`, `margin`, or `padding` directly to prevent layout thrashing.
+4. **Respect Reduced Motion**: Always support `motion-reduce:transition-none` or `motion-reduce:animate-none` for accessibility.
+5. **No Sparkle icons**: Never use `✨` or `SparklesIcon`.
+
+### Code Pattern Examples
 
 ```tsx
-// Loading skeleton for a card list
-import { Skeleton } from '@/ui/Skeleton';
-<Skeleton variant="card" count={6} />
+// Micro-interaction button
+<button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium active:scale-[0.97] hover:bg-primary/90 transition-all duration-150 ease-out" />
 
-// Empty state
-import { EmptyState } from '@/ui/EmptyState';
-<EmptyState title="No jobs found" subtitle="Try adjusting your filters" />
-
-// Conditional classes — always use cn()
-import { cn } from '@/ui/cn';
-<div className={cn('rounded-lg p-4', isActive && 'bg-accent', className)} />
+// Glassmorphic Card Entrance
+<div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl shadow-xl animate-in fade-in-0 zoom-in-95 duration-200" />
 ```
 
 ---

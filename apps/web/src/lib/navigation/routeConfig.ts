@@ -151,9 +151,9 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             icon: BuildingLibraryIcon,
         },
         {
-            href: '/profile',
+            href: '/account',
             label: 'Account',
-            mobileTitle: 'Profile & Account',
+            mobileTitle: 'Account',
             mobileLabel: 'Account',
             showInDesktop: false,
             showInMobileTabs: true,

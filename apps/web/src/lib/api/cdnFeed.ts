@@ -419,17 +419,29 @@ export interface EducationMetadata {
 }
 
 /**
+ * Stably signs a CDN URL with the current feed version so edge/server caches hit 99.9%+
+ * without rotating every 2 minutes.
+ */
+async function signStableUrl(rawUrl: string, untracked = false): Promise<string> {
+    const feedVersion = await fetchFeedVersion(untracked);
+    const IS_SERVER = typeof window === 'undefined';
+    return IS_SERVER
+        ? await signUrlWithVersion(rawUrl, feedVersion.version)
+        : `${rawUrl}?v=${feedVersion.version}`;
+}
+
+/**
  * Fetches education metadata from CDN through Next's tagged cache.
  */
 export async function fetchEducationMetadata(): Promise<EducationMetadata | null> {
     try {
-        const url = await signUrlIfServer(EDUCATION_METADATA_URL);
+        const url = await signStableUrl(EDUCATION_METADATA_URL);
         const res = await fetch(url, getCDNFetchOptions({
             cache: 'force-cache',
             next: { revalidate: false, tags: ['education-metadata'] },
         }));
         if (!res.ok) return null;
-            return await res.json() as EducationMetadata;
+        return await res.json() as EducationMetadata;
     } catch (err) {
         console.warn('Failed to fetch education metadata from CDN:', err);
         return null;
@@ -441,7 +453,7 @@ export async function fetchEducationMetadata(): Promise<EducationMetadata | null
  */
 export async function fetchSkillsMetadata(): Promise<string[] | null> {
     try {
-        const url = await signUrlIfServer(SKILLS_METADATA_URL);
+        const url = await signStableUrl(SKILLS_METADATA_URL);
         const res = await fetch(url, getCDNFetchOptions({
             cache: 'force-cache',
             next: { revalidate: false, tags: ['skills-metadata'] },
@@ -466,8 +478,7 @@ export interface CompanyMetadata {
  */
 export async function fetchCompaniesMetadata(untracked = false): Promise<CompanyMetadata[] | null> {
     try {
-
-        const url = await signUrlIfServer(COMPANIES_METADATA_URL);
+        const url = await signStableUrl(COMPANIES_METADATA_URL, untracked);
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), getCDNTimeout());
         const res = await fetch(url, getCDNFetchOptions({
@@ -501,7 +512,7 @@ export interface SitemapDataResponse {
  */
 export async function fetchSitemapData(): Promise<SitemapDataResponse | null> {
     try {
-        const url = await signUrlIfServer(SITEMAP_DATA_URL);
+        const url = await signStableUrl(SITEMAP_DATA_URL);
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000); 

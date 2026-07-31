@@ -73,25 +73,24 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
         { href: 'https://instagram.com/fresherflow', label: 'Instagram', Icon: InstagramIcon },
     ];
 
-    const topMenu = [
-        { href: '/profile', label: 'My Profile', icon: UserIcon },
-        { href: '/saved', label: 'My Saved', icon: BookmarkIcon },
-        { href: '/tracker', label: 'Tracker', icon: ClipboardDocumentCheckIcon },
+    const platformMenu = [
+        { href: '/opportunities', label: 'Opportunities', icon: MagnifyingGlassIcon },
+        { href: '/jobs', label: 'Jobs', icon: BriefcaseIcon },
+        { href: '/internships', label: 'Internships', icon: AcademicCapIcon },
     ];
 
-    const engageMenu = [
+    const resourcesMenu = [
+        { href: '/resources', label: 'Career Resources', icon: BuildingLibraryIcon },
         { href: '/contribute', label: 'Submit Job Link', icon: LinkIcon },
         { href: '/referral', label: 'Invite Friends', icon: UserGroupIcon },
-        { href: '/alerts', label: 'Alerts', icon: BellIcon },
-        { href: '/feedback', label: 'Feedback', icon: PaperAirplaneIcon },
     ];
 
-    const guestMenu = [
-        { href: '/opportunities', label: 'Opportunities Feed', icon: MagnifyingGlassIcon },
-        { href: '/jobs', label: 'Jobs Feed', icon: BriefcaseIcon },
-        { href: '/internships', label: 'Internships', icon: AcademicCapIcon },
-        { href: '/remote', label: 'Remote Jobs', icon: BriefcaseIcon },
-        { href: '/government-jobs', label: 'Govt Jobs', icon: BuildingLibraryIcon },
+    const accountMenu = [
+        { href: '/profile', label: 'My Profile', icon: UserIcon },
+        { href: '/tracker', label: 'Application Tracker', icon: ClipboardDocumentCheckIcon },
+        { href: '/saved', label: 'Saved Jobs', icon: BookmarkIcon },
+        { href: '/alerts', label: 'Alerts', icon: BellIcon },
+        { href: '/feedback', label: 'Feedback', icon: PaperAirplaneIcon },
     ];
 
     const renderMenuItem = (item: { href: string; label: string; icon: React.ElementType }) => {
@@ -169,23 +168,33 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
 
                 {/* Navigation Links */}
                 <nav className="flex-1 overflow-y-auto px-4 py-5 space-y-6">
-                    {user ? (
-                        <>
-                            <div className="space-y-1.5">
-                                {topMenu.map(renderMenuItem)}
+                    <div className="space-y-6">
+                        {/* Platform */}
+                        <div className="space-y-2">
+                            <h3 className="px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/70">Platform</h3>
+                            <div className="space-y-1">
+                                {platformMenu.map(renderMenuItem)}
                             </div>
+                        </div>
 
-                            <div className="space-y-1.5">
-                                {engageMenu.map(renderMenuItem)}
+                        {/* Resources */}
+                        <div className="space-y-2 pt-4 border-t border-border/40">
+                            <h3 className="px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/70">Resources</h3>
+                            <div className="space-y-1">
+                                {resourcesMenu.map(renderMenuItem)}
                             </div>
-                        </>
-                    ) : (
-                        <>
-                            <div className="space-y-1.5">
-                                {guestMenu.map(renderMenuItem)}
+                        </div>
+
+                        {/* Account (Only if logged in) */}
+                        {user && (
+                            <div className="space-y-2 pt-4 border-t border-border/40">
+                                <h3 className="px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/70">Account</h3>
+                                <div className="space-y-1">
+                                    {accountMenu.map(renderMenuItem)}
+                                </div>
                             </div>
-                        </>
-                    )}
+                        )}
+                    </div>
 
                     {/* App Install / Get Options */}
                     <div className="space-y-1 border-t border-border/40 pt-4">

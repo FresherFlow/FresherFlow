@@ -71,21 +71,17 @@ export function DesktopNav() {
         <header className={cn(
             isLandingPage
                 ? cn(
-                    "fixed top-0 left-0 right-0 z-[100] hidden md:flex items-center justify-center pointer-events-none transition-all duration-300 ease-in-out",
+                    "fixed top-0 left-0 right-0 z-[100] hidden md:flex items-center justify-center pointer-events-none",
                     scrolled ? "pt-4 px-4" : "pt-2 px-4"
                   )
                 : resolvedUser
-                ? cn(
-                    "fixed top-0 left-0 right-0 w-full h-[64px] bg-background/95 backdrop-blur-md border-b border-border/40 z-[100] hidden md:flex items-center justify-center transition-all"
-                  )
-                : cn(
-                    "fixed top-0 left-0 right-0 w-full h-[64px] bg-background border-b border-border/10 z-[100] hidden md:flex items-center justify-center"
-                  )
+                ? "fixed top-0 left-0 right-0 w-full h-[64px] bg-background/95 backdrop-blur-md border-b border-border/40 z-[100] hidden md:flex items-center justify-center"
+                : "fixed top-0 left-0 right-0 w-full h-[64px] bg-background border-b border-border/10 z-[100] hidden md:flex items-center justify-center"
         )}>
             <nav className={cn(
                 isLandingPage
                     ? cn(
-                        'pointer-events-auto w-full flex items-center justify-between gap-4 transition-[max-width,height,background-color,box-shadow,backdrop-filter,padding] duration-300 ease-in-out px-6 shadow-none',
+                        'pointer-events-auto w-full flex items-center justify-between gap-4 transition-[max-width,height,background-color,box-shadow,backdrop-filter,padding] duration-200 ease-out px-6 shadow-none',
                         scrolled
                             ? 'max-w-4xl h-[52px] rounded-2xl border border-border/40 bg-background/80 dark:bg-card/75 backdrop-blur-md shadow-[0_12px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)]'
                             : 'max-w-7xl h-[64px] bg-transparent'

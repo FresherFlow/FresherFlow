@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { authApi, UnauthorizedError, clearUserTokens, setUserTokens } from '@/lib/api/client';
 import { clearUnreadCache } from '@/features/notifications/hooks/useUnreadNotifications';
 import { User, Profile } from '@fresherflow/types';
@@ -151,6 +152,7 @@ async function writeFirebaseOnboardingSkip(uid: string) {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+    const router = useRouter();
     const [user, setUser] = useState<User | null>(() => {
         const cached = readCachedSession();
         if (cached) {
@@ -219,9 +221,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const target = redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//') && !redirectTo.startsWith('/logout')
                 ? redirectTo
                 : '/login';
-            window.location.replace(target);
+            router.push(target);
         }
-    }, []);
+    }, [router]);
 
     const loadUser = useCallback(async (options?: { silent?: boolean; force?: boolean }) => {
         if (isLoggingOutRef.current) return;

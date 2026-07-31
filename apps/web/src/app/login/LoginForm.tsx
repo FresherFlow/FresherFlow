@@ -178,165 +178,154 @@ function LoginContent() {
         }
     };
 
-    if (isProcessing) return <LoadingScreen />;
-
     return (
-        <div className="flex-1 flex flex-col md:flex-row bg-background overflow-hidden relative h-[calc(100vh-64px)] md:h-[calc(100vh-88px)]">
-            {/* Left Side: Hero (Desktop Only) */}
-            <div className="hidden md:flex md:w-[45%] lg:w-[50%] bg-muted/20 border-r border-border relative overflow-hidden flex-col items-center justify-center p-12 text-center select-none">
-                {/* Clean background dot grid pattern */}
-                <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30 pointer-events-none dark:opacity-10" />
-
-                <div className="space-y-6 max-w-sm animate-in fade-in slide-in-from-left-6 duration-500 z-10">
-                    <h2 className="text-4xl font-bold tracking-tight text-foreground leading-[1.15]">
-                        Verified opportunities for freshers.
-                    </h2>
-                    <p className="text-base text-muted-foreground leading-relaxed">
-                        Access a verified feed of off-campus jobs, internships, and walk-ins. Direct apply links only.
+        <div className="flex-1 flex flex-col items-center justify-center bg-background relative overflow-hidden h-[calc(100vh-64px)] md:h-[calc(100vh-88px)] max-h-[calc(100vh-64px)] md:max-h-[calc(100vh-88px)] px-4">
+            <div className="w-full max-w-[400px] bg-card border border-border/80 shadow-lg rounded-2xl p-7 md:p-9 space-y-6 animate-in fade-in duration-200">
+                {/* Header */}
+                <div className="space-y-2 text-center">
+                    {step !== 'email' && (
+                        <button
+                            onClick={() => setStep('email')}
+                            className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary mb-1 transition-colors cursor-pointer active:scale-95"
+                        >
+                            <ChevronLeftIcon className="w-3.5 h-3.5" />
+                            <span>Back to login options</span>
+                        </button>
+                    )}
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground">
+                        {step === 'otp' ? 'Verify security code' : isSignupIntent ? 'Create your account' : 'Sign in to FresherFlow'}
+                    </h1>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                        {step === 'otp' ? `We sent a 6-digit code to ${email}` : 'Access verified off-campus jobs & walk-in opportunities'}
                     </p>
                 </div>
-            </div>
 
-            {/* Right Side: Login Form */}
-            <div className="flex-1 flex flex-col justify-center px-5 py-5 md:px-20 bg-background relative overflow-hidden">
-                <div className="max-w-[400px] mx-auto w-full space-y-5 md:space-y-8">
-                    <div className="space-y-2 text-center md:text-left">
-                        {step !== 'email' && (
-                            <button
-                                onClick={() => setStep('email')}
-                                className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-primary capitalize tracking-wider mb-4 transition-colors cursor-pointer"
-                            >
-                                <ChevronLeftIcon className="w-3 h-3" />
-                                Back to login
-                            </button>
-                        )}
-                        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
-                            {step === 'otp' ? 'Verify identity' : isSignupIntent ? 'Create your account' : 'Sign in'}
-                        </h1>
-                        <p className="text-muted-foreground text-sm">
-                            {step === 'otp' ? `We sent a code to ${email}` : 'Enter your email to access your feed'}
-                        </p>
+                {isInviteFlow && step === 'email' && (
+                    <div className="rounded-xl border border-primary/25 bg-primary/5 p-3 text-center">
+                        <p className="text-xs font-semibold text-primary">Candidate Referral Invite</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">Signing in from this invite unlocks direct feed access.</p>
                     </div>
+                )}
 
-                    {isInviteFlow && step === 'email' && (
-                        <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
-                            <p className="text-[11px] font-bold capitalize tracking-widest text-primary">Friend invite</p>
-                            <p className="mt-1 text-sm text-foreground">Join from this invite to start with the verified opportunity feed.</p>
-                        </div>
+                {/* Form Body */}
+                <div className="space-y-4">
+                    {step === 'email' && (
+                        <form onSubmit={handleSendOtp} className="space-y-4">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleGoogleSignIn}
+                                disabled={isLoading}
+                                className="w-full !h-11 text-xs font-semibold !rounded-xl flex items-center justify-center gap-2.5 border-border/80 hover:bg-muted/40 active:scale-[0.98] transition-all"
+                            >
+                                <svg className="w-4.5 h-4.5" viewBox="0 0 24 24">
+                                    <path
+                                        fill="#EA4335"
+                                        d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.37 0 3.412 2.667 1.48 6.555l3.786 3.21z"
+                                    />
+                                    <path
+                                        fill="#FBBC05"
+                                        d="M1.48 6.555A12.049 12.049 0 0 0 0 12c0 1.927.455 3.746 1.258 5.373l3.967-3.07a7.086 7.086 0 0 1-.225-2.303c0-1.442.434-2.776 1.18-3.885L1.48 6.555z"
+                                    />
+                                    <path
+                                        fill="#4285F4"
+                                        d="M12 24c3.245 0 5.973-1.076 7.964-2.912l-3.836-2.973c-1.127.755-2.564 1.203-4.128 1.203-3.18 0-5.88-2.154-6.845-5.064L1.258 17.373C3.12 21.294 7.234 24 12 24z"
+                                    />
+                                    <path
+                                        fill="#34A853"
+                                        d="M24 12c0-.864-.077-1.697-.22-2.509H12v4.8h6.732c-.29 1.549-1.164 2.863-2.477 3.745l3.836 2.973C22.336 19.167 24 15.827 24 12z"
+                                    />
+                                </svg>
+                                <span>Continue with Google</span>
+                            </Button>
+
+                            <div className="relative py-1">
+                                <div className="absolute inset-0 flex items-center">
+                                    <span className="w-full border-t border-border/60" />
+                                </div>
+                                <div className="relative flex justify-center text-[10px] uppercase tracking-wider font-semibold">
+                                    <span className="bg-card px-3 text-muted-foreground/60">or email code</span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <div className="relative group">
+                                    <EnvelopeIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40 group-focus-within:text-primary transition-colors z-10" />
+                                    <Input
+                                        type="email"
+                                        required
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        className="pl-10 !h-11 text-xs border-border/80 focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-xl"
+                                        placeholder="name@company.com"
+                                    />
+                                </div>
+                            </div>
+
+                            <Button 
+                                type="submit" 
+                                disabled={isLoading || !email} 
+                                className="w-full !h-11 text-xs font-semibold !rounded-xl active:scale-[0.98] transition-all shadow-sm"
+                            >
+                                {isLoading ? <ArrowPathIcon className="w-4 h-4 animate-spin mx-auto" /> : isSignupIntent ? 'Continue to Sign Up →' : 'Continue with Email →'}
+                            </Button>
+                        </form>
                     )}
 
-                    <div className="space-y-5">
-                        {step === 'email' && (
-                            <form onSubmit={handleSendOtp} className="space-y-5">
-                                <div className="space-y-2">
-                                    <label className="text-xs font-medium text-foreground ml-1">Email Address</label>
-                                    <div className="relative group">
-                                        <EnvelopeIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/40 group-focus-within:text-primary transition-colors z-10" />
-                                        <Input
-                                            type="email"
-                                            required
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            className="pl-11 !h-11 text-sm"
-                                            placeholder="name@company.com"
+                    {step === 'otp' && (
+                        <form onSubmit={handleVerifyOtp} className="space-y-4">
+                            <div className="space-y-2.5">
+                                <label className="text-xs font-semibold text-foreground text-center block">6-Digit Verification Code</label>
+                                <div className="flex justify-between gap-1.5">
+                                    {otpArray.map((digit, idx) => (
+                                        <input
+                                            key={idx}
+                                            id={`otp-${idx}`}
+                                            type="text"
+                                            inputMode="numeric"
+                                            maxLength={1}
+                                            value={digit}
+                                            onChange={(e) => handleOtpChange(e.target.value, idx)}
+                                            onKeyDown={(e) => handleOtpKeyDown(e, idx)}
+                                            onPaste={handleOtpPaste}
+                                            className="w-11 h-12 rounded-xl border border-border/80 bg-background text-center text-lg font-bold text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all active:scale-95"
+                                            autoFocus={idx === 0}
                                         />
-                                    </div>
+                                    ))}
                                 </div>
-                                <Button type="submit" disabled={isLoading || !email} className="w-full !h-11 text-sm font-semibold !rounded-lg">
-                                    {isLoading ? <ArrowPathIcon className="w-5 h-5 animate-spin mx-auto" /> : isSignupIntent ? 'Continue to sign up' : 'Continue'}
-                                </Button>
-                                <div className="relative py-2">
-                                    <div className="absolute inset-0 flex items-center">
-                                        <span className="w-full border-t border-border" />
-                                    </div>
-                                    <div className="relative flex justify-center text-[10px] capitalize tracking-widest font-semibold">
-                                        <span className="bg-background px-4 text-muted-foreground/40">or</span>
-                                    </div>
-                                </div>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={handleGoogleSignIn}
-                                    disabled={isLoading}
-                                    className="w-full !h-11 text-sm font-semibold !rounded-lg flex items-center justify-center gap-2 border-border/80 hover:bg-muted/40 transition-colors"
-                                >
-                                    <svg className="w-5 h-5 mr-1" viewBox="0 0 24 24">
-                                        <path
-                                            fill="#EA4335"
-                                            d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.37 0 3.412 2.667 1.48 6.555l3.786 3.21z"
-                                        />
-                                        <path
-                                            fill="#FBBC05"
-                                            d="M1.48 6.555A12.049 12.049 0 0 0 0 12c0 1.927.455 3.746 1.258 5.373l3.967-3.07a7.086 7.086 0 0 1-.225-2.303c0-1.442.434-2.776 1.18-3.885L1.48 6.555z"
-                                        />
-                                        <path
-                                            fill="#4285F4"
-                                            d="M12 24c3.245 0 5.973-1.076 7.964-2.912l-3.836-2.973c-1.127.755-2.564 1.203-4.128 1.203-3.18 0-5.88-2.154-6.845-5.064L1.258 17.373C3.12 21.294 7.234 24 12 24z"
-                                        />
-                                        <path
-                                            fill="#34A853"
-                                            d="M24 12c0-.864-.077-1.697-.22-2.509H12v4.8h6.732c-.29 1.549-1.164 2.863-2.477 3.745l3.836 2.973C22.336 19.167 24 15.827 24 12z"
-                                        />
-                                    </svg>
-                                    Continue with Google
-                                </Button>
-                            </form>
-                        )}
 
-                        {step === 'otp' && (
-                            <form onSubmit={handleVerifyOtp} className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <div className="space-y-3">
-                                    <label className="text-xs font-medium text-foreground ml-1">Verification Code</label>
-                                    
-                                    {/* Premium 6-Box OTP Inputs */}
-                                    <div className="flex justify-between gap-2.5">
-                                        {otpArray.map((digit, idx) => (
-                                            <input
-                                                key={idx}
-                                                id={`otp-${idx}`}
-                                                type="text"
-                                                inputMode="numeric"
-                                                maxLength={1}
-                                                value={digit}
-                                                onChange={(e) => handleOtpChange(e.target.value, idx)}
-                                                onKeyDown={(e) => handleOtpKeyDown(e, idx)}
-                                                onPaste={handleOtpPaste}
-                                                className="w-12 h-12 rounded-xl border border-border bg-card text-center text-xl font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all shadow-sm"
-                                                autoFocus={idx === 0}
-                                            />
-                                        ))}
-                                    </div>
-
-                                    <div className="flex justify-between items-center px-1 pt-1">
-                                        <p className="text-[11px] text-muted-foreground">Didn&apos;t receive it?</p>
-                                        <button type="button" onClick={handleSendOtp} className="text-[11px] font-semibold text-primary hover:underline cursor-pointer">
-                                            Resend code
-                                        </button>
-                                    </div>
+                                <div className="flex justify-between items-center px-0.5 pt-1">
+                                    <p className="text-[11px] text-muted-foreground">Didn&apos;t receive it?</p>
+                                    <button 
+                                        type="button" 
+                                        onClick={handleSendOtp} 
+                                        className="text-[11px] font-semibold text-primary hover:underline cursor-pointer"
+                                    >
+                                        Resend code
+                                    </button>
                                 </div>
-                                <Button 
-                                    type="submit" 
-                                    disabled={isLoading || otpArray.join('').length !== 6} 
-                                    className="w-full !h-11 text-sm font-semibold !rounded-lg mt-2"
-                                >
-                                    {isLoading ? <ArrowPathIcon className="w-5 h-5 animate-spin mx-auto" /> : 'Verify code'}
-                                </Button>
-                            </form>
-                        )}
+                            </div>
+                            <Button 
+                                type="submit" 
+                                disabled={isLoading || otpArray.join('').length !== 6} 
+                                className="w-full !h-11 text-xs font-semibold !rounded-xl active:scale-[0.98] transition-all shadow-sm"
+                            >
+                                {isLoading ? <ArrowPathIcon className="w-4 h-4 animate-spin mx-auto" /> : 'Verify & Sign In →'}
+                            </Button>
+                        </form>
+                    )}
+                </div>
+
+                {/* Footer Security Badge */}
+                <div className="pt-4 border-t border-border/50 flex flex-col items-center gap-2 text-center">
+                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
+                        <ShieldCheckIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                        <span>Verified Infrastructure</span>
                     </div>
-
-                    <div className="pt-8 border-t border-border/50">
-                        <div className="flex flex-col items-center gap-4 text-center">
-                            <div className="flex items-center gap-2 text-[10px] font-medium text-muted-foreground capitalize tracking-widest">
-                                <ShieldCheckIcon className="w-4 h-4 text-success/60" />
-                                <span>Verified Infrastructure</span>
-                            </div>
-                            <div className="flex items-center gap-3 text-[10px] font-semibold capitalize tracking-widest text-muted-foreground">
-                                <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
-                                <span className="text-muted-foreground/40">|</span>
-                                <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
-                            </div>
-                        </div>
+                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-medium">
+                        <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+                        <span className="text-muted-foreground/30">•</span>
+                        <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
                     </div>
                 </div>
             </div>

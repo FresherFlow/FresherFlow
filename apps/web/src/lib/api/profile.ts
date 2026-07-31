@@ -59,5 +59,11 @@ export const profileApi = {
             body: JSON.stringify({ visibility })
         }),
 
+    publishProfile: () =>
+        apiClient<{ publishedAt: string }>('/api/profile/publish', {
+            method: 'POST'
+        }),
+
     getCompletion: () => apiClient('/api/profile/completion')
 };
+
