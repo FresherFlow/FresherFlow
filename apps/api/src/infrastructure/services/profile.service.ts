@@ -216,8 +216,6 @@ export class ProfileService {
             });
         }
 
-        void ProfileService.pushProfileToR2(userId);
-
         return {
             profile: profile as unknown as Profile,
             newCompletion
@@ -286,8 +284,6 @@ export class ProfileService {
             });
         }
 
-        void ProfileService.pushProfileToR2(userId);
-
         return {
             profile: profile as unknown as Profile,
             newCompletion
@@ -318,8 +314,6 @@ export class ProfileService {
             data: { completionPercentage: newCompletion }
         });
 
-        void ProfileService.pushProfileToR2(userId);
-
         return {
             profile: profile as unknown as Profile,
             newCompletion
@@ -344,8 +338,6 @@ export class ProfileService {
             where: { userId },
             data: { completionPercentage: newCompletion }
         });
-
-        void ProfileService.pushProfileToR2(userId);
 
         return {
             profile: profile as unknown as Profile,
@@ -702,7 +694,7 @@ export class ProfileService {
      * Fire-and-forget: push public profile JSON to R2 CDN after any profile update.
      * Web public page reads from cdn.fresherflow.in/profiles/{username}.json — zero Render hits.
      */
-    private static async pushProfileToR2(userId: string): Promise<void> {
+    public static async pushProfileToR2(userId: string): Promise<void> {
         try {
             const user = await prisma.user.findUnique({
                 where: { id: userId },
@@ -719,5 +711,15 @@ export class ProfileService {
         } catch (err) {
             logger.warn('[ProfileService] pushProfileToR2 failed — non-fatal', err);
         }
+    }
+
+    static async publishProfile(userId: string): Promise<{ publishedAt: Date }> {
+        await ProfileService.pushProfileToR2(userId);
+        const publishedAt = new Date();
+        await prisma.profile.update({
+            where: { userId },
+            data: { profilePublishedAt: publishedAt }
+        });
+        return { publishedAt };
     }
 }

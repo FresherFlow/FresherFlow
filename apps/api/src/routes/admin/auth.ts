@@ -1,5 +1,6 @@
 import prisma from '../../infrastructure/database/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
 import admin from '../../lib/firebase';
 
 import {
@@ -232,7 +233,7 @@ router.post('/register/options', adminAuthLimiter, async (req: Request, res: Res
             const expectedSecret = process.env.ADMIN_BOOTSTRAP_SECRET;
             if (expectedSecret && expectedSecret.length > 0) {
                 const secret = req.body.bootstrapSecret;
-                if (!secret || secret !== expectedSecret) {
+                if (!secret || !crypto.timingSafeEqual(Buffer.from(String(secret)), Buffer.from(expectedSecret))) {
                     return next(new AppError('Forbidden: Invalid bootstrap secret', 403));
                 }
             }

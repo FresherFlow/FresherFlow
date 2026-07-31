@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
 import prisma from '../infrastructure/database/prisma';
 import { ResourceItemType } from '@fresherflow/types';
-import { optionalAuth } from '../middleware/auth';
+import { requireAuth } from '../middleware/auth';
 import { logger } from '@fresherflow/logger';
 import { isSafeUrlForFetch } from '@fresherflow/utils';
 
@@ -131,7 +131,7 @@ const submitResourceValidation = [
 ];
 
 router.post('/', 
-    optionalAuth, 
+    requireAuth, 
     adaptSingleUrlSubmit,
     submitResourceValidation, 
     async (req: Request, res: Response, next: NextFunction): Promise<void> => {

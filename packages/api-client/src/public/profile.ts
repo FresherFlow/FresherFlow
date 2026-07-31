@@ -63,6 +63,11 @@ export const profileApi = {
 
     getCompletion: () => apiClient('/api/profile/completion'),
 
+    publishProfile: () =>
+        apiClient<{ publishedAt: string }>('/api/profile/publish', {
+            method: 'POST'
+        }),
+
     registerPushToken: (token: string, platform: string) =>
         apiClient('/api/profile/push-token', {
             method: 'POST',

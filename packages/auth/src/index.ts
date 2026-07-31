@@ -60,15 +60,22 @@ export function hashRefreshToken(token: string): string {
     return crypto.createHash('sha256').update(token).digest('hex');
 }
 
+function getAdminSecret(): string {
+    const secret = process.env.JWT_ADMIN_SECRET;
+    if (!secret) throw new Error('JWT_ADMIN_SECRET is not set');
+    return secret;
+}
+
 // Admin Tokens
 export function generateAdminToken(adminId: string): string {
     const expiry = '7d';
-    return jwt.sign({ adminId, role: 'admin' }, getAccessSecret(), { expiresIn: expiry });
+    return jwt.sign({ adminId, role: 'admin', type: 'admin' }, getAdminSecret(), { expiresIn: expiry });
 }
 
 export function verifyAdminToken(token: string): string | null {
     try {
-        const payload = jwt.verify(token, getAccessSecret()) as AdminTokenPayload;
+        const payload = jwt.verify(token, getAdminSecret()) as AdminTokenPayload & { type?: string };
+        if (payload.type !== 'admin') return null;
         if (payload.role !== 'admin') return null;
         return payload.adminId;
     } catch {

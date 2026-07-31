@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from './errorHandler';
 import { logger } from '@fresherflow/logger';
+import crypto from 'crypto';
 
 /**
  * CSRF Protection Middleware
@@ -32,7 +33,7 @@ export function csrfGate(req: Request, res: Response, next: NextFunction) {
     // 1.2 Bypass CSRF for internal API key programmatic requests
     const apiKey = req.header('x-api-key');
     const internalSecret = process.env.INTERNAL_API_SECRET;
-    if (apiKey && internalSecret && apiKey === internalSecret) {
+    if (apiKey && internalSecret && crypto.timingSafeEqual(Buffer.from(String(apiKey)), Buffer.from(internalSecret))) {
         return next();
     }
 

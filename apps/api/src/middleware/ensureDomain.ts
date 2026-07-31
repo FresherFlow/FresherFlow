@@ -11,19 +11,10 @@ export function ensureDomainHost(expectedHost: string) {
         }
 
         const host = req.headers.host?.toLowerCase();
-        const origin = req.headers.origin;
-        const referer = req.headers.referer;
 
-        // Extract hostname from Origin or Referer if host isn't enough (e.g. shared API endpoint)
         let requestHostname = host;
-        if (origin) {
-            try {
-                requestHostname = new URL(origin).hostname.toLowerCase();
-            } catch { /* ignore */ }
-        } else if (referer) {
-            try {
-                requestHostname = new URL(referer).hostname.toLowerCase();
-            } catch { /* ignore */ }
+        if (requestHostname && requestHostname.includes(':')) {
+            requestHostname = requestHostname.split(':')[0];
         }
 
         if (requestHostname !== expectedHost.toLowerCase() && requestHostname !== 'localhost' && requestHostname !== '127.0.0.1') {

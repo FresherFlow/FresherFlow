@@ -2,7 +2,6 @@ import prisma from '../infrastructure/database/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
 
 import { requireAuth } from '../middleware/auth';
-import { AppError } from '../middleware/errorHandler';
 import { updateOpportunityEngagement } from '../application/opportunity/engagement';
 
 const router: Router = express.Router();
@@ -19,7 +18,7 @@ router.post('/:id', requireAuth, async (req: Request, res: Response, next: NextF
         const userId = req.userId as string;
 
         // 1. Find opportunity by ID or Slug
-        let opportunity = await prisma.opportunity.findFirst({
+        const opportunity = await prisma.opportunity.findFirst({
             where: {
                 OR: [
                     { id: id },
@@ -30,41 +29,7 @@ router.post('/:id', requireAuth, async (req: Request, res: Response, next: NextF
         });
 
         if (!opportunity) {
-            const details = req.body;
-            if (details && (details.title || details.company)) {
-                // Find first admin to assign as postedByUserId
-                let postedByUserId: string = userId;
-                const firstAdmin = await prisma.user.findFirst({
-                    where: { role: 'ADMIN' }
-                });
-                if (firstAdmin) {
-                    postedByUserId = firstAdmin.id as string;
-                }
-
-                // Parse type safely from details
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const oppType = (['JOB', 'INTERNSHIP', 'WALKIN'].includes(details.type) ? details.type : 'JOB') as any;
-
-                opportunity = await prisma.opportunity.create({
-                    data: {
-                        id: typeof details.id === 'string' ? details.id : id,
-                        slug: typeof details.slug === 'string' ? details.slug : (typeof details.id === 'string' ? details.id : id),
-                        type: oppType,
-                        title: typeof details.title === 'string' ? details.title : 'Cached Opportunity',
-                        company: typeof details.company === 'string' ? details.company : 'Unknown Company',
-                        companyLogoUrl: typeof details.companyLogoUrl === 'string' ? details.companyLogoUrl : null,
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        locations: Array.isArray(details.locations) ? details.locations.map((l: any) => String(l)) : [],
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        tags: Array.isArray(details.tags) ? details.tags.map((t: any) => String(t)) : [],
-                        status: 'PUBLISHED',
-                        postedByUserId: postedByUserId
-                    },
-                    select: { id: true }
-                });
-            } else {
-                return next(new AppError('Opportunity not found', 404));
-            }
+            return res.json({ saved: false });
         }
 
         const opportunityId = opportunity.id;

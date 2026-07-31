@@ -246,6 +246,7 @@ export interface Profile {
     githubPinnedRepos?: any | null;
     openToRecruiters?: boolean | null;
     profilePublic?: boolean | null;
+    profilePublishedAt?: Date | string | null;
     visibility?: 'PUBLIC' | 'UNLISTED' | 'PRIVATE' | null;
     projects?: Project[];
 }

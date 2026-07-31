@@ -107,6 +107,16 @@ export async function requireAuth(req: express.Request, res: Response, next: Nex
     return next(new AppError('Authentication required', 401));
 }
 
+export const requireVerifiedAuth: express.RequestHandler = async (req, res, next) => {
+    await requireAuth(req, res, (err) => {
+        if (err) return next(err);
+        if (req.isAnonymous) {
+            return next(new AppError('Verified account required', 401));
+        }
+        next();
+    });
+};
+
 // Admin Authentication Middleware
 // Accepts both cookie (web) and Authorization Bearer header (mobile app)
 export async function requireAdmin(req: express.Request, res: Response, next: NextFunction) {
@@ -174,7 +184,7 @@ export function requireInternalApiKey(req: express.Request, res: Response, next:
         return next(new AppError('Internal API not configured', 503));
     }
 
-    if (!apiKey || apiKey !== secret) {
+    if (!apiKey || !secret || !crypto.timingSafeEqual(Buffer.from(String(apiKey)), Buffer.from(secret))) {
         return next(new AppError('Unauthorized: Invalid or missing API Key', 401));
     }
 

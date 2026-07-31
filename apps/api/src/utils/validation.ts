@@ -83,6 +83,43 @@ export const googleAuthSchema = z.object({
 });
 
 // Profile Schemas
+export const profileUpdateSchema = z.object({
+    fullName: z.string().optional(),
+    headline: z.string().nullable().optional(),
+    about: z.string().nullable().optional(),
+    githubUrl: z.string().url().nullable().optional().or(z.literal('')),
+    linkedinUrl: z.string().url().nullable().optional().or(z.literal('')),
+    portfolioUrl: z.string().url().nullable().optional().or(z.literal('')),
+    avatarUrl: z.string().url().nullable().optional().or(z.literal('')),
+    githubPinnedRepos: z.any().nullable().optional(),
+    openToRecruiters: z.boolean().nullable().optional(),
+    profilePublic: z.boolean().nullable().optional(),
+    visibility: z.enum(['PUBLIC', 'UNLISTED', 'PRIVATE']).nullable().optional(),
+    educationLevel: z.nativeEnum(EducationLevel).optional(),
+    tenthYear: z.number().int().optional(),
+    twelfthYear: z.number().int().optional(),
+    gradCourse: z.string().optional(),
+    gradSpecialization: z.string().optional(),
+    gradYear: z.number().int().optional(),
+    collegeId: z.string().nullable().optional(),
+    collegeName: z.string().nullable().optional(),
+    collegeState: z.string().nullable().optional(),
+    pgCourse: z.string().optional(),
+    pgSpecialization: z.string().optional(),
+    pgYear: z.number().int().optional(),
+    interestedIn: z.array(z.nativeEnum(OpportunityType)).optional(),
+    preferredCities: z.array(z.string()).optional(),
+    workModes: z.array(z.nativeEnum(WorkMode)).optional(),
+    availability: z.nativeEnum(Availability).optional(),
+    skills: z.array(z.string()).optional(),
+    dob: z.string().nullable().optional(),
+    gender: z.nativeEnum(Gender).nullable().optional(),
+    category: z.nativeEnum(ReservationCategory).nullable().optional(),
+    isPwBD: z.boolean().nullable().optional(),
+    isExServicemen: z.boolean().nullable().optional(),
+    homeState: z.string().nullable().optional(),
+});
+
 export const educationSchema = z.object({
     educationLevel: z.nativeEnum(EducationLevel),
 

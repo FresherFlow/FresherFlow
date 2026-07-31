@@ -1,8 +1,8 @@
 import express, { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
-import { requireAuth, optionalAuth } from '../middleware/auth';
+import { requireAuth, optionalAuth, requireVerifiedAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
-import { educationSchema, preferencesSchema, readinessSchema, contributionSchema } from '../utils/validation';
+import { educationSchema, preferencesSchema, readinessSchema, contributionSchema, profileUpdateSchema } from '../utils/validation';
 import { ProfileService } from '../infrastructure/services/profile.service';
 import { AppError } from '../middleware/errorHandler';
 
@@ -19,7 +19,7 @@ router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunct
 });
 
 // PUT /api/profile - Comprehensive update
-router.put('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.put('/', requireAuth, validate(profileUpdateSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { profile, newCompletion } = await ProfileService.updateProfile(req.userId as string, req.body);
         res.json({
@@ -45,6 +45,17 @@ router.patch('/visibility', requireAuth, async (req: Request, res: Response, nex
         next(error);
     }
 });
+
+// POST /api/profile/publish
+router.post('/publish', requireVerifiedAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { publishedAt } = await ProfileService.publishProfile(req.userId as string);
+        res.json({ publishedAt: publishedAt.toISOString() });
+    } catch (error) {
+        next(error);
+    }
+});
+
 
 
 // PUT /api/profile/education
@@ -97,7 +108,10 @@ router.get('/completion', requireAuth, async (req: Request, res: Response, next:
 });
 
 // POST /api/profile/push-token
-router.post('/push-token', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/push-token', requireAuth, validate(z.object({
+    token: z.string().min(1).max(500),
+    platform: z.enum(['expo', 'fcm', 'apns', 'native']).optional(),
+})), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { token, platform } = req.body;
         if (!token) {
@@ -152,7 +166,7 @@ router.get('/username/check', optionalAuth, async (req: Request, res: Response, 
 });
 
 // POST /api/profile/username/claim
-router.post('/username/claim', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/username/claim', requireVerifiedAuth, validate(z.object({ username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/) })), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { username } = req.body;
         const cooldownDays = Number(process.env.USERNAME_COOLDOWN_DAYS || 30);

@@ -331,10 +331,28 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
 
         if (!storedToken) return next(new AppError('Refresh token expired or revoked', 401));
 
+        // Revoke the old token
+        await prisma.refreshToken.update({
+            where: { id: storedToken.id },
+            data: { revokedAt: new Date() }
+        });
+
+        // Generate a new token pair
         const newAccessToken = generateAccessToken(userId);
+        const { token: newRefreshToken, hash: newTokenHash } = generateRefreshToken(userId);
+
+        await prisma.refreshToken.create({
+            data: {
+                userId,
+                tokenHash: newTokenHash,
+                expiresAt: new Date(Date.now() + REFRESH_TOKEN_MAX_AGE_MS)
+            }
+        });
+
         res.cookie('accessToken', newAccessToken, { ...COOKIE_OPTIONS, maxAge: ACCESS_TOKEN_MAX_AGE_MS });
+        res.cookie('refreshToken', newRefreshToken, { ...COOKIE_OPTIONS, maxAge: REFRESH_TOKEN_MAX_AGE_MS });
         res.cookie('ff_logged_in', 'true', { ...COOKIE_OPTIONS, httpOnly: false, maxAge: REFRESH_TOKEN_MAX_AGE_MS });
-        res.json({ success: true, accessToken: newAccessToken });
+        res.json({ success: true, accessToken: newAccessToken, refreshToken: newRefreshToken });
     } catch (error) {
         next(toAuthRouteError(error, 'Failed to refresh session', 500));
     }
