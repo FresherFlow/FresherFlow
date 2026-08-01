@@ -1,0 +1,25 @@
+{
+  "name": "job-scraper",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx search-runner.ts",
+    "search": "tsx search.ts",
+    "run-all": "tsx search-runner.ts",
+    "sync-ats": "tsx import-everjobs-companies.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+
+    "@fresherflow/plugins": "workspace:*",
+    "@fresherflow/types": "workspace:*",
+    "@supabase/supabase-js": "^2.110.7",
+    "playwright": "^1.44.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.11.0",
+    "typescript": "^5.0.0"
+  }
+}

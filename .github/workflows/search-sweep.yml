@@ -40,7 +40,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: pnpm start
 
-      - name: Upload Discovered Jobs JSON Artifact
+      - name: Upload Discovered Jobs Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:

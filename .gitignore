@@ -69,7 +69,7 @@ docs/
 **/.expo/
 
 tmp/
-apps/ingestion
+
 
 # Sensitive database configs
 packages/database/db.config
@@ -86,8 +86,13 @@ assets/*
 
 scripts/dump/*
 scripts/output
-scripts/*/*.json
+scripts/*/discovered_jobs.json
+scripts/*/review_jobs.json
+scripts/*/output.json
 scripts/*.json
+# Keep config files tracked
+!scripts/*/package.json
+!scripts/*/tsconfig.json
 scripts/job-discovery/ats-boards/
 
 scripts/output/*.json

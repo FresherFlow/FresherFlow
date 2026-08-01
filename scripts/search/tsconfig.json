@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@fresherflow/plugins": ["../../packages/plugins/src/index.ts"],
+      "@fresherflow/types": ["../../packages/types/index.ts"]
+    }
+  }
+}

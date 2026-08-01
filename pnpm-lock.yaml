@@ -1605,6 +1605,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.110.7
         version: 2.110.7
+      playwright:
+        specifier: ^1.44.0
+        version: 1.60.0
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
