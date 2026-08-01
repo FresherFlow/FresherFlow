@@ -38,8 +38,21 @@ const envSchema = z.object({
     DATABASE_URL: z.string().optional(),
     DIRECT_DATABASE_URL: z.string().optional(),
     REDIS_URL: z.string().optional(),
-    JWT_ACCESS_SECRET: z.string().default(''),
-    JWT_REFRESH_SECRET: z.string().default(''),
+    JWT_SECRET: z.string().optional(),
+    JWT_ACCESS_SECRET: z.preprocess(
+        (val) => (typeof val === 'string' && val ? val : process.env.JWT_SECRET || ''),
+        z.string().default('')
+    ),
+    JWT_REFRESH_SECRET: z.preprocess(
+        (val) => (typeof val === 'string' && val ? val : process.env.JWT_SECRET || ''),
+        z.string().default('')
+    ),
+    JWT_ADMIN_SECRET: z.preprocess(
+        (val) => (typeof val === 'string' && val ? val : process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || ''),
+        z.string().default('')
+    ),
+    INGESTION_SECRET: z.string().optional(),
+    INGESTION_URL: z.string().optional(),
     FRONTEND_URL: z.string().optional(),
     FRONTEND_URLS: z.string().optional(),
     SENTRY_DSN: z.string().optional(),

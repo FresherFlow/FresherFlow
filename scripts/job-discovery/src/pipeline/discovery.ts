@@ -122,7 +122,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
         });
         await context.route('**/*', (route) => {
             const type = route.request().resourceType();
-            if (['image', 'stylesheet', 'font', 'media'].includes(type)) {
+            if (['image', 'media', 'font'].includes(type)) {
                 route.abort();
             } else {
                 route.continue();
@@ -144,7 +144,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                 for (const url of site.urls) {
                     console.log(`  -> Loading start page: ${url}`);
                     try {
-                        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+                        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
                         const allLinks = await page.$$eval('a', anchors => anchors.map(a => ({ text: a.innerText.trim(), href: a.href })));
                         const filtered = allLinks
                             .filter(l => {
@@ -196,9 +196,17 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                     if (state.visited[site.name].length > 50000) {
                         state.visited[site.name] = state.visited[site.name].slice(-50000);
                     }
+                    // CLEAR page state before navigating to prevent cross-contamination if goto times out
+                    await page.goto('about:blank').catch(() => {});
+                    
+                    try {
+                        await page.goto(jobLink, { waitUntil: 'domcontentloaded', timeout: 45000 });
+                    } catch (gotoErr) {
+                        console.log(`  -> Failed to load aggregator post: ${(gotoErr as Error).message}`);
+                        continue; // Skip processing this job link completely!
+                    }
 
-                    await page.goto(jobLink, { waitUntil: 'load', timeout: 20000 }).catch(() => {});
-                    await page.waitForSelector('article, .post-body, .entry-content, main, #main-content, .post, .job-description', { timeout: 5000 }).catch(() => {});
+                    await page.waitForSelector('article, .post-body, .entry-content, main, #main-content, .post, .job-description', { timeout: 10000 }).catch(() => {});
                     await page.waitForTimeout(1000);
                     const aggregatorTitle = await page.locator('h1').first().innerText({ timeout: 500 }).catch(() => "");
                     

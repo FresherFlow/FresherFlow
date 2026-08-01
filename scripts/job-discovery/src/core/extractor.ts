@@ -1,16 +1,32 @@
 import { Page, BrowserContext } from 'playwright';
 
+export function unwrapRedirectors(urlStr: string): string {
+    try {
+        let u = new URL(urlStr);
+        if (u.hostname.includes('linkedin.com') && u.pathname.includes('/safety/go/')) {
+            const nested = u.searchParams.get('url');
+            if (nested) return new URL(nested).href;
+        } else if (u.hostname.includes('google.com') && u.pathname.includes('/url')) {
+            const nested = u.searchParams.get('q') || u.searchParams.get('url');
+            if (nested) return new URL(nested).href;
+        }
+    } catch {}
+    return urlStr;
+}
+
 export function isValidApplyLink(urlStr: string, currentDomain: string): boolean {
     try {
-        const u = new URL(urlStr);
+        const unwrapped = unwrapRedirectors(urlStr);
+        let u = new URL(unwrapped);
+
         const targetHost = u.hostname.replace(/^www\./, '').toLowerCase();
         const baseHost = currentDomain.replace(/^www\./, '').toLowerCase();
         
         if (targetHost === baseHost) {
             // Allow redirector paths for sites like freshersnow.com
             const pathLower = u.pathname.toLowerCase();
-            if (pathLower.startsWith('/go/') || pathLower.startsWith('/out/') || pathLower.startsWith('/apply/') || pathLower.startsWith('/job/') || pathLower.startsWith('/link/')) {
-                // It's a redirector, allow it
+            if (pathLower.includes('/go/') || pathLower.includes('/out/') || pathLower.includes('apply') || pathLower.includes('job') || pathLower.includes('link') || pathLower.includes('here') || pathLower.includes('register') || pathLower.includes('submit')) {
+                return true; // It's a redirector, allow it immediately
             } else {
                 return false;
             }
@@ -78,13 +94,23 @@ export async function findActualApplyLink(page: Page, context: BrowserContext, c
 
         // 1. Try to find links containing explicit apply/register/click here/submit text
         const applyButtons = await rootLocator.locator('a, button', { hasText: /(apply|register|click here|submit)/i }).elementHandles();
+        console.log(`[DEBUG] Found ${applyButtons.length} explicit apply buttons.`);
         for (const btn of applyButtons) {
             const href = await btn.getAttribute('href');
             if (href) {
                 try {
                     const u = new URL(href, page.url());
-                    if (isValidApplyLink(u.href, currentDomain)) {
-                        return u.href;
+                    const currentU = new URL(page.url());
+                    if (u.pathname.replace(/\/$/, '') === currentU.pathname.replace(/\/$/, '')) {
+                        console.log(`[DEBUG] Skipping self-link: ${u.href}`);
+                        continue; // Skip self-links even with different query params or trailing slashes
+                    }
+                    const unwrappedHref = unwrapRedirectors(u.href);
+                    if (isValidApplyLink(unwrappedHref, currentDomain)) {
+                        console.log(`[DEBUG] Returning explicit apply link: ${unwrappedHref}`);
+                        return unwrappedHref;
+                    } else {
+                        console.log(`[DEBUG] Explicit apply link invalid: ${unwrappedHref}`);
                     }
                 } catch {
                     // Ignore invalid URLs
@@ -96,7 +122,8 @@ export async function findActualApplyLink(page: Page, context: BrowserContext, c
         const links = await rootLocator.locator('a').evaluateAll(anchors => 
             anchors.map(a => (a as HTMLAnchorElement).href)
         );
-        const externalLinks = links.filter(l => isValidApplyLink(l, currentDomain));
+        const externalLinks = links.map(unwrapRedirectors).filter(l => isValidApplyLink(l, currentDomain));
+        console.log(`[DEBUG] Found ${links.length} total links, ${externalLinks.length} valid external links.`);
 
         for (const link of externalLinks) {
             try {
@@ -116,6 +143,7 @@ export async function findActualApplyLink(page: Page, context: BrowserContext, c
                     }
                 }
                 if (isAts || h.includes('workday') || h.includes('taleo') || pathLower.includes('careers') || pathLower.includes('jobs')) {
+                    console.log(`[DEBUG] Returning ATS fallback link: ${link}`);
                     return link;
                 }
             } catch {}
@@ -131,7 +159,7 @@ export async function findActualApplyLink(page: Page, context: BrowserContext, c
             }
         }
 
-        if (clickTargets.length > 0) {
+        if (clickTargets.length > 0 && context) {
             const [newPage] = await Promise.all([
                 context.waitForEvent('page', { timeout: 5000 }).catch(() => null),
                 clickTargets[0].click({ timeout: 5000 }).catch(() => null)

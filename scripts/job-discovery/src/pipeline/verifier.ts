@@ -5,14 +5,10 @@ import { isLocationIndiaOrRemote } from '../filters/ats-filters.js';
 import { scoreJobDescription } from '../filters/scorer.js';
 import { isJobLive } from '../core/verifier.js';
 
-export async function verifyCandidates(state: DiscoveryState, phaseName: string) {
-    if (state.candidateQueue.length === 0) return;
-    
+export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning: () => boolean) {
     const VERIFIER_CONCURRENCY = 4;
-    console.log(`\n=== Verifying ${phaseName} pages (${VERIFIER_CONCURRENCY} workers) ===\n`);
-    
-    const pendingCandidates = [...state.candidateQueue];
-    state.candidateQueue.length = 0; // Clear queue for next phase
+    console.log(`\n=== Starting Verifier Daemon (${VERIFIER_CONCURRENCY} workers) ===\n`);
+
 
     if (!state.browser) {
         throw new Error("Browser is not initialized in DiscoveryState");
@@ -26,9 +22,17 @@ export async function verifyCandidates(state: DiscoveryState, phaseName: string)
         const page = await context.newPage();
 
         try {
-            while (pendingCandidates.length > 0) {
-                const candidate = pendingCandidates.shift();
-                if (!candidate) continue;
+            while (true) {
+                const candidate = state.candidateQueue.shift();
+                
+                if (!candidate) {
+                    if (isDiscoveryRunning()) {
+                        await new Promise(r => setTimeout(r, 1000));
+                        continue;
+                    } else {
+                        break; // Discovery is done and queue is empty!
+                    }
+                }
 
                 console.log(`  [Verifier] Checking: ${candidate.applyLink}`);
                 

@@ -1,4 +1,4 @@
-name: Job Scraper Sweep (Search Engine)
+name: Job Scraper (Search Engine)
 
 on:
   schedule:
@@ -12,39 +12,20 @@ permissions:
 jobs:
   run-search-sweep:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Node.js + pnpm
+        uses: ./.github/actions/setup-node
         with:
-          node-version: 22
+          install-playwright: 'true'
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 9.1.0
-          run_install: false
-
-      - name: Get pnpm store directory
-        shell: bash
-        run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
-
-      - name: Setup pnpm cache
-        uses: actions/cache@v4
-        with:
-          path: ${{ env.STORE_PATH }}
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
-
-      - name: Install Dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build Workspace Packages
-        run: pnpm build --filter "@fresherflow/plugins" --filter "@fresherflow/pipeline-db"
+      - name: Install Search Dependencies
+        working-directory: scripts/search
+        run: pnpm install
 
       - name: Install Playwright Browsers
         working-directory: scripts/search
@@ -57,7 +38,7 @@ jobs:
           NEXT_PUBLIC_CDN_URL: ${{ secrets.NEXT_PUBLIC_CDN_URL }}
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: pnpm run-all
+        run: pnpm start
 
       - name: Upload Discovered Jobs JSON Artifact
         if: always()

@@ -30,6 +30,20 @@ export function parseWorkdaySlug(slug: string): {
   wdNumber: string;
   site: string;
 } {
+  if (slug.startsWith('http')) {
+    try {
+      const url = new URL(slug);
+      const hostParts = url.hostname.split('.');
+      const company = hostParts[0];
+      const wdNumber = hostParts[1] ? hostParts[1].replace('wd', '') : '5';
+      const pathParts = url.pathname.split('/').filter(Boolean);
+      const site = pathParts[0] ?? 'External';
+      return { company, wdNumber, site };
+    } catch {
+      // Fallback below
+    }
+  }
+
   const parts = slug.split(':');
   return {
     company: parts[0],

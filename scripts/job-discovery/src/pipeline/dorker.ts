@@ -100,17 +100,23 @@ export async function discoverDorkerJobs(state: DiscoveryState) {
         }
     });
 
-    const page = await context.newPage();
     let totalQueued = 0;
     let totalSeen = 0;
     let totalDupes = 0;
 
-    try {
-        for (let qi = 0; qi < DORK_QUERIES.length; qi++) {
-            const query = DORK_QUERIES[qi];
-            console.log(`\n[Dorker] [${qi + 1}/${DORK_QUERIES.length}] ${query}`);
+    const DORKER_CONCURRENCY = 3;
+    const pendingQueries = DORK_QUERIES.map((q, i) => ({ query: q, index: i }));
 
-            for (let p = 0; p < DORKER_PAGES_PER_QUERY; p++) {
+    const dorkerWorker = async () => {
+        const page = await context.newPage();
+        try {
+            while (pendingQueries.length > 0) {
+                const item = pendingQueries.shift();
+                if (!item) continue;
+                const { query, index: qi } = item;
+                console.log(`\n[Dorker] [${qi + 1}/${DORK_QUERIES.length}] ${query}`);
+
+                for (let p = 0; p < DORKER_PAGES_PER_QUERY; p++) {
                 const pageOffset = p * 30;
                 const searchUrl = pageOffset === 0
                     ? `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`
@@ -210,8 +216,14 @@ export async function discoverDorkerJobs(state: DiscoveryState) {
         }
     } finally {
         await page.close().catch(() => {});
-        await context.close().catch(() => {});
     }
+};
+
+try {
+    await Promise.all(Array.from({ length: DORKER_CONCURRENCY }, () => dorkerWorker()));
+} finally {
+    await context.close().catch(() => {});
+}
 
     console.log(`\n=== Phase 1.5 Complete ===`);
     console.log(`  Queued: ${totalQueued}  |  Dupes skipped: ${totalDupes}  |  Raw results seen: ${totalSeen}\n`);

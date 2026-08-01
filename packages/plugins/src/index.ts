@@ -49,6 +49,11 @@ import { WorkdayAdapter } from './adapters/ats/workday/index.js';
 import { ZimyoAdapter } from './adapters/ats/zimyo/index.js';
 import { ZohoRecruitAdapter } from './adapters/ats/zohorecruit/index.js';
 import { ZwayamAdapter } from './adapters/ats/zwayam/index.js';
+import { RipplingAdapter } from './adapters/ats/rippling/index.js';
+import { TeamtailorAdapter } from './adapters/ats/teamtailor/index.js';
+import { JobsoidAdapter } from './adapters/ats/jobsoid/index.js';
+import { ComeetAdapter } from './adapters/ats/comeet/index.js';
+import { HibobAdapter } from './adapters/ats/hibob/index.js';
 
 // Job Boards
 import { GlassdoorAdapter } from './adapters/board/glassdoor/index.js';
@@ -111,6 +116,11 @@ export {
   ZimyoAdapter,
   ZohoRecruitAdapter,
   ZwayamAdapter,
+  RipplingAdapter,
+  TeamtailorAdapter,
+  JobsoidAdapter,
+  ComeetAdapter,
+  HibobAdapter,
   GlassdoorAdapter,
   HackerNewsAdapter,
   HasjobAdapter,
@@ -170,6 +180,11 @@ export const PLUGIN_REGISTRY: Record<string, AtsAdapter> = {
   'zimyo': new ZimyoAdapter(),
   'zohorecruit': new ZohoRecruitAdapter(),
   'zwayam': new ZwayamAdapter(),
+  'rippling': new RipplingAdapter(),
+  'teamtailor': new TeamtailorAdapter(),
+  'jobsoid': new JobsoidAdapter(),
+  'comeet': new ComeetAdapter(),
+  'hibob': new HibobAdapter(),
   'glassdoor': new GlassdoorAdapter(),
   'hackernews': new HackerNewsAdapter(),
   'hasjob': new HasjobAdapter(),
@@ -192,4 +207,28 @@ export const PLUGIN_REGISTRY: Record<string, AtsAdapter> = {
   'nvidia': new NvidiaAdapter()
 };
 
+export const BOARD_SET = new Set([
+  'glassdoor', 'hackernews', 'hasjob', 'indeed', 'internshala',
+  'linkedin', 'naukri', 'remoteok', 'wellfound', 'weworkremotely', 'bayt'
+]);
+
+export const COMPANY_PROVIDER_SET = new Set([
+  'google', 'amazon', 'microsoft', 'ibm', 'apple', 'uber', 'stripe', 'meta', 'nvidia'
+]);
+
+export function getPluginCategories() {
+  const all = Object.keys(PLUGIN_REGISTRY);
+  const boards = all.filter((key) => BOARD_SET.has(key));
+  const companies = all.filter((key) => COMPANY_PROVIDER_SET.has(key));
+  const atsAdapters = all.filter((key) => !BOARD_SET.has(key) && !COMPANY_PROVIDER_SET.has(key));
+
+  return {
+    atsAdapters,
+    boards,
+    companies,
+    total: all.length
+  };
+}
+
 export * from './common/experience.js';
+

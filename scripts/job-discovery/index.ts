@@ -17,20 +17,25 @@ async function run() {
     let runStatus: 'COMPLETED' | 'FAILED' = 'COMPLETED';
 
     try {
-        // 1. Discovery (ATS API)
-        await discoverAtsJobs(state);
-        
-        // 1.5 Discovery (ATS Dorker)
-        await discoverDorkerJobs(state);
+        let isDiscoveryRunning = true;
 
-        // 2. Verification (ATS Phase - includes API + Dorker)
-        await verifyCandidates(state, "ATS");
+        // Start the verifier daemon in parallel
+        const verifierPromise = verifyCandidates(state, () => isDiscoveryRunning);
 
-        // 3. Discovery (Aggregators Phase)
+        // 1. Discovery (ATS API) & 1.5 Discovery (ATS Dorker)
+        await Promise.all([
+            discoverAtsJobs(state),
+            discoverDorkerJobs(state)
+        ]);
+
+        // 2. Discovery (Aggregators Phase)
         await discoverAggregatorJobs(state);
 
-        // 4. Verification (Aggregators Phase)
-        await verifyCandidates(state, "Aggregator");
+        // Signal that discovery is complete
+        isDiscoveryRunning = false;
+
+        // Wait for verification daemon to finish processing the queue
+        await verifierPromise;
 
         // 5. Storage & Notifications
         await persistLocalData(state);
@@ -71,4 +76,7 @@ async function run() {
     }
 }
 
-run().catch(console.error);
+run().then(() => process.exit(0)).catch(err => {
+    console.error(err);
+    process.exit(1);
+});
