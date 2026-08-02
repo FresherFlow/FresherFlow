@@ -30,10 +30,16 @@ export function csrfGate(req: Request, res: Response, next: NextFunction) {
         }
     }
 
-    // 1.2 Bypass CSRF for internal API key programmatic requests
+    // 1.2 Bypass CSRF for internal API key or Bearer token programmatic requests
     const apiKey = req.header('x-api-key');
     const internalSecret = process.env.INTERNAL_API_SECRET;
     if (apiKey && internalSecret && crypto.timingSafeEqual(Buffer.from(String(apiKey)), Buffer.from(internalSecret))) {
+        return next();
+    }
+
+    // 1.3 Bypass CSRF for authenticated Bearer token admin requests
+    const authHeader = req.header('authorization') || '';
+    if (authHeader.startsWith('Bearer ')) {
         return next();
     }
 

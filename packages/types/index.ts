@@ -1114,3 +1114,11 @@ export interface CandidateInterest {
     updatedAt: string | Date;
 }
 
+export interface CompanyTargetResponse {
+  id: string; company: string; ats: string; slug: string;
+  active: boolean; priority: number;
+  lastRunAt?: string; lastJobCount?: number; createdAt: string;
+}
+export interface CreateCompanyTargetPayload {
+  company: string; ats: string; slug: string; active?: boolean; priority?: number;
+}

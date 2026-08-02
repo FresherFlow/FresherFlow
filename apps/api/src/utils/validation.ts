@@ -335,6 +335,13 @@ export const opportunitySubmitSchema = z.object({
     venueAddress: z.string().optional().nullable(),
     venueLink: z.string().url().or(z.string().length(0)).nullable().optional(),
     reportingTime: z.string().optional().nullable(),
+    experienceMin: z.number().nullable().optional(),
+    experienceMax: z.number().nullable().optional(),
+    structuredLocations: z.any().nullable().optional(),
+    jobFunction: z.string().nullable().optional(),
+    incentives: z.string().nullable().optional(),
+    selectionProcess: z.string().nullable().optional(),
+    notesHighlights: z.string().nullable().optional(),
 });
 
 // User Action Schemas

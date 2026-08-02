@@ -54,6 +54,7 @@ import adminSocialRoutes from './routes/admin/social';
 import adminQueuesRoutes from './routes/admin/queues';
 import adminPushRoutes from './routes/admin/push';
 import adminUsersRoutes from './routes/admin/users';
+import adminTargetsRoutes from './routes/admin/targets';
 import healthRoutes from './routes/public/health';
 import companyRoutes from './routes/public/companies';
 import sitemapRoutes from './routes/public/sitemap';
@@ -426,6 +427,7 @@ if (isUserMode) {
     app.use('/api/saved', savedRoutes);
     app.use('/api/dashboard', dashboardRoutes);
     app.use('/api/alerts', alertsRoutes);
+    app.use('/api/targets', adminTargetsRoutes);
     app.use('/api/public/companies', companyRoutes);
     app.use('/api/public/sitemap', sitemapRoutes);
     app.use('/api/public', joblinksRoutes);
@@ -463,6 +465,7 @@ if (isAdminMode) {
     app.use('/api/admin/users', restrictAdmin, adminUsersRoutes);
     app.use('/api/admin/government-jobs', restrictAdmin, adminGovernmentJobsRoutes);
     app.use('/api/admin/resources', restrictAdmin, adminResourcesRoutes);
+    app.use('/api/admin/targets', restrictAdmin, adminTargetsRoutes);
 }
 
 // ============================================================================

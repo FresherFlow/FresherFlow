@@ -138,6 +138,14 @@ router.post('/submit', async (req: Request, res: Response, next: NextFunction) =
                 sourceLink: data.sourceLink,
                 applicationDetails: data.applicationDetails || undefined,
                 postedByUserId: attributionUserId as string,
+                experienceMin: data.experienceMin ?? null,
+                experienceMax: data.experienceMax ?? null,
+                structuredLocations: data.structuredLocations ?? undefined,
+                jobFunction: data.jobFunction ?? null,
+                incentives: data.incentives ?? null,
+                selectionProcess: data.selectionProcess ?? null,
+                notesHighlights: data.notesHighlights ?? null,
+                publishedAt: data.status === 'PUBLISHED' ? new Date() : null,
                 ...(data.type === 'WALKIN' ? {
                     walkInDetails: {
                         create: {
