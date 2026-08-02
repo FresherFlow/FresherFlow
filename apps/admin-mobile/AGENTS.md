@@ -1,122 +1,165 @@
-# FresherFlow Admin Mobile — AI Agent Guide
+# FresherFlow admin mobile agent guide
 
-This file is for AI coding agents only.
-Use it as the implementation playbook for building and modifying the admin mobile app (`apps/admin-mobile`).
+This file is for AI coding agents working in `apps/admin-mobile`. Read the root `AGENTS.md` first.
 
-For monorepo-wide rules, architecture, and shared patterns, read the root [`AGENTS.md`](../../AGENTS.md) first.
+## App profile
 
----
+| Concern | Value |
+|---|---|
+| Framework | Expo and React Native |
+| Language | TypeScript, strict mode |
+| Audience | Internal FresherFlow operators |
+| Auth | Firebase Auth and admin API role checks |
+| Purpose | Review, moderate, approve, reject, publish, and regenerate operational data |
+| Distribution | Internal EAS builds |
 
-## 1) App Snapshot
+Read `DESIGN_SYSTEM.md` before UI changes.
 
-- Framework: React Native with Expo
-- Language: TypeScript (strict)
-- Styling: Custom theme — `src/theme/colors.ts`, `src/theme/dimensions.ts`, `src/theme/typography.ts`
-- Auth: Firebase Auth (admin-only accounts)
-- Purpose: Internal moderation — reviewing, approving, rejecting, publishing opportunities
-- Deploy: EAS Build (internal distribution, not Play Store)
+## Architecture
 
-## 2) Architecture (Do Not Bypass)
+| Path | Owns |
+|---|---|
+| `src/features/` | Admin feature modules |
+| `src/navigation/` | Navigation and route typing |
+| `src/hooks/` | API-backed admin hooks |
+| `src/context/` | Auth and app context |
+| `src/theme/` | Colors, spacing, typography, component sizes |
 
-### Layers
+All API calls go through `packages/api-client`. Do not call raw admin URLs from screens.
 
-- **Features** (`src/features/`): Self-contained feature modules per admin domain
-- **Navigation** (`src/navigation/`): Stack/tab navigators
-- **Hooks** (`src/hooks/`): Data fetching wrapping `packages/api-client`
-- **Contexts** (`src/context/`): Auth and theme
-- **Theme** (`src/theme/`): All design tokens
+## Production operations rules
 
-### Data rules
+Admin actions can affect public data.
 
-- All API calls go through `packages/api-client` — never raw fetch.
-- Admin actions (approve, reject, publish) call protected endpoints that require the `requireAuth` + admin role middleware.
-- No CDN feed consumption in admin app — admin reads directly from the API/database.
+- Confirm destructive actions before execution
+- Confirm publish and regenerate actions before execution
+- Show the target count or item name before bulk actions
+- Disable action controls while requests are in flight
+- Make duplicate taps idempotent or blocked
+- Roll back optimistic UI on failure
+- Surface server failure messages without exposing internals
+- Keep audit logging on the server for admin mutations
 
-## 3) Key Feature Areas and Files
+Destructive actions include reject, delete, ban, unpublish, bulk update, feed regenerate, and publish if it changes public state.
 
-### Features by domain
+## Publish and regenerate safety
+
+- Publish only approved opportunities
+- Regenerate feed only through protected admin endpoints
+- Do not regenerate from local client data
+- Show confirmation before publish, bulk publish, or feed regenerate
+- Display last known status after the action completes
+- Treat duplicate publish requests as safe retries
+- Do not show success until the API confirms the operation
+
+## Data source distinctions
+
+Keep operational counts clear.
+
+| Data | Source |
+|---|---|
+| Admin queue counts | API admin endpoints |
+| Pending review counts | API moderation endpoints |
+| Public feed counts | Generated feed or API feed status endpoint |
+| Caption previews | Caption feature or API caption endpoint |
+| Telegram delivery state | API notification or publish response |
+
+Do not mix public feed counts with admin queue counts. Do not infer publish success from caption generation.
+
+## Auth and authorization
+
+- Firebase login is not enough; API must confirm admin role
+- Admin-only endpoints must return `403` for non-admin users
+- Clear admin session state on logout
+- Do not store or log admin tokens
+- Do not expose admin-only data in public mobile app code
+
+## Environment variables
+
+| Variable | Purpose |
+|---|---|
+| `EXPO_PUBLIC_API_URL` | API base URL |
+| `EXPO_PUBLIC_ADMIN_API_URL` | Optional separate admin API base |
+| `EXPO_PUBLIC_USE_SEPARATE_ADMIN_API` | Optional admin routing flag |
+
+Expo client code may read only `EXPO_PUBLIC_*`. Never commit env files.
+
+## Key feature areas
 
 | Domain | Path | Purpose |
 |---|---|---|
 | Auth | `src/features/auth/` | Admin login |
-| Dashboard | `src/features/dashboard/` | Overview stats |
-| Moderation | `src/features/moderation/` | Review queue — approve/reject |
-| Opportunities | `src/features/opportunities/` | Browse and manage published jobs |
-| Pending | `src/features/pending/` | Pending jobs awaiting review |
-| Captions | `src/features/captions/` | Telegram caption generation |
+| Dashboard | `src/features/dashboard/` | Operational overview |
+| Moderation | `src/features/moderation/` | Review, approve, reject |
+| Opportunities | `src/features/opportunities/` | Manage published opportunities |
+| Pending | `src/features/pending/` | Pending review queue |
+| Captions | `src/features/captions/` | Caption generation and review |
 | Users | `src/features/users/` | User management |
-| Settings | `src/features/settings/` | Admin app settings |
+| Settings | `src/features/settings/` | Admin preferences |
 
-### Navigation
+## Theme rules
 
-- Root navigator: `src/navigation/` — wire new feature screens here
-- Add route types for every new screen before wiring
+Use existing tokens:
 
-### Theme
+| Concern | File |
+|---|---|
+| Colors | `src/theme/colors.ts` |
+| Spacing and radius | `src/theme/dimensions.ts` |
+| Typography | `src/theme/typography.ts` |
+| Component sizes | `src/theme/componentSizes.ts` |
 
-Read [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) before touching any UI.
+Do not hardcode colors or invent status colors. Use established success, warning, error, urgent, and brand tokens.
 
-- Colors: `src/theme/colors.ts`
-- Spacing & radius: `src/theme/dimensions.ts` (`SPACING`, `RADIUS`)
-- Typography: `src/theme/typography.ts` (pre-composed `TextStyle` objects)
-- Component sizes: `src/theme/componentSizes.ts`
+## Standard workflow
 
-## 4) Standard Workflows
+### Add an admin screen
 
-### Add a new admin screen
+1. Add the screen under the owning feature folder
+2. Add typed route params
+3. Wire the screen into navigation
+4. Use typed API client wrappers
+5. Add loading, error, and empty states
+6. Add confirmation for destructive or public-state-changing actions
 
-1. Create feature folder `src/features/<domain>/` if it doesn't exist.
-2. Add screen component `<ScreenName>Screen.tsx` inside the feature folder.
-3. Add route type in navigation types file.
-4. Wire into `src/navigation/`.
-5. Handle loading, error, and empty states — all three, always.
-6. Admin screens must show a confirmation dialog before any destructive action (reject, delete).
+### Add an admin action
 
-### Add a new moderation action
+1. Confirm the API endpoint exists and requires admin auth
+2. Add or reuse the typed API client wrapper
+3. Wire the action through a hook or feature service
+4. Disable duplicate submissions while pending
+5. Show confirmation for destructive or public-state-changing actions
+6. Verify server audit logging remains enabled
 
-1. Ensure the API endpoint exists and is protected with `requireAuth` + admin check.
-2. Add typed wrapper in `packages/api-client/src/`.
-3. Wire into the relevant feature hook in `src/hooks/`.
-4. Show optimistic UI update where possible, with rollback on error.
-5. Log the action — admin actions are audit-logged server-side via `adminAudit.ts` middleware.
+## High-risk files
 
-## 5) Admin-Specific Rules
+| File | Risk |
+|---|---|
+| `src/navigation/` | Launch and route regressions |
+| `src/context/` | Admin auth regressions |
+| Publish and moderation features | Public data correctness |
+| Caption features | Operator workflow and notification quality |
 
-- Every destructive action (reject, ban, delete) must show a confirmation dialog before executing.
-- Status badges must use consistent colors: `colors.success` for approved/published, `colors.error` for rejected, `colors.warning` for pending/review.
-- Use `colors.urgent.*` tokens for urgent job flags — do not improvise new colors.
-- Use `colors.brands.*` for social/sharing buttons (Telegram, WhatsApp, LinkedIn).
-- Admin app is internal only — no App Store optimizations needed, but crash-free is non-negotiable.
+## Security rules
 
-## 6) High-Risk Files (Edit Carefully)
+- Do not log admin tokens, Firebase tokens, or authorization headers
+- Parse URLs before opening or trusting hostnames
+- Keep destructive actions behind confirmation
+- Keep admin-only data behind API role checks
+- Do not cache sensitive admin lists in long-lived public storage
 
-- `src/navigation/` — routing structure; regressions crash on launch
-- `src/context/` — auth context regressions log admins out
-- Any file touching publish/approve/reject flow — moderation correctness is critical
+## Validation
 
-## 7) Admin-Specific Post-Change Checks
+For admin mobile changes, run:
 
-Run `pnpm typecheck` + `pnpm build` (see root AGENTS.md). Then also:
-
-- Verify confirmation dialogs appear before all destructive actions.
-- Verify admin-only routes reject non-admin users.
-- Verify loading and error states render for every screen that fetches data.
-
-## 8) Subagents for This App
-
-Agents that work in `apps/admin-mobile`. Run `manage_subagents list` before spawning — reuse if already alive.
-
-| Role | TypeName | What they do here |
-|---|---|---|
-| `admin-engineer` | `self` | All work in this folder — moderation screens, review queues, publish flows, captions, user management. |
-
-### Delegation example
-
+```bash
+pnpm --filter ./apps/admin-mobile typecheck
+pnpm --filter ./apps/admin-mobile build
 ```
-Role: admin-engineer
-Prompt: "Add bulk-reject action to the moderation queue.
-  - Screen: apps/admin-mobile/src/features/moderation/ModerationQueueScreen.tsx:L120
-  - Add multi-select mode with a 'Reject Selected' button
-  - Confirmation dialog required before executing (admin rules §5)
-  After: pnpm typecheck && pnpm build"
-```
+
+Also verify:
+
+- Non-admin users cannot access admin routes
+- Confirmation appears before destructive and publish actions
+- Loading, error, and empty states render
+- Duplicate taps do not submit duplicate operations
+- Counts come from the correct source

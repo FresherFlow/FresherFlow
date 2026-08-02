@@ -1,213 +1,180 @@
-# FresherFlow Mobile — AI Agent Guide
+# FresherFlow mobile agent guide
 
-This file is for AI coding agents only.
-Use it as the implementation playbook for building and modifying the mobile app (`apps/mobile`).
+This file is for AI coding agents working in `apps/mobile`. Read the root `AGENTS.md` first.
 
-For monorepo-wide rules, architecture, and shared patterns, read the root [`AGENTS.md`](../../AGENTS.md) first.
+## App profile
 
----
-
-## 1) App Snapshot
-
-- Framework: React Native with Expo (Expo Router / custom navigation)
-- Language: TypeScript (strict)
-- Styling: Custom theme tokens — `src/theme/index.ts`
-- Auth: Firebase Auth via Context + SecureStore
-- Data: CDN bootstrap feed (R2) + API (`packages/api-client`) + MMKV cache
-- Deploy: EAS Build (Android APK + OTA updates)
-
-## 2) Architecture (Do Not Bypass)
-
-### Layers
-
-- **Screens** (`src/screens/`): Full-screen components per feature domain
-- **Navigation** (`src/navigation/`): Stack/tab navigators
-- **Hooks** (`src/hooks/`): Data fetching and mutation hooks wrapping `api-client`
-- **Store** (`src/store/`): Persistent app state (MMKV-backed)
-- **Contexts** (`src/contexts/`): Auth, profile, theme — React Context only
-- **Utils** (`src/utils/`): Helpers, cache logic, CDN signature
-
-### State and data rules
-
-- Feed data flows through `syncModule.ts` only — do not bypass it.
-- All API calls go through `packages/api-client` typed functions — never raw `fetch`.
-- Local persistence uses MMKV (`src/utils/storage.ts`) — never AsyncStorage.
-- Auth state source of truth is `src/store/useAuthStore.ts` (MMKV-backed Zustand store); `src/contexts/AuthContext` exposes it to the React tree.
-- Scoring (`calculateOpportunityMatch`) runs client-side after feed download — never server-side.
-
-## 3) Initialization & Configuration Map
-
-**Read this before searching the codebase.** These are the exact files where key things are set up.
-
-| What | File | Notes |
-|---|---|---|
-| Auth state (user session, JWT) | `src/store/useAuthStore.ts` | Zustand store backed by MMKV. Source of truth for logged-in user |
-| Feed state (downloaded jobs) | `src/store/useFeedStore.ts` | Zustand store holding scored feed items |
-| App preferences | `src/store/useAppPreferencesStore.ts` | Sector, filters, notification prefs |
-| Notification state | `src/store/useNotificationStore.ts` | Push token, permission status |
-| Theme context | `src/contexts/ThemeContext.tsx` | Dark/light mode — wraps the whole app |
-| Toast/snackbar | `src/contexts/ToastContext.tsx` | Global toast messages |
-| UI context | `src/contexts/UIContext.tsx` | Sheet open/close states |
-| Feed sync entry | `src/utils/cache/syncModule.ts` | `syncFeed()` — version check → fetch → score → cache |
-| MMKV storage util | `src/utils/storage.ts` | `storage.set()`, `storage.getString()` etc |
-| Auth token key | `src/store/useAuthStore.ts` | `ff_auth_token_v1` in MMKV |
-| Anon ID key | `src/store/useAuthStore.ts` | `ff_anon_user_id` in MMKV |
-| CDN signature utility | `src/utils/cdnSignature.ts` | `generateCdnSignature()` — required for signed R2 URLs |
-| Root navigator | `src/navigation/RootNavigator.tsx` | Top-level routing — auth vs main stack |
-| Navigation types | `src/navigation/types.ts` | All stack param lists |
-| API client base URL | `packages/api-client/src/config.ts` | Reads `EXPO_PUBLIC_API_URL` → falls back to `localhost:5000` |
-
-### Environment Variables (mobile)
-
-| Variable | Where used | Required |
-|---|---|---|
-| `EXPO_PUBLIC_API_URL` | API base URL | Yes (production) |
-| `EXPO_PUBLIC_CDN_URL` | Bootstrap feed CDN base | Yes |
-| `EXPO_PUBLIC_CDN_SIGN_KEY` | CDN signed URL key | Yes |
-
-### MMKV Storage Keys (do not rename without migration)
-
-| Key | What it stores |
+| Concern | Value |
 |---|---|
-| `ff_auth_token_v1` | JWT access token |
-| `ff_anon_user_id` | Anonymous session ID |
-| `ff_feed_cache_v1` | Cached bootstrap feed JSON |
-| `ff_feed_version` | Last known feed version number |
+| Framework | Expo and React Native |
+| Language | TypeScript, strict mode |
+| Navigation | React Navigation with typed param lists |
+| Storage | MMKV and SecureStore |
+| Auth | Firebase Auth, JWT, SecureStore, MMKV-backed store |
+| Data | CDN bootstrap feed, API client, offline cache |
+| Lists | FlashList for large lists |
 
----
+Read `DESIGN_SYSTEM.md` before UI changes.
 
-## 4) Key Feature Areas and Files
+## Architecture
 
-### Screens by domain
-
-| Domain | Path |
+| Path | Owns |
 |---|---|
-| Auth | `src/screens/auth/` |
-| Feed / Discovery | `src/screens/feed/` |
-| Onboarding | `src/screens/onboarding/` |
-| Profile | `src/screens/profile/` |
-| Settings | `src/screens/settings/` |
-| Social | `src/screens/social/` |
-| Resources | `src/screens/resources/` |
+| `src/screens/` | Full-screen feature UI |
+| `src/navigation/` | Root, stack, and tab navigators |
+| `src/hooks/` | Data and mutation hooks |
+| `src/store/` | MMKV-backed Zustand stores |
+| `src/contexts/` | Auth, theme, toast, and UI context |
+| `src/utils/cache/` | Feed sync and offline cache |
+| `src/theme/` | Tokens and theme helpers |
 
-### Shared module → package mapping
+Do not call raw backend URLs from screens. Use `packages/api-client` wrappers.
 
-Before building new logic, check if it already exists in a shared package.
+## Feed sync rules
 
-| Feature | Package | Function |
-|---|---|---|
-| Opportunity matching | `packages/domain/opportunity` | `calculateOpportunityMatch()` |
-| Eligibility rules | `packages/domain/eligibility` | `isEligible()`, `scoreEligibility()` |
-| Profile strength | `packages/domain/profile` | `calculateProfileStrength()` |
-| Referral logic | `packages/domain/referral` | `calculateReferralLevel()` |
-| API calls | `packages/api-client` | All typed API wrappers |
-| Shared types | `packages/types` | Request/response interfaces |
-| Slug, fingerprint | `packages/utils` | `slugify()`, `fingerprint()` |
+`src/utils/cache/syncModule.ts` is the only feed path.
 
-**Rule:** Never duplicate business logic already implemented in `packages/domain`. Import from the package. If the logic doesn't exist yet, add it to `packages/domain` — not to `src/` inside the mobile app.
+The feed flow is:
 
-### Navigation
+1. Check version
+2. Build or request signed CDN URL
+3. Fetch bootstrap feed
+4. Score opportunities on device
+5. Write MMKV cache
+6. Update feed store
+7. Trigger non-blocking logo prefetch
 
-- Root navigator: `src/navigation/RootNavigator.tsx` — **high risk, edit carefully**
-- Tab navigator: `src/navigation/TabNavigator.tsx`
-- Auth stack: `src/navigation/AuthStack.tsx`
+Rules:
 
-**Navigator ownership — which navigator owns which flow:**
+- Do not bypass `syncModule.ts`
+- Do not fetch the feed directly in screens
+- Do not move match scoring to the API
+- Do not rename MMKV keys without a migration
+- Keep cold start and warm start behavior working
+- Cache stale feed data for offline use when network fails
+- Keep logo prefetch bounded and non-blocking
 
-| Navigator | Owns |
+## Offline-first behavior
+
+The app must remain useful without network.
+
+- Read cached feed before showing a hard failure
+- Show last synced state when available
+- Queue or disable network-only actions with clear UI state
+- Avoid clearing valid cache on partial sync failure
+- Treat version check failure as recoverable when cached feed exists
+- Do not block app launch on optional refresh work
+
+## Auth and token storage
+
+| Data | Storage |
 |---|---|
-| `RootNavigator` | Auth vs app split — top-level gate |
-| `AuthStack` | Login, register, onboarding screens |
-| `TabNavigator` | Dashboard / Feed / Profile — tab bar |
-| Stack navigators inside tabs | Detail pages (job detail, company detail, etc.) |
+| Firebase session | Firebase Auth |
+| JWT access token | SecureStore or existing auth store path |
+| Non-sensitive state | MMKV |
+| Anonymous ID | MMKV |
+| Push token | Existing notification store |
 
-When adding a new screen, first decide which navigator owns it. Do not add screens to RootNavigator directly.
+Rules:
 
-### Feed sync (critical path)
+- Never log tokens, cookies, authorization headers, or push tokens
+- Keep auth source of truth in the existing auth store and context
+- Do not store secrets in plain AsyncStorage
+- Clear auth state and sensitive caches on logout
+- Keep API client token injection centralized
 
-- `src/utils/cache/syncModule.ts` — version check → signed URL → fetch → score → cache
-- `src/utils/cache/offlineCache.ts` — MMKV read/write for feed data
-- `src/utils/cdnSignature.ts` — CDN signature generation (never expose unsigned R2 URLs)
+## Navigation rules
 
-### Theme
+- Define params in `src/navigation/types.ts`
+- Use typed navigation props or typed hooks
+- Add screens to the owning navigator, not always the root navigator
+- Keep the root navigator focused on auth versus app gating
+- Do not pass large objects through route params
+- Use IDs or slugs in params, then read from store or API
 
-Read [`DESIGN_SYSTEM.md`](DESIGN_SYSTEM.md) before touching any UI.
+## Lists and performance
 
-- All tokens: `src/theme/index.ts` — `theme.colors`, `theme.spacing`, `theme.roundness`, `theme.elevation`
-- Alpha utility: `alpha(color, opacity)` from `src/theme/index.ts`
+- Use FlashList for feeds and lists over 20 rows
+- Provide stable keys and estimated item size
+- Avoid synchronous scoring or filtering of large feeds on the JS thread
+- Batch expensive work with idle callbacks, timers, or frame boundaries
+- Memoize list rows only when it reduces real rerenders
+- Keep images lazy and cached through existing helpers
 
-## 5) Standard Workflows
+## Push and notification safety
 
-### Add a new screen
+- Ask permission before registering push tokens
+- Submit tokens only through typed API wrappers
+- Do not register duplicate tokens repeatedly
+- Remove or mark invalid tokens on logout when supported
+- Do not log push payloads with personal data
+- Handle denied permissions without blocking the app
 
-1. Create component in `src/screens/<domain>/<ScreenName>.tsx`.
-2. Default export is the screen component — receives navigation props via typed stack.
-3. Add route type in `src/navigation/types.ts`.
-4. Wire into the correct navigator in `src/navigation/`.
-5. Handle loading, error, and empty states — all three, always.
+## Environment variables
 
-### Add a new hook
+| Variable | Purpose |
+|---|---|
+| `EXPO_PUBLIC_API_URL` | API base URL |
+| `EXPO_PUBLIC_CDN_URL` | CDN feed base URL |
+| `EXPO_PUBLIC_CDN_SIGN_KEY` | CDN signature input if used by existing client helper |
 
-1. Create `src/hooks/use<Name>.ts`.
-2. Wrap typed function from `packages/api-client` — never raw fetch.
-3. Return `{ data, loading, error }` shape consistently.
+Expo client code may read only `EXPO_PUBLIC_*`. Never commit env files.
 
-### Modify the feed sync flow
+## Key files
 
-1. Read `src/utils/cache/syncModule.ts` fully before touching it.
-2. Do not add blocking synchronous work inside `fetchRawFeed` or `scoreAndCacheFeed`.
-3. Test with both cold start (no cache) and warm start (cached feed) scenarios.
-4. Logo prefetch (`triggerLogoPrefetch`) runs after feed is cached — keep it non-blocking.
+| File | Purpose |
+|---|---|
+| `src/navigation/RootNavigator.tsx` | Auth and app routing gate |
+| `src/navigation/types.ts` | Navigation param lists |
+| `src/store/useAuthStore.ts` | Auth state |
+| `src/store/useFeedStore.ts` | Feed state |
+| `src/utils/cache/syncModule.ts` | Feed sync entry point |
+| `src/utils/cache/offlineCache.ts` | MMKV feed cache |
+| `src/utils/storage.ts` | Storage helper |
+| `src/utils/cdnSignature.ts` | CDN signing helper |
+| `src/theme/index.ts` | Theme tokens |
 
-## 6) Performance Guardrails
+## Standard workflow
 
-- Do not block the JS thread. All heavy work (scoring, logo resolution) must be async.
-- Feed download happens at most once per session — check MMKV cache and version first.
-- Logo prefetch runs in batches of 5 — do not increase concurrency without testing.
-- Use `@shopify/flash-list` for any list with more than ~20 items — never `FlatList` for feed.
-- Do not run `calculateOpportunityMatch` synchronously on the main thread for large feeds — batch with `requestAnimationFrame` if needed.
+### Add a screen
 
-## 7) High-Risk Files (Edit Carefully)
+1. Add screen component under the owning `src/screens/<domain>/` folder
+2. Add route params to `src/navigation/types.ts`
+3. Wire the screen into the owning navigator
+4. Use existing theme tokens and components
+5. Handle loading, error, and empty states
+6. Verify navigation back behavior
 
-- `src/navigation/RootNavigator.tsx` — routing structure; regressions crash the app on launch
-- `src/utils/cache/syncModule.ts` — feed sync; regressions break offline mode entirely
-- `src/utils/cache/offlineCache.ts` — MMKV schema; key renames break cached data for existing installs
-- `src/contexts/AuthContext.tsx` — auth state; regressions log users out
+### Change feed sync
 
-## 8) Mobile-Specific Post-Change Checks
+1. Read `syncModule.ts` and `offlineCache.ts`
+2. Preserve version check, signed URL, scoring, cache write, and store update order
+3. Test cold start with empty cache
+4. Test warm start with existing cache
+5. Test network failure with existing cache
 
-Run `pnpm typecheck` + `pnpm build` (see root AGENTS.md). Then also:
+## Security rules
 
-- Verify cold start (clear app data) and warm start (cached state) both work.
-- Verify loading and error states render for any screen that fetches data.
-- Verify navigation back/forward works for any new screen.
-- For feed changes: verify both PRIVATE and GOVERNMENT sector flows.
+- Parse URLs with `new URL()` before hostname checks
+- Do not use `Math.random()` for IDs, tokens, or security-sensitive values
+- Do not log feed payloads, JWTs, push tokens, or user profile details
+- Keep external links sanitized before opening
+- Use typed API wrappers so auth headers stay centralized
 
-## 9) Mobile Security & CodeQL Guidelines
+## Validation
 
-- **URL Domain Parsing**: In screens or helpers (e.g. `syncModule.ts`, resource screens), NEVER use `.includes('google.com')` on raw URL strings for domain checks or trust logic. ALWAYS use parsed hostnames via `new URL()`:
-  ```typescript
-  const host = new URL(urlStr).hostname.toLowerCase();
-  if (host === 'youtube.com' || host === 'www.youtube.com' || host.endsWith('.youtube.com')) { ... }
-  ```
-- **Unbiased Randomness**: In client-side utilities or ID generation, NEVER use `Math.random()`. Use safe array/crypto techniques or `Date.now().toString(36)`.
-- **Sensitive Data Handling**: Never log user tokens, JWTs, or full feed payload contents to `console.log` in production builds.
+For mobile changes, run:
 
-## 10) Subagents for This App
-
-Agents that work in `apps/mobile`. Run `manage_subagents list` before spawning — reuse if already alive.
-
-| Role | TypeName | What they do here |
-|---|---|---|
-| `mobile-engineer` | `self` | All work in this folder — screens, navigation, hooks, MMKV state, feed sync. |
-
-### Delegation example
-
+```bash
+pnpm --filter ./apps/mobile typecheck
+pnpm --filter ./apps/mobile build
 ```
-Role: mobile-engineer
-Prompt: "Add empty state to the Resources screen.
-  - Screen: apps/mobile/src/screens/resources/ResourcesScreen.tsx:L55
-  - Use theme.colors.textMuted (src/theme/index.ts)
-  - Handle loading, error, empty states — all three
-  After: pnpm typecheck && pnpm build"
-```
+
+Also verify:
+
+- Cold start with no cache
+- Warm start with cached feed
+- Offline start with cached feed
+- Loading, error, and empty states
+- Navigation for new or changed screens
+- Private and government sector feed flows when feed logic changes

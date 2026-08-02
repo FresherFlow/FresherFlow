@@ -1,155 +1,151 @@
-# FresherFlow Job Discovery — AI Agent Guide
+# FresherFlow job discovery agent guide
 
-This file is for AI coding agents only.
-Use it as the implementation playbook for modifying the job discovery pipeline (`scripts/job-discovery`).
+This file is for AI coding agents working in `scripts/job-discovery`. Read the root `AGENTS.md` first.
 
-For monorepo-wide rules, read the root [`AGENTS.md`](../../AGENTS.md) first.
+## Script profile
 
----
+| Concern | Value |
+|---|---|
+| Runtime | Node.js, ESM |
+| Language | TypeScript |
+| Browser automation | Playwright |
+| Purpose | Discover new job listings from ATS boards and aggregators |
+| Trigger | GitHub Actions schedule or manual run |
+| Output | Passed job candidates uploaded to R2 for the processor |
 
-## 1) Script Snapshot
+## Pipeline stages
 
-- Runtime: Node.js (ESM)
-- Language: TypeScript
-- Browser automation: Playwright
-- Purpose: Discover new job listings from ATS boards and aggregator sites
-- Trigger: GitHub Actions (scheduled) or manual run
-- Output: `all_passed_jobs.json` → uploaded to R2 → consumed by `job-processor`
+Do not reorder stages.
 
-## 2) Pipeline Stages (Do Not Reorder)
+1. ATS discovery
+2. Aggregator discovery
+3. Verification
+4. Storage
+5. Notification
 
-```
-ATS Discovery → Aggregator Discovery → Verification → Storage → Notification
-```
+Each stage owns its own counters and failure handling. Do not hide stage failures by swallowing errors without updating run stats.
 
-1. **ATS Discovery**: Fetches job listings directly from ATS provider APIs (Greenhouse, Lever, Workday, etc.)
-2. **Aggregator Discovery**: Scrapes aggregator sites (Naukri, Freshersvoice, etc.) via Playwright
-3. **Verification**: Confirms jobs are live, India/remote, pass NLP scorer
-4. **Storage**: Uploads results to R2, persists visited URLs state
-5. **Notification**: Sends Telegram message with run summary, writes GitHub step summary
+## Stage ownership
 
-## 3) Key Files
+| Stage | Owns |
+|---|---|
+| ATS discovery | Direct provider APIs and native board feeds |
+| Aggregator discovery | Playwright scraping of configured aggregator pages |
+| Verification | Live URL checks, India or remote filters, fresher filters, scorer result |
+| Storage | R2 uploads and visited URL state |
+| Notification | Telegram and GitHub step summary |
+
+## R2 state policy
+
+R2 is the source of truth for pipeline state.
+
+- Load visited URL state from R2 at run start
+- Save visited URL state to R2 at run end
+- Do not persist state in tracked local files
+- Do not commit generated job dumps, debug outputs, or scratch files
+- Temporary scratch files belong in ignored scratch paths and must be removed when done
+- Keep state shape changes backward compatible or add migration logic
+
+## ATS provider rules
+
+- Prefer native ATS APIs over browser scraping
+- Add provider logic under `src/ats/`
+- Register providers through the existing provider index
+- Filter location before queueing candidates when provider data supports it
+- Normalize apply URLs before dedup
+- Set network timeouts for new provider fetches
+- Keep provider failures isolated so one provider does not fail the whole run
+
+## Aggregator rules
+
+- Add aggregator config to `aggregators.json`
+- Use precise selectors and stable URL patterns
+- Keep Playwright work bounded by configured limits
+- Do not increase broad crawl depth without proving yield and cost
+- Test selectors with dry run before enabling scheduled use
+- Sync production config through the approved R2 or admin path when required
+
+## Playwright concurrency
+
+Playwright is memory-heavy.
+
+- Preserve existing concurrency caps unless measurement supports a change
+- Close pages and contexts after use
+- Use timeouts on navigation and selectors
+- Avoid screenshots, videos, and traces in scheduled runs unless debugging
+- Do not launch unbounded browser tasks from arrays of URLs
+
+## URL and domain safety
+
+- Parse URLs with `new URL()`
+- Validate `http:` or `https:` protocols before fetch or browser navigation
+- Check `hostname`, not raw string substrings
+- Normalize hostnames to lowercase
+- Block unsupported protocols
+- Strip tracking parameters only through existing URL helpers or reviewed logic
+
+## Key files
 
 | File | Purpose |
 |---|---|
 | `index.ts` | Pipeline entry point |
-| `src/pipeline/state.ts` | `DiscoveryState` and `RunStats` shapes — **high risk** |
-| `src/pipeline/verifier.ts` | ATS + aggregator verification workers |
-| `src/pipeline/storage.ts` | R2 upload, visited URL persistence |
-| `src/pipeline/notifier.ts` | Telegram notification, GitHub step summary |
-| `src/config.ts` | File paths, CDN URLs, environment config |
-| `aggregators.json` | List of aggregator sites to scrape |
-| `src/ats/` | ATS provider-specific API fetch logic |
-| `src/filters/scorer.ts` | NLP job title/description scorer (PASS/REJECT) |
-| `src/filters/ats-filters.ts` | Location and fresher-level filters |
-| `src/core/raw-fetcher.ts` | Native ATS API fast-path fetcher |
-| `src/core/verifier.ts` | Playwright-based live job verification |
-| `src/utils/telegram.ts` | Telegram notification sender |
+| `src/pipeline/state.ts` | Discovery state and run stats |
+| `src/pipeline/verifier.ts` | Verification workers |
+| `src/pipeline/storage.ts` | R2 upload and state persistence |
+| `src/pipeline/notifier.ts` | Telegram and GitHub summaries |
+| `src/config.ts` | Runtime config |
+| `aggregators.json` | Aggregator definitions |
+| `src/ats/` | Native ATS provider fetchers |
+| `src/filters/scorer.ts` | Job scorer |
+| `src/filters/ats-filters.ts` | Location and fresher filters |
+| `src/core/raw-fetcher.ts` | Native API fast path |
 
-## 4) State Shape (Read Before Touching Anything)
+## Standard workflow
 
-All pipeline state flows through `DiscoveryState` in `src/pipeline/state.ts`.
+### Add a provider
 
-- `state.visited` — dedup map, keyed by `"__discovered_apply_links__"`. Loaded from R2 at start, saved to R2 at end.
-- `state.candidateQueue` — jobs waiting for verification. Cleared between phases.
-- `state.newJobsFound` — confirmed new jobs. Populated by verifier, consumed by storage/notifier.
-- `state.stats` — `RunStats` counters. Tracked throughout pipeline for reporting.
+1. Add provider fetch logic under `src/ats/`
+2. Register the provider in the existing index
+3. Normalize and dedup apply URLs
+4. Apply location and fresher filters before queueing when possible
+5. Run dry validation with the test flag
+6. Inspect run stats for provider yield and rejection reasons
 
-**Do not** add local file writes for state — state persists in R2 only.
+### Change verification
 
-## 5) Standard Workflows
+1. Read `src/pipeline/verifier.ts` and `src/pipeline/state.ts`
+2. Preserve state counters and failure categories
+3. Keep native fetch before browser verification
+4. Keep concurrency bounded
+5. Run dry validation and inspect rejected counters
 
-### Add a new ATS provider
+## LLM and scoring policy
 
-1. Add provider fetch logic under `src/ats/<provider>.ts`.
-2. Update `src/ats/index.ts` to register the new provider.
-3. Add test entry to `aggregators.json` if it's aggregator-style rather than direct API.
-4. Verify it respects the `isLocationIndiaOrRemote` filter before queueing candidates.
+Discovery should stay cheap and deterministic.
 
-### Add a new aggregator site
+- Keep scorer logic pure and side-effect free
+- Do not add network calls inside scoring functions
+- Do not add large language model calls to discovery without an explicit cost gate
+- Track reject reasons in run stats when changing scorer logic
 
-1. Add entry to `aggregators.json` with name, URL, and selector config.
-2. **Do not just commit the local file** — after testing, sync `aggregators.json` to R2 CDN via admin action.
-3. Test locally with `--test` flag to verify selectors work before enabling.
+## Validation
 
-### Modify the scorer
-
-1. `src/filters/scorer.ts` — edit scoring rules here.
-2. Keep the scorer pure — no side effects, no network calls.
-3. After changes, run a dry-run pass and inspect `ats_rejected_scorer` and `agg_rejected_scorer` counters in `RunStats` to confirm expected yield change.
-
-### Modify verification logic
-
-1. Read `src/pipeline/verifier.ts` fully before editing.
-2. Verifier runs with `VERIFIER_CONCURRENCY = 4` parallel workers — do not increase without testing memory.
-3. Fast path (native API fetch via `tryFetchNativeApi`) runs before Playwright — preserve this optimization.
-
-## 6) Performance Guardrails
-
-- Verifier concurrency is capped at 4 — Playwright is memory-heavy.
-- Visited URL list is capped at 50,000 entries in memory — the cap is enforced in verifier, preserve it.
-- Do not load or write `visited_urls.json` from/to local disk — use R2 only.
-- ATS API fetches are network-bound — add timeouts to any new fetch call.
-
-## 7) Naming Conventions
-
-- Pipeline stage files: verb noun (`verifier.ts`, `notifier.ts`, `storage.ts`)
-- ATS provider files: lowercase provider name (`greenhouse.ts`, `lever.ts`)
-- Filter utilities: descriptive noun (`ats-filters.ts`, `scorer.ts`)
-
-## 8) High-Risk Files (Edit Carefully)
-
-- `src/pipeline/state.ts` — shape changes break all downstream pipeline stages
-- `src/filters/scorer.ts` — score threshold changes directly affect how many jobs pass
-- `src/pipeline/storage.ts` — R2 upload failures silently drop discovered jobs
-- `aggregators.json` — broken selectors cause silent zero-yield from affected sites
-
-## 9) Testing & Scratch Files
-
-- **Do NOT spam test scripts in the root directory.**
-- Any temporary, one-off, or scratch test files (e.g., `test-capco.ts`, `test-lennox.ts`) must be created inside a `scratch/` folder or the agent's dedicated artifacts directory (e.g., `<appDataDir>/brain/<conversation-id>/scratch/`).
-- If you create scratch files in `scripts/job-discovery/scratch/`, make sure to delete them after use, or ensure they are `.gitignore`d.
-- Never commit one-off debug scripts to version control.
-
-## 10) Validation Checklist
-
-After every change:
+Run type checks:
 
 ```bash
-pnpm typecheck   # run from repo root or scripts/job-discovery
+pnpm --filter ./scripts/job-discovery typecheck
 ```
 
-Then run locally:
+Run dry validation:
 
 ```bash
-npx tsx index.ts --test    # dry run, no R2 uploads, no Telegram
+npx tsx index.ts --test
 ```
 
-- Check `RunStats` output in console — verify `total_found`, per-provider counts.
-- Verify `ats_rejected_scorer` and `agg_rejected_scorer` didn't spike unexpectedly.
-- Verify no unhandled promise rejections in Playwright browser pool.
+Verify:
 
-## 11) Pipeline Security & CodeQL Guidelines
-
-- **URL & Domain Verification**: In verifiers and detectors (`verifier.ts`, `ats-detector.ts`), NEVER use `url.includes('google.com')` on raw URL strings to verify ATS domains or account check bypasses. ALWAYS parse via `new URL(url).hostname`.
-- **Sanitization & Escaping**: In HTML parsers (e.g. Greenhouse adapter), replace entities with spaces `' '` instead of empty strings `''` to prevent multi-character sanitization issues, and avoid nested regex patterns on scraped HTML content.
-
-## 12) Subagents for This Script
-
-Agents that work in `scripts/job-discovery`. Run `manage_subagents list` before spawning — reuse if already alive.
-
-| Role | TypeName | What they do here |
-|---|---|---|
-| `pipeline-engineer` | `self` | All work in this folder — ATS providers, aggregator scraping, NLP scorer, verifier, R2 storage, Telegram notifier. |
-
-### Delegation example
-
-```
-Role: pipeline-engineer
-Prompt: "Add Instahyre as a new ATS provider.
-  - Add fetch logic: scripts/job-discovery/src/ats/instahyre.ts (new file)
-  - Register in: scripts/job-discovery/src/ats/index.ts:L22
-  - Filter with isLocationIndiaOrRemote before queueing candidates
-  - Test: npx tsx index.ts --test
-  After: pnpm typecheck"
-```
+- No R2 upload occurs in test mode
+- No Telegram message sends in test mode
+- Provider counts and reject counters look plausible
+- No unhandled promise rejections occur
+- No scratch files are staged or committed

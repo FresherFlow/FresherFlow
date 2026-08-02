@@ -110,3 +110,4 @@ scripts/pipeline/pipeline-client/
 scripts/pipeline-client/
 *.db-journal
 
+plans

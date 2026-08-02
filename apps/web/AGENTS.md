@@ -1,186 +1,169 @@
-# FresherFlow Web — AI Agent Guide
+# FresherFlow web agent guide
 
-This file is for AI coding agents only.
-Use it as the implementation playbook for building and modifying the web app (`apps/web`).
+This file is for AI coding agents working in `apps/web`. Read the root `AGENTS.md` first.
 
-For monorepo-wide rules, architecture, and shared patterns, read the root [`AGENTS.md`](../../AGENTS.md) first.
+## App profile
 
----
-
-## 1) App Snapshot
-
-- Framework: Next.js 16 App Router
-- Language: TypeScript (strict)
-- Styling: Tailwind CSS with CSS variable token layer
-- Font: Inter (via `next/font/google`)
-- Auth: Firebase (web) + JWT cookies
-- Data: CDN bootstrap feed (R2) + API (`packages/api-client`) + Next.js Server Components
-- Deploy: Vercel
-
-## 2) Architecture (Do Not Bypass)
-
-### Layers
-
-- **App Router** (`src/app/`): Page routes, layouts, API routes
-- **Features** (`src/features/`): Self-contained feature modules (UI + logic per domain)
-- **UI** (`src/ui/`): Generic, reusable presentational components
-- **Lib** (`src/lib/`): Utilities, helpers, server-only logic
-- **Hooks** (`src/hooks/`): Client-side hooks wrapping `api-client`
-
-### Data fetching rules
-
-- Server Components fetch data directly via `packages/api-client` or CDN URLs — no client-side fetch on initial load.
-- Client Components use custom hooks from `src/hooks/` for mutations and reactive data.
-- Never call Prisma from the web app. All data goes through the API.
-- CDN feed (`cdn.fresherflow.in/bootstrap-feed.min.json`) is fetched server-side via ISR — do not fetch it client-side.
-- Server state is the source of truth — prefer `revalidatePath`/`revalidateTag` over client-side cache invalidation.
-
-## 3) Initialization & Configuration Map
-
-**Read this before searching the codebase.**
-
-| What | File | Notes |
-|---|---|---|
-| API client (client-side) | `src/lib/api/client.ts` | Re-exports `_core.ts`, `auth.ts`, `profile.ts`, `opportunities.ts`, `social.ts` |
-| API client (server-side SSR) | `src/lib/api/server-client.ts` | `serverApiClient()` — used in Server Components. Forwards cookies + sets `revalidate: 1800` for public routes |
-| API base URL resolution | `packages/api-client/src/config.ts` | Reads `NEXT_PUBLIC_API_URL` → falls back to `window.location.origin` → `localhost:5000` |
-| `configureClient()` | `packages/api-client/src/apiClient.ts:156` | Sets the global `ApiClient` instance. Auto-called on first use |
-| Auth token key | `packages/api-client/src/apiClient.ts:71` | `ff_auth_token_v1` |
-| Anon user ID key | `packages/api-client/src/apiClient.ts:72` | `ff_anon_user_id` |
-| CSRF bypass header | `packages/api-client/src/apiClient.ts:67` | `X-Requested-From: fresherflow-client` — required on every request |
-| Server caching rules | `src/lib/api/server-client.ts:27` | `/api/auth`, `/api/admin`, `/api/profile` etc. always `no-store` |
-| Root layout | `src/app/layout.tsx` | Font loading, global providers, metadata defaults |
-| CSS variable tokens | `src/app/globals.css` | All `--background`, `--foreground`, `--primary` etc. |
-| Observability (Sentry) | `src/lib/observability.ts` | Initialized in `instrumentation.ts` |
-
-### Environment Variables
-
-| Variable | Required | Notes |
-|---|---|---|
-| `NEXT_PUBLIC_API_URL` | Yes | API base URL for client-side calls |
-| `API_URL` | Yes | API base URL for SSR calls |
-| `NEXT_PUBLIC_ADMIN_API_URL` | No | Override admin API base |
-| `NEXT_PUBLIC_USE_SEPARATE_ADMIN_API` | No | `"true"` to route `/api/admin` to separate base |
-
-## 4) Key Routes & Files
-
-| Route | File | Notes |
-|---|---|---|
-| `/` | `src/app/page.tsx` | Homepage |
-| `/jobs` | `src/app/jobs/` | Job listings |
-| `/internships` | `src/app/internships/` | Internship listings |
-| `/walk-ins` | `src/app/walk-ins/` | Walk-in listings |
-| `/government-jobs` | `src/app/government-jobs/` | Govt job listings |
-| `/[slug]` | `src/app/[slug]/` | Individual opportunity page |
-| `/dashboard` | `src/app/dashboard/` | User dashboard |
-| `/profile` | `src/app/profile/` | User profile |
-| `/(admin)` | `src/app/(admin)/` | Admin-only web routes |
-
-## 5) Key Components & Utilities
-
-**Check these before building anything new.**
-
-| Component / Utility | File | Use |
-|---|---|---|
-| `JobCard` | `src/features/opportunities/components/JobCard.tsx` | Main job listing card — use as-is, don't rebuild |
-| `OpportunityDetailPane` | `src/features/opportunities/components/OpportunityDetailPane.tsx` | Side-pane detail view |
-| `OpportunityDetailClient` | `src/app/[slug]/OpportunityDetailClient.tsx` | Full detail page client component |
-| `DetailHeroSection` | `src/app/[slug]/components/DetailHeroSection.tsx` | Detail page hero |
-| `CategoryPageView` | `src/features/opportunities/components/CategoryPageView.tsx` | Full feed page with filters |
-| `CompanyLogo` | `src/ui/CompanyLogo.tsx` | Logo with CDN fallback — always use for logos |
-| `Skeleton` | `src/ui/Skeleton.tsx` | Loading skeletons |
-| `EmptyState` | `src/ui/EmptyState.tsx` | Empty state |
-| `ErrorMessage` | `src/ui/ErrorMessage.tsx` | Error display with retry |
-| `Badge` | `src/ui/Badge.tsx` | Tag/status pills |
-| `Button` | `src/ui/Button.tsx` | All button variants |
-| `cn()` | `src/ui/cn.ts` | Tailwind class merging — always use for conditional classes |
-| `slugify()` | `packages/utils/src/slugify.ts` | Import from `@fresherflow/utils` |
-| `formatDate`, `formatSalary` | `src/lib/utils/format.ts` | Date and salary formatting |
-| CDN feed client | `src/lib/api/cdnFeed.ts` | Bootstrap + government feed fetching |
-
-### API data functions (`src/lib/api/`)
-
-| File | What it wraps |
+| Concern | Value |
 |---|---|
-| `_core.ts` | Core opportunity fetching, filtering, pagination |
-| `opportunities.ts` | Save, apply, get by slug |
-| `social.ts` | Follow, referrals |
-| `cdnFeed.ts` | Bootstrap feed, version check |
-| `server-client.ts` | `serverApiClient()` — Server Components only |
-| `admin.ts` | Admin-only calls |
+| Framework | Next.js App Router |
+| Language | TypeScript, strict mode |
+| Styling | Tailwind CSS with CSS variable tokens |
+| Auth | Firebase web auth and JWT cookies |
+| Data | API client, Server Components, CDN bootstrap feed |
+| Hosting | Vercel |
 
-### Feature Modules (`src/features/`)
+Read `DESIGN_SYSTEM.md` before UI changes.
 
-| Module | Contains |
+## Architecture
+
+| Path | Owns |
 |---|---|
-| `opportunities/` | Feed, filters, job cards, detail, hub pages |
-| `companies/` | Company pages |
-| `dashboard/` | Dashboard widgets |
-| `profile/` | Profile view and edit |
-| `auth/` | Login/register UI |
+| `src/app/` | Routes, layouts, loading, error, metadata |
+| `src/features/` | Domain UI and feature logic |
+| `src/ui/` | Shared presentational components |
+| `src/hooks/` | Client hooks over typed API calls |
+| `src/lib/` | Server helpers, API wrappers, formatting, cache helpers |
+| `src/app/(admin)/` | Admin web routes |
 
-## 6) Standard Workflows
+Do not call Prisma from this app. Do not import from `apps/api`. Use `packages/api-client`, local server helpers, and CDN helpers.
 
-### Add a new page
+## Server and client component rules
 
-1. Create folder under `src/app/<route-name>/`.
-2. Add `page.tsx` as a Server Component — fetch data directly, no `"use client"`.
-3. Export `metadata` with `title` and `description`.
-4. Add `loading.tsx` skeleton if fetch takes time.
-5. Add `error.tsx` if isolated error handling is needed.
+Default route files are Server Components.
 
-### Add a new feature module
+- Fetch initial public data in Server Components
+- Keep `"use client"` at leaf components for interactivity
+- Pass serializable props from server to client
+- Put browser APIs, stateful hooks, effects, and event handlers in Client Components
+- Keep mutations in server actions or typed client hooks, following existing patterns
+- Do not move a whole page to a Client Component to fix one interactive widget
 
-1. Create `src/features/<feature-name>/`.
-2. All related UI, hooks, helpers stay inside that folder.
-3. Wire into the relevant page in `src/app/`.
+Use `server-only` boundaries for helpers that read cookies, headers, or server env vars.
 
-### Add a new client-side hook
+## Data and API rules
 
-1. Create `src/hooks/use<Name>.ts`.
-2. Wrap a typed function from `packages/api-client` — never raw fetch.
-3. Return `{ data, loading, error }` consistently.
+| Need | Use |
+|---|---|
+| Server-side API calls | `src/lib/api/server-client.ts` |
+| Client-side API calls | hooks in `src/hooks/` or wrappers in `src/lib/api/` |
+| Opportunity feed | `src/lib/api/cdnFeed.ts` |
+| Logos | `src/ui/CompanyLogo.tsx` and CDN helpers |
+| Shared types | `packages/types` |
+| Shared business rules | `packages/domain` |
 
-## 7) Performance Guardrails
+Never add raw `fetch` calls in UI components when an API client wrapper exists.
 
-- No `"use client"` on data-fetching pages — Server Components fetch by default.
-- Keep `"use client"` as leaf nodes — push data-fetching up.
-- Use `generateStaticParams` for opportunity detail pages.
-- Use `next/image` for all images — never `<img>`.
-- CDN feed must use ISR (`revalidate`) — never `no-store` on the feed route.
+## ISR and cache safety
 
-## 8) High-Risk Files
+Treat cache behavior as production behavior.
 
-- `src/app/layout.tsx` — changes affect every page
-- `src/app/globals.css` — CSS variable changes affect all colors
-- `src/proxy.ts` — misconfiguration breaks all data fetching
+- Public feed and category routes may use bounded `revalidate`
+- User-specific routes use `no-store`: dashboard, profile, saved jobs, alerts, settings, admin
+- CDN feed fetches must not use `no-store` in production paths
+- High-cardinality routes must avoid broad tag invalidation
+- Per-user mutations must not invalidate global feed tags
+- Prefer narrow tags that match the entity or route scope
+- Confirm pages using cookies or auth are never statically cached
+- Keep `generateStaticParams` bounded and intentional
 
-## 9) Web Security & CodeQL Guidelines
+If a route can expose private data, it must be dynamic and uncached.
 
-- **Client Randomness**: NEVER use `Math.random()` for anonymous session IDs or tracking tokens in API helpers or components. ALWAYS use `window.crypto.getRandomValues()` or safe typed array generation.
-- **URL Domain Sanitization**: In admin forms or resource components, NEVER use raw `.includes('domain.com')` to classify or sanitize input URLs. ALWAYS parse via `new URL(url).hostname`.
-- **Sensitive Data & Exposure**: Server Actions and API routes must never return raw error stack traces to the client. Log errors on the server and return sanitized error messages.
+## High-cardinality route policy
 
-## 10) Free-Hand Creative UI/UX Delegation
+Opportunity detail pages, company pages, and slug routes can grow without bound.
 
-- **No Prescriptive Blueprints**: When delegating web design, layout redesigns, or animation tasks to subagents, **never** hand down restrictive design blueprints, layout schemas, or micro-managed instruction checklists. Do not instruct subagents like a fresher suggesting to a CEO.
-- **Trust the Skills**: Instruct the subagent to load the appropriate design and animation skills (`wow-ui-design`, `emil-design-eng`, `apple-design`, `improve-animations`, `find-animation-opportunities`), point them to the exact file or target route, and allow them 100% **free-hand creative freedom** to apply their taste and engineering excellence.
+- Do not revalidate every slug after a single publish
+- Do not attach broad tags such as `feed` to every detail page unless invalidation is scoped
+- Use CDN feed helpers for public data instead of live `no-store` API calls
+- Keep metadata generation cheap and cacheable for public pages
+- Avoid fetching full feeds inside every slug request
 
-## 11) Subagents for This App
+## Vercel cost guardrails
 
-Agents that work in `apps/web`. Run `manage_subagents list` before spawning — reuse if already alive.
+- Prefer static or ISR public pages over per-request rendering
+- Avoid `no-store` on high-traffic public pages
+- Avoid broad `revalidatePath("/")` or root layout invalidation
+- Keep image usage on `next/image`
+- Do not put large JSON payloads into page props
+- Do not fetch the bootstrap feed repeatedly from Client Components
+- Keep middleware and proxy logic minimal, deterministic, and fast
 
-| Role | TypeName | What they do here |
+## SEO and public route guardrails
+
+Public pages need stable metadata and crawl-safe content.
+
+- Export `metadata` or `generateMetadata` for public routes
+- Use canonical URLs for slug pages when existing helpers support it
+- Do not index authenticated, admin, preview, or error routes
+- Keep public page content independent of the current user
+- Do not expose internal IDs, admin counts, raw scrape payloads, or unpublished opportunities
+- Ensure Open Graph images and logos use approved CDN helpers
+
+## Environment variables
+
+| Variable | Scope | Notes |
 |---|---|---|
-| `web-engineer` | `self` | All feature work in this folder — profile, dashboard, job cards, alerts, search, navigation, settings, public portfolio. Split into two only when tasks are fully parallel. |
-| `ui-designer` | `self` | Redesigns, motion, animations, design system polish for web pages. Loads `wow-ui-design`, `emil-design-eng`, `apple-design` — free hand, no prescriptive instructions. |
+| `NEXT_PUBLIC_API_URL` | Client | Public API base URL |
+| `API_URL` | Server | Server-side API base URL |
+| `NEXT_PUBLIC_ADMIN_API_URL` | Client | Optional admin API override |
+| `NEXT_PUBLIC_USE_SEPARATE_ADMIN_API` | Client | Optional admin routing flag |
 
-### Delegation example
+Client code may read only `NEXT_PUBLIC_*`. Server code may read server-only env vars. Never commit `.env` files.
 
+## Key files
+
+| File | Purpose |
+|---|---|
+| `src/app/layout.tsx` | Root layout, providers, metadata defaults |
+| `src/app/globals.css` | Design tokens and global CSS |
+| `src/proxy.ts` | Request proxying and route protection |
+| `src/lib/api/server-client.ts` | Server API client and cache policy |
+| `src/lib/api/cdnFeed.ts` | CDN bootstrap feed access |
+| `src/lib/api/client.ts` | Client API exports |
+| `src/features/opportunities/` | Feed, filters, cards, detail UI |
+| `src/ui/CompanyLogo.tsx` | Logo rendering and fallback |
+
+## Standard workflow
+
+### Add a page
+
+1. Add `src/app/<route>/page.tsx` as a Server Component
+2. Fetch initial data on the server
+3. Add metadata for public routes
+4. Add `loading.tsx` when data can block rendering
+5. Add `error.tsx` for isolated route failures
+6. Use existing UI primitives and feature modules
+
+### Add a client hook
+
+1. Create `src/hooks/useName.ts`
+2. Wrap a typed API client function
+3. Return consistent `data`, `loading`, and `error` state
+4. Keep retries and cache invalidation scoped
+
+## Security rules
+
+- Parse URLs with `new URL()` before hostname checks
+- Do not use `Math.random()` for tokens, IDs, or tracking keys
+- Do not return raw server errors to clients
+- Keep admin and authenticated routes protected by existing guards
+- Do not expose server-only env vars through props or bundled modules
+- Validate external image and logo URLs through existing helpers
+
+## Validation
+
+For web changes, run:
+
+```bash
+pnpm --filter ./apps/web typecheck
+pnpm --filter ./apps/web build
 ```
-Role: web-engineer
-Prompt: "Add a 'saved jobs' empty state to the dashboard.
-  - Component: apps/web/src/features/dashboard/SavedJobs.tsx:L88
-  - Use EmptyState from src/ui/EmptyState.tsx — icon, title, description props
-  - After: pnpm typecheck && pnpm build"
-```
+
+Also verify:
+
+- Public route renders without auth cookies
+- Authenticated route does not cache private data
+- Loading, error, and empty states render where data is fetched
+- Feed pages use CDN helpers and bounded cache settings
+- SEO metadata does not expose unpublished or admin-only data

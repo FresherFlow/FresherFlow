@@ -1,132 +1,163 @@
-# FresherFlow Job Processor — AI Agent Guide
+# FresherFlow job processor agent guide
 
-This file is for AI coding agents only.
-Use it as the implementation playbook for modifying the job processor pipeline (`scripts/job-processor`).
+This file is for AI coding agents working in `scripts/job-processor`. Read the root `AGENTS.md` first.
 
-For monorepo-wide rules, read the root [`AGENTS.md`](../../AGENTS.md) first.
+## Script profile
 
----
+| Concern | Value |
+|---|---|
+| Runtime | Node.js, ESM |
+| Language | TypeScript |
+| Browser automation | Playwright |
+| LLM enrichment | Gemini API |
+| Purpose | Scrape, enrich, normalize, and submit discovered jobs |
+| Input | Discovery output from R2 or local dry-run input |
+| Output | Structured opportunities submitted to the API |
 
-## 1) Script Snapshot
+## Processing stages
 
-- Runtime: Node.js (ESM)
-- Language: TypeScript
-- Browser automation: Playwright
-- LLM enrichment: Gemini API
-- Purpose: Takes raw discovered job URLs, scrapes full details, enriches with LLM, submits to API
-- Input: `all_passed_jobs.json` from `scripts/job-discovery` (via R2)
-- Output: Structured opportunity objects → submitted to `/api/opportunities/submit`
+Do not reorder stages.
 
-## 2) Processing Stages (Do Not Reorder)
+1. Load input
+2. Native ATS extraction
+3. Browser scrape when needed
+4. Metadata extraction
+5. LLM enrichment when needed
+6. Normalize
+7. Submit to API
+8. Persist dedup state
 
-```
-Load Input → Scrape Page → Extract Metadata → LLM Enrichment → Normalize → Submit to API
-```
+Each stage should keep enough context for error reporting without logging secrets or full personal data.
 
-1. **Load Input**: Reads `all_passed_jobs.json` from R2 or local file
-2. **Scrape Page**: Playwright opens each job URL, extracts raw HTML/text
-3. **Extract Metadata**: Provider-specific and generic extractors pull structured fields
-4. **LLM Enrichment**: Gemini enriches unstructured description into structured fields (salary, skills, experience)
-5. **Normalize**: `normalizer.ts` standardizes all fields to the `Opportunity` schema
-6. **Submit to API**: POSTs to `/api/opportunities/submit`, handles dedup and errors
+## Stage ownership
 
-## 3) Key Files
+| Stage | Owns |
+|---|---|
+| Load input | R2 or explicit local dry-run file |
+| Native ATS extraction | Provider APIs that avoid browser cost |
+| Browser scrape | Playwright fallback extraction |
+| Metadata extraction | HTML, JSON-LD, Open Graph, and provider fields |
+| LLM enrichment | Missing structured fields only |
+| Normalize | API-ready opportunity shape |
+| Submit | API contract, retry, dedup handling |
+| Dedup state | Processed URL state in R2 |
+
+## Native ATS before browser
+
+Native extraction is the default path when available.
+
+- Try native ATS extraction before opening Playwright
+- Do not call Gemini for jobs with complete structured native data
+- Do not open a browser for URLs already handled by native providers
+- Keep provider-specific extraction isolated
+- Add timeouts and failure categories for new providers
+
+## LLM cost gates
+
+Gemini calls cost money and can affect data quality.
+
+- Call the large language model only when required fields are missing
+- Respect `--no-llm` or equivalent debug flags
+- Keep prompts schema-bound and deterministic
+- Validate model output before normalization
+- Track fallback and failure counts
+- Test prompt changes with varied job descriptions before scheduled use
+- Never send secrets, tokens, or internal API responses to the model
+
+## Normalization and API submit contract
+
+`src/normalizer.ts` must produce the shape expected by the API and `packages/types`.
+
+- Normalize salary, location, experience, skills, company, and apply URL consistently
+- Preserve source URL and provider identifiers for dedup and audit
+- Treat API duplicate responses as successful skips when existing logic does so
+- Respect API retry and backoff behavior
+- Do not increase submit concurrency without API stability testing
+- Keep request payloads typed and serializable
+
+If a field shape changes, update `packages/types`, `packages/api-client`, and the API contract in the same feature branch.
+
+## Dedup state policy
+
+R2 is the source of truth for processed URL state.
+
+- Load processed state from R2 unless using an explicit dry-run input
+- Persist processed state to R2 after successful processing when not in dry-run mode
+- Do not commit `processed_urls.json`, output dumps, or scratch files
+- Normalize URLs before checking dedup state
+- Treat duplicate API responses as non-fatal
+
+## URL and scraping safety
+
+- Parse URLs with `new URL()`
+- Validate `http:` or `https:` before fetch or browser navigation
+- Check `hostname`, not raw string substrings
+- Close pages and contexts after use
+- Keep Playwright concurrency bounded
+- Do not capture traces, videos, or screenshots in scheduled runs unless debugging
+- Avoid unsafe regex sanitizers on raw HTML
+
+## Key files
 
 | File | Purpose |
 |---|---|
-| `index.ts` | Entry point, orchestrates the full pipeline |
-| `src/api.ts` | API submission — POST to backend |
-| `src/browser.ts` | Playwright browser pool management |
-| `src/ats-native.ts` | ATS-specific native API scrapers (no browser needed) |
-| `src/providers.ts` | Provider-specific Playwright extraction logic per ATS |
-| `src/metadata.ts` | Generic metadata extractor from raw HTML/JSON |
-| `src/normalizer.ts` | Normalizes raw scraped data → `Opportunity` schema |
-| `src/cdn-matcher.ts` | Matches companies to CDN logo/brand data |
-| `src/rules.ts` | Post-processing business rules (expiry, type classification) |
-| `src/parsers/` | NLP parsers for salary, location, experience level |
+| `index.ts` | Pipeline orchestration |
+| `src/api.ts` | API submission |
+| `src/browser.ts` | Playwright browser pool |
+| `src/ats-native.ts` | Native ATS extraction |
+| `src/providers.ts` | Provider-specific browser extraction |
+| `src/metadata.ts` | Generic metadata extraction |
+| `src/normalizer.ts` | API-ready normalization |
+| `src/cdn-matcher.ts` | Company and logo matching |
+| `src/rules.ts` | Post-processing rules |
+| `src/parsers/` | Salary, location, and experience parsers |
 
-## 4) Standard Workflows
+## Standard workflow
 
-### Add support for a new ATS provider
+### Add provider support
 
-1. Check if a native API exists for the provider — if yes, add to `src/ats-native.ts` (no browser needed, faster).
-2. If native API unavailable, add Playwright extraction logic to `src/providers.ts` under the provider's name.
-3. Add provider detection logic so the pipeline routes to the correct extractor.
-4. Test against 3–5 real job URLs from that provider before enabling.
+1. Check for a native API first
+2. Add native extraction when possible
+3. Add browser fallback only when needed
+4. Add provider detection
+5. Test with several real URLs in no-submit mode
+6. Verify normalized output before API submit
 
-### Modify the LLM enrichment prompt
+### Change LLM enrichment
 
-1. Gemini prompt lives inline in `index.ts` or a dedicated enrichment file.
-2. Changes to the prompt directly affect data quality for ALL jobs — test with at least 10 diverse job descriptions.
-3. Keep the output schema strict — the normalizer expects specific field names from LLM output.
-4. Use `--no-llm` flag to bypass enrichment during debugging.
+1. Keep output schema strict
+2. Run with `--no-llm` to compare native and metadata extraction
+3. Test varied job descriptions with the model enabled
+4. Inspect normalized output
+5. Confirm cost impact before scheduled use
 
-### Modify the normalizer
+### Change API submission
 
-1. `src/normalizer.ts` maps raw scraped/LLM output → `Opportunity` type from `packages/types`.
-2. Any field name or type change here must be reflected in `packages/types/src/index.ts`.
-3. After changes, run the processor on a local sample file and inspect normalized output before submitting to API.
+1. Read `src/api.ts`
+2. Preserve retry, backoff, and duplicate handling
+3. Keep request shape aligned with API validation
+4. Run no-submit mode first
+5. Run a limited submit only when explicitly approved
 
-### Modify API submission
+## Validation
 
-1. `src/api.ts` POSTs to `/api/opportunities/submit`.
-2. Handles rate limiting, retries, and dedup (API returns 409 for duplicates — treat as success).
-3. Do not increase concurrency above current limit without testing API stability.
-
-## 5) Performance Guardrails
-
-- Playwright is memory-heavy — process jobs in batches, not all at once.
-- LLM calls cost money — do not call Gemini for jobs that already have complete structured data from native ATS APIs.
-- API submission is rate-limited — respect the existing retry/backoff logic in `src/api.ts`.
-- `processed_urls.json` must persist to R2, not local disk, to maintain dedup state across runs.
-
-## 6) Naming Conventions
-
-- Extractor files: descriptive noun (`ats-native.ts`, `providers.ts`, `metadata.ts`)
-- Parser files: `<what>Parser.ts` inside `src/parsers/`
-- Utility files: descriptive noun (`normalizer.ts`, `cdn-matcher.ts`)
-
-## 7) High-Risk Files (Edit Carefully)
-
-- `src/normalizer.ts` — shape changes break the `Opportunity` schema submitted to API
-- `src/api.ts` — submission errors silently drop processed jobs; retry logic is critical
-- `src/providers.ts` — provider-specific selectors break silently when ATS sites change layout
-- `index.ts` — pipeline orchestration; stage reordering breaks enrichment quality
-
-## 8) Validation Checklist
-
-After every change:
+Run type checks:
 
 ```bash
-pnpm typecheck   # run from repo root or scripts/job-processor
+pnpm --filter ./scripts/job-processor typecheck
 ```
 
-Then run locally against a test input file:
+Run dry validation:
 
 ```bash
-npx tsx index.ts --input test-jobs.json --no-submit   # process without submitting to API
+npx tsx index.ts --input test-jobs.json --no-submit
 ```
 
-- Inspect normalized output — verify all required `Opportunity` fields are populated.
-- Check no unhandled errors for edge-case job descriptions (missing salary, no location, etc.).
-- Verify dedup logic correctly skips already-processed URLs.
-- For provider changes: test against 3–5 real URLs from that provider.
+Verify:
 
-## 9) Subagents for This Script
-
-Agents that work in `scripts/job-processor`. Run `manage_subagents list` before spawning — reuse if already alive. `pipeline-engineer` is shared with `scripts/job-discovery` — check the list and reuse the same agent.
-
-| Role | TypeName | What they do here |
-|---|---|---|
-| `pipeline-engineer` | `self` | All work in this folder — ATS native scrapers, Playwright providers, LLM enrichment, normalizer, API submission. |
-
-### Delegation example
-
-```
-Role: pipeline-engineer
-Prompt: "Fix Workday provider — description truncated at 500 chars.
-  - Provider: scripts/job-processor/src/providers.ts — Workday section at L188
-  - Fix: description slice at L201 cuts mid-sentence, increase to 2000
-  - Test: npx tsx index.ts --input test-jobs.json --no-submit
-  After: pnpm typecheck"
-```
+- Native providers run before browser fallback
+- No LLM call happens when `--no-llm` is set
+- Normalized output has all required API fields
+- Duplicate URLs are skipped or treated as successful duplicates
+- No production R2 state changes happen in dry-run mode
+- No scratch files are staged or committed

@@ -6,6 +6,17 @@
 
 ---
 
+## Planning Pack
+
+Detailed execution and architecture plans now live in [`planning/plans`](./planning/plans/README.md):
+
+- Architecture strategy for web, mobile, API, worker, ingestion, and CDN feeds
+- Execution roadmap with validation gates and rollback rules
+- Reliability and cost strategy for ISR, Vercel functions, R2 feeds, and queues
+- Product growth strategy for trust, freshness, retention, SEO, and hiring intelligence
+
+---
+
 ## What's Live Today
 
 - ✅ Web app (Next.js) with job feed, filters, company pages, opportunity detail
