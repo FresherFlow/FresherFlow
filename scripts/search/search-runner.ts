@@ -58,10 +58,16 @@ async function runSweep() {
   const TIMEOUT_MS = 60000; // 1 minute per target
 
   const executeWithTimeout = async (target: SearchTarget) => {
-    return Promise.race([
-      executeSearch(target, args),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout exceeded')), TIMEOUT_MS))
-    ]);
+    let timer: ReturnType<typeof setTimeout>;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error(`Timeout of ${TIMEOUT_MS}ms exceeded for ${target.company}`)), TIMEOUT_MS);
+    });
+    try {
+      const res = await Promise.race([executeSearch(target, args), timeoutPromise]);
+      return res;
+    } finally {
+      clearTimeout(timer!);
+    }
   };
 
   const allDiscoveredJobs: any[] = [];
@@ -116,7 +122,12 @@ async function runSweep() {
   console.log(`======================================================\n`);
 }
 
-runSweep().catch(err => {
-  console.error('Fatal Runner Error:', err);
-  process.exit(1);
-});
+runSweep()
+  .then(() => {
+    process.exit(0);
+  })
+  .catch(err => {
+    console.error('Fatal Runner Error:', err);
+    process.exit(1);
+  });
+
