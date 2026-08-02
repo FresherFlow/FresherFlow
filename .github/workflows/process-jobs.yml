@@ -2,7 +2,7 @@ name: Job Processing Bot
 
 on:
   workflow_run:
-    workflows: ["Job Discovery Bot", "Job Scraper Sweep (Search Engine)"]
+    workflows: ["Job Discovery Bot", "Job Scraper (Search Engine)"]
     types:
       - completed
   workflow_dispatch: # Allow manual trigger from GitHub UI
@@ -34,7 +34,6 @@ jobs:
       - name: Build Workspace Packages
         run: pnpm build --filter "@fresherflow/constants" --filter "@fresherflow/parser"
 
-
       - name: Download Discovered Jobs Artifact
         if: github.event_name == 'workflow_run'
         uses: actions/download-artifact@v4
@@ -59,4 +58,9 @@ jobs:
           ENABLE_API_UPLOAD: "true"
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: pnpm start discovered_jobs.json
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            pnpm start --from-supabase
+          else
+            pnpm start discovered_jobs.json
+          fi
