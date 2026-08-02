@@ -209,22 +209,10 @@ export async function submitJobToApi(
     }
 }
 
-export async function warmupApi(): Promise<void> {
+export function warmupApi(): void {
     const apiUrl = process.env.API_BASE_URL;
     if (!apiUrl) return;
 
-    try {
-        console.log(`Waking up main API at ${apiUrl}...`);
-        const res = await fetch(`${apiUrl}/api/health`, {
-            method: 'GET',
-            signal: AbortSignal.timeout(10000), // 10 seconds to wake up
-        });
-        if (res.ok) {
-            console.log('✅ API is awake and healthy.');
-        } else {
-            console.warn(`API warmup ping returned status ${res.status}.`);
-        }
-    } catch (err) {
-        console.warn('API warmup ping failed. Backend might be cold.', (err as Error).message);
-    }
+    console.log(`Waking up main API at ${apiUrl}... (fire and forget)`);
+    fetch(`${apiUrl}/api/health`, { method: 'GET' }).catch(() => {});
 }

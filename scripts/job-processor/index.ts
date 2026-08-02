@@ -149,7 +149,7 @@ async function loadEnv(): Promise<void> {
 
 async function run(): Promise<void> {
     console.log('Starting Job Processor...');
-    await warmupApi();
+    warmupApi();
 
     await loadEnv();
     await loadCdnMetadata();

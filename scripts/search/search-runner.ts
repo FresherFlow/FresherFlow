@@ -1,5 +1,6 @@
 import { DEFAULT_TARGETS, loadAtsDataTargets, SearchTarget } from './search-config.js';
 import { executeSearch, SearchOptions } from './search.js';
+import { startRun, finishRun } from '../job-discovery/src/repositories/discoveryRuns.js';
 
 function parseRunnerArgs(args: string[]): SearchOptions & { all?: boolean; indiaOnly?: boolean; delay?: number; only?: string } {
   const options: SearchOptions & { all?: boolean; indiaOnly?: boolean; delay?: number; only?: string } = {};
@@ -21,6 +22,9 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function runSweep() {
+  const startTime = Date.now();
+  const runId = await startRun();
+  
   const args = parseRunnerArgs(process.argv.slice(2));
   const delay = args.delay ?? 3000;
 
@@ -72,54 +76,87 @@ async function runSweep() {
 
   const allDiscoveredJobs: any[] = [];
   
-  // Process in chunks (poor man's p-limit)
-  for (let i = 0; i < targets.length; i += CONCURRENCY_LIMIT) {
-    const chunk = targets.slice(i, i + CONCURRENCY_LIMIT);
-    
-    const results = await Promise.allSettled(chunk.map(async (target) => {
-      console.log(`\n[Queueing] Processing ${target.company}...`);
-      return { target, result: await executeWithTimeout(target) };
-    }));
+  try {
+    // Process in chunks (poor man's p-limit)
+    for (let i = 0; i < targets.length; i += CONCURRENCY_LIMIT) {
+      const chunk = targets.slice(i, i + CONCURRENCY_LIMIT);
+      
+      const results = await Promise.allSettled(chunk.map(async (target) => {
+        console.log(`\n[Queueing] Processing ${target.company}...`);
+        return { target, result: await executeWithTimeout(target) };
+      }));
 
-    for (const res of results) {
-      if (res.status === 'fulfilled') {
-        const { result } = res.value;
-        successfulCompanies++;
-        totalFound += result.jobs.length;
-        totalStale += result.staleCount;
-        totalRaw += result.totalFound;
-        
-        // Add source info if missing
-        result.jobs.forEach(j => {
-          if (!j.source) j.source = res.value.target.ats;
-          if (!j.company) j.company = res.value.target.company;
-        });
-        allDiscoveredJobs.push(...result.jobs);
-      } else {
-        failedCompanies++;
-        console.error(`❌ Sweep Failed: ${res.reason?.message || res.reason}`);
+      for (const res of results) {
+        if (res.status === 'fulfilled') {
+          const { result } = res.value;
+          successfulCompanies++;
+          totalFound += result.jobs.length;
+          totalStale += result.staleCount;
+          totalRaw += result.totalFound;
+          
+          // Add source info if missing
+          result.jobs.forEach(j => {
+            if (!j.source) j.source = res.value.target.ats;
+            if (!j.company) j.company = res.value.target.company;
+          });
+          allDiscoveredJobs.push(...result.jobs);
+        } else {
+          failedCompanies++;
+          console.error(`❌ Sweep Failed: ${res.reason?.message || res.reason}`);
+        }
+      }
+
+      if (i + CONCURRENCY_LIMIT < targets.length && delay > 0) {
+        const jitter = Math.floor(delay * 0.2 * (Math.random() * 2 - 1));
+        await sleep(delay + jitter);
       }
     }
 
-    if (i + CONCURRENCY_LIMIT < targets.length && delay > 0) {
-      const jitter = Math.floor(delay * 0.2 * (Math.random() * 2 - 1));
-      await sleep(delay + jitter);
-    }
+    // Write all aggregated jobs to JSON
+    const fs = await import('fs/promises');
+    await fs.writeFile('discovered_jobs.json', JSON.stringify(allDiscoveredJobs, null, 2));
+
+    console.log(`\n======================================================`);
+    console.log(`📊 SWEEP SUMMARY`);
+    console.log(`   ├─ Total Companies Processed: ${targets.length}`);
+    console.log(`   ├─ Successful:                ${successfulCompanies}`);
+    console.log(`   ├─ Failed:                    ${failedCompanies}`);
+    console.log(`   ├─ Total Raw Jobs Fetched:    ${totalRaw}`);
+    console.log(`   ├─ Total Stale Jobs Filtered: ${totalStale}`);
+    console.log(`   └─ Total Fresh Jobs Saved:    ${totalFound} (saved to discovered_jobs.json)`);
+    console.log(`======================================================\n`);
+
+    await finishRun(runId, {
+      total_found: totalRaw,
+      accepted: totalFound,
+      review_required: 0,
+      duplicates: totalStale,
+      failed: failedCompanies,
+      duration_ms: Date.now() - startTime,
+      status: 'COMPLETED',
+      metadata: {
+        total_companies: targets.length,
+        successful_companies: successfulCompanies
+      }
+    });
+  } catch (err) {
+    console.error('Fatal Runner Error inside runSweep:', err);
+    await finishRun(runId, {
+      total_found: totalRaw,
+      accepted: totalFound,
+      review_required: 0,
+      duplicates: totalStale,
+      failed: failedCompanies,
+      duration_ms: Date.now() - startTime,
+      status: 'FAILED',
+      metadata: {
+        error: err instanceof Error ? err.message : String(err),
+        total_companies: targets.length,
+        successful_companies: successfulCompanies
+      }
+    });
+    throw err;
   }
-
-  // Write all aggregated jobs to JSON
-  const fs = await import('fs/promises');
-  await fs.writeFile('discovered_jobs.json', JSON.stringify(allDiscoveredJobs, null, 2));
-
-  console.log(`\n======================================================`);
-  console.log(`📊 SWEEP SUMMARY`);
-  console.log(`   ├─ Total Companies Processed: ${targets.length}`);
-  console.log(`   ├─ Successful:                ${successfulCompanies}`);
-  console.log(`   ├─ Failed:                    ${failedCompanies}`);
-  console.log(`   ├─ Total Raw Jobs Fetched:    ${totalRaw}`);
-  console.log(`   ├─ Total Stale Jobs Filtered: ${totalStale}`);
-  console.log(`   └─ Total Fresh Jobs Saved:    ${totalFound} (saved to discovered_jobs.json)`);
-  console.log(`======================================================\n`);
 }
 
 runSweep()
