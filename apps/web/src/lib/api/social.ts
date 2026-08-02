@@ -14,7 +14,9 @@ export const growthApi = {
             | 'INSTALL_PROMPT_SHOWN'
             | 'INSTALL_ACCEPTED'
             | 'OPENED_STANDALONE',
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         source = 'unknown',
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         options?: {
             opportunityId?: string;
         }
@@ -73,6 +75,7 @@ export const dashboardApi = {
 // Alerts API calls (Local-First Fallback Safe)
 export const alertsApi = {
     getPreferences: () => apiClient('/api/alerts/preferences').catch(() => ({ enabled: true, emailEnabled: false, dailyDigest: true, closingSoon: true })),
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     getFeed: (kind: 'all' | 'DAILY_DIGEST' | 'CLOSING_SOON' | 'HIGHLIGHT' | 'APP_UPDATE' | 'NEW_JOB' | 'EVENT_REMINDER' = 'all', limit = 50) => {
         return Promise.resolve({ deliveries: [], unreadCount: 0, total: 0, hasMore: false });
     },

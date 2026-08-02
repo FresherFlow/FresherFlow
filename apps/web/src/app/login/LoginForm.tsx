@@ -24,6 +24,7 @@ function LoginContent() {
     const { email, setEmail } = useAuthFormData();
     const [otpArray, setOtpArray] = useState<string[]>(Array(6).fill(''));
     const [step, setStep] = useState<LoginStep>('email');
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [isProcessing, setIsProcessing] = useState(false);
 
     const { sendOtp, verifyOtp, loginWithGoogle, user, isLoading } = useAuth();

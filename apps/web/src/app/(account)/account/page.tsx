@@ -160,6 +160,7 @@ export default function AccountHubPage() {
                             <div className="bg-card border border-border/60 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
                                 <div className="flex items-center gap-3.5">
                                     {profile?.avatarUrl ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
                                         <img src={profile.avatarUrl} alt={user?.fullName || ''} className="w-12 h-12 rounded-xl object-cover shrink-0 shadow-sm" />
                                     ) : (
                                         <div className="w-12 h-12 rounded-xl bg-primary text-primary-foreground font-extrabold text-lg flex items-center justify-center shrink-0 shadow-sm">

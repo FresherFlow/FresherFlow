@@ -261,6 +261,7 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
             setHighlightsError(null);
         }
     }, [recentOpps.length]);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [dashboardVisitCounter, setDashboardVisitCounter] = useState(0);
     const [activeTab, setActiveTab] = useState<TabKey>('featured');
     const [mobileVisibleCount, setMobileVisibleCount] = useState(MOBILE_DASHBOARD_LIMIT);
@@ -370,11 +371,6 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
     }, [recentOpps, trackerMap, savedJobsMap, user?.id]);
 
     const { activeItems, latestBadgeCount } = useMemo(() => {
-        const rotateByOffset = <T,>(items: T[], offset: number) => {
-            if (items.length <= 1) return items;
-            const norm = ((offset % items.length) + items.length) % items.length;
-            return norm === 0 ? items : [...items.slice(norm), ...items.slice(0, norm)];
-        };
         const uniqueById = (items: Opportunity[]) => {
             const seen = new Set<string>();
             return items.filter((item) => {
@@ -473,7 +469,7 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
         const currentItems = tabMap[activeTab] || featured;
 
         return { activeItems: currentItems, latestBadgeCount: latestCount };
-    }, [recentOppsWithActions, highlights, dashboardVisitCounter, profile, activeTab]);
+    }, [recentOppsWithActions, highlights, profile, activeTab]);
 
     const filteredCurrentItems = useMemo(() => {
         if (!searchQuery.trim()) return activeItems;

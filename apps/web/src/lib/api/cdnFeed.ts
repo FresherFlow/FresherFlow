@@ -80,39 +80,6 @@ async function signUrlWithVersion(url: string, version: string): Promise<string>
     }
 }
 
-/**
- * Signs a CDN URL using a rolling 2-minute timestamp window.
- * Used for protected paths that don't have a version yet (categories, usernames).
- * Remains safely within the Edge Worker's 5-minute replay attack window.
- */
-async function signUrlIfServer(url: string): Promise<string> {
-    const IS_SERVER = typeof window === 'undefined';
-    if (!IS_SERVER) return url;
-
-    const secret = process.env.CDN_SIGNATURE_SECRET || process.env.NEXT_PUBLIC_CDN_SIGNATURE_SECRET || process.env.EXPO_PUBLIC_CDN_SIGNATURE_SECRET;
-    try {
-        const parsedUrl = new URL(url, CDN_URL);
-        if (!secret) return parsedUrl.toString();
-
-        const pathname = parsedUrl.pathname;
-        const isProtected = pathname === '/bootstrap-feed.min.json' ||
-                            pathname === '/taken-usernames.min.json' ||
-                            pathname === '/companies-directory.min.json' ||
-                            pathname.startsWith('/categories/');
-
-        if (isProtected) {
-            const t = Math.floor(Date.now() / 1000 / 120) * 120;
-            const message = `${pathname}:${t}`;
-            const sig = await signMessage(message, secret);
-            parsedUrl.searchParams.set('t', t.toString());
-            parsedUrl.searchParams.set('sig', sig);
-        }
-        return parsedUrl.toString();
-    } catch (err) {
-        console.error('Failed to sign CDN url on server:', err);
-        return url;
-    }
-}
 
 export async function signProtectedCdnUrl(urlOrPath: string): Promise<string> {
     const secret = process.env.NEXT_PUBLIC_CDN_SIGNATURE_SECRET || process.env.EXPO_PUBLIC_CDN_SIGNATURE_SECRET || process.env.CDN_SIGNATURE_SECRET;
@@ -307,7 +274,8 @@ export async function fetchExpiredFeed(customTags?: string[], untracked = false)
 /**
  * Fetches the static government jobs feed from the CDN.
  */
-export async function fetchGovernmentFeed(forceLive = false, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function fetchGovernmentFeed(_forceLive = false, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> {
     try {
         const feedVersion = await fetchFeedVersion(untracked);
 

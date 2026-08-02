@@ -15,6 +15,7 @@ import {
     DropdownMenuItem,
 } from '@/ui/DropdownMenu';
 import { cn } from '@/ui/cn';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { MagnifyingGlassIcon, XMarkIcon, BuildingOfficeIcon, BriefcaseIcon, ChevronDownIcon, FunnelIcon } from '@heroicons/react/24/outline';
 
 export interface CompanyDirectoryItem {

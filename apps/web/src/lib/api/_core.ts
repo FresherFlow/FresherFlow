@@ -465,9 +465,23 @@ export async function apiClient<T = unknown>(
             }
 
             if (response.status === 401) {
-                clearClientSessionHints();
-                clearUserTokens();
-                clearAdminAccessToken();
+                if (isAdminProtectedEndpoint(endpoint)) {
+                    clearAdminAccessToken();
+                    if (typeof document !== 'undefined') {
+                        document.cookie = 'ff_admin_logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+                    }
+                } else if (isUserProtectedEndpoint(endpoint)) {
+                    clearClientSessionHints();
+                    clearUserTokens();
+                } else {
+                    // Fallback: clear both if we can't determine the endpoint type
+                    clearClientSessionHints();
+                    clearUserTokens();
+                    clearAdminAccessToken();
+                    if (typeof document !== 'undefined') {
+                        document.cookie = 'ff_admin_logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+                    }
+                }
                 throw new UnauthorizedError(errorMessage);
             }
 

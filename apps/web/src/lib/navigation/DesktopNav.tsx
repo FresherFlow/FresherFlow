@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '@/lib/auth/AuthContext';
 import { cn } from '@/lib/utils/utils';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import BellIcon from '@heroicons/react/24/outline/BellIcon';
 import UserCircleIcon from '@heroicons/react/24/outline/UserCircleIcon';
 import { ThemeToggle } from '@repo/ui/ThemeToggle';
@@ -17,6 +18,7 @@ import { useTheme } from '@/lib/providers/ThemeContext';
 
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/ui/DropdownMenu';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Button } from '@/ui/Button';
 import { Cog6ToothIcon, ArrowRightOnRectangleIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
 
@@ -26,6 +28,7 @@ export function DesktopNav() {
     const logout = context?.logout;
 
     const pathname = usePathname();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { unreadCount } = useUnreadNotifications();
     const [isMounted, setIsMounted] = useState(false);
     const pendingSyncCount = useOfflineActionQueue(isMounted ? user?.id : undefined);
@@ -183,8 +186,8 @@ export function DesktopNav() {
                                     </DropdownMenuLabel>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem asChild>
-                                        <Link href="/account" className="cursor-pointer flex items-center font-medium">
-                                            <Squares2X2Icon className="mr-2 h-4 w-4 text-primary" />
+                                        <Link href="/account" className="cursor-pointer flex items-center">
+                                            <Squares2X2Icon className="mr-2 h-4 w-4" />
                                             <span>Account Hub</span>
                                         </Link>
                                     </DropdownMenuItem>

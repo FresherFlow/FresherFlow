@@ -3,7 +3,7 @@ import DashboardClient from './DashboardClient';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 
 export const metadata: Metadata = {
-    title: 'Dashboard | FresherFlow',
+    title: 'Dashboard',
     description: 'Your personalized dashboard – latest fresher jobs, walk-ins, and internships curated for your profile.',
     robots: { index: false, follow: false },
 };

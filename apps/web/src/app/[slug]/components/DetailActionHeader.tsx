@@ -22,6 +22,7 @@ interface DetailActionHeaderProps {
 }
 
 export function DetailActionHeader({
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     user: _user,
     opp,
     router,

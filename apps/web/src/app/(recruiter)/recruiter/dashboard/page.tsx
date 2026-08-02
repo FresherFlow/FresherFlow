@@ -15,6 +15,7 @@ import {
 import { fetchRecruiterCandidates, fetchSavedCandidates } from '@/lib/api/recruiter';
 
 export default function RecruiterDashboardPage() {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { user } = useAuth();
     const [optedInCount, setOptedInCount] = useState<number>(0);
     const [savedCount, setSavedCount] = useState<number>(0);

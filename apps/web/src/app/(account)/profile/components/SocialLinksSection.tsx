@@ -101,6 +101,7 @@ function parseGithubRepoInput(input: string): { owner: string; repo: string } | 
 export function SocialLinksSection() {
     const { profile, updateProfileState } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [linksList, setLinksList] = useState<LinkItem[]>([]);
 
@@ -128,6 +129,7 @@ export function SocialLinksSection() {
 
     useEffect(() => {
         setLinksList(buildInitialLinks());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [profile]);
 
     const handleOpenEdit = () => {

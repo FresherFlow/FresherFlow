@@ -4,7 +4,7 @@ import CaptionsTool from '@/app/(admin)/admin/captions/components/CaptionsTool';
 import PasswordGate from '@/lib/components/PasswordGate/PasswordGate';
 
 export const metadata: Metadata = {
-    title: 'Captions Generator - FresherFlow',
+    title: 'Captions Generator',
     description: 'Generate social media captions for jobs',
     robots: {
         index: false,

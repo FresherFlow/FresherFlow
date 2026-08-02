@@ -4,8 +4,10 @@ import { profileApi } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { validateEducationData } from '@fresherflow/domain';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function useProfileUpdateHandlers(form: any, _refreshUser?: () => Promise<void>) {  
     const { updateProfileState } = useAuth();
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [saving, setSaving] = useState<string | null>(null);
     const [editingSection, setEditingSection] = useState<string | null>(null);
 

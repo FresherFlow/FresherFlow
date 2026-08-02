@@ -56,12 +56,14 @@ export default function middleware(req: NextRequest) {
         );
     }
 
-    // 0b. Enforce Basic Auth / Cookie check on cap subdomain and block captions page on main domain
+    // 0b. Enforce Basic Auth / Cookie check on cap and discovery subdomains
     const host = req.headers.get('host') || '';
     const isCapSubdomain = host.startsWith('cap.');
+    const isDiscoSubdomain = host.startsWith('disco.') || host.startsWith('discovery.');
 
-    if (isCapSubdomain) {
-        const hasAuthCookie = req.cookies.get('captions_auth')?.value === '1';
+    if (isCapSubdomain || isDiscoSubdomain) {
+        const cookieName = isCapSubdomain ? 'captions_auth' : 'discovery_auth';
+        const hasAuthCookie = req.cookies.get(cookieName)?.value === '1';
         const basicAuth = req.headers.get('authorization');
         let authenticated = hasAuthCookie;
 
@@ -93,15 +95,21 @@ export default function middleware(req: NextRequest) {
             }
         }
 
-        // Rewrite root path "/" or "/captions" on the subdomain to the internal "/captions" route
-        if (pathname === '/' || pathname === '/captions') {
+        // Rewrite root path "/" or matching paths on the subdomain to their internal routes
+        if (isCapSubdomain && (pathname === '/' || pathname === '/captions')) {
             const url = req.nextUrl.clone();
             url.pathname = '/captions';
             return NextResponse.rewrite(url);
         }
+        
+        if (isDiscoSubdomain && (pathname === '/' || pathname === '/discovery')) {
+            const url = req.nextUrl.clone();
+            url.pathname = '/discovery';
+            return NextResponse.rewrite(url);
+        }
     } else {
-        // Hide captions page on the main domain (redirect to 404)
-        if (pathname === '/captions') {
+        // Hide standalone pages on the main domain (redirect to 404)
+        if (pathname === '/captions' || pathname === '/discovery') {
             const url = req.nextUrl.clone();
             url.pathname = '/404';
             return NextResponse.rewrite(url);

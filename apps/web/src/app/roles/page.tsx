@@ -9,7 +9,7 @@ import { SITE_URL } from '@/lib/utils/runtimeConfig';
 export const revalidate = false;
 
 export const metadata: Metadata = {
-    title: 'Jobs by Role | FresherFlow',
+    title: 'Jobs by Role',
     description: 'Find verified fresher jobs, internships, and walk-in drives by job role. Explore opportunities for Software Engineer, Data Analyst, Product Manager, and more.',
     alternates: { canonical: `${SITE_URL}/roles` },
 };

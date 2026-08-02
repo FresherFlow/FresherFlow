@@ -9,8 +9,8 @@ import { SITE_URL } from '@/lib/utils/runtimeConfig';
 export const revalidate = false;
 
 export const metadata: Metadata = {
-    title: 'Jobs by Graduation Batch | FresherFlow',
-    description: 'Find verified fresher jobs, internships, and off-campus placements grouped by your graduation year. Explore opportunities for 2024, 2025, 2026, and 2027 batches.',
+    title: 'Jobs by Graduation Batch',
+    description: 'Find verified fresher jobs, internships, and walk-in drives by graduation batch (2025, 2024, 2023, 2022).',
     alternates: { canonical: `${SITE_URL}/batch` },
 };
 

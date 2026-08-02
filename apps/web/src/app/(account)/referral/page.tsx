@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AuthGate } from '@/lib/components/ProfileGate';

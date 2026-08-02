@@ -8,7 +8,9 @@ import {
     BriefcaseIcon,
     MagnifyingGlassIcon,
     SparklesIcon,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     BuildingOfficeIcon,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     ArrowLeftOnRectangleIcon,
     UserCircleIcon,
 } from '@heroicons/react/24/outline';

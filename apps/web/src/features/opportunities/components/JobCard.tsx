@@ -14,7 +14,7 @@ import FireIcon from '@heroicons/react/24/outline/FireIcon';
 import CheckBadgeIcon from '@heroicons/react/24/outline/CheckBadgeIcon';
 import ArrowPathIcon from '@heroicons/react/24/outline/ArrowPathIcon';
 import FlagIcon from '@heroicons/react/24/outline/FlagIcon';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { calculateOpportunityMatch } from '@fresherflow/domain';
 import CompanyLogo from '@/ui/CompanyLogo';
 import toast from 'react-hot-toast';
@@ -129,6 +129,10 @@ export default function JobCard({
 }: JobCardProps) {
     const [isNavigating, setIsNavigating] = useState(false);
     const [showReportMenu, setShowReportMenu] = useState(false);
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => {
+        setMounted(true);
+    }, []);
     const { user, profile } = useAuth();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -451,7 +455,7 @@ export default function JobCard({
                     </div>
                     
                     <div className="flex items-center gap-1.5 shrink-0">
-                        {user && matchResult && (
+                        {mounted && user && matchResult && (
                             <span className={cn(
                                 "inline-flex shrink-0 items-center px-1.5 py-0.5 text-[11px] font-semibold rounded border",
                                 !matchResult.isEligible
@@ -463,7 +467,7 @@ export default function JobCard({
                                 {!matchResult.isEligible ? 'Ineligible' : `${matchResult.score}%`}
                             </span>
                         )}
-                        {!user && (
+                        {mounted && !user && (
                             <Link
                                 href={loginRedirectHref}
                                 className="inline-flex shrink-0 items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-semibold rounded border border-border/80 bg-muted/30 text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all z-20 cursor-pointer pointer-events-auto"

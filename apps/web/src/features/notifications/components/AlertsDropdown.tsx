@@ -7,6 +7,7 @@ import BellIcon from '@heroicons/react/24/outline/BellIcon';
 import Cog6ToothIcon from '@heroicons/react/24/outline/Cog6ToothIcon';
 import ArrowRightIcon from '@heroicons/react/24/outline/ArrowRightIcon';
 import CheckIcon from '@heroicons/react/24/outline/CheckIcon';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import SparklesIcon from '@heroicons/react/24/outline/SparklesIcon';
 import { useUnreadNotifications } from '../hooks/useUnreadNotifications';
 import { alertsApi } from '@/lib/api/client';

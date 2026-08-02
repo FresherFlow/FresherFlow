@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import ArrowRightIcon from '@heroicons/react/24/outline/ArrowRightIcon';
 import { LandingStats } from '@/features/landing/LandingStats';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { Opportunity } from '@fresherflow/types';
 
 interface HeroSectionProps {

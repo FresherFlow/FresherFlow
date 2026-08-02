@@ -9,7 +9,7 @@ import { SITE_URL } from '@/lib/utils/runtimeConfig';
 export const revalidate = false;
 
 export const metadata: Metadata = {
-    title: 'Jobs by Location | FresherFlow',
+    title: 'Jobs by Location',
     description: 'Find verified fresher jobs, internships, and walk-in drives by city. Explore opportunities in Bangalore, Pune, Hyderabad, Chennai, Delhi NCR, and more.',
     alternates: { canonical: `${SITE_URL}/location` },
 };

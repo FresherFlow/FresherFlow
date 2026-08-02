@@ -8,6 +8,7 @@ import CircleStackIcon from '@heroicons/react/24/outline/CircleStackIcon';
 import ComputerDesktopIcon from '@heroicons/react/24/outline/ComputerDesktopIcon';
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
 import { cn } from '@repo/ui/utils/cn';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { ScrollReveal } from '@/features/landing/ScrollReveal';
 
 const COLLECTIONS = [
@@ -66,7 +67,7 @@ export function CorporateCollections() {
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {COLLECTIONS.map((item, index) => (
+                        {COLLECTIONS.map((item) => (
                             <Link 
                                 key={item.title}
                                 href={item.href} 
@@ -113,7 +114,7 @@ export function CorporateCollections() {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                        {JOB_CATEGORIES.map((cat, index) => (
+                        {JOB_CATEGORIES.map((cat) => (
                             <Link
                                 key={cat.name}
                                 href={`/opportunities?query=${encodeURIComponent(cat.query)}`}

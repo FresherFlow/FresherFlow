@@ -7,7 +7,6 @@ import { useContext, useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AuthContext } from '@/lib/auth/AuthContext';
 import { cn } from '@/lib/utils/utils';
-import BellIcon from '@heroicons/react/24/outline/BellIcon';
 import Bars3Icon from '@heroicons/react/24/outline/Bars3Icon';
 import { useUnreadNotifications } from '@/features/notifications/hooks/useUnreadNotifications';
 import { AlertsDropdown } from '@/features/notifications/components/AlertsDropdown';

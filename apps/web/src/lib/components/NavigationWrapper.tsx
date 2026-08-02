@@ -20,14 +20,14 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
         window.location.hostname.toLowerCase() === ADMIN_WEB_HOST;
     const isAdminRoute = normalizedPathname.startsWith('/admin') || isAdminHost;
     const isCaptionsPage = normalizedPathname.startsWith('/captions');
-    const isPendingPage = normalizedPathname.startsWith('/pending');
+    const isDiscoveryPage = normalizedPathname.startsWith('/discovery');
     const segments = normalizedPathname.split('/').filter(Boolean);
     const firstSegment = segments[0] || '';
     const reservedSegments = new Set([
         'about', 'alerts', 'api', 'app', 'batch', 'blog', 'captions', 'careers',
-        'companies', 'contact', 'dashboard', 'deadlines', 'dev', 'feedback',
+        'companies', 'contact', 'dashboard', 'deadlines', 'dev', 'discovery', 'feedback',
         'government-jobs', 'internships', 'jobs', 'join', 'location', 'login',
-        'logout', 'opportunities', 'pending', 'privacy', 'profile', 'r',
+        'logout', 'opportunities', 'privacy', 'profile', 'r',
         'referral', 'remote', 'roles', 'sentry-example-page', 'skills', 'terms',
         'walk-ins', 'account', 'submit-link', 'admin', 'register'
     ]);
@@ -51,7 +51,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
 
     const isRecruiterRoute = normalizedPathname.startsWith('/recruiter');
     const isPublicProfileRoute = normalizedPathname === '/u';
-    const hideNav = isAdminRoute || isCaptionsPage || isPendingPage || isRecruiterRoute || isPublicProfileRoute;
+    const hideNav = isAdminRoute || isCaptionsPage || isDiscoveryPage || isRecruiterRoute || isPublicProfileRoute;
     const isHomePage = pathname === '/';
 
     const isAccountOrDashboardRoute = normalizedPathname.startsWith('/dashboard') || 
@@ -71,7 +71,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
         setMounted(true);
     }, []);
 
-    const showFooter = !isAdminRoute && !isAuthRoute && !isCaptionsPage && !isPendingPage && !isRecruiterRoute && !isPublicProfileRoute && !normalizedPathname.startsWith('/u/') && !isAccountOrDashboardRoute && (mounted ? !isAuthenticated : true);
+    const showFooter = !isAdminRoute && !isAuthRoute && !isCaptionsPage && !isDiscoveryPage && !isRecruiterRoute && !isPublicProfileRoute && !normalizedPathname.startsWith('/u/') && !isAccountOrDashboardRoute && (mounted ? !isAuthenticated : true);
 
     return (
         <>

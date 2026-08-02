@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { EDUCATION_LEVELS, DIPLOMA_DEGREES, UG_DEGREES, PG_DEGREES, getSpecializations } from '@fresherflow/domain';
+import { DIPLOMA_DEGREES, UG_DEGREES, PG_DEGREES, getSpecializations } from '@fresherflow/domain';
 import { cn } from '@/ui/cn';
 import { Input } from '@/ui/Input';
 import { Button } from '@/ui/Button';
 import { Badge } from '@/ui/Badge';
 import { Profile } from '@fresherflow/types';
-import { ChevronDownIcon, PencilSquareIcon, CheckIcon, BuildingLibraryIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon, PencilSquareIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { useClickOutside } from '@/lib/hooks/useClickOutside';
 
 const INDIAN_STATES = [
@@ -26,46 +26,6 @@ export interface CollegeItem {
     district?: string;
     type?: string;
     state?: string;
-}
-
-const collegeCache: Record<string, CollegeItem[]> = {};
-
-function slugifyState(stateName: string): string {
-    return stateName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-}
-
-async function fetchCollegesForState(stateName: string): Promise<CollegeItem[]> {
-    if (!stateName) return [];
-    const slug = slugifyState(stateName);
-    if (collegeCache[slug] && collegeCache[slug].length > 0) return collegeCache[slug];
-
-    const cdnBase = (process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.fresherflow.in').replace(/\/+$/, '');
-    
-    // 1. Try fetching live data from CDN directly
-    try {
-        const res = await fetch(`${cdnBase}/api/colleges/${slug}.json`);
-        if (res.ok) {
-            const json = await res.json();
-            const list: CollegeItem[] = Array.isArray(json) ? json : json.colleges || [];
-            collegeCache[slug] = list;
-            return list;
-        }
-    } catch {
-        // Fallback to Next.js API proxy if browser CORS blocks direct CDN fetch in local dev
-    }
-
-    // 2. Fallback to /api/colleges/[slug] proxy (fetches live CDN server-side or local reference)
-    try {
-        const fallbackRes = await fetch(`/api/colleges/${slug}`);
-        if (!fallbackRes.ok) return [];
-        const json = await fallbackRes.json();
-        const list: CollegeItem[] = Array.isArray(json) ? json : json.colleges || [];
-        collegeCache[slug] = list;
-        return list;
-    } catch (err) {
-        console.error('Failed to fetch colleges:', err);
-        return [];
-    }
 }
 
 function CustomSelect({ value, onChange, options, placeholder = 'Select...', disabled = false }: { value: string; onChange: (val: string) => void; options: string[]; placeholder?: string; disabled?: boolean; }) {
@@ -115,10 +75,10 @@ interface EducationSectionProps {
 }
 
 export const EducationSection = ({
-    profile, tenthYear, setTenthYear, twelfthYear, setTwelfthYear, educationLevel, setEducationLevel,
+    profile, tenthYear, setTenthYear, twelfthYear, setTwelfthYear, educationLevel,
     gradCourse, setGradCourse, gradSpecialization, setGradSpecialization, gradYear, setGradYear,
-    collegeId: _collegeId, setCollegeId, collegeName, setCollegeName, collegeState, setCollegeState,
-    hasPG, setHasPG, pgCourse, setPgCourse, pgSpecialization, setPgSpecialization, pgYear, setPgYear,
+    setCollegeId, collegeName, setCollegeName, collegeState, setCollegeState,
+    pgCourse, setPgCourse, pgSpecialization, setPgSpecialization, pgYear, setPgYear,
     isEditing, onToggleEdit, onSave, saving
 }: EducationSectionProps) => {
     const courseOptions = educationLevel === 'DIPLOMA' ? DIPLOMA_DEGREES : UG_DEGREES;

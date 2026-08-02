@@ -116,7 +116,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     
     if (!data || data.profile.visibility === 'PRIVATE') {
         return {
-            title: 'Candidate Profile Not Found | FresherFlow',
+            title: 'Candidate Profile Not Found',
             robots: { index: false, follow: false },
         };
     }

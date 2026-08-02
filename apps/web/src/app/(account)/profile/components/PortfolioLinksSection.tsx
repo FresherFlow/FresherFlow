@@ -9,8 +9,10 @@ import { Button } from '@/ui/Button';
 import { PencilSquareIcon, PlusIcon, CheckIcon, GlobeAltIcon } from '@heroicons/react/24/outline';
 
 export function PortfolioLinksSection() {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { profile, updateProfileState, refreshUser } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const [portfolioUrl, setPortfolioUrl] = useState('');

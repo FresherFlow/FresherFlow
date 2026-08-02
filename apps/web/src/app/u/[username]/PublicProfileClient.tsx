@@ -339,6 +339,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                             {/* Avatar */}
                             {profile.avatarUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
                                 <img
                                     src={profile.avatarUrl}
                                     alt={user.fullName || 'Candidate'}

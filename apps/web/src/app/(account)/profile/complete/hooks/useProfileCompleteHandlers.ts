@@ -30,7 +30,7 @@ export function useProfileCompleteHandlers(
 ) {
     const router = useRouter();
     const { updateProfileState } = useAuth();
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading] = useState(false);
 
     const handleEducationSubmit = () => {
         const validation = validateEducationData({

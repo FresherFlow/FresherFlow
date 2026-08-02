@@ -8,7 +8,7 @@ import { SITE_URL } from '@/lib/utils/runtimeConfig';
 import { AcademicCapIcon, CodeBracketIcon, ShieldCheckIcon, CpuChipIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 
 export const metadata: Metadata = {
-    title: 'Career Preparation & Technical Interview Resources | FresherFlow',
+    title: 'Career Preparation & Technical Interview Resources',
     description: 'Free interview preparation guides, technical skill tracks, coding practice resources, and aptitude preparation tailored for freshers.',
     alternates: { canonical: `${SITE_URL}/resources` },
 };

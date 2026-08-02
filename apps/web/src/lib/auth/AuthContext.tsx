@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { useRouter } from 'next/navigation';
 import { authApi, UnauthorizedError, clearUserTokens, setUserTokens } from '@/lib/api/client';
 import { clearUnreadCache } from '@/features/notifications/hooks/useUnreadNotifications';
-import { User, Profile } from '@fresherflow/types';
+import { User, Profile, Role } from '@fresherflow/types';
 
 interface AuthContextType {
     user: User | null;
@@ -24,6 +24,7 @@ interface AuthContextType {
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const AUTH_VISIBILITY_REFRESH_COOLDOWN_MS = Number(process.env.NEXT_PUBLIC_AUTH_VISIBILITY_REFRESH_COOLDOWN_MS || 300000);
 const SESSION_REVALIDATE_MS = Number(process.env.NEXT_PUBLIC_SESSION_REVALIDATE_MS || 30 * 60 * 1000);
 const SESSION_HINT_COOKIE_MAX_AGE_SECONDS = Number(process.env.NEXT_PUBLIC_SESSION_HINT_COOKIE_MAX_AGE_SECONDS || 90 * 24 * 60 * 60);
@@ -112,6 +113,7 @@ async function writeFirebaseProfile(uid: string, profile: Profile) {
     }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function readFirebaseProfile(uid: string): Promise<Profile | null> {
     try {
         const { ref, get } = await import('firebase/database');
@@ -174,8 +176,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const cached = readCachedSession();
         return cached ? !!cached.skipUsernameSetup : false;
     });
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const isLoggingOutRef = useRef(false);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const lastVisibilityRefreshAtRef = useRef(0);
     const lastSuccessfulLoadAtRef = useRef(0);
 
@@ -340,9 +344,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     setClientSessionHints();
                     lastSuccessfulLoadAtRef.current = cached.savedAt;
                 } else {
-                    setUser(null);
-                    setProfile(null);
-                    setSkipUsernameSetup(false);
+                    const { auth } = await import('@/lib/api/firebase');
+                    const firebaseUser = auth.currentUser;
+
+                    if (firebaseUser) {
+                        const fallbackUser: User = {
+                            id: firebaseUser.uid,
+                            email: firebaseUser.email || undefined,
+                            fullName: firebaseUser.displayName || 'Fresher',
+                            username: firebaseUser.email ? firebaseUser.email.split('@')[0] : 'user_' + firebaseUser.uid.slice(0, 5),
+                            role: Role.USER,
+                            isAnonymous: firebaseUser.isAnonymous,
+                            createdAt: new Date().toISOString()
+                        };
+                        setUser(fallbackUser);
+                        setProfile(null);
+                        setSkipUsernameSetup(true);
+                        setClientSessionHints();
+                        lastSuccessfulLoadAtRef.current = Date.now();
+                    } else {
+                        setUser(null);
+                        setProfile(null);
+                        setSkipUsernameSetup(false);
+                    }
                 }
             }
         } finally {

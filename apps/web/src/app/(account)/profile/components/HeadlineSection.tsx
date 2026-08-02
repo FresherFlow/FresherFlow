@@ -15,8 +15,10 @@ interface HeadlineSectionProps {
 }
 
 export function HeadlineSection({ isEditingExternal, onCloseExternal }: HeadlineSectionProps = {}) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { user, profile, updateProfileState, refreshUser } = useAuth();
     const [internalIsEditing, setInternalIsEditing] = useState(false);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const isEditing = isEditingExternal ?? internalIsEditing;

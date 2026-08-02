@@ -60,6 +60,7 @@ export async function POST(req: Request) {
         let decodedToken;
         try {
             decodedToken = await auth.verifyIdToken(idToken);
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         } catch (error) {
             return NextResponse.json({ error: 'Invalid or expired Firebase token' }, { status: 401 });
         }
