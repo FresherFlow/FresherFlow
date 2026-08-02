@@ -81,7 +81,7 @@ export function ApplicationDetailsSection({
                         value={appPlatform}
                         onChange={(e) => setAppPlatform(e.target.value)}
                         placeholder={isPlatformEnabled ? 'e.g. HackerRank, Google Forms' : 'Enabled for FORM / ASSESSMENT'}
-                        className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all shadow-sm disabled:opacity-50 disabled:bg-muted"
+                        className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-colors shadow-sm disabled:opacity-50 disabled:bg-muted"
                     />
                 </div>
 
@@ -96,7 +96,7 @@ export function ApplicationDetailsSection({
                         value={appDuration}
                         onChange={(e) => setAppDuration(e.target.value)}
                         placeholder={isPlatformEnabled ? 'e.g. 60' : 'Enabled for FORM / ASSESSMENT'}
-                        className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all shadow-sm disabled:opacity-50 disabled:bg-muted"
+                        className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-colors shadow-sm disabled:opacity-50 disabled:bg-muted"
                     />
                 </div>
             </div>
@@ -113,7 +113,7 @@ export function ApplicationDetailsSection({
                             onChange={(e) => setNewItem(e.target.value)}
                             onKeyDown={handleKeyDown}
                             placeholder={appMethod === 'ASSESSMENT' ? 'Add topic (e.g. SQL, Python, A/B Testing)' : 'Add item (e.g. Resume, GitHub Profile)'}
-                            className="flex h-11 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all shadow-sm"
+                            className="flex h-11 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-colors shadow-sm"
                         />
                         <button
                             type="button"

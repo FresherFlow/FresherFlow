@@ -732,9 +732,9 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
     ) : null;
 
     return (
-        <div className="space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
             {!(isCreateModalOpen || editingResource) && (
-                <div className="flex items-center justify-between gap-3 bg-card border border-border p-2 rounded-lg shadow-sm">
+                <div className="flex items-center justify-between gap-3 bg-card border border-border p-2 rounded-lg shadow-sm shrink-0">
                     <div className="flex bg-muted p-1 rounded-md">
                         <button
                             className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
@@ -782,7 +782,7 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
 
             {!(isCreateModalOpen || editingResource) && (
                 <>
-                    <div className="border border-border rounded-lg bg-card shadow-sm overflow-hidden">
+                    <div className="border border-border rounded-lg bg-card shadow-sm overflow-hidden flex-1 min-h-0 flex flex-col">
                         {isLoading ? (
                             <div className="p-10 text-center text-sm font-medium text-muted-foreground flex items-center justify-center gap-2">
                                 <div className="w-4 h-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
@@ -873,9 +873,9 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
                                 </div>
 
                                 {/* Desktop View (Table) */}
-                                <div className="hidden md:block overflow-x-auto">
+                                <div className="hidden md:block flex-1 min-h-0 overflow-x-auto overflow-y-auto custom-scrollbar overscroll-contain">
                                     <table className="w-full text-sm text-left whitespace-nowrap">
-                                        <thead className="text-xs text-muted-foreground bg-muted/50 border-b border-border uppercase tracking-wider">
+                                        <thead className="sticky top-0 z-10 text-xs text-muted-foreground bg-muted/90 backdrop-blur-xs border-b border-border uppercase tracking-wider">
                                             <tr>
                                                 <th className="px-4 py-3 font-semibold">Title & Items</th>
                                                 <th className="px-4 py-3 font-semibold">Type</th>

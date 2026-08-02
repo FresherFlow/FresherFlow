@@ -113,7 +113,7 @@ export function SocialStatusSection({ socialPosts, onRefresh }: SocialStatusSect
                   type="button"
                   disabled={retryingIds[post.id]}
                   onClick={() => handleRetry(post.id)}
-                  className="shrink-0 self-start md:self-center inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-semibold text-foreground transition-all hover:bg-accent disabled:opacity-50"
+                  className="shrink-0 self-start md:self-center inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-semibold text-foreground transition-colors hover:bg-accent disabled:opacity-50"
                 >
                   {retryingIds[post.id] ? (
                     <ArrowPathIcon className="w-3.5 h-3.5 animate-spin mr-1.5" />

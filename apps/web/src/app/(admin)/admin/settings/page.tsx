@@ -9,7 +9,7 @@ export const metadata = {
 
 export default function AdminSettingsPage() {
     return (
-        <div className="space-y-6">
+        <div className="p-4 md:p-8 pt-16 md:pt-8 space-y-6 flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-28 md:pb-8">
             <div className="flex flex-col gap-1">
                 <h1 className="text-2xl font-semibold tracking-tight text-foreground">Admin settings</h1>
                 <p className="text-muted-foreground">

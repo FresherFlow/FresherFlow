@@ -76,7 +76,7 @@ function OpportunitiesListPage() {
     const effectiveTotalPages = totalPages || Math.ceil(totalCount / pageSize) || 1;
 
     return (
-        <div className="flex flex-col gap-4 h-full min-h-0 overflow-hidden">
+        <div className="p-4 md:p-8 pt-16 md:pt-8 space-y-6 flex-1 min-h-0 flex flex-col pb-28 md:pb-8">
             <AdminOpportunitiesHeader 
                 isLoading={isLoading} 
                 onRefresh={loadOpportunities} 
@@ -106,7 +106,7 @@ function OpportunitiesListPage() {
             />
 
             {/* Table area — grows to fill remaining height */}
-            <div className="flex-1 min-h-0 flex flex-col">
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                 {!hasLoadedOnce && isLoading ? (
                     <AdminOpportunitiesSkeleton />
                 ) : opportunities.length === 0 ? (

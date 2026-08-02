@@ -75,14 +75,16 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
     };
 
     return (
-        <div className="max-w-[1600px] mx-auto px-4 pt-0 pb-8 md:pb-12">
-            <div className="mb-8">
+        <div className="flex-1 h-full min-h-0 flex flex-col overflow-hidden max-w-[1600px] mx-auto px-4 md:px-8">
+            <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-border pb-4 pt-2 shrink-0">
                 <FormHeader
                     isEditMode={isEditMode}
                     showParser={form.showParser}
                     setShowParser={form.setShowParser}
                 />
             </div>
+
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-6 pt-4 pb-24 pr-2 custom-scrollbar">
 
 
 
@@ -162,7 +164,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                         form.setShowParser(true);
                     }
                 }}
-                className="fixed bottom-20 right-4 z-50 md:hidden flex items-center justify-center w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-all outline-none disabled:opacity-50"
+                className="fixed bottom-20 right-4 z-50 md:hidden flex items-center justify-center w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-[0.96] transition-colors outline-none disabled:opacity-50"
                 aria-label="Auto-fill helper"
             >
                 {form.isParsing ? (
@@ -447,7 +449,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                     <button
                         type="submit"
                         disabled={form.isLoading}
-                        className="inline-flex h-9 items-center justify-center rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground hover:bg-primary/90 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition-all"
+                        className="inline-flex h-9 items-center justify-center rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground hover:bg-primary/90 active:scale-[0.96] disabled:opacity-50 disabled:pointer-events-none transition-colors"
                     >
                         {form.isLoading ? (
                             <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
@@ -495,6 +497,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                 </div>
 
             </form>
+            </div>
         </div>
     );
 }

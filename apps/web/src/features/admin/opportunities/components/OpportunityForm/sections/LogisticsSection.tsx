@@ -36,7 +36,7 @@ export function LogisticsSection({
                                 key={loc}
                                 type="button"
                                 onClick={() => handleQuickLocation(loc)}
-                                className="px-2 py-1 rounded bg-muted/50 hover:bg-primary/10 hover:text-primary text-xs font-semibold capitalize transition-all border border-transparent hover:border-primary/20"
+                                className="px-2 py-1 rounded bg-muted/50 hover:bg-primary/10 hover:text-primary text-xs font-semibold capitalize transition-colors border border-transparent hover:border-primary/20"
                             >
                                 + {loc}
                             </button>

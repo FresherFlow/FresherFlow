@@ -26,6 +26,7 @@ interface DashboardState {
 }
 
 export default function AdminDashboardHome() {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { isAuthenticated, isAuthenticating } = useFirebaseAdmin();
     const [dashboard, setDashboard] = useState<DashboardState>({
         totalUsers: 0,
@@ -265,213 +266,199 @@ export default function AdminDashboardHome() {
     ];
 
     return (
-        <div className="space-y-6 pb-12 animate-in fade-in duration-500 text-foreground">
+        <div className="p-4 md:p-8 pt-16 md:pt-8 space-y-6 flex-1 min-h-0 overflow-y-auto pb-28 md:pb-8 animate-in fade-in duration-500 text-foreground w-full font-sans antialiased custom-scrollbar relative z-0">
+            {/* Wow UI Design Signature: Radial Glow */}
+            <div className="absolute top-0 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-primary/10 blur-[120px] rounded-full pointer-events-none -z-10" />
+
             {/* Header */}
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
-                <div>
+            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
+                <div className="flex items-center gap-3">
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground">Admin overview</h1>
-                    <p className="text-sm text-muted-foreground mt-1 hidden md:flex items-center gap-2">
-                        <span className="relative flex h-2.5 w-2.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
-                        </span>
-                        {isAuthenticating 
-                            ? 'Connecting to real-time telemetry stream...' 
-                            : isAuthenticated 
-                                ? 'Live Real-Time telemetry system connected.' 
-                                : 'Establishing Firebase authentication...'
-                        }
-                    </p>
+                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground font-medium px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Live telemetry connected
+                    </span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                    <Link
+                        href="/admin/opportunities/create"
+                        className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold rounded-lg text-xs px-3.5 py-2 transition-all duration-200 ease-out active:scale-[0.96] shadow-sm flex items-center gap-1.5"
+                    >
+                        <BriefcaseIcon className="w-4 h-4" />
+                        <span>Create Listing</span>
+                    </Link>
+                    <Link
+                        href="/admin/feedback"
+                        className="bg-secondary text-secondary-foreground hover:bg-secondary/80 font-semibold rounded-lg text-xs px-3.5 py-2 transition-all duration-200 ease-out active:scale-[0.96] shadow-sm"
+                    >
+                        Moderate Reports
+                    </Link>
                 </div>
             </header>
 
-            {/* Telemetry Stats Grid (Mobile Compact 2x2 Grid) */}
-            <div className="grid grid-cols-2 gap-3 md:gap-4 lg:grid-cols-4">
-                {cards.map((card) => {
+
+            {/* Telemetry Stats Grid */}
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
+                {cards.map((card, index) => {
                     const Icon = card.icon;
                     const isVisible = visibleMetrics[card.key];
                     return (
-                        <Link href={card.href} key={card.label} className="group relative rounded-xl md:rounded-2xl border border-border bg-card p-3 md:p-6 shadow-sm transition-all duration-300 hover:shadow-md hover:border-muted-foreground/30 block cursor-pointer">
-                            <div className="flex items-center justify-between gap-2 mb-2 md:mb-4">
-                                <span className="text-[9px] md:text-xs font-bold uppercase tracking-wider text-muted-foreground line-clamp-1 md:line-clamp-none">{card.label}</span>
-                                <div className="p-1.5 md:p-2.5 rounded-lg md:rounded-xl border border-border bg-muted text-muted-foreground shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                                    <Icon className="h-3.5 w-3.5 md:h-5 md:w-5" />
+                        <Link 
+                            href={card.href} 
+                            key={card.label} 
+                            style={{ animationDelay: `${index * 50}ms` }}
+                            className="group relative bg-card/60 backdrop-blur-xl text-card-foreground border border-border/60 shadow-sm rounded-xl p-3.5 md:p-5 hover:border-border transition-all duration-[250ms] ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.98] flex flex-col justify-between min-h-[140px] cursor-pointer animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards"
+                        >
+                            <div className="flex items-center justify-between gap-2 mb-3">
+                                <div className="flex items-center gap-2">
+                                    <Icon className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                                    <span className="text-xs font-semibold text-muted-foreground tracking-tight">{card.label}</span>
                                 </div>
                             </div>
-                            {isVisible ? (
-                                <p className="text-lg md:text-3xl font-bold tracking-tight mb-1 md:mb-2">{card.value.toLocaleString()}</p>
-                            ) : (
-                                <div className="flex items-center gap-2 mb-1 md:mb-2">
-                                    <p className="text-lg md:text-3xl font-bold tracking-tight opacity-40 select-none">•••</p>
-                                    <button
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            revealMetric(card.key);
-                                        }}
-                                        className="text-[9px] md:text-[11px] font-bold px-2 py-0.5 rounded border border-border bg-muted text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-all duration-200"
-                                    >
-                                        Show
-                                    </button>
-                                </div>
-                            )}
-                            <p className="hidden md:block text-[9px] md:text-[11px] text-muted-foreground leading-normal">{card.description}</p>
+                            
+                            <div className="flex items-end justify-between mt-auto">
+                                {isVisible ? (
+                                    <div className="flex flex-col">
+                                        <p className="text-xl md:text-3xl font-bold tracking-tight font-mono text-foreground">{card.value.toLocaleString()}</p>
+                                        <span className="text-[10px] md:text-[11px] text-muted-foreground mt-1 line-clamp-1">{card.description}</span>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col w-full h-full justify-end animate-in fade-in duration-300">
+                                        <div className="flex items-center justify-between w-full">
+                                            <p className="text-xl md:text-3xl font-bold tracking-tight opacity-20 select-none font-mono blur-[2px]">000</p>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    revealMetric(card.key);
+                                                }}
+                                                className="text-[10px] md:text-[11px] font-semibold px-2.5 py-1 rounded-md border border-border bg-muted/50 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 ease-out active:scale-[0.95]"
+                                            >
+                                                Show
+                                            </button>
+                                        </div>
+                                        <span className="text-[10px] md:text-[11px] text-muted-foreground mt-1 hidden sm:block line-clamp-1">{card.description}</span>
+                                    </div>
+                                )}
+                            </div>
                         </Link>
                     );
                 })}
             </div>
 
             {/* Action and Infrastructure Panels */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-5xl">
                 {/* CDN / Static Cache Overview */}
-                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col justify-between">
+                <div className="bg-card/60 backdrop-blur-xl text-card-foreground border border-border/60 shadow-sm rounded-xl p-6 hover:border-border transition-all duration-300 flex flex-col justify-between">
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h3 className="text-lg font-bold">Static CDN Status</h3>
-                                <p className="text-xs text-muted-foreground">Pre-rendered feeds and static metadata.</p>
-                            </div>
-                            <div className="p-2 rounded-xl border border-border bg-muted text-muted-foreground">
-                                <CloudIcon className="h-5 w-5" />
-                            </div>
+                        <div className="flex items-center gap-2">
+                            <CloudIcon className="h-4 w-4 text-muted-foreground" />
+                            <h3 className="text-sm font-semibold tracking-tight">Infrastructure</h3>
                         </div>
 
-                        {cdnStats.loading ? (
-                            <div className="flex items-center justify-center py-6">
-                                <span className="text-xs text-muted-foreground animate-pulse">Loading static CDN stats...</span>
+                        <div className="grid grid-cols-2 gap-3 py-2">
+                            <div className="rounded-lg border border-border p-3 bg-muted/30">
+                                <p className="text-[10px] font-medium text-muted-foreground mb-1 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Cached Jobs</p>
+                                <p className="text-xl font-bold tracking-tight font-mono">
+                                    {cdnStats.loading ? <span className="animate-pulse">---</span> : cdnStats.error ? 'Error' : cdnStats.jobCount !== null ? cdnStats.jobCount.toLocaleString() : 'N/A'}
+                                </p>
                             </div>
-                        ) : cdnStats.error ? (
-                            <div className="flex items-center gap-2 p-3 rounded-xl border border-red-500/20 bg-red-500/5 text-red-500 text-xs">
-                                <SignalIcon className="h-4 w-4 shrink-0" />
-                                <span>Unable to connect to Cloudflare CDN to fetch static version.</span>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-2 gap-4 py-2">
-                                <div className="rounded-xl border border-border p-3 bg-secondary/20">
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Active Cached Jobs</p>
-                                    <p className="text-2xl font-bold tracking-tight text-foreground">{cdnStats.jobCount !== null ? cdnStats.jobCount.toLocaleString() : 'N/A'}</p>
-                                </div>
-                                <div className="rounded-xl border border-border p-3 bg-secondary/20">
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Cache Timestamp</p>
-                                    <div className="text-xs font-semibold text-foreground truncate mt-1.5" title={cdnStats.lastUpdated || 'N/A'}>
-                                        {cdnStats.lastUpdated ? cdnStats.lastUpdated.split(',')[0] : 'N/A'}
-                                        <span className="block text-[9px] font-normal text-muted-foreground mt-0.5">{cdnStats.lastUpdated ? cdnStats.lastUpdated.split(',')[1] : ''}</span>
-                                    </div>
-                                </div>
-                                <div className="rounded-xl border border-border p-3 bg-secondary/20">
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Cities Filter Indexed</p>
-                                    <p className="text-2xl font-bold tracking-tight text-foreground">{cdnStats.citiesCount !== null ? cdnStats.citiesCount.toLocaleString() : 'N/A'}</p>
-                                </div>
-                                <div className="rounded-xl border border-border p-3 bg-secondary/20">
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Skills Configured</p>
-                                    <p className="text-2xl font-bold tracking-tight text-foreground">{cdnStats.skillsCount !== null ? cdnStats.skillsCount.toLocaleString() : 'N/A'}</p>
+                            <div className="rounded-lg border border-border p-3 bg-muted/30">
+                                <p className="text-[10px] font-medium text-muted-foreground mb-1 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Timestamp</p>
+                                <div className="text-xs font-semibold truncate mt-1" title={cdnStats.lastUpdated || 'N/A'}>
+                                    {cdnStats.loading ? <span className="animate-pulse">---</span> : cdnStats.error ? 'Error' : cdnStats.lastUpdated ? cdnStats.lastUpdated.split(',')[0] : 'N/A'}
+                                    <span className="block text-[9px] font-normal text-muted-foreground mt-0.5">
+                                        {cdnStats.loading ? '' : cdnStats.error ? '' : cdnStats.lastUpdated ? cdnStats.lastUpdated.split(',')[1] : ''}
+                                    </span>
                                 </div>
                             </div>
-                        )}
+                        </div>
                     </div>
 
-                    <div className="border-t border-border pt-4 mt-6 text-[11px] text-muted-foreground space-y-1">
-                        <p className="font-bold uppercase tracking-wider text-[9px] mb-2 text-foreground">CDN Distribution Info</p>
-                        <div className="flex justify-between"><span>Worker Host</span><span className="font-semibold text-foreground">{new URL(CDN_URL || 'https://cdn.fresherflow.in').hostname}</span></div>
-                        <div className="flex justify-between"><span>Cache Control</span><span className="font-semibold text-foreground">immutable (v-hash)</span></div>
-                        <div className="flex justify-between"><span>CDN Gateway</span><span className="font-semibold text-foreground">Cloudflare Edge</span></div>
+                    <div className="border-t border-border pt-4 mt-6 text-[11px] text-muted-foreground space-y-2 font-mono">
+                        <div className="flex justify-between items-center"><span className="opacity-70">Worker Host</span><span>{new URL(CDN_URL || 'https://cdn.fresherflow.in').hostname}</span></div>
+                        <div className="flex justify-between items-center"><span className="opacity-70">Cache Control</span><span>immutable</span></div>
+                        <div className="flex justify-between items-center"><span className="opacity-70">CDN Gateway</span><span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Cloudflare Edge</span></div>
                     </div>
                 </div>
 
                 {/* Main Operations Navigation Panel */}
-                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm flex flex-col justify-between">
+                <div className="bg-card/60 backdrop-blur-xl text-card-foreground border border-border/60 shadow-sm rounded-xl p-6 hover:border-border transition-all duration-300 flex flex-col justify-between">
                     <div className="space-y-4">
-                        <div>
-                            <h3 className="text-lg font-bold">Operation shortcuts</h3>
-                            <p className="text-xs text-muted-foreground">Direct path access for moderation.</p>
+                        <div className="flex items-center gap-2">
+                            <SignalIcon className="h-4 w-4 text-muted-foreground" />
+                            <h3 className="text-sm font-semibold tracking-tight">Cache & Revalidation</h3>
                         </div>
-                        <div className="grid grid-cols-2 gap-3 pt-2">
-                            <Link
-                                href="/admin/opportunities/create"
-                                className="flex items-center justify-between rounded-xl border border-border p-3 hover:bg-muted/40 transition-colors text-xs font-semibold text-foreground bg-secondary/20 col-span-2 sm:col-span-1"
+                        
+                        <div className="grid grid-cols-1 gap-3 pt-2">
+                            <button
+                                onClick={() => handleRegenerate('all')}
+                                disabled={regenerating}
+                                className="w-full flex items-center justify-between px-4 py-2.5 border border-border rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 disabled:opacity-50 transition-all duration-[200ms] ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.98] text-xs cursor-pointer shadow-sm relative overflow-hidden group/btn"
                             >
-                                <span>Create New Listing</span>
-                                <BriefcaseIcon className="w-4 h-4 text-muted-foreground" />
-                            </Link>
-                            <Link
-                                href="/admin/feedback"
-                                className="flex items-center justify-between rounded-xl border border-border p-3 hover:bg-muted/40 transition-colors text-xs font-semibold text-foreground bg-secondary/20 col-span-2 sm:col-span-1"
+                                <div className="absolute inset-0 bg-white/20 translate-y-[100%] group-hover/btn:translate-y-[0%] transition-transform duration-[300ms] ease-[cubic-bezier(0.23,1,0.32,1)]" />
+                                <div className="flex flex-col items-start text-left relative z-10">
+                                    <span>Regenerate All Feeds</span>
+                                    <span className="text-[9px] font-normal opacity-80">Rebuild JSON static API for mobile</span>
+                                </div>
+                                <span className="relative z-10">{regenerating ? <span className="animate-spin text-primary-foreground"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></span> : <CloudIcon className="w-4 h-4" />}</span>
+                            </button>
+
+                            <button
+                                onClick={handleRevalidateWebsiteCache}
+                                disabled={regenerating}
+                                className="w-full flex items-center justify-between px-4 py-2.5 border border-border rounded-lg bg-muted text-foreground font-semibold hover:bg-accent disabled:opacity-50 transition-all duration-[200ms] ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.98] text-xs cursor-pointer shadow-sm"
                             >
-                                <span>Moderate Reports</span>
-                                <ChatBubbleLeftRightIcon className="w-4 h-4 text-muted-foreground" />
-                            </Link>
+                                <div className="flex flex-col items-start text-left">
+                                    <span>Refresh Website Cache</span>
+                                    <span className="text-[9px] font-normal text-muted-foreground">Next.js revalidateTag on dynamic routes</span>
+                                </div>
+                                <SignalIcon className="w-4 h-4 text-muted-foreground" />
+                            </button>
 
-                            {!cdnStats.loading && !cdnStats.error && (
-                                <>
-                                    <div className="col-span-2 border-t border-border/60 pt-3 mt-1 flex items-center justify-between">
-                                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Regenerate Feeds</span>
-                                        {regenerating && (
-                                            <span className="text-[10px] text-primary animate-pulse font-medium">Processing...</span>
-                                        )}
-                                    </div>
-                                    
-                                    <button
-                                        onClick={() => handleRegenerate('all')}
-                                        disabled={regenerating}
-                                        className="col-span-2 flex items-center justify-between px-3.5 py-2 border border-border rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/95 disabled:opacity-50 transition-all text-xs cursor-pointer"
-                                    >
-                                        <span>Regenerate All Feeds</span>
-                                        <CloudIcon className="w-4 h-4" />
-                                    </button>
-
-                                    <button
-                                        onClick={handleRevalidateWebsiteCache}
-                                        disabled={regenerating}
-                                        className="col-span-2 flex items-center justify-between px-3.5 py-2 border border-border rounded-xl bg-secondary/35 text-foreground font-semibold hover:bg-secondary/60 disabled:opacity-50 transition-all text-xs cursor-pointer"
-                                    >
-                                        <span>Refresh Website Cache</span>
-                                        <SignalIcon className="w-4 h-4" />
-                                    </button>
-
-                                    <button
-                                        onClick={() => handleRegenerate('bootstrap')}
-                                        disabled={regenerating}
-                                        className="flex items-center justify-center px-2 py-1.5 border border-border rounded-lg bg-secondary/35 text-foreground hover:bg-secondary/60 disabled:opacity-50 transition-all text-[11px] font-semibold cursor-pointer"
-                                    >
-                                        Private Feed
-                                    </button>
-                                    <button
-                                        onClick={() => handleRegenerate('govt')}
-                                        disabled={regenerating}
-                                        className="flex items-center justify-center px-2 py-1.5 border border-border rounded-lg bg-secondary/35 text-foreground hover:bg-secondary/60 disabled:opacity-50 transition-all text-[11px] font-semibold cursor-pointer"
-                                    >
-                                        Govt Feed
-                                    </button>
-                                    <button
-                                        onClick={() => handleRegenerate('resources')}
-                                        disabled={regenerating}
-                                        className="flex items-center justify-center px-2 py-1.5 border border-border rounded-lg bg-secondary/35 text-foreground hover:bg-secondary/60 disabled:opacity-50 transition-all text-[11px] font-semibold cursor-pointer"
-                                    >
-                                        Resources Feed
-                                    </button>
-                                    <button
-                                        onClick={() => handleRegenerate('sitemap')}
-                                        disabled={regenerating}
-                                        className="flex items-center justify-center px-2 py-1.5 border border-border rounded-lg bg-secondary/35 text-foreground hover:bg-secondary/60 disabled:opacity-50 transition-all text-[11px] font-semibold cursor-pointer"
-                                    >
-                                        Sitemaps
-                                    </button>
-                                </>
-                            )}
+                            <div className="grid grid-cols-2 gap-2 pt-2">
+                                <button
+                                    onClick={() => handleRegenerate('bootstrap')}
+                                    disabled={regenerating}
+                                    className="px-3 py-2 border border-border rounded-lg bg-secondary/40 text-foreground font-semibold hover:bg-secondary disabled:opacity-50 transition-all duration-[200ms] ease-out active:scale-[0.97] text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                                >
+                                    <span>Private Feed</span>
+                                </button>
+                                <button
+                                    onClick={() => handleRegenerate('govt')}
+                                    disabled={regenerating}
+                                    className="px-3 py-2 border border-border rounded-lg bg-secondary/40 text-foreground font-semibold hover:bg-secondary disabled:opacity-50 transition-all duration-[200ms] ease-out active:scale-[0.97] text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                                >
+                                    <span>Govt Feed</span>
+                                </button>
+                                <button
+                                    onClick={() => handleRegenerate('resources')}
+                                    disabled={regenerating}
+                                    className="px-3 py-2 border border-border rounded-lg bg-secondary/40 text-foreground font-semibold hover:bg-secondary disabled:opacity-50 transition-all duration-[200ms] ease-out active:scale-[0.97] text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                                >
+                                    <span>Resources Feed</span>
+                                </button>
+                                <button
+                                    onClick={() => handleRegenerate('sitemap')}
+                                    disabled={regenerating}
+                                    className="px-3 py-2 border border-border rounded-lg bg-secondary/40 text-foreground font-semibold hover:bg-secondary disabled:opacity-50 transition-all duration-[200ms] ease-out active:scale-[0.97] text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                                >
+                                    <span>Sitemaps</span>
+                                </button>
+                            </div>
                         </div>
 
                         {regenStatus && (
-                            <p className={`text-center text-xs font-semibold mt-1 ${regenStatus.type === 'success' ? 'text-emerald-500' : 'text-red-500'}`}>
+                            <p className={`text-[11px] p-2 rounded border font-mono ${regenStatus.type === 'success' ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' : 'text-destructive bg-destructive/10 border-destructive/20'}`}>
                                 {regenStatus.message}
                             </p>
                         )}
                     </div>
 
-                    <div className="border-t border-border pt-4 mt-6 text-[11px] text-muted-foreground space-y-1">
-                        <p className="font-bold uppercase tracking-wider text-[9px] mb-2 text-foreground">Infrastructure Overview</p>
-                        <div className="flex justify-between"><span>Relational DB</span><span className="font-semibold text-foreground">PostgreSQL</span></div>
-                        <div className="flex justify-between"><span>Realtime Layer</span><span className="font-semibold text-foreground">Firebase RTDB</span></div>
-                        <div className="flex justify-between"><span>Static Cache</span><span className="font-semibold text-foreground">Cloudflare R2</span></div>
+                    <div className="border-t border-border pt-4 mt-6 text-[11px] text-muted-foreground space-y-2 font-mono">
+                        <div className="flex justify-between items-center"><span className="opacity-70">Relational DB</span><span>PostgreSQL</span></div>
+                        <div className="flex justify-between items-center"><span className="opacity-70">Realtime Layer</span><span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Firebase</span></div>
                     </div>
                 </div>
             </div>

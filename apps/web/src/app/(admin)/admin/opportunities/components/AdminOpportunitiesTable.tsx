@@ -67,10 +67,10 @@ export const AdminOpportunitiesTable = ({
     const hasNextPage = page < effectiveTotalPages;
 
     return (
-        <div className="hidden md:flex flex-col flex-1 bg-card rounded-lg border border-border overflow-hidden min-h-0">
-            <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
+        <div className="hidden md:flex flex-col flex-1 min-h-0 bg-card rounded-lg border border-border overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto custom-scrollbar overscroll-contain">
                 <table className="w-full text-left text-sm">
-                <thead className="sticky top-0 z-10 bg-card">
+                <thead className="sticky top-0 z-10 bg-card border-b border-border">
                     <tr className="border-b border-border bg-muted/90 backdrop-blur-xs">
                         <th className="group px-5 py-3 w-10">
                             <div
@@ -154,7 +154,7 @@ export const AdminOpportunitiesTable = ({
                                 <div className="flex items-center justify-end gap-1">
                                     <button
                                         onClick={() => void copySocialCaption(opp)}
-                                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all"
+                                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors duration-150 ease-out active:scale-[0.96]"
                                         title="Copy social caption"
                                     >
                                         <DocumentDuplicateIcon className="w-4 h-4" />
@@ -164,7 +164,7 @@ export const AdminOpportunitiesTable = ({
                                             href={(opp.applyLink || opp.sourceLink) as string}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 rounded-md transition-all"
+                                            className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 rounded-md transition-colors duration-150 ease-out active:scale-[0.96]"
                                             title="Open apply link"
                                         >
                                             <ArrowTopRightOnSquareIcon className="w-4 h-4" />
@@ -172,14 +172,14 @@ export const AdminOpportunitiesTable = ({
                                     )}
                                     <button
                                         onClick={() => onPreview(opp.id)}
-                                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all"
+                                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors duration-150 ease-out active:scale-[0.96]"
                                         title="Preview Opportunity"
                                     >
                                         <EyeIcon className="w-4 h-4" />
                                     </button>
                                     <Link
                                         href={`/admin/opportunities/edit/${opp.slug || opp.id}`}
-                                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all"
+                                        className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors duration-150 ease-out active:scale-[0.96]"
                                         title="Edit"
                                     >
                                         <PencilSquareIcon className="w-4 h-4" />
@@ -188,14 +188,14 @@ export const AdminOpportunitiesTable = ({
                                         <>
                                             <button
                                                 onClick={() => handleStatusUpdate(opp.id, 'PUBLISHED')}
-                                                className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-md transition-all"
+                                                className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors duration-150 ease-out active:scale-[0.96]"
                                                 title="Publish Now"
                                             >
                                                 <CheckCircleIcon className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={() => handleRejectDraft(opp.id, opp.title)}
-                                                className="p-2 text-rose-600 hover:bg-rose-50 rounded-md transition-all"
+                                                className="p-2 text-rose-600 hover:bg-rose-50 rounded-md transition-colors duration-150 ease-out active:scale-[0.96]"
                                                 title="Reject Draft"
                                             >
                                                 <XCircleIcon className="w-4 h-4" />
@@ -205,7 +205,7 @@ export const AdminOpportunitiesTable = ({
                                     {(opp.status === 'PUBLISHED' || opp.status === 'EXPIRED') && (
                                         <button
                                             onClick={() => handleExpire(opp.id, opp.title, opp.status)}
-                                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all"
+                                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors duration-150 ease-out active:scale-[0.96]"
                                             title="Change Status"
                                         >
                                             <ClockIcon className="w-4 h-4" />
@@ -213,14 +213,14 @@ export const AdminOpportunitiesTable = ({
                                     )}
                                     <button
                                         onClick={() => handleDelete(opp.id, opp.title)}
-                                        className="p-2 text-rose-700 hover:bg-rose-50 rounded-md transition-all"
+                                        className="p-2 text-rose-700 hover:bg-rose-50 rounded-md transition-colors duration-150 ease-out active:scale-[0.96]"
                                         title="Archive (Soft Delete)"
                                     >
                                         <TrashIcon className="w-4 h-4" />
                                     </button>
                                     <button
                                         onClick={() => handleHardDelete(opp.id, opp.title)}
-                                        className="p-2 text-red-900 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md transition-all ml-1"
+                                        className="p-2 text-red-900 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md transition-colors duration-150 ease-out active:scale-[0.96] ml-1"
                                         title="Hard Delete (Permanent)"
                                     >
                                         <XCircleIcon className="w-4 h-4" />
@@ -228,7 +228,7 @@ export const AdminOpportunitiesTable = ({
                                     {getStatusLabel(opp) === 'DELETED' && (
                                         <button
                                             onClick={() => handleRestore(opp.id)}
-                                            className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-md transition-all"
+                                            className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors duration-150 ease-out active:scale-[0.96]"
                                             title="Restore"
                                         >
                                             <ArrowPathIcon className="w-4 h-4" />

@@ -65,7 +65,7 @@ export const AdminOpportunitiesMobileList = ({
     return (
         <div className="md:hidden flex flex-col flex-1 min-h-0 -mx-4 -mb-4 sm:mx-0 sm:mb-0">
             {/* Scrollable List */}
-            <div className="flex-1 overflow-y-auto space-y-2.5 custom-scrollbar px-4 pb-4 sm:px-0 min-h-0">
+            <div className="space-y-2.5 px-4 pb-4 sm:px-0">
                 {opportunities.map((opp) => {
                     const isSelected = selectedIds.includes(opp.id);
                     const isDraft = opp.status === 'DRAFT';

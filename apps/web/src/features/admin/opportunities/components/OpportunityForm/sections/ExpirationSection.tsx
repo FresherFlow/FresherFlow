@@ -38,7 +38,7 @@ export function ExpirationSection({
                             value={expiryDate}
                             onChange={(e) => setExpiryDate(e.target.value)}
                             min={new Date().toISOString().split('T')[0]}
-                            className="flex w-full rounded-lg px-3.5 py-2.5 text-sm outline-none transition-all duration-200 border border-solid border-input bg-background hover:border-border focus:bg-background focus:border-foreground/30 pr-9"
+                            className="flex w-full rounded-lg px-3.5 py-2.5 text-sm outline-none transition-colors duration-200 border border-solid border-input bg-background hover:border-border focus:bg-background focus:border-foreground/30 pr-9"
                         />
                         {expiryDate && (
                             <button
@@ -62,7 +62,7 @@ export function ExpirationSection({
                         type="time"
                         value={expiryTime}
                         onChange={(e) => setExpiryTime(e.target.value)}
-                        className="flex w-full rounded-lg px-3.5 py-2.5 text-sm outline-none transition-all duration-200 border border-solid border-input bg-background hover:border-border focus:bg-background focus:border-foreground/30"
+                        className="flex w-full rounded-lg px-3.5 py-2.5 text-sm outline-none transition-colors duration-200 border border-solid border-input bg-background hover:border-border focus:bg-background focus:border-foreground/30"
                     />
                 </div>
             </div>

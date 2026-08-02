@@ -349,7 +349,7 @@ export default function FeedbackPage() {
     }));
 
     return (
-        <div className="space-y-6 pb-12 animate-in fade-in duration-500 text-foreground">
+        <div className="p-4 md:p-8 pt-16 md:pt-8 space-y-6 flex-1 min-h-0 overflow-y-auto text-foreground pb-28 md:pb-8">
             {/* Header */}
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
                 <div>
@@ -406,7 +406,7 @@ export default function FeedbackPage() {
             {isLoading ? (
                 <AdminFeedbackSkeleton />
             ) : (
-                <div className="pt-2">
+                <div className="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar pb-8">
                     {/* ─── TAB 1: OPPORTUNITY REPORTS ──────────────────────────────── */}
                     {activeTab === 'opportunity-reports' && (
                         <div className="space-y-4">
