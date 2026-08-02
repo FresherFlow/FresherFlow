@@ -136,3 +136,95 @@ export async function saveJobToSupabase(
         return false;
     }
 }
+
+// POST parsed job directly to the main API → Neon DB
+export async function submitJobToApi(
+    job: ExtractedJob,
+    sourceLink: string,
+    applyLink: string
+): Promise<boolean> {
+    const apiUrl = process.env.API_BASE_URL;
+    const apiKey = process.env.INTERNAL_API_SECRET;
+
+    if (!apiUrl || !apiKey) {
+        console.error('Missing API_BASE_URL or INTERNAL_API_SECRET — cannot submit to main DB');
+        return false;
+    }
+
+    const { website, logoUrl } = resolveCompanyWebsiteAndLogo(job.company, applyLink, job.companyWebsite);
+
+    const payload = {
+        type: job.type,
+        title: job.title,
+        company: job.company,
+        companyWebsite: website || job.companyWebsite || null,
+        companyLogoUrl: logoUrl || null,
+        description: job.description || '',
+        allowedDegrees: job.allowedDegrees || [],
+        allowedCourses: job.allowedCourses || [],
+        allowedSpecializations: job.allowedSpecializations || [],
+        allowedPassoutYears: job.allowedPassoutYears || [],
+        requiredSkills: job.requiredSkills || [],
+        locations: job.locations || [],
+        structuredLocations: job.structuredLocations || null,
+        workMode: job.workMode || null,
+        experienceMin: job.experienceMin ?? null,
+        experienceMax: job.experienceMax ?? null,
+        salaryRange: job.salaryRange || null,
+        salaryPeriod: (job.salaryPeriod as string) || 'YEARLY',
+        employmentType: job.employmentType || null,
+        jobFunction: job.jobFunction || null,
+        incentives: job.incentives || null,
+        selectionProcess: job.selectionProcess || null,
+        notesHighlights: job.notesHighlights || null,
+        applyLink: applyLink || null,
+        sourceLink: sourceLink || null,
+        applicationDetails: job.applicationDetails || null,
+        status: 'PUBLISHED',
+    };
+
+    try {
+        console.log(`Submitting to main API: ${job.title} @ ${job.company}`);
+        // codeql[js/request-forgery]
+        // lgtm[js/request-forgery]
+        const res = await fetch(`${apiUrl}/api/opportunities/submit`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': apiKey,
+            },
+            body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(15000),
+        });
+        const result = await res.json() as { success: boolean; message?: string; id?: string };
+        if (!res.ok) {
+            console.error(`Submit API error (${res.status}): ${result.message}`);
+            return false;
+        }
+        console.log(`Submitted to Neon: ${job.title} @ ${job.company} → id=${result.id}`);
+        return true;
+    } catch (err) {
+        console.error('Submit API call failed:', (err as Error).message);
+        return false;
+    }
+}
+
+export async function warmupApi(): Promise<void> {
+    const apiUrl = process.env.API_BASE_URL;
+    if (!apiUrl) return;
+
+    try {
+        console.log(`Waking up main API at ${apiUrl}...`);
+        const res = await fetch(`${apiUrl}/api/health`, {
+            method: 'GET',
+            signal: AbortSignal.timeout(10000), // 10 seconds to wake up
+        });
+        if (res.ok) {
+            console.log('✅ API is awake and healthy.');
+        } else {
+            console.warn(`API warmup ping returned status ${res.status}.`);
+        }
+    } catch (err) {
+        console.warn('API warmup ping failed. Backend might be cold.', (err as Error).message);
+    }
+}

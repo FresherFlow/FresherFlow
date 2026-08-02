@@ -138,6 +138,12 @@ enum Availability {
   MONTH_1
 }
 
+enum ProfileVisibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+
 enum LinkHealth {
   HEALTHY
   BROKEN
@@ -393,6 +399,9 @@ model Profile {
   gradCourse         String?
   gradSpecialization String?
   gradYear           Int?
+  collegeId          String?
+  collegeName        String?
+  collegeState       String?
 
   // Post Graduation (Optional)
   pgCourse          String?
@@ -416,8 +425,22 @@ model Profile {
   isExServicemen Boolean?             @default(false)
   homeState      String?
 
+  // Derived & Identity Fields
+  headline         String?
+  about            String?
+  githubUrl        String?
+  linkedinUrl      String?
+  portfolioUrl     String?
+  avatarUrl        String?
+  githubPinnedRepos Json?
+  openToRecruiters Boolean   @default(false)
+  profilePublic    Boolean   @default(true)
+  visibility       ProfileVisibility @default(PUBLIC)
+
   // DERIVED FIELD - Never manually updated, always recalculated
   completionPercentage Int @default(0)
+
+  profilePublishedAt DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
@@ -467,6 +490,7 @@ model Opportunity {
   allowedAvailability Availability[] // When candidate should be available
   requiredSkills      String[]
   locations           String[] // For DB-level filtering
+  structuredLocations Json?
   experienceMin       Float?   // Experience in years (e.g. 0, 0.5, 1.5)
   experienceMax       Float?   // Experience in years (e.g. 3, 5.5)
 
@@ -533,11 +557,13 @@ model Opportunity {
   platformEvents PlatformEvent[]
   socialPosts SocialPost[]
   comments    OpportunityComment[]
+  companyId   String?
 
   // Performance Search optimization
   search_vector  Unsupported("tsvector")? @default(dbgenerated("''::tsvector"))
 
   // DB-level filtering indexes
+  @@index([companyId])
   @@index([status, deletedAt, type, postedAt(desc)])
   @@index([status, postedAt(desc)])
   @@index([trendingScore(desc)])

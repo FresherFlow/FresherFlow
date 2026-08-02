@@ -5,7 +5,7 @@ export class RipplingAdapter implements AtsAdapter {
 
     async fetchJobs(companyId: string, companyName: string): Promise<AtsJob[]> {
         const url = `https://ats.rippling.com/${encodeURIComponent(companyId)}/jobs?page=0&jobBoardSlug=${encodeURIComponent(companyId)}`;
-        let jobs: AtsJob[] = [];
+        const jobs: AtsJob[] = [];
         
         try {
             const res = await fetch(url, {
@@ -61,7 +61,7 @@ export class RipplingAdapter implements AtsAdapter {
                 const applyUrl = detail.applyUrl || job.applyUrl || '';
                 const jobUrl = detail.url || job.url || `https://ats.rippling.com/${encodeURIComponent(companyId)}/jobs/${encodeURIComponent(sourceId)}`;
                 
-                let locLabels: string[] = [];
+                const locLabels: string[] = [];
                 for (const loc of (detail.locations || job.locations || [])) {
                     const l = [loc.city || loc.name, loc.state || loc.stateCode, loc.country || loc.countryCode].filter(Boolean).join(', ');
                     if (l) locLabels.push(l);

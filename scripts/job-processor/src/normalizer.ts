@@ -1,5 +1,11 @@
 import { z } from 'zod';
 import {
+    OpportunityType,
+    OpportunityStatus,
+    WorkMode,
+    SalaryPeriod
+} from '@fresherflow/types';
+import {
     CANONICAL_COMPANIES,
     CANONICAL_SKILLS_MAP,
     CANONICAL_CITIES_MAP,
@@ -38,8 +44,8 @@ export const structuredLocationSchema = z.object({
 });
 
 export const jobSchema = z.object({
-    type: z.enum(['JOB', 'INTERNSHIP', 'WALKIN', 'REMOTE', 'GOVERNMENT', 'HACKATHONS']).catch('JOB'),
-    status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED', 'EXPIRED']).optional().default('DRAFT'),
+    type: z.nativeEnum(OpportunityType).catch(OpportunityType.JOB),
+    status: z.nativeEnum(OpportunityStatus).optional().default(OpportunityStatus.DRAFT),
     title: z.string().min(1),
     company: z.string().min(1),
     companyId: z.string().optional().nullable(),
@@ -53,12 +59,12 @@ export const jobSchema = z.object({
     requiredSkills: z.array(z.string()).default([]),
     locations: z.array(z.string()).default([]),
     structuredLocations: z.array(structuredLocationSchema).optional().default([]),
-    workMode: z.enum(['ONSITE', 'HYBRID', 'REMOTE']).optional().nullable(),
+    workMode: z.nativeEnum(WorkMode).optional().nullable(),
     experienceMin: z.number().optional().nullable().default(0),
     experienceMax: z.number().optional().nullable().default(0),
     salaryRange: z.string().optional().default(''),
     salaryAmount: z.string().optional().default(''),
-    salaryPeriod: z.enum(['MONTHLY', 'YEARLY']).catch('YEARLY'),
+    salaryPeriod: z.nativeEnum(SalaryPeriod).catch(SalaryPeriod.YEARLY),
     employmentType: z.string().optional().default(''),
     jobFunction: z.string().optional().nullable(),
     incentives: z.union([z.string(), z.array(z.string())]).transform(v => Array.isArray(v) ? v.join('\n') : v).optional().nullable(),

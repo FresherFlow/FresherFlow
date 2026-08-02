@@ -42,8 +42,10 @@ import {
 
 import {
     saveJobToSupabase,
-    resolveCompanyWebsiteAndLogo
-} from './src/api';
+    submitJobToApi,
+    resolveCompanyWebsiteAndLogo,
+    warmupApi
+} from './src/api.js';
 
 import { matchFromCdn } from './src/cdn-matcher';
 
@@ -147,6 +149,7 @@ async function loadEnv(): Promise<void> {
 
 async function run(): Promise<void> {
     console.log('Starting Job Processor...');
+    await warmupApi();
 
     await loadEnv();
     await loadCdnMetadata();
@@ -188,15 +191,65 @@ async function run(): Promise<void> {
         !['--chunk', '--limit', '--batch-size', '--batch-delay'].includes(args[idx - 1])
     );
 
+    const { fetchUnprocessedFromSupabase, markDiscoveredJobStatus } = await import('./src/supabase-source.js');
+    const { isJobLive } = await import('./src/liveness.js');
+
     let jobs: any[] = [];
-    if (positionalArgs[0] && await fileExists(positionalArgs[0])) {
+    const fromSupabase = args.includes('--from-supabase');
+
+    if (fromSupabase) {
+        const limitArg = args.includes('--limit') ? parseInt(args[args.indexOf('--limit') + 1], 10) : 200;
+        console.log(`Fetching up to ${limitArg} unprocessed jobs from Supabase discovered_jobs...`);
+
+        try {
+            const rows = await fetchUnprocessedFromSupabase(limitArg);
+            
+            // Mark all as PROCESSING so parallel runs don't double-pick them
+            const ids = rows.map(r => r.id);
+            if (ids.length > 0) {
+                // Using dynamic import of supabase to bulk update
+                const { createClient } = await import('@supabase/supabase-js');
+                const sbUrl = process.env.SUPABASE_URL || process.env.SUPABASE_DISCOVERY_URL;
+                const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+                if (sbUrl && sbKey) {
+                    const sb = createClient(sbUrl, sbKey, { auth: { persistSession: false } });
+                    await sb.from('discovered_jobs').update({ status: 'PROCESSING' }).in('id', ids);
+                }
+            }
+
+            jobs = rows.map(r => ({
+                id: r.id,
+                applyLink: r.apply_link,
+                source: r.source,
+                company: r.company,
+                title: r.title,
+                atsText: r.ats_text || '',
+                description: r.description || '',
+                location: r.location || r.location_city || '',
+                isRemote: r.is_remote,
+                experienceYears: r.experience_years,
+                employmentType: r.employment_type,
+                skills: r.skills ? JSON.parse(r.skills) : [],
+                postedAt: r.posted_at,
+                batchYear: r.batch_year,
+                degree: r.degree,
+                department: r.department,
+                _supabaseId: r.id,
+            })).filter(j => !processedUrls.has(j.applyLink));
+
+            console.log(`Loaded ${jobs.length} unprocessed jobs from Supabase.`);
+        } catch (e: any) {
+            console.error('❌ Failed to fetch from Supabase:', e.message);
+            process.exit(1);
+        }
+    } else if (positionalArgs[0] && await fileExists(positionalArgs[0])) {
         console.log(`Reading jobs from file: ${positionalArgs[0]}`);
         const fileContent = await fs.readFile(positionalArgs[0], 'utf8');
         const parsedData = JSON.parse(fileContent);
         jobs = Array.isArray(parsedData) ? parsedData : (parsedData.jobs || []);
         jobs = jobs.filter((j: any) => !processedUrls.has(j.applyLink));
     } else {
-        console.error(`❌ No input file provided. Usage: pnpm start <discovered_jobs.json>`);
+        console.error(`❌ No input file provided. Usage: pnpm start <discovered_jobs.json> OR pnpm start --from-supabase`);
         process.exit(1);
     }
 
@@ -265,6 +318,15 @@ async function run(): Promise<void> {
                 //   5. Aggregator text fallback
                 // ─────────────────────────────────────────────────────────
 
+                // LIVENESS CHECK FIRST
+                const liveness = await isJobLive(job.applyLink);
+                if (liveness === 'DEAD') {
+                    console.log(`[DEAD] ${job.applyLink} — skipping`);
+                    failureList.push({ url: job.applyLink, reason: 'Dead link (404)' });
+                    await saveState(job.applyLink, 'REJECTED');
+                    if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
+                    continue;
+                }
 
                 let atsContent = { title: '', text: '', html: '' };
                 let nativeData = null;
@@ -279,6 +341,14 @@ async function run(): Promise<void> {
                     const companySlug = GREENHOUSE_COMPANY_TO_SLUG.get((job.company || '').toLowerCase().trim())
                         ?? CANONICAL_COMPANIES.get((job.company || '').toLowerCase().trim())?.slug;
                     nativeData = await extractNativeAtsData(job.applyLink, source, undefined, companySlug);
+                    
+                    if (nativeData?.text === '{"error":"Job not found"}' || nativeData?.title === 'Job not found') {
+                        console.log(`[DEAD] Native ATS API returned not found — skipping`);
+                        failureList.push({ url: job.applyLink, reason: 'Native ATS API - Job not found' });
+                        await saveState(job.applyLink, 'REJECTED');
+                        if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
+                        continue;
+                    }
                 } else {
                     let page = null;
                     try {
@@ -291,6 +361,14 @@ async function run(): Promise<void> {
                         const companySlug = GREENHOUSE_COMPANY_TO_SLUG.get((job.company || '').toLowerCase().trim())
                             ?? CANONICAL_COMPANIES.get((job.company || '').toLowerCase().trim())?.slug;
                         nativeData = await extractNativeAtsData(job.applyLink, source, page, companySlug);
+
+                        if (nativeData?.text === '{"error":"Job not found"}' || nativeData?.title === 'Job not found') {
+                            console.log(`[DEAD] Native ATS API returned not found — skipping`);
+                            failureList.push({ url: job.applyLink, reason: 'Native ATS API - Job not found' });
+                            await saveState(job.applyLink, 'REJECTED');
+                            if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
+                            continue;
+                        }
 
                         if (nativeData && (nativeData.html.length > 200 || nativeData.text.length > 200)) {
                             atsContent = { title: nativeData.title, text: nativeData.text, html: nativeData.html };
@@ -321,6 +399,7 @@ async function run(): Promise<void> {
                     console.error('Insufficient job description text obtained.');
                     failureList.push({ url: job.applyLink, reason: 'Insufficient page text extracted' });
                     await saveState(job.applyLink, 'FAILED');
+                    if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'FAILED');
                     continue;
                 }
 
@@ -436,6 +515,7 @@ async function run(): Promise<void> {
                 } catch (parseErr) {
                     console.warn('Zod validation failed:', (parseErr as Error).message);
                     failureList.push({ url: job.applyLink, reason: 'Zod validation failed' });
+                    if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'FAILED');
                     continue;
                 }
 
@@ -451,8 +531,17 @@ async function run(): Promise<void> {
                     if (!ok) {
                         console.log(`[FILTER] International job skipped: ${JSON.stringify(extracted.structuredLocations)}`);
                         failureList.push({ url: job.applyLink, reason: 'International/unsupported location' });
+                        if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
                         continue;
                     }
+                }
+
+                // Fresher-only gate: skip non-fresher roles
+                if ((extracted.experienceMin ?? 0) > 2) {
+                    console.log(`[FILTER] Non-fresher skipped: experienceMin=${extracted.experienceMin}`);
+                    failureList.push({ url: job.applyLink, reason: 'Non-fresher (experienceMin > 2)' });
+                    if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
+                    continue;
                 }
 
                 console.log('Job extracted:', {
@@ -470,25 +559,33 @@ async function run(): Promise<void> {
                 extracted.companyLogoUrl = logoUrl || extracted.companyLogoUrl;
 
                 allExtracted.push(extracted);
+                
+                // DOUBLE WRITE: Write to Supabase review table FIRST
+                const reviewSuccess = await saveJobToSupabase(extracted, job.aggregatorUrl || job.applyLink, job.applyLink);
+                
                 if (ENABLE_API_UPLOAD) {
-                    const apiSuccess = await saveJobToSupabase(extracted, job.aggregatorUrl || job.applyLink, job.applyLink);
+                    const apiSuccess = await submitJobToApi(extracted, job.aggregatorUrl || job.applyLink, job.applyLink);
                     if (apiSuccess) {
                         successList.push({ title: extracted.title, company: extracted.company, url: job.applyLink });
                         await saveState(job.applyLink, 'PROCESSED');
+                        if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'PROCESSED');
                     } else {
-                        failureList.push({ url: job.applyLink, reason: 'Supabase insert rejected' });
-                        await saveState(job.applyLink, 'REJECTED');
+                        failureList.push({ url: job.applyLink, reason: 'Main API insert rejected' });
+                        await saveState(job.applyLink, 'FAILED');
+                        if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'FAILED');
                     }
                 } else {
                     console.log('Dry-run: skipping API upload.');
                     successList.push({ title: extracted.title, company: extracted.company, url: job.applyLink });
                     await saveState(job.applyLink, 'PROCESSED');
+                    if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'PROCESSED');
                 }
 
             } catch (jobErr) {
                 console.error(`[CRITICAL] Error processing ${job.applyLink}:`, jobErr);
                 failureList.push({ url: job.applyLink, reason: `Crash: ${(jobErr as Error).message}` });
                 await saveState(job.applyLink, 'FAILED');
+                if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'FAILED');
             }
 
             // Cooldown between batches
@@ -535,4 +632,10 @@ async function run(): Promise<void> {
 
 }
 
-run().catch(console.error);
+run().then(() => {
+    console.log('Process completed safely. Exiting.');
+    process.exit(0);
+}).catch((err) => {
+    console.error(err);
+    process.exit(1);
+});
