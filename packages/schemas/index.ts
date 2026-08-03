@@ -12,7 +12,10 @@ import {
     ActionType,
     FeedbackReason,
     AppFeedbackType,
-    SalaryPeriod
+    SalaryPeriod,
+    OrganizationType,
+    OrgRole,
+    MembershipStatus
 } from '@fresherflow/types';
 
 // ========================================
@@ -170,8 +173,47 @@ export const adminOpportunityFiltersSchema = z.object({
 });
 
 // ========================================
+// CANDIDATE PORTFOLIO & RECRUITER SCHEMAS
+// ========================================
+
+export const createOrganizationSchema = z.object({
+    name: z.string().min(2, 'Organization name must be at least 2 characters').max(100),
+    type: z.nativeEnum(OrganizationType).default(OrganizationType.COMPANY),
+    website: z.string().url().optional().or(z.string().length(0)),
+    emailDomain: z.string().optional(),
+    logo: z.string().url().optional().or(z.string().length(0))
+});
+
+export const organizationInviteSchema = z.object({
+    email: z.string().email('Invalid email address'),
+    role: z.nativeEnum(OrgRole).default(OrgRole.RECRUITER)
+});
+
+export const projectSchema = z.object({
+    title: z.string().min(1, 'Project title is required').max(100),
+    description: z.string().max(1000).optional(),
+    githubUrl: z.string().url().optional().or(z.string().length(0)),
+    liveUrl: z.string().url().optional().or(z.string().length(0)),
+    skills: z.array(z.string()).default([]),
+    order: z.number().int().default(0)
+});
+
+export const candidateInterestSchema = z.object({
+    organizationId: z.string().min(1, 'Organization ID is required'),
+    candidateId: z.string().min(1, 'Candidate ID is required'),
+    opportunityId: z.string().optional(),
+    message: z.string().max(1000).optional()
+});
+
+// ========================================
 // TYPE EXPORTS (for TypeScript inference)
 // ========================================
+
+export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
+export type OrganizationInviteInput = z.infer<typeof organizationInviteSchema>;
+
+export type ProjectInput = z.infer<typeof projectSchema>;
+export type CandidateInterestInput = z.infer<typeof candidateInterestSchema>;
 
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;

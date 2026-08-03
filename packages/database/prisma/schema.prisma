@@ -306,9 +306,17 @@ model User {
   postedOpportunities Opportunity[]
   rawContributions   RawOpportunity[]     @relation("UserRawContributions")
   auditLogs           AdminAudit[]
-  authenticators     Authenticator[]
+  authenticators      Authenticator[]
   comments           OpportunityComment[]
   follows            UserFollow[]
+  savedCandidates    SavedCandidate[]     @relation("RecruiterSaved")
+  savedByRecruiters  SavedCandidate[]     @relation("SavedByRecruiter")
+  profileViews       ProfileView[]        @relation("ProfileViewed")
+  recruiterViews     ProfileView[]        @relation("RecruiterViews")
+  organizationMemberships OrganizationMembership[]
+  projects           Project[]
+  recruiterInterests CandidateInterest[]  @relation("RecruiterInterests")
+  candidateInterests CandidateInterest[]  @relation("CandidateInterests")
 
   webAuthnChallenges WebAuthnChallenge[]
   updatedAdminDeliveryControls AdminDeliveryControl[]
@@ -1134,3 +1142,176 @@ enum ResourceSector {
   GOVERNMENT
 }
 
+model SavedCandidate {
+  id             String   @id @default(cuid())
+  recruiterId    String
+  candidateId    String
+  collectionName String?
+  savedAt        DateTime @default(now())
+
+  recruiter User @relation("RecruiterSaved", fields: [recruiterId], references: [id], onDelete: Cascade)
+  candidate User @relation("SavedByRecruiter", fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@unique([recruiterId, candidateId])
+  @@index([recruiterId])
+  @@index([candidateId])
+}
+
+model ProfileView {
+  id             String   @id @default(cuid())
+  candidateId    String
+  organizationId String?
+  recruiterId    String
+  viewedAt       DateTime @default(now())
+
+  candidate User     @relation("ProfileViewed", fields: [candidateId], references: [id], onDelete: Cascade)
+  recruiter User     @relation("RecruiterViews", fields: [recruiterId], references: [id], onDelete: Cascade)
+
+  @@index([candidateId, viewedAt])
+  @@index([recruiterId])
+}
+
+// ============================================================================
+// ORGANIZATION & RECRUITER DOMAIN MODELS
+// ============================================================================
+
+enum OrganizationType {
+  COMPANY
+  ENGINEERING_COLLEGE
+  TRAINING_INSTITUTE
+  BOOTCAMP
+  NGO
+  PLACEMENT_CELL
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  RECRUITER
+  VIEWER
+}
+
+enum MembershipStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Organization {
+  id           String           @id @default(cuid())
+  name         String
+  slug         String           @unique
+  type         OrganizationType @default(COMPANY)
+  website      String?
+  emailDomain  String?
+  logo         String?
+  verified     Boolean          @default(false)
+  verifiedAt   DateTime?
+  active       Boolean          @default(true)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  members      OrganizationMembership[]
+  invites      OrganizationInvite[]
+  interests    CandidateInterest[]
+}
+
+model OrganizationMembership {
+  id             String           @id @default(cuid())
+  userId         String
+  organizationId String
+  role           OrgRole          @default(RECRUITER)
+  status         MembershipStatus @default(APPROVED)
+  invitedBy      String?
+  joinedAt       DateTime         @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@index([userId])
+}
+
+model OrganizationInvite {
+  id             String    @id @default(cuid())
+  organizationId String
+  email          String
+  role           OrgRole   @default(RECRUITER)
+  invitedBy      String
+  token          String    @unique @default(cuid())
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([token])
+}
+
+// ============================================================================
+// CANDIDATE PORTFOLIO & RECRUITER ATS CANDIDATE INTEREST MODELS
+// ============================================================================
+
+model Project {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  description String?
+  githubUrl   String?
+  liveUrl     String?
+  skills      String[]
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum CandidateInterestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  INTERVIEW_SCHEDULED
+  OFFER_SENT
+  JOINED
+  REJECTED
+}
+
+model CandidateInterest {
+  id             String                  @id @default(cuid())
+  organizationId String
+  recruiterId    String
+  candidateId    String
+  opportunityId  String?
+  message        String?
+  status         CandidateInterestStatus @default(PENDING)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  recruiter    User         @relation("RecruiterInterests", fields: [recruiterId], references: [id], onDelete: Cascade)
+  candidate    User         @relation("CandidateInterests", fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([recruiterId])
+  @@index([candidateId])
+}
+
+model CompanyTarget {
+  id           String    @id @default(cuid())
+  company      String
+  ats          String    // matches PLUGIN_REGISTRY key
+  slug         String
+  active       Boolean   @default(true)
+  priority     Int       @default(0)
+  lastRunAt    DateTime?
+  lastJobCount Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@unique([ats, slug])
+}
