@@ -1,24 +1,30 @@
 {
-    "name":  "@fresherflow/search",
-    "version":  "1.0.0",
-    "main": "src/index.ts",
-    "types": "src/index.ts",
-    "scripts":  {
-                    "build":  "tsc",
-                    "clean":  "rm -rf dist",
-                    "lint":  "eslint ."
-                },
-    "dependencies":  {
-                         "@fresherflow/database":  "*",
-                         "@fresherflow/logger":  "*",
-                         "@fresherflow/types":  "*"
-                     },
-    "devDependencies":  {
-                            "@types/node":  "^20.10.6",
-                            "typescript":  "^5.3.3",
-                            "eslint":  "^9.10.0",
-                            "typescript-eslint":  "^8.5.0",
-                            "eslint-config-prettier":  "^9.1.0"
-                        }
+    "name": "@fresherflow/search",
+    "version": "1.0.0",
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "default": "./dist/index.js"
+        }
+    },
+    "scripts": {
+        "build": "tsc && node ../../scripts/fix-esm-imports.mjs dist",
+        "clean": "rm -rf dist",
+        "lint": "eslint ."
+    },
+    "dependencies": {
+        "@fresherflow/database": "*",
+        "@fresherflow/logger": "*",
+        "@fresherflow/types": "*"
+    },
+    "devDependencies": {
+        "@types/node": "^20.10.6",
+        "typescript": "^5.3.3"
+    }
 }
+
 

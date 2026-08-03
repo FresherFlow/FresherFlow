@@ -8,7 +8,7 @@ const isProd = typeof window !== 'undefined'
     : process.env.NEXT_PUBLIC_APP_ENV === 'production';
 
 const firebaseConfig = {
-    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '',
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || (isProd
         ? 'fresherflow-3604b.firebaseapp.com'
         : 'fresherflow-dev-staging.firebaseapp.com'),
