@@ -14,7 +14,7 @@
     "db:push": "prisma db push --schema=../../packages/database/prisma/schema.prisma",
     "db:studio": "prisma studio --schema=../../packages/database/prisma/schema.prisma",
     "db:generate": "prisma generate --schema=../../packages/database/prisma/schema.prisma",
-    "prisma:migrate": "prisma migrate deploy --schema=../../packages/database/prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate deploy --schema=../../packages/database/prisma/schema.prisma --config=../../packages/database/prisma.config.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
