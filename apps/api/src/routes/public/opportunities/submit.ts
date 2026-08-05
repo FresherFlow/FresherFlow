@@ -22,7 +22,17 @@ router.post('/submit', async (req: Request, res: Response, next: NextFunction) =
         const isApiKeyRequest = !!apiKey;
 
         if (isApiKeyRequest) {
-            if (!secret || apiKey !== secret) {
+            if (!secret) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Unauthorized: Invalid API Key'
+                });
+            }
+
+            const keyStr = String(apiKey);
+            const secretStr = String(secret);
+
+            if (keyStr.length !== secretStr.length || !crypto.timingSafeEqual(Buffer.from(keyStr), Buffer.from(secretStr))) {
                 return res.status(401).json({
                     success: false,
                     message: 'Unauthorized: Invalid API Key'
@@ -46,24 +56,17 @@ router.post('/submit', async (req: Request, res: Response, next: NextFunction) =
             if (userId) {
                 attributionUserId = userId;
             } else {
-                // Fallback to first ADMIN user if guest/public user without cookies
-                const systemAdmin = await prisma.user.findFirst({
-                    where: { role: 'ADMIN' }
+                return res.status(401).json({
+                    success: false,
+                    message: 'Unauthorized: Authentication required to submit opportunities'
                 });
-                if (!systemAdmin) {
-                    return res.status(500).json({
-                        success: false,
-                        message: 'System error: No ADMIN user found to attribute post'
-                    });
-                }
-                attributionUserId = systemAdmin.id;
             }
         }
 
         // 2. Data Validation
         const validationResult = opportunitySubmitSchema.safeParse(req.body);
         if (!validationResult.success) {
-            const errorMessages = validationResult.error.errors.map(
+            const errorMessages = validationResult.error.issues.map(
                 err => `${err.path.join('.')}: ${err.message}`
             ).join(', ');
             return res.status(400).json({

@@ -23,7 +23,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     res.json(result);
   } catch (err) {
     if (err instanceof z.ZodError) {
-      res.status(400).json({ error: 'Invalid query parameters', details: err.errors });
+      res.status(400).json({ error: 'Invalid query parameters', details: err.issues });
       return;
     }
     next(err);

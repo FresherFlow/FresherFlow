@@ -184,7 +184,18 @@ export function requireInternalApiKey(req: express.Request, res: Response, next:
         return next(new AppError('Internal API not configured', 503));
     }
 
-    if (!apiKey || !secret || !crypto.timingSafeEqual(Buffer.from(String(apiKey)), Buffer.from(secret))) {
+    if (!apiKey) {
+        return next(new AppError('Unauthorized: Invalid or missing API Key', 401));
+    }
+
+    const keyStr = String(apiKey);
+    const secretStr = String(secret);
+
+    if (keyStr.length !== secretStr.length) {
+        return next(new AppError('Unauthorized: Invalid or missing API Key', 401));
+    }
+
+    if (!crypto.timingSafeEqual(Buffer.from(keyStr), Buffer.from(secretStr))) {
         return next(new AppError('Unauthorized: Invalid or missing API Key', 401));
     }
 

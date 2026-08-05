@@ -387,7 +387,7 @@ app.get('/categories/:id.json', async (req, res) => {
     }
 });
 
-app.get('/sitemap*.xml', async (req, res) => {
+app.get(/^\/sitemap.*\.xml$/, async (req, res) => {
     try {
         const sitemapName = req.path.substring(1) || 'sitemap.xml';
         // Prevent path traversal with a strict filename check

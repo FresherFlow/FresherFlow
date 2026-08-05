@@ -9,13 +9,13 @@ const governmentApplicationFeeSchema = z.object({
     st: z.number().nonnegative().optional(),
     pwd: z.number().nonnegative().optional(),
     female: z.number().nonnegative().optional(),
-    other: z.record(z.number().nonnegative()).optional(),
+    other: z.record(z.string(), z.number().nonnegative()).optional(),
 });
 
 const governmentVacancySchema = z.object({
     postName: z.string().min(1),
     total: z.number().int().nonnegative().optional(),
-    categoryBreakup: z.record(z.number().int().nonnegative()).optional(),
+    categoryBreakup: z.record(z.string(), z.number().int().nonnegative()).optional(),
     qualification: z.string().optional(),
     age: z.string().optional(),
 });
@@ -303,8 +303,8 @@ export const opportunitySchema = z.object({
 });
 
 export const opportunitySubmitSchema = z.object({
-    title: z.string({ required_error: 'Title is required' }).min(1, 'Title is required'),
-    company: z.string({ required_error: 'Company is required' }).min(1, 'Company is required'),
+    title: z.string({ error: 'Title is required' }).min(1, 'Title is required'),
+    company: z.string({ error: 'Company is required' }).min(1, 'Company is required'),
     companyWebsite: z.string().url().nullable().optional().or(z.string().length(0).nullable().optional()),
     companyLogoUrl: z.string().url().nullable().optional().or(z.string().length(0).nullable().optional()),
     description: z.string().optional().nullable(),

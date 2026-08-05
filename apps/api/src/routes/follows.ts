@@ -60,7 +60,7 @@ router.post('/', requireAuth, async (req, res) => {
     res.json(follow);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: error.errors });
+      return res.status(400).json({ error: error.issues });
     }
     res.status(500).json({ error: 'Failed to follow' });
   }
@@ -84,7 +84,7 @@ router.delete('/', requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: error.errors });
+      return res.status(400).json({ error: error.issues });
     }
     // Record not found is fine, treat as success
     res.json({ success: true });
