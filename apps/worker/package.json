@@ -1,35 +1,35 @@
 {
-    "name": "fresherflow-worker",
-    "version": "1.0.0",
-    "description": "Background worker service for FresherFlow",
-    "main": "dist/index.js",
-    "scripts": {
-        "dev": "nodemon --exec \"ts-node\" src/index.ts",
-        "build": "tsc",
-        "start": "node dist/index.js",
-        "lint": "eslint \"src/**/*.ts\""
-    },
-    "dependencies": {
-        "@fresherflow/config": "*",
-        "@fresherflow/constants": "*",
-        "@fresherflow/logger": "*",
-        "@fresherflow/queue": "*",
-        "@fresherflow/redis": "*",
-        "@fresherflow/schemas": "*",
-        "@fresherflow/types": "*",
-        "@fresherflow/utils": "*",
-        "bullmq": "^5.41.6",
-        "ioredis": "^5.5.0",
-        "resend": "^6.9.1",
-        "dotenv": "^16.4.7",
-        "typescript": "^5.7.3"
-    },
-    "devDependencies": {
-        "nodemon": "^3.1.9",
-        "ts-node": "^10.9.2",
-        "@types/node": "^22.10.5",
-        "eslint": "^9.10.0",
-        "typescript-eslint": "^8.5.0",
-        "eslint-config-prettier": "^9.1.0"
-    }
+  "name": "fresherflow-worker",
+  "version": "1.0.0",
+  "description": "Background worker service for FresherFlow",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "nodemon --exec \"ts-node\" src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint \"src/**/*.ts\""
+  },
+  "dependencies": {
+    "@fresherflow/config": "^1.0.0",
+    "@fresherflow/constants": "^1.0.0",
+    "@fresherflow/logger": "^1.0.0",
+    "@fresherflow/queue": "^1.0.0",
+    "@fresherflow/redis": "^1.0.0",
+    "@fresherflow/schemas": "^1.0.0",
+    "@fresherflow/types": "^1.0.0",
+    "@fresherflow/utils": "^1.0.0",
+    "bullmq": "^6.0.6",
+    "dotenv": "^17.4.2",
+    "ioredis": "^6.0.0",
+    "resend": "^6.18.1",
+    "typescript": "^5.7.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "eslint": "^9.14.0",
+    "eslint-config-prettier": "^10.1.8",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
+    "typescript-eslint": "^8.66.0"
+  }
 }

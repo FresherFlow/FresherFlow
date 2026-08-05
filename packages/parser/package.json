@@ -1,47 +1,48 @@
 {
-    "name": "@fresherflow/parser",
-    "version": "1.0.0",
-    "description": "Shared job parsing logic for FresherFlow",
-    "type": "module",
-    "main": "./dist/index.js",
-    "react-native": "./src/index.ts",
-    "source": "./src/index.ts",
-    "types": "./dist/index.d.ts",
-    "exports": {
-        ".": {
-            "types": "./dist/index.d.ts",
-            "import": "./dist/index.js",
-            "require": "./dist/index.js",
-            "default": "./dist/index.js"
-        }
-    },
-    "files": [
-        "dist"
-    ],
-    "scripts": {
-        "build": "tsc && node ../../scripts/fix-esm-imports.mjs dist",
-        "dev": "tsc -w",
-        "lint": "eslint .",
-        "test": "vitest run",
-        "test:watch": "vitest"
-    },
-    "dependencies": {
-        "@fresherflow/constants": "*",
-        "@fresherflow/domain": "*",
-        "@fresherflow/types": "*",
-        "@types/turndown": "^5.0.4",
-        "axios": "^1.13.6",
-        "compromise": "^14.14.5",
-        "country-state-city": "^3.2.1",
-        "natural": "^8.1.0",
-        "turndown": "^7.2.4"
-    },
-    "devDependencies": {
-        "eslint": "^9.10.0",
-        "eslint-config-prettier": "^9.1.0",
-        "globals": "^14.0.0",
-        "typescript": "^5.7.3",
-        "typescript-eslint": "^8.5.0",
-        "vitest": "^4.1.0"
+  "name": "@fresherflow/parser",
+  "version": "1.0.0",
+  "description": "Shared job parsing logic for FresherFlow",
+  "type": "module",
+  "main": "./dist/index.js",
+  "react-native": "./src/index.ts",
+  "source": "./src/index.ts",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
     }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc && node ../../scripts/fix-esm-imports.mjs dist",
+    "dev": "tsc -w",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@fresherflow/constants": "^1.0.0",
+    "@fresherflow/domain": "^1.0.0",
+    "@fresherflow/types": "^1.0.0",
+    "@types/turndown": "^5.0.6",
+    "axios": "^1.19.0",
+    "compromise": "^14.16.0",
+    "country-state-city": "^3.2.1",
+    "natural": "^8.1.1",
+    "turndown": "^7.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "eslint": "^9.14.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.9.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.66.0",
+    "vitest": "^4.1.10"
+  }
 }

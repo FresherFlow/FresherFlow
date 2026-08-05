@@ -3,15 +3,14 @@
   "version": "1.0.0",
   "main": "src/index.ts",
   "dependencies": {
-    "@fresherflow/api-client": "*",
-    "@fresherflow/types": "*",
-    "@react-native-async-storage/async-storage": "^2.2.0",
-    "expo-secure-store": "~15.0.8",
-    "expo-notifications": "~0.32.16",
-    "expo-device": "~8.0.10",
-    "expo-constants": "~18.0.13",
-    "react": ">=18.0.0"
-
+    "@fresherflow/api-client": "^1.0.0",
+    "@fresherflow/types": "^1.0.0",
+    "@react-native-async-storage/async-storage": "^3.1.1",
+    "expo-constants": "~57.0.8",
+    "expo-device": "~57.0.1",
+    "expo-notifications": "~57.0.8",
+    "expo-secure-store": "~57.0.1",
+    "react": "^19.2.8"
   },
   "scripts": {
     "build": "tsc",
@@ -19,10 +18,10 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@types/react": "^19.2.18",
+    "eslint": "^9.14.0",
+    "eslint-config-prettier": "^10.1.8",
     "typescript": "^5.7.3",
-    "@types/react": "^18.0.0",
-    "eslint": "^9.10.0",
-    "typescript-eslint": "^8.5.0",
-    "eslint-config-prettier": "^9.1.0"
+    "typescript-eslint": "^8.66.0"
   }
 }

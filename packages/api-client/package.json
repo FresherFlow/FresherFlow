@@ -1,21 +1,23 @@
 {
   "name": "@fresherflow/api-client",
   "version": "1.0.0",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@fresherflow/types": "*",
-    "axios": "^1.16.1",
-    "superjson": "^2.2.6"
+    "@fresherflow/types": "^1.0.0",
+    "axios": "^1.19.0",
+    "superjson": "^2.2.6",
+    "@simplewebauthn/browser": "^13.0.0"
   },
   "devDependencies": {
-    "eslint": "^9.10.0",
-    "eslint-config-prettier": "^9.1.0",
+    "eslint": "^9.14.0",
+    "eslint-config-prettier": "^10.1.8",
     "typescript": "^5.7.3",
-    "typescript-eslint": "^8.5.0"
+    "typescript-eslint": "^8.66.0"
   }
 }

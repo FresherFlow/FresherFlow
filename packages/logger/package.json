@@ -1,24 +1,23 @@
 {
-    "name":  "@fresherflow/logger",
-    "version":  "1.0.0",
-    "private":  true,
-    "main":  "./dist/index.js",
-    "react-native": "./src/index.ts",
-    "source": "./src/index.ts",
-    "types":  "./dist/index.d.ts",
-    "scripts":  {
-                    "build":  "tsc",
-                    "lint":  "eslint ."
-                },
-    "dependencies":  {
-                         "winston":  "^3.17.0",
-                         "chalk":  "^4.1.2"
-                     },
-    "devDependencies":  {
-                            "typescript":  "^5.7.3",
-                            "eslint":  "^9.10.0",
-                            "typescript-eslint":  "^8.5.0",
-                            "eslint-config-prettier":  "^9.1.0"
-                        }
+  "name": "@fresherflow/logger",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "react-native": "./src/index.ts",
+  "source": "./src/index.ts",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "chalk": "^6.0.0",
+    "winston": "^3.19.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.14.0",
+    "eslint-config-prettier": "^10.1.8",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.66.0"
+  }
 }
-

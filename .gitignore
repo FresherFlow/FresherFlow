@@ -111,3 +111,6 @@ scripts/pipeline-client/
 *.db-journal
 
 plans
+
+
+*.json
