@@ -1,4 +1,5 @@
 import { AtsJob } from '@fresherflow/plugins';
+import { extractWorkMode, extractExperience, extractDegrees, extractPassoutYears } from '@fresherflow/parser';
 
 function resolveCompanyWebsiteAndLogo(
     company: string,
@@ -11,31 +12,12 @@ function resolveCompanyWebsiteAndLogo(
         try {
             const url = new URL(applyLink);
             const host = url.hostname.toLowerCase();
-            
-            if (
-                host === 'myworkdayjobs.com' || host.endsWith('.myworkdayjobs.com') ||
-                host === 'eightfold.ai' || host.endsWith('.eightfold.ai') ||
-                host === 'greenhouse.io' || host.endsWith('.greenhouse.io') ||
-                host === 'lever.co' || host.endsWith('.lever.co') ||
-                host === 'darwinbox.in' || host.endsWith('.darwinbox.in')
-            ) {
-                const parts = host.split('.');
-                let subdomain = parts[0];
-                if ((subdomain === 'job-boards' || subdomain === 'boards') && (host === 'greenhouse.io' || host.endsWith('.greenhouse.io'))) {
-                    const pathParts = url.pathname.split('/').filter(Boolean);
-                    if (pathParts.length > 0) {
-                        subdomain = pathParts[0];
-                    }
-                }
-                website = `https://${subdomain}.com`;
+            const parts = host.split('.');
+            if (parts.length >= 2) {
+                const domain = parts.slice(-2).join('.');
+                website = `https://${domain}`;
             } else {
-                const parts = host.split('.');
-                if (parts.length >= 2) {
-                    const domain = parts.slice(-2).join('.');
-                    website = `https://${domain}`;
-                } else {
-                    website = `https://${host}`;
-                }
+                website = `https://${host}`;
             }
         } catch {
             const cleanName = company.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -79,26 +61,25 @@ export async function submitJobsToApi(jobs: AtsJob[], targetCompany: string): Pr
 
         const { website, logoUrl } = resolveCompanyWebsiteAndLogo(company, applyLink, job.companyUrl);
 
-        let workMode = null;
-        if (job.isRemote || job.workFromHomeType?.toLowerCase() === 'remote') {
-            workMode = 'REMOTE';
-        } else if (job.workFromHomeType?.toLowerCase() === 'hybrid') {
-            workMode = 'HYBRID';
-        } else if (job.workFromHomeType) {
-            workMode = 'ONSITE';
-        }
+        const fullTextForExtraction = `${job.title} ${job.description || ''} ${job.experienceRange || ''}`;
 
-        let experienceMin = job.experienceYears ?? null;
-        let experienceMax = null;
-        if (job.experienceRange && experienceMin === null) {
-            const match = job.experienceRange.match(/(\d+)(?:\s*(?:-|to)\s*(\d+))?/i);
-            if (match) {
-                experienceMin = parseInt(match[1], 10);
-                if (match[2]) {
-                    experienceMax = parseInt(match[2], 10);
-                }
+        let workMode: string | null = extractWorkMode(fullTextForExtraction) ?? null;
+        if (!workMode) {
+            if (job.isRemote || job.workFromHomeType?.toLowerCase() === 'remote') {
+                workMode = 'REMOTE';
+            } else if (job.workFromHomeType?.toLowerCase() === 'hybrid') {
+                workMode = 'HYBRID';
+            } else if (job.workFromHomeType) {
+                workMode = 'ONSITE';
             }
         }
+
+        const parsedExp = extractExperience(fullTextForExtraction);
+        const experienceMin = job.experienceYears ?? (parsedExp.min !== undefined ? parsedExp.min : null);
+        const experienceMax = parsedExp.max !== undefined ? parsedExp.max : null;
+
+        const allowedDegrees = extractDegrees(fullTextForExtraction);
+        const allowedPassoutYears = extractPassoutYears(fullTextForExtraction);
 
         const payload = {
             type: 'JOB',
@@ -107,10 +88,10 @@ export async function submitJobsToApi(jobs: AtsJob[], targetCompany: string): Pr
             companyWebsite: website || null,
             companyLogoUrl: logoUrl || null,
             description: job.description || '',
-            allowedDegrees: [],
+            allowedDegrees: allowedDegrees,
             allowedCourses: [],
             allowedSpecializations: [],
-            allowedPassoutYears: [],
+            allowedPassoutYears: allowedPassoutYears,
             requiredSkills: job.skills || [],
             locations: job.location ? [job.location] : [],
             structuredLocations: job.parsedLocation ? {
