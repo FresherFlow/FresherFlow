@@ -24,7 +24,21 @@ export interface FilterBarFilters {
     sector: string | null;
     qualification: string | null;
     course: string | null;
+    workMode: 'REMOTE' | 'HYBRID' | 'ON_SITE' | null;
+    skills: string[];
 }
+
+const CANONICAL_SKILLS = [
+  '.NET', 'A.I.', 'Analytics', 'Android', 'Angular',
+  'Back-End', 'C#', 'C++', 'Data Science', 'DevOps',
+  'Django', 'Docker', 'Front-End', 'Golang', 'GraphQL',
+  'Hardware', 'iOS', 'Java', 'JavaScript', 'Linux',
+  'Microservices', 'Machine Learning', 'MySQL', 'NextJS', 'NodeJS',
+  'Objective-C', 'Perl', 'PHP', 'PostgreSQL', 'Python',
+  'Quality Assurance', 'React', 'React Native', 'Redis', 'Ruby',
+  'Ruby on Rails', 'Salesforce', 'Scala', 'Shopify', 'TypeScript',
+  'VueJS'
+];
 
 const GOVT_SECTORS = ['Defense', 'Railways', 'Banking', 'Teaching', 'Police', 'SSC / UPSC', 'PSU'];
 const GOVT_QUALIFICATIONS = ['10th Pass', '12th Pass', 'Diploma', 'Graduate', 'Postgraduate'];
@@ -39,7 +53,7 @@ interface FilterDropdownBarProps {
     pageType?: string;
 }
 
-type OpenPanel = 'location' | 'year' | 'type' | 'sector' | 'qualification' | 'course' | null;
+type OpenPanel = 'location' | 'year' | 'type' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | null;
 
 const CURRENT_YEAR = new Date().getFullYear();
 const START_YEAR = 2020;
@@ -86,7 +100,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
         if (panel !== 'location') setLocSearch('');
     };
 
-    const hasAnyFilter = !!(filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course);
+    const hasAnyFilter = !!(filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || filters.workMode || (filters.skills && filters.skills.length > 0));
     const isGovt = pageType === 'GOVERNMENT';
 
     const primaryList = isGovt ? PRIMARY_STATES : PRIMARY_CITIES;
@@ -113,7 +127,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                         <ChevronDownIcon className={cn('w-3 h-3 transition-transform', open === 'type' && 'rotate-180')} />
                     </button>
                     {open === 'type' && (
-                        <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-1.5 w-44 z-50 overscroll-contain">
+                        <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-1.5 w-44 z-[100] overscroll-contain">
                             {[
                                 { label: 'All types', value: null },
                                 { label: 'Jobs', value: 'JOB' },
@@ -151,7 +165,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                 </button>
 
                 {open === 'location' && (
-                    <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl p-2 w-64 z-50 space-y-1.5 overscroll-contain">
+                    <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl p-2 w-64 z-[100] space-y-1.5 overscroll-contain">
                         <div className="px-1">
                             <input
                                 type="text"
@@ -260,7 +274,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             <ChevronDownIcon className={cn('w-3 h-3 transition-transform', open === 'sector' && 'rotate-180')} />
                         </button>
                         {open === 'sector' && (
-                            <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-44 z-50">
+                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-44 z-[100]">
                                 {GOVT_SECTORS.map(opt => (
                                     <button
                                         key={opt}
@@ -290,7 +304,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             <ChevronDownIcon className={cn('w-3 h-3 transition-transform', open === 'qualification' && 'rotate-180')} />
                         </button>
                         {open === 'qualification' && (
-                            <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-44 z-50">
+                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-44 z-[100]">
                                 {GOVT_QUALIFICATIONS.map(opt => (
                                     <button
                                         key={opt}
@@ -317,6 +331,75 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                 <>
                     <div className="relative">
                         <button
+                            onClick={() => toggle('workMode')}
+                            aria-expanded={open === 'workMode'}
+                            className={cn(chipBase, filters.workMode ? chipActive : chipDefault)}
+                        >
+                            <BriefcaseIcon className="w-3.5 h-3.5" />
+                            {filters.workMode === 'REMOTE' ? 'Remote' : filters.workMode === 'HYBRID' ? 'Hybrid' : filters.workMode === 'ON_SITE' ? 'On-site' : 'Work Mode'}
+                            <ChevronDownIcon className={cn('w-3 h-3 transition-transform', open === 'workMode' && 'rotate-180')} />
+                        </button>
+                        {open === 'workMode' && (
+                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-44 z-[100]">
+                                {['REMOTE', 'HYBRID', 'ON_SITE'].map(mode => {
+                                    const val = mode as 'REMOTE' | 'HYBRID' | 'ON_SITE';
+                                    const label = val === 'REMOTE' ? 'Remote' : val === 'HYBRID' ? 'Hybrid' : 'On-site';
+                                    return (
+                                        <button
+                                            key={mode}
+                                            onClick={() => {
+                                                setFilters({ ...filters, workMode: filters.workMode === val ? null : val });
+                                                setOpen(null);
+                                            }}
+                                            className={cn(
+                                                'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
+                                                filters.workMode === val ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted/60'
+                                            )}
+                                        >
+                                            {label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                    <div className="relative">
+                        <button
+                            onClick={() => toggle('skills')}
+                            aria-expanded={open === 'skills'}
+                            className={cn(chipBase, filters.skills && filters.skills.length > 0 ? chipActive : chipDefault)}
+                        >
+                            <AcademicCapIcon className="w-3.5 h-3.5" />
+                            Skills {filters.skills && filters.skills.length > 0 ? `(${filters.skills.length})` : ''}
+                            <ChevronDownIcon className={cn('w-3 h-3 transition-transform', open === 'skills' && 'rotate-180')} />
+                        </button>
+                        {open === 'skills' && (
+                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-56 z-[100] max-h-60 overflow-y-auto">
+                                {CANONICAL_SKILLS.map(opt => {
+                                    const isSelected = filters.skills?.includes(opt);
+                                    return (
+                                    <button
+                                        key={opt}
+                                        onClick={() => {
+                                            const newSkills = isSelected
+                                                ? (filters.skills || []).filter(s => s !== opt)
+                                                : [...(filters.skills || []), opt];
+                                            setFilters({ ...filters, skills: newSkills });
+                                        }}
+                                        className={cn(
+                                            'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all flex items-center justify-between',
+                                            isSelected ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted/60'
+                                        )}
+                                    >
+                                        <span>{opt}</span>
+                                        {isSelected && <span className="text-primary text-xs">✓</span>}
+                                    </button>
+                                )})}
+                            </div>
+                        )}
+                    </div>
+                    <div className="relative">
+                        <button
                             onClick={() => toggle('course')}
                             aria-expanded={open === 'course'}
                             className={cn(chipBase, filters.course ? chipActive : chipDefault)}
@@ -326,7 +409,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             <ChevronDownIcon className={cn('w-3 h-3 transition-transform', open === 'course' && 'rotate-180')} />
                         </button>
                         {open === 'course' && (
-                            <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-44 z-50">
+                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-44 z-[100]">
                                 {CORP_COURSES.map(opt => (
                                     <button
                                         key={opt}
@@ -359,7 +442,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                         </button>
 
                         {open === 'year' && (
-                            <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-36 z-50">
+                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-36 z-[100]">
                                 <button
                                     onClick={() => {
                                         setFilters({ ...filters, year: null });
@@ -400,7 +483,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
             {/* Clear all */}
             {hasAnyFilter && (
                 <button
-                    onClick={() => setFilters({ location: null, year: null, closingSoon: false, saved: false, sector: null, qualification: null, course: null })}
+                    onClick={() => setFilters({ location: null, year: null, closingSoon: false, saved: false, sector: null, qualification: null, course: null, workMode: null, skills: [] })}
                     className={cn(chipBase, 'text-destructive border-destructive/30 bg-destructive/5 hover:bg-destructive/10')}
                 >
                     <XMarkIcon className="w-3.5 h-3.5" />

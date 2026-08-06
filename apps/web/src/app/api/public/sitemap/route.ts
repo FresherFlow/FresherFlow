@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
         return new NextResponse(xml, {
             headers: {
                 'Content-Type': 'application/xml',
-                'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=600'
+                'Cache-Control': 'public, max-age=86400, s-maxage=86400, stale-while-revalidate=3600'
             }
         });
     } catch (error) {

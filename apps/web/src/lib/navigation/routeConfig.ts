@@ -110,7 +110,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             label: 'Search',
             mobileTitle: 'Opportunities Feed',
             mobileLabel: 'Feed',
-            showInDesktop: true,
+            showInDesktop: false,
             showInMobileTabs: false,
             icon: MagnifyingGlassIcon,
         },

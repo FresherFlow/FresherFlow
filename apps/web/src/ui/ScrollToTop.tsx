@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import ChevronUpIcon from '@heroicons/react/24/solid/ChevronUpIcon';
 
 export function ScrollToTop() {
     const [visible, setVisible] = useState(false);
+    const pathname = usePathname();
 
     useEffect(() => {
         const onScroll = () => setVisible(window.scrollY > 400);
@@ -12,7 +14,7 @@ export function ScrollToTop() {
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
 
-    if (!visible) return null;
+    if (!visible || pathname?.startsWith('/admin')) return null;
 
     return (
         <button

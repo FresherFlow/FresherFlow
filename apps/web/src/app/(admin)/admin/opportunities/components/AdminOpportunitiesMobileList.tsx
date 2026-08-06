@@ -181,14 +181,14 @@ export const AdminOpportunitiesMobileList = ({
                                         <>
                                             <button
                                                 onClick={() => handleStatusUpdate(opp.id, 'PUBLISHED')}
-                                                className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors"
+                                                className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
                                             >
                                                 <CheckCircleIcon className="w-3.5 h-3.5" />
                                                 Publish
                                             </button>
                                             <button
                                                 onClick={() => handleRejectDraft(opp.id, opp.title)}
-                                                className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 text-[11px] font-semibold text-rose-600 hover:bg-rose-100 transition-colors"
+                                                className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-destructive/20 bg-destructive/10 text-[11px] font-semibold text-destructive hover:bg-destructive/20 transition-colors"
                                             >
                                                 <XCircleIcon className="w-3.5 h-3.5" />
                                                 Reject
@@ -198,16 +198,16 @@ export const AdminOpportunitiesMobileList = ({
                                     {isPublishedOrExpired && (
                                         <button
                                             onClick={() => handleExpire(opp.id, opp.title, opp.status)}
-                                            className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 text-[11px] font-semibold text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                                            className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 text-[11px] font-semibold text-foreground hover:bg-accent transition-colors"
                                         >
-                                            <ClockIcon className="w-3.5 h-3.5" />
+                                            <ClockIcon className="w-3.5 h-3.5 text-muted-foreground" />
                                             Set Status
                                         </button>
                                     )}
                                     {isDeleted && (
                                         <button
                                             onClick={() => handleRestore(opp.id)}
-                                            className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-100 transition-colors"
+                                            className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
                                         >
                                             <ArrowPathIcon className="w-3.5 h-3.5" />
                                             Restore
@@ -215,14 +215,14 @@ export const AdminOpportunitiesMobileList = ({
                                     )}
                                     <button
                                         onClick={() => handleDelete(opp.id, opp.title)}
-                                        className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-rose-200 bg-rose-50 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 transition-colors"
+                                        className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-destructive/20 bg-destructive/10 text-[11px] font-semibold text-destructive hover:bg-destructive/20 transition-colors"
                                     >
                                         <TrashIcon className="w-3.5 h-3.5" />
                                         Archive
                                     </button>
                                     <button
                                         onClick={() => handleHardDelete(opp.id, opp.title)}
-                                        className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 text-[11px] font-semibold text-red-900 hover:bg-red-100 transition-colors"
+                                        className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-destructive/30 bg-destructive/15 text-[11px] font-semibold text-destructive hover:bg-destructive/25 transition-colors"
                                     >
                                         <XCircleIcon className="w-3.5 h-3.5" />
                                         Delete

@@ -489,7 +489,7 @@ export default function JobCard({
                 {visibleSkills.length > 0 && (
                     <div className="flex flex-row flex-nowrap overflow-hidden gap-1 pt-1.5 border-t border-border/20 items-center w-full">
                         {visibleSkills.map((skill, idx) => {
-                            const isMatched = profile?.skills?.some(s => s.toLowerCase() === skill.toLowerCase());
+                            const isMatched = mounted && Boolean(profile?.skills?.some(s => s.toLowerCase() === skill.toLowerCase()));
                             const isSearched = Boolean(effectiveSearchQuery && (
                                 skill.toLowerCase().includes(effectiveSearchQuery.toLowerCase()) ||
                                 effectiveSearchQuery.toLowerCase().includes(skill.toLowerCase())
@@ -503,7 +503,7 @@ export default function JobCard({
                                             ? "bg-primary/20 text-primary border-primary/30 font-bold ring-1 ring-primary/20"
                                             : isMatched
                                                 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                                                : "bg-primary/5 text-primary border-primary/10"
+                                                : "bg-muted/40 text-muted-foreground border-border/40"
                                     )}
                                 >
                                     {skill}
@@ -558,7 +558,7 @@ export default function JobCard({
                     <span className="inline-flex shrink-0 items-center px-2 py-0.5 text-xs font-medium rounded-md bg-primary/10 text-primary border border-primary/20">
                         {isDrive ? 'Hiring Drive' : isGovernment ? ((job as any).governmentJobDetails?.jobCategory?.[0] || 'Govt Job') : (job.employmentType || job.type) === 'INTERNSHIP' || job.type === 'INTERNSHIP' ? 'Internship' : (job.employmentType || job.type) === 'WALKIN' || job.type === 'WALKIN' ? 'Walk-in' : 'Full-time'}
                     </span>
-                    {user && matchResult && (
+                    {mounted && user && matchResult && (
                         <span className={cn(
                             "inline-flex shrink-0 items-center px-2 py-0.5 text-xs font-semibold rounded-md border",
                             !matchResult.isEligible
@@ -570,7 +570,7 @@ export default function JobCard({
                             {!matchResult.isEligible ? 'Not Eligible' : `${matchResult.score}% Match`}
                         </span>
                     )}
-                    {!user && (
+                    {mounted && !user && (
                         <Link
                             href={loginRedirectHref}
                             className="inline-flex shrink-0 items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-md border border-border/80 bg-muted/30 text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all z-20 cursor-pointer pointer-events-auto"
@@ -711,7 +711,7 @@ export default function JobCard({
             {visibleSkills.length > 0 && (
                 <div className="flex flex-row flex-nowrap overflow-hidden gap-1.5 z-20 pointer-events-none items-center w-full">
                     {visibleSkills.map((skill, idx) => {
-                        const isMatched = profile?.skills?.some(s => s.toLowerCase() === skill.toLowerCase());
+                        const isMatched = mounted && Boolean(profile?.skills?.some(s => s.toLowerCase() === skill.toLowerCase()));
                         const isSearched = Boolean(effectiveSearchQuery && (
                             skill.toLowerCase().includes(effectiveSearchQuery.toLowerCase()) ||
                             effectiveSearchQuery.toLowerCase().includes(skill.toLowerCase())
@@ -725,7 +725,7 @@ export default function JobCard({
                                         ? "bg-primary/20 text-primary border-primary/30 font-bold ring-1 ring-primary/20"
                                         : isMatched
                                             ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                                            : "bg-primary/5 text-primary border-primary/10"
+                                            : "bg-muted/40 text-muted-foreground border-border/40"
                                 )}
                             >
                                 {skill}

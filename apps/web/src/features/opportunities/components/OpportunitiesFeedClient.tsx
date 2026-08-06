@@ -21,6 +21,7 @@ import { FilterDropdownBar, type FilterBarFilters } from '@/features/opportuniti
 import { useIntersectionObserver } from '@/lib/hooks/useIntersectionObserver';
 import { Opportunity } from '@fresherflow/types';
 import { Breadcrumb } from '@/ui/Breadcrumb';
+import { useFeedHeader } from '@/lib/context/FeedHeaderContext';
 
 const MobileFilterDrawer = dynamic(() => import('@/features/opportunities/components/MobileFilterDrawer').then(m => m.MobileFilterDrawer));
 const OpportunityGrid = dynamic(() => import('@/features/opportunities/components/OpportunityGrid').then(m => m.OpportunityGrid));
@@ -54,6 +55,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const { user } = useAuth();
+    const { setCount } = useFeedHeader();
 
     const queryParam = searchParams.get('query') || searchParams.get('q') || searchParams.get('skill') || '';
     const [search, setSearch] = useState(queryParam);
@@ -170,6 +172,12 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         setVisibleCount(PAGE_SIZE);
     }, [search, selectedType, filters.location, filters.sector, filters.qualification, filters.course, filters.year, filters.closingSoon, filters.saved]);
 
+    // Push filtered count to TopHeaderBar
+    useEffect(() => {
+        setCount(filteredOpps.length);
+        return () => setCount(null);
+    }, [filteredOpps.length, setCount]);
+
     // Keep selectedOpp in sync with filteredOpps on desktop without flashing null/skeleton
     useEffect(() => {
         if (isDesktop === true) {
@@ -277,72 +285,68 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
             />
             <div className="w-full max-w-7xl mx-auto px-3 md:px-6 pt-2 md:pt-0 pb-10 md:pb-20 lg:pb-4 space-y-4 md:space-y-6">
-                
-                <div className={cn("pt-2", selectedOpp && "hidden lg:block")}>
+
+                {/* Breadcrumb */}
+                <div className={cn("pt-1", selectedOpp && "hidden lg:block")}>
                     <Breadcrumb items={[
                         { label: 'Home', href: '/' },
                         { label: 'All Opportunities', href: '#' }
                     ]} />
                 </div>
 
-                {/* Page header */}
-                <div className="flex flex-col gap-3 pb-2">
-                    {/* Count pill — top right */}
-                    <div className="flex items-center justify-between gap-2">
-                        <h1 className="sr-only">Job Opportunities Feed</h1>
-                        <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5" aria-live="polite">
-                            <ShieldCheckIcon className="w-3.5 h-3.5 text-primary shrink-0" />
-                            {filteredOpps.length > 0 ? `Showing ${pageEnd} of ${filteredOpps.length} jobs` : '0 jobs'}
-                        </span>
-                    </div>
+                {/* Search box */}
+                <div className={cn("relative group w-full lg:w-96", selectedOpp && "hidden lg:block")}>
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                    <Input
+                        type="text"
+                        placeholder="Search roles, skills, or companies..."
+                        value={search}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
+                        className="pl-9 h-10 text-xs rounded-xl bg-card border-border shadow-sm w-full"
+                        aria-label="Search job opportunities"
+                    />
+                    {search && (
+                        <button
+                            onClick={() => setSearch('')}
+                            aria-label="Clear search"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-full p-0.5"
+                        >
+                            <XMarkIcon className="w-4 h-4" />
+                        </button>
+                    )}
+                </div>
 
-                    {/* Filter buttons on left row + Search Bar right next to them */}
-                    <div id="search-box-top" className="flex gap-2.5 items-center justify-between flex-wrap pt-1">
-                        <div className="flex items-center gap-3 flex-wrap w-full lg:w-auto">
-                            <div className="flex items-center gap-2 w-full lg:w-auto flex-1 lg:flex-none">
-                                {/* Search box right next to the dropdown filters */}
-                                <div className="relative flex-1 lg:w-96 group">
-                                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                    <Input
-                                        type="text"
-                                        placeholder="Search roles, skills, or companies..."
-                                        value={search}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-                                        className="pl-9 h-10 text-xs rounded-xl bg-card border-border shadow-sm w-full"
-                                        aria-label="Search job opportunities"
-                                    />
-                                    {search && (
-                                        <button
-                                            onClick={() => setSearch('')}
-                                            aria-label="Clear search"
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full p-0.5"
-                                        >
-                                            <XMarkIcon className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                </div>
+                {/* Count (left) + Filters (right) — one row */}
+                <div className={cn("flex items-center gap-3 flex-wrap pb-2", selectedOpp && "hidden lg:flex")}>
+                    <h1 className="sr-only">Job Opportunities Feed</h1>
 
-                                {/* Mobile filter button next to search */}
-                                <button
-                                    onClick={openMobileFilters}
-                                    aria-haspopup="dialog"
-                                    aria-expanded={isMobileFilterOpen}
-                                    className="lg:hidden h-10 flex items-center justify-center gap-2 px-4 rounded-xl border border-border bg-card text-[10px] font-bold capitalize tracking-widest shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-                                >
-                                    <FunnelIcon className="w-4 h-4" />
-                                    {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
-                                </button>
-                            </div>
+                    {/* Count — left */}
+                    <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5 shrink-0" aria-live="polite">
+                        <ShieldCheckIcon className="w-3.5 h-3.5 text-primary shrink-0" />
+                        {filteredOpps.length > 0 ? `Showing ${filteredOpps.length} jobs` : '0 jobs'}
+                    </span>
 
-                            {/* Desktop filter chips */}
-                            <FilterDropdownBar
-                                filters={filters}
-                                setFilters={setFilters}
-                                isLoggedIn={!!user}
-                                selectedType={selectedType}
-                                onTypeChange={updateType}
-                            />
-                        </div>
+                    {/* Filters — right */}
+                    <div className="flex items-center gap-2 ml-auto flex-wrap">
+                        {/* Mobile filter button */}
+                        <button
+                            onClick={openMobileFilters}
+                            aria-haspopup="dialog"
+                            aria-expanded={isMobileFilterOpen}
+                            className="lg:hidden h-9 flex items-center gap-2 px-3 rounded-xl border border-border bg-card text-[10px] font-bold capitalize tracking-widest shrink-0"
+                        >
+                            <FunnelIcon className="w-4 h-4" />
+                            {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
+                        </button>
+
+                        {/* Desktop filter chips */}
+                        <FilterDropdownBar
+                            filters={filters}
+                            setFilters={setFilters}
+                            isLoggedIn={!!user}
+                            selectedType={selectedType}
+                            onTypeChange={updateType}
+                        />
                     </div>
                 </div>
 

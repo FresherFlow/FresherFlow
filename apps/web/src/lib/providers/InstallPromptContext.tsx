@@ -37,12 +37,13 @@ function setNumber(key: string, value: number) {
 
 function readBoolean(key: string) {
     if (typeof window === 'undefined') return false;
-    return window.localStorage.getItem(key) === '1';
+    const val = window.localStorage.getItem(key);
+    return val === 'true' || val === '1';
 }
 
 function setBoolean(key: string, value: boolean) {
     if (typeof window === 'undefined') return;
-    window.localStorage.setItem(key, value ? '1' : '0');
+    window.localStorage.setItem(key, value ? 'true' : 'false');
 }
 
 function detectInstalled() {

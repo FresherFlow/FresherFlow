@@ -7,7 +7,7 @@ import { useCategoryPageState } from '@/features/opportunities/hooks/useCategory
 import { CategoryPageView } from '@/features/opportunities/components/CategoryPageView';
 
 interface CategoryPageProps {
-    type: OpportunityType;
+    type: OpportunityType | null;
     initialData?: { opportunities: Opportunity[]; total: number; cachedAt?: number } | null;
 }
 

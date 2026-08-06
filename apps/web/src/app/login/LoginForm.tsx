@@ -24,8 +24,9 @@ function LoginContent() {
     const { email, setEmail } = useAuthFormData();
     const [otpArray, setOtpArray] = useState<string[]>(Array(6).fill(''));
     const [step, setStep] = useState<LoginStep>('email');
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [isProcessing, setIsProcessing] = useState(false);
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => { setMounted(true); }, []);
 
     const { sendOtp, verifyOtp, loginWithGoogle, user, isLoading } = useAuth();
     const searchParams = useSearchParams();
@@ -216,7 +217,7 @@ function LoginContent() {
                                 type="button"
                                 variant="outline"
                                 onClick={handleGoogleSignIn}
-                                disabled={isLoading}
+                                disabled={mounted && isLoading}
                                 className="w-full !h-11 text-xs font-semibold !rounded-xl flex items-center justify-center gap-2.5 border-border/80 hover:bg-muted/40 active:scale-[0.98] transition-all"
                             >
                                 <svg className="w-4.5 h-4.5" viewBox="0 0 24 24">

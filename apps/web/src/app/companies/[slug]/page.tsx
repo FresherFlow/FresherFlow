@@ -18,11 +18,11 @@ import { fetchCompanyShard, fetchCompaniesMetadata } from '@/lib/api/cdnFeed';
 import CompanyFollowButton from '@/features/companies/components/CompanyFollowButton';
 
 export const revalidate = false;
-export const dynamicParams = true;
+export const dynamicParams = false;
 
 export async function generateStaticParams() {
     try {
-        const companyDirectory = await fetchCompaniesMetadata();
+        const companyDirectory = await fetchCompaniesMetadata(true);
         if (!companyDirectory) return [];
 
         const seen = new Set<string>();
@@ -89,7 +89,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         permanentRedirect(`/companies/${properSlug}`);
     }
 
-    const companyDirectory = await fetchCompaniesMetadata();
+    const companyDirectory = await fetchCompaniesMetadata(true);
     let targetSlug = properSlug;
     let shouldRedirectTo: string | null = null;
 
@@ -124,11 +124,11 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         permanentRedirect(`/companies/${shouldRedirectTo}`);
     }
 
-    let feed = await fetchCompanyShard(targetSlug);
+    let feed = await fetchCompanyShard(targetSlug, undefined, true);
     let companyJobs = feed?.opportunities || [];
 
     if (companyJobs.length === 0 && targetSlug !== properSlug) {
-        feed = await fetchCompanyShard(properSlug);
+        feed = await fetchCompanyShard(properSlug, undefined, true);
         companyJobs = feed?.opportunities || [];
         if (companyJobs.length > 0) {
             targetSlug = properSlug;

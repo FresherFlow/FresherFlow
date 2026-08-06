@@ -385,8 +385,10 @@ export async function apiClient<T = unknown>(
                         });
 
                         if (!refreshResponse.ok) {
-                            const err = new Error('Refresh failed') as Error & { status?: number };
-                            err.status = refreshResponse.status;
+                            clearClientSessionHints();
+                            clearUserTokens();
+                            const err = new UnauthorizedError('Refresh failed');
+                            (err as Error & { status?: number }).status = refreshResponse.status || 401;
                             throw err;
                         }
                         try {
@@ -420,14 +422,16 @@ export async function apiClient<T = unknown>(
                 // Only force logout when refresh proves the session is actually invalid.
                 // Transient refresh failures (timeouts, 5xx, deploy/network blips) should not
                 // wipe the user's session and send them back to login.
-                const isExplicitAuthFailure = error?.status === 401 || error?.status === 403;
+                const isExplicitAuthFailure = error?.status === 401 || error?.status === 403 || err instanceof UnauthorizedError;
                 const isNetworkError = error instanceof OfflineError || (error instanceof TypeError && error.message.includes('fetch'));
 
                 if (isExplicitAuthFailure && !isNetworkError) {
+                    clearClientSessionHints();
+                    clearUserTokens();
                     if (typeof window !== 'undefined') {
                         window.dispatchEvent(new CustomEvent('fresherflow-unauthorized'));
                     }
-                    throw new UnauthorizedError();
+                    throw new UnauthorizedError('Refresh failed');
                 }
 
                 // Otherwise, let the original request fail normally without clearing the session.
@@ -485,7 +489,9 @@ export async function apiClient<T = unknown>(
                 throw new UnauthorizedError(errorMessage);
             }
 
-            console.error(`API request failed: ${method} ${endpoint} (${response.status}) - ${errorMessage}`, errorData);
+            if (shouldLogClientError({ statusCode: response.status, message: errorMessage })) {
+                console.error(`API request failed: ${method} ${endpoint} (${response.status}) - ${errorMessage}`, errorData);
+            }
 
             const httpError = new Error(errorMessage) as Error & {
                 statusCode?: number;

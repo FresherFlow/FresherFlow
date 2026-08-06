@@ -11,7 +11,7 @@ import { buildLoginFromDetailHref, getDetailShareUrl } from '@/features/opportun
 import { getRelatedOpportunities } from '@/features/opportunities/utils/detailUtils';
 import { useFirebaseTracker } from '@/lib/hooks/useFirebaseTracker';
 import { useFirebaseSaved } from '@/lib/hooks/useFirebaseSaved';
-import { saveOpportunityToCache } from '@/lib/api/offline/opportunitiesFeedCache';
+import { readFeedCache, saveOpportunityToCache } from '@/lib/api/offline/opportunitiesFeedCache';
 
 
 
@@ -19,7 +19,8 @@ export function useOpportunityDetail(
     id: string, 
     initialData?: Opportunity | null, 
     user?: User | null,
-    initialRelatedData: Opportunity[] = []
+    initialRelatedData: Opportunity[] = [],
+    allOpps: Opportunity[] = []
 ) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -28,11 +29,14 @@ export function useOpportunityDetail(
     
     const [isLoading, setIsLoading] = useState<boolean>(!initialData);
 
-    const [relatedOpps, setRelatedOpps] = useState<Opportunity[]>(initialRelatedData);
-    const [isLoadingRelated, setIsLoadingRelated] = useState(false);
     const [isUpdatingAction, setIsUpdatingAction] = useState(false);
     const [error, setError] = useState<string | null>(null);
     
+    const initialDataRef = useRef(initialData);
+    useEffect(() => {
+        initialDataRef.current = initialData;
+    }, [initialData]);
+
     const hasTrackedDetailViewRef = useRef(false);
     const hasShownNotFoundRef = useRef(false);
     const hasAttemptedLoadRef = useRef(false);
@@ -61,7 +65,7 @@ export function useOpportunityDetail(
     }, [opp, trackerMap, savedJobsMap, user?.id]);
 
     const loadOpportunity = useCallback(async () => {
-        if (initialData) return;
+        if (initialDataRef.current) return;
 
         setIsLoading(true);
         setError(null);
@@ -84,11 +88,6 @@ export function useOpportunityDetail(
             }
 
             if (!opportunity) {
-                // Set fallback related jobs for the 404 page
-                if (feed?.opportunities && (!initialRelatedData || initialRelatedData.length === 0)) {
-                    setRelatedOpps(feed.opportunities.slice(0, 6));
-                }
-                
                 // Fallback to recent viewed in case of offline / local cache
                 const cachedOpportunity = getRecentViewedByIdOrSlug(id);
                 if (cachedOpportunity) {
@@ -128,20 +127,24 @@ export function useOpportunityDetail(
         } finally {
             setIsLoading(false);
         }
-    }, [id, initialData, initialRelatedData]);
+    }, [id]);
 
+    const initialDataId = initialData?.id;
     useEffect(() => {
         if (initialData) {
-            setOpp(initialData);
-            setIsLoading(false);
-            setError(null);
-        } else if (id) {
+            if (opp?.id !== initialData.id) {
+                setOpp(initialData);
+                setIsLoading(false);
+                setError(null);
+            }
+            return;
+        } 
+        if (id) {
             setOpp(null);
             setIsLoading(true);
             setError(null);
             hasAttemptedLoadRef.current = true;
             
-            // Check local cache first on client side to render instantly
             const cached = getRecentViewedByIdOrSlug(id);
             if (cached) {
                 setOpp(cached);
@@ -152,7 +155,7 @@ export function useOpportunityDetail(
         }
         hasTrackedDetailViewRef.current = false;
         hasShownNotFoundRef.current = false;
-    }, [id, initialData, loadOpportunity]);
+    }, [id, initialDataId, loadOpportunity]);
 
     useEffect(() => {
         if (opp) {
@@ -167,34 +170,24 @@ export function useOpportunityDetail(
         }
     }, [opp]);
 
-    const initialRelatedDataLength = initialRelatedData?.length || 0;
-
-    useEffect(() => {
+    const relatedOpps = useMemo(() => {
         if (initialRelatedData && initialRelatedData.length > 0) {
-            setRelatedOpps(initialRelatedData);
-            return;
+            return initialRelatedData;
         }
-        if (!opp?.id) return;
+        if (!opp?.id) {
+            return [];
+        }
+        if (allOpps && allOpps.length > 0) {
+            return getRelatedOpportunities(opp, allOpps);
+        }
+        const cachedFeed = readFeedCache();
+        if (cachedFeed?.opportunities && cachedFeed.opportunities.length > 0) {
+            return getRelatedOpportunities(opp, cachedFeed.opportunities);
+        }
+        return [];
+    }, [opp, allOpps, initialRelatedData]);
 
-        const loadRelated = async () => {
-            setIsLoadingRelated(true);
-            try {
-                const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
-                const feed = await fetchBootstrapFeed();
-                if (feed?.opportunities) {
-                    setRelatedOpps(getRelatedOpportunities(opp, feed.opportunities));
-                } else {
-                    setRelatedOpps([]);
-                }
-            } catch {
-                setRelatedOpps([]);
-            } finally {
-                setIsLoadingRelated(false);
-            }
-        };
-
-        void loadRelated();
-    }, [opp?.id, initialRelatedDataLength]); // eslint-disable-line react-hooks/exhaustive-deps
+    const isLoadingRelated = false;
 
     const handleToggleSave = async () => {
         if (!opp) return;

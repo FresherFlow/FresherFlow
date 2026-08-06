@@ -320,13 +320,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     lastSuccessfulLoadAtRef.current = Date.now();
                 }
             }
-        } catch (error) {
-            const isOfflineSpam = error instanceof Error && error.message.includes('status 500');
-            if (!isOfflineSpam) {
-                console.error('[Auth] loadUser failed:', error);
-            }
-            const isUnauthorized = error instanceof UnauthorizedError || (error as any)?.status === 401;
-            
+        } catch (error: unknown) {
+            const status = (error as { statusCode?: number; status?: number })?.statusCode || (error as { status?: number })?.status;
+            const isUnauthorized = error instanceof UnauthorizedError || status === 401;
+
             if (isUnauthorized) {
                 clearCachedSession();
                 clearUserTokens();
@@ -336,6 +333,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setProfile(null);
                 setSkipUsernameSetup(false);
             } else {
+                // Silently fall back to cached session or guest state on 503 / 5xx / network errors
                 const cached = readCachedSession();
                 if (cached) {
                     setUser(cached.user);
@@ -344,25 +342,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     setClientSessionHints();
                     lastSuccessfulLoadAtRef.current = cached.savedAt;
                 } else {
-                    const { auth } = await import('@/lib/api/firebase');
-                    const firebaseUser = auth.currentUser;
+                    try {
+                        const { auth } = await import('@/lib/api/firebase');
+                        const firebaseUser = auth.currentUser;
 
-                    if (firebaseUser) {
-                        const fallbackUser: User = {
-                            id: firebaseUser.uid,
-                            email: firebaseUser.email || undefined,
-                            fullName: firebaseUser.displayName || 'Fresher',
-                            username: firebaseUser.email ? firebaseUser.email.split('@')[0] : 'user_' + firebaseUser.uid.slice(0, 5),
-                            role: Role.USER,
-                            isAnonymous: firebaseUser.isAnonymous,
-                            createdAt: new Date().toISOString()
-                        };
-                        setUser(fallbackUser);
-                        setProfile(null);
-                        setSkipUsernameSetup(true);
-                        setClientSessionHints();
-                        lastSuccessfulLoadAtRef.current = Date.now();
-                    } else {
+                        if (firebaseUser) {
+                            const fallbackUser: User = {
+                                id: firebaseUser.uid,
+                                email: firebaseUser.email || undefined,
+                                fullName: firebaseUser.displayName || 'Fresher',
+                                username: firebaseUser.email ? firebaseUser.email.split('@')[0] : 'user_' + firebaseUser.uid.slice(0, 5),
+                                role: Role.USER,
+                                isAnonymous: firebaseUser.isAnonymous,
+                                createdAt: new Date().toISOString()
+                            };
+                            setUser(fallbackUser);
+                            setProfile(null);
+                            setSkipUsernameSetup(true);
+                            setClientSessionHints();
+                            lastSuccessfulLoadAtRef.current = Date.now();
+                        } else {
+                            setUser(null);
+                            setProfile(null);
+                            setSkipUsernameSetup(false);
+                        }
+                    } catch {
                         setUser(null);
                         setProfile(null);
                         setSkipUsernameSetup(false);

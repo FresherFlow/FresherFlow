@@ -8,7 +8,7 @@ import { unstable_noStore } from 'next/cache';
 import { extractHubRelations } from '@/features/opportunities/utils/hubLinking';
 
 export const revalidate = false;
-export const dynamicParams = true;
+export const dynamicParams = false;
 
 const VALID_LOCATIONS = {
     'bangalore': {
@@ -108,7 +108,7 @@ export default async function LocationPage({ params }: Props) {
         aliases: [decodedCity.replace(/-/g, ' ').toLowerCase(), decodedCity.toLowerCase()]
     };
 
-    const feed = await fetchBootstrapFeed(false, undefined, false);
+    const feed = await fetchBootstrapFeed(false, undefined, true);
     const opportunities = feed?.opportunities || [];
 
     const filtered = opportunities.filter(opp => {

@@ -32,7 +32,19 @@ const PASSOUT_YEAR_OPTIONS = Array.from(
     (_, idx) => START_YEAR + idx
 );
 
-type OpenSection = 'type' | 'location' | 'year' | 'sector' | 'qualification' | 'course' | null;
+const CANONICAL_SKILLS = [
+  '.NET', 'A.I.', 'Analytics', 'Android', 'Angular',
+  'Back-End', 'C#', 'C++', 'Data Science', 'DevOps',
+  'Django', 'Docker', 'Front-End', 'Golang', 'GraphQL',
+  'Hardware', 'iOS', 'Java', 'JavaScript', 'Linux',
+  'Microservices', 'Machine Learning', 'MySQL', 'NextJS', 'NodeJS',
+  'Objective-C', 'Perl', 'PHP', 'PostgreSQL', 'Python',
+  'Quality Assurance', 'React', 'React Native', 'Redis', 'Ruby',
+  'Ruby on Rails', 'Salesforce', 'Scala', 'Shopify', 'TypeScript',
+  'VueJS'
+];
+
+type OpenSection = 'type' | 'location' | 'year' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | null;
 
 interface MobileFilterDrawerProps {
     isOpen: boolean;
@@ -53,6 +65,10 @@ interface MobileFilterDrawerProps {
     setDraftQualification: (val: string | null) => void;
     draftCourse: string | null;
     setDraftCourse: (val: string | null) => void;
+    draftWorkMode?: 'REMOTE' | 'HYBRID' | 'ON_SITE' | null;
+    setDraftWorkMode?: (val: 'REMOTE' | 'HYBRID' | 'ON_SITE' | null) => void;
+    draftSkills?: string[];
+    setDraftSkills?: (val: string[]) => void;
     isLoggedIn: boolean;
     pageType?: string;
     onApply: () => void;
@@ -129,6 +145,10 @@ export function MobileFilterDrawer({
     setDraftQualification,
     draftCourse,
     setDraftCourse,
+    draftWorkMode,
+    setDraftWorkMode,
+    draftSkills,
+    setDraftSkills,
     pageType,
     onApply,
     onClear,
@@ -348,6 +368,46 @@ export function MobileFilterDrawer({
                                     ))}
                                 </div>
                             </Section>
+                            {setDraftWorkMode && (
+                            <Section
+                                title="Work Mode"
+                                isOpen={openSection === 'workMode'}
+                                onToggle={() => setOpenSection(openSection === 'workMode' ? null : 'workMode')}
+                            >
+                                <div className="flex flex-wrap gap-2">
+                                    <Pill active={draftWorkMode === null} onClick={() => setDraftWorkMode(null)}>Any</Pill>
+                                    <Pill active={draftWorkMode === 'REMOTE'} onClick={() => setDraftWorkMode('REMOTE')}>Remote</Pill>
+                                    <Pill active={draftWorkMode === 'HYBRID'} onClick={() => setDraftWorkMode('HYBRID')}>Hybrid</Pill>
+                                    <Pill active={draftWorkMode === 'ON_SITE'} onClick={() => setDraftWorkMode('ON_SITE')}>On-site</Pill>
+                                </div>
+                            </Section>
+                            )}
+                            {setDraftSkills && (
+                            <Section
+                                title="Skills"
+                                isOpen={openSection === 'skills'}
+                                onToggle={() => setOpenSection(openSection === 'skills' ? null : 'skills')}
+                            >
+                                <div className="flex flex-wrap gap-2">
+                                    {CANONICAL_SKILLS.map((skill) => {
+                                        const isSelected = draftSkills?.includes(skill);
+                                        return (
+                                        <Pill
+                                            key={skill}
+                                            active={isSelected || false}
+                                            onClick={() => {
+                                                const newSkills = isSelected
+                                                    ? (draftSkills || []).filter(s => s !== skill)
+                                                    : [...(draftSkills || []), skill];
+                                                setDraftSkills(newSkills);
+                                            }}
+                                        >
+                                            {skill}
+                                        </Pill>
+                                    )})}
+                                </div>
+                            </Section>
+                            )}
                         </>
                     )}
 

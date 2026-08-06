@@ -1,6 +1,5 @@
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
-import path from "node:path";
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
@@ -91,9 +90,7 @@ const APP_ORIGIN = resolveWebOrigin(
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  turbopack: {
-    root: path.join(__dirname, "../.."),
-  },
+
   transpilePackages: [
     "@fresherflow/types", 
     "@fresherflow/schemas", 
@@ -104,11 +101,29 @@ const nextConfig: NextConfig = {
     "@repo/ui"
   ],
 
+  // Node.js-only packages — must never land in the browser bundle.
+  // Turbopack (unlike webpack) ignores config.resolve.fallback,
+  // so we list them here to keep them server-side only.
+  serverExternalPackages: [
+    "@fresherflow/parser",
+    "@aws-sdk/client-s3",
+    "@aws-sdk/s3-request-presigner",
+    "sharp",
+    "fs",
+    "node:fs",
+    "node:fs/promises",
+    "node:path",
+    "node:crypto",
+    "node:child_process",
+    "node:readline",
+    "node:net",
+    "node:tls",
+  ],
+
   // Twitter-style navigation caching
   // Pages stay cached in router for 5 minutes
   // Back button = instant, no reload
   experimental: {
-    viewTransition: true,
     optimizePackageImports: [
       "@fresherflow/api-client",
       "@repo/ui",
@@ -119,7 +134,7 @@ const nextConfig: NextConfig = {
     ],
     staleTimes: {
       dynamic: 300, // 5 minutes for dynamic pages
-      static: 300,  // 5 minutes for static pages
+      static: 1800, // 30 minutes for static pages
     },
   },
 

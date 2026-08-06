@@ -29,7 +29,7 @@ export async function generateStaticParams() {
     // This prevents bots crawling skill slugs from triggering on-demand renders and ISR writes.
     const staticParams = new Set(TOP_SKILLS);
     try {
-        const feed = await fetchBootstrapFeed();
+        const feed = await fetchBootstrapFeed(false, undefined, true);
         if (feed?.opportunities) {
             for (const opp of feed.opportunities) {
                 for (const skill of opp.requiredSkills || []) {
@@ -121,7 +121,7 @@ export default async function SkillPage({ params }: Props) {
     const slug = properSlug;
 
     const label = formatSkillLabel(slug);
-    const feed = await fetchBootstrapFeed(false, undefined, false);
+    const feed = await fetchBootstrapFeed(false, undefined, true);
     const opportunities = feed?.opportunities || [];
     
     const filtered = opportunities.filter(opp => 

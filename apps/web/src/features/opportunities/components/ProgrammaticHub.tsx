@@ -11,6 +11,7 @@ import { EmptyState } from '@/ui/EmptyState';
 import { Breadcrumb } from '@/ui/Breadcrumb';
 import { OpportunityDetailPane } from './OpportunityDetailPane';
 import { useIntersectionObserver } from '@/lib/hooks/useIntersectionObserver';
+import { SKILL_ICON_MAP } from '@/ui/SkillPill';
 
 export interface HubLink {
     label: string;
@@ -127,9 +128,29 @@ export default function ProgrammaticHub({
 
                 {/* Header */}
                 <div id="hub-top-header" className="flex flex-col gap-2 pb-6">
-                    <h1 className="text-2xl md:text-4xl font-black tracking-tight text-foreground">
-                        {title}
-                    </h1>
+                    <div className="flex items-center gap-3">
+                        {breadcrumbUrl.startsWith('/skills/') && (() => {
+                            const entry = SKILL_ICON_MAP[breadcrumbLabel] || Object.entries(SKILL_ICON_MAP).find(([key]) => breadcrumbLabel.toLowerCase().includes(key.toLowerCase()))?.[1];
+                            if (entry) {
+                                const color = entry.colorHex || 'currentColor';
+                                return (
+                                    <svg
+                                        role="img"
+                                        viewBox="0 0 24 24"
+                                        className="w-10 h-10 shrink-0"
+                                        style={{ fill: color }}
+                                        aria-label={entry.icon.title}
+                                    >
+                                        <path d={entry.icon.path} />
+                                    </svg>
+                                );
+                            }
+                            return null;
+                        })()}
+                        <h1 className="text-2xl md:text-4xl font-black tracking-tight text-foreground">
+                            {title}
+                        </h1>
+                    </div>
                     <p className="text-sm text-muted-foreground font-medium max-w-2xl">
                         {description}
                     </p>
@@ -159,7 +180,7 @@ export default function ProgrammaticHub({
                     <div className="w-full grid grid-cols-1 lg:grid-cols-[1.3fr_1.7fr] gap-6 items-start">
                         
                         {/* Left Column: Grid list */}
-                        <div id="hub-grid-container" className="min-w-0 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-2 custom-scrollbar">
+                        <div id="hub-grid-container" className="min-w-0 lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:overflow-y-auto lg:pr-2 custom-scrollbar">
                             <OpportunityGrid
                                 opportunities={visibleOpportunities}
                                 isLoading={false}
@@ -171,7 +192,7 @@ export default function ProgrammaticHub({
                                 isSplitView={true}
                                 selectedOppId={selectedOpp?.id}
                                 onSelectOpportunity={(opp) => {
-                                    setSelectedOpp(opp);
+                                    setSelectedOpp(opp as unknown as Opportunity);
                                     window.history.pushState({ modalOpen: true }, '', window.location.href);
                                 }}
                             />
@@ -183,13 +204,14 @@ export default function ProgrammaticHub({
                         </div>
 
                         {/* Right Column: Detail Panel / Empty State (Desktop only) */}
-                        <div className="hidden lg:flex flex-col sticky top-24 h-[calc(100vh-8rem)] bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm">
+                        <div className="hidden lg:flex flex-col sticky top-14 h-[calc(100vh-3.5rem)] bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm">
                             {selectedOpp ? (
                                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                                     <OpportunityDetailPane
                                         oppId={selectedOpp.slug || selectedOpp.id}
                                         initialData={selectedOpp}
                                         onClose={handleCloseOpportunityPane}
+                                        allOpps={opportunities}
                                     />
                                 </div>
                             ) : visibleOpportunities.length > 0 ? (
@@ -219,6 +241,7 @@ export default function ProgrammaticHub({
                                         initialData={selectedOpp}
                                         onClose={handleCloseOpportunityPane}
                                         isMobile={true}
+                                        allOpps={opportunities}
                                     />
                                 </div>
                             </div>
@@ -275,6 +298,7 @@ export default function ProgrammaticHub({
                             initialData={selectedOpp}
                             onClose={handleCloseOpportunityPane}
                             isMobile={true}
+                            allOpps={opportunities}
                         />
                     </div>
                 </div>

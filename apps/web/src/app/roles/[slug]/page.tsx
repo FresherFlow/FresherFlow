@@ -112,7 +112,7 @@ export default async function RolePage({ params }: Props) {
         roleInfo = { label, keywords: [label.toLowerCase()] };
     }
 
-    const feed = await fetchBootstrapFeed(false, undefined, false);
+    const feed = await fetchBootstrapFeed(false, undefined, true);
     const opportunities = feed?.opportunities || [];
 
     const keywordRegexes = roleInfo.keywords.map(kw => new RegExp(`\\b${kw}\\b`, 'i'));

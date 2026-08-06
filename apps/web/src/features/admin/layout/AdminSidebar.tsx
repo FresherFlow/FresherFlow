@@ -80,12 +80,12 @@ export function AdminSidebar({
                     "group flex items-center h-10 rounded-xl text-sm font-medium transition-all duration-[250ms] ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] animate-in fade-in slide-in-from-left-2 fill-mode-backwards",
                     isCollapsed ? "justify-center w-10 px-0 mx-auto" : "gap-3 px-3 w-full",
                     isActive 
-                        ? "bg-accent/80 text-foreground shadow-xs ring-1 ring-border/50" 
+                        ? "bg-primary text-primary-foreground font-semibold shadow-sm" 
                         : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                 )}
                 title={isCollapsed ? item.label : undefined}
             >
-                <Icon className={cn("shrink-0 transition-colors", isCollapsed ? "w-5 h-5" : "w-[18px] h-[18px]", isActive ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")} strokeWidth={isActive ? 2 : 1.75} />
+                <Icon className={cn("shrink-0 transition-colors", isCollapsed ? "w-5 h-5" : "w-[18px] h-[18px]", isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")} strokeWidth={isActive ? 2 : 1.75} />
                 {!isCollapsed && <span className="truncate">{item.label}</span>}
                 
                 {!isCollapsed && item.label === 'Feedback' && effectiveFeedbackAlertCount > 0 && (

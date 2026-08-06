@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { ThemeToggle } from '@/ui/ThemeToggle';
+import { ThemeToggle } from '@repo/ui/ThemeToggle';
+import { useTheme } from '@/lib/providers/ThemeContext';
 import { SparklesIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 
 export function PublicProfileHeader() {
+    const { theme, toggleTheme } = useTheme();
     return (
         <header className="sticky top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border/60">
             <div className="max-w-6xl mx-auto px-4 md:px-6 h-14 md:h-16 flex items-center justify-between gap-4">
@@ -27,7 +29,7 @@ export function PublicProfileHeader() {
                 {/* Right Actions */}
                 <div className="flex items-center gap-2.5">
                     <div className="shrink-0">
-                        <ThemeToggle />
+                        <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
                     </div>
 
                     <Link

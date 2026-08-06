@@ -14,6 +14,7 @@ import {
     GOVERNMENT_FEED_URL,
     CDN_URL
 } from '@/lib/utils/runtimeConfig';
+import { readFeedCache } from '@/lib/api/offline/opportunitiesFeedCache';
 export interface BootstrapFeedResponse {
     opportunities: Opportunity[];
     count: number;
@@ -24,6 +25,9 @@ type FeedVersion = {
     version: string;
     stable: boolean;
 };
+
+let clientVersionCache: FeedVersion | null = null;
+let clientBootstrapCache: BootstrapFeedResponse | null = null;
 
 type CDNFetchOptions = RequestInit & {
     next?: {
@@ -124,6 +128,16 @@ function getCDNFetchOptions(options: CDNFetchOptions = {}): CDNFetchOptions {
  * Fetches the centrally stored R2 feed version through Next's tagged cache.
  */
 export async function fetchFeedVersion(untracked = false): Promise<FeedVersion> {
+    const IS_CLIENT = typeof window !== 'undefined';
+    if (IS_CLIENT) {
+        if (clientVersionCache) {
+            return clientVersionCache;
+        }
+        const fallbackObj = { version: 'fallback', stable: false };
+        clientVersionCache = fallbackObj;
+        return fallbackObj;
+    }
+
     try {
         const res = await fetch(
             FEED_VERSION_URL,
@@ -134,12 +148,14 @@ export async function fetchFeedVersion(untracked = false): Promise<FeedVersion> 
         if (res.ok) {
             const data = await res.json() as { version?: string };
             if (data?.version) {
-                return { version: data.version, stable: true };
+                const versionObj = { version: data.version, stable: true };
+                return versionObj;
             }
         }
     } catch (err) {
         console.warn('Failed to fetch feed version, using uncached fallback:', err instanceof Error ? err.message : err);
     }
+
     return { version: 'fallback', stable: false };
 }
 
@@ -148,9 +164,28 @@ export async function fetchFeedVersion(untracked = false): Promise<FeedVersion> 
  * Used for "Zero-Spinner" instant discovery and SEO.
  */
 export async function fetchBootstrapFeed(forceLive = false, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> {
+    const IS_CLIENT = typeof window !== 'undefined';
+    const IS_SERVER = typeof window === 'undefined';
+
+    if (IS_CLIENT) {
+        if (clientBootstrapCache && !forceLive) {
+            return clientBootstrapCache;
+        }
+        const cached = readFeedCache();
+        if (cached && Array.isArray(cached.opportunities) && cached.opportunities.length > 0) {
+            const result: BootstrapFeedResponse = {
+                opportunities: cached.opportunities,
+                count: cached.count || cached.opportunities.length,
+                generatedAt: new Date(cached.cachedAt || Date.now()).toISOString(),
+            };
+            clientBootstrapCache = result;
+            return result;
+        }
+        return clientBootstrapCache || null;
+    }
+
     try {
         const feedVersion = await fetchFeedVersion(untracked);
-        const IS_SERVER = typeof window === 'undefined';
         const rawUrl = BOOTSTRAP_FEED_URL;
         const signedUrl = IS_SERVER
             ? await signUrlWithVersion(rawUrl, feedVersion.version)
@@ -176,7 +211,11 @@ export async function fetchBootstrapFeed(forceLive = false, customTags?: string[
                 if (liveApiRes.ok) {
                     const liveData = await liveApiRes.json();
                     if (liveData && Array.isArray(liveData.opportunities) && liveData.opportunities.length > 0) {
-                        return liveData as BootstrapFeedResponse;
+                        const result = liveData as BootstrapFeedResponse;
+                        if (IS_CLIENT) {
+                            clientBootstrapCache = result;
+                        }
+                        return result;
                     }
                 }
                 // Then fall back to local API
@@ -191,7 +230,9 @@ export async function fetchBootstrapFeed(forceLive = false, customTags?: string[
         }
 
         if (!res.ok) {
-            console.error(`Failed to fetch bootstrap feed: ${res.status} ${res.statusText}`);
+            if (IS_SERVER) {
+                console.error(`Failed to fetch bootstrap feed: ${res.status} ${res.statusText}`);
+            }
             return null;
         }
 
@@ -199,8 +240,14 @@ export async function fetchBootstrapFeed(forceLive = false, customTags?: string[
         
         // Basic validation
         if (!data || !Array.isArray(data.opportunities)) {
-            console.error('Invalid bootstrap feed format');
+            if (IS_SERVER) {
+                console.error('Invalid bootstrap feed format');
+            }
             return null;
+        }
+
+        if (IS_CLIENT) {
+            clientBootstrapCache = data;
         }
 
         return data;
@@ -213,6 +260,9 @@ export async function fetchBootstrapFeed(forceLive = false, customTags?: string[
                 if (localRes.ok) {
                     const data = await localRes.json() as BootstrapFeedResponse;
                     if (data && Array.isArray(data.opportunities)) {
+                        if (IS_CLIENT) {
+                            clientBootstrapCache = data;
+                        }
                         return data;
                     }
                 }
@@ -220,7 +270,9 @@ export async function fetchBootstrapFeed(forceLive = false, customTags?: string[
                 // Ignore fallback error
             }
         }
-        console.warn('Bootstrap CDN fetch failed:', err instanceof Error ? err.message : err);
+        if (IS_SERVER) {
+            console.warn('Bootstrap CDN fetch failed:', err instanceof Error ? err.message : err);
+        }
         return null;
     }
 }
@@ -230,6 +282,9 @@ export async function fetchBootstrapFeed(forceLive = false, customTags?: string[
  * Used as a fallback by detail pages to prevent 404s for recently expired opportunities.
  */
 export async function fetchExpiredFeed(customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> {
+    if (typeof window !== 'undefined') {
+        return null;
+    }
     try {
         if (process.env.NODE_ENV === 'development') {
             return null; // Don't mock expired feed in dev for now
@@ -276,6 +331,9 @@ export async function fetchExpiredFeed(customTags?: string[], untracked = false)
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function fetchGovernmentFeed(_forceLive = false, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> {
+    if (typeof window !== 'undefined') {
+        return null;
+    }
     try {
         const feedVersion = await fetchFeedVersion(untracked);
 
@@ -318,6 +376,9 @@ export async function fetchGovernmentFeed(_forceLive = false, customTags?: strin
  * Fetches a specific category shard (e.g. trending, remote, 2026)
  */
 export async function fetchCategoryShard(id: string, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> {
+    if (typeof window !== 'undefined') {
+        return null;
+    }
     try {
         const feedVersion = await fetchFeedVersion(untracked);
 
@@ -351,6 +412,9 @@ export async function fetchCategoryShard(id: string, customTags?: string[], untr
  * Fetches a specific company shard (e.g. google, microsoft)
  */
 export async function fetchCompanyShard(slug: string, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> {
+    if (typeof window !== 'undefined') {
+        return null;
+    }
     try {
         const feedVersion = await fetchFeedVersion(untracked);
 
@@ -402,6 +466,9 @@ async function signStableUrl(rawUrl: string, untracked = false): Promise<string>
  * Fetches education metadata from CDN through Next's tagged cache.
  */
 export async function fetchEducationMetadata(): Promise<EducationMetadata | null> {
+    if (typeof window !== 'undefined') {
+        return null;
+    }
     try {
         const url = await signStableUrl(EDUCATION_METADATA_URL);
         const res = await fetch(url, getCDNFetchOptions({
@@ -420,6 +487,9 @@ export async function fetchEducationMetadata(): Promise<EducationMetadata | null
  * Fetches skills list from CDN through Next's tagged cache.
  */
 export async function fetchSkillsMetadata(): Promise<string[] | null> {
+    if (typeof window !== 'undefined') {
+        return null;
+    }
     try {
         const url = await signStableUrl(SKILLS_METADATA_URL);
         const res = await fetch(url, getCDNFetchOptions({
@@ -445,6 +515,9 @@ export interface CompanyMetadata {
  * Fetches companies list from CDN.
  */
 export async function fetchCompaniesMetadata(untracked = false): Promise<CompanyMetadata[] | null> {
+    if (typeof window !== 'undefined') {
+        return null;
+    }
     try {
         const url = await signStableUrl(COMPANIES_METADATA_URL, untracked);
         const controller = new AbortController();
@@ -479,6 +552,9 @@ export interface SitemapDataResponse {
  * Fetches sitemap raw data (companies + up to 1000 opportunities) from the CDN.
  */
 export async function fetchSitemapData(): Promise<SitemapDataResponse | null> {
+    if (typeof window !== 'undefined') {
+        return null;
+    }
     try {
         const url = await signStableUrl(SITEMAP_DATA_URL);
 

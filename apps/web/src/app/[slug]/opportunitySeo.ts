@@ -124,13 +124,26 @@ export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<E
             fetchExpiredFeed(undefined, true),
         ]);
 
-        // Check in priority order: active jobs → govt jobs → expired
-        const opportunity =
-            feed?.opportunities?.find(opp => opp.slug === slugOrId || opp.id === slugOrId) ??
-            govtFeed?.opportunities?.find(opp => opp.slug === slugOrId || opp.id === slugOrId) ??
-            expiredFeed?.opportunities?.find(opp => opp.slug === slugOrId || opp.id === slugOrId);
+        const oppMap = new Map<string, Opportunity>();
 
-        return (opportunity as ExtendedOpportunity) ?? null;
+        // Populate in reverse priority so higher priority overwrites:
+        // Priority: active feed > govtFeed > expiredFeed
+        expiredFeed?.opportunities?.forEach(opp => {
+            if (opp.id) oppMap.set(opp.id, opp);
+            if (opp.slug) oppMap.set(opp.slug, opp);
+        });
+
+        govtFeed?.opportunities?.forEach(opp => {
+            if (opp.id) oppMap.set(opp.id, opp);
+            if (opp.slug) oppMap.set(opp.slug, opp);
+        });
+
+        feed?.opportunities?.forEach(opp => {
+            if (opp.id) oppMap.set(opp.id, opp);
+            if (opp.slug) oppMap.set(opp.slug, opp);
+        });
+
+        return (oppMap.get(slugOrId) as ExtendedOpportunity) ?? null;
 
         // --- SEQUENTIAL FALLBACK (restore if parallel causes issues) ---
         // const feed = await fetchBootstrapFeed(false);

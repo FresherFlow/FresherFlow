@@ -173,7 +173,7 @@ export function DesktopNav() {
 
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <button aria-label="User Menu" className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border border-border/60 text-xs font-bold uppercase transition-all duration-150 ease-out active:scale-[0.97] hover:border-primary/40 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+                                    <button aria-label="User Menu" className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border border-border/60 text-xs font-bold uppercase transition-all duration-150 ease-out active:scale-[0.97] hover:border-primary/40 cursor-pointer focus:outline-none">
                                         {initialLetter}
                                     </button>
                                 </DropdownMenuTrigger>

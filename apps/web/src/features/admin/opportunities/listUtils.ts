@@ -32,10 +32,10 @@ export const formatLinkHealth = (health?: string) => {
 };
 
 export const linkHealthClass = (health?: string) => {
-    if (health === 'HEALTHY') return 'bg-emerald-50 text-emerald-700 ring-emerald-600/20';
-    if (health === 'RETRYING') return 'bg-amber-50 text-amber-700 ring-amber-600/20';
-    if (health === 'BROKEN') return 'bg-rose-50 text-rose-700 ring-rose-600/20';
-    return 'bg-slate-50 text-slate-600 ring-slate-500/10';
+    if (health === 'HEALTHY') return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20';
+    if (health === 'RETRYING') return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-amber-500/20';
+    if (health === 'BROKEN') return 'bg-destructive/10 text-destructive ring-destructive/20';
+    return 'bg-muted text-muted-foreground ring-border/40';
 };
 
 export const formatLastVerified = (value?: string | Date | null) => {
@@ -61,11 +61,11 @@ export const getStatusLabel = (opp: Opportunity & { expiredAt?: string | Date | 
 
 export const getStatusBadgeClass = (opp: Opportunity & { expiredAt?: string | Date | null; deletedAt?: string | Date | null }) => {
     const label = getStatusLabel(opp);
-    if (label === 'DELETED') return 'bg-slate-100 text-slate-700 ring-slate-300';
-    if (label === 'EXPIRED') return 'bg-orange-50 text-orange-700 ring-orange-600/10';
-    if (label === 'ARCHIVED') return 'bg-rose-50 text-rose-700 ring-rose-600/10';
-    if (label === 'LIVE') return 'bg-emerald-50 text-emerald-700 ring-emerald-600/20';
-    return 'bg-slate-50 text-slate-600 ring-slate-500/10';
+    if (label === 'DELETED') return 'bg-muted text-muted-foreground ring-border/40';
+    if (label === 'EXPIRED') return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-amber-500/20';
+    if (label === 'ARCHIVED') return 'bg-destructive/10 text-destructive ring-destructive/20';
+    if (label === 'LIVE') return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20';
+    return 'bg-muted text-muted-foreground ring-border/40';
 };
 
 import { OpportunityType } from '@fresherflow/types';

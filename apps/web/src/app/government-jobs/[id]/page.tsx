@@ -34,7 +34,7 @@ const fetchGovernmentOpportunity = cache(async (id: string) => {
 
 export async function generateStaticParams() {
     try {
-        const feed = await fetchGovernmentFeed();
+        const feed = await fetchGovernmentFeed(false, undefined, true);
         if (!feed?.opportunities) return [];
         return feed.opportunities.map((opp) => ({ id: opp.id }));
     } catch {

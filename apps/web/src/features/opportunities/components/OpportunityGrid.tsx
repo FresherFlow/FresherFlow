@@ -1,6 +1,6 @@
 'use client';
 
-import { Opportunity } from '@fresherflow/types';
+import { Opportunity, OpportunityCardDTO } from '@fresherflow/types';
 import JobCard from './JobCard';
 import { SkeletonJobCard } from '@/ui/Skeleton';
 import { ErrorMessage } from '@/ui/ErrorMessage';
@@ -9,7 +9,7 @@ import { cn } from '@repo/ui/utils/cn';
 type OpportunityAction = { actionType: string };
 
 interface OpportunityGridProps {
-    opportunities: Opportunity[];
+    opportunities: (Opportunity | OpportunityCardDTO)[];
     isLoading: boolean;
     error: string | null;
     isAdmin: boolean;
@@ -18,7 +18,7 @@ interface OpportunityGridProps {
     onRetry: () => void;
     isSplitView?: boolean;
     selectedOppId?: string | null;
-    onSelectOpportunity?: (opp: Opportunity) => void;
+    onSelectOpportunity?: (opp: Opportunity | OpportunityCardDTO) => void;
     searchQuery?: string;
 }
 
@@ -88,14 +88,14 @@ export function OpportunityGrid({
                             job={{
                                 ...opp,
                                 normalizedRole: opp.title,
-                                salary: (opp.salaryMin !== undefined && opp.salaryMax !== undefined) ? { min: opp.salaryMin, max: opp.salaryMax } : undefined,
-                            }}
+                                salary: ((opp as any).salaryMin !== undefined && (opp as any).salaryMax !== undefined) ? { min: (opp as any).salaryMin, max: (opp as any).salaryMax } : undefined,
+                            } as any}
                             jobId={opp.id}
-                            isSaved={opp.isSaved || false}
-                            isApplied={(opp.actions || []).some((a: OpportunityAction) => a.actionType === 'APPLIED')}
+                            isSaved={(opp as any).isSaved || false}
+                            isApplied={((opp as any).actions || []).some((a: OpportunityAction) => a.actionType === 'APPLIED')}
                             onToggleSave={() => onToggleSave(opp.id)}
                             isAdmin={isAdmin}
-                            isSelected={opp.id === selectedOppId || opp.slug === selectedOppId}
+                            isSelected={opp.id === selectedOppId || (opp as any).slug === selectedOppId}
                             variant={isSplitView ? "compact" : "default"}
                             searchQuery={searchQuery}
                             className="bg-card/60 border-border/60 backdrop-blur-xl shadow-md hover:shadow-lg hover:border-primary/40 active:scale-[0.97] transition-all duration-150 ease-out"

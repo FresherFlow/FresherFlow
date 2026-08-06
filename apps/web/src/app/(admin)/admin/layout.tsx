@@ -273,8 +273,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     </div>
                 )}
 
-                <main className="flex-1 h-full min-w-0 min-h-0 flex flex-col overflow-hidden md:p-4">
-                    <div className="w-full h-full bg-card rounded-xl border border-border/50 overflow-hidden relative shadow-sm flex flex-col">
+                <main className="flex-1 h-full min-w-0 min-h-0 flex flex-col overflow-y-auto overflow-x-hidden md:p-4">
+                    <div className="w-full min-h-full bg-card rounded-xl border border-border/50 overflow-y-auto overflow-x-hidden relative shadow-sm flex flex-col">
                         {children}
                     </div>
                 </main>

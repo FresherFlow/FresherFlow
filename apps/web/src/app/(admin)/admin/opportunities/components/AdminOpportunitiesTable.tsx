@@ -184,56 +184,56 @@ export const AdminOpportunitiesTable = ({
                                     >
                                         <PencilSquareIcon className="w-4 h-4" />
                                     </Link>
-                                    {opp.status === 'DRAFT' && (
-                                        <>
-                                            <button
-                                                onClick={() => handleStatusUpdate(opp.id, 'PUBLISHED')}
-                                                className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors duration-150 ease-out active:scale-[0.96]"
-                                                title="Publish Now"
-                                            >
-                                                <CheckCircleIcon className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleRejectDraft(opp.id, opp.title)}
-                                                className="p-2 text-rose-600 hover:bg-rose-50 rounded-md transition-colors duration-150 ease-out active:scale-[0.96]"
-                                                title="Reject Draft"
-                                            >
-                                                <XCircleIcon className="w-4 h-4" />
-                                            </button>
-                                        </>
-                                    )}
-                                    {(opp.status === 'PUBLISHED' || opp.status === 'EXPIRED') && (
-                                        <button
-                                            onClick={() => handleExpire(opp.id, opp.title, opp.status)}
-                                            className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors duration-150 ease-out active:scale-[0.96]"
-                                            title="Change Status"
-                                        >
-                                            <ClockIcon className="w-4 h-4" />
-                                        </button>
-                                    )}
-                                    <button
-                                        onClick={() => handleDelete(opp.id, opp.title)}
-                                        className="p-2 text-rose-700 hover:bg-rose-50 rounded-md transition-colors duration-150 ease-out active:scale-[0.96]"
-                                        title="Archive (Soft Delete)"
-                                    >
-                                        <TrashIcon className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => handleHardDelete(opp.id, opp.title)}
-                                        className="p-2 text-red-900 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md transition-colors duration-150 ease-out active:scale-[0.96] ml-1"
-                                        title="Hard Delete (Permanent)"
-                                    >
-                                        <XCircleIcon className="w-4 h-4" />
-                                    </button>
-                                    {getStatusLabel(opp) === 'DELETED' && (
-                                        <button
-                                            onClick={() => handleRestore(opp.id)}
-                                            className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors duration-150 ease-out active:scale-[0.96]"
-                                            title="Restore"
-                                        >
-                                            <ArrowPathIcon className="w-4 h-4" />
-                                        </button>
-                                    )}
+                                     {opp.status === 'DRAFT' && (
+                                         <>
+                                             <button
+                                                 onClick={() => handleStatusUpdate(opp.id, 'PUBLISHED')}
+                                                 className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 rounded-md transition-colors duration-150 ease-out active:scale-[0.96]"
+                                                 title="Publish Now"
+                                             >
+                                                 <CheckCircleIcon className="w-4 h-4" />
+                                             </button>
+                                             <button
+                                                 onClick={() => handleRejectDraft(opp.id, opp.title)}
+                                                 className="p-2 text-destructive hover:bg-destructive/10 rounded-md transition-colors duration-150 ease-out active:scale-[0.96]"
+                                                 title="Reject Draft"
+                                             >
+                                                 <XCircleIcon className="w-4 h-4" />
+                                             </button>
+                                         </>
+                                     )}
+                                     {(opp.status === 'PUBLISHED' || opp.status === 'EXPIRED') && (
+                                         <button
+                                             onClick={() => handleExpire(opp.id, opp.title, opp.status)}
+                                             className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors duration-150 ease-out active:scale-[0.96]"
+                                             title="Change Status"
+                                         >
+                                             <ClockIcon className="w-4 h-4" />
+                                         </button>
+                                     )}
+                                     <button
+                                         onClick={() => handleDelete(opp.id, opp.title)}
+                                         className="p-2 text-destructive hover:bg-destructive/10 rounded-md transition-colors duration-150 ease-out active:scale-[0.96]"
+                                         title="Archive (Soft Delete)"
+                                     >
+                                         <TrashIcon className="w-4 h-4" />
+                                     </button>
+                                     <button
+                                         onClick={() => handleHardDelete(opp.id, opp.title)}
+                                         className="p-2 text-destructive bg-destructive/10 hover:bg-destructive/20 border border-destructive/20 rounded-md transition-colors duration-150 ease-out active:scale-[0.96] ml-1"
+                                         title="Hard Delete (Permanent)"
+                                     >
+                                         <XCircleIcon className="w-4 h-4" />
+                                     </button>
+                                     {getStatusLabel(opp) === 'DELETED' && (
+                                         <button
+                                             onClick={() => handleRestore(opp.id)}
+                                             className="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 rounded-md transition-colors duration-150 ease-out active:scale-[0.96]"
+                                             title="Restore"
+                                         >
+                                             <ArrowPathIcon className="w-4 h-4" />
+                                         </button>
+                                     )}
                                 </div>
                             </td>
                         </tr>

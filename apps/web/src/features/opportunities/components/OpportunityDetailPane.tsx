@@ -45,6 +45,7 @@ interface OpportunityDetailPaneProps {
     initialData: Opportunity;
     onClose: () => void;
     isMobile?: boolean;
+    allOpps?: Opportunity[];
 }
 
 function getPostedLabel(postedAtVal?: string | Date | null) {
@@ -65,7 +66,7 @@ function getPostedLabel(postedAtVal?: string | Date | null) {
 
 import { useRef, useEffect } from 'react';
 
-export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = false }: OpportunityDetailPaneProps) {
+export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = false, allOpps = [] }: OpportunityDetailPaneProps) {
     const searchParams = useSearchParams();
     const { user, profile } = useAuth();
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -90,7 +91,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
         handleApply,
         handleShare,
         handleCopyLink
-    } = useOpportunityDetail(oppId, initialData, user, []);
+    } = useOpportunityDetail(oppId, initialData, user, [], allOpps);
 
     const ds = useOpportunityDerivedState(opp as Opportunity, profile, searchParams);
 

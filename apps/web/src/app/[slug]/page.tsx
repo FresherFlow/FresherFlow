@@ -46,9 +46,9 @@ export const dynamicParams = true;
 export async function generateStaticParams() {
     try {
         const [feed, govtFeed, expiredFeed] = await Promise.all([
-            fetchBootstrapFeed(),
-            fetchGovernmentFeed(),
-            fetchExpiredFeed()
+            fetchBootstrapFeed(false, undefined, true),
+            fetchGovernmentFeed(false, undefined, true),
+            fetchExpiredFeed(undefined, true)
         ]);
 
         const slugs = new Set<string>();

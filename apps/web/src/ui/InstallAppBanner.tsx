@@ -6,9 +6,15 @@ import XMarkIcon from "@heroicons/react/24/outline/XMarkIcon";
 import ArrowDownTrayIcon from "@heroicons/react/24/outline/ArrowDownTrayIcon";
 
 export default function InstallAppBanner() {
-    const { showBanner, dismissBanner, promptInstall } = useInstallPrompt();
+    const { showBanner, dismissBanner, promptInstall, isInstalled } = useInstallPrompt();
 
-    if (!showBanner) return null;
+    if (!showBanner || isInstalled) return null;
+
+    if (typeof window !== 'undefined') {
+        const isDismissed = window.localStorage.getItem('ff_install_banner_dismissed') === 'true' || window.localStorage.getItem('ff_install_banner_dismissed') === '1';
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+        if (isDismissed || isStandalone) return null;
+    }
 
     return (
         <div className="fixed bottom-6 inset-x-0 z-[80] px-3 md:px-6 flex justify-center">

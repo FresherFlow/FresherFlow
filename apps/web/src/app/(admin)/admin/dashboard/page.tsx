@@ -266,10 +266,7 @@ export default function AdminDashboardHome() {
     ];
 
     return (
-        <div className="p-4 md:p-8 pt-16 md:pt-8 space-y-6 flex-1 min-h-0 overflow-y-auto pb-28 md:pb-8 animate-in fade-in duration-500 text-foreground w-full font-sans antialiased custom-scrollbar relative z-0">
-            {/* Wow UI Design Signature: Radial Glow */}
-            <div className="absolute top-0 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-primary/10 blur-[120px] rounded-full pointer-events-none -z-10" />
-
+        <div className="p-4 md:p-6 lg:p-8 pt-16 md:pt-6 lg:pt-8 space-y-6 flex-1 min-h-0 overflow-y-auto pb-28 md:pb-8 animate-in fade-in duration-500 text-foreground w-full font-sans antialiased custom-scrollbar relative z-0">
             {/* Header */}
             <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
                 <div className="flex items-center gap-3">
@@ -308,7 +305,7 @@ export default function AdminDashboardHome() {
                             href={card.href} 
                             key={card.label} 
                             style={{ animationDelay: `${index * 50}ms` }}
-                            className="group relative bg-card/60 backdrop-blur-xl text-card-foreground border border-border/60 shadow-sm rounded-xl p-3.5 md:p-5 hover:border-border transition-all duration-[250ms] ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.98] flex flex-col justify-between min-h-[140px] cursor-pointer animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards"
+                            className="group relative bg-card text-card-foreground border border-border shadow-sm rounded-xl p-3.5 md:p-5 hover:border-border/80 transition-all duration-[250ms] ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.98] flex flex-col justify-between min-h-[140px] cursor-pointer animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards"
                         >
                             <div className="flex items-center justify-between gap-2 mb-3">
                                 <div className="flex items-center gap-2">
@@ -333,7 +330,7 @@ export default function AdminDashboardHome() {
                                                     e.stopPropagation();
                                                     revealMetric(card.key);
                                                 }}
-                                                className="text-[10px] md:text-[11px] font-semibold px-2.5 py-1 rounded-md border border-border bg-muted/50 text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-all duration-200 ease-out active:scale-[0.95]"
+                                                className="text-xs font-semibold px-3 py-1 rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-all duration-150 active:scale-[0.97]"
                                             >
                                                 Show
                                             </button>
@@ -350,7 +347,7 @@ export default function AdminDashboardHome() {
             {/* Action and Infrastructure Panels */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-5xl">
                 {/* CDN / Static Cache Overview */}
-                <div className="bg-card/60 backdrop-blur-xl text-card-foreground border border-border/60 shadow-sm rounded-xl p-6 hover:border-border transition-all duration-300 flex flex-col justify-between">
+                <div className="bg-card text-card-foreground border border-border shadow-sm rounded-xl p-6 hover:border-border/80 transition-all duration-300 flex flex-col justify-between">
                     <div className="space-y-4">
                         <div className="flex items-center gap-2">
                             <CloudIcon className="h-4 w-4 text-muted-foreground" />
@@ -384,7 +381,7 @@ export default function AdminDashboardHome() {
                 </div>
 
                 {/* Main Operations Navigation Panel */}
-                <div className="bg-card/60 backdrop-blur-xl text-card-foreground border border-border/60 shadow-sm rounded-xl p-6 hover:border-border transition-all duration-300 flex flex-col justify-between">
+                <div className="bg-card text-card-foreground border border-border shadow-sm rounded-xl p-6 hover:border-border/80 transition-all duration-300 flex flex-col justify-between">
                     <div className="space-y-4">
                         <div className="flex items-center gap-2">
                             <SignalIcon className="h-4 w-4 text-muted-foreground" />
@@ -395,9 +392,8 @@ export default function AdminDashboardHome() {
                             <button
                                 onClick={() => handleRegenerate('all')}
                                 disabled={regenerating}
-                                className="w-full flex items-center justify-between px-4 py-2.5 border border-border rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 disabled:opacity-50 transition-all duration-[200ms] ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.98] text-xs cursor-pointer shadow-sm relative overflow-hidden group/btn"
+                                className="w-full flex items-center justify-between px-4 py-2.5 border border-border rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 disabled:opacity-50 transition-all duration-150 active:scale-[0.98] text-xs cursor-pointer shadow-sm relative overflow-hidden group/btn"
                             >
-                                <div className="absolute inset-0 bg-white/20 translate-y-[100%] group-hover/btn:translate-y-[0%] transition-transform duration-[300ms] ease-[cubic-bezier(0.23,1,0.32,1)]" />
                                 <div className="flex flex-col items-start text-left relative z-10">
                                     <span>Regenerate All Feeds</span>
                                     <span className="text-[9px] font-normal opacity-80">Rebuild JSON static API for mobile</span>
@@ -408,41 +404,41 @@ export default function AdminDashboardHome() {
                             <button
                                 onClick={handleRevalidateWebsiteCache}
                                 disabled={regenerating}
-                                className="w-full flex items-center justify-between px-4 py-2.5 border border-border rounded-lg bg-muted text-foreground font-semibold hover:bg-accent disabled:opacity-50 transition-all duration-[200ms] ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.98] text-xs cursor-pointer shadow-sm"
+                                className="w-full flex items-center justify-between px-4 py-2.5 border border-border rounded-lg bg-muted/50 border-border text-foreground font-semibold hover:bg-muted disabled:opacity-50 transition-all duration-150 active:scale-[0.98] text-xs cursor-pointer shadow-xs"
                             >
                                 <div className="flex flex-col items-start text-left">
-                                    <span>Refresh Website Cache</span>
-                                    <span className="text-[9px] font-normal text-muted-foreground">Next.js revalidateTag on dynamic routes</span>
+                                    <span className="font-medium text-foreground">Refresh Website Cache</span>
+                                    <span className="text-xs font-mono text-muted-foreground">Next.js revalidateTag on dynamic routes</span>
                                 </div>
-                                <SignalIcon className="w-4 h-4 text-muted-foreground" />
+                                <SignalIcon className="w-4 h-4 text-foreground shrink-0" />
                             </button>
 
                             <div className="grid grid-cols-2 gap-2 pt-2">
                                 <button
                                     onClick={() => handleRegenerate('bootstrap')}
                                     disabled={regenerating}
-                                    className="px-3 py-2 border border-border rounded-lg bg-secondary/40 text-foreground font-semibold hover:bg-secondary disabled:opacity-50 transition-all duration-[200ms] ease-out active:scale-[0.97] text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                                    className="px-3 py-2 border border-border rounded-lg bg-card text-foreground font-medium hover:bg-accent hover:text-accent-foreground disabled:opacity-50 transition-all duration-150 active:scale-[0.97] text-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
                                 >
                                     <span>Private Feed</span>
                                 </button>
                                 <button
                                     onClick={() => handleRegenerate('govt')}
                                     disabled={regenerating}
-                                    className="px-3 py-2 border border-border rounded-lg bg-secondary/40 text-foreground font-semibold hover:bg-secondary disabled:opacity-50 transition-all duration-[200ms] ease-out active:scale-[0.97] text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                                    className="px-3 py-2 border border-border rounded-lg bg-card text-foreground font-medium hover:bg-accent hover:text-accent-foreground disabled:opacity-50 transition-all duration-150 active:scale-[0.97] text-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
                                 >
                                     <span>Govt Feed</span>
                                 </button>
                                 <button
                                     onClick={() => handleRegenerate('resources')}
                                     disabled={regenerating}
-                                    className="px-3 py-2 border border-border rounded-lg bg-secondary/40 text-foreground font-semibold hover:bg-secondary disabled:opacity-50 transition-all duration-[200ms] ease-out active:scale-[0.97] text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                                    className="px-3 py-2 border border-border rounded-lg bg-card text-foreground font-medium hover:bg-accent hover:text-accent-foreground disabled:opacity-50 transition-all duration-150 active:scale-[0.97] text-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
                                 >
                                     <span>Resources Feed</span>
                                 </button>
                                 <button
                                     onClick={() => handleRegenerate('sitemap')}
                                     disabled={regenerating}
-                                    className="px-3 py-2 border border-border rounded-lg bg-secondary/40 text-foreground font-semibold hover:bg-secondary disabled:opacity-50 transition-all duration-[200ms] ease-out active:scale-[0.97] text-xs cursor-pointer flex items-center justify-center gap-1.5"
+                                    className="px-3 py-2 border border-border rounded-lg bg-card text-foreground font-medium hover:bg-accent hover:text-accent-foreground disabled:opacity-50 transition-all duration-150 active:scale-[0.97] text-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
                                 >
                                     <span>Sitemaps</span>
                                 </button>

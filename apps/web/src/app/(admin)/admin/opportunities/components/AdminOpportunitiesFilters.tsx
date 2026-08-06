@@ -112,22 +112,20 @@ export const AdminOpportunitiesFilters = ({
             </div>
 
             {/* Filters Row */}
-            <div className="flex items-center gap-2 w-full md:w-auto">
-                <div className="flex items-center gap-2 flex-1 md:flex-initial overflow-x-auto pb-1 md:pb-0 custom-scrollbar md:overflow-visible">
-                    <div className="hidden md:flex items-center gap-1.5 text-xs font-medium text-muted-foreground px-1 shrink-0">
-                        <AdjustmentsHorizontalIcon className="w-3.5 h-3.5" />
-                        Filters
-                    </div>
+            <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                <div className="hidden md:flex items-center gap-1.5 text-xs font-medium text-muted-foreground px-1 shrink-0">
+                    <AdjustmentsHorizontalIcon className="w-3.5 h-3.5" />
+                    Filters
+                </div>
 
-                    <div className="w-[120px] shrink-0 md:w-36">
-                        <Select value={typeFilter} onChange={setTypeFilter} options={TYPE_OPTIONS} />
-                    </div>
-                    <div className="w-[110px] shrink-0 md:w-32">
-                        <Select value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} />
-                    </div>
-                    <div className="w-[100px] shrink-0 md:w-28">
-                        <Select value={sort} onChange={setSort} options={SORT_OPTIONS} />
-                    </div>
+                <div className="flex-1 min-w-[110px] md:w-36">
+                    <Select value={typeFilter} onChange={setTypeFilter} options={TYPE_OPTIONS} />
+                </div>
+                <div className="flex-1 min-w-[100px] md:w-32">
+                    <Select value={statusFilter} onChange={setStatusFilter} options={STATUS_OPTIONS} />
+                </div>
+                <div className="flex-1 min-w-[90px] md:w-28">
+                    <Select value={sort} onChange={setSort} options={SORT_OPTIONS} />
                 </div>
 
                 <button

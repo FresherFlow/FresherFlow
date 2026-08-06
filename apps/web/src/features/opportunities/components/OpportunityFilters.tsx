@@ -103,7 +103,7 @@ export function OpportunityFilters({
                         className={cn(
                             "w-full flex items-center justify-between px-3 py-3 rounded-xl border text-xs font-semibold transition-all text-left capitalize tracking-wide focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none",
                             closingSoon
-                                ? "bg-orange-100 border-orange-300 text-slate-900 dark:bg-amber-500/10 dark:border-amber-500/50 dark:text-amber-300 shadow-sm"
+                                ? "bg-orange-500/10 border-orange-500/30 text-orange-700 dark:text-orange-400 shadow-sm"
                                 : "bg-background border-border text-muted-foreground hover:bg-muted hover:text-foreground"
                         )}
                         aria-pressed={closingSoon}

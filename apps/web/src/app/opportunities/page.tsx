@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { Suspense } from 'react';
 import { FeedPageSkeleton } from '@/ui/Skeleton';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
-import { OpportunitiesFeedClient } from '@/features/opportunities/components/OpportunitiesFeedClient';
+import CategoryPage from '@/features/opportunities/components/CategoryPage';
 
 // On-demand revalidation via /api/revalidate — called when jobs are published/expired.
 // No time-based revalidation: avoids hourly ISR writes when the feed hasn't changed.
@@ -27,7 +27,8 @@ export default async function OpportunitiesPage() {
 
     return (
         <Suspense fallback={<FeedPageSkeleton />}>
-            <OpportunitiesFeedClient initialData={initialData} />
+            <CategoryPage type={null} initialData={initialData} />
         </Suspense>
     );
 }
+

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 import { useOpportunitiesFeed } from '@/features/opportunities/hooks/useOpportunitiesFeed';
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -13,13 +13,14 @@ import {
 } from '@/features/opportunities/components/GovtPhaseTabs';
 
 export interface UseCategoryPageStateProps {
-    type: OpportunityType;
+    type: OpportunityType | null;
     initialData?: { opportunities: Opportunity[]; total: number; cachedAt?: number } | null;
 }
 
 export function useCategoryPageState({ type, initialData }: UseCategoryPageStateProps) {
     const { user } = useAuth();
     const searchParams = useSearchParams();
+    const router = useRouter();
 
     const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
     const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
@@ -71,7 +72,7 @@ export function useCategoryPageState({ type, initialData }: UseCategoryPageState
     const [govtPhase, setGovtPhase] = useState<GovtPhaseFilter>('ALL');
     const [govtCategory, setGovtCategory] = useState<GovtCategoryFilter>((searchParams?.get('category') as GovtCategoryFilter) || null);
     const [filters, setFilters] = useState<FilterBarFilters>({
-        location: null, year: null, closingSoon: false, saved: false, sector: null, qualification: null, course: null,
+        location: null, year: null, closingSoon: false, saved: false, sector: null, qualification: null, course: null, workMode: (searchParams?.get('workMode') as any) || null, skills: searchParams?.get('skills') ? searchParams.get('skills')!.split(',') : [],
     });
     const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
     const [draftLoc, setDraftLoc] = useState<string | null>(null);
@@ -81,6 +82,8 @@ export function useCategoryPageState({ type, initialData }: UseCategoryPageState
     const [draftSector, setDraftSector] = useState<string | null>(null);
     const [draftQualification, setDraftQualification] = useState<string | null>(null);
     const [draftCourse, setDraftCourse] = useState<string | null>(null);
+    const [draftWorkMode, setDraftWorkMode] = useState<'REMOTE' | 'HYBRID' | 'ON_SITE' | null>(null);
+    const [draftSkills, setDraftSkills] = useState<string[]>([]);
     const [mounted, setMounted] = useState(false);
     const [visibleCount, setVisibleCount] = useState(20);
 
@@ -89,11 +92,36 @@ export function useCategoryPageState({ type, initialData }: UseCategoryPageState
     // Reset pagination when search or filters change
     useEffect(() => {
         setVisibleCount(20);
-    }, [search, type, filters.location, filters.sector, filters.qualification, filters.course, filters.year, filters.closingSoon, filters.saved]);
+    }, [search, type, filters.location, filters.sector, filters.qualification, filters.course, filters.year, filters.closingSoon, filters.saved, filters.workMode, filters.skills]);
 
     const mobileActiveCount =
         (filters.location ? 1 : 0) + (filters.closingSoon ? 1 : 0) + (filters.saved ? 1 : 0) +
-        (filters.sector ? 1 : 0) + (filters.qualification ? 1 : 0) + (filters.course ? 1 : 0) + (filters.year ? 1 : 0);
+        (filters.sector ? 1 : 0) + (filters.qualification ? 1 : 0) + (filters.course ? 1 : 0) + (filters.year ? 1 : 0) + (filters.workMode ? 1 : 0) + (filters.skills && filters.skills.length > 0 ? 1 : 0);
+
+    useEffect(() => {
+        if (!mounted) return;
+        const params = new URLSearchParams(searchParams?.toString() || '');
+        let changed = false;
+
+        if (filters.skills && filters.skills.length > 0) {
+            const current = params.get('skills');
+            const next = filters.skills.join(',');
+            if (current !== next) { params.set('skills', next); changed = true; }
+        } else if (params.has('skills')) {
+            params.delete('skills'); changed = true;
+        }
+
+        if (filters.workMode) {
+            const current = params.get('workMode');
+            if (current !== filters.workMode) { params.set('workMode', filters.workMode); changed = true; }
+        } else if (params.has('workMode')) {
+            params.delete('workMode'); changed = true;
+        }
+
+        if (changed) {
+            router.replace(`?${params.toString()}`, { scroll: false });
+        }
+    }, [filters.skills, filters.workMode, mounted, router, searchParams]);
 
     const { filteredOpps, isLoading, error, profileIncomplete, toggleSave, reload } = useOpportunitiesFeed({
         type,
@@ -139,6 +167,17 @@ export function useCategoryPageState({ type, initialData }: UseCategoryPageState
         if (type === OpportunityType.GOVERNMENT && govtCategory !== null) {
             if (!jobMatchesCategory(opp.governmentJobDetails, govtCategory)) return false;
         }
+        if (type !== OpportunityType.GOVERNMENT) {
+            if (filters.workMode) {
+                if (opp.workMode !== filters.workMode) return false;
+            }
+            if (filters.skills && filters.skills.length > 0) {
+                const hasAllSkills = filters.skills.every(s => 
+                    opp.requiredSkills?.some(rs => rs.toLowerCase() === s.toLowerCase())
+                );
+                if (!hasAllSkills) return false;
+            }
+        }
         return true;
     });
 
@@ -162,17 +201,18 @@ export function useCategoryPageState({ type, initialData }: UseCategoryPageState
         setDraftLoc(filters.location); setDraftYear(filters.year); setDraftClosingSoon(filters.closingSoon);
         setDraftShowOnlySaved(filters.saved); setDraftSector(filters.sector);
         setDraftQualification(filters.qualification); setDraftCourse(filters.course);
+        setDraftWorkMode(filters.workMode); setDraftSkills(filters.skills || []);
         setIsMobileFilterOpen(true);
     };
 
     const applyMobileFilters = () => {
-        setFilters({ location: draftLoc, year: draftYear, closingSoon: draftClosingSoon, saved: draftShowOnlySaved, sector: draftSector, qualification: draftQualification, course: draftCourse });
+        setFilters({ location: draftLoc, year: draftYear, closingSoon: draftClosingSoon, saved: draftShowOnlySaved, sector: draftSector, qualification: draftQualification, course: draftCourse, workMode: draftWorkMode, skills: draftSkills });
         setIsMobileFilterOpen(false);
     };
 
     const clearAll = () => {
         setSearch('');
-        setFilters({ location: null, year: null, closingSoon: false, saved: false, sector: null, qualification: null, course: null });
+        setFilters({ location: null, year: null, closingSoon: false, saved: false, sector: null, qualification: null, course: null, workMode: null, skills: [] });
     };
 
     return {
@@ -212,6 +252,8 @@ export function useCategoryPageState({ type, initialData }: UseCategoryPageState
         draftSector, setDraftSector,
         draftQualification, setDraftQualification,
         draftCourse, setDraftCourse,
+        draftWorkMode, setDraftWorkMode,
+        draftSkills, setDraftSkills,
         mobileActiveCount,
         openMobileFilters,
         applyMobileFilters,

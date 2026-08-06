@@ -1,5 +1,7 @@
 import LoginForm from './LoginForm';
 
+export const revalidate = false;
+
 export const metadata = {
     title: 'Sign In',
     description: 'Sign in to FresherFlow - access your personalized feed of verified jobs, internships, and walk-in drives for freshers.',

@@ -50,8 +50,11 @@ export function useOpportunitiesFeed({
 }: UseOpportunitiesFeedOptions) {
     const { user, profile, isLoading: authLoading } = useAuth();
     const { savedJobsMap, toggleSavedJob } = useFirebaseSaved(user?.id);
+    const [isMounted, setIsMounted] = useState(false);
 
-
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     const [opportunities, setOpportunities] = useState<Opportunity[]>(() => {
         if (initialData?.opportunities) return initialData.opportunities;
@@ -345,6 +348,10 @@ export function useOpportunitiesFeed({
             };
         });
 
+        if (!isMounted) {
+            return enriched;
+        }
+
         const bucketWeight = (opp: Opportunity & { isSaved?: boolean; actions?: OpportunityAction[] }) => {
             const isApplied = Array.isArray(opp.actions) && opp.actions.some((a: OpportunityAction) => a.actionType === 'APPLIED');
             if (isApplied) return 2;
@@ -383,7 +390,7 @@ export function useOpportunitiesFeed({
 
             return timeB - timeA;
         });
-    }, [opportunities, selectedLoc, selectedYear, closingSoon, sector, qualification, course, profile, normalizedSearch, type, showOnlySaved, savedJobsMap]);
+    }, [opportunities, selectedLoc, selectedYear, closingSoon, sector, qualification, course, profile, normalizedSearch, type, showOnlySaved, savedJobsMap, isMounted]);
 
     const toggleSave = async (opportunityId: string) => {
         if (!user) {

@@ -424,7 +424,7 @@ export default function OpportunityDetailClient({
                         )}
                     </div>
 
-                    <aside className="hidden lg:block lg:col-span-2 space-y-4 md:space-y-6 lg:sticky lg:top-24">
+                    <aside className="hidden lg:block lg:col-span-2 space-y-4 md:space-y-6 lg:sticky lg:top-14">
                         <DetailSidebarActions
                             user={user}
                             opp={opp}

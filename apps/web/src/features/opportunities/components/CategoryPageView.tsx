@@ -1,5 +1,6 @@
 import { cn } from '@repo/ui/utils/cn';
 import { useMemo, useEffect, useState } from 'react';
+import { useFeedHeader } from '@/lib/context/FeedHeaderContext';
 import Link from 'next/link';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 import dynamic from 'next/dynamic';
@@ -212,9 +213,16 @@ export function CategoryPageView({
     mobileActiveCount, openMobileFilters, applyMobileFilters, clearAll,
     visibleCount, setVisibleCount, isJobSaved, isJobApplied, toggleSave, reload
 }: CategoryPageState) {
-    const config = CATEGORY_CONFIG[type];
+    const config = CATEGORY_CONFIG[type] ?? { title: 'Jobs', subtitle: '', icon: BriefcaseIcon };
     const { targetRef: loadMoreRef, isIntersecting } = useIntersectionObserver({ threshold: 0.1, rootMargin: '400px' });
     const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const { setCount } = useFeedHeader();
+
+    // Push filtered count to TopHeaderBar
+    useEffect(() => {
+        setCount(filteredOpps.length);
+        return () => setCount(null);
+    }, [filteredOpps.length, setCount]);
 
     useEffect(() => {
         if (isIntersecting && visibleCount < visibleOpps.length && !isLoadingMore) {
@@ -257,24 +265,36 @@ export function CategoryPageView({
                 </div>
             )}
 
-            {/* Header */}
-            <div className="flex flex-col gap-3 pb-2">
-                <div className={cn("flex items-center justify-between gap-2", selectedOpp && "hidden lg:flex")}>
-                    <h1 className="sr-only">{config.title} Feed</h1>
-                    <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5" aria-live="polite">
-                        <ShieldCheckIcon className="w-3.5 h-3.5 text-primary shrink-0" />
-                        {mounted && visibleOpps.length > 0 ? `Showing ${visibleOpps.length} jobs` : '0 jobs'}
-                    </span>
-                    {type !== OpportunityType.GOVERNMENT && (
-                        <Link href="/opportunities" className="text-[10px] font-semibold text-primary hover:underline capitalize tracking-widest">
-                            View all
-                        </Link>
+            {/* Count + Filters — one row */}
+            <div className={cn("flex items-center gap-3 flex-wrap pb-2", selectedOpp && "hidden lg:flex")}>
+                <h1 className="sr-only">{config.title} Feed</h1>
+
+                {/* Search box */}
+                <div className={cn("relative group w-full lg:w-96 mb-1", selectedOpp && "hidden lg:block")}>
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                    <Input
+                        type="text"
+                        placeholder="Search by role or company..."
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        className="pl-9 h-10 text-xs rounded-xl bg-card border-border shadow-sm w-full"
+                    />
+                    {search && (
+                        <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-full p-0.5">
+                            <XMarkIcon className="w-4 h-4" />
+                        </button>
                     )}
                 </div>
 
+                {/* Count — left */}
+                <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5 shrink-0" aria-live="polite">
+                    <ShieldCheckIcon className="w-3.5 h-3.5 text-primary shrink-0" />
+                    {mounted && visibleOpps.length > 0 ? `Showing ${visibleOpps.length} jobs` : '0 jobs'}
+                </span>
+
                 {/* Phase + Category tabs — govt only */}
                 {type === OpportunityType.GOVERNMENT && (
-                    <div className="space-y-2">
+                    <div className="space-y-2 w-full">
                         <GovtPhaseTabs
                             active={govtPhase}
                             onChange={phase => { setGovtPhase(phase); setGovtCategory(null); }}
@@ -288,35 +308,16 @@ export function CategoryPageView({
                     </div>
                 )}
 
-                {/* Search + filters */}
-                <div className={cn("flex gap-2.5 items-center justify-between flex-wrap", selectedOpp && "hidden lg:flex")}>
-                    <div className="flex items-center gap-3 flex-wrap w-full lg:w-auto">
-                        <div className="flex items-center gap-2 w-full lg:w-auto flex-1 lg:flex-none">
-                            <div className="relative flex-1 lg:w-96 group">
-                                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                <Input
-                                    type="text"
-                                    placeholder="Search by role or company..."
-                                    value={search}
-                                    onChange={e => setSearch(e.target.value)}
-                                    className="pl-9 h-10 text-xs rounded-xl bg-card border-border shadow-sm w-full"
-                                />
-                                {search && (
-                                    <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-1 top-1/2 -translate-y-1/2 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground">
-                                        <XMarkIcon className="w-5 h-5" />
-                                    </button>
-                                )}
-                            </div>
-                            <button
-                                onClick={openMobileFilters}
-                                className="lg:hidden h-11 flex items-center justify-center gap-2 px-4 rounded-xl border border-border bg-card text-[11px] font-bold capitalize tracking-widest shrink-0"
-                            >
-                                <FunnelIcon className="w-4 h-4" />
-                                {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
-                            </button>
-                        </div>
-                        <FilterDropdownBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type} />
-                    </div>
+                {/* Filters — right */}
+                <div className="flex items-center gap-2 ml-auto flex-wrap">
+                    <button
+                        onClick={openMobileFilters}
+                        className="lg:hidden h-9 flex items-center gap-2 px-3 rounded-xl border border-border bg-card text-[11px] font-bold capitalize tracking-widest shrink-0"
+                    >
+                        <FunnelIcon className="w-4 h-4" />
+                        {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
+                    </button>
+                    <FilterDropdownBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type} />
                 </div>
             </div>
 

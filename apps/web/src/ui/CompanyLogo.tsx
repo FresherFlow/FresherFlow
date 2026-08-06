@@ -133,7 +133,7 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
             }
         } catch {}
 
-        if (target.naturalWidth <= 16 && target.naturalWidth > 0 && isGoogle) {
+        if ((target.naturalWidth <= 16 || target.naturalHeight <= 16 || target.naturalWidth === 0) && isGoogle) {
             handleError();
         } else {
             // Success! Cache the working URL
@@ -158,7 +158,7 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
         }
         return (
             <div className={cn("w-12 h-12 bg-muted text-foreground font-bold text-xl rounded flex items-center justify-center shrink-0", className)}>
-                {companyName ? companyName.slice(0, 1).toUpperCase() : 'C'}
+                {companyName ? companyName.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() : 'C'}
             </div>
         );
     }

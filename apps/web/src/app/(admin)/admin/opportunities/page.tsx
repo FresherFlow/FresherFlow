@@ -76,7 +76,7 @@ function OpportunitiesListPage() {
     const effectiveTotalPages = totalPages || Math.ceil(totalCount / pageSize) || 1;
 
     return (
-        <div className="p-4 md:p-8 pt-16 md:pt-8 space-y-6 flex-1 min-h-0 flex flex-col pb-28 md:pb-8">
+        <div className="min-h-full overflow-y-auto pb-32 md:pb-8 p-4 md:p-8 pt-16 md:pt-8 space-y-6 flex-1 flex flex-col">
             <AdminOpportunitiesHeader 
                 isLoading={isLoading} 
                 onRefresh={loadOpportunities} 
@@ -177,15 +177,6 @@ function OpportunitiesListPage() {
                 opportunityId={previewOppId}
                 onClose={() => setPreviewOppId(null)}
             />
-
-            {/* Floating Post FAB */}
-            <Link
-                href="/admin/opportunities/create"
-                className="fixed bottom-20 right-5 z-40 md:hidden w-14 h-14 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
-                aria-label="New listing"
-            >
-                <PlusIcon className="w-7 h-7" strokeWidth={2.5} />
-            </Link>
         </div>
     );
 }

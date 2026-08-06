@@ -2,7 +2,7 @@
 
 import { Suspense, useContext, useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { Navbar, MobileNav } from '@/lib/navigation/Navigation';
+import { Navbar, MobileNav, isSidebarPage } from '@/lib/navigation/Navigation';
 import { Footer } from '@/ui/Footer';
 import { MiniFooter } from '@/ui/MiniFooter';
 import { cn } from '@/lib/utils/utils';
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils/utils';
 // import OfflineActionSync from '@/lib/components/OfflineActionSync';
 import { AuthContext } from '@/lib/auth/AuthContext';
 import { ADMIN_WEB_HOST } from '@/lib/utils/runtimeConfig';
+import { FeedHeaderProvider } from '@/lib/context/FeedHeaderContext';
 
 export function NavigationWrapper({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -54,14 +55,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
     const hideNav = isAdminRoute || isCaptionsPage || isDiscoveryPage || isRecruiterRoute || isPublicProfileRoute;
     const isHomePage = pathname === '/';
 
-    const isAccountOrDashboardRoute = normalizedPathname.startsWith('/dashboard') || 
-                                      normalizedPathname.startsWith('/profile') || 
-                                      normalizedPathname.startsWith('/settings') || 
-                                      normalizedPathname.startsWith('/saved') || 
-                                      normalizedPathname.startsWith('/tracker') || 
-                                      normalizedPathname.startsWith('/alerts') || 
-                                      normalizedPathname.startsWith('/notifications') ||
-                                      normalizedPathname.startsWith('/account');
+    const isSidebarRoute = isSidebarPage(normalizedPathname);
 
     const authContext = useContext(AuthContext);
     const isAuthenticated = !!authContext?.user;
@@ -71,7 +65,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
         setMounted(true);
     }, []);
 
-    const showFooter = !isAdminRoute && !isAuthRoute && !isCaptionsPage && !isDiscoveryPage && !isRecruiterRoute && !isPublicProfileRoute && !normalizedPathname.startsWith('/u/') && !isAccountOrDashboardRoute && (mounted ? !isAuthenticated : true);
+    const showFooter = !isAdminRoute && !isAuthRoute && !isCaptionsPage && !isDiscoveryPage && !isRecruiterRoute && !isPublicProfileRoute && !normalizedPathname.startsWith('/u/') && !isSidebarRoute && (mounted ? !isAuthenticated : true);
 
     return (
         <>
@@ -86,16 +80,20 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
             <main className={cn(
                 "relative w-full overflow-x-hidden flex-1 flex flex-col",
                 !hideNav && "pt-[calc(3.75rem+env(safe-area-inset-top))]",
-                !hideNav && "md:pt-[4.75rem]",
-                !hideNav && !isHomePage && (isAccountOrDashboardRoute || (mounted && isAuthenticated)) && "pb-20 md:pb-8",
-                !hideNav && !isHomePage && !(isAccountOrDashboardRoute || (mounted && isAuthenticated)) && "pb-4 md:pb-8",
+                !hideNav && "md:pt-14",
+                !hideNav && isSidebarRoute && "md:pl-48",
+                !hideNav && !isSidebarRoute && "md:pt-[4.75rem]",
+                !hideNav && !isHomePage && (isSidebarRoute || (mounted && isAuthenticated)) && "pb-20 md:pb-8",
+                !hideNav && !isHomePage && !(isSidebarRoute || (mounted && isAuthenticated)) && "pb-4 md:pb-8",
                 "min-h-screen"
             )}>
-                <div className={cn(
-                    "flex-1 flex flex-col"
-                )}>
-                    {children}
-                </div>
+                <FeedHeaderProvider>
+                    <div className={cn(
+                        "flex-1 flex flex-col"
+                    )}>
+                        {children}
+                    </div>
+                </FeedHeaderProvider>
             </main>
             {showFooter && (
                 <div>
