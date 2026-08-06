@@ -1,5 +1,6 @@
 import { AtsAdapter, AtsJob, toAtsJob } from '../../../base/BaseAdapter.js';
 import { DarwinboxService } from './darwinbox.service.js';
+import { fetchDarwinboxDetails } from '../../../common/ats-details.js';
 
 export { DarwinboxService };
 export * from './darwinbox.constants.js';
@@ -12,5 +13,8 @@ export class DarwinboxAdapter implements AtsAdapter {
   async fetchJobs(companyId: string, companyName: string): Promise<AtsJob[]> {
     const res = await service.scrape({ companySlug: companyId, searchTerm: companyName });
     return (res?.jobs || []).map(j => toAtsJob(j, 'darwinbox', companyName, 'ATS'));
+  }
+  async fetchJobDetails(job: AtsJob, page?: any): Promise<any> {
+    return fetchDarwinboxDetails(job.applyLink, page);
   }
 }

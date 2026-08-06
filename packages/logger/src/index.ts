@@ -30,7 +30,8 @@ export const createLogger = (serviceName: string) => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const win = require('winston');
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const chalk = require('chalk');
+    const chalkMod = require('chalk');
+    const chalk = chalkMod.default || chalkMod;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const consoleFormat = win.format.printf(({ level, message, timestamp, requestId, service, ...meta }: any) => {

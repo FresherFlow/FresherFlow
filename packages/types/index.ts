@@ -449,6 +449,7 @@ export interface GovernmentJobDetails {
     cutOffMarks?: any;       // [{ year, category, marks }]
     
     payLevel?: string;
+    payScale?: string;
     basicPay?: number;
     allowances?: string[];
     
@@ -1121,4 +1122,74 @@ export interface CompanyTargetResponse {
 }
 export interface CreateCompanyTargetPayload {
   company: string; ats: string; slug: string; active?: boolean; priority?: number;
+}
+
+export interface OpportunityCardDTO {
+    id: string;
+    slug: string;
+    type: OpportunityType;
+    status: OpportunityStatus;
+    title: string;
+    company: string;
+    companyWebsite?: string;
+    companyLogoUrl?: string | null;
+    locations: string[];
+    workMode?: WorkMode;
+    salaryMin?: number;
+    salaryMax?: number;
+    salaryRange?: string;
+    salaryPeriod?: SalaryPeriod;
+    stipend?: string;
+    employmentType?: string;
+    tags?: string[];
+    requiredSkills: string[];
+    normalizedRole?: string;
+    applyLink?: string;
+    linkHealth?: LinkHealth;
+    verificationFailures?: number;
+    postedAt: Date | string;
+    expiresAt?: Date | string | null;
+    shareCount?: number;
+    governmentJobDetails?: {
+        jobCategory?: string[];
+        totalVacancies?: number;
+        applicationStatus?: GovernmentApplicationStatus;
+        payScale?: string;
+    };
+}
+
+export function toOpportunityCardDTO(opp: Opportunity): OpportunityCardDTO {
+    return {
+        id: opp.id,
+        slug: opp.slug,
+        type: opp.type,
+        status: opp.status,
+        title: opp.title,
+        company: opp.company,
+        companyWebsite: opp.companyWebsite,
+        companyLogoUrl: opp.companyLogoUrl,
+        locations: opp.locations || [],
+        workMode: opp.workMode,
+        salaryMin: opp.salaryMin,
+        salaryMax: opp.salaryMax,
+        salaryRange: opp.salaryRange,
+        salaryPeriod: opp.salaryPeriod,
+        stipend: opp.stipend,
+        employmentType: opp.employmentType,
+        tags: opp.tags || [],
+        requiredSkills: opp.requiredSkills || [],
+        normalizedRole: opp.normalizedRole,
+        applyLink: opp.applyLink,
+        linkHealth: opp.linkHealth,
+        verificationFailures: opp.verificationFailures,
+        postedAt: opp.postedAt,
+        expiresAt: opp.expiresAt,
+        shareCount: opp.shareCount,
+        governmentJobDetails: opp.governmentJobDetails ? {
+            jobCategory: opp.governmentJobDetails.jobCategory,
+            totalVacancies: opp.governmentJobDetails.vacancyCount,
+            applicationStatus: opp.governmentJobDetails.applicationStatus,
+            payScale: opp.governmentJobDetails.payScale,
+        } : undefined,
+    };
 }

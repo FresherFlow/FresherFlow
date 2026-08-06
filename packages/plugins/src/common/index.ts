@@ -10,3 +10,5 @@ export * from './canonical-key.js';
 export * from './jsonld.js';
 export * from './country-name.js';
 export * from './experience-extractor.js';
+export * from './ats-details.js';
+

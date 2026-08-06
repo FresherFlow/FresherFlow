@@ -10,4 +10,7 @@ export * from './user';
 export * from './username';
 export * from './numberNormalization';
 export * from './atsDetector';
+export * from './telegram';
+// r2 intentionally excluded — Node.js-only (node:fs/promises). Import directly:
+//   import { ... } from '@fresherflow/utils/r2'
 

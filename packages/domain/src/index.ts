@@ -30,6 +30,7 @@ export * from './opportunity/normalization.js';
 export * from './opportunity/display.js';
 export * from './opportunity/routing.js';
 export * from './opportunity/events.js';
+export * from './opportunity/rules.js';
 
 
 // Analytics
@@ -104,3 +105,11 @@ export {
 export {
     normalizeSkillName,
 } from './profile/constants.js';
+
+// Scoring and ATS Filtering (Relocated from scripts)
+export * from './eligibility/scorer.js';
+export * from './eligibility/weights.js';
+export * from './eligibility/text-filters.js';
+export * from './eligibility/ats-filters.js';
+export * from './eligibility/scoring-types.js';
+

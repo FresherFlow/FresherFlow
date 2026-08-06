@@ -189,6 +189,8 @@ export const BRAND_DOMAINS: Record<string, string> = {
     egug: 'egug.com',
     honeywell: 'honeywell.com',
     jpmc: 'jpmc.com',
+    eeug: 'dieboldnixdorf.com',
+    ebxr: 'equinix.com',
     exl: 'exl.com',
     eeho: 'eeho.com',
     emerson: 'emerson.com',

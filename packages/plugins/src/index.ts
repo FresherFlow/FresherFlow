@@ -231,4 +231,5 @@ export function getPluginCategories() {
 }
 
 export * from './common/experience.js';
+export * from './common/browser.js';
 

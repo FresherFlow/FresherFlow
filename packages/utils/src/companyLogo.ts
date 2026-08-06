@@ -1,3 +1,5 @@
+import { BRAND_DOMAINS } from './domains';
+
 export function extractDomain(url?: string | null): string | null {
     if (!url) return null;
     try {
@@ -12,3 +14,84 @@ export function generateCompanyLogoUrl(website?: string | null): string | null {
     const domain = extractDomain(website);
     return domain ? `https://logo.clearbit.com/${domain}` : null;
 }
+
+export function resolveCompanyWebsiteAndLogo(
+    company: string,
+    applyLink: string,
+    extractedWebsite: string | null | undefined
+): { website: string; logoUrl: string } {
+    let website = (extractedWebsite || "").trim();
+    
+    const isAtsUrl = (urlStr: string) => {
+        try {
+            const h = new URL(urlStr).hostname.toLowerCase();
+            return h.includes('oraclecloud') || h.includes('myworkdayjobs') || h.includes('eightfold') ||
+                   h.includes('greenhouse') || h.includes('lever') || h.includes('darwinbox') ||
+                   h.includes('successfactors') || h.includes('taleo') || h.includes('icims') ||
+                   h.includes('jobvite') || h.includes('recruitee');
+        } catch {
+            return false;
+        }
+    };
+
+    if (!website || !website.startsWith('http') || isAtsUrl(website)) {
+        try {
+            const url = new URL(applyLink);
+            const host = url.hostname.toLowerCase();
+            
+            // Handle enterprise ATS subdomains (e.g. philips.wd3.myworkdayjobs.com -> philips.com)
+            if (
+                host === 'myworkdayjobs.com' || host.endsWith('.myworkdayjobs.com') ||
+                host === 'eightfold.ai' || host.endsWith('.eightfold.ai') ||
+                host === 'greenhouse.io' || host.endsWith('.greenhouse.io') ||
+                host === 'lever.co' || host.endsWith('.lever.co') ||
+                host === 'darwinbox.in' || host.endsWith('.darwinbox.in') ||
+                host === 'oraclecloud.com' || host.endsWith('.oraclecloud.com') ||
+                host === 'successfactors.com' || host.endsWith('.successfactors.com') ||
+                host === 'taleo.net' || host.endsWith('.taleo.net') ||
+                host === 'icims.com' || host.endsWith('.icims.com') ||
+                host === 'jobvite.com' || host.endsWith('.jobvite.com') ||
+                host === 'recruitee.com' || host.endsWith('.recruitee.com')
+            ) {
+                const parts = host.split('.');
+                let subdomain = parts[0];
+                if ((subdomain === 'job-boards' || subdomain === 'boards') && (host === 'greenhouse.io' || host.endsWith('.greenhouse.io'))) {
+                    const pathParts = url.pathname.split('/').filter(Boolean);
+                    if (pathParts.length > 0) {
+                        subdomain = pathParts[0];
+                    }
+                }
+                const matchedDomain = BRAND_DOMAINS[subdomain.toLowerCase().trim()];
+                if (matchedDomain) {
+                    website = `https://${matchedDomain}`;
+                } else {
+                    website = `https://${subdomain}.com`;
+                }
+            } else {
+                // E.g. careers.cisco.com -> cisco.com
+                const parts = host.split('.');
+                if (parts.length >= 2) {
+                    const domain = parts.slice(-2).join('.');
+                    website = `https://${domain}`;
+                } else {
+                    website = `https://${host}`;
+                }
+            }
+        } catch {
+            const cleanName = company.toLowerCase().replace(/[^a-z0-9]/g, '');
+            website = `https://${cleanName}.com`;
+        }
+    }
+
+    let logoUrl = "";
+    try {
+        const parsedUrl = new URL(website);
+        const domain = parsedUrl.hostname.replace(/^www\./i, '');
+        logoUrl = `https://logo.clearbit.com/${domain}`;
+    } catch {
+        // Ignore
+    }
+
+    return { website, logoUrl };
+}
+

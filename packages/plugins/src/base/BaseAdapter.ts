@@ -66,7 +66,10 @@ export interface AtsJob {
 export interface AtsAdapter {
     providerName: string;
     fetchJobs(companyId: string, companyName: string): Promise<AtsJob[]>;
-    fetchJobDetails?(job: AtsJob): Promise<string | undefined>;
+    fetchJobDetails?(
+        job: AtsJob,
+        page?: any
+    ): Promise<string | { title: string; html: string; text: string; locations: string[]; company?: string } | undefined>;
 }
 
 // ─── Shared helpers ────────────────────────────────────────────────────────────

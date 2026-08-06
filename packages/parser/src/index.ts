@@ -30,15 +30,20 @@ export {
 export { parseJobTextLite } from './lite.js';
 
 export { normalizeSalary, normalizeExpiry } from './normalize.js';
-export { UrlParser } from './url-parser.js';
-export type { JobSourceType, UrlParseResult } from './url-parser.js';
+export { UrlParser, parseJobUrl } from './url-parser.js';
+export type { JobSourceType, UrlParseResult, ParsedJobUrl } from './url-parser.js';
 
 export { cleanAndResolveLocations } from './location-matcher.js';
+export { matchFromCdn } from './cdn-matcher.js';
 
 export { parseFromTemplate, isTemplateSource, cleanAggregatorTitle, setCdnMetadata } from './template-parser.js';
 export type { TemplateParseResult } from './template-parser.js';
 
 export { parseHtmlToMarkdown, cleanClickbait } from './html-to-markdown.js';
+
+// metadata intentionally excluded from barrel — Node.js-only (node:fs/promises).
+// Import directly: import { ... } from '@fresherflow/parser/metadata'
+
 
 // ── parseJobText: the main entry point ───────────────────────────────────────
 
