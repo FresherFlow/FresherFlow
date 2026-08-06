@@ -103,7 +103,7 @@ export async function downloadJsonFromR2(bucketName: string, key: string): Promi
     }
 }
 
-export async function listR2Objects(bucketName: string, prefix: string) {
+export async function listR2Objects(bucketName: string, prefix: string): Promise<{ Key?: string }[]> {
     const s3Client = getS3Client();
     if (!s3Client) {
         console.warn('R2 credentials not fully configured. Cannot list objects.');
@@ -113,7 +113,7 @@ export async function listR2Objects(bucketName: string, prefix: string) {
     try {
         let isTruncated = true;
         let continuationToken: string | undefined = undefined;
-        const allContents: unknown[] = [];
+        const allContents: { Key?: string }[] = [];
 
         while (isTruncated) {
             const response: any = await s3Client.send(

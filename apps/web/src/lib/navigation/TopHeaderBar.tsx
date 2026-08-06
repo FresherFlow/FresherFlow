@@ -4,14 +4,20 @@ import { Suspense, useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
 const ACCOUNT_LABELS: Record<string, string> = {
-    '/dashboard':     'Dashboard',
-    '/tracker':       'Application Tracker',
-    '/saved':         'Saved Jobs',
-    '/profile':       'My Profile',
-    '/settings':      'Settings',
-    '/alerts':        'Job Alerts',
-    '/notifications': 'Notifications',
-    '/account':       'Account',
+    '/dashboard':          'Dashboard',
+    '/tracker':            'Application Tracker',
+    '/saved':              'Saved Jobs',
+    '/profile':            'My Profile',
+    '/settings':           'Settings',
+    '/alerts':             'Job Alerts',
+    '/notifications':      'Notifications',
+    '/account':            'Account Overview',
+    '/choose-username':    'Choose Username',
+    '/contribute':         'Submit Opportunity',
+    '/feedback':           'Feedback & Ideas',
+    '/followed-companies': 'Followed Companies',
+    '/referral':           'Referral Program',
+    '/resources':          'Resources & Guides',
 };
 
 function TopHeaderBarContent() {
@@ -21,7 +27,8 @@ function TopHeaderBarContent() {
     useEffect(() => { setIsMounted(true); }, []);
 
     const normalized = pathname.toLowerCase();
-    const accountKey = Object.keys(ACCOUNT_LABELS).find(k => normalized.startsWith(k));
+    const sortedKeys = Object.keys(ACCOUNT_LABELS).sort((a, b) => b.length - a.length);
+    const accountKey = sortedKeys.find(k => normalized === k || normalized.startsWith(k + '/'));
 
     if (!isMounted || !accountKey) return null;
 

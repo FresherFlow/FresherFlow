@@ -29,6 +29,7 @@ export const SIDEBAR_ROUTES = [
     '/resources',
     '/feedback',
     '/referral',
+    '/choose-username',
 ];
 
 export const FEED_ROUTES = [

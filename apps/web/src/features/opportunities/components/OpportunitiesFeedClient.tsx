@@ -125,6 +125,8 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         year: null,
         closingSoon: false,
         saved: false,
+        workMode: null,
+        skills: [],
     });
 
     // Mobile draft state (kept separate so apply is atomic)
@@ -242,6 +244,8 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
             year: draftYear,
             closingSoon: draftClosingSoon,
             saved: draftShowOnlySaved,
+            workMode: null,
+            skills: [],
         });
         setIsMobileFilterOpen(false);
     };
@@ -406,11 +410,11 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                                     onRetry={reload}
                                     isSplitView={true}
                                     selectedOppId={selectedOpp?.id}
-                                    onSelectOpportunity={handleSelectOpportunity}
+                                    onSelectOpportunity={(opp) => handleSelectOpportunity(opp as Opportunity)}
                                     onClearFilters={() => {
                                         setSearch('');
                                         updateType(null);
-                                        setFilters({ location: null, sector: null, qualification: null, course: null, year: null, closingSoon: false, saved: false });
+                                        setFilters({ location: null, sector: null, qualification: null, course: null, year: null, closingSoon: false, saved: false, workMode: null, skills: [] });
                                     }}
                                 />
                                 {(visibleCount < filteredOpps.length || isLoadingMore) && (

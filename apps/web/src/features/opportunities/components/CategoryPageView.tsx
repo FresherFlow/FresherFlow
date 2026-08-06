@@ -213,7 +213,7 @@ export function CategoryPageView({
     mobileActiveCount, openMobileFilters, applyMobileFilters, clearAll,
     visibleCount, setVisibleCount, isJobSaved, isJobApplied, toggleSave, reload
 }: CategoryPageState) {
-    const config = CATEGORY_CONFIG[type] ?? { title: 'Jobs', subtitle: '', icon: BriefcaseIcon };
+    const config = (type ? CATEGORY_CONFIG[type] : undefined) ?? { title: 'Jobs', subtitle: '', icon: BriefcaseIcon };
     const { targetRef: loadMoreRef, isIntersecting } = useIntersectionObserver({ threshold: 0.1, rootMargin: '400px' });
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const { setCount } = useFeedHeader();
@@ -317,7 +317,7 @@ export function CategoryPageView({
                         <FunnelIcon className="w-4 h-4" />
                         {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
                     </button>
-                    <FilterDropdownBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type} />
+                    <FilterDropdownBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} />
                 </div>
             </div>
 
@@ -333,7 +333,7 @@ export function CategoryPageView({
                 draftQualification={draftQualification} setDraftQualification={setDraftQualification}
                 draftCourse={draftCourse} setDraftCourse={setDraftCourse}
                 isLoggedIn={!!user}
-                pageType={type}
+                pageType={type ?? undefined}
                 onApply={applyMobileFilters}
                 onClear={() => {
                     setDraftLoc(null); setDraftYear(null); setDraftClosingSoon(false);
