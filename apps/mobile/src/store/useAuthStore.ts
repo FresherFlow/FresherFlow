@@ -386,7 +386,7 @@ export const AuthManager = {
 
     let hasResolvedAuthState = false;
     // 4. Initialize Firebase auth listeners
-    auth().onAuthStateChanged((fbUser) => {
+    auth().onAuthStateChanged((fbUser: any) => {
       useAuthStore.getState().setFirebaseUser(fbUser);
       clearTimeout(startupTimeout);
       

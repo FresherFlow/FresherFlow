@@ -5,7 +5,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useLinkPreview } from '@/hooks/useLinkPreview';
 import { SurfaceCard } from './PremiumPrimitives';
 import { alpha } from '@repo/ui';
-import { Link2, Bookmark, Youtube, Github, FileText, Globe } from 'lucide-react-native';
+import { Link2, Bookmark, Globe as Youtube, Globe as Github, FileText, Globe } from 'lucide-react-native';
 import { TouchableOpacity } from 'react-native';
 import { mScale } from '@/system/constants/dimensions';
 

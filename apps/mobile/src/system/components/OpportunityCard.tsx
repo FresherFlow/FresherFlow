@@ -176,7 +176,6 @@ export const OpportunityCard = memo(({
                 })()}
             </View>
             <View style={styles.companyRow}>
-                {/* @ts-expect-error - sharedTransitionTag typing mismatch */}
                 <Reanimated.View sharedTransitionTag={`logo-${opportunity.id}`}>
                     <CompanyLogo
                         name={opportunity.company}
@@ -187,7 +186,6 @@ export const OpportunityCard = memo(({
                     />
                 </Reanimated.View>
                 <View style={styles.titleWrapper}>
-                    {/* @ts-expect-error - sharedTransitionTag typing mismatch */}
                     <Reanimated.View sharedTransitionTag={`title-${opportunity.id}`}>
                         <Text 
                             style={[

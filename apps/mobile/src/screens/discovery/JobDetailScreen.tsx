@@ -40,10 +40,7 @@ import {
   MoreVertical,
   Award,
   Copy,
-  Linkedin,
-  Twitter,
   Send,
-  Instagram,
   MessageCircle,
   Check,
   AlertCircle,
@@ -95,6 +92,11 @@ import { TYPOGRAPHY } from '@/system/constants/typography';
 
 // Premium System
 import { toTitleCase, formatListToTitleCase } from '@/utils/text';
+import { Share2 as LucideShare } from 'lucide-react-native';
+const Linkedin = LucideShare;
+const Twitter = LucideShare;
+const Instagram = LucideShare;
+
 import { Screen, Section } from '@/system/layout/Layout';
 import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
 import { ReportActionSheet, ReportActionSheetRef } from '@/system/components/ReportActionSheet';
@@ -624,7 +626,6 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                     style={styles.heroGradient}
                 />
                 <View style={styles.titleRow}>
-                    {/* @ts-expect-error - sharedTransitionTag typing mismatch */}
                     <Reanimated.View sharedTransitionTag={`title-${opportunity.id}`} style={{ flex: 1 }}>
                         <Text 
                             style={[styles.title, { color: currentTheme.colors.text, flex: 1 }]}
@@ -655,7 +656,6 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             currentJob: opportunity
                         })}
                     >
-                        {/* @ts-expect-error - sharedTransitionTag typing mismatch */}
                         <Reanimated.View sharedTransitionTag={`logo-${opportunity.id}`}>
                             <CompanyLogo
                                 name={opportunity.company}

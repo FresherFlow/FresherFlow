@@ -9,7 +9,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
-import { Share2, Copy, Linkedin, Twitter, Send, Instagram } from 'lucide-react-native';
+import { Share2, Copy, Share2 as Linkedin, Share2 as Twitter, Send, Share2 as Instagram } from 'lucide-react-native';
 import { WhatsAppIcon, DiscordIcon } from '@/system/components/SocialIcons';
 import { CompanyLogo } from '@repo/ui';
 import { useTheme } from '@/contexts/ThemeContext';

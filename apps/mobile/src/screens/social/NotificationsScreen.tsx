@@ -1,6 +1,6 @@
 import React, { memo, useMemo, useCallback, useRef, useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Animated, Platform, LayoutAnimation } from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler';
+import Swipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import * as Haptics from 'expo-haptics';
@@ -156,7 +156,7 @@ const AlertRow = memo(({
         onDelete(alert.id);
     };
 
-    const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
+    const renderRightActions = (progress: any, dragX: any) => {
         const scale = dragX.interpolate({
             inputRange: [-80, 0],
             outputRange: [1, 0.5],
@@ -187,7 +187,6 @@ const AlertRow = memo(({
             friction={1.5}
             rightThreshold={40}
             overshootRight={false}
-            activeOffsetX={[-10, 10]}
             containerStyle={styles.alertRowContainer}
         >
             <TouchableOpacity

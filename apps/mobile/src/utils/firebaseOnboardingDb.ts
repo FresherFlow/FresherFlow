@@ -52,7 +52,7 @@ export async function readFirebaseOnboardingRecord(
 export async function writeFirebaseOnboardingRecord(
   firebaseUser: FirebaseAuthTypes.User | null | undefined,
   payload: FirebaseOnboardingRecord
-) {
+): Promise<void> {
   if (!firebaseUser || firebaseUser.isAnonymous) return;
 
   try {

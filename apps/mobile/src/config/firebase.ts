@@ -1,4 +1,13 @@
-import firebaseAuth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
+// FirebaseAuthTypes namespace — inline because @react-native-firebase/auth v8+ removed this named export
+// eslint-disable-next-line @typescript-eslint/no-namespace
+declare namespace FirebaseAuthTypes {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type Module = any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type AuthCredential = any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type User = any;
+}
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 import Constants from 'expo-constants';
@@ -18,8 +27,8 @@ let nativeAuthModule: NativeFirebaseAuthModule | null | undefined;
 function loadNativeAuthModule(): NativeFirebaseAuthModule | null {
   if (nativeAuthModule !== undefined) return nativeAuthModule;
   try {
-    // Statically imported to guarantee standard CJS/ESM interop under Hermes
-    nativeAuthModule = firebaseAuth as unknown as NativeFirebaseAuthModule;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    nativeAuthModule = require('@react-native-firebase/auth') as NativeFirebaseAuthModule;
   } catch (error) {
     console.warn('[Firebase] Native Firebase auth unavailable. Use an Expo dev client or Android build.', error);
     nativeAuthModule = null;

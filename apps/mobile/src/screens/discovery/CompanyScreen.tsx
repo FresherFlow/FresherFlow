@@ -11,7 +11,10 @@ import {
 } from 'react-native';
 import { openExternalURL } from '@/utils/browser';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Share2, Globe, Building2, Home, Copy, Linkedin, Twitter, Send, Instagram, PlayCircle, FolderOpen, Compass, ExternalLink, Bookmark, FileText } from 'lucide-react-native';
+import { Share2, Globe, Building2, Home, Copy, Send, PlayCircle, FolderOpen, Compass, ExternalLink, Bookmark, FileText } from 'lucide-react-native';
+const Linkedin = Share2;
+const Twitter = Share2;
+const Instagram = Share2;
 import { WhatsAppIcon, DiscordIcon, ArattaiIcon } from '@/system/components/SocialIcons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { JobCard } from '@/system/components/OpportunityCard';
@@ -916,7 +919,7 @@ const styles = StyleSheet.create({
         resizeMode: 'cover',
     },
     playButtonOverlay: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
         alignItems: 'center',
         justifyContent: 'center',
     },

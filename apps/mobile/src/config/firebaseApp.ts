@@ -1,5 +1,3 @@
-import firebaseApp from '@react-native-firebase/app';
-
 type NativeFirebaseAppModule = {
   getApps?: () => unknown[];
   initializeApp?: (options?: Record<string, unknown>) => unknown;
@@ -7,8 +5,8 @@ type NativeFirebaseAppModule = {
 
 function loadNativeFirebaseApp(): NativeFirebaseAppModule | null {
   try {
-    // Statically imported to guarantee standard CJS/ESM interop under Hermes
-    return firebaseApp as unknown as NativeFirebaseAppModule;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('@react-native-firebase/app') as NativeFirebaseAppModule;
   } catch (error) {
     console.warn('[Firebase] Native Firebase app unavailable. Use Expo dev client or Android build.', error);
     return null;

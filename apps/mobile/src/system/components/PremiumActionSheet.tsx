@@ -167,10 +167,10 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     backdropPressable: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
     },
     backdrop: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
     },
     sheet: {
         borderTopLeftRadius: RADIUS.xl * 1.5,

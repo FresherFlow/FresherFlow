@@ -117,7 +117,6 @@ const AuthBridge = ({ children }: { children: React.ReactNode }) => {
         firebaseDatabaseUrl={getFirebaseDatabaseUrl()}
         feedItems={feedItemIds as any}
       >
-        {/* @ts-expect-error - ReactNode version mismatch in monorepo */}
         {children}
       </SavedProvider>
     </NotificationProvider>

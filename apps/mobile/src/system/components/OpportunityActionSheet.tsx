@@ -18,12 +18,11 @@ import {
     Share2,
     Copy,
     Flag,
-    X,
-    Linkedin,
-    Twitter,
     Send,
-    Instagram,
 } from 'lucide-react-native';
+const Linkedin = Share2;
+const Twitter = Share2;
+const Instagram = Share2;
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { Opportunity, FeedbackReason, ActionType } from '@fresherflow/types';
@@ -40,7 +39,7 @@ import { useUIStore } from '@/store/useUIStore';
 import { submitFirebaseOpportunityFeedback, checkFirebaseOpportunityReported } from '@/utils/firebaseFeedbackDb';
 import { isJobReportedLocally, saveReportedJobLocally } from '@/utils/cache/offlineCache';
 import { ActivityIndicator } from 'react-native';
-import { ChevronLeft, Ban, Info, Link, AlertTriangle, Trash2, ChevronRight } from 'lucide-react-native';
+import { ChevronLeft, Ban, Info, Link, AlertTriangle, Trash2, ChevronRight, X } from 'lucide-react-native';
 import { openExternalURL } from '@/utils/browser';
 import { WhatsAppIcon, DiscordIcon, ArattaiIcon } from '@/system/components/SocialIcons';
 
@@ -341,7 +340,7 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-end',
     },
     backdrop: {
-        ...StyleSheet.absoluteFillObject,
+        ...StyleSheet.absoluteFill,
     },
     sheet: {
         borderTopLeftRadius: RADIUS.xl,

@@ -88,7 +88,7 @@ export default function SectorSelectionScreen() {
             </View>
 
             {isLoading && (
-                <View style={[StyleSheet.absoluteFillObject, styles.loadingOverlay, { backgroundColor: currentTheme.colors.background }]}>
+                <View style={[StyleSheet.absoluteFill, styles.loadingOverlay, { backgroundColor: currentTheme.colors.background }]}>
                     <ActivityIndicator size="large" color={currentTheme.colors.primary} />
                     <Text style={[styles.loadingText, { color: currentTheme.colors.text }]}>Switching mode...</Text>
                     <Text style={[styles.loadingSub, { color: currentTheme.colors.textMuted }]}>
