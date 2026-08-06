@@ -284,8 +284,8 @@ export function scoreJobDescription(title: string, text: string): ScoreResult {
     const { sections, warnings } = extractSections(text);
     trace.push({ step: 'extractSections', details: `Found ${sections.length} sections` });
 
-    let allSignals: Signal[] = [];
-    let allContributions: ScoreContribution[] = [];
+    const allSignals: Signal[] = [];
+    const allContributions: ScoreContribution[] = [];
 
     // 1. Evaluate Title
     const titleEval = evaluateTitle(title);

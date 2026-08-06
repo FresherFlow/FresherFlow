@@ -8,11 +8,15 @@ function getBucket(): string {
 
 // Load cached visited URLs from sharded R2 folders
 export async function loadVisited(): Promise<Record<string, string[]>> {
+    if (!process.env.R2_BUCKET_NAME) {
+        console.warn('R2_BUCKET_NAME not set, using empty local visited cache.');
+        return {};
+    }
     const visited: Record<string, string[]> = {};
     console.log(`Loading visited state from R2 folders...`);
     const objects = await listR2Objects(getBucket(), 'discovery-state/visited/');
     
-    await Promise.all(objects.map(async (obj) => {
+    await Promise.all(objects.map(async (obj: any) => {
         if (!obj.Key || !obj.Key.endsWith('.json')) return;
         const data = await downloadJsonFromR2(getBucket(), obj.Key);
         if (data && Array.isArray(data)) {
@@ -30,6 +34,10 @@ export async function loadVisited(): Promise<Record<string, string[]>> {
 
 // Save visited URLs into sharded R2 folders
 export async function saveVisited(visited: Record<string, string[]>) {
+    if (!process.env.R2_BUCKET_NAME) {
+        console.warn('R2_BUCKET_NAME not set, skipping saveVisited to R2.');
+        return;
+    }
     console.log(`Saving visited state to R2 folders...`);
     await Promise.all(Object.entries(visited).map(async ([key, arr]) => {
         if (arr.length === 0) return;
@@ -50,11 +58,15 @@ export async function saveVisited(visited: Record<string, string[]>) {
 
 // Load cached rejected reasons from sharded R2 folders
 export async function loadRejectedReasons(): Promise<Record<string, string>> {
+    if (!process.env.R2_BUCKET_NAME) {
+        console.warn('R2_BUCKET_NAME not set, using empty local visited cache.');
+        return {};
+    }
     const reasons: Record<string, string> = {};
     console.log(`Loading rejected reasons from R2 folders...`);
     const objects = await listR2Objects(getBucket(), 'discovery-state/rejected/');
     
-    await Promise.all(objects.map(async (obj) => {
+    await Promise.all(objects.map(async (obj: any) => {
         if (!obj.Key || !obj.Key.endsWith('.json')) return;
         const data = await downloadJsonFromR2(getBucket(), obj.Key);
         if (data && typeof data === 'object' && !Array.isArray(data)) {
@@ -66,6 +78,10 @@ export async function loadRejectedReasons(): Promise<Record<string, string>> {
 
 // Save rejected reasons sharded by domain to R2
 export async function saveRejectedReasons(reasons: Record<string, string>) {
+    if (!process.env.R2_BUCKET_NAME) {
+        console.warn('R2_BUCKET_NAME not set, skipping saveRejectedReasons to R2.');
+        return;
+    }
     console.log(`Saving rejected reasons to R2 folders...`);
     const sharded: Record<string, Record<string, string>> = {};
     

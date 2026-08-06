@@ -5,11 +5,14 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const jsRecommended = { ...eslint.configs.recommended, rules: { ...eslint.configs.recommended.rules } };
+delete jsRecommended.rules['no-unassigned-vars'];
+
 export default tseslint.config(
   {
     ignores: ['dist/', 'node_modules/', 'eslint.config.mjs', '*.d.ts', '*.d.ts.map', '*.js', '*.js.map'],
   },
-  eslint.configs.recommended,
+  jsRecommended,
   ...tseslint.configs.recommended,
   {
     files: ['**/*.ts'],

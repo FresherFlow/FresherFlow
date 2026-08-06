@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { parseJobText } from './index.js';
 import { ParsedJob } from './types.js';
+import { GREENHOUSE_SLUG_MAP, ORACLE_SLUG_MAP } from './metadata.js';
 
 export type JobSourceType = 'GENERIC' | 'JSON_LD' | 'BREEZY' | 'SAP' | 'WORKDAY';
 
@@ -374,7 +375,7 @@ function extractAtsBoard(urlStr: string): { provider: string, boardId: string } 
 
         // Oracle: https://...oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/
         if ((host === 'oraclecloud.com' || host.endsWith('.oraclecloud.com')) && path.includes('/hcmUI/CandidateExperience/en/sites/')) {
-            const match = path.match(/\/sites\/([^\/]+)/);
+            const match = path.match(/\/sites\/([^/]+)/);
             if (match) {
                 return { provider: 'oracle', boardId: `${u.origin}/hcmUI/CandidateExperience/en/sites/${match[1]}` };
             }
@@ -422,14 +423,26 @@ function extractAtsBoard(urlStr: string): { provider: string, boardId: string } 
 export function parseJobUrl(urlStr: string): ParsedJobUrl | null {
     try {
         const u = new URL(urlStr);
-        const host = u.hostname.toLowerCase();
-        const parts = u.pathname.split('/').filter(Boolean);
-
         const boardInfo = extractAtsBoard(urlStr);
         if (!boardInfo) return null;
 
         const { provider, boardId } = boardInfo;
-        const company = boardId.split('/').pop()?.toLowerCase() || 'unknown';
+        const parts = u.pathname.split('/').filter(Boolean);
+        let company = boardId.split('/').pop()?.toLowerCase() || 'unknown';
+
+        if (provider === 'greenhouse') {
+            if (GREENHOUSE_SLUG_MAP.has(company)) {
+                company = GREENHOUSE_SLUG_MAP.get(company) || company;
+            }
+        } else if (provider === 'oracle') {
+            const lowerLink = urlStr.toLowerCase();
+            for (const [prefix, compName] of ORACLE_SLUG_MAP.entries()) {
+                if (lowerLink.startsWith(prefix)) {
+                    company = compName;
+                    break;
+                }
+            }
+        }
 
         let jobId = '';
 

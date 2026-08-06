@@ -49,7 +49,7 @@ export async function uploadToR2(filePath: string, bucketName: string, destinati
     }
 }
 
-export async function uploadJsonToR2(jsonObject: any, bucketName: string, destinationKey: string): Promise<boolean> {
+export async function uploadJsonToR2(jsonObject: unknown, bucketName: string, destinationKey: string): Promise<boolean> {
     const s3Client = getS3Client();
     if (!s3Client) {
         console.warn('R2 credentials not fully configured. Skipping JSON upload.');
@@ -81,7 +81,7 @@ export async function uploadJsonToR2(jsonObject: any, bucketName: string, destin
     return false;
 }
 
-export async function downloadJsonFromR2(bucketName: string, key: string): Promise<any | null> {
+export async function downloadJsonFromR2(bucketName: string, key: string): Promise<unknown | null> {
     const s3Client = getS3Client();
     if (!s3Client) return null;
 
@@ -94,8 +94,9 @@ export async function downloadJsonFromR2(bucketName: string, key: string): Promi
         const str = await response.Body?.transformToString();
         if (str) return JSON.parse(str);
         return null;
-    } catch (error: any) {
-        if (error.name !== 'NoSuchKey') {
+    } catch (error) {
+        const err = error as { name?: string };
+        if (err.name !== 'NoSuchKey') {
             console.error(`Failed to download ${key} from R2:`, error);
         }
         return null; // Return null if file doesn't exist
@@ -112,15 +113,16 @@ export async function listR2Objects(bucketName: string, prefix: string) {
     try {
         let isTruncated = true;
         let continuationToken: string | undefined = undefined;
-        const allContents: any[] = [];
+        const allContents: unknown[] = [];
 
         while (isTruncated) {
-            const command: any = new ListObjectsV2Command({
-                Bucket: bucketName,
-                Prefix: prefix,
-                ContinuationToken: continuationToken,
-            });
-            const response: any = await s3Client.send(command);
+            const response: any = await s3Client.send(
+                new ListObjectsV2Command({
+                    Bucket: bucketName,
+                    Prefix: prefix,
+                    ContinuationToken: continuationToken,
+                })
+            );
             
             if (response.Contents) {
                 allContents.push(...response.Contents);

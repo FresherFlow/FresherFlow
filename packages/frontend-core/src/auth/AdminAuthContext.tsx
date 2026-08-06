@@ -104,7 +104,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore - React Native Firebase Auth is optional and dynamically imported
             const firebaseAuthModule = await import('@react-native-firebase/auth');
-            const auth = ((firebaseAuthModule as any).default || firebaseAuthModule) as unknown as () => { signInWithCustomToken: (token: string) => Promise<unknown> };
+            const auth = ((firebaseAuthModule as Record<string, unknown>).default || firebaseAuthModule) as unknown as () => { signInWithCustomToken: (token: string) => Promise<unknown> };
             const { firebaseToken } = await adminAuthApi.getFirebaseToken();
             await auth().signInWithCustomToken(firebaseToken);
           } catch (firebaseErr) {
@@ -132,7 +132,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore - React Native Firebase Auth is optional and dynamically imported
             const firebaseAuthModule = await import('@react-native-firebase/auth');
-            const auth = ((firebaseAuthModule as any).default || firebaseAuthModule) as unknown as () => { signInWithCustomToken: (token: string) => Promise<unknown> };
+            const auth = ((firebaseAuthModule as Record<string, unknown>).default || firebaseAuthModule) as unknown as () => { signInWithCustomToken: (token: string) => Promise<unknown> };
             const { firebaseToken } = await adminAuthApi.getFirebaseToken();
             await auth().signInWithCustomToken(firebaseToken);
           } catch (firebaseErr) {
@@ -184,7 +184,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         // eslint-disable-next-line @typescript-eslint/ban-ts-comment
         // @ts-ignore
         const firebaseAuthModule = await import('@react-native-firebase/auth');
-        const auth = ((firebaseAuthModule as any).default || firebaseAuthModule) as unknown as () => { signOut: () => Promise<unknown> };
+        const auth = ((firebaseAuthModule as Record<string, unknown>).default || firebaseAuthModule) as unknown as () => { signOut: () => Promise<unknown> };
         await auth().signOut();
       } catch (firebaseErr) {
         console.error('Firebase Auth signout error:', firebaseErr);

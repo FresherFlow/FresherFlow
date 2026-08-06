@@ -14,8 +14,7 @@ import {
     AppFeedbackType,
     SalaryPeriod,
     OrganizationType,
-    OrgRole,
-    MembershipStatus
+    OrgRole
 } from '@fresherflow/types';
 
 // ========================================

@@ -62,6 +62,48 @@ export async function persistLocalData(state: DiscoveryState) {
     console.log(`Saved all ${validJobs.length} passed jobs to ${allPassedOutputPath} for manual verification`);
 }
 
+function isAtsBoardOrCompany(applyLink: string): boolean {
+    try {
+        const url = new URL(applyLink);
+        const host = url.hostname.toLowerCase();
+
+        // Check if parseJobUrl returns a non-null object
+        if (parseJobUrl(applyLink)) {
+            return true;
+        }
+
+        const atsHosts = [
+            'greenhouse.io', 'lever.co', 'myworkdayjobs.com', 'myworkdaysite.com', 
+            'ashbyhq.com', 'smartrecruiters.com', 'workable.com', 'recruitee.com', 
+            'teamtailor.com', 'icims.com', 'oraclecloud.com', 'successfactors.com', 
+            'taleo.net', 'jobvite.com', 'darwinbox.in', 'darwinbox.com'
+        ];
+        
+        const boardHosts = [
+            'linkedin.com', 'indeed.com', 'naukri.com', 'wellfound.com', 'angel.co', 
+            'internshala.com', 'glassdoor.com', 'remoteok.com', 'weworkremotely.com', 
+            'hasjob.co', 'bayt.com'
+        ];
+        
+        const companyHosts = [
+            'google.com', 'amazon.com', 'microsoft.com', 'ibm.com', 'apple.com', 
+            'uber.com', 'stripe.com', 'meta.com', 'nvidia.com'
+        ];
+
+        const matchHost = (h: string, list: string[]) => {
+            return list.some(item => h === item || h.endsWith('.' + item));
+        };
+
+        if (matchHost(host, atsHosts) || matchHost(host, boardHosts) || matchHost(host, companyHosts)) {
+            return true;
+        }
+
+        return false;
+    } catch {
+        return false;
+    }
+}
+
 export async function uploadToDataLake(state: DiscoveryState, runId: string | null) {
     const allJobs = state.newJobsFound;
 
@@ -70,11 +112,58 @@ export async function uploadToDataLake(state: DiscoveryState, runId: string | nu
     }
     const r2Bucket: string = process.env.R2_BUCKET_NAME;
 
+    // Categorize jobs
+    const supabaseJobs = allJobs.filter(job => job.sourceType === 'ATS' || isAtsBoardOrCompany(job.applyLink));
+    const r2Jobs = allJobs.filter(job => !(job.sourceType === 'ATS' || isAtsBoardOrCompany(job.applyLink)));
+
     // ── Supabase Structured Data Upsert ──────────────────────────────────────────────────
-    if (allJobs.length > 0) {
-        console.log(`\nUpserting ${allJobs.length} jobs to Supabase...`);
-        await upsertJobs(allJobs, runId);
+    if (supabaseJobs.length > 0) {
+        console.log(`\nUpserting ${supabaseJobs.length} ATS/Board/Company jobs to Supabase...`);
+        await upsertJobs(supabaseJobs, runId);
         console.log(`Successfully completed Supabase upserts!`);
+    }
+
+    // ── Curated Remaining Jobs to R2 ──────────────────────────────────────────────────────
+    if (r2Jobs.length > 0) {
+        console.log(`\nProcessing ${r2Jobs.length} remaining jobs for R2 storage...`);
+        let existingJobs: any[] = [];
+        try {
+            const response = await fetch(`${CDN_URL}/jobs/discovered.json`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data && typeof data === 'object') {
+                    if (Array.isArray(data)) {
+                        existingJobs = data;
+                    } else if (Array.isArray(data.jobs)) {
+                        existingJobs = data.jobs;
+                    }
+                }
+            }
+        } catch (err) {
+            console.log(`Could not fetch existing curated jobs from R2 CDN, starting fresh.`);
+        }
+
+        const allRemainingJobs = [...existingJobs, ...r2Jobs];
+        const seenLinks = new Set<string>();
+        const mergedJobs: any[] = [];
+        for (const job of allRemainingJobs) {
+            if (!job.applyLink) continue;
+            if (!seenLinks.has(job.applyLink)) {
+                seenLinks.add(job.applyLink);
+                mergedJobs.push(job);
+            }
+        }
+
+        const payload = {
+            version: 1,
+            source: 'job-discovery-bot',
+            updatedAt: new Date().toISOString(),
+            jobs: mergedJobs
+        };
+
+        console.log(`Uploading curated remaining jobs to R2 at jobs/discovered.json (Total: ${mergedJobs.length})`);
+        await uploadJsonToR2(payload, r2Bucket, 'jobs/discovered.json');
+        console.log(`Successfully uploaded curated remaining jobs to R2.`);
     }
 
     // ── Update ATS Boards Registry in R2 ─────────────────────────────────────

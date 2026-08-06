@@ -23,7 +23,7 @@ const FOREIGN_COUNTRIES = (Country.getAllCountries() || [])
 FOREIGN_COUNTRIES.push('us', 'usa', 'uk', 'dubai', 'uae', 'emea', 'americas', 'apac', 'latam');
 
 // Create a mega-regex for strict word boundary matching of all foreign countries
-const foreignCountriesPattern = FOREIGN_COUNTRIES.map(c => c.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1")).join('|');
+const foreignCountriesPattern = FOREIGN_COUNTRIES.map(c => c.replace(/([.*+?^=!:${}()|[\]/\\-])/g, "\\$1")).join('|');
 const foreignMegaRegex = new RegExp(`\\b(${foreignCountriesPattern})\\b`, 'i');
 
 // Major foreign cities and states/regions that might bypass country checks
@@ -87,7 +87,7 @@ export function isLocationIndiaOrRemote(location: string, title?: string): boole
         }
     }
 
-    const words = loc.split(/[\s,()[\]\/\-._|]+/);
+    const words = loc.split(/[^\w]+/);
     for (let i = 0; i < words.length; i++) {
         if (!words[i]) continue;
         
