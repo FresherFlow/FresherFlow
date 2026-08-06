@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase.js';
-import { parseJobUrl } from '../core/url-parser.js';
+import { parseJobUrl } from '@fresherflow/parser';
 import { DiscoveredJobEntry, RunStats } from '../pipeline/state.js';
 
 function toAtsProviderEnum(source: string): string {

@@ -3,9 +3,10 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { DiscoveryState } from './state.js';
 import { CDN_URL } from '../config.js';
-import { uploadJsonToR2, listR2Objects } from '../utils/r2.js';
+import { uploadJsonToR2, listR2Objects } from '@fresherflow/utils/r2';
 import { saveVisited, saveRejectedReasons } from '../utils/storage.js';
-import { parseJobUrl } from '../core/url-parser.js';
+import { parseJobUrl } from '@fresherflow/parser';
+
 import { withConcurrency } from '../ats/index.js';
 import { upsertJobs } from '../repositories/discoveredJobs.js';
 import { resolveAndAttachCompanies } from '../repositories/companies.js';

@@ -8,6 +8,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
+      "@fresherflow/parser/metadata": ["../../packages/parser/src/metadata.ts"],
       "@fresherflow/parser": ["../../packages/parser/src/index.ts"],
       "@fresherflow/types": ["../../packages/types/index.ts"],
       "@fresherflow/domain": ["../../packages/domain/src/index.ts"],

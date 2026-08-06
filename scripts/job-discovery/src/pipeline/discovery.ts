@@ -1,9 +1,7 @@
 import { DiscoveryState } from './state.js';
 import { ATS_CDN_BASE, ATS_PROVIDERS, TARGET_SITES } from '../config.js';
 import { normalizeUrl, sanitizeAtsUrl } from '../utils/url.js';
-import { isLocationIndiaOrRemote } from '../filters/ats-filters.js';
-import { scoreJobDescription } from '../filters/scorer.js';
-import { hasFresherKeyword, isActualJob, isFresherJob, isSeniorJob } from '../filters/text-filters.js';
+import { isLocationIndiaOrRemote, scoreJobDescription, hasFresherKeyword, isActualJob, isFresherJob, isSeniorJob } from '@fresherflow/domain';
 import { logDecision } from '../utils/logger.js';
 import { findActualApplyLink } from '../core/extractor.js';
 import { extractAtsBoard } from '../core/ats-detector.js';

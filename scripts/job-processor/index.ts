@@ -6,6 +6,13 @@ import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { setCdnMetadata } from '@fresherflow/parser';
+import {
+    loadCdnMetadata,
+    CANONICAL_CITIES_MAP,
+    CANONICAL_COMPANIES,
+    GREENHOUSE_COMPANY_TO_SLUG,
+    CANONICAL_SKILLS_MAP
+} from '@fresherflow/parser/metadata';
 
 import { extractExperience, extractSalary } from '@fresherflow/plugins';
 
@@ -16,24 +23,17 @@ import {
     postProcessNormalize
 } from './src/normalizer.js';
 
-import { 
-    loadCdnMetadata, 
-    CANONICAL_CITIES_MAP, 
-    CANONICAL_COMPANIES, 
-    GREENHOUSE_COMPANY_TO_SLUG,
-    CANONICAL_SKILLS_MAP 
-} from './src/metadata.js';
+
 
 import {
     applyStealth,
     extractAtsContent,
     isBotOrError,
     trimForLlm
-} from './src/browser';
+} from '@fresherflow/plugins';
 
 import { extractNativeAtsData } from './src/ats-native';
-import { stripBoilerplate, setBoilerplateRegistry } from './src/parsers/greenhouse-parser.js';
-import { applyRuleEngine } from './src/rules';
+import { applyRuleEngine } from '@fresherflow/domain';
 
 import {
     enrichMissingFields,
@@ -42,12 +42,11 @@ import {
 
 import {
     saveJobToSupabase,
-    submitJobToApi,
-    resolveCompanyWebsiteAndLogo,
-    warmupApi
 } from './src/api.js';
 
-import { matchFromCdn } from './src/cdn-matcher';
+import { resolveCompanyWebsiteAndLogo } from '@fresherflow/utils';
+
+import { matchFromCdn } from '@fresherflow/parser';
 
 async function fileExists(filePath: string): Promise<boolean> {
     try {
@@ -149,25 +148,9 @@ async function loadEnv(): Promise<void> {
 
 async function run(): Promise<void> {
     console.log('Starting Job Processor...');
-    warmupApi();
 
     await loadEnv();
     await loadCdnMetadata();
-
-    /*
-    try {
-        const bpRes = await fetch(`${process.env.NEXT_PUBLIC_CDN_URL || process.env.CDN_URL}/boilerplate.json`);
-        if (bpRes.ok) {
-            const bpData = await bpRes.json();
-            setBoilerplateRegistry(bpData);
-            console.log('Loaded company boilerplate registry from CDN.');
-        } else {
-            console.log('Failed to fetch boilerplate.json from CDN, continuing without it.');
-        }
-    } catch (err) {
-        console.log('Error fetching boilerplate.json from CDN:', (err as Error).message);
-    }
-    */
 
     setCdnMetadata({
         cities: CANONICAL_CITIES_MAP,
@@ -434,7 +417,7 @@ async function run(): Promise<void> {
                     companyId: job.companyId || job.company_id || null,
                     companyWebsite: job.companyUrl || job.companyWebsite || '',
                     companyLogoUrl: job.companyLogo || job.companyLogoUrl || '',
-                    applyLink: job.applyLink,
+                    applyLink: nativeData?.applyLink || job.applyLink,
                     locations: (nativeData?.locations && nativeData.locations.length > 0) ? nativeData.locations : dbLocations,
                     requiredSkills: (nativeData?.nativeSkills && nativeData.nativeSkills.length > 0) ? nativeData.nativeSkills : (Array.isArray(job.skills) ? job.skills : []),
                     workMode: nativeData?.workplaceType ?? dbWorkMode ?? rules.workMode ?? null,
@@ -448,7 +431,7 @@ async function run(): Promise<void> {
                     incentives: nativeData?.incentives ?? '',
                     selectionProcess: nativeData?.selectionProcess ?? '',
                     jobFunction: job.jobFunction || job.department || null,
-                    description: stripBoilerplate(nativeData?.text || atsContent.text || job.atsText || textForLlm, job.company),
+                    description: nativeData?.text || atsContent.text || job.atsText || textForLlm,
                 };
 
                 // 2c. CDN matcher: fill remaining fields using CDN JSON data
@@ -554,23 +537,20 @@ async function run(): Promise<void> {
                     exp: `${extracted.experienceMin}-${extracted.experienceMax}yr`,
                 });
 
-                const { website, logoUrl } = resolveCompanyWebsiteAndLogo(extracted.company, job.applyLink, extracted.companyWebsite);
+                const { website, logoUrl } = resolveCompanyWebsiteAndLogo(extracted.company, extracted.applyLink, extracted.companyWebsite);
                 extracted.companyWebsite = website || extracted.companyWebsite;
                 extracted.companyLogoUrl = logoUrl || extracted.companyLogoUrl;
 
                 allExtracted.push(extracted);
                 
-                // DOUBLE WRITE: Write to Supabase review table FIRST
-                const reviewSuccess = await saveJobToSupabase(extracted, job.aggregatorUrl || job.applyLink, job.applyLink);
-                
                 if (ENABLE_API_UPLOAD) {
-                    const apiSuccess = await submitJobToApi(extracted, job.aggregatorUrl || job.applyLink, job.applyLink);
+                    const apiSuccess = await saveJobToSupabase(extracted, job.aggregatorUrl || extracted.applyLink, extracted.applyLink);
                     if (apiSuccess) {
-                        successList.push({ title: extracted.title, company: extracted.company, url: job.applyLink });
+                        successList.push({ title: extracted.title, company: extracted.company, url: extracted.applyLink });
                         await saveState(job.applyLink, 'PROCESSED');
                         if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'PROCESSED');
                     } else {
-                        failureList.push({ url: job.applyLink, reason: 'Main API insert rejected' });
+                        failureList.push({ url: job.applyLink, reason: 'Supabase API insert rejected' });
                         await saveState(job.applyLink, 'FAILED');
                         if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'FAILED');
                     }

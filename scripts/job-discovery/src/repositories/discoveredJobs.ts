@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase.js';
-import { parseJobUrl } from '../core/url-parser.js';
+import { parseJobUrl } from '@fresherflow/parser';
 
 export async function upsertJobs(jobs: any[], runId: string | null) {
   if (!process.env.SUPABASE_URL || jobs.length === 0) return;

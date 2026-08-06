@@ -6,16 +6,30 @@ import {
     SalaryPeriod
 } from '@fresherflow/types';
 import {
+    cleanAndResolveLocations,
+    parseHtmlToMarkdown,
+    extractWorkMode,
+    extractDegrees,
+    extractPassoutYears,
+    extractSkills,
+    extractType,
+} from '@fresherflow/parser';
+import {
     CANONICAL_COMPANIES,
     CANONICAL_SKILLS_MAP,
     CANONICAL_CITIES_MAP,
-    CANONICAL_EDUCATION
-} from './metadata.js';
+    CANONICAL_EDUCATION,
+    ORACLE_SLUG_MAP
+} from '@fresherflow/parser/metadata';
+
 import {
     normalizeCourseArray,
     normalizeSpecializationArray,
     SKILL_ALIAS_LOOKUP
 } from '@fresherflow/constants';
+
+import { BRAND_DOMAINS } from '@fresherflow/utils';
+
 
 export const walkInDetailsSchema = z.object({
     dateRange: z.string().optional().default(''),
@@ -34,7 +48,11 @@ export const applicationDetailsSchema = z.object({
     platform: z.string().optional().default(''),
     estimatedMinutes: z.number().int().positive().optional(),
     requiredItems: z.array(z.string()).optional().default([])
-}).optional().nullable().default({ method: 'DIRECT' });
+}).optional().nullable().default({
+    method: 'DIRECT',
+    platform: '',
+    requiredItems: []
+});
 
 export const structuredLocationSchema = z.object({
     name: z.string(),
@@ -179,32 +197,220 @@ export function normalizeRawJson(raw: Record<string, unknown>): Record<string, u
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function postProcessNormalize(job: ExtractedJob, _fullText: string): ExtractedJob {
+    // Clean titles
+    if (job.title) {
+        // Strip numeric prefix (starts with at least 4 digits, optional dash/space-dash)
+        job.title = job.title.replace(/^\d{4,}\b\s*[-–]?\s*/u, '').trim();
+
+        // Strip company branding suffix
+        job.title = job.title.replace(/\s*[-–|]\s*[A-Z][^-|]{2,50}(?:Careers|Jobs|Hiring|Recruitment|Talent)\s*$/i, '').trim();
+    }
+
+    // --- 0. Pre-processing fixes ---
+
+    // Fix description: Convert to clean markdown
+    if (job.description) {
+        job.description = parseHtmlToMarkdown(job.description);
+    }
+
+    // Fix employmentType normalization
+    if (job.employmentType) {
+        const empClean = job.employmentType.toLowerCase().trim();
+        if (empClean.includes('intern') || empClean.includes('trainee')) {
+            job.employmentType = 'INTERNSHIP';
+        } else if (empClean.includes('part time') || empClean.includes('part-time')) {
+            job.employmentType = 'PART_TIME';
+        } else if (empClean.includes('contract')) {
+            job.employmentType = 'CONTRACT';
+        } else if (empClean.includes('full time') || empClean.includes('full-time') || empClean === 'full_time' || empClean === 'regular') {
+            job.employmentType = 'FULL_TIME';
+        } else {
+            job.employmentType = '';
+        }
+    }
+
+    // Clean employment type: if empty, use extractType or job title to infer it, falling back to FULL_TIME
+    if (!job.employmentType || job.employmentType === '') {
+        if (job.type === 'INTERNSHIP') {
+            job.employmentType = 'INTERNSHIP';
+        } else {
+            const titleLower = (job.title || '').toLowerCase();
+            const inferredType = extractType(titleLower);
+            if (inferredType === 'INTERNSHIP') {
+                job.employmentType = 'INTERNSHIP';
+            } else if (titleLower.includes('part time') || titleLower.includes('part-time')) {
+                job.employmentType = 'PART_TIME';
+            } else if (titleLower.includes('contract')) {
+                job.employmentType = 'CONTRACT';
+            } else {
+                job.employmentType = 'FULL_TIME';
+            }
+        }
+    }
+
+    // Oracle company name resolution
+    if (job.applyLink && job.applyLink.includes('.oraclecloud.com')) {
+        try {
+            const url = new URL(job.applyLink);
+            const host = url.hostname.toLowerCase();
+            const parts = host.split('.');
+            const subdomain = parts[0];
+
+            let resolvedName = '';
+
+            // 1. Try mapping the full candidate experience site prefix from CDN (ats/oracle.json)
+            const lowerLink = job.applyLink.toLowerCase();
+            for (const [prefix, compName] of ORACLE_SLUG_MAP.entries()) {
+                if (lowerLink.startsWith(prefix)) {
+                    resolvedName = compName;
+                    break;
+                }
+            }
+
+            // 2. If not prefix matched, fallback to subdomain title-case
+            if (!resolvedName) {
+                resolvedName = subdomain
+                    .replace(/-/g, ' ')
+                    .replace(/_/g, ' ')
+                    .replace(/\b\w/g, c => c.toUpperCase());
+            }
+
+            // 3. Try matching by website domain using BRAND_DOMAINS
+            let canonicalCompany = null;
+            const lowerSubdomain = subdomain.toLowerCase().trim();
+            const matchedDomain = BRAND_DOMAINS[lowerSubdomain] || BRAND_DOMAINS[resolvedName.toLowerCase().trim()];
+
+            if (matchedDomain) {
+                for (const company of CANONICAL_COMPANIES.values()) {
+                    if (company.url) {
+                        try {
+                            const compHost = new URL(company.url).hostname.toLowerCase().replace(/^www\./, '');
+                            if (compHost === matchedDomain) {
+                                canonicalCompany = company;
+                                break;
+                            }
+                        } catch {
+                            // Ignore URL parsing errors
+                        }
+                    }
+                }
+            }
+
+            const cleanResolved = resolvedName.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+            // Try exact name or slug match if not matched by domain
+            if (!canonicalCompany) {
+                for (const company of CANONICAL_COMPANIES.values()) {
+                    if (
+                        company.name.toLowerCase() === resolvedName.toLowerCase() ||
+                        (company.slug && company.slug.toLowerCase() === cleanResolved)
+                    ) {
+                        canonicalCompany = company;
+                        break;
+                    }
+                }
+            }
+
+            // Generic acronym match (e.g. "Jpmc" -> "JPMorgan Chase & Co.")
+            if (!canonicalCompany && cleanResolved.length >= 3) {
+                for (const company of CANONICAL_COMPANIES.values()) {
+                    const fullName = company.name;
+                    const matches = fullName.match(/[A-Z]|\b\w/g) || [];
+                    const acronym = matches.join('').toLowerCase();
+                    if (acronym.includes(cleanResolved)) {
+                        canonicalCompany = company;
+                        break;
+                    }
+                }
+            }
+
+            if (canonicalCompany) {
+                job.company = canonicalCompany.name;
+            } else if (matchedDomain) {
+                const domainPrefix = matchedDomain.split('.')[0];
+                job.company = domainPrefix.charAt(0).toUpperCase() + domainPrefix.slice(1);
+            } else {
+                job.company = resolvedName;
+            }
+        } catch {
+            // Ignore URL parsing errors
+        }
+    }
+
     // --- 1. Company Casing and Lookup ---
     const rawCompany = (job.company || '').trim();
     if (rawCompany) {
-        const canonicalCompany = CANONICAL_COMPANIES.get(rawCompany.toLowerCase());
+        let canonicalCompany = CANONICAL_COMPANIES.get(rawCompany.toLowerCase());
+        
+        // If no direct match, try matching by slug
+        if (!canonicalCompany) {
+            const rawLower = rawCompany.toLowerCase();
+            for (const company of CANONICAL_COMPANIES.values()) {
+                if (company.slug && company.slug.toLowerCase() === rawLower) {
+                    canonicalCompany = company;
+                    break;
+                }
+            }
+        }
+
         if (canonicalCompany) {
             job.company = canonicalCompany.name;
             if (canonicalCompany.url && (!job.companyWebsite || !job.companyWebsite.startsWith('http'))) {
                 job.companyWebsite = canonicalCompany.url;
             }
+        } else {
+            // Cleanup common URL slug artifacts (dashes → spaces, title-case)
+            job.company = job.company
+                .replace(/-/g, ' ')
+                .replace(/\b\w/g, c => c.toUpperCase())
+                .trim();
         }
     }
 
     // --- 2. Location Normalization ---
     if (job.locations && Array.isArray(job.locations)) {
-        job.locations = Array.from(new Set(job.locations.map(loc => {
-            const cleaned = loc.trim().toLowerCase();
-            if (cleaned === 'bengaluru') return 'Bangalore';
-            if (cleaned === 'gurgaon') return 'Gurugram';
-            
-            const match = CANONICAL_CITIES_MAP.get(cleaned);
-            if (match) return match;
-            
-            // Accept any new location if it doesn't match CDN
-            return loc.trim();
-        }).filter(Boolean)));
+        const rawStrings: string[] = [];
+        for (const rawLoc of job.locations) {
+            let s: string;
+            if (typeof rawLoc === 'object' && rawLoc !== null) {
+                s = (rawLoc as any).city || (rawLoc as any).name || (rawLoc as any).region || '';
+            } else if (typeof rawLoc === 'string') {
+                s = rawLoc;
+            } else {
+                continue;
+            }
+
+            // Sometimes it's a JSON stringified object
+            if (s.startsWith('{') && s.endsWith('}')) {
+                try {
+                    const parsed = JSON.parse(s);
+                    s = parsed.city || parsed.name || parsed.region || '';
+                } catch {
+                    s = '';
+                }
+            }
+
+            for (const part of s.split(';')) {
+                const cleaned = stripAtsOfficeCode(part.trim());
+                if (cleaned) rawStrings.push(cleaned);
+            }
+        }
+
+        const { locations: resolvedLocs, structuredLocations: resolvedStructLocs } = cleanAndResolveLocations(rawStrings);
+        job.locations = resolvedLocs;
+        job.structuredLocations = resolvedStructLocs;
     }
+
+    // Clean work mode: if null, call parser's extractWorkMode, falling back to ONSITE
+    if (!job.workMode) {
+        const hasRemoteLocation = job.locations?.some(loc => loc.toLowerCase() === 'remote');
+        if (hasRemoteLocation) {
+            job.workMode = 'REMOTE' as any;
+        } else {
+            job.workMode = (extractWorkMode(_fullText || '') || 'ONSITE') as any;
+        }
+    }
+
 
     // --- 3. Education (Degrees, Courses & Specializations) Normalization ---
     let degrees = job.allowedDegrees || [];
@@ -254,27 +460,47 @@ export function postProcessNormalize(job: ExtractedJob, _fullText: string): Extr
     const cdnLevels = CANONICAL_EDUCATION.educationLevels || [];
     const validLevels = ['TENTH', 'INTER', ...cdnLevels];
     degrees = Array.from(new Set(degrees)); // Deduplicate inferred degrees
-    degrees = degrees.map(deg => {
-        const cleaned = deg.toUpperCase().trim();
-        const match = validLevels.find(level => level.toUpperCase() === cleaned);
-        if (match) return match;
+    if (degrees.length === 0) {
+        degrees = extractDegrees(_fullText || '');
+    } else {
+        degrees = degrees.flatMap(deg => {
+            const cleaned = deg.toUpperCase().trim();
+            const match = validLevels.find(level => level.toUpperCase() === cleaned);
+            if (match) return [match];
 
-        if (cleaned.includes('POSTGRADUATE') || cleaned.includes('POST GRADUATE') || cleaned.includes('PG') || cleaned.includes('MASTER')) return 'PG';
-        if (cleaned.includes('BACHELOR') || cleaned.includes('DEGREE') || cleaned.includes('GRADUATE') || cleaned.includes('UNDERGRADUATE') || cleaned.includes('UG') || cleaned.includes('ENGINEERING')) return 'DEGREE';
-        if (cleaned.includes('DIPLOMA') || cleaned.includes('POLYTECHNIC') || cleaned.includes('ITI')) return 'DIPLOMA';
-        if (cleaned.includes('12') || cleaned.includes('INTERMEDIATE') || cleaned.includes('INTER') || cleaned.includes('HSC')) return 'INTER';
-        if (cleaned.includes('10') || cleaned.includes('MATRICULATION') || cleaned.includes('SSC') || cleaned.includes('TENTH')) return 'TENTH';
-        return '';
-    }).filter(Boolean);
+            return extractDegrees(deg);
+        });
+    }
 
-    job.allowedDegrees = Array.from(new Set(degrees));
+    job.allowedDegrees = Array.from(new Set(degrees)).filter(Boolean);
     job.allowedCourses = Array.from(new Set(courses));
     job.allowedSpecializations = Array.from(new Set(specializations));
 
+    // Allowed passout years: if empty, extract from full text first, otherwise infer from current year and job type
+    if (!job.allowedPassoutYears || job.allowedPassoutYears.length === 0) {
+        const extractedYears = extractPassoutYears(_fullText || '');
+        if (extractedYears.length > 0) {
+            job.allowedPassoutYears = extractedYears;
+        } else {
+            const currentYear = new Date().getFullYear();
+            if (job.type === 'INTERNSHIP') {
+                job.allowedPassoutYears = [currentYear, currentYear + 1, currentYear + 2];
+            } else {
+                job.allowedPassoutYears = [currentYear - 1, currentYear];
+            }
+        }
+    } else {
+        job.allowedPassoutYears = Array.from(new Set(job.allowedPassoutYears.map(y => parseInt(String(y), 10)).filter(y => !isNaN(y))));
+    }
+
     // --- 4. Skills Normalization ---
+    if (!job.requiredSkills || job.requiredSkills.length === 0) {
+        job.requiredSkills = extractSkills(_fullText || '', job.locations);
+    }
+
     const finalSkillsSet = new Set<string>();
 
-    // Process skills explicitly extracted by LLM
+    // Process skills explicitly extracted by LLM or parser
     if (job.requiredSkills && Array.isArray(job.requiredSkills)) {
         for (const skill of job.requiredSkills) {
             if (!skill) continue;
@@ -312,4 +538,45 @@ export function postProcessNormalize(job: ExtractedJob, _fullText: string): Extr
     }
 
     return job;
+}
+
+/**
+ * Strip ATS-internal office code prefixes.
+ * These are company-internal identifiers, NOT location names.
+ * Pattern: codes always appear BEFORE a comma or colon, and are
+ * either all-caps alphanumeric or contain digits.
+ */
+function stripAtsOfficeCode(raw: string): string {
+    let s = raw
+        // Drop pure noise tokens: 'in', 'India', 'ph', 'us', ISO codes
+        .replace(/^(in|india|ph|us|uk|sg|ind)$/i, '')
+        // Strip "1401-G-India: " style prefixes (digit starts, colon after)
+        .replace(/^\d[\w-]*:\s*/i, '')
+        // Strip "IND-City-Code, " style prefixes
+        .replace(/^[A-Z]{2,4}-[A-Za-z]+-[A-Z]\s*,\s*/i, '')
+        // Strip parenthetical office codes like "(INNOIGAL)" or "(INMANBP)"
+        .replace(/\([A-Z0-9]{4,}\)/g, '')
+        // Strip known ATS building/park names that are NOT cities
+        .replace(/\b(WeWork|RMZ|Manyatha|EPIP|STPI|SEZ|Technopark|Pritech|Prestige|Godrej|DLF Cyber City|Experio|Carnival|Express Zone|Hafeezpet Phoenix|Novus Tower|Sricity Mill|Uppal L&R|Vibhuti Khand|Sitapura)\b[^,]*/gi, '')
+        // Strip state codes at end: ", WB" ", KA" ", TG" ", TN" ", UP" etc.
+        .replace(/,\s*(WB|KA|TG|TN|UP|GJ|MH|HR|NCR|IND)\b/gi, '')
+        // Strip trailing ", India" or ", IN"
+        .replace(/,?\s*(India|IN|IND)\s*$/i, '')
+        // Strip all-caps code prefix before space: "TPIN Mohali" → "Mohali"
+        .replace(/^[A-Z]{3,6}\s+(?=[A-Z][a-z])/, '')
+        // Strip numbers with 3+ digits (pin codes, building numbers)
+        .replace(/\b\d{3,}\b/g, '')
+        // Strip Floor/Plot/Phase/Block/Flr/FL indicators
+        .replace(/\b(Floor|Flr|FL|Plot|Phase|Block|Tower|Gate|Near|Opp|Beside)\b[^,]*/gi, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+
+    // After all cleanup, take the LAST comma-segment as the city
+    // (city is typically at the end of an address string)
+    const parts = s.split(',').map(p => p.trim()).filter(p => p.length > 1);
+    if (parts.length > 1) {
+        // Return the last meaningful part
+        return parts[parts.length - 1];
+    }
+    return s;
 }

@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import { DiscoveryState } from './state.js';
-import { sendTelegramMessage } from '../utils/telegram.js';
+import { sendTelegramMessage } from '@fresherflow/utils';
 
 export async function sendNotifications(state: DiscoveryState) {
     if (state.newJobsFound.length === 0) {

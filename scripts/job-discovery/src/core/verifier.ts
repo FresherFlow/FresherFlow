@@ -1,7 +1,6 @@
 import { Page } from 'playwright';
 import { EXPIRED_REGEXES } from '../config.js';
-import { isActualJob } from '../filters/text-filters.js';
-import { scoreJobDescription } from '../filters/scorer.js';
+import { isActualJob, scoreJobDescription } from '@fresherflow/domain';
 import { logDecision } from '../utils/logger.js';
 
 export interface JobCheckResult {

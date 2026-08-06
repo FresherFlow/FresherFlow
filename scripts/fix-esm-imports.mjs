@@ -20,7 +20,7 @@ async function walk(dir) {
       continue;
     }
 
-    if (!entry.isFile() || !fullPath.endsWith('.js')) continue;
+    if (!entry.isFile() || (!fullPath.endsWith('.js') && !fullPath.endsWith('.d.ts'))) continue;
 
     const source = await fs.readFile(fullPath, 'utf8');
     const next = source.replace(importPattern, (match, prefix, quote, specifier, suffix) => {

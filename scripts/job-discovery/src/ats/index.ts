@@ -59,8 +59,7 @@ import {
     MetaAdapter,
 } from '@fresherflow/plugins';
 
-import { isPotentialFresherJob, isLocationIndiaOrRemote } from '../filters/ats-filters.js';
-import { scoreJobDescription } from '../filters/scorer.js';
+import { isPotentialFresherJob, isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/domain';
 import type { RunStats } from '../pipeline/state.js';
 import { normalizeUrl } from '../utils/url.js';
 
@@ -183,7 +182,7 @@ async function runProvider(
                 try {
                     const desc = await adapter.fetchJobDetails(job);
                     if (desc) {
-                        job.description = desc;
+                        job.description = typeof desc === 'string' ? desc : desc.text;
                         job.descriptionSource = 'API';
                     }
                 } catch {

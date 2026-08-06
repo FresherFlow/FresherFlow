@@ -1,4 +1,4 @@
-import { listR2Objects, downloadJsonFromR2, uploadJsonToR2 } from './r2.js';
+import { listR2Objects, downloadJsonFromR2, uploadJsonToR2 } from '@fresherflow/utils/r2';
 import { ATS_PROVIDERS } from '../config.js';
 
 function getBucket(): string {

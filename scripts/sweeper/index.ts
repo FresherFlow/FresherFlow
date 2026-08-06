@@ -2,9 +2,9 @@ import { chromium, Page } from 'playwright';
 
 // Shared utilities — canonical source lives in job-discovery/src
 import { signUrl } from '../job-discovery/src/utils/url.js';
-import { sendTelegramMessage } from '../job-discovery/src/utils/telegram.js';
 import { EXPIRED_REGEXES, loadEnv } from '../job-discovery/src/config.js';
-import { listR2Objects, deleteR2Object } from '../job-discovery/src/utils/r2.js';
+import { sendTelegramMessage } from '@fresherflow/utils';
+import { listR2Objects, deleteR2Object } from '@fresherflow/utils/r2';
 
 await loadEnv();
 

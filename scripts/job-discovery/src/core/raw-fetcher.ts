@@ -1,4 +1,4 @@
-import { parseJobUrl } from './url-parser.js';
+import { parseJobUrl } from '@fresherflow/parser';
 
 export interface RawJobData {
     adapter: string;

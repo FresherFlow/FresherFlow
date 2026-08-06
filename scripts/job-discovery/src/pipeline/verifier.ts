@@ -1,8 +1,7 @@
 import { DiscoveryState } from './state.js';
 import { normalizeUrl } from '../utils/url.js';
 import { tryFetchNativeApi } from '../core/raw-fetcher.js';
-import { isLocationIndiaOrRemote } from '../filters/ats-filters.js';
-import { scoreJobDescription } from '../filters/scorer.js';
+import { isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/domain';
 import { isJobLive } from '../core/verifier.js';
 
 export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning: () => boolean) {
