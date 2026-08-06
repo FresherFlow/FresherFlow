@@ -1,11 +1,16 @@
 import { PrismaClient } from '@prisma/client';
+import { Pool } from 'pg';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 export * from '@prisma/client';
 
 const prismaClientSingleton = () => {
     const shouldLog = process.env.LOG_DATABASE_QUERIES === 'true';
-    const client = new PrismaClient(
-        shouldLog
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+    const adapter = new PrismaPg(pool);
+    const client = new PrismaClient({
+        adapter,
+        ...(shouldLog
             ? {
                   log: [
                       { emit: 'event', level: 'query' },
@@ -13,8 +18,8 @@ const prismaClientSingleton = () => {
                       { emit: 'stdout', level: 'warn' },
                   ],
               }
-            : undefined
-    );
+            : {}),
+    });
 
     if (shouldLog) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
