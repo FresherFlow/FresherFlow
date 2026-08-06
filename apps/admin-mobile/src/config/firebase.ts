@@ -1,4 +1,11 @@
-import type { FirebaseAuthTypes } from '@react-native-firebase/auth';
+// FirebaseAuthTypes namespace — inline because @react-native-firebase/auth v8+ removed this named export
+// eslint-disable-next-line @typescript-eslint/no-namespace
+declare namespace FirebaseAuthTypes {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type Module = any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type AuthCredential = any;
+}
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import Constants from 'expo-constants';
 

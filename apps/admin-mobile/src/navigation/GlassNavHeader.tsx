@@ -29,7 +29,7 @@ export const GlassNavHeader = ({ options, back, navigation }: { options: NativeS
             <LinearGradient
                 colors={gradientColors}
                 locations={[0, 0.4, 0.7, 1]}
-                style={StyleSheet.absoluteFillObject}
+                style={StyleSheet.absoluteFill}
             />
             
             <View style={[styles.container, { paddingTop: Math.max(insets.top, 16) }]}>

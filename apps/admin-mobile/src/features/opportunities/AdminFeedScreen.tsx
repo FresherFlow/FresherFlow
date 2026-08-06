@@ -16,7 +16,9 @@ import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import * as WebBrowser from 'expo-web-browser';
 import { BottomSheetModal, BottomSheetModalProvider, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
-import { Plus, Eye, CheckSquare, MapPin, Briefcase, MoreVertical, MessageCircle, Send, Linkedin, Instagram, Trash2, Clock, ExternalLink } from 'lucide-react-native';
+import { Plus, Eye, CheckSquare, MapPin, Briefcase, MoreVertical, MessageCircle, Send, Share2, Trash2, Clock, ExternalLink } from 'lucide-react-native';
+const Linkedin = Share2; // lucide-react-native removed Linkedin
+const Instagram = Share2; // lucide-react-native removed Instagram
 
 import { Screen } from '../../components/common/Layout';
 import { PremiumHeader, SurfaceCard, AppText } from '../../components/common/PremiumPrimitives';
@@ -159,10 +161,10 @@ const JobCardItem: React.FC<{
                             <Send size={14} color="#0088cc" />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => handleCopyCaption('linkedin')} style={[styles.iconBtn, { backgroundColor: alpha('#0077b5', 0.1) }]}>
-                            <Linkedin size={14} color="#0077b5" />
+                            <Share2 size={14} color="#0077b5" />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => handleCopyCaption('instagram')} style={[styles.iconBtn, { backgroundColor: alpha('#E1306C', 0.1) }]}>
-                            <Instagram size={14} color="#E1306C" />
+                            <Share2 size={14} color="#E1306C" />
                         </TouchableOpacity>
                     </View>
                 </View>

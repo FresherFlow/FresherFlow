@@ -11,7 +11,8 @@ import {
 import { FlashList } from '@shopify/flash-list';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
-import { CheckSquare, Square, Share2, MessageCircle, Send, Linkedin, Copy, Radio, BellRing, Rocket } from 'lucide-react-native';
+import { CheckSquare, Square, Share2, MessageCircle, Send, Copy, Radio, BellRing, Rocket } from 'lucide-react-native';
+const Linkedin = Share2; // lucide-react-native removed Linkedin — using Share2 as branded placeholder
 import { Screen } from '../../components/common/Layout';
 import { PremiumHeader, SurfaceCard, AppText } from '../../components/common/PremiumPrimitives';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -275,7 +276,7 @@ export default function CaptionsScreen() {
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
                     <PlatformChip label="WhatsApp" value="whatsapp" Icon={MessageCircle} />
                     <PlatformChip label="Telegram" value="telegram" Icon={Send} />
-                    <PlatformChip label="LinkedIn" value="linkedin" Icon={Linkedin} />
+                    <PlatformChip label="LinkedIn" value="linkedin" Icon={Share2} />
                     <PlatformChip label="Twitter" value="twitter" Icon={Share2} />
                 </ScrollView>
             </View>

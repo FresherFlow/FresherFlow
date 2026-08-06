@@ -80,7 +80,7 @@ function ThemedApp() {
             <View style={[styles.appShell, { backgroundColor: colors.background }]}>
                 <NavigationContainer theme={navigationTheme}>
                     <AppNavigator />
-                    <StatusBar style={mode === 'dark' ? 'light' : 'dark'} backgroundColor="transparent" translucent />
+                    <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
                 </NavigationContainer>
             </View>
         </ToastProvider>
