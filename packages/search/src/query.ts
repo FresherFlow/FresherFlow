@@ -1,7 +1,9 @@
 import { Opportunity } from '@fresherflow/types';
-import { prisma } from '@fresherflow/database';
+import { prisma, Prisma } from '@fresherflow/database';
 import { logger } from '@fresherflow/logger';
-import { join, sqltag as sql, type Sql } from '@prisma/client/runtime/library';
+
+const { join, sql } = Prisma;
+type Sql = Prisma.Sql;
 
 export interface SearchOptions {
     filterType?: string;

@@ -1,4 +1,4 @@
-import { scoreJobDescription } from './filters/scorer.js';
+import { scoreJobDescription } from '@fresherflow/domain';
 
 const text = `CAREER ADVANCEMENT 
 With no forced hierarchy at Capco, everyone has the opportunity to grow as we grow, taking their career into their own hands. 

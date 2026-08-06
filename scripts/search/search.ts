@@ -3,8 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { DEFAULT_TARGETS, findTargetByCompany, loadAtsDataTargets, SearchTarget } from './search-config.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { isLocationIndiaOrRemote, isPotentialFresherJob } from '../job-discovery/src/filters/ats-filters.js';
-import { isFresherJob } from '../job-discovery/src/filters/text-filters.js';
+import { isLocationIndiaOrRemote, isPotentialFresherJob, isFresherJob } from '@fresherflow/domain';
 
 // Load environment variables from root .env if not loaded
 async function loadEnv() {

@@ -1,5 +1,7 @@
-import { PrismaClient } from '@prisma/client';
-import { join, sqltag as sql, type Sql } from '@prisma/client/runtime/library';
+import { PrismaClient, Prisma } from '@fresherflow/database';
+
+const { join, sql } = Prisma;
+type Sql = Prisma.Sql;
 
 const prisma = new PrismaClient();
 

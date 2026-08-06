@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { scoreJobDescription } from '../src/filters/scorer.js';
+import { scoreJobDescription } from '@fresherflow/domain';
 
 interface LabeledJob {
     jobId: string;

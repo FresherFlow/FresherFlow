@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { extractAtsBoard } from '../src/core/ats-detector.js';
 import { AtsRegistry } from '../src/ats/index.js';
-import { uploadToR2 } from '../src/utils/r2.js';
+import { uploadToR2 } from '@fresherflow/utils/r2';
 import { loadEnv } from '../src/config.js';
 
 async function run() {
@@ -40,7 +40,7 @@ async function run() {
             if (!atsRegistry[provider]) atsRegistry[provider] = {};
             
             if (!atsRegistry[provider]![boardId]) {
-                console.log(`=ƒîƒ Discovered NEW ATS board: ${provider} -> ${boardId} (${comp.company})`);
+                console.log(`=ï¿½ï¿½ Discovered NEW ATS board: ${provider} -> ${boardId} (${comp.company})`);
                 atsRegistry[provider]![boardId] = comp.company;
                 modified = true;
                 newFound++;
@@ -62,3 +62,4 @@ async function run() {
 }
 
 run().catch(console.error);
+
