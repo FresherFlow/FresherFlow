@@ -1,8 +1,9 @@
-import React, { RefObject } from 'react';
+import React, { RefObject, useEffect } from 'react';
 import { cn } from '@repo/ui/utils/cn';
 import { OPPORTUNITY_TYPES, WORK_MODES } from '@fresherflow/domain';
 import { Input } from '@/ui/Input';
 import { ArrowPathIcon, CheckCircleIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { SkillPill } from '@/ui/SkillPill';
 
 interface PreferencesStepProps {
     interestedIn: string[];
@@ -53,6 +54,12 @@ export const PreferencesStep = ({
     filteredSkillOptions, addSkill, addSkillValue, skillRef,
     isLoading, onSubmit, onSkip
 }: PreferencesStepProps) => {
+    useEffect(() => {
+        if (skillHighlight >= 0) {
+            document.getElementById(`prefs-step-option-${skillHighlight}`)?.scrollIntoView({ block: 'nearest' });
+        }
+    }, [skillHighlight]);
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-3 duration-300">
 
@@ -164,9 +171,10 @@ export const PreferencesStep = ({
                         <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-xl shadow-2xl max-h-52 overflow-y-auto">
                             {filteredSkillOptions.map((skill, idx) => (
                                 <button key={skill}
+                                    id={`prefs-step-option-${idx}`}
                                     onMouseDown={() => addSkillValue(skill)}
-                                    className={cn('w-full text-left px-4 py-2.5 text-sm font-medium transition-colors first:rounded-t-xl last:rounded-b-xl capitalize', skillHighlight === idx ? 'bg-primary/15 text-foreground' : 'hover:bg-muted')}
-                                >{skill}</button>
+                                    className={cn('w-full text-left px-4 py-2.5 text-sm font-medium transition-colors first:rounded-t-xl last:rounded-b-xl flex items-center', skillHighlight === idx ? 'bg-primary/15 text-foreground' : 'hover:bg-muted')}
+                                ><SkillPill skill={skill} className="bg-transparent border-transparent shadow-none pointer-events-none p-0" /></button>
                             ))}
                         </div>
                     )}
@@ -175,10 +183,10 @@ export const PreferencesStep = ({
                 {skills.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                         {skills.map(s => (
-                            <span key={s} className="bg-secondary border border-border text-foreground px-3 py-1 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 capitalize">
-                                {s}
-                                <XMarkIcon onClick={() => removeSkill(s)} className="w-3 h-3 cursor-pointer opacity-50 hover:opacity-100 transition-opacity" />
-                            </span>
+                            <div key={s} className="bg-secondary border border-border pr-2 py-0.5 rounded-lg text-[12px] font-semibold flex items-center gap-1 capitalize">
+                                <SkillPill skill={s} size="xs" className="bg-transparent border-transparent shadow-none py-0 pl-2 pr-1 text-foreground" />
+                                <XMarkIcon onClick={() => removeSkill(s)} className="w-3.5 h-3.5 cursor-pointer opacity-50 hover:opacity-100 transition-opacity" />
+                            </div>
                         ))}
                     </div>
                 )}

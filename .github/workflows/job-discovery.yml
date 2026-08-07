@@ -32,6 +32,9 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
 
+      - name: Build Workspace Packages
+        run: pnpm build --filter "@fresherflow/constants" --filter "@fresherflow/types" --filter "@fresherflow/utils" --filter "@fresherflow/parser" --filter "@fresherflow/domain" --filter "@fresherflow/plugins"
+
       - name: Run Job Discovery Bot
         working-directory: scripts/job-discovery
         env:

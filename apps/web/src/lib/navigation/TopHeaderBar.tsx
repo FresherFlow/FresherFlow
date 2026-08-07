@@ -3,39 +3,36 @@
 import { Suspense, useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 
-const ACCOUNT_LABELS: Record<string, string> = {
-    '/dashboard':          'Dashboard',
-    '/tracker':            'Application Tracker',
-    '/saved':              'Saved Jobs',
-    '/profile':            'My Profile',
-    '/settings':           'Settings',
-    '/alerts':             'Job Alerts',
-    '/notifications':      'Notifications',
-    '/account':            'Account Overview',
-    '/choose-username':    'Choose Username',
-    '/contribute':         'Submit Opportunity',
-    '/feedback':           'Feedback & Ideas',
-    '/followed-companies': 'Followed Companies',
-    '/referral':           'Referral Program',
-    '/resources':          'Resources & Guides',
+const LABEL_OVERRIDES: Record<string, string> = {
+    'government-jobs': 'Government Jobs',
+    'walk-ins': 'Walk-ins',
 };
 
+function formatSegment(segment: string): string {
+    const lowerSegment = segment.toLowerCase();
+    if (LABEL_OVERRIDES[lowerSegment]) {
+        return LABEL_OVERRIDES[lowerSegment];
+    }
+    return segment
+        .split('-')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+}
+
 function TopHeaderBarContent() {
-    const pathname   = usePathname() || '';
-    const [isMounted, setIsMounted] = useState(false);
+    const pathname = usePathname() || '';
 
-    useEffect(() => { setIsMounted(true); }, []);
+    if (pathname === '/') return null;
 
-    const normalized = pathname.toLowerCase();
-    const sortedKeys = Object.keys(ACCOUNT_LABELS).sort((a, b) => b.length - a.length);
-    const accountKey = sortedKeys.find(k => normalized === k || normalized.startsWith(k + '/'));
+    const segments = pathname.split('/').filter(Boolean);
+    if (segments.length === 0) return null;
 
-    if (!isMounted || !accountKey) return null;
+    const breadcrumbs = segments.map(formatSegment).join(' > ');
 
     return (
         <div className="hidden md:flex fixed top-0 left-48 right-0 h-14 items-center border-b border-border/40 bg-background/95 backdrop-blur-sm z-[80] pr-36 px-5">
             <h1 className="text-sm font-bold text-foreground tracking-tight">
-                {ACCOUNT_LABELS[accountKey]}
+                {breadcrumbs}
             </h1>
         </div>
     );

@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils/utils";
  * - Text: minimum text-sm (14px), prefer text-base (16px)
  */
 const buttonVariants = cva(
-    "inline-flex items-center justify-center cursor-pointer whitespace-nowrap rounded-xl font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-transparent transition-transform duration-[160ms] ease-out active:scale-[0.97]",
+    "inline-flex items-center justify-center cursor-pointer whitespace-nowrap rounded-xl font-medium focus-visible:outline-none focus:outline-none disabled:pointer-events-none disabled:opacity-50 border border-transparent transition-transform duration-[160ms] ease-out active:scale-[0.97]",
     {
         variants: {
             variant: {

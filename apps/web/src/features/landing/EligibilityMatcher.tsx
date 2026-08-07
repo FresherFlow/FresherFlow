@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
+import { SparklesIcon, CheckCircleIcon, PlayIcon, ShieldCheckIcon, BeakerIcon } from "@heroicons/react/24/outline";
 import { Opportunity, EducationLevel } from "@fresherflow/types";
+import { SkillPill } from '@/ui/SkillPill';
 import { EducationMetadata } from "@/lib/api/cdnFeed";
 import JobCard from "@/features/opportunities/components/JobCard";
 
@@ -218,13 +221,13 @@ export function EligibilityMatcher({
                   <button
                     key={skill}
                     onClick={() => setSelectedSkill(skill)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold tracking-tight transition-all ${
+                    className={`rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-primary/50 focus:ring-offset-1 focus:ring-offset-background ${
                       selectedSkill === skill
-                        ? "bg-primary text-primary-foreground border border-primary"
-                        : "bg-card text-foreground border border-border/80 hover:bg-muted"
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-card text-foreground border-border/80 hover:bg-muted"
                     }`}
                   >
-                    {skill}
+                    <SkillPill skill={skill} className="bg-transparent border-transparent shadow-none pointer-events-none" />
                   </button>
                 ))}
               </div>

@@ -1,3 +1,5 @@
+import { SkillPill } from '@/ui/SkillPill';
+
 type EligibilitySnapshotCardProps = {
     statusLabel: string;
     statusTone: 'ok' | 'warn' | 'neutral';
@@ -57,9 +59,12 @@ export function EligibilitySnapshotCard({
                                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Matched Skills</p>
                                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                                     {matchedSkills.slice(0, 8).map((skill) => (
-                                        <span key={skill} className="px-2.5 py-1 bg-emerald-50 border border-emerald-200 rounded text-xs md:text-sm font-semibold text-emerald-700">
-                                            {skill}
-                                        </span>
+                                        <SkillPill
+                                            key={skill}
+                                            skill={skill}
+                                            size="sm"
+                                            className="bg-emerald-50 border-emerald-200 text-emerald-700"
+                                        />
                                     ))}
                                 </div>
                             </div>
@@ -69,9 +74,12 @@ export function EligibilitySnapshotCard({
                                 <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Missing Skills</p>
                                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                                     {missingSkills.slice(0, 8).map((skill) => (
-                                        <span key={skill} className="px-2.5 py-1 bg-muted/60 border border-border rounded text-xs md:text-sm font-semibold text-foreground">
-                                            {skill}
-                                        </span>
+                                        <SkillPill
+                                            key={skill}
+                                            skill={skill}
+                                            size="sm"
+                                            className="bg-muted/60 border-border text-foreground"
+                                        />
                                     ))}
                                 </div>
                             </div>

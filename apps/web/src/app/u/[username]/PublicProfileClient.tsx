@@ -30,6 +30,7 @@ import {
     DocumentTextIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
+import { SkillPill } from '@/ui/SkillPill';
 
 export type CandidateProject = {
     id: string;
@@ -330,7 +331,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
         <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-primary">
             {/* Main Workspace Container with Physical Entrance Animation */}
             <div className={cn(
-                "flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 md:py-8 space-y-6 transition-all duration-300 ease-out",
+                "flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-8 md:py-12 space-y-8 md:space-y-12 transition-all duration-300 ease-out",
                 mounted ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-[0.98]"
             )}>
                 {/* HERO HEADER CARD */}
@@ -423,11 +424,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                     </div>
                 </div>
 
-                {/* Responsive 2-Column Dashboard Grid */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                    {/* Left Main Column */}
-                    <div className="lg:col-span-8 space-y-6">
-                        {/* 1. ABOUT SECTION */}
+                {/* 1. ABOUT SECTION */}
                         {hasAbout && (
                             <div className="bg-card border border-border/60 rounded-2xl p-5 md:p-6 shadow-xs space-y-3">
                                 <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
@@ -525,9 +522,11 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                                 {proj.skills && proj.skills.length > 0 && (
                                                     <div className="flex items-center gap-1.5 pt-1 flex-wrap text-xs">
                                                         {proj.skills.map((skill, idx) => (
-                                                            <span key={idx} className="inline-flex items-center px-2 py-0.5 bg-card text-foreground font-semibold text-[11px] rounded-md border border-border/60">
-                                                                {skill}
-                                                            </span>
+                                                            <SkillPill
+                                                                key={idx}
+                                                                skill={skill}
+                                                                className="bg-card text-foreground font-semibold text-[11px] rounded-md border border-border/60"
+                                                            />
                                                         ))}
                                                     </div>
                                                 )}
@@ -610,6 +609,46 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                             </div>
                                         );
                                     })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 2. SKILLS SECTION */}
+                        {hasSkills && (
+                            <div className="bg-card border border-border/60 rounded-2xl p-5 md:p-6 shadow-xs space-y-3.5">
+                                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                                    <WrenchScrewdriverIcon className="w-4 h-4 text-primary shrink-0" />
+                                    Skills
+                                </h2>
+
+                                <div className="flex flex-wrap gap-2">
+                                    {displayedSkills.map((skill) => (
+                                        <SkillPill
+                                            key={skill}
+                                            skill={skill}
+                                            className="bg-muted/30 border border-border/60 hover:border-border text-foreground font-semibold text-xs rounded-xl hover:bg-muted/60 transition-all duration-150 ease-out cursor-default"
+                                        />
+                                    ))}
+
+                                    {!showAllSkills && hiddenSkillsCount > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAllSkills(true)}
+                                            className="inline-flex items-center px-3 py-1.5 bg-secondary text-secondary-foreground hover:bg-muted font-bold text-xs rounded-xl border border-border/60 active:scale-[0.97] transition-all duration-150 ease-out cursor-pointer tabular-nums"
+                                        >
+                                            +{hiddenSkillsCount} more
+                                        </button>
+                                    )}
+
+                                    {showAllSkills && skillsList.length > 5 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowAllSkills(false)}
+                                            className="inline-flex items-center px-3 py-1.5 text-muted-foreground hover:text-foreground font-medium text-xs rounded-xl active:scale-[0.97] transition-all duration-150 ease-out cursor-pointer"
+                                        >
+                                            Show less
+                                        </button>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -736,11 +775,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                 </div>
                             </div>
                         )}
-                    </div>
-
-                    {/* Right Sidebar Column */}
-                    <div className="lg:col-span-4 space-y-6">
-                        {/* 1. CAREER PREFERENCES SECTION */}
+                    {/* 1. CAREER PREFERENCES SECTION */}
                         {hasPreferences && (
                             <div className="bg-card border border-border/60 rounded-2xl p-5 md:p-6 shadow-xs space-y-3.5">
                                 <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
@@ -820,47 +855,6 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                             </div>
                         )}
 
-                        {/* 2. SKILLS SECTION */}
-                        {hasSkills && (
-                            <div className="bg-card border border-border/60 rounded-2xl p-5 md:p-6 shadow-xs space-y-3.5">
-                                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                                    <WrenchScrewdriverIcon className="w-4 h-4 text-primary shrink-0" />
-                                    Skills
-                                </h2>
-
-                                <div className="flex flex-wrap gap-2">
-                                    {displayedSkills.map((skill) => (
-                                        <span
-                                            key={skill}
-                                            className="inline-flex items-center px-3 py-1.5 bg-muted/30 border border-border/60 hover:border-border text-foreground font-semibold text-xs rounded-xl hover:bg-muted/60 transition-all duration-150 ease-out cursor-default"
-                                        >
-                                            {skill}
-                                        </span>
-                                    ))}
-
-                                    {!showAllSkills && hiddenSkillsCount > 0 && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowAllSkills(true)}
-                                            className="inline-flex items-center px-3 py-1.5 bg-secondary text-secondary-foreground hover:bg-muted font-bold text-xs rounded-xl border border-border/60 active:scale-[0.97] transition-all duration-150 ease-out cursor-pointer tabular-nums"
-                                        >
-                                            +{hiddenSkillsCount} more
-                                        </button>
-                                    )}
-
-                                    {showAllSkills && skillsList.length > 5 && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowAllSkills(false)}
-                                            className="inline-flex items-center px-3 py-1.5 text-muted-foreground hover:text-foreground font-medium text-xs rounded-xl active:scale-[0.97] transition-all duration-150 ease-out cursor-pointer"
-                                        >
-                                            Show less
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
                         {/* 3. LINKS SECTION */}
                         {hasLinks && (
                             <div className="bg-card border border-border/60 rounded-2xl p-5 md:p-6 shadow-xs space-y-3.5">
@@ -933,28 +927,8 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                             </div>
                         )}
 
-                        {/* RIGHT SIDEBAR CTA */}
-                        <div className="bg-card border border-border/80 hover:border-primary/40 rounded-2xl p-6 flex flex-col items-center justify-center gap-4 text-center shadow-md relative overflow-hidden group transition-all duration-200 ease-out mt-2">
-                            <div className="absolute inset-0 bg-gradient-to-b from-primary/10 via-transparent to-primary/5 pointer-events-none" />
-                            <div className="w-12 h-12 rounded-full bg-background border border-border/60 flex items-center justify-center shadow-sm relative z-10 group-hover:scale-105 transition-transform duration-200 ease-out">
-                                <LogoImage width={24} height={24} className="w-6 h-6 object-contain" />
-                            </div>
-                            <div className="relative z-10 space-y-1">
-                                <h3 className="text-base font-bold text-foreground tracking-tight leading-snug">Launch your career<br />with FresherFlow</h3>
-                                <p className="text-xs font-medium text-muted-foreground px-2 leading-relaxed">Discover verified fresher jobs &amp; walk-ins updated daily.</p>
-                            </div>
-                            <Link
-                                href="/opportunities"
-                                className="relative z-10 w-full flex items-center justify-center gap-1.5 px-4 py-3 bg-primary text-primary-foreground hover:opacity-95 active:scale-[0.97] font-bold text-xs rounded-xl transition-all duration-150 ease-out shadow-sm group/btn mt-1"
-                            >
-                                <span>Explore Opportunities</span>
-                                <span className="transition-transform duration-150 ease-out group-hover/btn:translate-x-0.5">→</span>
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-
-                {/* STANDALONE ROUTE FOOTER NOTE (No hardcoded <footer> tag per Rule 6) */}
+                        
+{/* STANDALONE ROUTE FOOTER NOTE (No hardcoded <footer> tag per Rule 6) */}
                 <div className="py-6 text-center border-t border-border/40 mt-12 bg-card/30 rounded-xl">
                     <p className="text-xs font-medium text-muted-foreground">
                         Built with FresherFlow •{' '}

@@ -2,6 +2,7 @@
 
 import { ArrowTopRightOnSquareIcon, CodeBracketIcon } from '@heroicons/react/24/outline';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/ui/Dialog';
+import { SkillPill } from '@/ui/SkillPill';
 import { RunResult, NormalizedJob } from '../types';
 
 interface DryRunModalProps {
@@ -67,12 +68,11 @@ export function DryRunModal({ open, result, onClose, onInspectJob }: DryRunModal
                 {job.required_skills?.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1">
                     {job.required_skills.slice(0, 6).map((skill, sIdx) => (
-                      <span
+                      <SkillPill
                         key={sIdx}
-                        className="px-2 py-0.5 rounded-md bg-muted/60 text-[10px] font-mono text-muted-foreground border border-border/30"
-                      >
-                        {skill}
-                      </span>
+                        skill={skill}
+                        className="rounded-md bg-muted/60 text-[10px] font-mono text-muted-foreground border border-border/30"
+                      />
                     ))}
                   </div>
                 )}

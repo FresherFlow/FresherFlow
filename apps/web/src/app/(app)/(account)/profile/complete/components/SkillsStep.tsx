@@ -1,7 +1,8 @@
-import React, { RefObject } from 'react';
+import React, { RefObject, useEffect } from 'react';
 import { cn } from '@repo/ui/utils/cn';
 import { Button } from '@/ui/Button';
 import { ArrowPathIcon, CheckCircleIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { SkillPill } from '@/ui/SkillPill';
 
 interface SkillsStepProps {
     skills: string[];
@@ -38,6 +39,12 @@ export const SkillsStep = ({
     onSubmit,
     onSkip
 }: SkillsStepProps) => {
+    useEffect(() => {
+        if (skillHighlight >= 0) {
+            document.getElementById(`skills-step-option-${skillHighlight}`)?.scrollIntoView({ block: 'nearest' });
+        }
+    }, [skillHighlight]);
+
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-3 duration-300">
             <Field label="Skills">
@@ -50,7 +57,14 @@ export const SkillsStep = ({
                             onKeyDown={e => {
                                 if (e.key === 'ArrowDown') { e.preventDefault(); setSkillHighlight(h => Math.min(h + 1, filteredSkillOptions.length - 1)); }
                                 else if (e.key === 'ArrowUp') { e.preventDefault(); setSkillHighlight(h => Math.max(h - 1, 0)); }
-                                else if (e.key === 'Enter') { e.preventDefault(); addSkill(); }
+                                else if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    if (skillHighlight >= 0 && skillHighlight < filteredSkillOptions.length) {
+                                        addSkillValue(filteredSkillOptions[skillHighlight]);
+                                    } else {
+                                        addSkill();
+                                    }
+                                }
                                 else if (e.key === 'Escape') setSkillOpen(false);
                             }}
                             className="premium-input h-10! text-sm flex-1"
@@ -64,9 +78,10 @@ export const SkillsStep = ({
                         <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-xl shadow-2xl max-h-52 overflow-y-auto">
                             {filteredSkillOptions.map((skill, idx) => (
                                 <button key={skill}
+                                    id={`skills-step-option-${idx}`}
                                     onMouseDown={() => addSkillValue(skill)}
-                                    className={cn('w-full text-left px-4 py-2.5 text-sm font-medium transition-colors first:rounded-t-xl last:rounded-b-xl', skillHighlight === idx ? 'bg-primary/15 text-foreground' : 'hover:bg-muted')}
-                                >{skill}</button>
+                                    className={cn('w-full text-left px-4 py-2.5 text-sm font-medium transition-colors first:rounded-t-xl last:rounded-b-xl flex items-center', skillHighlight === idx ? 'bg-primary/15 text-foreground' : 'hover:bg-muted')}
+                                ><SkillPill skill={skill} className="bg-transparent border-transparent shadow-none pointer-events-none p-0" /></button>
                             ))}
                         </div>
                     )}
@@ -75,10 +90,10 @@ export const SkillsStep = ({
                 {skills.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                         {skills.map(s => (
-                            <span key={s} className="bg-success/5 text-success border border-success/20 px-3 py-1 rounded-lg text-[11px] font-bold capitalize tracking-wider flex items-center gap-1.5">
-                                {s}
-                                <XMarkIcon onClick={() => removeSkill(s)} className="w-3 h-3 cursor-pointer opacity-50 hover:opacity-100" />
-                            </span>
+                            <div key={s} className="bg-success/5 text-success border border-success/20 pr-2 py-0.5 rounded-lg text-[11px] font-bold capitalize tracking-wider flex items-center gap-1">
+                                <SkillPill skill={s} size="xs" className="bg-transparent border-transparent text-success shadow-none py-0 pl-2 pr-1" />
+                                <XMarkIcon onClick={() => removeSkill(s)} className="w-3.5 h-3.5 cursor-pointer opacity-50 hover:opacity-100" />
+                            </div>
                         ))}
                     </div>
                 )}

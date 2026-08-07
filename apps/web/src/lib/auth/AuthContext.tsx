@@ -68,7 +68,11 @@ function clearAllClientCaches() {
         const keysToRemove: string[] = [];
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
-            if (key && (key.startsWith('ff_') || key.startsWith('USER_') || key.startsWith('ADMIN_'))) {
+            if (key && (
+                key === 'ff_cached_session_v1' || 
+                key.startsWith('ff_user_') ||
+                key.startsWith('USER_')
+            )) {
                 keysToRemove.push(key);
             }
         }

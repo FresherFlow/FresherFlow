@@ -23,7 +23,7 @@ export function PageTransitionWrapper({ children }: PageTransitionWrapperProps) 
   }, []);
 
   return (
-    <div className="relative overflow-hidden flex-1 flex flex-col min-h-screen w-full">
+    <div className="relative overflow-clip flex-1 flex flex-col min-h-screen w-full">
       {/* Main content layer */}
       <div key="content-body" className="relative z-10 flex-1 flex flex-col w-full">
         {children}

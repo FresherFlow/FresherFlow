@@ -1,12 +1,13 @@
 'use client';
 
-import React, { RefObject, useState } from 'react';
+import React, { RefObject, useState, useEffect } from 'react';
 import { PlusIcon, XMarkIcon, PencilSquareIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { Profile } from '@fresherflow/types';
 import { Input } from '@/ui/Input';
 import { Button } from '@/ui/Button';
 import toast from 'react-hot-toast';
 import { cn } from '@repo/ui/utils/cn';
+import { SkillPill } from '@/ui/SkillPill';
 
 const MAX_SKILLS = 10;
 
@@ -34,6 +35,12 @@ export const SkillsSection = ({
 }: SkillsSectionProps) => {
     const [skillHighlight, setSkillHighlight] = useState(-1);
     const hasSkills = Boolean(profile?.skills && profile.skills.length > 0);
+
+    useEffect(() => {
+        if (skillHighlight >= 0) {
+            document.getElementById(`skills-section-option-${skillHighlight}`)?.scrollIntoView({ block: 'nearest' });
+        }
+    }, [skillHighlight]);
 
     const handleAddSkill = () => {
         if (skills.length >= MAX_SKILLS) {
@@ -85,13 +92,11 @@ export const SkillsSection = ({
             {hasSkills ? (
                 <div className="flex flex-wrap gap-2 pt-1">
                     {profile?.skills?.map(s => (
-                        <span
+                        <SkillPill
                             key={s}
-                            className="inline-flex items-center gap-1.5 px-3 py-1 bg-card/90 hover:bg-muted/50 border border-border/70 hover:border-primary/40 rounded-lg text-xs font-semibold text-foreground capitalize shadow-2xs transition-all duration-150 hover:-translate-y-0.5"
-                        >
-                            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                            {s}
-                        </span>
+                            skill={s}
+                            className="px-3 py-1 bg-card/90 hover:bg-muted/50 border border-border/70 hover:border-primary/40 text-foreground shadow-2xs transition-all duration-150 hover:-translate-y-0.5"
+                        />
                     ))}
                 </div>
             ) : (
@@ -156,6 +161,7 @@ export const SkillsSection = ({
                                         {filteredSkillOptions.map((skill, idx) => (
                                             <button
                                                 key={skill}
+                                                id={`skills-section-option-${idx}`}
                                                 type="button"
                                                 onMouseDown={() => { handleAddSkillValue(skill); setSkillInput(''); setSkillHighlight(-1); setSkillOpen(false); }}
                                                 className={cn(
@@ -163,7 +169,7 @@ export const SkillsSection = ({
                                                     skillHighlight === idx ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
                                                 )}
                                             >
-                                                {skill}
+                                                <SkillPill skill={skill} className="bg-transparent border-transparent shadow-none pointer-events-none p-0" />
                                             </button>
                                         ))}
                                     </div>
@@ -173,12 +179,8 @@ export const SkillsSection = ({
                             {skills.length > 0 && (
                                 <div className="flex flex-wrap gap-2 pt-2">
                                     {skills.map(s => (
-                                        <span
-                                            key={s}
-                                            className="inline-flex items-center gap-1.5 bg-primary/10 text-primary px-3 py-1 rounded-lg text-xs font-semibold border border-primary/20 capitalize shadow-2xs transition-all duration-150"
-                                        >
-                                            <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                                            <span>{s}</span>
+                                        <div key={s} className="inline-flex items-center gap-1 bg-primary/10 text-primary pr-1 py-1 rounded-lg text-xs font-semibold border border-primary/20 shadow-2xs transition-all duration-150">
+                                            <SkillPill skill={s} size="xs" className="bg-transparent border-transparent text-primary" />
                                             <button
                                                 type="button"
                                                 onClick={() => setSkills(prev => (Array.isArray(prev) ? prev.filter(x => x !== s) : []))}
@@ -187,7 +189,7 @@ export const SkillsSection = ({
                                             >
                                                 <XMarkIcon className="w-3.5 h-3.5" />
                                             </button>
-                                        </span>
+                                        </div>
                                     ))}
                                 </div>
                             )}

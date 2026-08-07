@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { adminApi } from '@/lib/api/admin';
 import { SharedResource, ResourceItemStatus, ResourceItemType, ResourceSector } from '@fresherflow/types';
+import { SkillPill } from '@/ui/SkillPill';
 import { 
     CheckCircleIcon, 
     XCircleIcon, 
@@ -848,9 +849,7 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
                                             {resource.skills && resource.skills.length > 0 && (
                                                 <div className="flex flex-wrap gap-1">
                                                     {resource.skills.map((skill, i) => (
-                                                        <span key={i} className="px-1.5 py-0.5 bg-slate-50 ring-1 ring-inset ring-slate-500/10 text-[10px] rounded-md text-slate-700 font-medium">
-                                                            {skill}
-                                                        </span>
+                                                        <SkillPill key={i} skill={skill} className="px-1.5 py-0.5 bg-slate-50 ring-1 ring-inset ring-slate-500/10 text-[10px] rounded-md text-slate-700 font-medium" />
                                                     ))}
                                                 </div>
                                             )}
@@ -931,9 +930,7 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
                                                             {resource.skills && resource.skills.length > 0 && (
                                                                 <div className="flex flex-wrap gap-1">
                                                                     {resource.skills.map((skill, i) => (
-                                                                        <span key={i} className="px-1.5 py-0.5 bg-slate-50 ring-1 ring-inset ring-slate-500/10 text-[10px] rounded-md text-slate-700 font-medium">
-                                                                            {skill}
-                                                                        </span>
+                                                                        <SkillPill key={i} skill={skill} className="px-1.5 py-0.5 bg-slate-50 ring-1 ring-inset ring-slate-500/10 text-[10px] rounded-md text-slate-700 font-medium" />
                                                                     ))}
                                                                 </div>
                                                             )}

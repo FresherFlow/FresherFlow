@@ -13,8 +13,10 @@ import {
     CheckBadgeIcon,
     ArrowRightIcon,
     ArrowPathIcon,
+    NoSymbolIcon,
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
+import { SkillPill } from '@/ui/SkillPill';
 import toast from 'react-hot-toast';
 import { Select } from '@/ui/Select';
 import ApplyToHireModal from '@/app/u/[username]/ApplyToHireModal';
@@ -269,12 +271,11 @@ export default function RecruiterCandidateSearchPage() {
                                             {profileItem.skills && profileItem.skills.length > 0 && (
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {profileItem.skills.map((skill) => (
-                                                        <span
+                                                        <SkillPill
                                                             key={skill}
-                                                            className="px-2.5 py-1 bg-muted/50 border border-border/60 text-foreground font-semibold text-xs rounded-lg"
-                                                        >
-                                                            {skill}
-                                                        </span>
+                                                            skill={skill}
+                                                            className="bg-muted/50 border border-border/60 text-foreground font-semibold text-xs rounded-lg"
+                                                        />
                                                     ))}
                                                 </div>
                                             )}

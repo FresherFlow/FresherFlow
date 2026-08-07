@@ -25,7 +25,14 @@
         "BASIC_AUTH_USER",
         "BASIC_AUTH_PASSWORD",
         "WORKER_URL",
-        "WORKER_SECRET"
+        "WORKER_SECRET",
+        "COOKIE_DOMAIN",
+        "USER_LOGIN_HOST",
+        "JOIN_WEB_HOST",
+        "PUBLIC_WEB_HOST",
+        "APP_WEB_HOST",
+        "JWT_ACCESS_SECRET",
+        "JWT_REFRESH_SECRET"
     ],
     "tasks": {
         "build": {

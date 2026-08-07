@@ -39,8 +39,8 @@ export default function LoadingScreen({
 
     return (
         <div className={cn(
-            "flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm z-50",
-            fullScreen ? "fixed inset-0" : "absolute inset-0 min-h-[400px]",
+            "flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm",
+            fullScreen ? "fixed inset-0 z-[100]" : "absolute inset-0 z-40 min-h-[400px]",
             className
         )}>
             <div className="relative flex items-center justify-center mb-5">

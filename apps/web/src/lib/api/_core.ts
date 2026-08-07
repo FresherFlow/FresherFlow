@@ -415,7 +415,15 @@ export async function apiClient<T = unknown>(
             // Wait for the single refresh to complete (success or fail)
             try {
                 await isRefreshing;
-                // Retry original request
+                
+                // Retry original request with the newly refreshed token
+                if (isUserProtectedEndpoint(endpoint)) {
+                    const newToken = getUserAccessToken();
+                    if (newToken) {
+                        (fetchOptions.headers as Record<string, string>).Authorization = `Bearer ${newToken}`;
+                    }
+                }
+
                 response = await fetchWithRetry();
             } catch (err: unknown) {
                 const error = err as { status?: number };

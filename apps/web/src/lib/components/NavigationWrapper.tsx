@@ -15,24 +15,17 @@ import { FeedHeaderProvider } from '@/lib/context/FeedHeaderContext';
 export function NavigationWrapper({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const normalizedPathname = pathname?.toLowerCase() || '';
-    const isAuthRoute = normalizedPathname === '/login' || normalizedPathname === '/register';
-    const isAdminHost = process.env.NODE_ENV === 'production' &&
-        typeof window !== 'undefined' &&
-        window.location.hostname.toLowerCase() === ADMIN_WEB_HOST;
-    const isAdminRoute = normalizedPathname.startsWith('/admin') || isAdminHost;
-    const isCaptionsPage = normalizedPathname.startsWith('/captions');
-    const isDiscoveryPage = normalizedPathname.startsWith('/discovery');
+
+    // Only keep logic related to layout structure inside (app)
+    const isSidebarRoute = isSidebarPage(normalizedPathname);
+    
+    // We can infer if it's a detail page to show MiniFooter instead of Footer
     const segments = normalizedPathname.split('/').filter(Boolean);
     const firstSegment = segments[0] || '';
     const reservedSegments = new Set([
-        'about', 'alerts', 'api', 'app', 'batch', 'blog', 'captions', 'careers',
-        'companies', 'contact', 'dashboard', 'deadlines', 'dev', 'discovery', 'feedback',
-        'government-jobs', 'internships', 'jobs', 'join', 'location', 'login',
-        'logout', 'opportunities', 'privacy', 'profile', 'r',
-        'referral', 'remote', 'roles', 'sentry-example-page', 'skills', 'terms',
-        'walk-ins', 'account', 'submit-link', 'admin', 'register'
+        'batch', 'companies', 'deadlines', 'government-jobs', 'internships', 'jobs', 'location', 
+        'opportunities', 'remote', 'roles', 'skills', 'walk-ins', 'account'
     ]);
-
     const isDetailPage =
         /^\/(jobs|internships|walk-ins|government-jobs|opportunities)\/[^/]+/.test(normalizedPathname) ||
         (segments.length === 1 && !reservedSegments.has(firstSegment) && !firstSegment.includes('.'));
@@ -50,13 +43,6 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
         normalizedPathname.startsWith('/batch') ||
         normalizedPathname.startsWith('/roles');
 
-    const isRecruiterRoute = normalizedPathname.startsWith('/recruiter');
-    const isPublicProfileRoute = normalizedPathname === '/u';
-    const hideNav = isAdminRoute || isCaptionsPage || isDiscoveryPage || isRecruiterRoute || isPublicProfileRoute;
-    const isHomePage = pathname === '/';
-
-    const isSidebarRoute = isSidebarPage(normalizedPathname);
-
     const authContext = useContext(AuthContext);
     const isAuthenticated = !!authContext?.user;
 
@@ -65,26 +51,20 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
         setMounted(true);
     }, []);
 
-    const showFooter = !isAdminRoute && !isAuthRoute && !isCaptionsPage && !isDiscoveryPage && !isRecruiterRoute && !isPublicProfileRoute && !normalizedPathname.startsWith('/u/') && !isSidebarRoute && (mounted ? !isAuthenticated : true);
+    const showFooter = !isSidebarRoute && (mounted ? !isAuthenticated : true);
 
     return (
         <>
-            {/* WEB PIVOT: disabled user offline sync to avoid background API calls. */}
-            {/* {!isAdminRoute && pathname !== '/' && <OfflineActionSync />} */}
-            {!hideNav && (
-                <Suspense fallback={null}>
-                    <Navbar />
-                </Suspense>
-            )}
+            <Navbar />
 
             <main className={cn(
                 "relative w-full overflow-x-hidden flex-1 flex flex-col",
-                !hideNav && "pt-[calc(3.75rem+env(safe-area-inset-top))]",
-                !hideNav && "md:pt-14",
-                !hideNav && isSidebarRoute && "md:pl-48",
-                !hideNav && !isSidebarRoute && "md:pt-[4.75rem]",
-                !hideNav && !isHomePage && (isSidebarRoute || (mounted && isAuthenticated)) && "pb-20 md:pb-8",
-                !hideNav && !isHomePage && !(isSidebarRoute || (mounted && isAuthenticated)) && "pb-4 md:pb-8",
+                "pt-[calc(3.75rem+env(safe-area-inset-top))]",
+                "md:pt-14",
+                !isSidebarRoute && "md:pt-[4.75rem]",
+                (isSidebarRoute || (mounted && isAuthenticated)) && "pb-20 md:pb-8",
+                !(isSidebarRoute || (mounted && isAuthenticated)) && "pb-4 md:pb-8",
+                isSidebarRoute && "md:pl-48",
                 "min-h-screen"
             )}>
                 <FeedHeaderProvider>
@@ -97,22 +77,15 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
             </main>
             {showFooter && (
                 <div>
-                    {/* Desktop/Tablet View */}
                     <div className="hidden md:block">
                         {(isDetailPage || isJobRelatedPage) ? <MiniFooter /> : <Footer />}
                     </div>
-
-                    {/* Mobile View */}
                     <div className="md:hidden">
                         {(isDetailPage || isJobRelatedPage) ? null : <Footer />}
                     </div>
                 </div>
             )}
-            {!hideNav && (
-                <Suspense fallback={null}>
-                    <MobileNav />
-                </Suspense>
-            )}
+            <MobileNav />
         </>
     );
 }

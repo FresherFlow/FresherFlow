@@ -16,6 +16,12 @@ export const SIDEBAR_ROUTES = [
     '/government-jobs',
     '/opportunities',
     '/remote',
+    '/off-campus',
+    '/companies',
+    '/skills',
+    '/roles',
+    '/location',
+    '/batch',
     '/saved',
     '/tracker',
     '/dashboard',
@@ -24,10 +30,9 @@ export const SIDEBAR_ROUTES = [
     '/alerts',
     '/notifications',
     '/account',
+    '/accounts',
     '/followed-companies',
     '/contribute',
-    '/resources',
-    '/feedback',
     '/referral',
     '/choose-username',
 ];
@@ -39,6 +44,12 @@ export const FEED_ROUTES = [
     '/government-jobs',
     '/opportunities',
     '/remote',
+    '/off-campus',
+    '/companies',
+    '/skills',
+    '/roles',
+    '/location',
+    '/batch',
     '/saved',
     '/tracker',
 ];
@@ -46,12 +57,14 @@ export const FEED_ROUTES = [
 export function isSidebarPage(pathname: string): boolean {
     if (!pathname) return false;
     const normalized = pathname.toLowerCase();
+    if (normalized === '/') return false;
     return SIDEBAR_ROUTES.some((route) => normalized.startsWith(route));
 }
 
 export function isFeedPage(pathname: string): boolean {
     if (!pathname) return false;
     const normalized = pathname.toLowerCase();
+    if (normalized === '/') return true;
     return FEED_ROUTES.some((route) => normalized.startsWith(route));
 }
 

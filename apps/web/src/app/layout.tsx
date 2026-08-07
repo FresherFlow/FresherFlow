@@ -5,7 +5,7 @@ import { SmartToaster } from '@/lib/components/SmartToaster';
 import { ScrollToTop } from '@/ui/ScrollToTop';
 import { ThemeProvider } from "@/lib/providers/ThemeContext";
 import { InstallPromptProvider } from "@/lib/providers/InstallPromptContext";
-import { NavigationWrapper } from '@/lib/components/NavigationWrapper';
+
 // WEB PIVOT: keep these imports disabled until web app mode returns.
 // import ServiceWorkerRegister from "@/lib/providers/ServiceWorkerRegister";
 // import PushNotificationProvider from "@/lib/providers/PushNotificationProvider";
@@ -139,24 +139,17 @@ export default async function RootLayout({
               <AuthFormDataProvider>
                 <ConditionalAuthProvider>
                   <InstallPromptProvider>
-                    <NavigationWrapper>
-                      <ErrorBoundary>
-                        {children}
-                      </ErrorBoundary>
-                    </NavigationWrapper>
+                    <ErrorBoundary>
+                      {children}
+                    </ErrorBoundary>
                     <InstallAppBanner />
                   </InstallPromptProvider>
-                  {/* WEB PIVOT: disabled push subscription API calls. */}
-                  {/* <PushNotificationProvider /> */}
                 </ConditionalAuthProvider>
               </AuthFormDataProvider>
             </PageTransitionWrapper>
         </ThemeProvider>
-        {/* WEB PIVOT: disabled service worker/offline runtime. */}
-        {/* <ServiceWorkerRegister /> */}
         <SmartToaster />
         <ScrollToTop />
-        {/* <OfflineNotification /> */}
         {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
         {enableVercelAnalytics ? <Analytics /> : null}
         {enableSpeedInsights ? <SpeedInsights /> : null}

@@ -6,21 +6,20 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@repo/ui/utils/cn';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import CurrencyRupeeIcon from '@heroicons/react/24/outline/CurrencyRupeeIcon';
-import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
-import UsersIcon from '@heroicons/react/24/outline/UsersIcon';
 import FireIcon from '@heroicons/react/24/outline/FireIcon';
 import CheckBadgeIcon from '@heroicons/react/24/outline/CheckBadgeIcon';
 import ArrowPathIcon from '@heroicons/react/24/outline/ArrowPathIcon';
 import FlagIcon from '@heroicons/react/24/outline/FlagIcon';
+import EllipsisVerticalIcon from '@heroicons/react/24/outline/EllipsisVerticalIcon';
 import { useState, useMemo, useEffect } from 'react';
-import { calculateOpportunityMatch } from '@fresherflow/domain';
 import CompanyLogo from '@/ui/CompanyLogo';
 import toast from 'react-hot-toast';
 import { toastError } from '@repo/ui/utils/error-web';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import BookmarkSolidIcon from '@heroicons/react/24/solid/BookmarkIcon';
+import { SkillPill } from '@/ui/SkillPill';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useFirebaseSaved } from '@/lib/hooks/useFirebaseSaved';
 import { useFirebaseTracker } from '@/lib/hooks/useFirebaseTracker';
@@ -28,14 +27,16 @@ import { saveOpportunityToCache } from '@/lib/api/offline/opportunitiesFeedCache
 import { ActionType } from '@fresherflow/types';
 import { getOpportunityPathFromItem } from '@/features/opportunities/domain/opportunityPath';
 import { getDriveMetadata, isCampusDriveOpportunity } from '@/lib/utils/driveTimeline';
-import { isNotEligible } from '@/features/opportunities/domain/matchScore';
 import { getOpportunityDisplaySalary, normalizeSalaryInput, parseOpportunityLocation } from '@/features/opportunities/domain/opportunityDisplay';
 import { buildShareUrl } from '@/lib/utils/share';
-
-/**
- * JobCard - REFINED TYPOGRAPHY PATTERN
- * Adheres to DESIGN_SYSTEM.md with moderated boldness for professional clarity.
- */
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger
+} from '@/ui/DropdownMenu';
 
 interface JobCardProps {
     job: Opportunity & { matchScore?: number; matchReason?: string };
@@ -68,7 +69,7 @@ function getVisibleSkills(skills: string[] = [], budget: number = 30) {
     const visible: string[] = [];
     let currentLen = 0;
     for (const s of skills) {
-        const est = s.length + 3; // base length plus gap/padding estimate
+        const est = s.length + 3;
         if (currentLen + est > budget && visible.length > 0) {
             break;
         }
@@ -128,7 +129,6 @@ export default function JobCard({
     className
 }: JobCardProps) {
     const [isNavigating, setIsNavigating] = useState(false);
-    const [showReportMenu, setShowReportMenu] = useState(false);
     const [mounted, setMounted] = useState(false);
     useEffect(() => {
         setMounted(true);
@@ -161,7 +161,6 @@ export default function JobCard({
 
     const handleReportClick = async (e: React.MouseEvent, reason: string) => {
         e.stopPropagation();
-        setShowReportMenu(false);
         if (!user) {
             toast.error('Please log in to report listings');
             window.location.href = loginRedirectHref;
@@ -177,17 +176,6 @@ export default function JobCard({
         }
     };
 
-    const matchResult = useMemo(() => {
-        if (!user || !profile) return null;
-        if (job.matchScore !== undefined) {
-            return {
-                score: job.matchScore,
-                isEligible: !isNotEligible(job),
-                reason: isNotEligible(job) ? 'Ineligible' : `${job.matchScore}% Match`
-            };
-        }
-        return calculateOpportunityMatch(profile, job as any);
-    }, [user, profile, job]);
     const isDrive = isCampusDriveOpportunity(job);
     const driveMeta = getDriveMetadata(job);
 
@@ -205,9 +193,6 @@ export default function JobCard({
         return reorderSkillsBySearch(job.requiredSkills || [], effectiveSearchQuery);
     }, [job.requiredSkills, effectiveSearchQuery]);
 
-    // Adaptable code: Use up to 60-70% of the card's width for required skills.
-    // If skills are small (short names), we fit more to fill the space (e.g. SQL, Python, Statistics, Hypothesis Testing).
-    // If skills are big (long names), fewer fit but they naturally utilize the required space up to 60-70%.
     const skillsBudget = variant === 'compact' ? 52 : 80;
     const { visible: visibleSkills, remainingCount } = getVisibleSkills(orderedSkills, skillsBudget);
 
@@ -240,12 +225,9 @@ export default function JobCard({
         }
     };
 
-    // Feature: Heat & Trust Badges from Plan
     const heatBadge = job.shareCount && job.shareCount > 10 ? 'Trending' : null;
     const isTrusted = job.verificationFailures === 0 && (job.shareCount || 0) > 5;
 
-
-    // Derive tracker status from actions array if available
     const trackerAction = (job as JobWithActions).actions?.find?.((a: JobAction) =>
         ['APPLIED', 'PLANNED', 'SAVED_FOR_LATER', 'INTERVIEWING', 'OFFERED', 'REJECTED'].includes(a.actionType)
     );
@@ -287,8 +269,6 @@ export default function JobCard({
             }
         }
     };
-
-
 
     const isExpired = () => {
         if (!job.expiresAt) return false;
@@ -348,7 +328,6 @@ export default function JobCard({
     const payScale = govtMeta?.payScale;
     const govtStatus: string | undefined = govtMeta?.applicationStatus;
 
-    // Map DB enum value → { label, color classes }
     const GOVT_STATUS_META: Record<string, { label: string; className: string; ribbonClass: string }> = {
         UPCOMING:              { label: 'Upcoming',         className: 'bg-muted/70 border-border/70 text-foreground/80', ribbonClass: '' },
         OPEN:                  { label: 'Apply Now',         className: 'bg-muted/70 border-border/70 text-foreground/90', ribbonClass: '' },
@@ -363,25 +342,6 @@ export default function JobCard({
         CANCELLED:             { label: 'Cancelled',         className: 'bg-muted/70 border-border/70 text-muted-foreground', ribbonClass: '' },
     };
     const govtStatusMeta = govtStatus ? GOVT_STATUS_META[govtStatus] : undefined;
-    
-    const metaChips = (() => {
-        const chips: string[] = [];
-        if (!isGovernment && (job.tags || []).some((tag) => /government/i.test(tag))) chips.push('Government');
-        if (isDrive) chips.push('Campus 2024-2026');
-        if (isDrive) chips.push('0-2 Yrs');
-        const maxChips = variant === 'compact' ? 1 : 2;
-        const charBudget = variant === 'compact' ? 22 : 34;
-        const output: string[] = [];
-        let used = 0;
-        for (const chip of chips) {
-            if (output.length >= maxChips) break;
-            const next = used + chip.length;
-            if (output.length > 0 && next > charBudget) break;
-            output.push(chip);
-            used = next;
-        }
-        return output;
-    })();
 
     const salaryLabel = isGovernment && payScale
         ? payScale
@@ -393,9 +353,9 @@ export default function JobCard({
         return (
             <div
                 className={cn(
-                    "group relative bg-card border rounded-xl p-3.5 shadow-sm transition-all duration-200 ease-out hover:shadow-md hover:border-primary/40 hover:bg-card flex flex-col gap-2.5 overflow-hidden shrink-0 h-full",
+                    "group relative bg-card border rounded-xl p-3.5 shadow-xs transition-all duration-200 ease-out hover:shadow-md hover:border-primary/40 flex flex-col gap-2.5 overflow-hidden shrink-0 h-full",
                     isSelected
-                        ? "border-primary/70 ring-1 ring-primary/15 shadow-sm"
+                        ? "border-primary/70 ring-1 ring-primary/15 shadow-xs"
                         : "border-border/60",
                     isExpired() && "opacity-60",
                     "cursor-pointer",
@@ -439,7 +399,7 @@ export default function JobCard({
                     </div>
                 </div>
 
-                {/* Middle Row: Salary & Location & Badges */}
+                {/* Middle Row: Salary & Location */}
                 <div className="flex items-center justify-between text-xs text-muted-foreground gap-2 pt-1 border-t border-border/30">
                     <div className="flex items-center gap-3 min-w-0">
                         <span className="inline-flex items-center gap-1 min-w-0">
@@ -455,68 +415,69 @@ export default function JobCard({
                     </div>
                     
                     <div className="flex items-center gap-1.5 shrink-0">
-                        {mounted && user && matchResult && (
-                            <span className={cn(
-                                "inline-flex shrink-0 items-center px-1.5 py-0.5 text-[11px] font-semibold rounded border",
-                                !matchResult.isEligible
-                                    ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
-                                    : matchResult.score >= 70
-                                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                                        : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                            )}>
-                                {!matchResult.isEligible ? 'Ineligible' : `${matchResult.score}%`}
-                            </span>
-                        )}
-                        {mounted && !user && (
-                            <Link
-                                href={loginRedirectHref}
-                                className="inline-flex shrink-0 items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-semibold rounded border border-border/80 bg-muted/30 text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all z-20 cursor-pointer pointer-events-auto"
-                                title="Login to see if you match"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                }}
-                            >
-                                <span>Check Match</span>
-                            </Link>
-                        )}
                         <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium rounded bg-primary/10 text-primary border border-primary/20">
                             {isDrive ? 'Drive' : job.type === 'INTERNSHIP' ? 'Intern' : job.type === 'WALKIN' ? 'Walk-in' : 'Job'}
                         </span>
                     </div>
                 </div>
 
-                {/* Skills Row */}
-                {visibleSkills.length > 0 && (
-                    <div className="flex flex-row flex-nowrap overflow-hidden gap-1 pt-1.5 border-t border-border/20 items-center w-full">
-                        {visibleSkills.map((skill, idx) => {
-                            const isMatched = mounted && Boolean(profile?.skills?.some(s => s.toLowerCase() === skill.toLowerCase()));
-                            const isSearched = Boolean(effectiveSearchQuery && (
-                                skill.toLowerCase().includes(effectiveSearchQuery.toLowerCase()) ||
-                                effectiveSearchQuery.toLowerCase().includes(skill.toLowerCase())
-                            ));
-                            return (
-                                <span
-                                    key={`${skill}-${idx}`}
-                                    className={cn(
-                                        "inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded whitespace-nowrap capitalize shrink-0 border",
-                                        isSearched
-                                            ? "bg-primary/20 text-primary border-primary/30 font-bold ring-1 ring-primary/20"
-                                            : isMatched
-                                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                                                : "bg-muted/40 text-muted-foreground border-border/40"
-                                    )}
-                                >
-                                    {skill}
-                                </span>
-                            );
-                        })}
-                        {remainingCount > 0 && (
-                            <span className="inline-flex items-center px-1 py-0.5 text-[10px] font-medium rounded bg-muted text-muted-foreground border border-border/40 whitespace-nowrap shrink-0">
-                                +{remainingCount}
-                            </span>
+                {/* Footer Controls: Apply + 3-dots Menu */}
+                <div className="flex items-center justify-between pt-1.5 border-t border-border/20 relative z-20 pointer-events-auto">
+                    <button
+                        type="button"
+                        onClick={handleApplyClick}
+                        className={cn(
+                            "inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.95] transition-opacity duration-150 ease-out cursor-pointer shadow-xs",
+                            "opacity-100 md:opacity-0 md:group-hover:opacity-100"
                         )}
+                        title="Apply to job"
+                    >
+                        <span>Apply</span>
+                    </button>
+
+                    <div onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button
+                                    type="button"
+                                    className="h-7 w-7 rounded-md border border-border/60 bg-background dark:bg-muted/35 text-muted-foreground hover:border-primary/30 hover:text-foreground flex items-center justify-center transition-all duration-150 active:scale-95 outline-none"
+                                    aria-label="Job options"
+                                >
+                                    <EllipsisVerticalIcon className="w-4 h-4" aria-hidden="true" />
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-44 z-50">
+                                <DropdownMenuItem onClick={handleSaveClick} className="cursor-pointer text-xs">
+                                    {isJobSaved ? <BookmarkSolidIcon className="w-3.5 h-3.5 mr-2 text-primary" /> : <BookmarkIcon className="w-3.5 h-3.5 mr-2" />}
+                                    <span>{isJobSaved ? 'Remove Bookmark' : 'Save Job'}</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleShareClick} className="cursor-pointer text-xs">
+                                    <ShareIcon className="w-3.5 h-3.5 mr-2" />
+                                    <span>Share Job</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider px-2 py-1">
+                                    Report
+                                </DropdownMenuLabel>
+                                {[
+                                    { id: 'EXPIRED', label: 'Expired' },
+                                    { id: 'LINK_BROKEN', label: 'Broken Link' },
+                                    { id: 'INACCURATE', label: 'Inaccurate' },
+                                    { id: 'SPAM', label: 'Spam' },
+                                ].map((item) => (
+                                    <DropdownMenuItem
+                                        key={item.id}
+                                        onClick={(e) => handleReportClick(e, item.id)}
+                                        className="cursor-pointer text-xs"
+                                    >
+                                        <FlagIcon className="w-3.5 h-3.5 mr-2 text-destructive" />
+                                        <span>{item.label}</span>
+                                    </DropdownMenuItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
-                )}
+                </div>
             </div>
         );
     }
@@ -524,7 +485,7 @@ export default function JobCard({
     return (
         <div
             className={cn(
-                "group relative bg-card border rounded-2xl p-4 md:p-5 shadow-sm transition-all duration-200 ease-out hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/35 flex flex-col gap-3 overflow-hidden shrink-0 h-full",
+                "group relative bg-card border rounded-2xl p-3.5 md:p-4 shadow-xs transition-all duration-200 ease-out hover:shadow-md hover:border-primary/40 flex flex-col justify-start gap-2.5 overflow-hidden w-full h-auto",
                 isSelected
                     ? "border-primary/70 ring-2 ring-primary/10 shadow-md"
                     : "border-border/60",
@@ -536,180 +497,130 @@ export default function JobCard({
             <Link
                 href={getOpportunityPathFromItem(job)}
                 onClick={(e) => {
-                    if (onClick) {
-                        onClick(e as any);
-                    }
-                    if (!e.defaultPrevented && !isNavigating) {
-                        setIsNavigating(true);
-                    }
+                    if (onClick) onClick(e as any);
+                    if (!e.defaultPrevented && !isNavigating) setIsNavigating(true);
                 }}
                 aria-label={`View ${job.title}`}
                 className="absolute inset-0 z-10"
             />
+
             {isNavigating && (
                 <div className="absolute inset-0 z-50 bg-background/50 flex items-center justify-center backdrop-blur-[1px] rounded-2xl">
                     <ArrowPathIcon className="w-6 h-6 text-primary animate-spin" />
                 </div>
             )}
 
-            {/* Top Bar: Type Badge + Heat Badge + Meta */}
-            <div className="flex items-center justify-between gap-2 z-20 pointer-events-none">
-                <div className="flex items-center gap-2">
-                    <span className="inline-flex shrink-0 items-center px-2 py-0.5 text-xs font-medium rounded-md bg-primary/10 text-primary border border-primary/20">
-                        {isDrive ? 'Hiring Drive' : isGovernment ? ((job as any).governmentJobDetails?.jobCategory?.[0] || 'Govt Job') : (job.employmentType || job.type) === 'INTERNSHIP' || job.type === 'INTERNSHIP' ? 'Internship' : (job.employmentType || job.type) === 'WALKIN' || job.type === 'WALKIN' ? 'Walk-in' : 'Full-time'}
-                    </span>
-                    {mounted && user && matchResult && (
-                        <span className={cn(
-                            "inline-flex shrink-0 items-center px-2 py-0.5 text-xs font-semibold rounded-md border",
-                            !matchResult.isEligible
-                                ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
-                                : matchResult.score >= 70
-                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
-                        )}>
-                            {!matchResult.isEligible ? 'Not Eligible' : `${matchResult.score}% Match`}
-                        </span>
-                    )}
-                    {mounted && !user && (
-                        <Link
-                            href={loginRedirectHref}
-                            className="inline-flex shrink-0 items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-md border border-border/80 bg-muted/30 text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all z-20 cursor-pointer pointer-events-auto"
-                            title="Login to see if you match"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                            }}
-                        >
-                            <span>Check Match Score</span>
-                        </Link>
-                    )}
-                    {heatBadge && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-500 text-[10px] font-bold uppercase tracking-wider border border-amber-500/20">
-                            <FireIcon className="w-3 h-3" />
-                            {heatBadge}
-                        </span>
-                    )}
-                    {isTrusted && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/80 text-foreground text-[10px] font-bold uppercase tracking-wider border border-border/70">
-                            <CheckBadgeIcon className="w-3 h-3" />
-                            Trusted
-                        </span>
-                    )}
-                </div>
-                <div className="flex items-center gap-2">
-                   {getPostedLabel() && (
-                        <span className={cn("text-[11px] font-medium text-muted-foreground", isFreshlyPosted() && "text-primary")}>
-                            {getPostedLabel()}
-                        </span>
-                    )}
-                </div>
-            </div>
-
-            {/* Header: Company + Title + Save */}
-            <div className="flex justify-between items-start">
-                <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <div className="mt-1 shrink-0"><CompanyLogo companyName={job.company} companyWebsite={job.companyWebsite} companyLogoUrl={job.companyLogoUrl} applyLink={job.applyLink} priority={priority} isGovernment={job.type === 'GOVERNMENT' || Boolean(job.governmentJobDetails)} /></div>
-                    <div className="min-w-0">
-                        <span className="text-xs font-medium text-muted-foreground line-clamp-1 block">
+            {/* Top Bar: Company Logo + Company & Type Badge + 3-dots Menu */}
+            <div className="flex items-start justify-between gap-2 relative z-20 pointer-events-none">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <CompanyLogo
+                        companyName={job.company}
+                        companyWebsite={job.companyWebsite}
+                        companyLogoUrl={job.companyLogoUrl}
+                        applyLink={job.applyLink}
+                        priority={priority}
+                        isGovernment={isGovernment}
+                        className="!w-10 !h-10 rounded-xl shrink-0"
+                    />
+                    <div className="min-w-0 flex-1">
+                        <span className="text-xs font-semibold text-muted-foreground line-clamp-1 block">
                             {job.company}
                         </span>
-                        <h2 className="mt-0.5 text-base font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
-                            {job.normalizedRole || job.title}
-                        </h2>
-                        {isGovernment && totalVacancies && (
-                            <p className="mt-1.5 text-sm font-bold text-foreground bg-muted/50 inline-block px-2 py-0.5 rounded border border-border/50">
-                                Total Vacancies: <span className="text-primary">{Number(totalVacancies).toLocaleString('en-IN')}</span>
-                            </p>
-                        )}
-                    </div>
-                </div>
-
-                <div className="flex flex-col items-end shrink-0">
-                    <div className="flex items-center gap-1">
-                        <div className="relative">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowReportMenu(!showReportMenu);
-                                }}
-                                className={cn(
-                                    "relative z-20 h-9 w-9 rounded-lg transition-all duration-150 ease-out active:scale-[0.93] border shrink-0 flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary outline-none",
-                                    showReportMenu
-                                        ? "bg-destructive/10 border-destructive/20 text-destructive shadow-sm"
-                                        : "bg-background dark:bg-muted/35 border-transparent dark:border-border/60 text-muted-foreground hover:border-destructive/30 hover:text-destructive"
-                                )}
-                                title="Report issue or expired job"
-                                aria-label={`Report issue with ${job.title}`}
-                            >
-                                <FlagIcon className="w-4 h-4" aria-hidden="true" />
-                            </button>
-                            {showReportMenu && (
-                                <div className="absolute top-full right-0 mt-1 w-44 bg-card border border-border rounded-xl shadow-xl z-50 p-1.5 space-y-0.5 animate-in fade-in-0 zoom-in-95 duration-150">
-                                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/40 mb-1">
-                                        Report Listing
-                                    </div>
-                                    {[
-                                        { id: 'EXPIRED', label: 'Job Expired / Closed' },
-                                        { id: 'LINK_BROKEN', label: 'Broken Apply Link' },
-                                        { id: 'INACCURATE', label: 'Inaccurate Details' },
-                                        { id: 'SPAM', label: 'Spam or Fake Job' },
-                                    ].map(item => (
-                                        <button
-                                            key={item.id}
-                                            onClick={(e) => handleReportClick(e, item.id)}
-                                            className="w-full text-left px-2 py-1.5 rounded-lg text-xs font-semibold text-foreground hover:bg-muted active:scale-[0.97] transition-all duration-150 flex items-center justify-between"
-                                        >
-                                            <span>{item.label}</span>
-                                        </button>
-                                    ))}
-                                </div>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                            <span className="inline-flex shrink-0 items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-primary/10 text-primary border border-primary/20">
+                                {isDrive ? 'Drive' : isGovernment ? ((job as any).governmentJobDetails?.jobCategory?.[0] || 'Govt') : (job.employmentType || job.type) === 'INTERNSHIP' || job.type === 'INTERNSHIP' ? 'Intern' : (job.employmentType || job.type) === 'WALKIN' || job.type === 'WALKIN' ? 'Walk-in' : 'Full-time'}
+                            </span>
+                            {heatBadge && (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-500 text-[9px] font-bold uppercase border border-amber-500/20">
+                                    <FireIcon className="w-2.5 h-2.5" />
+                                    {heatBadge}
+                                </span>
+                            )}
+                            {isTrusted && (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-muted/80 text-foreground text-[9px] font-bold uppercase border border-border/70">
+                                    <CheckBadgeIcon className="w-2.5 h-2.5" />
+                                    Trusted
+                                </span>
                             )}
                         </div>
-                        <button
-                            onClick={handleShareClick}
-                            className="relative z-20 h-9 w-9 rounded-lg transition-all duration-150 ease-out active:scale-[0.93] border border-transparent dark:border-border/60 bg-background dark:bg-muted/35 text-muted-foreground hover:border-primary/30 hover:text-primary flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none"
-                            title="Share listing"
-                            aria-label={`Share ${job.title}`}
-                        >
-                            <ShareIcon className="w-4.5 h-4.5" aria-hidden="true" />
-                        </button>
-                        <button
-                            onClick={handleSaveClick}
-                            className={cn(
-                                "relative z-20 h-9 w-9 rounded-lg transition-all duration-150 ease-out active:scale-[0.93] border shrink-0 flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none",
-                                isJobSaved
-                                    ? "bg-primary/10 border-primary/20 text-primary shadow-sm"
-                                    : "bg-background dark:bg-muted/35 border-transparent dark:border-border/60 text-muted-foreground hover:border-primary/30"
-                            )}
-                            aria-label={isJobSaved ? `Remove ${job.title} from saved jobs` : `Save ${job.title}`}
-                        >
-                            {isJobSaved ? <BookmarkSolidIcon className="w-4.5 h-4.5" aria-hidden="true" /> : <BookmarkIcon className="w-4.5 h-4.5" aria-hidden="true" />}
-                        </button>
                     </div>
                 </div>
-            </div>
 
-            {/* Badges row */}
-            <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 min-w-0 flex-nowrap overflow-hidden">
-                    {metaChips.map((chip, idx) => (
-                        <span
-                            key={`${chip}-${idx}`}
-                            className={cn(
-                                "inline-flex shrink-0 items-center px-2 py-0.5 text-xs font-medium rounded-md",
-                                idx === 0
-                                    ? "bg-muted/80 text-foreground border border-border/70"
-                                    : "bg-muted/60 text-muted-foreground border border-border/60"
-                            )}
-                        >
-                            {chip}
-                        </span>
-                    ))}
+                {/* 3-dots Menu Button */}
+                <div className="relative z-20 pointer-events-auto shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button
+                                type="button"
+                                className="h-8 w-8 rounded-lg border border-border/60 bg-background dark:bg-muted/35 text-muted-foreground hover:border-primary/30 hover:text-foreground flex items-center justify-center transition-all duration-150 active:scale-95 outline-none"
+                                aria-label="Job options"
+                                title="Options"
+                            >
+                                <EllipsisVerticalIcon className="w-4.5 h-4.5" aria-hidden="true" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48 z-50">
+                            <DropdownMenuItem onClick={handleSaveClick} className="cursor-pointer text-xs">
+                                {isJobSaved ? <BookmarkSolidIcon className="w-4 h-4 mr-2 text-primary" /> : <BookmarkIcon className="w-4 h-4 mr-2" />}
+                                <span>{isJobSaved ? 'Remove Bookmark' : 'Save Job'}</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={handleShareClick} className="cursor-pointer text-xs">
+                                <ShareIcon className="w-4 h-4 mr-2" />
+                                <span>Share Job</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider px-2 py-1">
+                                Report Listing
+                            </DropdownMenuLabel>
+                            {[
+                                { id: 'EXPIRED', label: 'Job Expired / Closed' },
+                                { id: 'LINK_BROKEN', label: 'Broken Apply Link' },
+                                { id: 'INACCURATE', label: 'Inaccurate Details' },
+                                { id: 'SPAM', label: 'Spam or Fake Job' },
+                            ].map((item) => (
+                                <DropdownMenuItem
+                                    key={item.id}
+                                    onClick={(e) => handleReportClick(e, item.id)}
+                                    className="cursor-pointer text-xs"
+                                >
+                                    <FlagIcon className="w-3.5 h-3.5 mr-2 text-destructive" />
+                                    <span>{item.label}</span>
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
 
-            {/* Skills Badges row */}
+            {/* Role Title */}
+            <div className="min-w-0">
+                <h2 className="text-sm md:text-base font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
+                    {job.normalizedRole || job.title}
+                </h2>
+            </div>
+
+            {/* Location + Salary */}
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1 min-w-0">
+                    <MapPinIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                    <span className="truncate" title={locationInfo.fullLabel}>{locationInfo.shortLabel}</span>
+                </span>
+                {salaryLabel && (
+                    <span className="inline-flex items-center gap-1 min-w-0">
+                        <CurrencyRupeeIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                        <span className="truncate font-semibold text-foreground/90">{salaryLabel}</span>
+                    </span>
+                )}
+                {isGovernment && totalVacancies && (
+                    <span className="font-semibold text-foreground bg-muted/60 px-1.5 py-0.5 rounded border border-border/40 text-[10px]">
+                        Vacancies: <span className="text-primary font-bold">{Number(totalVacancies).toLocaleString('en-IN')}</span>
+                    </span>
+                )}
+            </div>
+
+            {/* Skills Pills */}
             {visibleSkills.length > 0 && (
-                <div className="flex flex-row flex-nowrap overflow-hidden gap-1.5 z-20 pointer-events-none items-center w-full">
+                <div className="flex flex-row flex-wrap items-center gap-1">
                     {visibleSkills.map((skill, idx) => {
                         const isMatched = mounted && Boolean(profile?.skills?.some(s => s.toLowerCase() === skill.toLowerCase()));
                         const isSearched = Boolean(effectiveSearchQuery && (
@@ -717,50 +628,39 @@ export default function JobCard({
                             effectiveSearchQuery.toLowerCase().includes(skill.toLowerCase())
                         ));
                         return (
-                            <span
+                            <SkillPill
                                 key={`${skill}-${idx}`}
+                                skill={skill}
+                                size="xs"
                                 className={cn(
-                                    "inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded whitespace-nowrap capitalize shrink-0 border",
                                     isSearched
                                         ? "bg-primary/20 text-primary border-primary/30 font-bold ring-1 ring-primary/20"
                                         : isMatched
                                             ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                                            : "bg-muted/40 text-muted-foreground border-border/40"
+                                            : ""
                                 )}
-                            >
-                                {skill}
-                            </span>
+                            />
                         );
                     })}
                     {remainingCount > 0 && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium rounded bg-muted text-muted-foreground border border-border/40 whitespace-nowrap shrink-0">
+                        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-muted text-muted-foreground border border-border/40 whitespace-nowrap shrink-0">
                             +{remainingCount}
                         </span>
                     )}
                 </div>
             )}
 
-            {/* Key Meta */}
-            <div className="flex items-center justify-between text-[13px] text-muted-foreground min-w-0 py-1">
-                <span className="inline-flex items-center gap-1.5 min-w-0">
-                    <MapPinIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
-                    <span className="truncate" title={locationInfo.fullLabel}>{locationInfo.shortLabel}</span>
-                </span>
-                {salaryLabel && (
-                    <span className="inline-flex items-center gap-1.5 min-w-0">
-                        <CurrencyRupeeIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
-                        <span className="truncate font-medium text-foreground/90">{salaryLabel}</span>
-                    </span>
-                )}
-            </div>
-
-            {/* Footer: Community Stats + CTA */}
-            <div className="flex items-center justify-between pt-2 mt-auto border-t border-border/40">
-                <div className="flex items-center gap-3">
-                    {/* Govt phase badge takes priority; fallback to expiry for regular jobs */}
+            {/* Footer Row: Posted/Expiry Info + Apply Button */}
+            <div className="flex items-center justify-between pt-2 mt-1 border-t border-border/30 relative z-20 pointer-events-auto">
+                <div className="flex items-center gap-2 min-w-0">
+                    {getPostedLabel() && (
+                        <span className={cn("text-[11px] font-medium text-muted-foreground shrink-0", isFreshlyPosted() && "text-primary")}>
+                            {getPostedLabel()}
+                        </span>
+                    )}
                     {isGovernment && govtStatusMeta ? (
                         <span className={cn(
-                            "inline-flex items-center gap-1 px-2 py-0.5 border text-[11px] font-semibold rounded-md whitespace-nowrap",
+                            "inline-flex items-center gap-1 px-1.5 py-0.5 border text-[10px] font-semibold rounded whitespace-nowrap",
                             govtStatusMeta.className
                         )}>
                             {govtStatusMeta.label}
@@ -768,7 +668,7 @@ export default function JobCard({
                     ) : !isGovernment && job.expiresAt && (
                         <span
                             className={cn(
-                                "inline-flex items-center gap-1 px-2 py-0.5 border text-[11px] font-semibold rounded-md whitespace-nowrap",
+                                "inline-flex items-center gap-1 px-1.5 py-0.5 border text-[10px] font-semibold rounded whitespace-nowrap",
                                 isExpired()
                                     ? "bg-destructive/5 border-destructive/25 text-destructive"
                                     : "bg-muted/70 border-border/70 text-foreground/80"
@@ -778,32 +678,24 @@ export default function JobCard({
                             {getExpiryLabel()}
                         </span>
                     )}
-                    {job.shareCount && job.shareCount > 0 ? (
-                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                            <UsersIcon className="w-3.5 h-3.5" />
-                            <span>{job.shareCount} Shared</span>
-                        </div>
-                    ) : null}
                     {(trackerStatus === 'APPLIED' || (!trackerStatus && isApplied)) && (
-                        <span className="inline-flex items-center px-2 py-0.5 bg-primary/10 text-primary rounded text-[10px] font-bold uppercase tracking-wider border border-primary/20">
+                        <span className="inline-flex items-center px-1.5 py-0.5 bg-primary/10 text-primary rounded text-[9px] font-bold uppercase tracking-wider border border-primary/20">
                             Applied
                         </span>
                     )}
                 </div>
-                <div className="flex items-center gap-2.5">
-                    <button
-                        type="button"
-                        onClick={handleApplyClick}
-                        className="relative z-20 inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.95] transition-all duration-150 ease-out cursor-pointer shadow-sm pointer-events-auto"
-                        title="Apply to job"
-                    >
-                        <span>Apply Now</span>
-                    </button>
-                    <div className="flex items-center gap-1 text-primary text-[13px] font-bold group-hover:translate-x-1 transition-transform duration-300">
-                        <span>View details</span>
-                        <ChevronRightIcon className="w-3.5 h-3.5" aria-hidden="true" />
-                    </div>
-                </div>
+
+                <button
+                    type="button"
+                    onClick={handleApplyClick}
+                    className={cn(
+                        "relative z-20 inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.95] transition-opacity duration-150 ease-out cursor-pointer shadow-xs pointer-events-auto shrink-0",
+                        "opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                    )}
+                    title="Apply to job"
+                >
+                    <span>Apply</span>
+                </button>
             </div>
 
             {/* Admin Edit Shortcut */}
@@ -813,11 +705,11 @@ export default function JobCard({
                         e.stopPropagation();
                         window.location.href = `/opportunities/edit/${job.slug || job.id}`;
                     }}
-                    className="absolute -top-2 -right-2 p-2 rounded-full bg-card border border-border shadow-lg text-primary hover:bg-primary/10 transition-colors z-30"
+                    className="absolute top-2 right-12 p-1.5 rounded-full bg-card border border-border shadow-lg text-primary hover:bg-primary/10 transition-colors z-30"
                     title="Edit Listing (Admin)"
                     aria-label="Edit Listing (Admin)"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
                     </svg>
                 </button>
@@ -825,4 +717,5 @@ export default function JobCard({
         </div>
     );
 }
+
 
