@@ -16,23 +16,35 @@ import {
     UserCircleIcon,
     AcademicCapIcon,
     ComputerDesktopIcon,
-    UserGroupIcon,
-    ClockIcon,
-    FireIcon,
     MapIcon,
-    DocumentCheckIcon,
+    QueueListIcon,
+    ShieldExclamationIcon,
+    WrenchScrewdriverIcon,
+    CodeBracketIcon,
     IdentificationIcon,
+    MapPinIcon,
+    CalendarIcon,
+    ClipboardDocumentCheckIcon,
     BanknotesIcon,
-    TruckIcon,
     ShieldCheckIcon,
+    ChartBarIcon,
+    UserPlusIcon,
+    PlusCircleIcon,
     Cog6ToothIcon,
-    LinkIcon,
     Bars3Icon,
     ChevronLeftIcon,
     ChevronRightIcon,
-    SparklesIcon,
-    UsersIcon
+    ClockIcon,
+    ArrowTrendingUpIcon,
+    BellAlertIcon,
+    UserIcon,
+    BuildingOffice2Icon
 } from '@heroicons/react/24/outline';
+
+import {
+    TrainFront,
+    Building
+} from 'lucide-react';
 
 const SidebarIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -57,38 +69,38 @@ const JOBS_NAV_ITEMS = [
     { name: 'All Jobs', href: '/jobs', icon: BriefcaseIcon },
     { name: 'Internships', href: '/jobs?type=internship', icon: AcademicCapIcon },
     { name: 'Remote', href: '/jobs?mode=remote', icon: ComputerDesktopIcon },
-    { name: 'Walk-ins', href: '/jobs?type=walkin', icon: UserGroupIcon },
-    { name: 'Off-campus', href: '/jobs?source=offcampus', icon: MapIcon },
+    { name: 'Walk-ins', href: '/jobs?type=walkin', icon: MapIcon },
+    { name: 'Closing Soon', href: '/jobs?sort=expiring', icon: BellAlertIcon },
     { name: 'Latest', href: '/jobs?sort=latest', icon: ClockIcon },
-    { name: 'Trending', href: '/jobs?sort=trending', icon: FireIcon },
-    { name: 'Skills', href: '/skills', icon: SparklesIcon },
-    { name: 'Roles', href: '/roles', icon: IdentificationIcon },
-    { name: 'Location', href: '/locations', icon: MapIcon },
+    { name: 'Trending', href: '/jobs?sort=trending', icon: ArrowTrendingUpIcon },
+    { name: 'Skills', href: '/skills', icon: CodeBracketIcon }, // Code brackets match tech skills
+    { name: 'Roles', href: '/roles', icon: IdentificationIcon }, // ID card matches roles
+    { name: 'Location', href: '/locations', icon: MapPinIcon },
     { name: 'Company', href: '/companies', icon: BuildingOfficeIcon },
-    { name: 'Batch', href: '/batch', icon: AcademicCapIcon },
+    { name: 'Batch', href: '/batch', icon: CalendarIcon }, // Year/Batch = Calendar
 ];
 
 const GOVT_NAV_ITEMS = [
-    { name: 'All', href: '/govt', icon: ClockIcon },
+    { name: 'All', href: '/govt', icon: QueueListIcon },
     { name: 'UPSC', href: '/govt?category=UPSC', icon: BuildingLibraryIcon },
-    { name: 'SSC', href: '/govt?category=SSC', icon: BuildingLibraryIcon },
+    { name: 'SSC', href: '/govt?category=SSC', icon: ClipboardDocumentCheckIcon }, // Exams/Clerical
     { name: 'Banking', href: '/govt?category=Banking', icon: BanknotesIcon },
-    { name: 'Railways', href: '/govt?category=Railways', icon: TruckIcon },
-    { name: 'PSU', href: '/govt?category=State PSC', icon: BuildingLibraryIcon },
+    { name: 'Railways', href: '/govt?category=Railways', icon: TrainFront }, // Lucide literal train
+    { name: 'PSU', href: '/govt?category=State PSC', icon: BuildingOffice2Icon },
     { name: 'Defence', href: '/govt?category=Defence', icon: ShieldCheckIcon },
     { name: 'Teaching', href: '/govt?category=Teaching', icon: AcademicCapIcon },
-    { name: 'Police', href: '/govt?category=Police', icon: ShieldCheckIcon },
-    { name: 'Engineering', href: '/govt?category=Engineering', icon: DocumentCheckIcon },
+    { name: 'Police', href: '/govt?category=Police', icon: ShieldExclamationIcon },
+    { name: 'Engineering', href: '/govt?category=Engineering', icon: WrenchScrewdriverIcon },
 ];
 
 const ACCOUNT_NAV_ITEMS = [
-    { name: 'Account', href: '/account', icon: UsersIcon },
-    { name: 'Profile', href: '/profile', icon: UserCircleIcon },
-    { name: 'Tracker', href: '/tracker', icon: BriefcaseIcon },
+    { name: 'Account', href: '/account', icon: UserCircleIcon },
+    { name: 'Profile', href: '/profile', icon: UserIcon },
+    { name: 'Tracker', href: '/tracker', icon: ChartBarIcon }, // Analytics tracker
     { name: 'Saved', href: '/saved', icon: BookmarkIcon },
-    { name: 'Following', href: '/followed-companies', icon: BuildingOfficeIcon },
-    { name: 'Referrals', href: '/referral', icon: UserGroupIcon },
-    { name: 'Contributions', href: '/contribute', icon: LinkIcon },
+    { name: 'Following', href: '/followed-companies', icon: Building }, // Lucide building
+    { name: 'Referrals', href: '/referral', icon: UserPlusIcon }, // Adding a person
+    { name: 'Contributions', href: '/contribute', icon: PlusCircleIcon },
     { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
 ];
 
@@ -167,9 +179,7 @@ function SidebarContent({ pathname, searchParams, collapsed, onToggleCollapse }:
     return (
         <TooltipProvider delayDuration={200}>
             <div className="flex flex-col h-full bg-card border-r border-border pb-4 w-full select-none">
-                {/* 1. FIXED LOGO HEADER
-                    - px-[8px] left/right padding: 8+28+8=44px < 48px collapsed width, so icon never touches the border
-                    - Text is clipped naturally by the aside overflow-hidden as sidebar width shrinks — no separate opacity animation needed */}
+                {/* 1. FIXED LOGO HEADER */}
                 <div className="h-14 flex items-center px-[8px] border-b border-border mb-4 bg-card shrink-0">
                     <Link href={logoHref} className="flex items-center gap-2 w-full min-w-0 hover:opacity-80 transition-opacity focus:outline-none">
                         <LogoImage width={28} height={28} className="w-7 h-7 object-contain shrink-0" />
@@ -189,7 +199,7 @@ function SidebarContent({ pathname, searchParams, collapsed, onToggleCollapse }:
                             exit="exit"
                             className="space-y-1 w-full"
                         >
-                            {/* BACK BUTTON — same structure collapsed/expanded, icon always at same x */}
+                            {/* BACK BUTTON */}
                             {isSubContext && (() => {
                                 const backLink = (
                                     <Link
@@ -225,7 +235,6 @@ function SidebarContent({ pathname, searchParams, collapsed, onToggleCollapse }:
                                     isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
                                 }
                                 
-                                // Always px-1.5 so icon left edge never shifts between states
                                 const linkElement = (
                                     <Link
                                         href={item.href}
@@ -252,7 +261,6 @@ function SidebarContent({ pathname, searchParams, collapsed, onToggleCollapse }:
                                     </Link>
                                 );
 
-                                // Show Hint tooltip only when collapsed (icon-only mode)
                                 return collapsed ? (
                                     <Hint key={item.name} label={item.name} side="right">
                                         {linkElement}
@@ -268,10 +276,7 @@ function SidebarContent({ pathname, searchParams, collapsed, onToggleCollapse }:
                     </AnimatePresence>
                 </div>
 
-                {/* 3. FOOTER — Collapse toggle button
-                    - When expanded: "Collapse  Ctrl+B" left-aligned
-                    - When collapsed: icon only, centered, tooltip shows Ctrl+B hint
-                    - Tooltip only enabled when collapsed */}
+                {/* 3. FOOTER */}
                 {onToggleCollapse && (
                     <div className="px-1 pb-1 mt-auto">
                         <Tooltip>
@@ -288,7 +293,6 @@ function SidebarContent({ pathname, searchParams, collapsed, onToggleCollapse }:
                                     )}
                                 </button>
                             </TooltipTrigger>
-                            {/* Only show tooltip when collapsed — when expanded the label is visible */}
                             {collapsed && (
                                 <TooltipContent side="right" className="flex items-center gap-2">
                                     <span>Expand Sidebar</span>
@@ -320,7 +324,6 @@ export function AppSidebar() {
         });
     };
 
-    // Sync CSS var on mount
     useEffect(() => {
         const stored = localStorage.getItem('ff:sidebarCollapsed');
         const isCol = stored === 'true';
@@ -329,7 +332,6 @@ export function AppSidebar() {
         document.documentElement.setAttribute('data-sidebar', isCol ? 'collapsed' : 'expanded');
     }, []);
 
-    // Ctrl+B shortcut to toggle sidebar
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
@@ -375,4 +377,3 @@ export function AppSidebar() {
         </>
     );
 }
-

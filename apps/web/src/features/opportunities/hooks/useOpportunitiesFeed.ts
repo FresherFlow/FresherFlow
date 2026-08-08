@@ -4,9 +4,9 @@ import { Opportunity, EducationLevel } from '@fresherflow/types';
 // WEB PIVOT: keep API imports disabled while public web runs from CDN/static JSON.
 // import { opportunitiesApi, savedApi } from '@/lib/api/client';
 import { useDebounce } from '@/lib/hooks/useDebounce';
-import toast from 'react-hot-toast';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { readFeedCache, saveFeedCache } from '@/lib/api/offline/opportunitiesFeedCache';
+import { toast } from 'sonner';
+import { readFeedCache } from '@/lib/api/offline/opportunitiesFeedCache';
 import { calculateOpportunityMatch, isNotEligible } from '@/features/opportunities/domain/matchScore';
 
 import { useFirebaseSaved } from '@/lib/hooks/useFirebaseSaved';
@@ -132,13 +132,6 @@ export function useOpportunitiesFeed({
         setUsingCachedFeed(false);
 
         try {
-            interface FeedResponse {
-                opportunities: Opportunity[];
-                total?: number;
-                count?: number;
-                limit?: number;
-            }
-            let data: FeedResponse;
             if (showOnlySaved) {
                 if (!user) {
                     setError('Please log in to view saved opportunities');
@@ -148,62 +141,10 @@ export function useOpportunitiesFeed({
                     return;
                 }
                 throw new Error('Saved jobs are disabled on web');
-                // data = (await savedApi.list()) as FeedResponse;
-                if (type) {
-                    data.opportunities = data.opportunities?.filter((opp: Opportunity) => opp.type === type) || [];
-                }
             } else if (shouldUseBackendSearch) {
                 throw new Error('Backend search is disabled on web');
-                // const searchData = (await opportunitiesApi.search({
-                //     q: normalizedSearch,
-                //     type: type || undefined,
-                //     city: selectedLoc || undefined,
-                //     page: pageNum,
-                //     limit: 50,
-                // })) as FeedResponse & { hits?: Opportunity[]; totalHits?: number; hasMore?: boolean };
-                const searchData = { hits: [], totalHits: 0, total: 0, limit: 0, hasMore: false };
-                data = {
-                    opportunities: searchData.hits || [],
-                    total: searchData.totalHits ?? searchData.total ?? (searchData.hits?.length || 0),
-                    limit: searchData.limit,
-                };
-                if (lastRequestTimestamp.current === timestamp) {
-                    setHasMore(Boolean(searchData.hasMore));
-                }
             } else {
                 throw new Error('Opportunity API list is disabled on web');
-                // data = (await opportunitiesApi.list({
-                //     type: type || undefined,
-                //     city: selectedLoc || undefined,
-                //     minSalary: minSalary || undefined,
-                //     maxSalary: maxSalary || undefined,
-                //     closingSoon: closingSoon || undefined,
-                //     page: pageNum,
-                //     limit: user ? 50 : 200
-                // })) as FeedResponse;
-                data = { opportunities: [], total: 0, limit: 0 };
-            }
-
-            // Freshness check: only update if this is the most recent request
-            if (lastRequestTimestamp.current !== timestamp) return;
-
-            const newOpps = data.opportunities || [];
-            setOpportunities(prev => append ? [...prev, ...newOpps] : newOpps);
-            if (typeof data.total === 'number' || typeof data.count === 'number') {
-                setTotalCount(data.total || data.count || 0);
-            } else if (append) {
-                setTotalCount(prev => prev + newOpps.length);
-            } else {
-                setTotalCount(newOpps.length);
-            }
-            if (!shouldUseBackendSearch) {
-                setHasMore(newOpps.length >= (data.limit || 50));
-            }
-            setPage(pageNum);
-
-            if (!showOnlySaved && !shouldUseBackendSearch && pageNum === 1) {
-                saveFeedCache(newOpps, data.total || data.count || newOpps.length, cacheScope);
-                setCachedAt(Date.now());
             }
         } catch (err: unknown) {
             if (lastRequestTimestamp.current !== timestamp) return;
@@ -216,14 +157,12 @@ export function useOpportunitiesFeed({
             } else {
                 const cached = readFeedCache(cacheScope);
                 if (cached && !showOnlySaved && !shouldUseBackendSearch && pageNum === 1) {
-                    // Silently fall back to cache — no toast, user doesn't need to know
                     setOpportunities(cached.opportunities);
                     setTotalCount(cached.count || cached.opportunities.length);
                     setUsingCachedFeed(true);
                     setCachedAt(cached.cachedAt);
                     setHasMore(false);
                 } else if (!showOnlySaved) {
-                    // No cache available — only then show error
                     const { getErrorMessage } = await import('@/lib/utils/error');
                     const msg = getErrorMessage(err);
                     setError(msg);
@@ -234,17 +173,13 @@ export function useOpportunitiesFeed({
                 setIsLoading(false);
             }
         }
-    }, [type, user, authLoading, showOnlySaved, cacheScope, shouldUseBackendSearch, initialData]);
+    }, [user, authLoading, showOnlySaved, cacheScope, shouldUseBackendSearch, initialData]);
 
     const hasOpportunities = !!initialData?.opportunities?.length;
     const hasInitialData = !!initialData;
     useEffect(() => {
         if (!authLoading) {
-            // If we have initial data, we already rendered. 
-            // We only need to trigger a background sync if we're not searching
-            // or if the initial data is old.
             if (hasOpportunities && !shouldUseBackendSearch) {
-                // Background sync (SWR)
                 loadOpportunities(1, false);
             } else {
                 loadOpportunities();
@@ -258,6 +193,13 @@ export function useOpportunitiesFeed({
         const filtered = modeFiltered.filter(opp => {
             if (showOnlySaved && !savedJobsMap[opp.id]) {
                 return false;
+            }
+
+            // Support sort === 'expiring': exclude listings without deadline or already expired
+            if (sort === 'expiring') {
+                if (!opp.expiresAt || new Date(opp.expiresAt) < new Date()) {
+                    return false;
+                }
             }
 
             // Segregate government jobs from normal feeds
@@ -282,7 +224,7 @@ export function useOpportunitiesFeed({
                     const isModeHybrid = selectedMode === 'hybrid';
                     const isModeOnsite = selectedMode === 'on_site' || selectedMode === 'onsite';
                     
-                    const oppWorkMode = String((opp as any).workMode || '').toLowerCase();
+                    const oppWorkMode = String((opp as unknown as Record<string, unknown>).workMode || '').toLowerCase();
                     
                     if (isModeRemote) {
                         return (opp.locations || []).some(loc => {
@@ -309,12 +251,12 @@ export function useOpportunitiesFeed({
                 const isRemote = (opp.locations || []).some(loc => {
                     const l = loc.toLowerCase();
                     return l.includes('remote') || l.includes('wfh') || l.includes('work from home');
-                }) || (opp as any).workMode === 'REMOTE' || opp.title.toLowerCase().includes('remote');
+                }) || (opp as unknown as Record<string, unknown>).workMode === 'REMOTE' || opp.title.toLowerCase().includes('remote');
                 if (!isRemote) return false;
             }
 
             if (source === 'offcampus') {
-                const isOffCampus = (opp as any).source === 'OFFCAMPUS' || (opp as any).category === 'OFFCAMPUS' ||
+                const isOffCampus = (opp as unknown as Record<string, unknown>).source === 'OFFCAMPUS' || (opp as unknown as Record<string, unknown>).category === 'OFFCAMPUS' ||
                     (opp.tags || []).some((t: string) => t.toLowerCase().replace('-', '') === 'offcampus') ||
                     (opp.title || '').toLowerCase().includes('off campus') ||
                     (opp.title || '').toLowerCase().includes('off-campus');
@@ -328,7 +270,7 @@ export function useOpportunitiesFeed({
                 opp.description,
                 ...(opp.allowedCourses || []),
                 ...(opp.allowedDegrees || []),
-                (opp.governmentJobDetails as any)?.minimumQualification
+                (opp.governmentJobDetails as unknown as Record<string, unknown>)?.minimumQualification
             ].some((value) => String(value || '').toLowerCase().includes(normalizedSearch.toLowerCase()));
 
             const matchesLoc = !selectedLoc || (opp.locations || []).some((loc) => {
@@ -366,7 +308,7 @@ export function useOpportunitiesFeed({
 
             const matchesQualification = !qualification || 
                 (mappedQual && (opp.allowedDegrees || []).includes(mappedQual)) ||
-                ((opp.governmentJobDetails as any)?.minimumQualification && String((opp.governmentJobDetails as any).minimumQualification).toLowerCase().includes(qualification.toLowerCase()));
+                ((opp.governmentJobDetails as unknown as Record<string, unknown>)?.minimumQualification && String((opp.governmentJobDetails as unknown as Record<string, unknown>).minimumQualification).toLowerCase().includes(qualification.toLowerCase()));
 
             const courseParts = course ? course.split('/').map(p => p.trim().toLowerCase()) : [];
             const matchesCourse = !course || 
@@ -420,14 +362,18 @@ export function useOpportunitiesFeed({
             if (bucketDiff !== 0) return bucketDiff;
 
             // 4. Sort override
-            if (sort === 'latest') {
+            if (sort === 'expiring') {
+                const expA = a.expiresAt ? new Date(a.expiresAt).getTime() : Number.MAX_SAFE_INTEGER;
+                const expB = b.expiresAt ? new Date(b.expiresAt).getTime() : Number.MAX_SAFE_INTEGER;
+                if (expA !== expB) return expA - expB;
+            } else if (sort === 'latest') {
                 const timeA = a.postedAt ? new Date(a.postedAt).getTime() : 0;
                 const timeB = b.postedAt ? new Date(b.postedAt).getTime() : 0;
                 if (timeB !== timeA) return timeB - timeA;
             } else if (sort === 'trending') {
-                const trendA = (a as any).views || (a as any).applicationsCount || a.matchScore || 0;
-                const trendB = (b as any).views || (b as any).applicationsCount || b.matchScore || 0;
-                if (trendB !== trendA) return trendB - trendA;
+                const trendA = (a as unknown as Record<string, unknown>).views || (a as unknown as Record<string, unknown>).applicationsCount || a.matchScore || 0;
+                const trendB = (b as unknown as Record<string, unknown>).views || (b as unknown as Record<string, unknown>).applicationsCount || b.matchScore || 0;
+                if ((trendB as number) !== (trendA as number)) return (trendB as number) - (trendA as number);
             }
 
             // 5. Mobile Architecture: Recency priority (newer postedAt date comes first)

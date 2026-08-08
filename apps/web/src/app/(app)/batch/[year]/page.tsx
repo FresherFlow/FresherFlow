@@ -99,7 +99,6 @@ export default async function BatchPage({ params }: Props) {
             lastUpdated={lastUpdated}
             breadcrumbLabel={`${year} Batch`}
             breadcrumbUrl={`/batch/${year}`}
-            parentBreadcrumb={{ label: 'Batches', href: '/batch' }}
             topCompanies={topCompanies}
             relatedSkills={relatedSkills}
             relatedLocations={relatedLocations}

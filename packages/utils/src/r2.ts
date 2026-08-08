@@ -116,13 +116,13 @@ export async function listR2Objects(bucketName: string, prefix: string): Promise
         const allContents: { Key?: string }[] = [];
 
         while (isTruncated) {
-            const response: any = await s3Client.send(
+            const response = (await s3Client.send(
                 new ListObjectsV2Command({
                     Bucket: bucketName,
                     Prefix: prefix,
                     ContinuationToken: continuationToken,
                 })
-            );
+            )) as { Contents?: { Key?: string }[]; IsTruncated?: boolean; NextContinuationToken?: string };
             
             if (response.Contents) {
                 allContents.push(...response.Contents);

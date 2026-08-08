@@ -8,7 +8,6 @@ import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import { PageTagLinks } from '@/ui/PageTagLinks';
 import CompanyLogo from '@/ui/CompanyLogo';
 import { EmptyState } from '@/ui/EmptyState';
-import { Breadcrumb } from '@/ui/Breadcrumb';
 import { OpportunityDetailPane } from './OpportunityDetailPane';
 import { useIntersectionObserver } from '@/lib/hooks/useIntersectionObserver';
 import { SKILL_ICON_MAP } from '@/ui/SkillPill';
@@ -36,7 +35,6 @@ interface ProgrammaticHubProps {
     relatedSkills?: HubLink[];
     relatedLocations?: HubLink[];
     topCompanies?: HubCompany[];
-    parentBreadcrumb?: { label: string; href: string };
 }
 
 export default function ProgrammaticHub({
@@ -49,8 +47,7 @@ export default function ProgrammaticHub({
     breadcrumbUrl,
     relatedSkills = [],
     relatedLocations = [],
-    topCompanies = [],
-    parentBreadcrumb
+    topCompanies = []
 }: ProgrammaticHubProps) {
     const [visibleCount, setVisibleCount] = useState(12);
     const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
@@ -119,13 +116,6 @@ export default function ProgrammaticHub({
     return (
         <>
             <div className="w-full max-w-7xl mx-auto px-4 md:px-6 py-6 md:pt-10 md:pb-10 lg:pb-4 space-y-8">
-                {/* Breadcrumbs */}
-                <Breadcrumb items={[
-                    { label: 'Home', href: '/' },
-                    ...(parentBreadcrumb ? [parentBreadcrumb] : []),
-                    { label: breadcrumbLabel, href: breadcrumbUrl },
-                ]} />
-
                 {/* Header */}
                 <div id="hub-top-header" className="flex flex-col gap-2 pb-6">
                     <div className="flex items-center gap-3">

@@ -22,6 +22,9 @@ export function normalizeOpportunitySlugOrId(slugOrId: string): string {
 
 export function getOpportunityPath(type: OpportunityType, slugOrId: string): string {
     const safeSegment = encodeURIComponent(normalizeOpportunitySlugOrId(slugOrId));
+    if (type === 'GOVERNMENT') {
+        return `/govt/${safeSegment}`;
+    }
     return `/jobs/${safeSegment}`;
 }
 

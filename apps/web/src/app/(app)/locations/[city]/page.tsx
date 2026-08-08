@@ -150,7 +150,6 @@ export default async function LocationPage({ params }: Props) {
             lastUpdated={lastUpdated}
             breadcrumbLabel={locInfo.label}
             breadcrumbUrl={`/location/${city}`}
-            parentBreadcrumb={{ label: 'Locations', href: '/location' }}
             topCompanies={topCompanies}
             relatedSkills={relatedSkills}
             relatedLocations={relatedLocations}

@@ -377,7 +377,7 @@ export default function JobCard({
             <div
                 className={cn(
                     "group relative bg-card border rounded-xl p-3.5 flex items-start gap-3 md:gap-3.5 hover:border-primary/40 hover:shadow-md transition-all duration-200 cursor-pointer",
-                    isSelected ? "border-primary/70 ring-2 ring-primary/10 shadow-md" : "border-border/60",
+                    isSelected ? "border-primary/70 ring-2 ring-primary/10 shadow-md" : "border-transparent",
                     isExpired() && "opacity-60",
                     className
                 )}
@@ -527,12 +527,12 @@ export default function JobCard({
                                 isCompact ? "max-h-[24px]" : "max-h-[24px] md:max-h-[50px]"
                             )}>
                                 {skillsList.map(s => (
-                                    <span
+                                    <SkillPill
                                         key={s}
-                                        className="px-2 py-0.5 text-[10px] font-medium rounded border border-border/50 bg-muted/50 text-muted-foreground"
-                                    >
-                                        {s}
-                                    </span>
+                                        skill={s}
+                                        size="xs"
+                                        className="py-0.5 text-[10px]"
+                                    />
                                 ))}
                                 {skillOverflow > 0 && (
                                     <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-muted border border-border/50 text-muted-foreground">
@@ -578,7 +578,7 @@ export default function JobCard({
                 "group relative bg-card border rounded-2xl p-3.5 md:p-4 shadow-xs transition-all duration-200 ease-out hover:shadow-md hover:border-primary/40 flex flex-col justify-start gap-2.5 overflow-hidden w-full h-auto",
                 isSelected
                     ? "border-primary/70 ring-2 ring-primary/10 shadow-md"
-                    : "border-border/60",
+                    : "border-transparent",
                 isExpired() && "opacity-60",
                 "cursor-pointer",
                 className

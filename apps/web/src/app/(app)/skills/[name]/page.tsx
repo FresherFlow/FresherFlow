@@ -156,7 +156,6 @@ export default async function SkillPage({ params }: Props) {
             lastUpdated={lastUpdated}
             breadcrumbLabel={label}
             breadcrumbUrl={`/skills/${slug}`}
-            parentBreadcrumb={{ label: 'Skills', href: '/skills' }}
             topCompanies={topCompanies}
             relatedSkills={relatedSkills}
             relatedLocations={relatedLocations}

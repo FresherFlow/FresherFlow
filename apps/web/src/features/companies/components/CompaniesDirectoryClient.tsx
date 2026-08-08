@@ -308,7 +308,7 @@ export default function CompaniesDirectoryClient({ companies, totalJobs }: Compa
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                                 {grouped[letter].map((co) => (
                                     <Link key={co.slug} href={`/companies/${co.slug}`}>
-                                        <Card className="group flex items-start gap-3 p-3.5 hover:border-primary/40 hover:bg-accent/30 transition-all cursor-pointer h-full">
+                                        <Card className="group flex items-start gap-3 p-4 rounded-2xl bg-card border border-border/70 hover:border-primary/40 hover:-translate-y-0.5 transition-all shadow-sm h-full cursor-pointer">
                                             <CompanyLogo
                                                 companyName={co.name}
                                                 companyLogoUrl={co.logoUrl}

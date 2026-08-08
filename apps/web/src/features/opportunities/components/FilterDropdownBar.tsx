@@ -159,7 +159,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                     className={cn(chipBase, (filters.location || (filters.workMode && filters.workMode.length > 0)) ? chipActive : chipDefault)}
                 >
                     <MapPinIcon className="w-3.5 h-3.5" />
-                    Location & Mode
+                    Location
                     {((filters.workMode?.length || 0) + (filters.location ? 1 : 0)) > 0 && (
                         <span className="bg-primary/20 text-primary rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none shrink-0 ml-1">
                             {((filters.workMode?.length || 0) + (filters.location ? 1 : 0))}

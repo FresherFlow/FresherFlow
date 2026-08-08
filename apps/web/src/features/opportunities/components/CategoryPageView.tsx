@@ -258,7 +258,8 @@ export function CategoryPageView({
             .map(o => {
                 const s = (o.governmentJobDetails as any)?.applicationStatus as string;
                 const meta = TICKER_TAG_MAP[s] ?? { tag: s, color: 'bg-muted text-muted-foreground' };
-                return { label: o.title, href: `/${o.slug}`, tag: meta.tag, tagColor: meta.color };
+                // Using /govt/ prefix because it is a government opportunity
+                return { label: o.title, href: `/govt/${o.slug}`, tag: meta.tag, tagColor: meta.color };
             });
     }, [filteredOpps, type]);
 
@@ -412,68 +413,68 @@ export function CategoryPageView({
             {type !== OpportunityType.GOVERNMENT && (
                 <div className={cn("flex flex-wrap items-center gap-2 pb-4", selectedOpp && "hidden lg:flex")}>
                     {search && (
-                        <span className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium">
+                        <button onClick={() => setSearch('')} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
                             <MagnifyingGlassIcon className="w-3.5 h-3.5 text-muted-foreground" />
                             {search}
-                            <button onClick={() => setSearch('')} className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-full p-0.5 ml-1 transition-colors"><XMarkIcon className="w-3.5 h-3.5" /></button>
-                        </span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                        </button>
                     )}
                     {filters.workMode?.map(m => (
-                        <span key={m} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium">
+                        <button key={m} onClick={() => setFilters({...filters, workMode: filters.workMode!.filter(x => x !== m).length > 0 ? filters.workMode!.filter(x => x !== m) : null})} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
                             <HomeIcon className="w-3.5 h-3.5 text-muted-foreground" />
                             {m === 'REMOTE' ? 'Remote' : m === 'HYBRID' ? 'Hybrid' : 'On-site'}
-                            <button onClick={() => setFilters({...filters, workMode: filters.workMode!.filter(x => x !== m).length > 0 ? filters.workMode!.filter(x => x !== m) : null})} className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-full p-0.5 ml-1 transition-colors"><XMarkIcon className="w-3.5 h-3.5" /></button>
-                        </span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                        </button>
                     ))}
                     {filters.location && (
-                        <span className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium">
+                        <button onClick={() => setFilters({...filters, location: null})} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
                             <MapPinIcon className="w-3.5 h-3.5 text-muted-foreground" />
                             {filters.location}
-                            <button onClick={() => setFilters({...filters, location: null})} className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-full p-0.5 ml-1 transition-colors"><XMarkIcon className="w-3.5 h-3.5" /></button>
-                        </span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                        </button>
                     )}
                     {filters.sector && (
-                        <span className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium">
+                        <button onClick={() => setFilters({...filters, sector: null})} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
                             <BuildingOfficeIcon className="w-3.5 h-3.5 text-muted-foreground" />
                             {filters.sector}
-                            <button onClick={() => setFilters({...filters, sector: null})} className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-full p-0.5 ml-1 transition-colors"><XMarkIcon className="w-3.5 h-3.5" /></button>
-                        </span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                        </button>
                     )}
                     {filters.skills?.map(s => (
-                        <span key={s} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium">
+                        <button key={s} onClick={() => setFilters({...filters, skills: filters.skills!.filter(x => x !== s)})} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
                             <WrenchScrewdriverIcon className="w-3.5 h-3.5 text-muted-foreground" />
                             {s}
-                            <button onClick={() => setFilters({...filters, skills: filters.skills!.filter(x => x !== s)})} className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-full p-0.5 ml-1 transition-colors"><XMarkIcon className="w-3.5 h-3.5" /></button>
-                        </span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                        </button>
                     ))}
                     {filters.course && (
-                        <span className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium">
+                        <button onClick={() => setFilters({...filters, course: null})} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
                             <AcademicCapIcon className="w-3.5 h-3.5 text-muted-foreground" />
                             {filters.course}
-                            <button onClick={() => setFilters({...filters, course: null})} className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-full p-0.5 ml-1 transition-colors"><XMarkIcon className="w-3.5 h-3.5" /></button>
-                        </span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                        </button>
                     )}
                     {filters.qualification && (
-                        <span className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium">
+                        <button onClick={() => setFilters({...filters, qualification: null})} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
                             <AcademicCapIcon className="w-3.5 h-3.5 text-muted-foreground" />
                             {filters.qualification}
-                            <button onClick={() => setFilters({...filters, qualification: null})} className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-full p-0.5 ml-1 transition-colors"><XMarkIcon className="w-3.5 h-3.5" /></button>
-                        </span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                        </button>
                     )}
                     {filters.year && (
-                        <span className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium">
+                        <button onClick={() => setFilters({...filters, year: null})} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
                             <AcademicCapIcon className="w-3.5 h-3.5 text-muted-foreground" />
                             Class of {filters.year}
-                            <button onClick={() => setFilters({...filters, year: null})} className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-full p-0.5 ml-1 transition-colors"><XMarkIcon className="w-3.5 h-3.5" /></button>
-                        </span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                        </button>
                     )}
                     {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0)) ? (
                         <button
                             onClick={clearAll}
-                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-widest uppercase text-destructive border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors ml-1"
+                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors ml-1 outline-none"
                         >
                             <XMarkIcon className="w-3.5 h-3.5" />
-                            Clear all
+                            clear all
                         </button>
                     ) : null}
                 </div>

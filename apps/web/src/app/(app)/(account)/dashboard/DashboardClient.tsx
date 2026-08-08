@@ -4,177 +4,50 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { AuthGate, ProfileGate } from '@/lib/components/ProfileGate';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Opportunity } from '@fresherflow/types';
+import { Opportunity, OpportunityType } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 import { calculateOpportunityMatch, isNotEligible } from '@/features/opportunities/domain/matchScore';
-import { OpportunityEventType } from '@fresherflow/types';
 import { ProfileCompletionBanner } from '@/features/dashboard/components/DashboardBanners';
 import { Button } from '@/ui/Button';
+import { Card, CardContent } from '@/ui/Card';
+import { SkeletonJobCard } from '@/ui/Skeleton';
+import JobCard from '@/features/opportunities/components/JobCard';
+import CompanyLogo from '@/ui/CompanyLogo';
 import { calculateProfileCompletion } from '@/features/profile/profileCompletion';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { readFeedCache, saveFeedCache } from '@/lib/api/offline/opportunitiesFeedCache';
 import { useFirebaseTracker } from '@/lib/hooks/useFirebaseTracker';
 import { useFirebaseSaved } from '@/lib/hooks/useFirebaseSaved';
+import { slugify } from '@fresherflow/utils/slugify';
 import Link from 'next/link';
 import {
     BriefcaseIcon,
     BookmarkIcon,
     MagnifyingGlassIcon,
     XMarkIcon,
+    FireIcon,
+    ClockIcon,
+    BuildingOfficeIcon,
+    AcademicCapIcon,
+    RocketLaunchIcon,
+    UserGroupIcon,
+    BuildingLibraryIcon,
+    CodeBracketIcon,
+    ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { Input } from '@/ui/Input';
 
 // Components
 import { DashboardHeader } from './components/DashboardHeader';
-import { DashboardTabs } from './components/DashboardTabs';
-import { DashboardFeed } from './components/DashboardFeed';
-
+import { DashboardSection } from './components/DashboardSection';
+import { RecentlyViewedRow } from './components/RecentlyViewedRow';
 
 // ─────────────────────────────────────────────────────────────────────────────
-
-const HOURS_24_IN_MS = 24 * 60 * 60 * 1000;
-const MOBILE_DASHBOARD_LIMIT = 10;
-const MOBILE_DASHBOARD_STEP = 10;
-
-type TabKey = 'featured' | 'latest' | 'expiring' | 'all' | 'applied' | 'archived';
-
-type DriveMilestone = {
-    opportunityId: string;
-    eventId: string;
-    eventType: OpportunityEventType;
-    eventDate: string | Date;
-    eventTitle: string;
-    opportunity: Opportunity;
-};
-
-type HighlightsData = {
-    urgent: { walkins: Opportunity[]; others: Opportunity[] };
-    newlyAdded: Opportunity[];
-    newSinceLastVisit?: Opportunity[];
-    newSinceLastVisitCount?: number;
-    driveMilestones?: DriveMilestone[];
-};
 
 const hasAppliedAction = (opp: Opportunity): boolean =>
     (opp.actions as { actionType: string }[] | undefined)?.some((a) =>
         ['APPLIED', 'PLANNED', 'INTERVIEWED', 'SELECTED', 'PLANNING', 'ATTENDED'].includes(a.actionType)
     ) ?? false;
-
-function computeHighlights(opportunities: Opportunity[]): HighlightsData {
-    const now = new Date();
-    const fortyEightHoursFromNow = new Date(now.getTime() + 48 * 60 * 60 * 1000);
-    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-    const expiringOpps = opportunities.filter(o => {
-        if (!o.expiresAt) return false;
-        const exp = new Date(o.expiresAt);
-        return exp > now && exp < fortyEightHoursFromNow;
-    });
-
-    const walkins = expiringOpps.filter(o => o.type === 'WALKIN');
-    const others = expiringOpps.filter(o => o.type !== 'WALKIN');
-
-    const newlyAdded = opportunities.filter(o => {
-        if (!o.postedAt) return false;
-        const posted = new Date(o.postedAt);
-        return posted > twentyFourHoursAgo;
-    });
-
-    let lastVisit = twentyFourHoursAgo;
-    if (typeof window !== 'undefined') {
-        const lastVisitStr = window.localStorage.getItem('ff_last_dashboard_visit');
-        if (lastVisitStr) {
-            const parsed = parseInt(lastVisitStr, 10);
-            if (!isNaN(parsed)) {
-                lastVisit = new Date(parsed);
-            }
-        }
-    }
-    const newSinceLastVisit = opportunities.filter(o => {
-        if (!o.postedAt) return false;
-        const posted = new Date(o.postedAt);
-        return posted > lastVisit;
-    });
-
-    const driveEventTypes = [
-        'NOTIFICATION',
-        'REG_START',
-        'REG_END',
-        'EXAM_DATE',
-        'RESULT',
-    ];
-    const upcomingEvents: any[] = [];
-    opportunities.forEach(opp => {
-        if (opp.events && Array.isArray(opp.events)) {
-            opp.events.forEach(evt => {
-                const evtDate = new Date(evt.eventDate);
-                if (
-                    driveEventTypes.includes(evt.eventType) &&
-                    evtDate >= new Date(now.getTime() - 6 * 60 * 60 * 1000) &&
-                    evtDate <= new Date(now.getTime() + 45 * 24 * 60 * 60 * 1000)
-                ) {
-                    upcomingEvents.push({
-                        ...evt,
-                        opportunity: opp
-                    });
-                }
-            });
-        }
-    });
-
-    const seenDriveIds = new Set<string>();
-    const driveMilestones: DriveMilestone[] = upcomingEvents
-        .filter((item) => {
-            if (seenDriveIds.has(item.opportunityId)) return false;
-            seenDriveIds.add(item.opportunityId);
-            return true;
-        })
-        .sort((a, b) => {
-            const aPriority = /tcs/i.test(a.opportunity?.company || '') && /nqt/i.test(a.opportunity?.title || '') ? 1 : 0;
-            const bPriority = /tcs/i.test(b.opportunity?.company || '') && /nqt/i.test(b.opportunity?.title || '') ? 1 : 0;
-            if (aPriority !== bPriority) return bPriority - aPriority;
-            return new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime();
-        })
-        .slice(0, 4)
-        .map((item) => ({
-            opportunityId: item.opportunityId,
-            eventId: item.id,
-            eventType: item.eventType,
-            eventDate: new Date(item.eventDate).toISOString(),
-            eventTitle: item.title,
-            opportunity: item.opportunity,
-        }));
-
-    if (driveMilestones.length === 0) {
-        const fallbackDrive = opportunities.find(o => 
-            o.title.toLowerCase().includes('nqt') && 
-            (!o.expiresAt || new Date(o.expiresAt) > now)
-        );
-        if (fallbackDrive) {
-            driveMilestones.push({
-                opportunityId: fallbackDrive.id,
-                eventId: `fallback-${fallbackDrive.id}`,
-                eventType: OpportunityEventType.NOTIFICATION,
-                eventDate: typeof fallbackDrive.postedAt === 'string' ? fallbackDrive.postedAt : new Date(fallbackDrive.postedAt).toISOString(),
-                eventTitle: 'Drive update available',
-                opportunity: fallbackDrive,
-            });
-        }
-    }
-
-    return {
-        urgent: {
-            walkins: walkins.slice(0, 3),
-            others: others.slice(0, 3)
-        },
-        newlyAdded: newlyAdded.slice(0, 3),
-        newSinceLastVisit: newSinceLastVisit.slice(0, 6),
-        newSinceLastVisitCount: newSinceLastVisit.length,
-        driveMilestones
-    };
-}
-
-import { Card, CardContent } from '@/ui/Card';
 
 interface DashboardStatsProps {
     savedCount: number;
@@ -219,70 +92,32 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
     const router = useRouter();
     const { user, profile, isLoading: authLoading } = useAuth();
     const profileCompletion = calculateProfileCompletion(profile).percentage;
+
     const [recentOpps, setRecentOpps] = useState<Opportunity[]>(() => {
         if (initialData?.opportunities && Array.isArray(initialData.opportunities)) {
-            const sanitized = initialData.opportunities.slice(0, 60).map((o: Opportunity) => ({
+            return initialData.opportunities.slice(0, 60).map((o: Opportunity) => ({
                 ...o,
                 locations: o.locations || [],
                 requiredSkills: o.requiredSkills || []
             }));
-            return sanitized;
         }
         return readFeedCache('type:all')?.opportunities || [];
     });
     const [isLoadingOpps, setIsLoadingOpps] = useState<boolean>(!(initialData?.opportunities && initialData.opportunities.length > 0));
-    const [highlights, setHighlights] = useState<HighlightsData | null>(() => {
-        if (initialData?.opportunities && Array.isArray(initialData.opportunities) && profileCompletion >= 100) {
-            return computeHighlights(initialData.opportunities);
-        }
-        return null;
-    });
-    const [, setIsLoadingHighlights] = useState<boolean>(!(initialData?.opportunities && initialData.opportunities.length > 0));
-
-    useEffect(() => {
-        if (profileCompletion >= 100 && recentOpps.length > 0) {
-            setHighlights(computeHighlights(recentOpps));
-        }
-    }, [profileCompletion, recentOpps]);
+    const [hasLoaded, setHasLoaded] = useState(false);
+    const [recentError, setRecentError] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const { trackerMap } = useFirebaseTracker(user?.id);
     const { savedJobsMap, toggleSavedJob } = useFirebaseSaved(user?.id);
 
-    useEffect(() => {
-        // Feed cache load logic removed, initialized in useState instead.
-    }, []);
-    const [hasLoaded, setHasLoaded] = useState(false);
-    const [recentError, setRecentError] = useState<string | null>(null);
-    const [highlightsError, setHighlightsError] = useState<string | null>(null);
-    const [, setShowBackToTop] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
-
-    useEffect(() => {
-        if (recentOpps.length > 0) {
-            setRecentError(null);
-            setHighlightsError(null);
-        }
-    }, [recentOpps.length]);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [dashboardVisitCounter, setDashboardVisitCounter] = useState(0);
-    const [activeTab, setActiveTab] = useState<TabKey>('featured');
-    const [mobileVisibleCount, setMobileVisibleCount] = useState(MOBILE_DASHBOARD_LIMIT);
-    useEffect(() => {
-        setMobileVisibleCount(MOBILE_DASHBOARD_LIMIT);
-    }, [activeTab]);
-
     const loadRecentOpportunities = useCallback(async (options?: { force?: boolean }) => {
         if (recentOpps.length > 0 && !options?.force) {
             saveFeedCache(recentOpps, recentOpps.length, 'type:all');
-            if (profileCompletion >= 100 && !highlights) {
-                setHighlights(computeHighlights(recentOpps));
-            }
             setIsLoadingOpps(false);
-            setIsLoadingHighlights(false);
             return;
         }
         setRecentError(null);
-        setHighlightsError(null);
         try {
             const data = await fetchBootstrapFeed();
             if (!data || !Array.isArray(data.opportunities)) {
@@ -295,17 +130,12 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
             }));
             setRecentOpps(sanitized);
             saveFeedCache(sanitized, sanitized.length, 'type:all');
-
-            const computed = profileCompletion >= 100 ? computeHighlights(data.opportunities) : null;
-            setHighlights(computed);
         } catch (err: unknown) {
             setRecentError((err as Error)?.message || 'Unable to load recommended listings');
-            setHighlightsError((err as Error)?.message || 'Unable to load highlights');
         } finally {
             setIsLoadingOpps(false);
-            setIsLoadingHighlights(false);
         }
-    }, [recentOpps, highlights, profileCompletion]);
+    }, [recentOpps]);
 
     useEffect(() => {
         if (!authLoading && user && !hasLoaded) {
@@ -313,23 +143,6 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
             void loadRecentOpportunities();
         }
     }, [authLoading, user, hasLoaded, loadRecentOpportunities]);
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        const handleScroll = () => setShowBackToTop(window.scrollY > 420);
-        handleScroll();
-        window.addEventListener('scroll', handleScroll, { passive: true });
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
-
-    useEffect(() => {
-        if (typeof window === 'undefined' || !user) return;
-        const visitStorageKey = 'ff_dashboard_visit_counter';
-        const previousVisits = Number(window.localStorage.getItem(visitStorageKey) || '0');
-        const nextVisits = Number.isFinite(previousVisits) ? previousVisits + 1 : 1;
-        window.localStorage.setItem(visitStorageKey, String(nextVisits));
-        setDashboardVisitCounter(nextVisits);
-    }, [user]);
 
     const toggleSave = async (opportunityId: string) => {
         if (!user) {
@@ -347,7 +160,6 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
 
     const retryAll = () => {
         setIsLoadingOpps(true);
-        setIsLoadingHighlights(true);
         void loadRecentOpportunities({ force: true });
     };
 
@@ -372,139 +184,156 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
         });
     }, [recentOpps, trackerMap, savedJobsMap, user?.id]);
 
-    const { activeItems, latestBadgeCount } = useMemo(() => {
-        const uniqueById = (items: Opportunity[]) => {
-            const seen = new Set<string>();
-            return items.filter((item) => {
-                if (seen.has(item.id)) return false;
-                seen.add(item.id);
-                return true;
-            });
-        };
-
-        const modeRecentOpps = recentOppsWithActions;
-        const modeDriveFeatured = uniqueById(
-            (highlights?.driveMilestones || []).map((milestone) => milestone.opportunity)
-        ).filter((opp) => !opp.expiresAt || new Date(opp.expiresAt) > new Date());
-        const modeNewSinceLastVisit = (highlights?.newSinceLastVisit || [])
-            .filter(o => !o.expiresAt || new Date(o.expiresAt) > new Date());
-
-        const active = modeRecentOpps
-            .filter(o => !o.expiresAt || new Date(o.expiresAt) > new Date())
-            .map(opp => {
-                const match = calculateOpportunityMatch(profile, opp);
-                return { ...opp, matchScore: match.score, matchReason: match.reason };
-            });
-
-        // Mobile-aligned sorting function:
-        // 1. Eligible jobs first
-        // 2. Recency (postedAt) date descending - newest jobs ALWAYS come first
-        // 3. Match score tie-breaker for postings within the same 24-hour window
-        const mobileSortFeed = (a: Opportunity & { matchScore?: number }, b: Opportunity & { matchScore?: number }) => {
-            const eligA = !isNotEligible(a);
-            const eligB = !isNotEligible(b);
-            if (eligA !== eligB) return eligA ? -1 : 1;
-
-            const timeA = a.postedAt ? new Date(a.postedAt).getTime() : 0;
-            const timeB = b.postedAt ? new Date(b.postedAt).getTime() : 0;
-
-            // Recency priority: If posting dates differ by more than 24 hours, newest date ALWAYS comes first!
-            const diff = Math.abs(timeB - timeA);
-            if (diff > 24 * 60 * 60 * 1000) {
-                return timeB - timeA;
-            }
-
-            // Within same 24h window: sort by match score
-            const scoreA = a.matchScore ?? 0;
-            const scoreB = b.matchScore ?? 0;
-            if (scoreB !== scoreA) {
-                return scoreB - scoreA;
-            }
-
-            return timeB - timeA;
-        };
-
-        const latestSorted = [...active].sort((a, b) => {
-            if (isNotEligible(a) !== isNotEligible(b)) return isNotEligible(a) ? 1 : -1;
-            return new Date(b.postedAt as string | Date).getTime() - new Date(a.postedAt as string | Date).getTime();
-        });
-
-        const bestMatch = [...active].sort(mobileSortFeed);
-
-        const closing = active
-            .filter(o => o.expiresAt)
-            .sort((a, b) => {
-                if (isNotEligible(a) !== isNotEligible(b)) return isNotEligible(a) ? 1 : -1;
-                return new Date(a.expiresAt as string).getTime() - new Date(b.expiresAt as string).getTime();
-            })
-            .slice(0, 8);
-
-        const newIn24h = latestSorted
-            .filter(o => (Date.now() - new Date(o.postedAt as string | Date).getTime()) <= HOURS_24_IN_MS)
-            .slice(0, 10);
-        const driveFeatured = modeDriveFeatured;
-        const newSinceLastVisit = modeNewSinceLastVisit;
-
-        const archived = modeRecentOpps.filter(o => o.status === 'ARCHIVED' || (!!o.expiresAt && new Date(o.expiresAt) <= new Date()));
-        const applied = modeRecentOpps.filter(o =>
-            (o.actions || []).some(action =>
-                ['APPLIED', 'PLANNED', 'INTERVIEWED', 'SELECTED', 'PLANNING', 'ATTENDED'].includes(action.actionType)
-            )
+    const dataStreams = useMemo(() => {
+        const nonExpired = recentOppsWithActions.filter(
+            (o) => !o.expiresAt || new Date(o.expiresAt) > new Date()
         );
 
-        const rawFeatured = uniqueById([
-            ...newSinceLastVisit,
-            ...driveFeatured,
-            ...newIn24h,
-            ...bestMatch,
-        ]) as (Opportunity & { matchScore?: number; matchReason?: string })[];
-        
-        // Hide ineligible jobs from featured and sort using mobileSortFeed
-        const eligibleFeatured = rawFeatured.filter(o => !isNotEligible(o));
-        const featured = [...eligibleFeatured].sort(mobileSortFeed);
+        // 1. Recommended for You (Match score priority)
+        const matched = nonExpired
+            .map((opp) => {
+                const match = calculateOpportunityMatch(profile, opp);
+                return {
+                    ...opp,
+                    matchScore: match.score,
+                    matchReason: match.reason,
+                    isEligible: match.isEligible,
+                };
+            })
+            .filter((opp) => !isNotEligible(opp))
+            .sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
+        const recommended = matched.slice(0, 6);
 
-        const latestCount = highlights?.newSinceLastVisitCount ?? newSinceLastVisit.length ?? newIn24h.length;
+        // 2. Closing Soon (closest expiresAt first, 4 items)
+        const closingSoon = nonExpired
+            .filter((o) => o.expiresAt)
+            .sort((a, b) => new Date(a.expiresAt as string | Date).getTime() - new Date(b.expiresAt as string | Date).getTime())
+            .slice(0, 4);
 
-        const tabMap: Record<TabKey, Opportunity[]> = {
-            featured, latest: latestSorted, expiring: closing, all: bestMatch, applied, archived
+        // 3. Latest Jobs
+        const latest = [...nonExpired]
+            .sort((a, b) => new Date(b.postedAt as string | Date).getTime() - new Date(a.postedAt as string | Date).getTime())
+            .slice(0, 6);
+
+        // 4. Trending Companies
+        const companyCounts: Record<string, { count: number; logoUrl?: string }> = {};
+        nonExpired.forEach((o) => {
+            if (!o.company) return;
+            const key = o.company.trim();
+            if (!companyCounts[key]) {
+                companyCounts[key] = { count: 0, logoUrl: o.companyLogoUrl || undefined };
+            }
+            companyCounts[key].count += 1;
+            if (!companyCounts[key].logoUrl && o.companyLogoUrl) {
+                companyCounts[key].logoUrl = o.companyLogoUrl;
+            }
+        });
+        const trendingCompanies = Object.entries(companyCounts)
+            .map(([name, data]) => ({ name, roleCount: data.count, logoUrl: data.logoUrl }))
+            .sort((a, b) => b.roleCount - a.roleCount)
+            .slice(0, 6);
+
+        // 5. Internships
+        const internships = nonExpired
+            .filter((o) => o.type === OpportunityType.INTERNSHIP)
+            .slice(0, 6);
+
+        // 6. Off-Campus Drives
+        const offCampus = nonExpired
+            .filter((o) => {
+                const oppAny = o as Record<string, unknown>;
+                const titleLower = o.title?.toLowerCase() || '';
+                const tagsLower = o.tags?.map((t) => t.toLowerCase()) || [];
+                return (
+                    Boolean(oppAny.isOffCampus) ||
+                    titleLower.includes('off campus') ||
+                    titleLower.includes('offcampus') ||
+                    titleLower.includes('drive') ||
+                    tagsLower.some((t) => t.includes('offcampus') || t.includes('drive'))
+                );
+            })
+            .slice(0, 6);
+
+        // 7. Walk-in Drives
+        const walkins = nonExpired
+            .filter((o) => {
+                const titleLower = o.title?.toLowerCase() || '';
+                return (
+                    o.type === OpportunityType.WALKIN ||
+                    titleLower.includes('walk-in') ||
+                    titleLower.includes('walkin')
+                );
+            })
+            .slice(0, 6);
+
+        // 8. Government Highlights
+        const govt = nonExpired
+            .filter((o) => {
+                const oppAny = o as Record<string, unknown>;
+                const companyLower = o.company?.toLowerCase() || '';
+                const tagsLower = o.tags?.map((t) => t.toLowerCase()) || [];
+                return (
+                    Boolean(oppAny.isGovernment) ||
+                    o.type === OpportunityType.GOVERNMENT ||
+                    companyLower.includes('railway') ||
+                    companyLower.includes('upsc') ||
+                    companyLower.includes('ssc') ||
+                    tagsLower.some((t) => t.includes('govt') || t.includes('government'))
+                );
+            })
+            .slice(0, 6);
+
+        // 9. Hackathons
+        const hackathons = nonExpired
+            .filter((o) => {
+                const titleLower = o.title?.toLowerCase() || '';
+                const tagsLower = o.tags?.map((t) => t.toLowerCase()) || [];
+                return (
+                    o.type === OpportunityType.HACKATHONS ||
+                    titleLower.includes('hackathon') ||
+                    tagsLower.some((t) => t.includes('hackathon'))
+                );
+            })
+            .slice(0, 6);
+
+        return {
+            recommended,
+            closingSoon,
+            latest,
+            trendingCompanies,
+            internships,
+            offCampus,
+            walkins,
+            govt,
+            hackathons,
+            fallbackCompanies: trendingCompanies.slice(0, 6),
         };
-        const currentItems = tabMap[activeTab] || featured;
+    }, [recentOppsWithActions, profile]);
 
-        return { activeItems: currentItems, latestBadgeCount: latestCount };
-    }, [recentOppsWithActions, highlights, profile, activeTab]);
-
-    const filteredCurrentItems = useMemo(() => {
-        if (!searchQuery.trim()) return activeItems;
+    const filteredSearchResults = useMemo(() => {
+        if (!searchQuery.trim()) return [];
         const q = searchQuery.trim().toLowerCase();
-        return activeItems.filter(item => {
+        return recentOppsWithActions.filter((item) => {
             const titleMatch = item.title?.toLowerCase().includes(q);
             const companyMatch = item.company?.toLowerCase().includes(q);
             const roleMatch = item.normalizedRole?.toLowerCase().includes(q);
-            const skillMatch = item.requiredSkills?.some(s => s.toLowerCase().includes(q));
-            const tagMatch = item.tags?.some(t => t.toLowerCase().includes(q));
+            const skillMatch = item.requiredSkills?.some((s) => s.toLowerCase().includes(q));
+            const tagMatch = item.tags?.some((t) => t.toLowerCase().includes(q));
             return titleMatch || companyMatch || roleMatch || skillMatch || tagMatch;
         });
-    }, [activeItems, searchQuery]);
+    }, [recentOppsWithActions, searchQuery]);
 
-    const tabs: { key: TabKey; title: string }[] = [
-        { key: 'featured', title: 'Featured' },
-        { key: 'latest', title: 'Latest' },
-        { key: 'expiring', title: 'Expiring Soon' },
-        { key: 'all', title: 'All Jobs' },
-        { key: 'applied', title: 'Applied' },
-        { key: 'archived', title: 'Archived' },
-    ];
-
-    const showSyncError = !!((recentError || highlightsError) && recentOpps.length === 0);
+    const showSyncError = !!(recentError && recentOpps.length === 0);
 
     return (
         <AuthGate>
             <ProfileGate>
-                <div className="w-full max-w-7xl mx-auto space-y-4 md:space-y-6 pt-4 md:pt-6 pb-12 md:pb-20 px-3 md:px-6">
+                <div className="w-full max-w-7xl mx-auto space-y-6 md:space-y-8 pt-4 md:pt-6 pb-16 md:pb-24 px-3 md:px-6">
+                    {/* Header Bar */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 md:pb-4 border-b border-border/40">
                         <DashboardHeader userName={user?.fullName?.split(' ')[0]} />
                         <DashboardStats
-                            savedCount={Object.keys(savedJobsMap).filter(k => savedJobsMap[k]).length}
+                            savedCount={Object.keys(savedJobsMap).filter((k) => savedJobsMap[k]).length}
                             trackerCount={Object.keys(trackerMap).length}
                         />
                     </div>
@@ -516,52 +345,305 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
                         </div>
                     )}
 
-                    <ProfileCompletionBanner />
+                    {profileCompletion < 100 && <ProfileCompletionBanner />}
 
-                    <div className="space-y-6">
-                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-                            <DashboardTabs
-                                tabs={tabs}
-                                activeTab={activeTab}
-                                setActiveTab={setActiveTab}
-                                latestBadgeCount={latestBadgeCount}
-                            />
-                            <div className="relative w-full sm:w-72 shrink-0">
-                                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                <Input
-                                    type="text"
-                                    placeholder="Search role, company or skill..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-9 pr-8 h-9 text-xs rounded-xl bg-card border-border shadow-xs w-full"
-                                />
-                                {searchQuery && (
-                                    <button
-                                        onClick={() => setSearchQuery('')}
-                                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-all duration-150 ease-out active:scale-[0.97]"
-                                        aria-label="Clear search"
-                                    >
-                                        <XMarkIcon className="w-4 h-4" />
-                                    </button>
-                                )}
+                    {/* Search & Quick Access Bar */}
+                    <div className="relative w-full max-w-md">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                            type="text"
+                            placeholder="Search role, company or skill across dashboard..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-9 pr-8 h-9 text-xs rounded-xl bg-card border-border shadow-xs w-full"
+                        />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-all duration-150 ease-out active:scale-[0.97]"
+                                aria-label="Clear search"
+                            >
+                                <XMarkIcon className="w-4 h-4" />
+                            </button>
+                        )}
+                    </div>
+
+                    {isLoadingOpps ? (
+                        <div className="space-y-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {[1, 2, 3, 4].map((i) => (
+                                    <SkeletonJobCard key={i} />
+                                ))}
                             </div>
                         </div>
+                    ) : searchQuery.trim() !== '' ? (
+                        /* Search Results View */
+                        <DashboardSection
+                            title={`Search Results (${filteredSearchResults.length})`}
+                            description={`Listings matching "${searchQuery}"`}
+                            icon={<MagnifyingGlassIcon className="w-5 h-5 text-muted-foreground" />}
+                        >
+                            {filteredSearchResults.length === 0 ? (
+                                <div className="p-10 text-center border border-dashed border-border rounded-2xl text-xs text-muted-foreground">
+                                    No opportunities found matching &quot;{searchQuery}&quot;. Try a different keyword or clear search.
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {filteredSearchResults.map((opp) => (
+                                        <JobCard
+                                            key={`search-${opp.id}`}
+                                            job={opp}
+                                            jobId={opp.id}
+                                            isApplied={hasAppliedAction(opp)}
+                                            isSaved={opp.isSaved}
+                                            onToggleSave={() => toggleSave(opp.id)}
+                                            isAdmin={user?.role === 'ADMIN'}
+                                            searchQuery={searchQuery}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </DashboardSection>
+                    ) : (
+                        /* Single Scroll Feed Sections */
+                        <div className="space-y-10 md:space-y-12">
+                            {/* Recently Viewed / Quick Access */}
+                            <RecentlyViewedRow fallbackCompanies={dataStreams.fallbackCompanies} />
 
-                        <DashboardFeed
-                            isLoading={isLoadingOpps}
-                            opportunities={filteredCurrentItems}
-                            onToggleSave={toggleSave}
-                            isAdmin={user?.role === 'ADMIN'}
-                            hasAppliedAction={hasAppliedAction}
-                            mobileVisibleCount={mobileVisibleCount}
-                            setMobileVisibleCount={setMobileVisibleCount}
-                            mobileStep={MOBILE_DASHBOARD_STEP}
-                            searchQuery={searchQuery}
-                        />
-                    </div>
+                            {/* Recommended for You */}
+                            {dataStreams.recommended.length > 0 && (
+                                <DashboardSection
+                                    title="Recommended for You"
+                                    description="Top matches tailored to your profile preferences & skills"
+                                    count={dataStreams.recommended.length}
+                                    icon={<FireIcon className="w-5 h-5 text-muted-foreground" />}
+                                    viewAllHref="/jobs?sort=match"
+                                >
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {dataStreams.recommended.map((opp) => (
+                                            <JobCard
+                                                key={`rec-${opp.id}`}
+                                                job={opp}
+                                                jobId={opp.id}
+                                                isApplied={hasAppliedAction(opp)}
+                                                isSaved={opp.isSaved}
+                                                onToggleSave={() => toggleSave(opp.id)}
+                                                isAdmin={user?.role === 'ADMIN'}
+                                            />
+                                        ))}
+                                    </div>
+                                </DashboardSection>
+                            )}
+
+                            {/* Closing Soon */}
+                            {dataStreams.closingSoon.length > 0 && (
+                                <DashboardSection
+                                    title="Closing Soon"
+                                    description="Listings with application deadlines approaching fast"
+                                    count={dataStreams.closingSoon.length}
+                                    icon={<ExclamationTriangleIcon className="w-5 h-5 text-muted-foreground" />}
+                                    viewAllHref="/jobs?sort=expiring"
+                                >
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {dataStreams.closingSoon.map((opp) => (
+                                            <JobCard
+                                                key={`cls-${opp.id}`}
+                                                job={opp}
+                                                jobId={opp.id}
+                                                isApplied={hasAppliedAction(opp)}
+                                                isSaved={opp.isSaved}
+                                                onToggleSave={() => toggleSave(opp.id)}
+                                                isAdmin={user?.role === 'ADMIN'}
+                                            />
+                                        ))}
+                                    </div>
+                                </DashboardSection>
+                            )}
+
+                            {/* Latest Jobs */}
+                            {dataStreams.latest.length > 0 && (
+                                <DashboardSection
+                                    title="Latest Jobs"
+                                    description="Newest verified postings added in real-time"
+                                    count={dataStreams.latest.length}
+                                    icon={<ClockIcon className="w-5 h-5 text-muted-foreground" />}
+                                    viewAllHref="/jobs?sort=latest"
+                                >
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {dataStreams.latest.map((opp) => (
+                                            <JobCard
+                                                key={`lat-${opp.id}`}
+                                                job={opp}
+                                                jobId={opp.id}
+                                                isApplied={hasAppliedAction(opp)}
+                                                isSaved={opp.isSaved}
+                                                onToggleSave={() => toggleSave(opp.id)}
+                                                isAdmin={user?.role === 'ADMIN'}
+                                            />
+                                        ))}
+                                    </div>
+                                </DashboardSection>
+                            )}
+
+                            {/* Trending Companies */}
+                            {dataStreams.trendingCompanies.length > 0 && (
+                                <DashboardSection
+                                    title="Trending Companies"
+                                    description="Top hiring employers actively recruiting freshers"
+                                    count={dataStreams.trendingCompanies.length}
+                                    icon={<BuildingOfficeIcon className="w-5 h-5 text-muted-foreground" />}
+                                    viewAllHref="/companies"
+                                >
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                                        {dataStreams.trendingCompanies.map((c) => (
+                                            <Link
+                                                key={c.name}
+                                                href={`/companies/${slugify(c.name)}`}
+                                                className="group flex items-center gap-3 p-2.5 rounded-xl border border-border/60 bg-card/60 hover:border-primary/40 hover:bg-muted/30 transition-all duration-150 ease-out active:scale-[0.98] overflow-hidden"
+                                            >
+                                                <CompanyLogo companyName={c.name} companyLogoUrl={c.logoUrl} className="w-9 h-9 text-xs rounded-lg shrink-0" />
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-xs font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                                                        {c.name}
+                                                    </p>
+                                                    <p className="text-[10px] text-muted-foreground truncate">
+                                                        {c.roleCount} active {c.roleCount === 1 ? 'role' : 'roles'}
+                                                    </p>
+                                                </div>
+                                            </Link>
+                                        ))}
+                                    </div>
+                                </DashboardSection>
+                            )}
+
+                            {/* Internships */}
+                            {dataStreams.internships.length > 0 && (
+                                <DashboardSection
+                                    title="Internships"
+                                    description="Stipend-backed internship roles for students & freshers"
+                                    count={dataStreams.internships.length}
+                                    icon={<AcademicCapIcon className="w-5 h-5 text-muted-foreground" />}
+                                    viewAllHref="/jobs?type=internship"
+                                >
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {dataStreams.internships.map((opp) => (
+                                            <JobCard
+                                                key={`int-${opp.id}`}
+                                                job={opp}
+                                                jobId={opp.id}
+                                                isApplied={hasAppliedAction(opp)}
+                                                isSaved={opp.isSaved}
+                                                onToggleSave={() => toggleSave(opp.id)}
+                                                isAdmin={user?.role === 'ADMIN'}
+                                            />
+                                        ))}
+                                    </div>
+                                </DashboardSection>
+                            )}
+
+                            {/* Off-Campus Drives */}
+                            {dataStreams.offCampus.length > 0 && (
+                                <DashboardSection
+                                    title="Off-Campus Drives"
+                                    description="Direct off-campus recruitment drives & mass hiring events"
+                                    count={dataStreams.offCampus.length}
+                                    icon={<RocketLaunchIcon className="w-5 h-5 text-muted-foreground" />}
+                                    viewAllHref="/jobs?source=offcampus"
+                                >
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {dataStreams.offCampus.map((opp) => (
+                                            <JobCard
+                                                key={`off-${opp.id}`}
+                                                job={opp}
+                                                jobId={opp.id}
+                                                isApplied={hasAppliedAction(opp)}
+                                                isSaved={opp.isSaved}
+                                                onToggleSave={() => toggleSave(opp.id)}
+                                                isAdmin={user?.role === 'ADMIN'}
+                                            />
+                                        ))}
+                                    </div>
+                                </DashboardSection>
+                            )}
+
+                            {/* Walk-in Drives */}
+                            {dataStreams.walkins.length > 0 && (
+                                <DashboardSection
+                                    title="Walk-in Drives"
+                                    description="Direct interview walk-in events and venue drives"
+                                    count={dataStreams.walkins.length}
+                                    icon={<UserGroupIcon className="w-5 h-5 text-muted-foreground" />}
+                                    viewAllHref="/jobs?type=walkin"
+                                >
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {dataStreams.walkins.map((opp) => (
+                                            <JobCard
+                                                key={`walk-${opp.id}`}
+                                                job={opp}
+                                                jobId={opp.id}
+                                                isApplied={hasAppliedAction(opp)}
+                                                isSaved={opp.isSaved}
+                                                onToggleSave={() => toggleSave(opp.id)}
+                                                isAdmin={user?.role === 'ADMIN'}
+                                            />
+                                        ))}
+                                    </div>
+                                </DashboardSection>
+                            )}
+
+                            {/* Government Highlights */}
+                            {dataStreams.govt.length > 0 && (
+                                <DashboardSection
+                                    title="Government Highlights"
+                                    description="Public sector, PSU, and government recruitment updates"
+                                    count={dataStreams.govt.length}
+                                    icon={<BuildingLibraryIcon className="w-5 h-5 text-muted-foreground" />}
+                                    viewAllHref="/govt"
+                                >
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {dataStreams.govt.map((opp) => (
+                                            <JobCard
+                                                key={`gov-${opp.id}`}
+                                                job={opp}
+                                                jobId={opp.id}
+                                                isApplied={hasAppliedAction(opp)}
+                                                isSaved={opp.isSaved}
+                                                onToggleSave={() => toggleSave(opp.id)}
+                                                isAdmin={user?.role === 'ADMIN'}
+                                            />
+                                        ))}
+                                    </div>
+                                </DashboardSection>
+                            )}
+
+                            {/* Hackathons */}
+                            {dataStreams.hackathons.length > 0 && (
+                                <DashboardSection
+                                    title="Hackathons"
+                                    description="Competitive coding hackathons, challenges & hiring sprints"
+                                    count={dataStreams.hackathons.length}
+                                    icon={<CodeBracketIcon className="w-5 h-5 text-muted-foreground" />}
+                                    viewAllHref="/jobs?type=hackathons"
+                                >
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {dataStreams.hackathons.map((opp) => (
+                                            <JobCard
+                                                key={`hack-${opp.id}`}
+                                                job={opp}
+                                                jobId={opp.id}
+                                                isApplied={hasAppliedAction(opp)}
+                                                isSaved={opp.isSaved}
+                                                onToggleSave={() => toggleSave(opp.id)}
+                                                isAdmin={user?.role === 'ADMIN'}
+                                            />
+                                        ))}
+                                    </div>
+                                </DashboardSection>
+                            )}
+                        </div>
+                    )}
                 </div>
             </ProfileGate>
         </AuthGate>
     );
 }
-

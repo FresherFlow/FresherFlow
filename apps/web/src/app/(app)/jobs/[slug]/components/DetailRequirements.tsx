@@ -5,9 +5,8 @@ import ClipboardDocumentCheckIcon from '@heroicons/react/24/outline/ClipboardDoc
 import InformationCircleIcon from '@heroicons/react/24/outline/InformationCircleIcon';
 import TrophyIcon from '@heroicons/react/24/outline/TrophyIcon';
 import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
-import { capitalizeSkill } from '@/features/opportunities/domain/opportunityDisplay';
 import { cn } from '@repo/ui/utils/cn';
-
+import { SkillPill } from '@/ui/SkillPill';
 interface DetailRequirementsProps {
     opp: Opportunity;
     educationDetails: {
@@ -119,18 +118,23 @@ export function RequirementsBox({ opp, educationDetails, userProfileSkills = [],
                             {opp.requiredSkills.map((s: string) => {
                                 const isMatched = userProfileSkills.includes(s.toLowerCase());
                                 return (
-                                    <span
-                                        key={s}
-                                        className={cn(
-                                            "px-2.5 py-1 border text-xs font-medium rounded-md inline-flex items-center gap-1.5",
-                                            isMatched 
-                                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" 
-                                                : "bg-muted/50 text-muted-foreground border-border/40"
+                                    <div key={s} className="relative">
+                                        <SkillPill
+                                            skill={s}
+                                            size="sm"
+                                            className={cn(
+                                                "px-2.5 py-1 text-xs",
+                                                isMatched 
+                                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" 
+                                                    : ""
+                                            )}
+                                        />
+                                        {isMatched && (
+                                            <div className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-emerald-500 text-white rounded-full flex items-center justify-center text-[10px] shadow-sm">
+                                                ✓
+                                            </div>
                                         )}
-                                    >
-                                        {isMatched && <span className="text-xs">✓</span>}
-                                        {capitalizeSkill(s)}
-                                    </span>
+                                    </div>
                                 );
                             })}
                         </div>

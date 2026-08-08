@@ -162,7 +162,6 @@ export default async function RolePage({ params }: Props) {
             lastUpdated={lastUpdated}
             breadcrumbLabel={roleInfo.label}
             breadcrumbUrl={`/roles/${slug}`}
-            parentBreadcrumb={{ label: 'Roles', href: '/roles' }}
             topCompanies={topCompanies}
             relatedSkills={relatedSkills}
             relatedLocations={relatedLocations}

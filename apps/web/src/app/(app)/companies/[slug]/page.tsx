@@ -9,7 +9,6 @@ import CompanyLogo from '@/ui/CompanyLogo';
 import { Card } from '@/ui/Card';
 import { Badge } from '@/ui/Badge';
 import { PageTagLinks } from '@/ui/PageTagLinks';
-import { Breadcrumb } from '@/ui/Breadcrumb';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
 import { detectAtsProvider } from '@/features/companies/utils/atsDetector';
@@ -161,7 +160,6 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         return (
             <div className="min-h-screen bg-background pb-20">
                 <main className="max-w-7xl mx-auto px-4 md:px-6 py-16 space-y-8">
-                    <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Companies', href: '/companies' }, { label: companyName }]} />
                     <Card className="text-center space-y-4 py-16 p-8">
                         <h1 className="text-3xl font-bold tracking-tight text-foreground">{companyName}</h1>
                         <p className="text-sm text-muted-foreground">No active fresher listings right now. Check back soon.</p>
@@ -184,9 +182,6 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     return (
         <div className="min-h-screen bg-background pb-20 font-sans">
             <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 space-y-8">
-
-                {/* Breadcrumbs */}
-                <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Companies', href: '/companies' }, { label: companyName }]} />
 
                 {/* Single Elegant Company Header */}
                 <Card className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">

@@ -241,6 +241,7 @@ function LoginContent() {
                                 <span>Continue with Google</span>
                             </Button>
 
+                            {/* EMAIL OTP LOGIN TEMPORARILY DISABLED FOR PROD 
                             <div className="relative py-1">
                                 <div className="absolute inset-0 flex items-center">
                                     <span className="w-full border-t border-border/60" />
@@ -271,6 +272,7 @@ function LoginContent() {
                             >
                                 {isLoading ? <ArrowPathIcon className="w-4 h-4 animate-spin mx-auto" /> : isSignupIntent ? 'Continue to Sign Up →' : 'Continue with Email →'}
                             </Button>
+                            */}
                         </form>
                     )}
 
@@ -320,10 +322,7 @@ function LoginContent() {
 
                 {/* Footer Security Badge */}
                 <div className="pt-4 border-t border-border/50 flex flex-col items-center gap-2 text-center">
-                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium">
-                        <ShieldCheckIcon className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                        <span>Verified Infrastructure</span>
-                    </div>
+                    {/* Removed Verified Infrastructure */}
                     <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-medium">
                         <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
                         <span className="text-muted-foreground/30">•</span>

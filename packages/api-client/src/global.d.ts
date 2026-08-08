@@ -1,5 +1,5 @@
-declare type PublicKeyCredentialCreationOptionsJSON = any;
-declare type RegistrationResponseJSON = any;
-declare type PublicKeyCredentialRequestOptionsJSON = any;
-declare type AuthenticationResponseJSON = any;
-declare type PushSubscriptionJSON = any;
+declare type PublicKeyCredentialCreationOptionsJSON = unknown;
+declare type RegistrationResponseJSON = unknown;
+declare type PublicKeyCredentialRequestOptionsJSON = unknown;
+declare type AuthenticationResponseJSON = unknown;
+declare type PushSubscriptionJSON = unknown;

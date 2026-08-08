@@ -8,10 +8,16 @@ export interface TitleFilters {
     sector?: string | null;
     course?: string | null;
     search?: string | null;
+    sort?: string | null;
 }
 
 export function formatJobFeedTitle(filters: TitleFilters): string {
     const parts: string[] = [];
+
+    // 0. Sort prefix
+    if (filters.sort === 'expiring') {
+        parts.push('Closing Soon');
+    }
 
     // 1. Work Mode
     if (filters.workMode) {
