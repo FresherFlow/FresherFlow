@@ -1,36 +1,22 @@
-import type { Metadata } from 'next';
-import { notFound, redirect } from 'next/navigation';
+import { Metadata } from 'next';
+import { permanentRedirect, notFound } from 'next/navigation';
 import { logRouteResult } from '@/lib/observability';
+import { Suspense } from 'react';
+import OpportunityDetailClient from '../../jobs/[slug]/OpportunityDetailClient';
+import { OpportunityDetailSkeleton } from '@/ui/Skeleton';
 import { getOpportunityPath } from '@/features/opportunities/domain/opportunityPath';
-import { fetchGovernmentFeed } from '@/lib/api/cdnFeed';
-import { cache } from 'react';
-
-type Props = {
-    params: Promise<{ slug: string }>;
-};
+import { fetchBootstrapFeed, fetchGovernmentFeed } from '@/lib/api/cdnFeed';
+import { getRelatedOpportunities } from '@/features/opportunities/utils/detailUtils';
+import { generateOpportunityMetadata, generateOpportunityJsonLd, generateOpportunityBreadcrumbsJsonLd, getExpiryState, ExtendedOpportunity } from '../../jobs/[slug]/opportunitySeo';
 
 export const revalidate = false;
-// dynamicParams = true: allows newly published jobs to be dynamically generated on their first visit,
-// rather than 404ing. This will result in 1 ISR write per new job. If we notice an ISR write burst,
-// we may need to revisit this approach or check our cache tags.
 export const dynamicParams = true;
 
-// Redirect page does not need custom SEO indexing.
-export const metadata: Metadata = {
-    robots: {
-        index: false,
-        follow: true,
-    },
-};
-
-const fetchGovernmentOpportunity = cache(async (slug: string) => {
-    try {
-        const feed = await fetchGovernmentFeed(false, undefined, true);
-        return feed?.opportunities?.find((opp) => opp.slug === slug || opp.id === slug) || null;
-    } catch {
-        return null;
-    }
-});
+const CRAWLER_PATHS = new Set(['wp-admin', 'wp-login.php', 'xmlrpc.php', 'ads.txt', 'phpmyadmin', 'admin.php', 'demo', 'generate', 'blog', 'null', 'undefined', 'login', 'jobs', 'saved', 'tracker']);
+function isInvalidSlug(slug: string): boolean {
+    const lower = slug.toLowerCase();
+    return CRAWLER_PATHS.has(lower) || lower.startsWith('api') || lower.includes('/') || lower.includes('.') || lower.includes('\\');
+}
 
 export async function generateStaticParams() {
     try {
@@ -42,18 +28,64 @@ export async function generateStaticParams() {
     }
 }
 
-export default async function GovernmentJobDetailPage({ params }: Props) {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
     const { slug } = await params;
-    const opp = await fetchGovernmentOpportunity(slug);
+    if (isInvalidSlug(slug)) notFound();
+    try {
+        const feed = await fetchGovernmentFeed(false, undefined, true);
+        const opp = feed?.opportunities?.find((o) => o.slug === slug || o.id === slug);
+        if (!opp) throw new Error('Not found');
+        return await generateOpportunityMetadata(opp as ExtendedOpportunity);
+    } catch {
+        return { title: 'Opportunity Not Found', description: 'This opportunity listing is no longer available.' };
+    }
+}
+
+export default async function GovernmentJobDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug } = await params;
+    if (isInvalidSlug(slug)) {
+        logRouteResult('/govt/[slug] (crawler)', '404');
+        notFound();
+    }
+
+    const [govtFeed, bootstrapFeed] = await Promise.all([
+        fetchGovernmentFeed(false, undefined, true),
+        fetchBootstrapFeed(false, undefined, true)
+    ]);
+
+    const opp = govtFeed?.opportunities?.find((o) => o.slug === slug || o.id === slug) as ExtendedOpportunity | undefined;
 
     if (!opp) {
         logRouteResult('/govt/[slug]', '404');
         notFound();
     }
 
-    // Redirect to the canonical unified slug details page
-    logRouteResult('/govt/[slug]', '307');
-    redirect(getOpportunityPath(opp.type, opp.slug || opp.id));
-}
+    if (slug === opp.id && opp.slug) {
+        logRouteResult('/govt/[slug]', '308');
+        permanentRedirect(getOpportunityPath(opp.type, opp.slug));
+    }
 
+    if (getExpiryState(opp).pastGrace) {
+        logRouteResult('/govt/[slug]', '308');
+        permanentRedirect('/jobs');
+    }
+
+    const related = bootstrapFeed?.opportunities ? getRelatedOpportunities(opp, bootstrapFeed.opportunities) : [];
+
+    logRouteResult('/govt/[slug]', '200');
+
+    return (
+        <>
+            {!getExpiryState(opp).isExpired && (
+                <>
+                    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(generateOpportunityJsonLd(opp)) }} />
+                    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(generateOpportunityBreadcrumbsJsonLd(opp)) }} />
+                </>
+            )}
+            <Suspense fallback={<OpportunityDetailSkeleton />}>
+                <OpportunityDetailClient id={slug} initialData={opp} initialRelatedData={related} />
+            </Suspense>
+        </>
+    );
+}
 

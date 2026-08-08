@@ -18,7 +18,7 @@ import {
 import { fetchBootstrapFeed, fetchGovernmentFeed, fetchExpiredFeed } from '@/lib/api/cdnFeed';
 import { getRelatedOpportunities } from '@/features/opportunities/utils/detailUtils';
 
-const CRAWLER_PATHS = new Set(['wp-admin', 'wp-login.php', 'xmlrpc.php', 'ads.txt', 'phpmyadmin', 'admin.php', 'demo', 'generate', 'blog', 'null', 'undefined']);
+const CRAWLER_PATHS = new Set(['wp-admin', 'wp-login.php', 'xmlrpc.php', 'ads.txt', 'phpmyadmin', 'admin.php', 'demo', 'generate', 'blog', 'null', 'undefined', 'login', 'jobs', 'saved', 'tracker']);
 
 function isInvalidSlug(slug: string): boolean {
     const lower = slug.toLowerCase();

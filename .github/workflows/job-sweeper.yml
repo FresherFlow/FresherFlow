@@ -31,6 +31,9 @@ jobs:
         working-directory: scripts/sweeper
         run: pnpm exec playwright install --with-deps chromium
 
+      - name: Build Workspace Packages
+        run: pnpm build --filter "@fresherflow/constants" --filter "@fresherflow/types" --filter "@fresherflow/utils" --filter "@fresherflow/parser" --filter "@fresherflow/domain" --filter "@fresherflow/plugins"
+
       - name: Run Job Sweeper
         working-directory: scripts/sweeper
         env:

@@ -305,7 +305,8 @@ export class StaticFeedService {
                     const slugOrId = (opp.slug || opp.id) as string;
                     const rawDate = (opp.updatedAt || opp.postedAt) as string | Date | undefined;
                     const dateStr = rawDate ? new Date(rawDate).toISOString().split('T')[0] : staticDate;
-                    jobsXml += `  <url><loc>${baseUrl}/${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>weekly</changefreq></url>\n`;
+                    const prefix = opp.type === 'GOVERNMENT' ? 'govt' : 'jobs';
+                    jobsXml += `  <url><loc>${baseUrl}/${prefix}/${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>weekly</changefreq></url>\n`;
                 });
                 jobsXml += '</urlset>';
 

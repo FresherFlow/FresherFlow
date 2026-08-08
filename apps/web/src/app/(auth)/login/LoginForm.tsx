@@ -7,21 +7,18 @@ import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { toastError } from '@/lib/utils/error';
 import {
-    EnvelopeIcon,
     ArrowPathIcon,
-    ShieldCheckIcon,
     ChevronLeftIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthFormData } from '@/lib/auth/AuthFormDataContext';
 import { Button } from '@/ui/Button';
-import { Input } from '@/ui/Input';
 import { growthApi } from '@/lib/api/client';
 import LoadingScreen from '@/ui/LoadingScreen';
 
 type LoginStep = 'email' | 'otp';
 
 function LoginContent() {
-    const { email, setEmail } = useAuthFormData();
+    const { email } = useAuthFormData();
     const [otpArray, setOtpArray] = useState<string[]>(Array(6).fill(''));
     const [step, setStep] = useState<LoginStep>('email');
     const [isProcessing, setIsProcessing] = useState(false);

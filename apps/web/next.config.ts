@@ -261,16 +261,16 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
-        source: "/:slug",
+        source: "/:slug((?!login|signup|saved|tracker|dashboard|admin|govt|roles|skills|locations|companies|batch|privacy|terms|app|settings|profile|account|auth|api|_next|jobs|feed|deadlines|organisations|captions|discovery).*)",
         destination: "/jobs/:slug",
-        permanent: true,
+        permanent: false,
         missing: [
           { type: "header", key: "x-nextjs-data" },
         ],
         has: [
           {
             type: "host",
-            value: "(?!(localhost|.*\\.vercel\\.app)).*",
+            value: "^(www\\.)?fresherflow\\.(in|com)$",
           }
         ],
       },
