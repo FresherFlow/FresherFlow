@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Navbar, MobileNav, isSidebarPage } from '@/lib/navigation/Navigation';
 import { Footer } from '@/ui/Footer';
@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils/utils';
 // WEB PIVOT: keep offline sync code for later, but do not mount it on SEO web.
 // import OfflineActionSync from '@/lib/components/OfflineActionSync';
 import { AuthContext } from '@/lib/auth/AuthContext';
-import { ADMIN_WEB_HOST } from '@/lib/utils/runtimeConfig';
+
 import { FeedHeaderProvider } from '@/lib/context/FeedHeaderContext';
 
 export function NavigationWrapper({ children }: { children: React.ReactNode }) {
@@ -57,16 +57,17 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
         <>
             <Navbar />
 
-            <main className={cn(
-                "relative w-full overflow-x-hidden flex-1 flex flex-col",
-                "pt-[calc(3.75rem+env(safe-area-inset-top))]",
-                "md:pt-14",
-                !isSidebarRoute && "md:pt-[4.75rem]",
-                (isSidebarRoute || (mounted && isAuthenticated)) && "pb-20 md:pb-8",
-                !(isSidebarRoute || (mounted && isAuthenticated)) && "pb-4 md:pb-8",
-                isSidebarRoute && "md:pl-48",
-                "min-h-screen"
-            )}>
+            <main
+                className={cn(
+                    "relative w-full overflow-x-hidden flex-1 flex flex-col",
+                    "pt-[calc(3.75rem+env(safe-area-inset-top))]",
+                    "md:pt-14",
+                    !isSidebarRoute && "md:pt-[4.75rem]",
+                    isSidebarRoute ? "pb-0" : ((mounted && isAuthenticated) ? "pb-20 md:pb-8" : "pb-4 md:pb-8"),
+                    "min-h-screen",
+                    isSidebarRoute && "md:pl-[var(--sidebar-w,12rem)] transition-[padding-left] duration-200 ease-in-out"
+                )}
+            >
                 <FeedHeaderProvider>
                     <div className={cn(
                         "flex-1 flex flex-col"

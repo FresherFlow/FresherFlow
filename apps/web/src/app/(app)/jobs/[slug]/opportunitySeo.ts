@@ -34,9 +34,9 @@ export function getExpiryState(opportunity: ExtendedOpportunity) {
 
 export function getTypeHubPath(type?: Opportunity['type']) {
     if (type === 'JOB') return '/jobs';
-    if (type === 'INTERNSHIP') return '/internships';
-    if (type === 'WALKIN') return '/walk-ins';
-    return '/opportunities';
+    if (type === 'INTERNSHIP') return '/jobs/internships';
+    if (type === 'WALKIN') return '/jobs/walk-ins';
+    return '/jobs';
 }
 
 function parseNumericAmount(input: string): number | null {
@@ -369,7 +369,7 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
 export const generateOpportunityBreadcrumbsJsonLd = (opportunity: Opportunity) => {
     const base = SITE_URL.replace(/\/+$/, '');
     const typeLabel = opportunity.type === 'INTERNSHIP' ? 'Internships' : opportunity.type === 'WALKIN' ? 'Walk-ins' : 'Jobs';
-    const typePath = opportunity.type === 'INTERNSHIP' ? '/internships' : opportunity.type === 'WALKIN' ? '/walk-ins' : '/jobs';
+    const typePath = opportunity.type === 'INTERNSHIP' ? '/jobs/internships' : opportunity.type === 'WALKIN' ? '/jobs/walk-ins' : '/jobs';
     const companySlug = slugify(opportunity.company || '');
     
     return {

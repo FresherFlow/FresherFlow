@@ -5,6 +5,7 @@ import { slugify } from '@fresherflow/utils/slugify';
 import { Breadcrumb } from '@/ui/Breadcrumb';
 import { Badge } from '@/ui/Badge';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
+import { HeaderPortal } from '@/lib/components/HeaderPortal';
 
 export const revalidate = false;
 
@@ -64,7 +65,9 @@ export default async function SkillsIndexPage() {
         <div className="min-h-screen bg-background pb-20 font-sans">
             <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
 
-                <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Skills' }]} />
+                <HeaderPortal>
+                    <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Skills' }]} />
+                </HeaderPortal>
 
                 {/* Header */}
                 <div className="pb-4 border-b border-border/40 space-y-2">

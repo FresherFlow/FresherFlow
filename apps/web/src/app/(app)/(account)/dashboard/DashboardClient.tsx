@@ -3,6 +3,7 @@
 import { useAuth } from '@/lib/auth/AuthContext';
 import { AuthGate, ProfileGate } from '@/lib/components/ProfileGate';
 import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Opportunity } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 import { calculateOpportunityMatch, isNotEligible } from '@/features/opportunities/domain/matchScore';
@@ -215,6 +216,7 @@ function DashboardStats({ savedCount, trackerCount }: DashboardStatsProps) {
 }
 
 export default function DashboardClient({ initialData }: { initialData?: { opportunities: Opportunity[]; total?: number; count?: number; cachedAt?: number } | null } = {}) {
+    const router = useRouter();
     const { user, profile, isLoading: authLoading } = useAuth();
     const profileCompletion = calculateProfileCompletion(profile).percentage;
     const [recentOpps, setRecentOpps] = useState<Opportunity[]>(() => {
@@ -332,7 +334,7 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
     const toggleSave = async (opportunityId: string) => {
         if (!user) {
             toast.error('Please log in to save opportunities');
-            window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+            router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
             return;
         }
         try {

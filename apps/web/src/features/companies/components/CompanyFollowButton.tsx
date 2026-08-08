@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { PlusIcon, CheckIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
@@ -11,6 +12,7 @@ type Props = {
 };
 
 export default function CompanyFollowButton({ companySlug, companyName }: Props) {
+    const router = useRouter();
     const { user } = useAuth();
     const [isFollowing, setIsFollowing] = useState(false);
     const [isUpdating, setIsUpdating] = useState(false);
@@ -18,7 +20,7 @@ export default function CompanyFollowButton({ companySlug, companyName }: Props)
     const handleToggleFollow = async () => {
         if (!user) {
             toast.error('Please log in to follow companies');
-            window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+            router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
             return;
         }
 

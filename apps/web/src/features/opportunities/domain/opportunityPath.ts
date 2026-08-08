@@ -22,7 +22,7 @@ export function normalizeOpportunitySlugOrId(slugOrId: string): string {
 
 export function getOpportunityPath(type: OpportunityType, slugOrId: string): string {
     const safeSegment = encodeURIComponent(normalizeOpportunitySlugOrId(slugOrId));
-    return `/${safeSegment}`;
+    return `/jobs/${safeSegment}`;
 }
 
 export function getOpportunityPathFromItem(item: { type?: string; slug?: string | null; id: string }): string {

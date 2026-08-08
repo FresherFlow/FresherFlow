@@ -583,6 +583,20 @@
   }
 }
 
+/* Hydration Flicker Fix */
+html[data-logged-in="true"] .auth-guest-only {
+  display: none !important;
+}
+html[data-logged-in="false"] .auth-user-only {
+  display: none !important;
+}
+html[data-sidebar="collapsed"] .sidebar-expanded-only {
+  display: none !important;
+}
+html[data-sidebar="expanded"] .sidebar-collapsed-only {
+  display: none !important;
+}
+
 /* Hidden Scrollbar - Scroll functionality preserved */
 ::-webkit-scrollbar { 
   display: none; 

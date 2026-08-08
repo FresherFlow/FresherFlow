@@ -6,7 +6,7 @@ import { fetchGovernmentFeed } from '@/lib/api/cdnFeed';
 import { cache } from 'react';
 
 type Props = {
-    params: Promise<{ id: string }>;
+    params: Promise<{ slug: string }>;
 };
 
 export const revalidate = false;
@@ -23,10 +23,10 @@ export const metadata: Metadata = {
     },
 };
 
-const fetchGovernmentOpportunity = cache(async (id: string) => {
+const fetchGovernmentOpportunity = cache(async (slug: string) => {
     try {
         const feed = await fetchGovernmentFeed(false, undefined, true);
-        return feed?.opportunities?.find((opp) => opp.id === id) || null;
+        return feed?.opportunities?.find((opp) => opp.slug === slug || opp.id === slug) || null;
     } catch {
         return null;
     }
@@ -36,23 +36,23 @@ export async function generateStaticParams() {
     try {
         const feed = await fetchGovernmentFeed(false, undefined, true);
         if (!feed?.opportunities) return [];
-        return feed.opportunities.map((opp) => ({ id: opp.id }));
+        return feed.opportunities.map((opp) => ({ slug: opp.slug || opp.id }));
     } catch {
         return [];
     }
 }
 
 export default async function GovernmentJobDetailPage({ params }: Props) {
-    const { id } = await params;
-    const opp = await fetchGovernmentOpportunity(id);
+    const { slug } = await params;
+    const opp = await fetchGovernmentOpportunity(slug);
 
     if (!opp) {
-        logRouteResult('/government-jobs/[id]', '404');
+        logRouteResult('/govt/[slug]', '404');
         notFound();
     }
 
     // Redirect to the canonical unified slug details page
-    logRouteResult('/government-jobs/[id]', '307');
+    logRouteResult('/govt/[slug]', '307');
     redirect(getOpportunityPath(opp.type, opp.slug || opp.id));
 }
 

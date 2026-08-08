@@ -5,6 +5,7 @@ import { Breadcrumb } from '@/ui/Breadcrumb';
 import { Card, CardContent } from '@/ui/Card';
 import { Badge } from '@/ui/Badge';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
+import { HeaderPortal } from '@/lib/components/HeaderPortal';
 
 export const revalidate = false;
 
@@ -39,7 +40,9 @@ export default async function BatchIndexPage() {
         <div className="min-h-screen bg-background pb-20 font-sans">
             <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
 
-                <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Batches' }]} />
+                <HeaderPortal>
+                    <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Batches' }]} />
+                </HeaderPortal>
 
                 {/* Header */}
                 <div className="pb-4 border-b border-border/40 space-y-2">

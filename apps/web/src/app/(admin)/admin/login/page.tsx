@@ -11,7 +11,10 @@ import {
     FingerPrintIcon
 } from '@heroicons/react/24/outline';
 
+import { useRouter } from 'next/navigation';
+
 export default function AdminLoginPage() {
+    const router = useRouter();
     const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || '').toLowerCase();
     const adminEmailConfigured = ADMIN_EMAIL.length > 0;
     const [email, setEmail] = useState('');
@@ -99,7 +102,7 @@ export default function AdminLoginPage() {
                 setAdminSessionHint();
                 toast.success('Access Granted');
                 setTimeout(() => {
-                    window.location.href = '/admin/dashboard';
+                    router.push('/admin/dashboard');
                 }, 500);
             }
         } catch (err: unknown) {
@@ -138,7 +141,7 @@ export default function AdminLoginPage() {
                 setAdminSessionHint();
                 toast.success('Access Granted');
                 setTimeout(() => {
-                    window.location.href = '/admin/dashboard';
+                    router.push('/admin/dashboard');
                 }, 500);
             }
         } catch (err: unknown) {

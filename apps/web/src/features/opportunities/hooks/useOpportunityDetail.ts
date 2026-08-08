@@ -155,7 +155,7 @@ export function useOpportunityDetail(
         }
         hasTrackedDetailViewRef.current = false;
         hasShownNotFoundRef.current = false;
-    }, [id, initialDataId, loadOpportunity]);
+    }, [id, initialData, initialDataId, opp?.id, loadOpportunity]);
 
     useEffect(() => {
         if (opp) {

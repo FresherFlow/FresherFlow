@@ -1,5 +1,6 @@
 import { cn } from '@repo/ui/utils/cn';
-import { useMemo, useEffect, useState } from 'react';
+import { useMemo, useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useFeedHeader } from '@/lib/context/FeedHeaderContext';
 import Link from 'next/link';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
@@ -9,6 +10,8 @@ const OpportunityDetailPane = dynamic(() => import('./OpportunityDetailPane').th
 import JobCard from '@/features/opportunities/components/JobCard';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
+import Squares2X2Icon from '@heroicons/react/24/outline/Squares2X2Icon';
+import Bars3Icon from '@heroicons/react/24/outline/Bars3Icon';
 import FunnelIcon from '@heroicons/react/24/outline/FunnelIcon';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
@@ -20,8 +23,13 @@ import CheckCircleIcon from '@heroicons/react/24/solid/CheckCircleIcon';
 import KeyIcon from '@heroicons/react/24/outline/KeyIcon';
 import TrophyIcon from '@heroicons/react/24/outline/TrophyIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
+import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
+import HomeIcon from '@heroicons/react/24/outline/HomeIcon';
+import WrenchScrewdriverIcon from '@heroicons/react/24/outline/WrenchScrewdriverIcon';
+import BuildingOfficeIcon from '@heroicons/react/24/outline/BuildingOfficeIcon';
 import { Breadcrumb } from '@/ui/Breadcrumb';
 import { Button } from '@/ui/Button';
+import { Hint } from '@/ui/Tooltip';
 import { Input } from '@/ui/Input';
 import { SkeletonJobCard } from '@/ui/Skeleton';
 import { useIntersectionObserver } from '@/lib/hooks/useIntersectionObserver';
@@ -36,6 +44,7 @@ import {
     type GovtCategoryFilter,
 } from '@/features/opportunities/components/GovtPhaseTabs';
 import { type CategoryPageState } from '@/features/opportunities/hooks/useCategoryPageState';
+import { formatJobFeedTitle } from '@/features/opportunities/utils/formatJobFeedTitle';
 
 const MobileFilterDrawer = dynamic(() =>
     import('@/features/opportunities/components/MobileFilterDrawer').then(m => m.MobileFilterDrawer)
@@ -182,6 +191,7 @@ function GroupedGovtView({
                                 onToggleSave={() => toggleSave(opp.id)}
                                 isAdmin={user?.role === 'ADMIN'}
                                 priority={index < 2}
+                                variant="vertical"
                             />
                         ))}
                     </div>
@@ -203,7 +213,7 @@ function GroupedGovtView({
 // ─── Presenter ────────────────────────────────────────────────────────────────
 
 export function CategoryPageView({
-    type, user, filteredOpps, visibleOpps, isLoading, error, profileIncomplete, mounted,
+    type, user, filteredOpps, visibleOpps, isLoading, error, profileIncomplete, mounted, isDesktop,
     selectedOpp, handleSelectOpportunity, handleCloseOpportunityPane,
     search, setSearch, filters, setFilters,
     govtPhase, setGovtPhase, govtCategory, setGovtCategory, phaseCounts, categoryCounts, showGroupedView,
@@ -217,6 +227,11 @@ export function CategoryPageView({
     const { targetRef: loadMoreRef, isIntersecting } = useIntersectionObserver({ threshold: 0.1, rootMargin: '400px' });
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const { setCount } = useFeedHeader();
+    const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+
+    useEffect(() => {
+        setPortalTarget(document.getElementById('top-header-portal-target'));
+    }, []);
 
     // Push filtered count to TopHeaderBar
     useEffect(() => {
@@ -247,69 +262,108 @@ export function CategoryPageView({
             });
     }, [filteredOpps, type]);
 
+    const dynamicTitle = formatJobFeedTitle({
+        type: type,
+        workMode: filters.workMode,
+        location: filters.location,
+        skills: filters.skills,
+        sector: filters.sector,
+        course: filters.course,
+        search: search
+    }) || config.title;
+
+    const headerPortalContent = type !== OpportunityType.GOVERNMENT ? (
+        <>
+            <div className={cn("flex items-center", selectedOpp && isDesktop !== false && "hidden lg:flex")}>
+                <Breadcrumb items={[
+                    { label: 'Home', href: '/' },
+                    { label: config.title, href: '#' }
+                ]} />
+            </div>
+            
+            <div className={cn("relative group w-full max-w-xl mx-auto flex-1 lg:ml-6", selectedOpp && isDesktop !== false && "hidden lg:block")}>
+                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                <Input
+                    type="text"
+                    placeholder="Search roles, companies, skills..."
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    className="pl-9 h-9 text-xs rounded-xl bg-card border-border shadow-sm w-full focus:bg-background"
+                />
+                {search && (
+                    <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-full p-0.5 hover:bg-muted">
+                        <XMarkIcon className="w-3 h-3" />
+                    </button>
+                )}
+            </div>
+        </>
+    ) : null;
+    // ── Detail pane toggle (persisted) ──────────────────────────────────────
+    const [showDetail, setShowDetail] = useState(true);
+    useEffect(() => {
+        const stored = localStorage.getItem('ff:showDetail');
+        if (stored === 'false') setShowDetail(false);
+    }, []);
+    const toggleShowDetail = useCallback(() => {
+        setShowDetail(prev => {
+            const next = !prev;
+            localStorage.setItem('ff:showDetail', String(next));
+            if (typeof document !== 'undefined') {
+                document.documentElement.setAttribute('data-show-detail', String(next));
+            }
+            if (!next) handleCloseOpportunityPane();
+            return next;
+        });
+    }, [handleCloseOpportunityPane]);
+
     return (
-        <div className="w-full max-w-7xl mx-auto px-3 md:px-6 pb-12 md:pb-20 lg:pb-4 space-y-4">
+        <div className="w-full max-w-7xl mx-auto flex flex-col" style={{ height: 'calc(100vh - 3.5rem)' }}>
+            {portalTarget && headerPortalContent ? createPortal(headerPortalContent, portalTarget) : null}
 
             {/* Live Ticker — govt only */}
             {type === OpportunityType.GOVERNMENT && mounted && tickerItems.length > 0 && (
-                <LiveTicker items={tickerItems} />
-            )}
-
-            {/* Breadcrumb — except govt jobs as requested */}
-            {type !== OpportunityType.GOVERNMENT && (
-                <div className={cn("pt-2", selectedOpp && "hidden lg:block")}>
-                    <Breadcrumb items={[
-                        { label: 'Home', href: '/' },
-                        { label: config.title, href: '#' }
-                    ]} />
+                <div className="px-3 md:px-6 pt-2">
+                    <LiveTicker items={tickerItems} />
                 </div>
             )}
 
-            {/* Count + Filters — one row */}
-            <div className={cn("flex items-center gap-3 flex-wrap pb-2", selectedOpp && "hidden lg:flex")}>
-                <h1 className="sr-only">{config.title} Feed</h1>
+            {/* Sticky header: Title + Filters + Active chips */}
+            <div className={cn("shrink-0 bg-background/95 border-b border-border/50 px-3 md:px-6 pt-3 pb-0 space-y-2.5", selectedOpp && "hidden lg:block")}>
 
-                {/* Search box */}
-                <div className={cn("relative group w-full lg:w-96 mb-1", selectedOpp && "hidden lg:block")}>
+            {/* Mobile search bar — inline, full width. Desktop search is portaled to TopHeaderBar */}
+            {type !== OpportunityType.GOVERNMENT && (
+                <div className="relative group lg:hidden">
                     <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                     <Input
                         type="text"
-                        placeholder="Search by role or company..."
+                        placeholder="Search roles, companies, skills..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        className="pl-9 h-10 text-xs rounded-xl bg-card border-border shadow-sm w-full"
+                        className="pl-9 h-9 text-xs rounded-xl bg-card border-border shadow-sm w-full focus:bg-background"
                     />
                     {search && (
-                        <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-full p-0.5">
-                            <XMarkIcon className="w-4 h-4" />
+                        <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-full p-0.5 hover:bg-muted">
+                            <XMarkIcon className="w-3 h-3" />
                         </button>
                     )}
                 </div>
+            )}
 
-                {/* Count — left */}
-                <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5 shrink-0" aria-live="polite">
-                    <ShieldCheckIcon className="w-3.5 h-3.5 text-primary shrink-0" />
-                    {mounted && visibleOpps.length > 0 ? `Showing ${visibleOpps.length} jobs` : '0 jobs'}
-                </span>
+            {/* Title row: Title+Count LEFT | Filters RIGHT */}
+            <div className={cn("flex items-center justify-between gap-3 pb-2.5", selectedOpp && "hidden lg:flex")}>
+                {/* Left: Title + Count */}
+                <div className="flex items-baseline gap-2.5 min-w-0">
+                    <h1 className="text-xl md:text-2xl font-extrabold text-foreground tracking-tight leading-tight truncate">
+                        {type !== OpportunityType.GOVERNMENT ? dynamicTitle : config.title}
+                    </h1>
+                    <span className="text-sm font-medium text-muted-foreground shrink-0 whitespace-nowrap">
+                        {mounted && visibleOpps.length > 0 ? visibleOpps.length : '0'} found
+                    </span>
+                </div>
 
-                {/* Phase + Category tabs — govt only */}
-                {type === OpportunityType.GOVERNMENT && (
-                    <div className="space-y-2 w-full">
-                        <GovtPhaseTabs
-                            active={govtPhase}
-                            onChange={phase => { setGovtPhase(phase); setGovtCategory(null); }}
-                            counts={phaseCounts}
-                        />
-                        <GovtCategoryFilterComponent
-                            active={govtCategory}
-                            onChange={setGovtCategory}
-                            counts={categoryCounts}
-                        />
-                    </div>
-                )}
-
-                {/* Filters — right */}
-                <div className="flex items-center gap-2 ml-auto flex-wrap">
+                {/* Right: Filters */}
+                <div className="flex items-center gap-2 shrink-0">
+                    {/* Mobile Filters button */}
                     <button
                         onClick={openMobileFilters}
                         className="lg:hidden h-9 flex items-center gap-2 px-3 rounded-xl border border-border bg-card text-[11px] font-bold capitalize tracking-widest shrink-0"
@@ -317,10 +371,117 @@ export function CategoryPageView({
                         <FunnelIcon className="w-4 h-4" />
                         {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
                     </button>
-                    <FilterDropdownBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} />
+
+                    {/* Desktop filter dropdowns + toggle */}
+                    <div className="hidden lg:flex items-center gap-2 flex-wrap">
+
+                        <FilterDropdownBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} />
+                        {type !== OpportunityType.GOVERNMENT && (
+                            <Hint label={showDetail ? 'Hide detail pane' : 'Show detail pane'} side="top" avoidCollisions={false}>
+                                <button
+                                    onClick={toggleShowDetail}
+                                    className="flex items-center gap-1.5 h-9 px-3 rounded-xl border border-border bg-card text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    aria-label={showDetail ? 'Hide detail pane' : 'Show detail pane'}
+                                >
+                                    {showDetail ? <Bars3Icon className="w-4 h-4" /> : <Squares2X2Icon className="w-4 h-4" />}
+                                    {showDetail ? 'List' : 'Split'}
+                                </button>
+                            </Hint>
+                        )}
+                    </div>
                 </div>
             </div>
 
+            {/* Govt tabs — shown below title row */}
+            {type === OpportunityType.GOVERNMENT && (
+                <div className="space-y-2 pb-3">
+                    <GovtPhaseTabs
+                        active={govtPhase}
+                        onChange={phase => { setGovtPhase(phase); setGovtCategory(null); }}
+                        counts={phaseCounts}
+                    />
+                    <GovtCategoryFilterComponent
+                        active={govtCategory}
+                        onChange={setGovtCategory}
+                        counts={categoryCounts}
+                    />
+                </div>
+            )}
+
+            {/* Active Chips */}
+            {type !== OpportunityType.GOVERNMENT && (
+                <div className={cn("flex flex-wrap items-center gap-2 pb-4", selectedOpp && "hidden lg:flex")}>
+                    {search && (
+                        <span className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium">
+                            <MagnifyingGlassIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                            {search}
+                            <button onClick={() => setSearch('')} className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-full p-0.5 ml-1 transition-colors"><XMarkIcon className="w-3.5 h-3.5" /></button>
+                        </span>
+                    )}
+                    {filters.workMode?.map(m => (
+                        <span key={m} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium">
+                            <HomeIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                            {m === 'REMOTE' ? 'Remote' : m === 'HYBRID' ? 'Hybrid' : 'On-site'}
+                            <button onClick={() => setFilters({...filters, workMode: filters.workMode!.filter(x => x !== m).length > 0 ? filters.workMode!.filter(x => x !== m) : null})} className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-full p-0.5 ml-1 transition-colors"><XMarkIcon className="w-3.5 h-3.5" /></button>
+                        </span>
+                    ))}
+                    {filters.location && (
+                        <span className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium">
+                            <MapPinIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                            {filters.location}
+                            <button onClick={() => setFilters({...filters, location: null})} className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-full p-0.5 ml-1 transition-colors"><XMarkIcon className="w-3.5 h-3.5" /></button>
+                        </span>
+                    )}
+                    {filters.sector && (
+                        <span className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium">
+                            <BuildingOfficeIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                            {filters.sector}
+                            <button onClick={() => setFilters({...filters, sector: null})} className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-full p-0.5 ml-1 transition-colors"><XMarkIcon className="w-3.5 h-3.5" /></button>
+                        </span>
+                    )}
+                    {filters.skills?.map(s => (
+                        <span key={s} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium">
+                            <WrenchScrewdriverIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                            {s}
+                            <button onClick={() => setFilters({...filters, skills: filters.skills!.filter(x => x !== s)})} className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-full p-0.5 ml-1 transition-colors"><XMarkIcon className="w-3.5 h-3.5" /></button>
+                        </span>
+                    ))}
+                    {filters.course && (
+                        <span className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium">
+                            <AcademicCapIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                            {filters.course}
+                            <button onClick={() => setFilters({...filters, course: null})} className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-full p-0.5 ml-1 transition-colors"><XMarkIcon className="w-3.5 h-3.5" /></button>
+                        </span>
+                    )}
+                    {filters.qualification && (
+                        <span className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium">
+                            <AcademicCapIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                            {filters.qualification}
+                            <button onClick={() => setFilters({...filters, qualification: null})} className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-full p-0.5 ml-1 transition-colors"><XMarkIcon className="w-3.5 h-3.5" /></button>
+                        </span>
+                    )}
+                    {filters.year && (
+                        <span className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium">
+                            <AcademicCapIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                            Class of {filters.year}
+                            <button onClick={() => setFilters({...filters, year: null})} className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-full p-0.5 ml-1 transition-colors"><XMarkIcon className="w-3.5 h-3.5" /></button>
+                        </span>
+                    )}
+                    {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0)) ? (
+                        <button
+                            onClick={clearAll}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-widest uppercase text-destructive border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 transition-colors ml-1"
+                        >
+                            <XMarkIcon className="w-3.5 h-3.5" />
+                            Clear all
+                        </button>
+                    ) : null}
+                </div>
+            )}
+            </div>{/* end sticky header */}
+
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto px-3 md:px-6 pb-2 space-y-4">
             {/* Mobile filter drawer */}
             <MobileFilterDrawer
                 isOpen={isMobileFilterOpen}
@@ -372,10 +533,10 @@ export function CategoryPageView({
             ) : isLoading ? (
                 type === OpportunityType.GOVERNMENT ? (
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-                        {[1,2,3,4,5,6].map(i => <SkeletonJobCard key={i} variant="default" />)}
+                        {[1,2,3,4,5,6].map(i => <SkeletonJobCard key={i} variant="vertical" />)}
                     </div>
                 ) : (
-                    <div className="w-full grid gap-6 items-start grid-cols-1 lg:grid-cols-[1.3fr_1.7fr]">
+                    <div className="w-full grid gap-6 items-start grid-cols-1 lg:grid-cols-[1.1fr_1.3fr] xl:grid-cols-[45%_55%]">
                         <div className="min-w-0 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-2 custom-scrollbar">
                             <div className="grid grid-cols-1 gap-4 md:gap-6">
                                 {[1,2,3,4,5].map(i => <SkeletonJobCard key={i} variant="compact" />)}
@@ -416,24 +577,28 @@ export function CategoryPageView({
                 </div>
             ) : visibleOpps.length === 0 ? (
                 <EmptyState
-                    title="No results found"
-                    description="Try adjusting your filters or search keywords."
-                    action={<Button variant="outline" onClick={clearAll} className="h-11 px-6 text-sm font-bold capitalize tracking-widest">Clear filters</Button>}
+                    title={`No ${dynamicTitle} found`}
+                    description="Try removing some filters or search keywords."
+                    action={<Button variant="outline" onClick={clearAll} className="h-11 px-6 text-sm font-bold capitalize tracking-widest">Clear all filters</Button>}
                 />
             ) : (
                 // ── Flat grid (filtered by phase / search) ─────────────────────
                 <div className={cn(
-                    "w-full grid gap-6 items-start",
-                    type !== OpportunityType.GOVERNMENT ? "grid-cols-1 lg:grid-cols-[1.3fr_1.7fr]" : "grid-cols-1"
+                    "w-full grid gap-2 items-start",
+                    type !== OpportunityType.GOVERNMENT
+                        ? (showDetail
+                            ? "grid-cols-1 lg:grid-cols-[1.1fr_1.3fr] xl:grid-cols-[45%_55%] [:root[data-show-detail='false']_&]:lg:grid-cols-1 [:root[data-show-detail='false']_&]:max-w-3xl [:root[data-show-detail='false']_&]:mx-auto"
+                            : "grid-cols-1 max-w-3xl mx-auto")
+                        : "grid-cols-1 max-w-4xl mx-auto"
                 )}>
                     {/* Left Column: list grid */}
                     <div id="category-grid-container" className={cn(
                         "min-w-0",
-                        type !== OpportunityType.GOVERNMENT && "lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-2 custom-scrollbar"
+                        type !== OpportunityType.GOVERNMENT && showDetail && "lg:sticky lg:top-[var(--sticky-h,8rem)] lg:h-[calc(100vh-var(--sticky-h,8rem))] lg:overflow-y-auto lg:pr-2 custom-scrollbar [:root[data-show-detail='false']_&]:lg:static [:root[data-show-detail='false']_&]:lg:h-auto [:root[data-show-detail='false']_&]:lg:overflow-y-visible [:root[data-show-detail='false']_&]:lg:pr-0"
                     )}>
-                        <div className={cn('grid gap-4 md:gap-6', 
-                            type === OpportunityType.GOVERNMENT 
-                                ? 'grid-cols-1 lg:grid-cols-2' 
+                        <div className={cn('grid gap-2',
+                            type === OpportunityType.GOVERNMENT
+                                ? 'grid-cols-1 lg:grid-cols-2'
                                 : 'grid-cols-1'
                         )}>
                             {visibleOpps.slice(0, visibleCount).map((opp, index) => (
@@ -446,10 +611,16 @@ export function CategoryPageView({
                                     onToggleSave={() => toggleSave(opp.id)}
                                     isAdmin={user?.role === 'ADMIN'}
                                     isSelected={opp.id === selectedOpp?.id || opp.slug === selectedOpp?.slug}
-                                    variant={type !== OpportunityType.GOVERNMENT ? "compact" : "default"}
+                                    variant={
+                                        type === OpportunityType.GOVERNMENT
+                                            ? 'vertical'
+                                            : (isDesktop === false || showDetail)
+                                                ? 'compact'
+                                                : 'wide'
+                                    }
                                     searchQuery={search}
                                     onClick={(e) => {
-                                        if (type !== OpportunityType.GOVERNMENT) {
+                                        if (type !== OpportunityType.GOVERNMENT && (showDetail || isDesktop === false)) {
                                             e.preventDefault();
                                             handleSelectOpportunity(opp);
                                         }
@@ -465,9 +636,9 @@ export function CategoryPageView({
                         )}
                     </div>
 
-                    {/* Right Column: Detail Panel / Empty State (Desktop only) */}
-                    {type !== OpportunityType.GOVERNMENT && (
-                        <div className="hidden lg:flex flex-col sticky top-24 h-[calc(100vh-8rem)] bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm">
+                    {/* Right Column: Detail Panel (desktop, split mode only) */}
+                    {type !== OpportunityType.GOVERNMENT && showDetail && (
+                        <div className="hidden lg:flex flex-col sticky top-24 h-[calc(100vh-8rem)] bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm [:root[data-show-detail='false']_&]:!hidden">
                             {selectedOpp ? (
                                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                                     <OpportunityDetailPane
@@ -511,62 +682,7 @@ export function CategoryPageView({
                 </div>
             )}
 
-            {/* Footer info / SEO blurb */}
-            <div className={cn("mt-16 pt-8 border-t border-border/50 space-y-6 max-w-3xl", selectedOpp && "hidden lg:block")}>
-                <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">
-                    {type === OpportunityType.WALKIN ? 'About Walk-in Interview Drives'
-                    : type === OpportunityType.INTERNSHIP ? 'About Fresher Internships'
-                    : type === OpportunityType.GOVERNMENT ? 'About Government Jobs'
-                    : 'About Fresher Jobs'}
-                </h2>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                    {type === OpportunityType.WALKIN
-                        ? 'Walk-in interview drives are recruitment events where candidates can directly walk in for an interview without any prior appointment. Be sure to carry copies of your resume, academic certificates, and a valid photo ID.'
-                    : type === OpportunityType.INTERNSHIP
-                        ? 'Internships help fresh graduates gain practical experience, build portfolios, and establish professional connections. Many also lead to direct PPOs.'
-                    : type === OpportunityType.GOVERNMENT
-                        ? 'Explore verified official notifications and recruitment drives for Government organizations, PSUs, and Defense services. Stay updated with SSC, UPSC, Banking, and State-level commission openings.'
-                    : 'Explore verified entry-level job listings for fresh graduates across India — spanning software, IT, finance, marketing, and operations.'}
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-xl bg-card border border-border/60">
-                        <h3 className="text-xs font-bold text-foreground mb-1">
-                            {type === OpportunityType.WALKIN ? 'What to bring?' : type === OpportunityType.GOVERNMENT ? 'Who can apply?' : 'How to qualify?'}
-                        </h3>
-                        <p className="text-[11px] text-muted-foreground leading-relaxed">
-                            {type === OpportunityType.WALKIN
-                                ? 'Updated CV, graduation transcripts, and dress professionally.'
-                            : type === OpportunityType.GOVERNMENT
-                                ? 'Eligibility depends on the specific exam. Most require a 10th/12th, Diploma, or Degree with strict age limits and category relaxations.'
-                            : 'Basic domain knowledge, a degree in a relevant field, and a strong learning attitude.'}
-                        </p>
-                    </div>
-                    <div className="p-4 rounded-xl bg-card border border-border/60">
-                        <h3 className="text-xs font-bold text-foreground mb-1">Are these listings verified?</h3>
-                        <p className="text-[11px] text-muted-foreground leading-relaxed">
-                            {type === OpportunityType.GOVERNMENT
-                                ? 'Yes, every listing is sourced directly from official government portals.'
-                                : 'Yes, every listing is reviewed to ensure active apply links and genuine employer details.'}
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Mobile Detail Modal/Drawer (Mobile/Tablet only) */}
-            {selectedOpp && type !== OpportunityType.GOVERNMENT && (
-                <div id="mobile-detail-modal" className="lg:hidden fixed inset-0 z-[120] flex flex-col bg-card animate-in slide-in-from-bottom duration-300">
-                    {/* Safe area padding */}
-                    <div className="pt-[env(safe-area-inset-top)] bg-card shrink-0" />
-                    <div className="flex-1 flex flex-col min-h-0">
-                        <OpportunityDetailPane
-                            oppId={selectedOpp.slug || selectedOpp.id}
-                            initialData={selectedOpp}
-                            onClose={handleCloseOpportunityPane}
-                            isMobile={true}
-                        />
-                    </div>
-                </div>
-            )}
+            </div>{/* end scrollable content */}
         </div>
     );
 }

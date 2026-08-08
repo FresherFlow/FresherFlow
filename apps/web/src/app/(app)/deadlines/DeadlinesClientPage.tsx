@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Opportunity } from '@fresherflow/types';
 import { AuthGate, ProfileGate } from '@/lib/components/ProfileGate';
@@ -17,6 +18,7 @@ interface DeadlinesClientPageProps {
 }
 
 export default function DeadlinesClientPage({ initialOpportunities }: DeadlinesClientPageProps) {
+    const router = useRouter();
     const { user } = useAuth();
     const { savedJobsMap, toggleSavedJob } = useFirebaseSaved(user?.id);
 
@@ -39,7 +41,7 @@ export default function DeadlinesClientPage({ initialOpportunities }: DeadlinesC
     const toggleSave = async (opportunityId: string) => {
         if (!user) {
             toast.error('Please log in to save opportunities');
-            window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+            router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
             return;
         }
         try {

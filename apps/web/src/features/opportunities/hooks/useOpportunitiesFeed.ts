@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Opportunity, EducationLevel } from '@fresherflow/types';
 // WEB PIVOT: keep API imports disabled while public web runs from CDN/static JSON.
 // import { opportunitiesApi, savedApi } from '@/lib/api/client';
@@ -15,6 +16,9 @@ const WEB_STATIC_DISCOVERY = true;
 
 interface UseOpportunitiesFeedOptions {
     type?: string | null;
+    mode?: string[] | string | null;
+    source?: string | null;
+    sort?: string | null;
     selectedLoc?: string | null;
     selectedYear?: number | null;
     showOnlySaved: boolean;
@@ -38,6 +42,9 @@ type OpportunityAction = {
 
 export function useOpportunitiesFeed({
     type,
+    mode,
+    source,
+    sort,
     selectedLoc,
     selectedYear,
     showOnlySaved,
@@ -48,6 +55,7 @@ export function useOpportunitiesFeed({
     course,
     initialData,
 }: UseOpportunitiesFeedOptions) {
+    const router = useRouter();
     const { user, profile, isLoading: authLoading } = useAuth();
     const { savedJobsMap, toggleSavedJob } = useFirebaseSaved(user?.id);
     const [isMounted, setIsMounted] = useState(false);
@@ -266,12 +274,51 @@ export function useOpportunitiesFeed({
                 }
             }
 
-            if (type === 'REMOTE') {
+            if (mode) {
+                const modeArray = Array.isArray(mode) ? mode : [mode];
+                const isRemoteOrHybrid = modeArray.some(m => {
+                    const selectedMode = m.toLowerCase();
+                    const isModeRemote = selectedMode === 'remote';
+                    const isModeHybrid = selectedMode === 'hybrid';
+                    const isModeOnsite = selectedMode === 'on_site' || selectedMode === 'onsite';
+                    
+                    const oppWorkMode = String((opp as any).workMode || '').toLowerCase();
+                    
+                    if (isModeRemote) {
+                        return (opp.locations || []).some(loc => {
+                            const l = loc.toLowerCase();
+                            return l.includes('remote') || l.includes('wfh') || l.includes('work from home');
+                        }) || oppWorkMode === 'remote' || (opp.title || '').toLowerCase().includes('remote');
+                    }
+                    if (isModeHybrid) {
+                        return (opp.locations || []).some(loc => loc.toLowerCase().includes('hybrid')) 
+                        || oppWorkMode === 'hybrid' || (opp.title || '').toLowerCase().includes('hybrid');
+                    }
+                    if (isModeOnsite) {
+                        return oppWorkMode === 'on_site' || oppWorkMode === 'onsite' || 
+                        (!oppWorkMode && !((opp.locations || []).some(loc => {
+                            const l = loc.toLowerCase();
+                            return l.includes('remote') || l.includes('wfh') || l.includes('work from home') || l.includes('hybrid');
+                        })) && !(opp.title || '').toLowerCase().includes('remote') && !(opp.title || '').toLowerCase().includes('hybrid'));
+                    }
+                    return false;
+                });
+                
+                if (!isRemoteOrHybrid) return false;
+            } else if (type === 'REMOTE') {
                 const isRemote = (opp.locations || []).some(loc => {
                     const l = loc.toLowerCase();
                     return l.includes('remote') || l.includes('wfh') || l.includes('work from home');
                 }) || (opp as any).workMode === 'REMOTE' || opp.title.toLowerCase().includes('remote');
                 if (!isRemote) return false;
+            }
+
+            if (source === 'offcampus') {
+                const isOffCampus = (opp as any).source === 'OFFCAMPUS' || (opp as any).category === 'OFFCAMPUS' ||
+                    (opp.tags || []).some((t: string) => t.toLowerCase().replace('-', '') === 'offcampus') ||
+                    (opp.title || '').toLowerCase().includes('off campus') ||
+                    (opp.title || '').toLowerCase().includes('off-campus');
+                if (!isOffCampus) return false;
             }
 
             const matchesSearch = !normalizedSearch || [
@@ -372,7 +419,18 @@ export function useOpportunitiesFeed({
             const bucketDiff = bucketWeight(a) - bucketWeight(b);
             if (bucketDiff !== 0) return bucketDiff;
 
-            // 4. Mobile Architecture: Recency priority (newer postedAt date comes first)
+            // 4. Sort override
+            if (sort === 'latest') {
+                const timeA = a.postedAt ? new Date(a.postedAt).getTime() : 0;
+                const timeB = b.postedAt ? new Date(b.postedAt).getTime() : 0;
+                if (timeB !== timeA) return timeB - timeA;
+            } else if (sort === 'trending') {
+                const trendA = (a as any).views || (a as any).applicationsCount || a.matchScore || 0;
+                const trendB = (b as any).views || (b as any).applicationsCount || b.matchScore || 0;
+                if (trendB !== trendA) return trendB - trendA;
+            }
+
+            // 5. Mobile Architecture: Recency priority (newer postedAt date comes first)
             const timeA = a.postedAt ? new Date(a.postedAt).getTime() : 0;
             const timeB = b.postedAt ? new Date(b.postedAt).getTime() : 0;
 
@@ -390,12 +448,12 @@ export function useOpportunitiesFeed({
 
             return timeB - timeA;
         });
-    }, [opportunities, selectedLoc, selectedYear, closingSoon, sector, qualification, course, profile, normalizedSearch, type, showOnlySaved, savedJobsMap, isMounted]);
+    }, [opportunities, selectedLoc, selectedYear, closingSoon, sector, qualification, course, profile, normalizedSearch, type, mode, source, sort, showOnlySaved, savedJobsMap, isMounted]);
 
     const toggleSave = async (opportunityId: string) => {
         if (!user) {
             toast.error('Please log in to save opportunities');
-            window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+            router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
             return;
         }
         try {

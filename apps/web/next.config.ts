@@ -1,5 +1,8 @@
+import events from "node:events";
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
+
+events.defaultMaxListeners = 30;
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
@@ -223,28 +226,62 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/internships",
+        destination: "/jobs/internships",
+        permanent: true,
+      },
+      {
+        source: "/remote",
+        destination: "/jobs/remote",
+        permanent: true,
+      },
+      {
+        source: "/walk-ins",
+        destination: "/jobs/walk-ins",
+        permanent: true,
+      },
+      {
+        source: "/government-jobs/:path*",
+        destination: "/govt/:path*",
+        permanent: true,
+      },
+      {
+        source: "/location/:path*",
+        destination: "/locations/:path*",
+        permanent: true,
+      },
+      {
         source: "/opportunities/:slug",
-        destination: "/:slug",
+        destination: "/jobs/:slug",
         permanent: true,
       },
       {
-        source: "/jobs/:slug",
-        destination: "/:slug",
+        source: "/opportunities",
+        destination: "/jobs",
         permanent: true,
       },
       {
-        source: "/internships/:slug",
-        destination: "/:slug",
+        source: "/:slug",
+        destination: "/jobs/:slug",
         permanent: true,
+        missing: [
+          { type: "header", key: "x-nextjs-data" },
+        ],
+        has: [
+          {
+            type: "host",
+            value: "(?!(localhost|.*\\.vercel\\.app)).*",
+          }
+        ],
       },
       {
         source: "/walk-ins/details/:slug",
-        destination: "/:slug",
+        destination: "/jobs/:slug",
         permanent: true,
       },
       {
         source: "/walk-ins/opportunity/:slug",
-        destination: "/:slug",
+        destination: "/jobs/:slug",
         permanent: true,
       },
       {

@@ -106,9 +106,9 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             icon: HomeIcon,
         },
         {
-            href: '/opportunities',
+            href: '/jobs',
             label: 'Search',
-            mobileTitle: 'Opportunities Feed',
+            mobileTitle: 'Jobs Feed',
             mobileLabel: 'Feed',
             showInDesktop: false,
             showInMobileTabs: false,
@@ -124,7 +124,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             icon: BriefcaseIcon,
         },
         {
-            href: '/internships',
+            href: '/jobs/internships',
             label: 'Internships',
             mobileTitle: 'Internships Feed',
             mobileLabel: 'Internships',
@@ -133,7 +133,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             icon: AcademicCapIcon,
         },
         {
-            href: '/remote',
+            href: '/jobs/remote',
             label: 'Remote',
             mobileTitle: 'Remote Jobs Feed',
             mobileLabel: 'Remote',
@@ -142,7 +142,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             icon: BriefcaseIcon,
         },
         {
-            href: '/government-jobs',
+            href: '/govt',
             label: 'Govt Jobs',
             mobileTitle: 'Govt Jobs',
             mobileLabel: 'Govt',

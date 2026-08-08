@@ -31,3 +31,48 @@ const TooltipContent = React.forwardRef<
 TooltipContent.displayName = TooltipPrimitive.Content.displayName
 
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+
+/**
+ * A simplified Tooltip component for easy use everywhere.
+ * Usage: <Hint label="Save"><button>...</button></Hint>
+ */
+export function Hint({ 
+  label, 
+  children, 
+  side = "top", 
+  align = "center",
+  delayDuration = 200,
+  avoidCollisions = true
+}: { 
+  label: string | React.ReactNode; 
+  children: React.ReactNode; 
+  side?: "top" | "bottom" | "left" | "right";
+  align?: "start" | "center" | "end";
+  delayDuration?: number;
+  avoidCollisions?: boolean;
+}) {
+  const [open, setOpen] = React.useState(false);
+  
+  if (!label) return <>{children}</>;
+  
+  return (
+    <TooltipProvider delayDuration={delayDuration}>
+      <Tooltip open={open} onOpenChange={setOpen}>
+        <TooltipTrigger 
+          asChild 
+          onClick={(e) => {
+            setOpen(false);
+            if (e.currentTarget instanceof HTMLElement) {
+              e.currentTarget.blur();
+            }
+          }}
+        >
+          {children}
+        </TooltipTrigger>
+        <TooltipContent side={side} align={align} avoidCollisions={avoidCollisions}>
+          {label}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}

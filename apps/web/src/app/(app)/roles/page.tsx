@@ -5,6 +5,7 @@ import { slugify } from '@fresherflow/utils/slugify';
 import { Breadcrumb } from '@/ui/Breadcrumb';
 import { Badge } from '@/ui/Badge';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
+import { HeaderPortal } from '@/lib/components/HeaderPortal';
 
 export const revalidate = false;
 
@@ -19,26 +20,29 @@ export default async function RolesIndexPage() {
     const opportunities = feed?.opportunities || [];
 
     // Extract all roles with job counts
-    const roleCounts: Record<string, number> = {};
+    const roleCounts: Record<string, { role: string; count: number }> = {};
     for (const opp of opportunities) {
-        const role = opp.title; // Using title as role
-        if (!role) continue;
-        const key = role.trim();
-        roleCounts[key] = (roleCounts[key] || 0) + 1;
+        const title = opp.title; // Using title as role
+        if (!title) continue;
+        const slug = slugify(title);
+        if (!roleCounts[slug]) {
+            roleCounts[slug] = { role: title, count: 0 };
+        }
+        roleCounts[slug].count += 1;
     }
 
     // Sort by count desc, then alpha
     const sorted = Object.entries(roleCounts)
-        .filter(([, count]) => count >= 1)
-        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+        .filter(([, data]) => data.count >= 1)
+        .sort((a, b) => b[1].count - a[1].count || a[1].role.localeCompare(b[1].role));
 
     // Group alphabetically
     const groups: Record<string, { role: string; count: number; slug: string }[]> = {};
-    for (const [role, count] of sorted) {
-        const letter = role[0].toUpperCase();
+    for (const [slug, data] of sorted) {
+        const letter = data.role[0].toUpperCase();
         const key = /[A-Z]/.test(letter) ? letter : '#';
         if (!groups[key]) groups[key] = [];
-        groups[key].push({ role, count, slug: slugify(role) });
+        groups[key].push({ role: data.role, count: data.count, slug });
     }
 
     const letters = Object.keys(groups).sort((a, b) => {
@@ -54,7 +58,9 @@ export default async function RolesIndexPage() {
         <div className="min-h-screen bg-background pb-20 font-sans">
             <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
 
-                <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Roles' }]} />
+                <HeaderPortal>
+                    <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Roles' }]} />
+                </HeaderPortal>
 
                 {/* Header */}
                 <div className="pb-4 border-b border-border/40 space-y-2">

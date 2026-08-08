@@ -4,6 +4,7 @@ import { slugify } from '@fresherflow/utils/slugify';
 import { detectAtsProvider } from '@/features/companies/utils/atsDetector';
 import { Breadcrumb } from '@/ui/Breadcrumb';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
+import { HeaderPortal } from '@/lib/components/HeaderPortal';
 import CompaniesDirectoryClient, { CompanyDirectoryItem } from '@/features/companies/components/CompaniesDirectoryClient';
 
 export const revalidate = false;
@@ -89,7 +90,9 @@ export default async function CompaniesIndexPage() {
     return (
         <div className="min-h-screen bg-background pb-20">
             <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 space-y-6">
-                <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Companies' }]} />
+                <HeaderPortal>
+                    <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Companies' }]} />
+                </HeaderPortal>
                 <CompaniesDirectoryClient companies={companies} totalJobs={totalJobs} />
             </main>
         </div>

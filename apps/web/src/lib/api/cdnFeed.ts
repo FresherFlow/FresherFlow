@@ -36,6 +36,19 @@ type CDNFetchOptions = RequestInit & {
     };
 };
 
+function cancelResponseBody(res: Response | null | undefined): void {
+    if (!res) return;
+    try {
+        if (res.body) {
+            void res.body.cancel().catch(() => {});
+        } else {
+            void res.arrayBuffer().catch(() => {});
+        }
+    } catch {
+        // ignore stream cleanup error
+    }
+}
+
 async function signMessage(message: string, secret: string): Promise<string> {
     const encoder = new TextEncoder();
     const keyData = encoder.encode(secret);
@@ -152,6 +165,7 @@ export async function fetchFeedVersion(untracked = false): Promise<FeedVersion> 
                 return versionObj;
             }
         }
+        cancelResponseBody(res);
     } catch (err) {
         console.warn('Failed to fetch feed version, using uncached fallback:', err instanceof Error ? err.message : err);
     }
@@ -205,6 +219,7 @@ export async function fetchBootstrapFeed(forceLive = false, customTags?: string[
 
         // Fallback if CDN fetch fails in development mode (e.g. 403 due to missing local signature secret)
         if (!res.ok && process.env.NODE_ENV === 'development') {
+            cancelResponseBody(res);
             try {
                 // First try live API for live data in local development
                 const liveApiRes = await fetch('https://api.fresherflow.in/bootstrap-feed.min.json', { cache: 'no-store' });
@@ -217,12 +232,16 @@ export async function fetchBootstrapFeed(forceLive = false, customTags?: string[
                         }
                         return result;
                     }
+                } else {
+                    cancelResponseBody(liveApiRes);
                 }
                 // Then fall back to local API
                 const localApiUrl = `${API_URL}/bootstrap-feed.min.json`;
                 const localRes = await fetch(localApiUrl, { cache: 'no-store' });
                 if (localRes.ok) {
                     res = localRes;
+                } else {
+                    cancelResponseBody(localRes);
                 }
             } catch {
                 // Ignore fallback error
@@ -230,6 +249,7 @@ export async function fetchBootstrapFeed(forceLive = false, customTags?: string[
         }
 
         if (!res.ok) {
+            cancelResponseBody(res);
             if (IS_SERVER) {
                 console.error(`Failed to fetch bootstrap feed: ${res.status} ${res.statusText}`);
             }
@@ -265,6 +285,8 @@ export async function fetchBootstrapFeed(forceLive = false, customTags?: string[
                         }
                         return data;
                     }
+                } else {
+                    cancelResponseBody(localRes);
                 }
             } catch {
                 // Ignore fallback error
@@ -309,6 +331,7 @@ export async function fetchExpiredFeed(customTags?: string[], untracked = false)
         clearTimeout(timeoutId);
 
         if (!res.ok) {
+            cancelResponseBody(res);
             console.error(`Failed to fetch expired feed: ${res.status} ${res.statusText}`);
             return null;
         }
@@ -354,6 +377,7 @@ export async function fetchGovernmentFeed(_forceLive = false, customTags?: strin
         clearTimeout(timeoutId);
 
         if (!res.ok) {
+            cancelResponseBody(res);
             console.error(`Failed to fetch government feed: ${res.status} ${res.statusText}`);
             return null;
         }
@@ -398,7 +422,10 @@ export async function fetchCategoryShard(id: string, customTags?: string[], untr
         }));
 
         clearTimeout(timeoutId);
-        if (!res.ok) return null;
+        if (!res.ok) {
+            cancelResponseBody(res);
+            return null;
+        }
         const data = await res.json() as BootstrapFeedResponse;
 
         return data;
@@ -434,7 +461,10 @@ export async function fetchCompanyShard(slug: string, customTags?: string[], unt
         }));
 
         clearTimeout(timeoutId);
-        if (!res.ok) return null;
+        if (!res.ok) {
+            cancelResponseBody(res);
+            return null;
+        }
         const data = await res.json() as BootstrapFeedResponse;
 
         return data;
@@ -475,7 +505,10 @@ export async function fetchEducationMetadata(): Promise<EducationMetadata | null
             cache: 'force-cache',
             next: { revalidate: false, tags: ['education-metadata'] },
         }));
-        if (!res.ok) return null;
+        if (!res.ok) {
+            cancelResponseBody(res);
+            return null;
+        }
         return await res.json() as EducationMetadata;
     } catch (err) {
         console.warn('Failed to fetch education metadata from CDN:', err);
@@ -496,7 +529,10 @@ export async function fetchSkillsMetadata(): Promise<string[] | null> {
             cache: 'force-cache',
             next: { revalidate: false, tags: ['skills-metadata'] },
         }));
-        if (!res.ok) return null;
+        if (!res.ok) {
+            cancelResponseBody(res);
+            return null;
+        }
         return await res.json() as string[];
     } catch (err) {
         console.warn('Failed to fetch skills metadata from CDN:', err);
@@ -528,7 +564,10 @@ export async function fetchCompaniesMetadata(untracked = false): Promise<Company
             signal: controller.signal,
         }));
         clearTimeout(timeoutId);
-        if (!res.ok) return null;
+        if (!res.ok) {
+            cancelResponseBody(res);
+            return null;
+        }
         return await res.json() as CompanyMetadata[];
     } catch (err) {
         console.warn('Failed to fetch companies metadata from CDN:', err);
@@ -570,6 +609,7 @@ export async function fetchSitemapData(): Promise<SitemapDataResponse | null> {
         clearTimeout(timeoutId);
 
         if (!res.ok) {
+            cancelResponseBody(res);
             console.error(`Failed to fetch sitemap data: ${res.status} ${res.statusText}`);
             return null;
         }

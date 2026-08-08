@@ -43,7 +43,7 @@ export function MobileBottomTabs() {
 
     return (
         <div className={cn(
-            'md:hidden fixed bottom-0 left-0 right-0 h-16 bg-background/95 backdrop-blur-md border-t border-border z-50 transition-transform duration-200',
+            'md:hidden fixed bottom-0 left-0 right-0 h-16 bg-background/95 backdrop-blur-md border-t border-border z-50 transition-transform duration-200 select-none',
             isVisible ? 'translate-y-0' : 'translate-y-full'
         )}>
             <div className="flex justify-around items-center h-full px-0">

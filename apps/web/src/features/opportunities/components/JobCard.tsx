@@ -2,7 +2,7 @@
 
 import { Opportunity } from '@fresherflow/types';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { cn } from '@repo/ui/utils/cn';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import CurrencyRupeeIcon from '@heroicons/react/24/outline/CurrencyRupeeIcon';
@@ -13,6 +13,10 @@ import CheckBadgeIcon from '@heroicons/react/24/outline/CheckBadgeIcon';
 import ArrowPathIcon from '@heroicons/react/24/outline/ArrowPathIcon';
 import FlagIcon from '@heroicons/react/24/outline/FlagIcon';
 import EllipsisVerticalIcon from '@heroicons/react/24/outline/EllipsisVerticalIcon';
+import PaperAirplaneIcon from '@heroicons/react/24/outline/PaperAirplaneIcon';
+import BuildingOfficeIcon from '@heroicons/react/24/outline/BuildingOfficeIcon';
+import HomeIcon from '@heroicons/react/24/outline/HomeIcon';
+import ArrowsRightLeftIcon from '@heroicons/react/24/outline/ArrowsRightLeftIcon';
 import { useState, useMemo, useEffect } from 'react';
 import CompanyLogo from '@/ui/CompanyLogo';
 import toast from 'react-hot-toast';
@@ -37,6 +41,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger
 } from '@/ui/DropdownMenu';
+import { Hint } from '@/ui/Tooltip';
 
 interface JobCardProps {
     job: Opportunity & { matchScore?: number; matchReason?: string };
@@ -47,7 +52,14 @@ interface JobCardProps {
     onToggleSave?: () => void;
     isAdmin?: boolean;
     priority?: boolean;
-    variant?: 'default' | 'compact';
+    /**
+     * Card display variant:
+     * - 'default'  — full card with all details, used on job detail/standalone pages
+     * - 'compact'  — two-row card used in BOTH split-pane left column AND full-width list mode
+     *               (split: ~45% width inside grid; list: max-w-3xl centered single column)
+     * - 'wide'     — horizontal single-row card (legacy, kept for reference)
+     */
+    variant?: 'vertical' | 'compact' | 'wide';
     isSelected?: boolean;
     searchQuery?: string;
     searchedSkill?: string;
@@ -122,7 +134,7 @@ export default function JobCard({
     onToggleSave,
     isAdmin,
     priority = false,
-    variant = 'default',
+    variant = 'wide',
     isSelected = false,
     searchQuery,
     searchedSkill,
@@ -133,6 +145,7 @@ export default function JobCard({
     useEffect(() => {
         setMounted(true);
     }, []);
+    const router = useRouter();
     const { user, profile } = useAuth();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -163,7 +176,7 @@ export default function JobCard({
         e.stopPropagation();
         if (!user) {
             toast.error('Please log in to report listings');
-            window.location.href = loginRedirectHref;
+            router.push(loginRedirectHref);
             return;
         }
         const loadingToast = toast.loading('Submitting report...');
@@ -206,7 +219,7 @@ export default function JobCard({
         e.stopPropagation();
         if (!user) {
             toast.error('Please log in to save opportunities');
-            window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+            router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
             return;
         }
         if (job) {
@@ -349,16 +362,23 @@ export default function JobCard({
         ? normalizeSalaryInput(driveMeta.maxCtcLabel) ?? null
         : getOpportunityDisplaySalary(job);
 
-    if (variant === 'compact') {
+    // ── COMPACT & WIDE variants ──────────────────────────────────────────────────────
+    // Used in three contexts:
+    //   1. Split-pane LEFT column  → CategoryPageView when showDetail=true  (~45% width, variant='compact')
+    //   2. Full-width list mode    → CategoryPageView when showDetail=false  (max-w-3xl, variant='wide')
+    //   3. Saved jobs / dashboard lists
+    if (variant === 'compact' || variant === 'wide') {
+        const isCompact = variant === 'compact';
+        const workModeLabel = (job.workMode as string) || (job as any).mode || null;
+        const skillsList = (job.requiredSkills || []).slice(0, 6);
+        const skillOverflow = (job.requiredSkills?.length || 0) - skillsList.length;
+
         return (
             <div
                 className={cn(
-                    "group relative bg-card border rounded-xl p-3.5 shadow-xs transition-all duration-200 ease-out hover:shadow-md hover:border-primary/40 flex flex-col gap-2.5 overflow-hidden shrink-0 h-full",
-                    isSelected
-                        ? "border-primary/70 ring-1 ring-primary/15 shadow-xs"
-                        : "border-border/60",
+                    "group relative bg-card border rounded-xl p-3.5 flex items-start gap-3 md:gap-3.5 hover:border-primary/40 hover:shadow-md transition-all duration-200 cursor-pointer",
+                    isSelected ? "border-primary/70 ring-2 ring-primary/10 shadow-md" : "border-border/60",
                     isExpired() && "opacity-60",
-                    "cursor-pointer",
                     className
                 )}
             >
@@ -369,119 +389,189 @@ export default function JobCard({
                     className="absolute inset-0 z-10"
                 />
 
-                {/* Top Row: Company Logo + Title + Company Name */}
-                <div className="flex items-start gap-3 min-w-0 flex-1 relative">
-                    <div className="shrink-0">
-                        <CompanyLogo
-                            companyName={job.company}
-                            companyWebsite={job.companyWebsite}
-                            companyLogoUrl={job.companyLogoUrl}
-                            applyLink={job.applyLink}
-                            priority={priority}
-                            isGovernment={isGovernment}
-                            className="!w-10 !h-10"
-                        />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                            <span className="text-xs font-semibold text-muted-foreground line-clamp-1">
-                                {job.company}
-                            </span>
+                {/* Left Section: Logo */}
+                <CompanyLogo
+                    companyName={job.company}
+                    companyWebsite={job.companyWebsite}
+                    companyLogoUrl={job.companyLogoUrl}
+                    applyLink={job.applyLink}
+                    priority={priority}
+                    isGovernment={isGovernment}
+                    className="!w-10 !h-10 rounded-lg shrink-0 border border-border/50 shadow-xs"
+                />
+
+                {/* Center Section: Content */}
+                <div className="flex-1 min-w-0 flex flex-col justify-center gap-1.5">
+                    {/* Header info: Title + Company + Location */}
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0 flex-1">
+                            <h2 className="text-[15px] font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug">
+                                {job.normalizedRole || job.title}
+                            </h2>
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5 truncate">
+                                <span className="font-semibold text-foreground/80 truncate shrink-0 max-w-[120px] md:max-w-none">{job.company}</span>
+                                <span className="text-muted-foreground/40 shrink-0">•</span>
+                                <span className="inline-flex items-center gap-1 truncate min-w-0">
+                                    <MapPinIcon className="w-3.5 h-3.5 shrink-0" />
+                                    <span className="truncate">{locationInfo.shortLabel}</span>
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Top Right: Time and Options */}
+                        <div className="flex items-center gap-2 shrink-0 relative z-20 pointer-events-auto">
                             {getPostedLabel() && (
-                                <span className={cn("text-[11px] font-medium text-muted-foreground shrink-0", isFreshlyPosted() && "text-primary")}>
+                                <span className={cn(
+                                    "text-[10px] font-medium text-muted-foreground",
+                                    isFreshlyPosted() && "text-primary"
+                                )}>
                                     {getPostedLabel()}
                                 </span>
                             )}
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <button
+                                        type="button"
+                                        className="h-6 w-6 rounded border-transparent hover:border-border/60 bg-transparent hover:bg-muted/35 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all outline-none"
+                                        aria-label="Job options"
+                                    >
+                                        <EllipsisVerticalIcon className="w-4 h-4" />
+                                    </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-44 z-50">
+                                    <DropdownMenuItem onClick={handleSaveClick} className="cursor-pointer text-xs">
+                                        {isJobSaved ? <BookmarkSolidIcon className="w-3.5 h-3.5 mr-2 text-primary" /> : <BookmarkIcon className="w-3.5 h-3.5 mr-2" />}
+                                        <span>{isJobSaved ? 'Remove Bookmark' : 'Save Job'}</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={handleShareClick} className="cursor-pointer text-xs">
+                                        <ShareIcon className="w-3.5 h-3.5 mr-2" />
+                                        <span>Share Job</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    {[
+                                        { id: 'EXPIRED', label: 'Expired' },
+                                        { id: 'LINK_BROKEN', label: 'Broken Link' },
+                                        { id: 'INACCURATE', label: 'Inaccurate' },
+                                        { id: 'SPAM', label: 'Spam' },
+                                    ].map(item => (
+                                        <DropdownMenuItem key={item.id} onClick={e => handleReportClick(e, item.id)} className="cursor-pointer text-xs">
+                                            <FlagIcon className="w-3.5 h-3.5 mr-2 text-destructive" />
+                                            <span>{item.label}</span>
+                                        </DropdownMenuItem>
+                                    ))}
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
-                        <h2 className="mt-0.5 text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-tight line-clamp-2">
-                            {job.normalizedRole || job.title}
-                        </h2>
                     </div>
-                </div>
 
-                {/* Middle Row: Salary & Location */}
-                <div className="flex items-center justify-between text-xs text-muted-foreground gap-2 pt-1 border-t border-border/30">
-                    <div className="flex items-center gap-3 min-w-0">
-                        <span className="inline-flex items-center gap-1 min-w-0">
-                            <MapPinIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                            <span className="truncate">{locationInfo.shortLabel}</span>
-                        </span>
+                    {/* Meta tags: Work Mode, Salary, Type Badge, Expiry */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        {/* Work Mode Badge */}
+                        {workModeLabel && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] md:text-xs font-medium text-muted-foreground bg-muted border border-border/50 shrink-0">
+                                {workModeLabel.toLowerCase() === 'remote' ? (
+                                    <HomeIcon className="w-3.5 h-3.5" />
+                                ) : workModeLabel.toLowerCase() === 'hybrid' ? (
+                                    <ArrowsRightLeftIcon className="w-3.5 h-3.5" />
+                                ) : (
+                                    <BuildingOfficeIcon className="w-3.5 h-3.5" />
+                                )}
+                                {workModeLabel.charAt(0).toUpperCase() + workModeLabel.slice(1).toLowerCase()}
+                            </span>
+                        )}
+
+                        {/* Salary Badge */}
                         {salaryLabel && (
-                            <span className="inline-flex items-center gap-1 min-w-0">
-                                <CurrencyRupeeIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
-                                <span className="truncate font-semibold text-foreground/80">{salaryLabel}</span>
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] md:text-xs font-semibold shrink-0 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                                <CurrencyRupeeIcon className="w-3.5 h-3.5" />
+                                {salaryLabel}
+                            </span>
+                        )}
+                        
+                        {/* Type Badge (Job/Intern/Walk-in) */}
+                        <Link 
+                            href={job.type === 'INTERNSHIP' ? '/jobs?type=internship' : job.type === 'WALKIN' ? '/jobs?type=walkin' : '/jobs'}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] md:text-xs font-semibold shrink-0 bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-colors z-20 relative pointer-events-auto"
+                        >
+                            {isDrive ? 'Drive' : job.type === 'INTERNSHIP' ? 'Intern' : job.type === 'WALKIN' ? 'Walk-in' : 'Job'}
+                        </Link>
+
+                        {/* Govt / Expiry Badge */}
+                        {isGovernment && govtStatusMeta ? (
+                            <span className={cn(
+                                "inline-flex items-center px-1.5 py-0.5 border text-[10px] md:text-xs font-medium rounded",
+                                govtStatusMeta.className
+                            )}>
+                                {govtStatusMeta.label}
+                            </span>
+                        ) : !isGovernment && job.expiresAt && (
+                            <span className={cn(
+                                "inline-flex items-center gap-1 px-1.5 py-0.5 border text-[10px] md:text-xs font-medium rounded",
+                                isExpired()
+                                    ? 'bg-destructive/5 border-destructive/25 text-destructive'
+                                    : 'bg-muted/70 border-border/70 text-foreground/70'
+                            )}>
+                                <ClockIcon className="w-3.5 h-3.5" />
+                                {getExpiryLabel()}
                             </span>
                         )}
                     </div>
-                    
-                    <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium rounded bg-primary/10 text-primary border border-primary/20">
-                            {isDrive ? 'Drive' : job.type === 'INTERNSHIP' ? 'Intern' : job.type === 'WALKIN' ? 'Walk-in' : 'Job'}
-                        </span>
-                    </div>
-                </div>
 
-                {/* Footer Controls: Apply + 3-dots Menu */}
-                <div className="flex items-center justify-between pt-1.5 border-t border-border/20 relative z-20 pointer-events-auto">
-                    <button
-                        type="button"
-                        onClick={handleApplyClick}
-                        className={cn(
-                            "inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.95] transition-opacity duration-150 ease-out cursor-pointer shadow-xs",
-                            "opacity-100 md:opacity-0 md:group-hover:opacity-100"
-                        )}
-                        title="Apply to job"
-                    >
-                        <span>Apply</span>
-                    </button>
-
-                    <div onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <button
-                                    type="button"
-                                    className="h-7 w-7 rounded-md border border-border/60 bg-background dark:bg-muted/35 text-muted-foreground hover:border-primary/30 hover:text-foreground flex items-center justify-center transition-all duration-150 active:scale-95 outline-none"
-                                    aria-label="Job options"
-                                >
-                                    <EllipsisVerticalIcon className="w-4 h-4" aria-hidden="true" />
-                                </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-44 z-50">
-                                <DropdownMenuItem onClick={handleSaveClick} className="cursor-pointer text-xs">
-                                    {isJobSaved ? <BookmarkSolidIcon className="w-3.5 h-3.5 mr-2 text-primary" /> : <BookmarkIcon className="w-3.5 h-3.5 mr-2" />}
-                                    <span>{isJobSaved ? 'Remove Bookmark' : 'Save Job'}</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={handleShareClick} className="cursor-pointer text-xs">
-                                    <ShareIcon className="w-3.5 h-3.5 mr-2" />
-                                    <span>Share Job</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider px-2 py-1">
-                                    Report
-                                </DropdownMenuLabel>
-                                {[
-                                    { id: 'EXPIRED', label: 'Expired' },
-                                    { id: 'LINK_BROKEN', label: 'Broken Link' },
-                                    { id: 'INACCURATE', label: 'Inaccurate' },
-                                    { id: 'SPAM', label: 'Spam' },
-                                ].map((item) => (
-                                    <DropdownMenuItem
-                                        key={item.id}
-                                        onClick={(e) => handleReportClick(e, item.id)}
-                                        className="cursor-pointer text-xs"
+                    {/* Bottom Row: Skills on left, Save/Apply on right */}
+                    <div className="flex items-end justify-between mt-0.5">
+                        <div className="flex items-center gap-2 flex-1 min-w-0 pr-4">
+                            {/* Skills (Max 2 rows for wide, 1 row for compact) */}
+                            <div className={cn(
+                                "flex flex-wrap items-center gap-1.5 overflow-hidden",
+                                isCompact ? "max-h-[24px]" : "max-h-[24px] md:max-h-[50px]"
+                            )}>
+                                {skillsList.map(s => (
+                                    <span
+                                        key={s}
+                                        className="px-2 py-0.5 text-[10px] font-medium rounded border border-border/50 bg-muted/50 text-muted-foreground"
                                     >
-                                        <FlagIcon className="w-3.5 h-3.5 mr-2 text-destructive" />
-                                        <span>{item.label}</span>
-                                    </DropdownMenuItem>
+                                        {s}
+                                    </span>
                                 ))}
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                                {skillOverflow > 0 && (
+                                    <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-muted border border-border/50 text-muted-foreground">
+                                        +{skillOverflow}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Actions (Bookmark + Apply) */}
+                        <div className="flex items-center gap-2 shrink-0 relative z-20 pointer-events-auto h-8">
+                            <button
+                                type="button"
+                                onClick={handleSaveClick}
+                                className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                aria-label="Save Job"
+                            >
+                                {isJobSaved ? <BookmarkSolidIcon className="w-4 h-4 text-primary" /> : <BookmarkIcon className="w-4 h-4" />}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleApplyClick}
+                                className={cn(
+                                    "inline-flex items-center justify-center gap-1.5 px-4 h-8 text-xs font-semibold rounded-lg bg-primary text-primary-foreground transition-all duration-200 cursor-pointer shadow-xs",
+                                    "opacity-100 md:opacity-0 md:-translate-y-1 md:group-hover:opacity-100 md:group-hover:translate-y-0",
+                                    "hover:bg-primary/90"
+                                )}
+                            >
+                                <span>Apply</span>
+                                <PaperAirplaneIcon className="w-3.5 h-3.5 -rotate-45 -mt-0.5" />
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
         );
     }
 
+    // ── VERTICAL variant (legacy/government) ──────────────────────────────────────────────────
     return (
         <div
             className={cn(
@@ -510,53 +600,24 @@ export default function JobCard({
                 </div>
             )}
 
-            {/* Top Bar: Company Logo + Company & Type Badge + 3-dots Menu */}
-            <div className="flex items-start justify-between gap-2 relative z-20 pointer-events-none">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <CompanyLogo
-                        companyName={job.company}
-                        companyWebsite={job.companyWebsite}
-                        companyLogoUrl={job.companyLogoUrl}
-                        applyLink={job.applyLink}
-                        priority={priority}
-                        isGovernment={isGovernment}
-                        className="!w-10 !h-10 rounded-xl shrink-0"
-                    />
-                    <div className="min-w-0 flex-1">
-                        <span className="text-xs font-semibold text-muted-foreground line-clamp-1 block">
-                            {job.company}
-                        </span>
-                        <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                            <span className="inline-flex shrink-0 items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-primary/10 text-primary border border-primary/20">
-                                {isDrive ? 'Drive' : isGovernment ? ((job as any).governmentJobDetails?.jobCategory?.[0] || 'Govt') : (job.employmentType || job.type) === 'INTERNSHIP' || job.type === 'INTERNSHIP' ? 'Intern' : (job.employmentType || job.type) === 'WALKIN' || job.type === 'WALKIN' ? 'Walk-in' : 'Full-time'}
-                            </span>
-                            {heatBadge && (
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-500 text-[9px] font-bold uppercase border border-amber-500/20">
-                                    <FireIcon className="w-2.5 h-2.5" />
-                                    {heatBadge}
-                                </span>
-                            )}
-                            {isTrusted && (
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-muted/80 text-foreground text-[9px] font-bold uppercase border border-border/70">
-                                    <CheckBadgeIcon className="w-2.5 h-2.5" />
-                                    Trusted
-                                </span>
-                            )}
-                        </div>
-                    </div>
+            {/* Top Bar: Role Title + 3-dots Menu */}
+            <div className="flex items-start justify-between gap-3 relative z-20 pointer-events-none">
+                <div className="min-w-0 flex-1">
+                    <h2 className="text-base md:text-lg font-bold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
+                        {job.normalizedRole || job.title}
+                    </h2>
                 </div>
 
                 {/* 3-dots Menu Button */}
-                <div className="relative z-20 pointer-events-auto shrink-0" onClick={(e) => e.stopPropagation()}>
+                <div className="relative z-20 pointer-events-auto shrink-0 -mt-1 -mr-1" onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <button
                                 type="button"
-                                className="h-8 w-8 rounded-lg border border-border/60 bg-background dark:bg-muted/35 text-muted-foreground hover:border-primary/30 hover:text-foreground flex items-center justify-center transition-all duration-150 active:scale-95 outline-none"
+                                className="h-8 w-8 rounded-lg border-transparent hover:border-border/60 bg-transparent hover:bg-muted/35 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-150 active:scale-95 outline-none"
                                 aria-label="Job options"
-                                title="Options"
                             >
-                                <EllipsisVerticalIcon className="w-4.5 h-4.5" aria-hidden="true" />
+                                <EllipsisVerticalIcon className="w-5 h-5" aria-hidden="true" />
                             </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48 z-50">
@@ -592,19 +653,51 @@ export default function JobCard({
                 </div>
             </div>
 
-            {/* Role Title */}
-            <div className="min-w-0">
-                <h2 className="text-sm md:text-base font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
-                    {job.normalizedRole || job.title}
-                </h2>
+            {/* Company Info */}
+            <div className="flex items-center gap-3 relative z-20 pointer-events-none mt-1">
+                <CompanyLogo
+                    companyName={job.company}
+                    companyWebsite={job.companyWebsite}
+                    companyLogoUrl={job.companyLogoUrl}
+                    applyLink={job.applyLink}
+                    priority={priority}
+                    isGovernment={isGovernment}
+                    className="!w-8 !h-8 rounded-lg shrink-0"
+                />
+                <div className="min-w-0 flex flex-col justify-center">
+                    <span className="text-sm font-semibold text-muted-foreground line-clamp-1 block">
+                        {job.company}
+                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                        <Link
+                            href={isGovernment ? '/govt' : job.type === 'INTERNSHIP' ? '/jobs?type=internship' : job.type === 'WALKIN' ? '/jobs?type=walkin' : '/jobs'}
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex shrink-0 items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors pointer-events-auto"
+                        >
+                            {isDrive ? 'Drive' : isGovernment ? ((job as any).governmentJobDetails?.jobCategory?.[0] || 'Govt') : (job.employmentType || job.type) === 'INTERNSHIP' || job.type === 'INTERNSHIP' ? 'Intern' : (job.employmentType || job.type) === 'WALKIN' || job.type === 'WALKIN' ? 'Walk-in' : 'Full-time'}
+                        </Link>
+                        {heatBadge && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-500 text-[9px] font-bold uppercase border border-amber-500/20">
+                                <FireIcon className="w-2.5 h-2.5" />
+                                {heatBadge}
+                            </span>
+                        )}
+                        {isTrusted && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-muted/80 text-foreground text-[9px] font-bold uppercase border border-border/70">
+                                <CheckBadgeIcon className="w-2.5 h-2.5" />
+                                Trusted
+                            </span>
+                        )}
+                    </div>
+                </div>
             </div>
 
             {/* Location + Salary */}
             <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1 min-w-0">
+                <Link href={`/jobs?location=${encodeURIComponent(locationInfo.shortLabel)}`} onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 min-w-0 hover:text-primary transition-colors">
                     <MapPinIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                     <span className="truncate" title={locationInfo.fullLabel}>{locationInfo.shortLabel}</span>
-                </span>
+                </Link>
                 {salaryLabel && (
                     <span className="inline-flex items-center gap-1 min-w-0">
                         <CurrencyRupeeIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
@@ -628,18 +721,20 @@ export default function JobCard({
                             effectiveSearchQuery.toLowerCase().includes(skill.toLowerCase())
                         ));
                         return (
-                            <SkillPill
-                                key={`${skill}-${idx}`}
-                                skill={skill}
-                                size="xs"
-                                className={cn(
-                                    isSearched
-                                        ? "bg-primary/20 text-primary border-primary/30 font-bold ring-1 ring-primary/20"
-                                        : isMatched
-                                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                                            : ""
-                                )}
-                            />
+                            <Link key={`${skill}-${idx}`} href={`/jobs?skills=${encodeURIComponent(skill)}`} onClick={(e) => e.stopPropagation()}>
+                                <SkillPill
+                                    skill={skill}
+                                    size="xs"
+                                    className={cn(
+                                        "hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer",
+                                        isSearched
+                                            ? "bg-primary/20 text-primary border-primary/30 font-bold ring-1 ring-primary/20"
+                                            : isMatched
+                                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                                : ""
+                                    )}
+                                />
+                            </Link>
                         );
                     })}
                     {remainingCount > 0 && (
@@ -700,19 +795,20 @@ export default function JobCard({
 
             {/* Admin Edit Shortcut */}
             {isAdmin && (
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        window.location.href = `/opportunities/edit/${job.slug || job.id}`;
-                    }}
-                    className="absolute top-2 right-12 p-1.5 rounded-full bg-card border border-border shadow-lg text-primary hover:bg-primary/10 transition-colors z-30"
-                    title="Edit Listing (Admin)"
-                    aria-label="Edit Listing (Admin)"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
-                    </svg>
-                </button>
+                <Hint label="Edit Listing (Admin)" side="top">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/opportunities/edit/${job.slug || job.id}`);
+                        }}
+                        className="absolute top-2 right-12 p-1.5 rounded-full bg-card border border-border shadow-lg text-primary hover:bg-primary/10 transition-colors z-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        aria-label="Edit Listing (Admin)"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+                        </svg>
+                    </button>
+                </Hint>
             )}
         </div>
     );

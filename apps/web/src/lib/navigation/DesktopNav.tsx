@@ -72,6 +72,7 @@ export function DesktopNav() {
 
     return (
         <header className={cn(
+            "select-none",
             isLandingPage
                 ? cn(
                     "fixed top-0 left-0 right-0 z-[100] hidden md:flex items-center justify-center pointer-events-none",
@@ -173,7 +174,7 @@ export function DesktopNav() {
 
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <button aria-label="User Menu" className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border border-border/60 text-xs font-bold uppercase transition-all duration-150 ease-out active:scale-[0.97] hover:border-primary/40 cursor-pointer focus:outline-none">
+                                    <button aria-label="User Menu" suppressHydrationWarning className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border border-border/60 text-xs font-bold uppercase transition-all duration-150 ease-out active:scale-[0.97] hover:border-primary/40 cursor-pointer focus:outline-none">
                                         {initialLetter}
                                     </button>
                                 </DropdownMenuTrigger>

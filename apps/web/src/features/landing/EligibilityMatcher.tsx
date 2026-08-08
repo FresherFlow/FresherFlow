@@ -1,8 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
-import { SparklesIcon, CheckCircleIcon, PlayIcon, ShieldCheckIcon, BeakerIcon } from "@heroicons/react/24/outline";
 import { Opportunity, EducationLevel } from "@fresherflow/types";
 import { SkillPill } from '@/ui/SkillPill';
 import { EducationMetadata } from "@/lib/api/cdnFeed";

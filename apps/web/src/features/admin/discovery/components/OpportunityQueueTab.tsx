@@ -2,7 +2,6 @@
 
 import { CpuChipIcon, CodeBracketIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import CompanyLogo from '@/ui/CompanyLogo';
-import { cn } from '@repo/ui/utils/cn';
 import { Opportunity, HashTab } from '../types';
 
 interface OpportunityQueueTabProps {

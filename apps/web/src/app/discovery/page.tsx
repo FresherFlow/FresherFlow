@@ -24,7 +24,7 @@ export default async function DiscoveryPage() {
 
     return (
         <main className="min-h-screen bg-background text-foreground max-w-7xl mx-auto flex flex-col h-[100dvh]">
-            <DiscoveryWorkspace isStandalone={true} />
+            <DiscoveryWorkspace />
         </main>
     );
 }

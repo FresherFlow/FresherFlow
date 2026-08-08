@@ -22,16 +22,17 @@ import { cn } from '@repo/ui/utils/cn';
 import Link from 'next/link';
 import { Button } from '@/ui/Button';
 import { AppPromoBanner } from '@/ui/AppPromoBanner';
+import { Hint } from '@/ui/Tooltip';
 
 // Subcomponents from detail page
-import { WalkInDetailsCard } from '@/app/[slug]/components/WalkInDetailsCard';
-import { ComplexityCard } from '@/app/[slug]/components/ComplexityCard';
-import { DetailRequirements } from '@/app/[slug]/components/DetailRequirements';
-import { DetailTimeline } from '@/app/[slug]/components/DetailTimeline';
-import { DetailCampusDriveInfo } from '@/app/[slug]/components/DetailCampusDriveInfo';
-import { ExpiredWarning } from '@/app/[slug]/components/ExpiredWarning';
-import { DescriptionSection } from '@/app/[slug]/components/DescriptionSection';
-import { GovernmentJobDetailView } from '@/app/[slug]/components/GovernmentJobDetailView';
+import { WalkInDetailsCard } from '@/app/(app)/jobs/[slug]/components/WalkInDetailsCard';
+import { ComplexityCard } from '@/app/(app)/jobs/[slug]/components/ComplexityCard';
+import { DetailRequirements } from '@/app/(app)/jobs/[slug]/components/DetailRequirements';
+import { DetailTimeline } from '@/app/(app)/jobs/[slug]/components/DetailTimeline';
+import { DetailCampusDriveInfo } from '@/app/(app)/jobs/[slug]/components/DetailCampusDriveInfo';
+import { ExpiredWarning } from '@/app/(app)/jobs/[slug]/components/ExpiredWarning';
+import { DescriptionSection } from '@/app/(app)/jobs/[slug]/components/DescriptionSection';
+import { GovernmentJobDetailView } from '@/app/(app)/jobs/[slug]/components/GovernmentJobDetailView';
 
 // Hooks
 import { useOpportunityDetail } from '@/features/opportunities/hooks/useOpportunityDetail';
@@ -156,36 +157,43 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                             <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
                         </button>
                     )}
-                    <button
-                        onClick={handleShare}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors hidden sm:flex"
-                        aria-label="Share"
-                    >
-                        <ShareIcon className="w-4 h-4" />
-                    </button>
-                    <button
-                        onClick={handleCopyLink}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors hidden sm:flex"
-                        aria-label="Copy link"
-                    >
-                        <LinkIcon className="w-4 h-4" />
-                    </button>
-                    <Link
-                        href={getOpportunityPathFromItem(opp)}
-                        target="_blank"
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors hidden sm:flex"
-                        aria-label="Open full page"
-                        title="Open full page"
-                    >
-                        <ArrowsPointingOutIcon className="w-5 h-5" />
-                    </Link>
-                    <button
-                        onClick={onClose}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors lg:hidden"
-                        aria-label="Close details panel"
-                    >
-                        <XMarkIcon className="w-5 h-5" />
-                    </button>
+                    <Hint label="Share" side="top" avoidCollisions={false}>
+                        <button
+                            onClick={handleShare}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors hidden sm:flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                            aria-label="Share"
+                        >
+                            <ShareIcon className="w-4 h-4" />
+                        </button>
+                    </Hint>
+                    <Hint label="Copy link" side="top" avoidCollisions={false}>
+                        <button
+                            onClick={handleCopyLink}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors hidden sm:flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                            aria-label="Copy link"
+                        >
+                            <LinkIcon className="w-4 h-4" />
+                        </button>
+                    </Hint>
+                    <Hint label="Open full page" side="top" avoidCollisions={false}>
+                        <Link
+                            href={getOpportunityPathFromItem(opp)}
+                            target="_blank"
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors hidden sm:flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                            aria-label="Open full page"
+                        >
+                            <ArrowsPointingOutIcon className="w-5 h-5" />
+                        </Link>
+                    </Hint>
+                    <Hint label="Close details panel" side="top" avoidCollisions={false}>
+                        <button
+                            onClick={onClose}
+                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors lg:hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                            aria-label="Close details panel"
+                        >
+                            <XMarkIcon className="w-5 h-5" />
+                        </button>
+                    </Hint>
                 </div>
             </div>
 
@@ -265,7 +273,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                         })()}
 
                         {/* Meta boxes — Experience, Employment, Role Title, Salary, Posted, Deadline */}
-                        <div className="grid grid-cols-2 gap-2.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                             <div className="bg-muted/10 border border-border/40 rounded-xl p-3 flex items-start gap-2.5 min-h-[64px] min-w-0">
                                 <BriefcaseIcon className="w-5 h-5 text-primary shrink-0 mt-0.5" />
                                 <div className="min-w-0 flex-1">

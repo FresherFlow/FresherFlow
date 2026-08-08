@@ -11,6 +11,7 @@ import CheckIcon from '@heroicons/react/24/outline/CheckIcon';
 import SparklesIcon from '@heroicons/react/24/outline/SparklesIcon';
 import { useUnreadNotifications } from '../hooks/useUnreadNotifications';
 import { alertsApi } from '@/lib/api/client';
+import { Hint } from '@/ui/Tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import { cn } from '@/lib/utils/utils';
 import type { AlertDelivery, AlertKind, AlertFeedResponse } from '@fresherflow/types';
@@ -154,22 +155,22 @@ export function AlertsDropdown({ className }: { className?: string }) {
                         {unreadCount > 0 && (
                             <button
                                 onClick={handleMarkAllRead}
-                                className="text-[11px] font-semibold text-primary hover:underline px-1.5 py-0.5 rounded transition-colors cursor-pointer flex items-center gap-1"
-                                title="Mark all as read"
+                                className="text-[11px] font-semibold text-primary hover:underline px-1.5 py-0.5 rounded transition-colors cursor-pointer flex items-center gap-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                             >
                                 <CheckIcon className="w-3.5 h-3.5" />
                                 <span>Mark read</span>
                             </button>
                         )}
-                        <Link
-                            href="/settings#alerts"
-                            onClick={() => setIsOpen(false)}
-                            className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
-                            title="Alert Settings"
-                            aria-label="Alert Settings"
-                        >
-                            <Cog6ToothIcon className="w-4 h-4" />
-                        </Link>
+                        <Hint label="Alert Settings" side="bottom">
+                            <Link
+                                href="/settings#alerts"
+                                onClick={() => setIsOpen(false)}
+                                className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                                aria-label="Alert Settings"
+                            >
+                                <Cog6ToothIcon className="w-4 h-4" />
+                            </Link>
+                        </Hint>
                     </div>
                 </div>
 

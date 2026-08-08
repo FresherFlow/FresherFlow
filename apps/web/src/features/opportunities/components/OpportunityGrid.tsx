@@ -44,7 +44,7 @@ export function OpportunityGrid({
                 isSplitView ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"
             )} role="status" aria-label="Loading opportunities">
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((item) => (
-                    <SkeletonJobCard key={item} variant={isSplitView ? "compact" : "default"} />
+                    <SkeletonJobCard key={item} variant={isSplitView ? "compact" : "wide"} />
                 ))}
             </div>
         );
@@ -78,7 +78,7 @@ export function OpportunityGrid({
                 "grid gap-4 md:gap-6",
                 isSplitView ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"
             )} role="list" aria-label="Job listings">
-                {opportunities.map((opp) => (
+                {opportunities.map((opp, index) => (
                     <div 
                         key={opp.id} 
                         role="listitem" 
@@ -95,8 +95,9 @@ export function OpportunityGrid({
                             isApplied={((opp as any).actions || []).some((a: OpportunityAction) => a.actionType === 'APPLIED')}
                             onToggleSave={() => onToggleSave(opp.id)}
                             isAdmin={isAdmin}
+                            priority={index < 4}
+                            variant={isSplitView ? 'compact' : 'wide'}
                             isSelected={opp.id === selectedOppId || (opp as any).slug === selectedOppId}
-                            variant={isSplitView ? "compact" : "default"}
                             searchQuery={searchQuery}
                             className="bg-card/60 border-border/60 backdrop-blur-xl shadow-md hover:shadow-lg hover:border-primary/40 active:scale-[0.97] transition-all duration-150 ease-out"
                             onClick={(e) => {

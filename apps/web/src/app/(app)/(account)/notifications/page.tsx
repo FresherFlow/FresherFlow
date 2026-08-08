@@ -162,7 +162,7 @@ function NotificationsPageContent() {
                                         onClick={() => {
                                             void markRead(notif.id);
                                             if (notif.opportunityId) {
-                                                window.location.href = `/${notif.opportunityId}`;
+                                                router.push(`/${notif.opportunityId}`);
                                             }
                                         }}
                                     >

@@ -13,8 +13,8 @@ export function Skeleton({ className, ...props }: SkeletonProps) {
     );
 }
 
-export function SkeletonJobCard({ variant = 'default' }: { variant?: 'default' | 'compact' }) {
-    if (variant === 'compact') {
+export function SkeletonJobCard({ variant = 'wide' }: { variant?: 'vertical' | 'compact' | 'wide' }) {
+    if (variant === 'compact' || variant === 'wide') {
         return (
             <div className="bg-card border border-border/50 rounded-xl p-3.5 shadow-sm space-y-3">
                 <div className="flex items-start gap-3 relative">
@@ -99,7 +99,7 @@ export function FeedPageSkeleton({ isGovt = false }: { isGovt?: boolean }) {
             {isGovt ? (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                     {Array.from({ length: 6 }).map((_, index) => (
-                        <SkeletonJobCard key={index} variant="default" />
+                        <SkeletonJobCard key={index} variant="vertical" />
                     ))}
                 </div>
             ) : (

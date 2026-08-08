@@ -37,6 +37,28 @@ export function HeadInjections() {
                 }}
             />
 
+            {/* Hydration State Script */}
+            <script
+                id="ff-hydration-state"
+                dangerouslySetInnerHTML={{
+                    __html: `
+                        (function() {
+                            try {
+                                var isCollapsed = localStorage.getItem('ff:sidebarCollapsed') === 'true';
+                                document.documentElement.setAttribute('data-sidebar', isCollapsed ? 'collapsed' : 'expanded');
+                                document.documentElement.style.setProperty('--sidebar-w', isCollapsed ? '3rem' : '12rem');
+                                
+                                var isLoggedIn = document.cookie.includes('ff_logged_in=true');
+                                document.documentElement.setAttribute('data-logged-in', isLoggedIn ? 'true' : 'false');
+
+                                var showDetail = localStorage.getItem('ff:showDetail');
+                                document.documentElement.setAttribute('data-show-detail', showDetail === 'false' ? 'false' : 'true');
+                            } catch (e) {}
+                        })();
+                    `,
+                }}
+            />
+
             {/* Manifest Switcher Script */}
             <script
                 id="ff-manifest-switcher"

@@ -65,7 +65,7 @@ export function MobileTopNav() {
         <>
                 <header
                     className={cn(
-                        "md:hidden fixed top-0 left-0 right-0 z-70 flex items-center pt-[env(safe-area-inset-top)] transition-all duration-300",
+                        "md:hidden fixed top-0 left-0 right-0 z-70 flex items-center pt-[env(safe-area-inset-top)] transition-all duration-300 select-none",
                         scrolled
                             ? "bg-background/95 backdrop-blur-md shadow-sm"
                             : "bg-background"

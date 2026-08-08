@@ -344,6 +344,15 @@ export async function apiClient<T = unknown>(
                 if (response.status < 500 && response.status !== 429) return response;
 
                 lastError = new Error(`Request failed with status ${response.status}`);
+                try {
+                    if (response.body) {
+                        void response.body.cancel().catch(() => {});
+                    } else {
+                        void response.arrayBuffer().catch(() => {});
+                    }
+                } catch {
+                    // ignore stream cancel error
+                }
             } catch (error: unknown) {
                 clearTimeout(id);
                 if (error instanceof Error && error.name === 'AbortError') {

@@ -210,7 +210,6 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
     }, [isDesktop, selectedOpp, filteredOpps]);
 
     const pagedOpps = filteredOpps.slice(0, visibleCount);
-    const pageEnd = pagedOpps.length;
 
     const updateType = (type: string | null) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -408,7 +407,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                                     isAdmin={user?.role === 'ADMIN'}
                                     onToggleSave={toggleSave}
                                     onRetry={reload}
-                                    isSplitView={true}
+                                    isSplitView={isDesktop !== false}
                                     selectedOppId={selectedOpp?.id}
                                     onSelectOpportunity={(opp) => handleSelectOpportunity(opp as Opportunity)}
                                     onClearFilters={() => {

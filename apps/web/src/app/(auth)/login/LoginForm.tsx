@@ -217,7 +217,7 @@ function LoginContent() {
                                 type="button"
                                 variant="outline"
                                 onClick={handleGoogleSignIn}
-                                disabled={mounted && isLoading}
+                                disabled={(mounted && isLoading) || isProcessing}
                                 className="w-full !h-11 text-xs font-semibold !rounded-xl flex items-center justify-center gap-2.5 border-border/80 hover:bg-muted/40 active:scale-[0.98] transition-all"
                             >
                                 <svg className="w-4.5 h-4.5" viewBox="0 0 24 24">

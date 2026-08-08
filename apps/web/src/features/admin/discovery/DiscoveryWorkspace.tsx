@@ -70,7 +70,7 @@ interface NormalizedJob {
   allowed_passout_years: number[];
 }
 
-export function DiscoveryWorkspace({ isStandalone = false }: { isStandalone?: boolean }) {
+export function DiscoveryWorkspace() {
   const [engineStatus, setEngineStatus] = useState<'online'|'offline'|'loading'>('loading');
   const [enginePlugins, setEnginePlugins] = useState(0);
   const [stats, setStats] = useState<{ totalJobsIngested:number; totalJobsSaved:number; totalJobsSkipped:number; totalRuns:number; uptimeSeconds:number } | null>(null);

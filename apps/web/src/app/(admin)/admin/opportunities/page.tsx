@@ -3,8 +3,6 @@
 import { useEffect, Suspense, useState } from 'react';
 import { useAdmin } from '@/lib/auth/AdminContext';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { PlusIcon } from '@heroicons/react/24/outline';
 import { AdminOpportunitiesSkeleton } from '@/ui/Skeleton';
 
 // Hooks

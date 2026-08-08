@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { ProfileGate } from '@/lib/components/ProfileGate';
 import { SkeletonJobCard } from '@/ui/Skeleton';
@@ -38,6 +39,7 @@ function writeCache(opportunities: Opportunity[]) {
 }
 
 function DeadlinesPageContent() {
+    const router = useRouter();
     const { user } = useAuth();
     const { savedJobsMap, toggleSavedJob } = useFirebaseSaved(user?.id);
     const [allOpportunities, setAllOpportunities] = useState<Opportunity[]>([]);
@@ -83,7 +85,7 @@ function DeadlinesPageContent() {
     const handleToggleSave = async (oppId: string) => {
         if (!user) {
             toast.error('Please log in to save opportunities');
-            window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+            router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
             return;
         }
         await toggleSavedJob(oppId);

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { LogoImage } from '@/lib/navigation/LogoImage';
 import { cn } from '@/ui/cn';
 import {
     AcademicCapIcon,
