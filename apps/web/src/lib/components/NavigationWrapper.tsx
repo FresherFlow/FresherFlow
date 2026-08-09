@@ -51,7 +51,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
         setMounted(true);
     }, []);
 
-    const showFooter = !isSidebarRoute && (mounted ? !isAuthenticated : true);
+    const showFooter = !isSidebarRoute;
 
     return (
         <>
@@ -65,7 +65,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
                     !isSidebarRoute && "md:pt-[4.75rem]",
                     isSidebarRoute ? "pb-0" : ((mounted && isAuthenticated) ? "pb-20 md:pb-8" : "pb-4 md:pb-8"),
                     "min-h-screen",
-                    isSidebarRoute && "md:pl-[var(--sidebar-w,12rem)] transition-[padding-left] duration-200 ease-in-out"
+                    isSidebarRoute && "md:pl-[var(--sidebar-w,12rem)] transition-[padding-left] duration-[600ms] ease-[cubic-bezier(0.7,0,0,1)]"
                 )}
             >
                 <FeedHeaderProvider>

@@ -54,7 +54,7 @@ export function ensureDomainHost(expectedHost: string) {
                 return reject('Unsupported protocol in client origin', url.protocol);
             }
             requestHostname = url.hostname.toLowerCase();
-        } catch (error) {
+        } catch {
             return reject('Malformed origin or referer header');
         }
 

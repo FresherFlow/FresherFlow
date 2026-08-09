@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isPublicDetailPath } from "./paths";
+import { isPublicPath, isUserPath, isAuthPath, isPublicDetailPath } from "./paths";
 import { getHostRole, redirectWithMethodAwareness, resolveHosts } from "./utils";
 
 export function handleHostRouting(req: NextRequest) {
@@ -17,7 +17,6 @@ export function handleHostRouting(req: NextRequest) {
         const segments = rawPath.split('/').filter(Boolean);
         let refCode = req.nextUrl.searchParams.get('ref');
 
-        // If URL format is join.fresherflow.in/ABC123
         if (!refCode && segments.length === 1 && !['login', 'signup', 'api', '_next'].includes(segments[0].toLowerCase())) {
             refCode = segments[0];
         }
@@ -30,7 +29,6 @@ export function handleHostRouting(req: NextRequest) {
 
         const res = NextResponse.redirect(targetUrl, 307);
         if (refCode) {
-            // Set 30-day persistent cookie to preserve referral code across tabs/browsing
             res.cookies.set('ff_ref_code', refCode.toUpperCase(), {
                 maxAge: 30 * 24 * 60 * 60,
                 path: '/',
@@ -48,7 +46,6 @@ export function handleHostRouting(req: NextRequest) {
         if (isPublicDetailPath(pathname)) {
             return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${search}`);
         }
-        // Rewrite admin.fresherflow.in/* -> /admin/* (except API routes)
         const rewriteUrl = req.nextUrl.clone();
         if (!pathname.startsWith('/admin') && !pathname.startsWith('/api')) {
             rewriteUrl.pathname = `/admin${pathname}`;
@@ -62,26 +59,42 @@ export function handleHostRouting(req: NextRequest) {
         return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${ADMIN_WEB_HOST}${plainPath}${search}`);
     }
 
-    // 3. App Host handling (app.fresherflow.in / app.fresherflow.com)
+    // Phase 4: Strict Host Enforcement
+    
+    // 3. App Host handling (app.fresherflow.in)
     if (hostRole === 'app') {
+        // Redirect root to /dashboard (auth guard will bounce unauthenticated to /login)
         if (pathname === '/') {
-            const rewriteUrl = req.nextUrl.clone();
-            rewriteUrl.pathname = '/dashboard';
-            return NextResponse.rewrite(rewriteUrl);
+            return NextResponse.redirect(
+                `${req.nextUrl.protocol}//${USER_LOGIN_HOST}/dashboard`,
+                308
+            );
         }
+
+        // app.fresherflow.in + PUBLIC route -> 308 fresherflow.in
+        // Ensure we don't redirect auth paths or api routes
+        if (!pathname.startsWith('/api') && isPublicPath(pathname) && !isAuthPath(pathname)) {
+            return NextResponse.redirect(
+                `${req.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${search}`,
+                308
+            );
+        }
+        
+        // App host + PRIVATE route -> allow (auth logic will handle login checks)
+        // App host + AUTH route -> allow
         return null;
     }
 
-    // 4. Public Host handling
+    // 4. Public Host handling (fresherflow.in)
     if (hostRole === 'public') {
-        if (pathname === '/login') {
-            return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${USER_LOGIN_HOST}${pathname}${search}`);
+        // fresherflow.in + PRIVATE route or AUTH route -> 308 app.fresherflow.in
+        if (isUserPath(pathname) || isAuthPath(pathname)) {
+            return NextResponse.redirect(
+                `${req.nextUrl.protocol}//${USER_LOGIN_HOST}${pathname}${search}`,
+                308
+            );
         }
-        if (pathname === '/signup') {
-            const loginUrl = new URL(`${req.nextUrl.protocol}//${USER_LOGIN_HOST}/login`);
-            loginUrl.searchParams.set('intent', 'signup');
-            return NextResponse.redirect(loginUrl, 307);
-        }
+        
         return null;
     }
 

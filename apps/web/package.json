@@ -7,7 +7,7 @@
     "dev": "next dev",
     "build:deps": "turbo run build --filter=\"fresherflow-web^...\"",
     "build": "pnpm run build:deps && next build --webpack",
-    "start": "next start",
+    "start": "node .next/standalone/apps/web/server.js",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test:smoke": "playwright test"

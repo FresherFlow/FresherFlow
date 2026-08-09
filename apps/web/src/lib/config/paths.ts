@@ -33,6 +33,15 @@ export function isUserPath(pathname: string) {
     );
 }
 
+export function isAuthPath(pathname: string) {
+    if (pathname === '/login') return true;
+    if (pathname === '/signup') return true;
+    if (pathname === '/register') return true;
+    if (pathname === '/choose-username') return true;
+    if (pathname.startsWith('/auth/')) return true;
+    return false;
+}
+
 export function isOpportunityPublic(pathname: string) {
     if (pathname === '/opportunities/create') return false;
     if (pathname.startsWith('/opportunities/edit/')) return false;
@@ -40,19 +49,28 @@ export function isOpportunityPublic(pathname: string) {
 }
 
 export function isPublicPath(pathname: string) {
-    if (pathname === "/") return true;
-    if (pathname === "/privacy") return true;
-    if (pathname === "/terms") return true;
-    if (pathname === "/join") return true;
+    // Exact paths
+    const exactPaths = [
+        '/', '/about', '/privacy', '/terms', '/careers', 
+        '/contact', '/resources', '/blog', '/govt', 
+        '/batch', '/roles', '/skills', '/locations', 
+        '/location', '/app', '/join', '/pricing'
+    ];
+    if (exactPaths.includes(pathname)) return true;
+
+    // Prefixes
+    if (pathname.startsWith("/u/")) return true;
     if (pathname.startsWith("/r/")) return true;
     if (pathname.startsWith("/jobs")) return true;
-    if (pathname.startsWith("/opportunities")) return true;
     if (pathname.startsWith("/internships")) return true;
     if (pathname.startsWith("/walk-ins")) return true;
     if (pathname.startsWith("/walkins")) return true;
-    if (isOpportunityPublic(pathname)) return true;
     if (pathname.startsWith("/companies")) return true;
     if (pathname.startsWith("/remote")) return true;
+    if (pathname.startsWith("/off-campus")) return true;
+    if (pathname.startsWith("/hackathons")) return true;
+    
+    if (isOpportunityPublic(pathname)) return true;
     
     return false;
 }

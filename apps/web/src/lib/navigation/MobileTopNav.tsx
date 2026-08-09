@@ -13,6 +13,9 @@ import { AlertsDropdown } from '@/features/notifications/components/AlertsDropdo
 import { useOfflineActionQueue } from '@/lib/api/offline/useOfflineActionQueue';
 
 import { getNavRoutes } from './routeConfig';
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/ui/Sheet';
+
+
 
 
 const MobileNavMenu = dynamic(() => import('./MobileNavMenu'), { ssr: false });
@@ -21,6 +24,7 @@ function getMobileTitle(pathname: string): string {
     const navRoutes = getNavRoutes();
     const match = navRoutes.find(r => pathname === r.href || pathname.startsWith(`${r.href}/`));
     if (match?.mobileTitle) return match.mobileTitle;
+    if (pathname.startsWith('/admin')) return 'FF Admin';
     if (pathname.startsWith('/jobs/')) return 'Job';
     if (pathname.startsWith('/internships/')) return 'Internship';
     if (pathname.startsWith('/walk-ins/')) return 'Walk-in';
@@ -127,9 +131,18 @@ export function MobileTopNav() {
                 </div>
             </header>
  
-            {menuOpen && (
-                <MobileNavMenu user={user || null} unreadCount={unreadCount} pendingSyncCount={pendingSyncCount} onClose={() => setMenuOpen(false)} />
-            )}
+            <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+                <SheetContent side="left" className="p-0 border-none w-[70%] max-w-[280px] sm:max-w-[280px]">
+                    <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+                    <SheetDescription className="sr-only">Main navigation drawer</SheetDescription>
+                    <MobileNavMenu 
+                        user={user || null} 
+                        unreadCount={unreadCount} 
+                        pendingSyncCount={pendingSyncCount} 
+                        onClose={() => setMenuOpen(false)} 
+                    />
+                </SheetContent>
+            </Sheet>
         </>
     );
 }

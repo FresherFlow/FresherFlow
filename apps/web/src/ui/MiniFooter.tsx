@@ -47,16 +47,16 @@ export function MiniFooter({ className }: MiniFooterProps) {
     const currentYear = new Date().getFullYear();
 
     const opportunities = [
-        { href: '/government-jobs', label: 'Government Jobs' },
+        { href: '/govt', label: 'Government Jobs' },
         { href: '/jobs', label: 'Off-Campus Drives' },
-        { href: '/walk-ins', label: 'Walk-in Interviews' },
-        { href: '/internships', label: 'Student Internships' },
+        { href: '/jobs/walk-ins', label: 'Walk-in Interviews' },
+        { href: '/jobs/internships', label: 'Student Internships' },
     ];
 
     const directories = [
         { href: '/companies', label: 'Top Companies' },
         { href: '/skills', label: 'Skills & Tech' },
-        { href: '/location', label: 'Job Locations' },
+        { href: '/locations', label: 'Job Locations' },
         { href: '/batch', label: 'Passing Batches' },
     ];
 

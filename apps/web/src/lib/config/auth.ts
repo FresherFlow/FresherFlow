@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isUserPath } from "./paths";
+import { isUserPath, isAuthPath } from "./paths";
 import { getHostRole, redirectWithMethodAwareness, resolveHosts } from "./utils";
 
 
@@ -8,19 +8,18 @@ export function handleAuth(req: NextRequest) {
     const normalizedHost = hostname.toLowerCase();
     const { ADMIN_WEB_HOST } = resolveHosts(req);
     const hostRole = getHostRole(normalizedHost, req);
-    const effectivePathname = normalizedHost === ADMIN_WEB_HOST && pathname !== '/login' && !pathname.startsWith('/admin')
+    const effectivePathname = normalizedHost === ADMIN_WEB_HOST && !isAuthPath(pathname) && !pathname.startsWith('/admin')
         ? `/admin${pathname === '/' ? '' : pathname}`
         : pathname;
 
-    // const loggedIn = req.cookies.has("accessToken") || req.cookies.has("ff_logged_in");
     const adminLoggedIn = req.cookies.has("adminAccessToken") || req.cookies.has("ff_admin_logged_in");
 
     // Admin Auth
     if (hostRole === 'admin') {
-        if (!adminLoggedIn && effectivePathname !== '/admin/login' && pathname !== '/login') {
+        if (!adminLoggedIn && effectivePathname !== '/admin/login' && !isAuthPath(pathname)) {
              return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${ADMIN_WEB_HOST}/login`);
         }
-        if ((pathname === '/login' || effectivePathname === '/admin/login') && adminLoggedIn) {
+        if ((isAuthPath(pathname) || effectivePathname === '/admin/login') && adminLoggedIn) {
              return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${ADMIN_WEB_HOST}/dashboard`);
         }
     }
@@ -32,6 +31,15 @@ export function handleAuth(req: NextRequest) {
             const loginUrl = new URL(`${req.nextUrl.protocol}//${req.nextUrl.host}/login`);
             loginUrl.searchParams.set("redirect", pathname);
             return NextResponse.redirect(loginUrl, 307);
+        }
+    }
+
+    if (isAuthPath(pathname) && hostRole !== 'admin') {
+        // Enforce the standard auth gate to prevent logged in users from seeing login again
+        const loggedIn = req.cookies.has("accessToken") || req.cookies.has("ff_logged_in");
+        if (loggedIn) {
+            const url = new URL(`${req.nextUrl.protocol}//${req.nextUrl.host}/dashboard`);
+            return NextResponse.redirect(url, 307);
         }
     }
 

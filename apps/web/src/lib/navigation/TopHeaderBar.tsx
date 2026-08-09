@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import { Breadcrumb } from '@/ui/Breadcrumb';
 
+
 const LABEL_OVERRIDES: Record<string, string> = {
     'government-jobs': 'Government Jobs',
     'walk-ins': 'Walk-ins',
@@ -28,18 +29,25 @@ function TopHeaderBarContent() {
     const segments = pathname.split('/').filter(Boolean);
     if (segments.length === 0) return null;
 
-    const breadcrumbItems = [
-        { label: 'Home', href: '/' },
-        ...segments.map((segment, index) => ({
-            label: formatSegment(segment),
-            href: '/' + segments.slice(0, index + 1).join('/')
-        }))
-    ];
-    
-    const isFeedRoute = ['jobs', 'internships', 'walk-ins', 'remote', 'government-jobs', 'hackathons'].includes(segments[0]) && segments.length === 1;
+    const isAdminRoute = pathname.startsWith('/admin');
+    let adminTitle = '';
+    if (isAdminRoute) {
+        const adminPage = segments[1] || 'overview';
+        if (adminPage === 'dashboard' || adminPage === 'overview') adminTitle = 'Admin Overview';
+        else if (adminPage === 'opportunities') adminTitle = 'Listings';
+        else if (adminPage === 'resources') adminTitle = 'Resources';
+        else if (adminPage === 'push') adminTitle = 'Push Notifications';
+        else if (adminPage === 'captions') adminTitle = 'Captions';
+        else if (adminPage === 'feedback') adminTitle = 'Feedback';
+        else if (adminPage === 'settings') adminTitle = 'Settings';
+        else if (adminPage === 'discovery') adminTitle = 'Discovery Engine';
+        else adminTitle = formatSegment(adminPage);
+    }
+
+    const isFeedRoute = !isAdminRoute && ['jobs', 'internships', 'walk-ins', 'remote', 'government-jobs', 'hackathons'].includes(segments[0]) && segments.length === 1;
     return (
         <div 
-            className="hidden md:flex fixed top-0 right-0 h-14 items-center border-b border-border/40 bg-background/95 backdrop-blur-sm z-[80] pr-6 px-5"
+            className="hidden md:flex fixed top-0 right-0 h-14 items-center border-b border-border/40 bg-background/95 backdrop-blur-sm z-[80] pr-6 px-5 transition-[left] duration-[600ms] ease-[cubic-bezier(0.7,0,0,1)]"
             style={{ left: 'var(--sidebar-w, 12rem)' }}
         >
             {/* The portal target. Hidden when empty. Serves as a peer. */}
@@ -59,8 +67,16 @@ function TopHeaderBarContent() {
                             <div className="pl-9 h-9 rounded-xl bg-card border border-border shadow-sm w-full" />
                         </div>
                     </>
+                ) : isAdminRoute ? (
+                    <div className="text-lg font-semibold text-foreground truncate">{adminTitle}</div>
                 ) : (
-                    <Breadcrumb items={breadcrumbItems} />
+                    <Breadcrumb items={[
+                        { label: 'Home', href: '/' },
+                        ...segments.map((segment, index) => ({
+                            label: formatSegment(segment),
+                            href: '/' + segments.slice(0, index + 1).join('/')
+                        }))
+                    ]} />
                 )}
             </div>
         </div>
@@ -69,7 +85,7 @@ function TopHeaderBarContent() {
 
 export function TopHeaderBar() {
     return (
-        <Suspense fallback={<div className="hidden md:block fixed top-0 right-0 h-14 z-[80]" style={{ left: 'var(--sidebar-w, 12rem)' }} />}>
+        <Suspense fallback={<div className="hidden md:block fixed top-0 right-0 h-14 z-[80] transition-[left] duration-[600ms] ease-[cubic-bezier(0.7,0,0,1)]" style={{ left: 'var(--sidebar-w, 12rem)' }} />}>
             <TopHeaderBarContent />
         </Suspense>
     );

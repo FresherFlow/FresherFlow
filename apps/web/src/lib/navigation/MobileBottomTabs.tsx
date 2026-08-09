@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '@/lib/auth/AuthContext';
 import { cn } from '@/lib/utils/utils';
-import { getNavRoutes } from './routeConfig';
+import { getNavContext, getNavItemsForContext } from './navConfig';
 
 
 export function MobileBottomTabs() {
@@ -14,7 +14,16 @@ export function MobileBottomTabs() {
     const user = context?.user;
     const [isMounted, setIsMounted] = useState(false);
     const [isVisible, setIsVisible] = useState(true);
-    const mobileTabs = getNavRoutes().filter(r => r.showInMobileTabs);
+    
+    const contextName = getNavContext(pathname || '/');
+    const navItems = getNavItemsForContext(contextName);
+    
+    // Optionally limit to the first 5 primary items for the bottom bar so it doesn't overflow
+    const mobileTabs = navItems.slice(0, 5).map(item => ({
+        href: item.href,
+        label: item.name,
+        icon: item.icon
+    }));
 
     useEffect(() => { setIsMounted(true); }, []);
 
@@ -73,7 +82,7 @@ export function MobileBottomTabs() {
                                 )}
                             </div>
                             <span className={cn('text-xs', isActive ? 'font-semibold' : 'font-normal')}>
-                                {tab.mobileLabel ?? tab.label}
+                                {tab.label}
                             </span>
                         </Link>
                     );

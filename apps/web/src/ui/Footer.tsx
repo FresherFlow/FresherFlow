@@ -43,16 +43,16 @@ export function Footer({ className }: FooterProps) {
     const currentYear = new Date().getFullYear();
 
     const topCategories = [
-        { href: '/government-jobs', label: 'Government Jobs' },
+        { href: '/govt', label: 'Government Jobs' },
         { href: '/jobs', label: 'Off-Campus Drives' },
-        { href: '/walk-ins', label: 'Walk-in Interviews' },
-        { href: '/internships', label: 'Student Internships' },
+        { href: '/jobs/walk-ins', label: 'Walk-in Interviews' },
+        { href: '/jobs/internships', label: 'Student Internships' },
     ];
 
     const directories = [
         { href: '/companies', label: 'Top Companies' },
         { href: '/skills', label: 'Skills & Tech' },
-        { href: '/location', label: 'Job Locations' },
+        { href: '/locations', label: 'Job Locations' },
         { href: '/batch', label: 'Passing Batches' },
     ];
 
@@ -64,7 +64,6 @@ export function Footer({ className }: FooterProps) {
     const company = [
         { href: '/about', label: 'About FresherFlow' },
         { href: '/contact', label: 'Contact Us' },
-        { href: '/feedback', label: 'Provide Feedback' },
         { href: '/privacy', label: 'Privacy Policy' },
         { href: '/terms', label: 'Terms of Service' },
     ];
@@ -96,26 +95,7 @@ export function Footer({ className }: FooterProps) {
                             </p>
                         </div>
                         
-                        <div className="space-y-3">
-                            <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Connect With Us</h4>
-                            <div className="flex flex-wrap gap-2.5">
-                                {socialLinks.map(({ href, label, Icon, colorClass }) => (
-                                    <a
-                                        key={label}
-                                        href={href}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        aria-label={label}
-                                        className={cn(
-                                            "h-10 w-10 rounded-full border flex items-center justify-center transition-all duration-300",
-                                            colorClass
-                                        )}
-                                    >
-                                        <Icon className="h-4 w-4" />
-                                    </a>
-                                ))}
-                            </div>
-                        </div>
+                        {/* Disclaimer moved below routes */}
 
                         {/* Mobile App CTA */}
                         <Link
@@ -183,6 +163,12 @@ export function Footer({ className }: FooterProps) {
                     </div>
 
                 </div>
+                {/* Disclaimer Below Routes */}
+                <div className="mt-12 pt-8 border-t border-border/40">
+                    <p className="text-sm text-muted-foreground max-w-4xl">
+                        <span className="font-semibold text-foreground">Disclaimer:</span> We aggregate information from official sources for educational purposes. We are not affiliated with any government org.
+                    </p>
+                </div>
             </div>
 
             {/* Bottom Footer */}
@@ -192,9 +178,25 @@ export function Footer({ className }: FooterProps) {
                         <p className="text-sm text-muted-foreground">
                             &copy; {currentYear} FresherFlow.in. All rights reserved.
                         </p>
-                        <p className="text-xs text-muted-foreground max-w-xl md:text-right">
-                            <span className="font-semibold text-foreground">Disclaimer:</span> We aggregate information from official sources for educational purposes. We are not affiliated with any government organization.
-                        </p>
+                        
+                        {/* Social Icons in Disclaimer Position */}
+                        <div className="flex flex-wrap items-center justify-center md:justify-end gap-1.5 sm:gap-2">
+                            {socialLinks.map(({ href, label, Icon, colorClass }) => (
+                                <a
+                                    key={label}
+                                    href={href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    aria-label={label}
+                                    className={cn(
+                                        "h-9 w-9 rounded-full border flex items-center justify-center transition-all duration-300",
+                                        colorClass
+                                    )}
+                                >
+                                    <Icon className="h-[18px] w-[18px]" />
+                                </a>
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>

@@ -92,7 +92,12 @@ export function MobileNav() {
     const normalizedPathname = pathname?.toLowerCase() || '';
     
     if (isSidebarPage(normalizedPathname)) {
-        return null; // Handled by AppSidebar mobile header
+        return (
+            <>
+                <MobileTopNav />
+                <MobileBottomTabs />
+            </>
+        );
     }
 
     return (

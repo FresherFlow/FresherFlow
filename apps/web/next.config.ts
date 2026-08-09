@@ -111,6 +111,10 @@ const nextConfig: NextConfig = {
     "@fresherflow/parser",
     "@aws-sdk/client-s3",
     "@aws-sdk/s3-request-presigner",
+    "firebase-admin",
+    "jsonwebtoken",
+    "jwks-rsa",
+    "jose",
     "sharp",
     "fs",
     "node:fs",
@@ -142,6 +146,7 @@ const nextConfig: NextConfig = {
   },
 
   images: {
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
@@ -260,20 +265,7 @@ const nextConfig: NextConfig = {
         destination: "/jobs",
         permanent: true,
       },
-      {
-        source: "/:slug((?!login|signup|saved|tracker|dashboard|admin|govt|roles|skills|locations|companies|batch|privacy|terms|app|settings|profile|account|auth|api|_next|jobs|feed|deadlines|organisations|captions|discovery).*)",
-        destination: "/jobs/:slug",
-        permanent: false,
-        missing: [
-          { type: "header", key: "x-nextjs-data" },
-        ],
-        has: [
-          {
-            type: "host",
-            value: "^(www\\.)?fresherflow\\.(in|com)$",
-          }
-        ],
-      },
+
       {
         source: "/walk-ins/details/:slug",
         destination: "/jobs/:slug",

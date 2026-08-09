@@ -6,45 +6,15 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils/utils';
 import { LogoImage } from './LogoImage';
+import { ThemeToggle } from '@repo/ui/ThemeToggle';
+import { useTheme } from '@/lib/providers/ThemeContext';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent, Hint } from '@/ui/Tooltip';
 import {
-    HomeIcon,
-    BriefcaseIcon,
-    BuildingLibraryIcon,
-    BuildingOfficeIcon,
-    BookmarkIcon,
-    UserCircleIcon,
-    AcademicCapIcon,
-    ComputerDesktopIcon,
-    MapIcon,
-    QueueListIcon,
-    ShieldExclamationIcon,
-    WrenchScrewdriverIcon,
-    CodeBracketIcon,
-    IdentificationIcon,
-    MapPinIcon,
-    CalendarIcon,
-    ClipboardDocumentCheckIcon,
-    BanknotesIcon,
-    ShieldCheckIcon,
-    ChartBarIcon,
-    UserPlusIcon,
-    PlusCircleIcon,
-    Cog6ToothIcon,
-    Bars3Icon,
+ 
     ChevronLeftIcon,
     ChevronRightIcon,
-    ClockIcon,
-    ArrowTrendingUpIcon,
-    BellAlertIcon,
-    UserIcon,
-    BuildingOffice2Icon
 } from '@heroicons/react/24/outline';
 
-import {
-    TrainFront,
-    Building
-} from 'lucide-react';
 
 const SidebarIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" {...props}>
@@ -52,81 +22,42 @@ const SidebarIcon = (props: React.SVGProps<SVGSVGElement>) => (
         <line x1="9" y1="3" x2="9" y2="21" />
     </svg>
 );
-import { ThemeToggle } from '@repo/ui/ThemeToggle';
-import { useTheme } from '@/lib/providers/ThemeContext';
-import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from '@/ui/Sheet';
 
-const DEFAULT_NAV_ITEMS = [
-    { name: 'Home', href: '/dashboard', icon: HomeIcon },
-    { name: 'Jobs', href: '/jobs', icon: BriefcaseIcon, hasSubmenu: true },
-    { name: 'Government', href: '/govt', icon: BuildingLibraryIcon, hasSubmenu: true },
-    { name: 'Companies', href: '/companies', icon: BuildingOfficeIcon },
-    { name: 'Bookmarks', href: '/saved', icon: BookmarkIcon },
-    { name: 'Account', href: '/account', icon: UserCircleIcon },
-];
 
-const JOBS_NAV_ITEMS = [
-    { name: 'All Jobs', href: '/jobs', icon: BriefcaseIcon },
-    { name: 'Internships', href: '/jobs?type=internship', icon: AcademicCapIcon },
-    { name: 'Remote', href: '/jobs?mode=remote', icon: ComputerDesktopIcon },
-    { name: 'Walk-ins', href: '/jobs?type=walkin', icon: MapIcon },
-    { name: 'Closing Soon', href: '/jobs?sort=expiring', icon: BellAlertIcon },
-    { name: 'Latest', href: '/jobs?sort=latest', icon: ClockIcon },
-    { name: 'Trending', href: '/jobs?sort=trending', icon: ArrowTrendingUpIcon },
-    { name: 'Skills', href: '/skills', icon: CodeBracketIcon }, // Code brackets match tech skills
-    { name: 'Roles', href: '/roles', icon: IdentificationIcon }, // ID card matches roles
-    { name: 'Location', href: '/locations', icon: MapPinIcon },
-    { name: 'Company', href: '/companies', icon: BuildingOfficeIcon },
-    { name: 'Batch', href: '/batch', icon: CalendarIcon }, // Year/Batch = Calendar
-];
-
-const GOVT_NAV_ITEMS = [
-    { name: 'All', href: '/govt', icon: QueueListIcon },
-    { name: 'UPSC', href: '/govt?category=UPSC', icon: BuildingLibraryIcon },
-    { name: 'SSC', href: '/govt?category=SSC', icon: ClipboardDocumentCheckIcon }, // Exams/Clerical
-    { name: 'Banking', href: '/govt?category=Banking', icon: BanknotesIcon },
-    { name: 'Railways', href: '/govt?category=Railways', icon: TrainFront }, // Lucide literal train
-    { name: 'PSU', href: '/govt?category=State PSC', icon: BuildingOffice2Icon },
-    { name: 'Defence', href: '/govt?category=Defence', icon: ShieldCheckIcon },
-    { name: 'Teaching', href: '/govt?category=Teaching', icon: AcademicCapIcon },
-    { name: 'Police', href: '/govt?category=Police', icon: ShieldExclamationIcon },
-    { name: 'Engineering', href: '/govt?category=Engineering', icon: WrenchScrewdriverIcon },
-];
-
-const ACCOUNT_NAV_ITEMS = [
-    { name: 'Account', href: '/account', icon: UserCircleIcon },
-    { name: 'Profile', href: '/profile', icon: UserIcon },
-    { name: 'Tracker', href: '/tracker', icon: ChartBarIcon }, // Analytics tracker
-    { name: 'Saved', href: '/saved', icon: BookmarkIcon },
-    { name: 'Following', href: '/followed-companies', icon: Building }, // Lucide building
-    { name: 'Referrals', href: '/referral', icon: UserPlusIcon }, // Adding a person
-    { name: 'Contributions', href: '/contribute', icon: PlusCircleIcon },
-    { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
-];
+import { DEFAULT_NAV_ITEMS, JOBS_NAV_ITEMS, GOVT_NAV_ITEMS, ACCOUNT_NAV_ITEMS } from './navConfig';
 
 interface SidebarContentProps {
     pathname: string;
     searchParams?: URLSearchParams | null;
     collapsed?: boolean;
     onToggleCollapse?: () => void;
+    hostname?: string;
+    customNavItems?: any[];
+    customHeaderTitle?: string;
+    showThemeToggle?: boolean;
 }
 
-function SidebarContent({ pathname, searchParams, collapsed, onToggleCollapse }: SidebarContentProps) {
-    const homeHref = '/dashboard';
-    const logoHref = '/dashboard';
+export function SidebarContent({ pathname, searchParams, collapsed, onToggleCollapse, hostname, customNavItems, customHeaderTitle, showThemeToggle }: SidebarContentProps) {
+    const isAppHost = hostname?.startsWith('app.') || hostname === 'localhost' || hostname?.startsWith('127.');
+    const { theme, toggleTheme } = useTheme();
+    const homeHref = isAppHost ? '/dashboard' : '/';
+    const logoHref = homeHref;
 
+    const [prevContext, setPrevContext] = useState('default');
     let context = 'default';
+
+    const sharedPaths = ['/companies', '/saved', '/tracker'];
+    const isShared = sharedPaths.some(p => pathname.startsWith(p));
+
     if (
         pathname.startsWith('/account') ||
         pathname.startsWith('/profile') ||
         pathname.startsWith('/settings') ||
-        pathname.startsWith('/tracker') ||
         pathname.startsWith('/alerts') ||
         pathname.startsWith('/notifications') ||
         pathname.startsWith('/followed-companies') ||
         pathname.startsWith('/referral') ||
-        pathname.startsWith('/contribute') ||
-        pathname.startsWith('/saved')
+        pathname.startsWith('/contribute')
     ) {
         context = 'account';
     } else if (pathname.startsWith('/govt')) {
@@ -137,43 +68,42 @@ function SidebarContent({ pathname, searchParams, collapsed, onToggleCollapse }:
         pathname.startsWith('/skills') ||
         pathname.startsWith('/roles') ||
         pathname.startsWith('/locations') ||
-        pathname.startsWith('/companies') ||
         pathname.startsWith('/batch')
     ) {
         context = 'jobs';
+    } else if (isShared) {
+        context = prevContext;
     }
 
     const isSubContext = context !== 'default';
-    const depth = isSubContext ? 1 : 0;
-    const [prevDepth, setPrevDepth] = useState(depth);
-    
-    let direction = 0;
-    if (depth > prevDepth) direction = 1;
-    else if (depth < prevDepth) direction = -1;
-    
-    if (depth !== prevDepth) {
-        setPrevDepth(depth);
+
+    if (context !== prevContext) {
+        setPrevContext(context);
     }
 
-    const headerTitle = context === 'account' ? 'Account' : context === 'government' ? 'Government' : 'Jobs';
-    const baseNavItems = context === 'account' ? ACCOUNT_NAV_ITEMS : context === 'government' ? GOVT_NAV_ITEMS : context === 'jobs' ? JOBS_NAV_ITEMS : DEFAULT_NAV_ITEMS;
+    const headerTitle = customHeaderTitle || (context === 'account' ? 'Account' : context === 'government' ? 'Government' : 'Jobs');
+    const baseNavItems = customNavItems || (context === 'account' ? ACCOUNT_NAV_ITEMS : context === 'government' ? GOVT_NAV_ITEMS : context === 'jobs' ? JOBS_NAV_ITEMS : DEFAULT_NAV_ITEMS);
     const navItems = baseNavItems.map(item => item.name === 'Home' ? { ...item, href: homeHref } : item);
 
     const variants = {
-        enter: (direction: number) => ({
-            x: direction > 0 ? 16 : direction < 0 ? -16 : 0,
+        enter: {
+            x: 0,
             opacity: 0,
-        }),
+        },
         center: {
             x: 0,
             opacity: 1,
-            transition: { duration: 0.2, ease: [0.23, 1, 0.32, 1] as const }
+            transition: {
+                opacity: { duration: 0.12, ease: [0, 0, 0.58, 1] as const },
+            },
         },
-        exit: (direction: number) => ({
-            x: direction < 0 ? 16 : direction > 0 ? -16 : 0,
+        exit: {
+            x: 0,
             opacity: 0,
-            transition: { duration: 0.2, ease: [0.23, 1, 0.32, 1] as const }
-        })
+            transition: {
+                opacity: { duration: 0.12, ease: [0.33, 0, 1, 1] as const },
+            },
+        },
     };
 
     return (
@@ -183,36 +113,40 @@ function SidebarContent({ pathname, searchParams, collapsed, onToggleCollapse }:
                 <div className="h-14 flex items-center px-[8px] border-b border-border mb-4 bg-card shrink-0">
                     <Link href={logoHref} className="flex items-center gap-2 w-full min-w-0 hover:opacity-80 transition-opacity focus:outline-none">
                         <LogoImage width={28} height={28} className="w-7 h-7 object-contain shrink-0" />
-                        <span className={cn("text-lg font-bold text-foreground whitespace-nowrap sidebar-expanded-only", collapsed && "hidden")}>FresherFlow</span>
+                        <span className="text-lg font-bold text-foreground whitespace-nowrap truncate">{headerTitle === 'Admin Portal' ? 'Admin' : 'FresherFlow'}</span>
                     </Link>
                 </div>
 
                 {/* 2. SCROLLABLE NAV AREA */}
                 <div className="flex-1 overflow-y-auto px-2 custom-scrollbar no-scrollbar relative overflow-x-hidden">
-                    <AnimatePresence mode="popLayout" custom={direction} initial={false}>
-                        <motion.div 
-                            key={context} 
-                            custom={direction}
+                    <AnimatePresence mode="popLayout" initial={false}>
+                        <motion.div
+                            key={context}
                             variants={variants}
                             initial="enter"
                             animate="center"
                             exit="exit"
-                            className="space-y-1 w-full"
+                            className="flex flex-col flex-1 min-h-0 w-full"
                         >
                             {/* BACK BUTTON */}
                             {isSubContext && (() => {
                                 const backLink = (
                                     <Link
                                         href={homeHref}
-                                        className="relative flex items-center gap-2 py-2 px-1.5 h-9 w-full rounded-md text-sm transition-colors focus:outline-none text-muted-foreground hover:bg-muted/50 hover:text-foreground overflow-hidden"
+                                        className="relative flex items-center gap-1.5 py-2 px-1.5 h-9 w-full rounded-md text-sm transition-colors focus-visible:outline-none text-muted-foreground hover:bg-muted/50 hover:text-foreground overflow-hidden group"
                                     >
-                                        <ChevronLeftIcon className="w-4 h-4 shrink-0" />
-                                        <span className={cn("truncate whitespace-nowrap sidebar-expanded-only", collapsed && "hidden")}>{headerTitle}</span>
+                                        <ChevronLeftIcon className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:-translate-x-0.5" />
+                                        <span className="font-semibold text-foreground truncate whitespace-nowrap">{headerTitle}</span>
                                     </Link>
                                 );
-                                return collapsed ? (
-                                    <Hint label={headerTitle} side="right">{backLink}</Hint>
-                                ) : backLink;
+                                return (
+                                    <>
+                                        {collapsed ? (
+                                            <Hint label={headerTitle} side="right">{backLink}</Hint>
+                                        ) : backLink}
+                                        <div className="h-px bg-border/50 my-2 mx-1" />
+                                    </>
+                                );
                             })()}
 
                             {/* NAV ITEMS LIST */}
@@ -232,7 +166,11 @@ function SidebarContent({ pathname, searchParams, collapsed, onToggleCollapse }:
                                 } else if (item.href === '/jobs') {
                                     isActive = pathname === '/jobs' && !searchParams?.get('type') && !searchParams?.get('mode') && !searchParams?.get('source') && !searchParams?.get('sort') && !searchParams?.get('filter');
                                 } else {
-                                    isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+                                    if ('exact' in item && item.exact) {
+                                        isActive = pathname === item.href;
+                                    } else {
+                                        isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href + '/'));
+                                    }
                                 }
                                 
                                 const linkElement = (
@@ -241,14 +179,22 @@ function SidebarContent({ pathname, searchParams, collapsed, onToggleCollapse }:
                                         className={cn(
                                             "relative flex items-center gap-2 py-2 px-1.5 w-full h-9 rounded-md text-sm transition-colors focus:outline-none overflow-hidden",
                                             isActive
-                                                ? 'bg-muted/60 text-foreground font-semibold'
-                                                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+                                                ? 'bg-foreground/10 text-foreground font-semibold'
+                                                : 'text-muted-foreground hover:bg-muted/50 dark:hover:bg-foreground/10 hover:text-foreground'
                                         )}
                                     >
                                         <Icon className={cn("w-5 h-5 shrink-0 transition-all", isActive && "stroke-2")} />
-                                        <span className={cn("truncate whitespace-nowrap sidebar-expanded-only", collapsed && "hidden")}>{item.name}</span>
+                                        <span className="truncate whitespace-nowrap">{item.name}</span>
                                         {Boolean('hasSubmenu' in item && item.hasSubmenu) && !collapsed && (
                                             <ChevronRightIcon className="w-4 h-4 ml-auto text-muted-foreground/50 shrink-0" />
+                                        )}
+                                        {item.badge > 0 && !collapsed && (
+                                            <span className="ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                                                {item.badge > 99 ? '99+' : item.badge}
+                                            </span>
+                                        )}
+                                        {item.badge > 0 && collapsed && (
+                                            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-destructive ring-2 ring-card" />
                                         )}
                                         {isActive && !collapsed && (
                                             <motion.div
@@ -261,13 +207,23 @@ function SidebarContent({ pathname, searchParams, collapsed, onToggleCollapse }:
                                     </Link>
                                 );
 
-                                return collapsed ? (
-                                    <Hint key={item.name} label={item.name} side="right">
-                                        {linkElement}
-                                    </Hint>
-                                ) : (
+                                return (
                                     <React.Fragment key={item.name}>
-                                        {linkElement}
+                                        {context === 'jobs' && (item.name === 'Skills' || item.name === 'Government') && (
+                                            <div className="h-px bg-border/40 my-1 mx-1.5" />
+                                        )}
+                                        {context === 'government' && item.name === 'Private Jobs' && (
+                                            <div className="h-px bg-border/40 my-1 mx-1.5" />
+                                        )}
+                                        {item.isSettingsDivider && customHeaderTitle === 'Admin Portal' && (
+                                            <>
+                                                {!collapsed && <span className="px-1.5 pt-4 pb-2 text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider">Settings</span>}
+                                                {collapsed && <div className="h-px bg-border/40 my-2 mx-1.5" />}
+                                            </>
+                                        )}
+                                        {collapsed ? (
+                                            <Hint label={item.name} side="right">{linkElement}</Hint>
+                                        ) : linkElement}
                                     </React.Fragment>
                                 );
                             })}
@@ -279,15 +235,29 @@ function SidebarContent({ pathname, searchParams, collapsed, onToggleCollapse }:
                 {/* 3. FOOTER */}
                 {onToggleCollapse && (
                     <div className="px-1 pb-1 mt-auto">
+                        {showThemeToggle && (
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div>
+                                        <ThemeToggle theme={theme as 'light' | 'dark'} toggleTheme={toggleTheme} />
+                                    </div>
+                                </TooltipTrigger>
+                                {collapsed && (
+                                    <TooltipContent side="right" className="flex items-center gap-2">
+                                        {theme === 'dark' ? 'Dark Mode' : 'Light Mode'}
+                                    </TooltipContent>
+                                )}
+                            </Tooltip>
+                        )}
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <button
                                     onClick={onToggleCollapse}
-                                    className="w-full flex items-center gap-2 px-1.5 rounded-md h-9 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    className="w-full flex items-center gap-2 px-1.5 rounded-md h-9 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring overflow-hidden"
                                     aria-label="Toggle Sidebar"
                                 >
                                     <SidebarIcon className="w-5 h-5 shrink-0" />
-                                    <span className={cn("text-sm whitespace-nowrap text-left sidebar-expanded-only", collapsed && "hidden")}>Collapse</span>
+                                    <span className="text-sm whitespace-nowrap text-left truncate">Collapse</span>
                                     {!collapsed && (
                                         <span className="ml-auto text-[10px] text-muted-foreground bg-muted px-1 py-0.5 rounded border border-border shrink-0">Ctrl+B</span>
                                     )}
@@ -311,12 +281,23 @@ export function AppSidebar() {
     const rawPathname = usePathname();
     const pathname = rawPathname || '';
     const searchParams = useSearchParams();
-    const { theme, toggleTheme } = useTheme();
-    
-    const [collapsed, setCollapsed] = useState(false);
+
+    const [hostname, setHostname] = useState<string>('');
+    useEffect(() => {
+        setHostname(window.location.hostname);
+    }, []);
+
+    const [, setCollapsed] = useState(false);
+    const [visuallyCollapsed, setVisuallyCollapsed] = useState(false);
+
     const handleToggleCollapse = () => {
         setCollapsed(prev => {
             const next = !prev;
+            if (!next) {
+                setVisuallyCollapsed(false);
+            } else {
+                setTimeout(() => setVisuallyCollapsed(true), 600);
+            }
             localStorage.setItem('ff:sidebarCollapsed', String(next));
             document.documentElement.style.setProperty('--sidebar-w', next ? '3rem' : '12rem');
             document.documentElement.setAttribute('data-sidebar', next ? 'collapsed' : 'expanded');
@@ -327,7 +308,10 @@ export function AppSidebar() {
     useEffect(() => {
         const stored = localStorage.getItem('ff:sidebarCollapsed');
         const isCol = stored === 'true';
-        if (isCol) setCollapsed(true);
+        if (isCol) {
+            setCollapsed(true);
+            setVisuallyCollapsed(true);
+        }
         document.documentElement.style.setProperty('--sidebar-w', isCol ? '3rem' : '12rem');
         document.documentElement.setAttribute('data-sidebar', isCol ? 'collapsed' : 'expanded');
     }, []);
@@ -343,37 +327,11 @@ export function AppSidebar() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-    const logoHref = '/';
+
 
     return (
-        <>
-            {/* Desktop Sidebar */}
-            <aside className="hidden md:flex fixed top-0 left-0 bottom-0 z-50 w-[var(--sidebar-w,12rem)] transition-[width] duration-200 ease-in-out overflow-hidden">
-                <SidebarContent pathname={pathname} searchParams={searchParams} collapsed={collapsed} onToggleCollapse={handleToggleCollapse} />
-            </aside>
-
-            {/* Mobile Nav Header */}
-            <header className="md:hidden fixed top-0 left-0 right-0 h-14 bg-background/95 backdrop-blur-md border-b border-border z-50 flex items-center justify-between px-4">
-                <Link href={logoHref} className="flex items-center gap-2">
-                    <LogoImage width={24} height={24} className="w-6 h-6 object-contain shrink-0" />
-                    <span className="text-base font-bold text-foreground">FresherFlow</span>
-                </Link>
-                <div className="flex items-center gap-2">
-                    <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
-                    <Sheet>
-                        <SheetTrigger asChild>
-                            <button className="p-2 -mr-2 text-foreground active:scale-95 transition-transform" aria-label="Open Navigation">
-                                <Bars3Icon className="w-6 h-6" />
-                            </button>
-                        </SheetTrigger>
-                        <SheetContent side="left" className="p-0 w-72">
-                            <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
-                            <SheetDescription className="sr-only">Access opportunities, saved jobs, and settings.</SheetDescription>
-                            <SidebarContent pathname={pathname} searchParams={searchParams} />
-                        </SheetContent>
-                    </Sheet>
-                </div>
-            </header>
-        </>
+        <aside className="hidden md:flex fixed top-0 left-0 bottom-0 z-50 w-[var(--sidebar-w,12rem)] transition-[width] duration-[600ms] ease-[cubic-bezier(0.7,0,0,1)] overflow-hidden">
+            <SidebarContent pathname={pathname} searchParams={searchParams} collapsed={visuallyCollapsed} onToggleCollapse={handleToggleCollapse} hostname={hostname} />
+        </aside>
     );
 }
