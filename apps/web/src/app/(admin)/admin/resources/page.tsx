@@ -2,10 +2,7 @@ import { Metadata } from 'next';
 import AdminResourcesClient from './components/AdminResourcesClient';
 import { SKILLS_METADATA_URL, COMPANIES_METADATA_URL } from '@/lib/utils/runtimeConfig';
 
-export const metadata: Metadata = {
-    title: 'Manage Resources | Admin',
-    description: 'Manage shared resources',
-};
+
 
 export const dynamic = 'force-dynamic';
 

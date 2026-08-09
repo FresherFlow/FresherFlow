@@ -2,9 +2,7 @@ import { Metadata } from 'next';
 import { Suspense } from 'react';
 import PushNotificationClient from './components/PushNotificationClient';
 
-export const metadata: Metadata = {
-    title: 'Push Notifications - FresherFlow Admin',
-};
+
 
 export default function PushNotificationsPage() {
     return (

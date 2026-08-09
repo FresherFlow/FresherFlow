@@ -2,10 +2,7 @@ import TwoFactorSetup from "@/features/admin/components/TwoFactorSetup";
 import PasskeyManager from "@/features/admin/components/PasskeyManager";
 import { Badge } from "@/ui/Badge";
 
-export const metadata = {
-    title: "Admin Settings",
-    description: "Manage admin account settings and security."
-};
+
 
 export default function AdminSettingsPage() {
     return (

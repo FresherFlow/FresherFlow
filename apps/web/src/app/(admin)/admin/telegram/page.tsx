@@ -2,10 +2,7 @@
 // import SocialBroadcastPanel from "@/features/admin/components/SocialBroadcastPanel";
 // import DeliveryControlsPanel from "@/features/admin/components/DeliveryControlsPanel";
 
-export const metadata = {
-    title: "Broadcasts | Admin",
-    description: "Monitor Telegram and social channel posts, and retry failed posts."
-};
+
 
 export default function AdminTelegramPage() {
     return (

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import {
     BriefcaseIcon,
@@ -16,6 +17,7 @@ import { ref, onValue } from 'firebase/database';
 import { useFirebaseAdmin } from '@/lib/hooks/useFirebaseAdmin';
 import { adminApi } from '@/lib/api/admin';
 import { CDN_URL } from '@/lib/utils/runtimeConfig';
+import { Button } from '@/ui/Button';
 
 
 interface DashboardState {
@@ -57,6 +59,11 @@ export default function AdminDashboardHome() {
         loading: true,
         error: false,
     });
+
+    const [headerTarget, setHeaderTarget] = useState<Element | null>(null);
+    useEffect(() => {
+        setHeaderTarget(document.getElementById('top-header-portal-target'));
+    }, []);
 
     const [regenerating, setRegenerating] = useState(false);
     const [regenStatus, setRegenStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -268,8 +275,8 @@ export default function AdminDashboardHome() {
     return (
         <div className="p-4 md:p-6 lg:p-8 pt-16 md:pt-6 lg:pt-8 space-y-6 flex-1 min-h-0 overflow-y-auto pb-28 md:pb-8 animate-in fade-in duration-500 text-foreground w-full font-sans antialiased custom-scrollbar relative z-0">
             {/* Header */}
-            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5">
-                <div className="flex items-center gap-3">
+            <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5 md:border-none md:pb-0">
+                <div className="flex items-center gap-3 md:hidden">
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground">Admin overview</h1>
                     <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground font-medium px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -277,20 +284,44 @@ export default function AdminDashboardHome() {
                     </span>
                 </div>
                 
-                <div className="flex items-center gap-2">
-                    <Link
-                        href="/admin/opportunities/create"
-                        className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold rounded-lg text-xs px-3.5 py-2 transition-all duration-200 ease-out active:scale-[0.96] shadow-sm flex items-center gap-1.5"
-                    >
-                        <BriefcaseIcon className="w-4 h-4" />
-                        <span>Create Listing</span>
-                    </Link>
-                    <Link
-                        href="/admin/feedback"
-                        className="bg-secondary text-secondary-foreground hover:bg-secondary/80 font-semibold rounded-lg text-xs px-3.5 py-2 transition-all duration-200 ease-out active:scale-[0.96] shadow-sm"
-                    >
-                        Moderate Reports
-                    </Link>
+                {headerTarget && (
+                    createPortal(
+                        <>
+                            <div className="text-lg font-semibold text-foreground truncate">Admin Overview</div>
+                            <div className="flex items-center gap-2 ml-auto shrink-0 animate-in fade-in zoom-in duration-300 fill-mode-both">
+                                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground font-medium px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 mr-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                    Live telemetry
+                                </span>
+                                <Button variant="admin" size="sm" className="text-xs px-3.5 py-2 h-auto flex items-center gap-1.5" asChild>
+                                    <Link href="/admin/opportunities/create">
+                                        <BriefcaseIcon className="w-4 h-4" />
+                                        <span>Create Listing</span>
+                                    </Link>
+                                </Button>
+                                <Button variant="admin" size="sm" className="text-xs px-3.5 py-2 h-auto flex items-center gap-1.5" asChild>
+                                    <Link href="/admin/feedback">
+                                        Moderate Reports
+                                    </Link>
+                                </Button>
+                            </div>
+                        </>,
+                        headerTarget
+                    )
+                )}
+
+                <div className="flex items-center gap-2 md:hidden">
+                    <Button variant="admin" size="sm" className="text-xs px-3.5 py-2 h-auto flex items-center gap-1.5" asChild>
+                        <Link href="/admin/opportunities/create">
+                            <BriefcaseIcon className="w-4 h-4" />
+                            <span>Create Listing</span>
+                        </Link>
+                    </Button>
+                    <Button variant="admin" size="sm" className="text-xs px-3.5 py-2 h-auto flex items-center gap-1.5" asChild>
+                        <Link href="/admin/feedback">
+                            Moderate Reports
+                        </Link>
+                    </Button>
                 </div>
             </header>
 
@@ -388,62 +419,74 @@ export default function AdminDashboardHome() {
                             <h3 className="text-sm font-semibold tracking-tight">Cache & Revalidation</h3>
                         </div>
                         
-                        <div className="grid grid-cols-1 gap-3 pt-2">
-                            <button
+                        <div className="grid grid-cols-2 gap-3 pt-2">
+                            <Button
+                                variant="admin"
+                                size="sm"
                                 onClick={() => handleRegenerate('all')}
                                 disabled={regenerating}
-                                className="w-full flex items-center justify-between px-4 py-2.5 border border-border rounded-lg bg-primary text-primary-foreground font-semibold hover:bg-primary/90 disabled:opacity-50 transition-all duration-150 active:scale-[0.98] text-xs cursor-pointer shadow-sm relative overflow-hidden group/btn"
-                            >
-                                <div className="flex flex-col items-start text-left relative z-10">
-                                    <span>Regenerate All Feeds</span>
-                                    <span className="text-[9px] font-normal opacity-80">Rebuild JSON static API for mobile</span>
-                                </div>
-                                <span className="relative z-10">{regenerating ? <span className="animate-spin text-primary-foreground"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></span> : <CloudIcon className="w-4 h-4" />}</span>
-                            </button>
-
-                            <button
-                                onClick={handleRevalidateWebsiteCache}
-                                disabled={regenerating}
-                                className="w-full flex items-center justify-between px-4 py-2.5 border border-border rounded-lg bg-muted/50 border-border text-foreground font-semibold hover:bg-muted disabled:opacity-50 transition-all duration-150 active:scale-[0.98] text-xs cursor-pointer shadow-xs"
+                                className="w-full flex items-center justify-between gap-1.5 py-2.5 h-auto text-left"
                             >
                                 <div className="flex flex-col items-start text-left">
-                                    <span className="font-medium text-foreground">Refresh Website Cache</span>
-                                    <span className="text-xs font-mono text-muted-foreground">Next.js revalidateTag on dynamic routes</span>
+                                    <span>Regenerate All Feeds</span>
+                                    <span className="text-[9px] font-normal opacity-80 mt-0.5">Rebuild static API for mobile</span>
                                 </div>
-                                <SignalIcon className="w-4 h-4 text-foreground shrink-0" />
-                            </button>
+                                <span className="shrink-0">{regenerating ? <span className="animate-spin"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></span> : <CloudIcon className="w-4 h-4" />}</span>
+                            </Button>
 
-                            <div className="grid grid-cols-2 gap-2 pt-2">
-                                <button
+                            <Button
+                                variant="admin"
+                                size="sm"
+                                onClick={handleRevalidateWebsiteCache}
+                                disabled={regenerating}
+                                className="w-full flex items-center justify-between gap-1.5 py-2.5 h-auto text-left"
+                            >
+                                <div className="flex flex-col items-start text-left">
+                                    <span>Refresh Cache</span>
+                                    <span className="text-[9px] font-normal opacity-80 mt-0.5">Clear Next.js server cache</span>
+                                </div>
+                                <SignalIcon className="w-4 h-4 shrink-0" />
+                            </Button>
+                        </div>
+
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 pt-2">
+                                <Button
+                                    variant="admin"
+                                    size="sm"
+                                    className="text-xs px-3.5 py-2 h-auto flex items-center justify-center gap-1.5"
                                     onClick={() => handleRegenerate('bootstrap')}
                                     disabled={regenerating}
-                                    className="px-3 py-2 border border-border rounded-lg bg-card text-foreground font-medium hover:bg-accent hover:text-accent-foreground disabled:opacity-50 transition-all duration-150 active:scale-[0.97] text-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
                                 >
                                     <span>Private Feed</span>
-                                </button>
-                                <button
+                                </Button>
+                                <Button
+                                    variant="admin"
+                                    size="sm"
+                                    className="text-xs px-3.5 py-2 h-auto flex items-center justify-center gap-1.5"
                                     onClick={() => handleRegenerate('govt')}
                                     disabled={regenerating}
-                                    className="px-3 py-2 border border-border rounded-lg bg-card text-foreground font-medium hover:bg-accent hover:text-accent-foreground disabled:opacity-50 transition-all duration-150 active:scale-[0.97] text-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
                                 >
                                     <span>Govt Feed</span>
-                                </button>
-                                <button
+                                </Button>
+                                <Button
+                                    variant="admin"
+                                    size="sm"
+                                    className="text-xs px-3.5 py-2 h-auto flex items-center justify-center gap-1.5"
                                     onClick={() => handleRegenerate('resources')}
                                     disabled={regenerating}
-                                    className="px-3 py-2 border border-border rounded-lg bg-card text-foreground font-medium hover:bg-accent hover:text-accent-foreground disabled:opacity-50 transition-all duration-150 active:scale-[0.97] text-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
                                 >
-                                    <span>Resources Feed</span>
-                                </button>
-                                <button
+                                    <span>Resources</span>
+                                </Button>
+                                <Button
+                                    variant="admin"
+                                    size="sm"
+                                    className="text-xs px-3.5 py-2 h-auto flex items-center justify-center gap-1.5"
                                     onClick={() => handleRegenerate('sitemap')}
                                     disabled={regenerating}
-                                    className="px-3 py-2 border border-border rounded-lg bg-card text-foreground font-medium hover:bg-accent hover:text-accent-foreground disabled:opacity-50 transition-all duration-150 active:scale-[0.97] text-xs cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
                                 >
                                     <span>Sitemaps</span>
-                                </button>
+                                </Button>
                             </div>
-                        </div>
 
                         {regenStatus && (
                             <p className={`text-[11px] p-2 rounded border font-mono ${regenStatus.type === 'success' ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' : 'text-destructive bg-destructive/10 border-destructive/20'}`}>

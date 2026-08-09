@@ -61,11 +61,11 @@ export const getStatusLabel = (opp: Opportunity & { expiredAt?: string | Date | 
 
 export const getStatusBadgeClass = (opp: Opportunity & { expiredAt?: string | Date | null; deletedAt?: string | Date | null }) => {
     const label = getStatusLabel(opp);
-    if (label === 'DELETED') return 'bg-muted text-muted-foreground ring-border/40';
-    if (label === 'EXPIRED') return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-amber-500/20';
-    if (label === 'ARCHIVED') return 'bg-destructive/10 text-destructive ring-destructive/20';
-    if (label === 'LIVE') return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20';
-    return 'bg-muted text-muted-foreground ring-border/40';
+    if (label === 'DELETED') return 'bg-transparent text-muted-foreground ring-border/40';
+    if (label === 'EXPIRED') return 'bg-transparent text-amber-600 dark:text-amber-400 ring-amber-500/20';
+    if (label === 'ARCHIVED') return 'bg-transparent text-destructive ring-destructive/20';
+    if (label === 'LIVE') return 'bg-transparent text-emerald-600 dark:text-emerald-400 ring-emerald-500/20';
+    return 'bg-transparent text-muted-foreground ring-border/40';
 };
 
 import { OpportunityType } from '@fresherflow/types';

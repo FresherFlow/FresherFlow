@@ -88,6 +88,7 @@ export function useAdminOpportunities(pageSize: number = 20) {
         const activeOnlyParam = searchParams.get('activeOnly');
         const qParam = searchParams.get('q');
         const sortParam = searchParams.get('sort');
+        const pageParam = parseInt(searchParams.get('page') || '1', 10);
 
         const nextLinkHealth = (linkHealthParam === 'HEALTHY' || linkHealthParam === 'RETRYING' || linkHealthParam === 'BROKEN') ? linkHealthParam : '';
 
@@ -100,14 +101,13 @@ export function useAdminOpportunities(pageSize: number = 20) {
                 search: qParam ?? '',
                 sort: sortParam || 'postedAt_desc',
             };
-            // Only update if something actually changed
             if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
             return next;
         });
-        setPage(1);
+        setPage(pageParam);
     }, [searchParamsKey, searchParams]);
 
-    // Sync filters back to URL
+    // Sync filters + page back to URL
     useEffect(() => {
         const params = new URLSearchParams(searchParams.toString());
         if (filters.typeFilter) params.set('type', enumToTypeParam(filters.typeFilter)); else params.delete('type');
@@ -116,13 +116,14 @@ export function useAdminOpportunities(pageSize: number = 20) {
         if (filters.activeOnly) params.set('activeOnly', 'true'); else params.delete('activeOnly');
         if (debouncedSearch.trim()) params.set('q', debouncedSearch.trim()); else params.delete('q');
         if (filters.sort) params.set('sort', filters.sort); else params.delete('sort');
+        if (page > 1) params.set('page', String(page)); else params.delete('page');
 
         const next = params.toString();
         if (next !== searchParamsKey) {
             isInternalUrlSyncRef.current = true;
             router.replace(`${pathname}?${next}`);
         }
-    }, [filters, debouncedSearch, searchParamsKey, searchParams, pathname, router]);
+    }, [filters, debouncedSearch, page, searchParamsKey, searchParams, pathname, router]);
 
     // Convenience setters that keep backward compat with the page component
     const setTypeFilter = (v: string) => setFilters(f => ({ ...f, typeFilter: v }));
