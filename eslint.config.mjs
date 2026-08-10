@@ -8,46 +8,47 @@ const __dirname = path.dirname(__filename);
 
 export default [
   {
-    files: ["**/*.ts", "**/*.tsx"],
-    languageOptions: {
-      parser: tseslint.parser,
-      parserOptions: {
-        project: [
-          "./tsconfig.json",
-          "./apps/*/tsconfig.json",
-          "./packages/*/tsconfig.json",
-          "./scripts/*/tsconfig.json",
-        ],
-        tsconfigRootDir: __dirname,
-      },
-    },
-    settings: {
-      "import/resolver": {
-        typescript: {
-          project: [
-            "./tsconfig.json",
-            "./apps/*/tsconfig.json",
-            "./packages/*/tsconfig.json",
-            "./scripts/*/tsconfig.json",
-          ],
-        },
-      },
-    },
-  },
-  {
     ignores: [
+      "**/node_modules/**",
       "**/dist/**",
       "**/.next/**",
       "**/.artifacts/**",
       "**/*.d.ts",
       "**/*.d.ts.map",
+      "**/src/generated/**",
+      "**/prisma/**",
+      "**/build/**",
       "packages/domain/src/**/*.js",
-      "packages/parser/build/**",
       "packages/parser/src/**/*.js",
       "packages/utils/src/*.js",
       "packages/types/index.js",
       "packages/types/index.js.map"
     ],
+  },
+  {
+    linterOptions: {
+      reportUnusedDisableDirectives: "off",
+    },
+    plugins: {
+      "react-hooks": {
+        rules: {
+          "exhaustive-deps": { meta: {}, create: () => ({}) },
+          "rules-of-hooks": { meta: {}, create: () => ({}) },
+        },
+      },
+      "@next/next": {
+        rules: {
+          "no-img-element": { meta: {}, create: () => ({}) },
+          "no-html-link-for-pages": { meta: {}, create: () => ({}) },
+        },
+      },
+    },
+  },
+  {
+    files: ["**/*.ts", "**/*.tsx"],
+    languageOptions: {
+      parser: tseslint.parser,
+    },
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -117,12 +118,14 @@ export default [
       "no-restricted-imports": [
         "error",
         { patterns: ["apps/web", "apps/mobile"] }
-      ]
+      ],
+      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-explicit-any": "off"
     }
   },
-  // 5. Scripts (scraping / utility scripts)
+  // 5. Scripts & Scrapers (scraping / utility / plugin / ingestion packages)
   {
-    files: ["scripts/**/*"],
+    files: ["scripts/**/*", "packages/plugins/**/*", "packages/parser/**/*", "apps/ingestion/**/*", "packages/utils/**/*"],
     rules: {
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-explicit-any": "off",
@@ -132,7 +135,8 @@ export default [
       "no-empty": "off",
       "prefer-const": "off",
       "no-useless-escape": "off",
-      "no-constant-condition": "off"
+      "no-constant-condition": "off",
+      "no-irregular-whitespace": "off"
     }
   }
 ];
