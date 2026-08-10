@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
-import ProgrammaticHub from '@/features/opportunities/components/ProgrammaticHub';
+import { Suspense } from 'react';
+import CategoryPage from '@/features/opportunities/components/CategoryPage';
+import { FeedPageSkeleton } from '@/ui/Skeleton';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
-import { extractHubRelations } from '@/features/opportunities/utils/hubLinking';
 
 export const revalidate = false;
 export const dynamicParams = true;
@@ -80,28 +81,20 @@ export default async function BatchPage({ params }: Props) {
         opp.allowedPassoutYears.includes(year)
     );
 
-    const { topCompanies, relatedSkills, relatedLocations } = extractHubRelations(filtered);
-
-    const lastUpdated = feed?.generatedAt 
-        ? new Date(feed.generatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-        : new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-
-    const title = `${year} Batch Jobs & Internships`;
-    const description = `Discover entry-level openings, off-campus drives, and internships open to candidates graduating in ${year}.`;
     const seoText = `Finding off-campus placements as a fresher can be challenging. On this page, we compile all verified jobs, internships, and walk-in drives recruiting candidates from the ${year} batch. Every listing is reviewed by our moderation team to ensure valid official application links, transparent salary ranges, and complete qualification requirements. Use the links to apply directly on the hiring organizations' official careers portal.`;
 
     return (
-        <ProgrammaticHub
-            title={title}
-            description={description}
-            seoText={seoText}
-            opportunities={filtered}
-            lastUpdated={lastUpdated}
-            breadcrumbLabel={`${year} Batch`}
-            breadcrumbUrl={`/batch/${year}`}
-            topCompanies={topCompanies}
-            relatedSkills={relatedSkills}
-            relatedLocations={relatedLocations}
-        />
+        <Suspense fallback={<FeedPageSkeleton />}>
+            <CategoryPage 
+                type={null} 
+                initialData={{
+                    opportunities: feed?.opportunities || [],
+                    total: feed?.count || 0,
+                    cachedAt: feed?.generatedAt ? new Date(feed.generatedAt).getTime() : Date.now(),
+                }} 
+                initialFilters={{ year: year }} 
+                canonicalRedirect={true}
+            />
+        </Suspense>
     );
 }

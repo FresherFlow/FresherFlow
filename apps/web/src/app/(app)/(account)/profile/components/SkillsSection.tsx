@@ -1,7 +1,7 @@
 'use client';
 
-import React, { RefObject, useState, useEffect } from 'react';
-import { PlusIcon, XMarkIcon, PencilSquareIcon, CheckIcon } from '@heroicons/react/24/outline';
+import React from 'react';
+import { PlusIcon, XMarkIcon, PencilSquareIcon, CheckIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { Profile } from '@fresherflow/types';
 import { Input } from '@/ui/Input';
 import { Button } from '@/ui/Button';
@@ -15,14 +15,11 @@ interface SkillsSectionProps {
     profile?: Profile | null;
     skillInput: string;
     setSkillInput: (v: string) => void;
-    skillOpen: boolean;
-    setSkillOpen: (v: boolean) => void;
     filteredSkillOptions: string[];
     skills: string[];
     setSkills: (v: string[] | ((prev: string[]) => string[])) => void;
-    addSkill: () => void;
+    addSkill: () => boolean;
     addSkillValue: (v: string) => void;
-    skillRef: RefObject<HTMLDivElement | null>;
     isEditing: boolean;
     onToggleEdit: () => void;
     onSave: () => void;
@@ -30,175 +27,152 @@ interface SkillsSectionProps {
 }
 
 export const SkillsSection = ({
-    profile, skillInput, setSkillInput, skillOpen, setSkillOpen, filteredSkillOptions,
-    skills, setSkills, addSkill, addSkillValue, skillRef, isEditing, onToggleEdit, onSave, saving
+    profile, skillInput, setSkillInput, filteredSkillOptions,
+    skills, setSkills, addSkillValue, isEditing, onToggleEdit, onSave, saving
 }: SkillsSectionProps) => {
-    const [skillHighlight, setSkillHighlight] = useState(-1);
     const hasSkills = Boolean(profile?.skills && profile.skills.length > 0);
 
-    useEffect(() => {
-        if (skillHighlight >= 0) {
-            document.getElementById(`skills-section-option-${skillHighlight}`)?.scrollIntoView({ block: 'nearest' });
+    const toggleSkill = (skill: string) => {
+        if (skills.includes(skill)) {
+            setSkills(prev => (Array.isArray(prev) ? prev.filter(s => s !== skill) : []));
+        } else {
+            if (skills.length >= MAX_SKILLS) { toast.error(`Max ${MAX_SKILLS} skills allowed.`); return; }
+            addSkillValue(skill);
         }
-    }, [skillHighlight]);
-
-    const handleAddSkill = () => {
-        if (skills.length >= MAX_SKILLS) {
-            toast.error(`Maximum ${MAX_SKILLS} skills allowed.`);
-            return;
-        }
-        addSkill();
     };
 
-    const handleAddSkillValue = (v: string) => {
-        if (skills.length >= MAX_SKILLS) {
-            toast.error(`Maximum ${MAX_SKILLS} skills allowed.`);
-            return;
-        }
-        addSkillValue(v);
+    const addCustomSkill = () => {
+        const trimmed = skillInput.trim();
+        if (!trimmed) return;
+        if (skills.length >= MAX_SKILLS) { toast.error(`Max ${MAX_SKILLS} skills allowed.`); return; }
+        addSkillValue(trimmed);
+        setSkillInput('');
     };
 
     return (
-        <div className="group relative w-full bg-card/75 backdrop-blur-md rounded-2xl border border-border/60 shadow-sm hover:shadow-md transition-all duration-200 ease-out p-5 sm:p-6 overflow-hidden">
+        <div className="w-full bg-card rounded-2xl border border-border/60 shadow-sm p-5 sm:p-6">
+            {/* Header */}
             <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold tracking-tight text-foreground">Skills</h3>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-mono font-semibold bg-muted/80 text-muted-foreground border border-border/60">
-                        {profile?.skills?.length || 0} / {MAX_SKILLS}
+                    <h3 className="text-base font-bold text-foreground">Skills</h3>
+                    <span className="text-xs font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border/60">
+                        {isEditing ? skills.length : (profile?.skills?.length || 0)}/{MAX_SKILLS}
                     </span>
                 </div>
-                {!isEditing && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={onToggleEdit}
-                        className="h-8 px-2.5 gap-1.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/70 active:scale-[0.95] transition-all duration-150 ease-out cursor-pointer"
-                    >
-                        {hasSkills ? (
-                            <>
-                                <PencilSquareIcon className="w-3.5 h-3.5 text-primary" />
-                                <span>Edit</span>
-                            </>
-                        ) : (
-                            <>
-                                <PlusIcon className="w-3.5 h-3.5 text-primary" />
-                                <span>Add Skills</span>
-                            </>
-                        )}
+                {!isEditing ? (
+                    <Button variant="ghost" size="sm" onClick={onToggleEdit} className="h-8 px-2.5 gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer">
+                        {hasSkills ? <><PencilSquareIcon className="w-3.5 h-3.5" />Edit</> : <><PlusIcon className="w-3.5 h-3.5" />Add</>}
                     </Button>
+                ) : (
+                    <button onClick={onToggleEdit} className="text-muted-foreground hover:text-foreground transition-colors">
+                        <XMarkIcon className="w-4 h-4" />
+                    </button>
                 )}
             </div>
 
-            {hasSkills ? (
-                <div className="flex flex-wrap gap-2 pt-1">
-                    {profile?.skills?.map(s => (
-                        <SkillPill
-                            key={s}
-                            skill={s}
-                            className="px-3 py-1 bg-card/90 hover:bg-muted/50 border border-border/70 hover:border-primary/40 text-foreground shadow-2xs transition-all duration-150 hover:-translate-y-0.5"
-                        />
-                    ))}
-                </div>
-            ) : (
-                <div
-                    onClick={onToggleEdit}
-                    className="p-8 text-center border border-dashed border-border/80 rounded-xl bg-muted/20 hover:bg-muted/40 hover:border-primary/40 transition-all duration-200 cursor-pointer group/empty"
-                >
-                    <p className="text-xs font-semibold text-muted-foreground group-hover/empty:text-foreground transition-colors">No skills added yet</p>
-                    <p className="text-[11px] text-muted-foreground/80 mt-1">Add your core technical and professional strengths to improve match scoring</p>
-                </div>
+            {/* Display mode */}
+            {!isEditing && (
+                hasSkills ? (
+                    <div className="flex flex-wrap gap-2">
+                        {profile?.skills?.map(s => (
+                            <SkillPill key={s} skill={s} className="px-3 py-1 border border-border/70 bg-muted/40" />
+                        ))}
+                    </div>
+                ) : (
+                    <div
+                        onClick={onToggleEdit}
+                        className="py-8 text-center border border-dashed border-border/80 rounded-xl bg-muted/20 hover:bg-muted/40 hover:border-primary/40 transition-all cursor-pointer"
+                    >
+                        <p className="text-xs font-semibold text-muted-foreground">No skills added yet</p>
+                        <p className="text-[11px] text-muted-foreground/70 mt-1">Click to add your skills</p>
+                    </div>
+                )
             )}
 
+            {/* Inline edit mode */}
             {isEditing && (
-                <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4 shadow-2xl animate-in fade-in duration-200">
-                    <div className="bg-card w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl border border-border/80 shadow-2xl p-6 sm:p-8 space-y-6 relative">
-                        <div className="flex justify-between items-center pb-3 border-b border-border/60">
-                            <div>
-                                <h3 className="font-bold text-lg text-foreground tracking-tight">Edit Skills</h3>
-                                <p className="text-xs text-muted-foreground mt-0.5">Select up to {MAX_SKILLS} key competencies ({skills.length}/{MAX_SKILLS})</p>
-                            </div>
-                            <button
-                                onClick={onToggleEdit}
-                                title="Close modal"
-                                className="h-8 w-8 rounded-lg border border-border/60 hover:bg-muted text-muted-foreground hover:text-foreground active:scale-[0.95] flex items-center justify-center transition-all duration-150 ease-out cursor-pointer"
-                            >
-                                <XMarkIcon className="w-4 h-4" />
-                            </button>
-                        </div>
-                        <div className="space-y-6 pb-44">
-                            <div className="relative flex gap-3" ref={skillRef}>
-                                <Input
-                                    value={skillInput}
-                                    className="h-10 rounded-lg border-border/80 text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary/60"
-                                    onChange={e => { setSkillInput(e.target.value); setSkillHighlight(-1); setSkillOpen(true); }}
-                                    onFocus={() => { setSkillOpen(true); setSkillHighlight(-1); }}
-                                    onKeyDown={e => {
-                                        if (e.key === 'ArrowDown') { e.preventDefault(); setSkillHighlight(h => Math.min(h + 1, filteredSkillOptions.length - 1)); }
-                                        else if (e.key === 'ArrowUp') { e.preventDefault(); setSkillHighlight(h => Math.max(h - 1, 0)); }
-                                        else if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            if (skillHighlight >= 0 && filteredSkillOptions[skillHighlight]) { handleAddSkillValue(filteredSkillOptions[skillHighlight]); setSkillInput(''); setSkillHighlight(-1); setSkillOpen(false); }
-                                            else handleAddSkill();
-                                        }
-                                        else if (e.key === 'Escape') setSkillOpen(false);
-                                    }}
-                                    disabled={saving || skills.length >= MAX_SKILLS}
-                                    placeholder={skills.length >= MAX_SKILLS ? `Maximum ${MAX_SKILLS} skills reached` : "Search skills (e.g. React, TypeScript, Python)..."}
-                                />
-                                <Button
-                                    onClick={handleAddSkill}
+                <div className="space-y-4">
+                    {/* Selected chips */}
+                    {skills.length > 0 && (
+                        <div className="flex flex-wrap gap-2 pb-3 border-b border-border/40">
+                            {skills.map(s => (
+                                <button
+                                    key={s}
                                     type="button"
-                                    disabled={saving || skills.length >= MAX_SKILLS}
-                                    variant="outline"
-                                    className="w-10 h-10 rounded-lg shrink-0 active:scale-[0.96] transition-all cursor-pointer"
-                                    title="Add skill"
+                                    onClick={() => toggleSkill(s)}
+                                    className="inline-flex items-center gap-1 bg-primary text-primary-foreground px-2.5 py-1 rounded-lg text-xs font-semibold hover:bg-primary/80 transition-colors cursor-pointer"
                                 >
-                                    <PlusIcon className="w-4 h-4" />
-                                </Button>
+                                    {s}<XMarkIcon className="w-3 h-3" />
+                                </button>
+                            ))}
+                        </div>
+                    )}
 
-                                {skillOpen && filteredSkillOptions.length > 0 && skills.length < MAX_SKILLS && (
-                                    <div className="absolute z-50 left-0 right-12 top-full mt-1.5 bg-card/95 backdrop-blur-xl border border-border/80 rounded-xl shadow-lg max-h-48 overflow-y-auto p-1.5 space-y-0.5">
-                                        {filteredSkillOptions.map((skill, idx) => (
-                                            <button
-                                                key={skill}
-                                                id={`skills-section-option-${idx}`}
-                                                type="button"
-                                                onMouseDown={() => { handleAddSkillValue(skill); setSkillInput(''); setSkillHighlight(-1); setSkillOpen(false); }}
-                                                className={cn(
-                                                    "w-full text-left px-3 py-2 text-xs font-medium rounded-lg transition-colors cursor-pointer",
-                                                    skillHighlight === idx ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted"
-                                                )}
-                                            >
-                                                <SkillPill skill={skill} className="bg-transparent border-transparent shadow-none pointer-events-none p-0" />
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                    {/* Search */}
+                    <div className="relative">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                        <Input
+                            value={skillInput}
+                            onChange={e => setSkillInput(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomSkill(); } }}
+                            placeholder="Search or type a skill…"
+                            className="pl-9 h-9 text-sm"
+                            disabled={saving || skills.length >= MAX_SKILLS}
+                            autoFocus
+                        />
+                        {skillInput.trim() && (
+                            <button
+                                type="button"
+                                onClick={addCustomSkill}
+                                disabled={saving || skills.length >= MAX_SKILLS}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded-md cursor-pointer"
+                            >
+                                Add
+                            </button>
+                        )}
+                    </div>
 
-                            {skills.length > 0 && (
-                                <div className="flex flex-wrap gap-2 pt-2">
-                                    {skills.map(s => (
-                                        <div key={s} className="inline-flex items-center gap-1 bg-primary/10 text-primary pr-1 py-1 rounded-lg text-xs font-semibold border border-primary/20 shadow-2xs transition-all duration-150">
-                                            <SkillPill skill={s} size="xs" className="bg-transparent border-transparent text-primary" />
-                                            <button
-                                                type="button"
-                                                onClick={() => setSkills(prev => (Array.isArray(prev) ? prev.filter(x => x !== s) : []))}
-                                                className="ml-1 p-0.5 rounded-md text-primary/70 hover:text-primary hover:bg-primary/15 transition-colors cursor-pointer"
-                                                title="Remove skill"
-                                            >
-                                                <XMarkIcon className="w-3.5 h-3.5" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            <div className="flex justify-end gap-3 pt-4 border-t border-border/60">
-                                <Button variant="outline" className="h-9 px-4 rounded-lg text-xs font-semibold active:scale-[0.96] transition-all cursor-pointer" onClick={onToggleEdit} disabled={saving}>Cancel</Button>
-                                <Button className="h-9 px-4 gap-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.96] shadow-sm transition-all cursor-pointer" onClick={onSave} disabled={saving}><CheckIcon className="w-3.5 h-3.5" /> Save</Button>
+                    {/* Skill grid */}
+                    {filteredSkillOptions.length > 0 ? (
+                        <div>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                                {skillInput ? 'Matching' : 'Suggested'}
+                            </p>
+                            <div className="flex flex-wrap gap-2 max-h-52 overflow-y-auto">
+                                {filteredSkillOptions.map(skill => {
+                                    const selected = skills.includes(skill);
+                                    const atLimit = !selected && skills.length >= MAX_SKILLS;
+                                    return (
+                                        <button
+                                            key={skill}
+                                            type="button"
+                                            onClick={() => toggleSkill(skill)}
+                                            disabled={saving || atLimit}
+                                            className={cn(
+                                                'px-3 py-1.5 rounded-xl text-xs font-medium border transition-all cursor-pointer',
+                                                selected
+                                                    ? 'bg-primary text-primary-foreground border-primary'
+                                                    : atLimit
+                                                        ? 'opacity-30 cursor-not-allowed border-border bg-muted/40 text-muted-foreground'
+                                                        : 'bg-background text-foreground border-border hover:border-primary/60 hover:bg-primary/5 hover:text-primary'
+                                            )}
+                                        >
+                                            {selected && <CheckIcon className="inline w-3 h-3 mr-1" />}{skill}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
+                    ) : skillInput.trim() ? (
+                        <p className="text-xs text-muted-foreground text-center py-4">Press Enter to add "{skillInput}"</p>
+                    ) : null}
+
+                    {/* Save / Cancel */}
+                    <div className="flex justify-end gap-3 pt-2 border-t border-border/40">
+                        <Button variant="outline" size="sm" onClick={onToggleEdit} disabled={saving}>Cancel</Button>
+                        <Button size="sm" onClick={onSave} disabled={saving}>
+                            <CheckIcon className="w-3.5 h-3.5 mr-1" />Save
+                        </Button>
                     </div>
                 </div>
             )}

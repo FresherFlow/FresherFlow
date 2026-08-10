@@ -28,7 +28,8 @@ import {
     UserIcon,
     BuildingOffice2Icon,
     LinkIcon,
-    UserGroupIcon
+    UserGroupIcon,
+    ShareIcon
 } from '@heroicons/react/24/outline';
 import {
     TrainFront,
@@ -40,6 +41,7 @@ export const DEFAULT_NAV_ITEMS = [
     { name: 'Jobs', href: '/jobs', icon: BriefcaseIcon, hasSubmenu: true },
     { name: 'Government', href: '/govt', icon: BuildingLibraryIcon, hasSubmenu: true },
     { name: 'Companies', href: '/companies', icon: BuildingOfficeIcon },
+    { name: 'Resources', href: '/resources', icon: BookmarkIcon },
     { name: 'Saved', href: '/saved', icon: BookmarkIcon },
     { name: 'Tracker', href: '/tracker', icon: ChartBarIcon },
     { name: 'Account', href: '/account', icon: UserCircleIcon, hasSubmenu: true },
@@ -86,7 +88,10 @@ export const ACCOUNT_NAV_ITEMS = [
     { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
 ];
 
-export function getNavContext(pathname: string): 'default' | 'account' | 'government' | 'jobs' {
+export function getNavContext(pathname: string): 'default' | 'account' | 'government' | 'jobs' | 'moderator' {
+    if (pathname.startsWith('/captions') || pathname.startsWith('/discovery')) {
+        return 'moderator';
+    }
     if (
         pathname.startsWith('/account') ||
         pathname.startsWith('/profile') ||
@@ -113,11 +118,15 @@ export function getNavContext(pathname: string): 'default' | 'account' | 'govern
     return 'default';
 }
 
-export function getNavItemsForContext(context: 'default' | 'account' | 'government' | 'jobs') {
+export function getNavItemsForContext(context: 'default' | 'account' | 'government' | 'jobs' | 'moderator') {
     switch (context) {
         case 'account': return ACCOUNT_NAV_ITEMS;
         case 'government': return GOVT_NAV_ITEMS;
         case 'jobs': return JOBS_NAV_ITEMS;
+        case 'moderator': return [
+            { name: 'Captions', href: '/captions', icon: ShareIcon }, 
+            { name: 'Discovery Engine', href: '/discovery', icon: ShieldCheckIcon, hasSubmenu: true }
+        ];
         default: return DEFAULT_NAV_ITEMS;
     }
 }

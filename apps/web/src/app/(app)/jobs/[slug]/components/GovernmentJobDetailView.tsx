@@ -1696,10 +1696,9 @@ export function GovernmentJobDetailView({
                         </div>
                     )}
 
-                    {/* Sidebar: Step-by-Step Application Process */}
-                    {((details as any).applicationProcess || (details.extraMetadata as any)?.applicationProcess) && 
-                     (((details as any).applicationProcess || (details.extraMetadata as any)?.applicationProcess).length > 0) && (() => {
-                        const steps = ((details as any).applicationProcess || (details.extraMetadata as any)?.applicationProcess) as string[];
+                    {(() => {
+                        const steps = ((details as any).applicationProcess || (details.extraMetadata as any)?.applicationProcess) as string[] | undefined;
+                        if (!steps || !Array.isArray(steps) || steps.length === 0) return null;
                         return (
                             <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-3">
                                 <div className="flex items-center gap-2 pb-2 border-b border-border/50">

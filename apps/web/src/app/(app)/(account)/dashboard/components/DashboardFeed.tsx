@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Opportunity } from '@fresherflow/types';
 import { SkeletonJobCard } from '@/ui/Skeleton';
 import JobCard from '@/features/opportunities/components/JobCard';
@@ -29,6 +30,7 @@ export const DashboardFeed = ({
     mobileStep,
     searchQuery
 }: DashboardFeedProps) => {
+    const router = useRouter();
     const desktopLimit = 24;
     const { targetRef: loadMoreRef, isIntersecting } = useIntersectionObserver({ threshold: 0.1, rootMargin: '400px' });
     const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -84,8 +86,8 @@ export const DashboardFeed = ({
                 ) : opportunities.length === 0 ? (
                     <div className="p-12 text-center border border-dashed border-border rounded-xl">
                         <p className="text-sm font-medium text-muted-foreground">No results found in this section.</p>
-                        <Button asChild variant="outline" className="mt-4 h-8 text-[10px] font-bold capitalize tracking-widest">
-                            <Link href="/opportunities">Browse all feed</Link>
+                        <Button onClick={() => router.push('/opportunities')} variant="outline" className="mt-4 h-8 text-[10px] font-bold capitalize tracking-widest">
+                            Browse all feed
                         </Button>
                     </div>
                 ) : (

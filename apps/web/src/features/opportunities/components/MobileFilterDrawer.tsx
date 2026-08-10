@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/ui/Button';
+import { SkillPill } from '@/ui/SkillPill';
 import { cn } from '@repo/ui/utils/cn';
 
 import { INDIAN_CITIES, INDIAN_STATES } from '@fresherflow/constants';
@@ -44,7 +45,7 @@ const CANONICAL_SKILLS = [
   'VueJS'
 ];
 
-type OpenSection = 'type' | 'location' | 'year' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | null;
+type OpenSection = 'type' | 'location' | 'year' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | 'source' | null;
 
 interface MobileFilterDrawerProps {
     isOpen: boolean;
@@ -69,6 +70,8 @@ interface MobileFilterDrawerProps {
     setDraftWorkMode?: (val: 'REMOTE' | 'HYBRID' | 'ON_SITE' | null) => void;
     draftSkills?: string[];
     setDraftSkills?: (val: string[]) => void;
+    draftSource?: string[];
+    setDraftSource?: (val: string[]) => void;
     isLoggedIn: boolean;
     pageType?: string;
     onApply: () => void;
@@ -149,6 +152,8 @@ export function MobileFilterDrawer({
     setDraftWorkMode,
     draftSkills,
     setDraftSkills,
+    draftSource,
+    setDraftSource,
     pageType,
     onApply,
     onClear,
@@ -176,6 +181,7 @@ export function MobileFilterDrawer({
         draftSector,
         draftQualification,
         draftCourse,
+        draftSource,
         draftClosingSoon ? 'closing' : null,
         draftShowOnlySaved ? 'saved' : null,
     ].filter(Boolean).length;
@@ -350,6 +356,32 @@ export function MobileFilterDrawer({
                                     ))}
                                 </div>
                             </Section>
+                            {setDraftSource && (
+                            <Section
+                                title="Source"
+                                isOpen={openSection === 'source'}
+                                onToggle={() => setOpenSection(openSection === 'source' ? null : 'source')}
+                            >
+                                <div className="flex flex-wrap gap-2">
+                                    {['Careers', 'Workday', 'Greenhouse', 'Lever', 'Ashby', 'BambooHR', 'iCIMS', 'Taleo'].map((src) => {
+                                        const isSelected = draftSource?.includes(src);
+                                        return (
+                                        <Pill
+                                            key={src}
+                                            active={isSelected || false}
+                                            onClick={() => {
+                                                const newSource = isSelected
+                                                    ? (draftSource || []).filter(s => s !== src)
+                                                    : [...(draftSource || []), src];
+                                                setDraftSource(newSource);
+                                            }}
+                                        >
+                                            {src}
+                                        </Pill>
+                                    )})}
+                                </div>
+                            </Section>
+                            )}
                             <Section
                                 title="Passout Year"
                                 isOpen={openSection === 'year'}
@@ -402,7 +434,7 @@ export function MobileFilterDrawer({
                                                 setDraftSkills(newSkills);
                                             }}
                                         >
-                                            {skill}
+                                            <SkillPill skill={skill} className="bg-transparent border-none p-0 h-auto text-inherit shadow-none" />
                                         </Pill>
                                     )})}
                                 </div>

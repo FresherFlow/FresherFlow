@@ -16,9 +16,11 @@ import { formatJobFeedTitle } from '@/features/opportunities/utils/formatJobFeed
 export interface UseCategoryPageStateProps {
     type: OpportunityType | null;
     initialData?: { opportunities: Opportunity[]; total: number; cachedAt?: number } | null;
+    initialFilters?: Partial<FilterBarFilters>;
+    canonicalRedirect?: boolean;
 }
 
-export function useCategoryPageState({ type: propType, initialData }: UseCategoryPageStateProps) {
+export function useCategoryPageState({ type: propType, initialData, initialFilters, canonicalRedirect }: UseCategoryPageStateProps) {
     const { user } = useAuth();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -26,7 +28,8 @@ export function useCategoryPageState({ type: propType, initialData }: UseCategor
     const urlType = searchParams?.get('type');
     const type = (urlType ? urlType.toUpperCase() : propType) as OpportunityType | null;
     const mode = searchParams?.get('mode');
-    const source = searchParams?.get('source');
+    const sourceParam = searchParams?.get('source');
+    const source = sourceParam ? sourceParam.split(',') : [];
     const sort = searchParams?.get('sort');
 
     const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
@@ -79,15 +82,16 @@ export function useCategoryPageState({ type: propType, initialData }: UseCategor
     const [govtPhase, setGovtPhase] = useState<GovtPhaseFilter>('ALL');
     const [govtCategory, setGovtCategory] = useState<GovtCategoryFilter>((searchParams?.get('category') as GovtCategoryFilter) || null);
     const [filters, setFilters] = useState<FilterBarFilters>({
-        location: searchParams?.get('location') || null, 
-        year: searchParams?.get('year') ? parseInt(searchParams.get('year')!, 10) : null, 
+        location: searchParams?.get('location') || initialFilters?.location || null, 
+        year: searchParams?.get('year') ? parseInt(searchParams.get('year')!, 10) : (initialFilters?.year || null), 
         closingSoon: searchParams?.get('closingSoon') === 'true', 
         saved: searchParams?.get('saved') === 'true', 
-        sector: searchParams?.get('sector') || null, 
-        qualification: searchParams?.get('qualification') || null, 
-        course: searchParams?.get('course') || null, 
-        workMode: searchParams?.getAll('mode').length ? searchParams.getAll('mode').map(m => m.toUpperCase()) : null, 
-        skills: searchParams?.get('skills') ? searchParams.get('skills')!.split(',') : [],
+        sector: searchParams?.get('sector') || initialFilters?.sector || null, 
+        qualification: searchParams?.get('qualification') || initialFilters?.qualification || null, 
+        course: searchParams?.get('course') || initialFilters?.course || null, 
+        workMode: searchParams?.getAll('mode').length ? searchParams.getAll('mode').map(m => m.toUpperCase()) : (initialFilters?.workMode || null), 
+        skills: searchParams?.get('skills') ? searchParams.get('skills')!.split(',') : (initialFilters?.skills || []),
+        source: searchParams?.get('source') ? searchParams.get('source')!.split(',') : (initialFilters?.source || []),
     });
     const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
     const [draftLoc, setDraftLoc] = useState<string | null>(null);
@@ -99,6 +103,7 @@ export function useCategoryPageState({ type: propType, initialData }: UseCategor
     const [draftCourse, setDraftCourse] = useState<string | null>(null);
     const [draftWorkMode, setDraftWorkMode] = useState<string[] | null>(null);
     const [draftSkills, setDraftSkills] = useState<string[]>([]);
+    const [draftSource, setDraftSource] = useState<string[]>([]);
     const [mounted, setMounted] = useState(false);
     const [visibleCount, setVisibleCount] = useState(20);
 
@@ -118,15 +123,16 @@ export function useCategoryPageState({ type: propType, initialData }: UseCategor
         setSearch(sp?.get('q') || '');
         setGovtCategory((sp?.get('category') as GovtCategoryFilter) || null);
         setFilters({
-            location: sp?.get('location') || null,
-            year: sp?.get('year') ? parseInt(sp.get('year')!, 10) : null,
+            location: sp?.get('location') || initialFilters?.location || null,
+            year: sp?.get('year') ? parseInt(sp.get('year')!, 10) : (initialFilters?.year || null),
             closingSoon: sp?.get('closingSoon') === 'true',
             saved: sp?.get('saved') === 'true',
-            sector: sp?.get('sector') || null,
-            qualification: sp?.get('qualification') || null,
-            course: sp?.get('course') || null,
-            workMode: sp?.getAll('mode').length ? sp.getAll('mode').map(m => m.toUpperCase()) : null,
-            skills: sp?.get('skills') ? sp.get('skills')!.split(',') : [],
+            sector: sp?.get('sector') || initialFilters?.sector || null,
+            qualification: sp?.get('qualification') || initialFilters?.qualification || null,
+            course: sp?.get('course') || initialFilters?.course || null,
+            workMode: sp?.getAll('mode').length ? sp.getAll('mode').map(m => m.toUpperCase()) : (initialFilters?.workMode || null),
+            skills: sp?.get('skills') ? sp.get('skills')!.split(',') : (initialFilters?.skills || []),
+            source: sp?.get('source') ? sp.get('source')!.split(',') : (initialFilters?.source || []),
         });
      
     }, [searchParams]);
@@ -134,14 +140,27 @@ export function useCategoryPageState({ type: propType, initialData }: UseCategor
     // Reset pagination when search or filters change
     useEffect(() => {
         setVisibleCount(20);
-    }, [search, type, filters.location, filters.sector, filters.qualification, filters.course, filters.year, filters.closingSoon, filters.saved, filters.workMode, filters.skills]);
+    }, [search, type, filters.location, filters.sector, filters.qualification, filters.course, filters.year, filters.closingSoon, filters.saved, filters.workMode, filters.skills, filters.source]);
 
     const mobileActiveCount =
         (filters.location ? 1 : 0) + (filters.closingSoon ? 1 : 0) + (filters.saved ? 1 : 0) +
-        (filters.sector ? 1 : 0) + (filters.qualification ? 1 : 0) + (filters.course ? 1 : 0) + (filters.year ? 1 : 0) + (filters.workMode ? 1 : 0) + (filters.skills && filters.skills.length > 0 ? 1 : 0);
+        (filters.sector ? 1 : 0) + (filters.qualification ? 1 : 0) + (filters.course ? 1 : 0) + (filters.year ? 1 : 0) + (filters.workMode ? 1 : 0) + (filters.skills && filters.skills.length > 0 ? 1 : 0) + (filters.source && filters.source.length > 0 ? 1 : 0);
 
     useEffect(() => {
         if (!mounted) return;
+
+        if (canonicalRedirect && initialFilters) {
+            let canonicalCleared = false;
+            if (initialFilters.skills && initialFilters.skills.length > 0 && (!filters.skills || filters.skills.length === 0)) canonicalCleared = true;
+            if (initialFilters.location && !filters.location) canonicalCleared = true;
+            if (initialFilters.year && !filters.year) canonicalCleared = true;
+            
+            if (canonicalCleared) {
+                router.push('/jobs');
+                return;
+            }
+        }
+
         const params = new URLSearchParams(searchParamsRef.current?.toString() || '');
         let changed = false;
 
@@ -186,10 +205,16 @@ export function useCategoryPageState({ type: propType, initialData }: UseCategor
             updateParam('skills', null);
         }
 
+        if (filters.source && filters.source.length > 0) {
+            updateParam('source', filters.source.join(','));
+        } else {
+            updateParam('source', null);
+        }
+
         if (changed) {
             router.replace(`?${params.toString()}`, { scroll: false });
         }
-    }, [search, govtCategory, filters.location, filters.year, filters.closingSoon, filters.saved, filters.sector, filters.qualification, filters.course, filters.skills, filters.workMode, mounted, router]);
+    }, [search, govtCategory, filters.location, filters.year, filters.closingSoon, filters.saved, filters.sector, filters.qualification, filters.course, filters.skills, filters.source, filters.workMode, mounted, router]);
 
     useEffect(() => {
         if (!mounted) return;
@@ -309,17 +334,18 @@ export function useCategoryPageState({ type: propType, initialData }: UseCategor
         setDraftShowOnlySaved(filters.saved); setDraftSector(filters.sector);
         setDraftQualification(filters.qualification); setDraftCourse(filters.course);
         setDraftWorkMode(filters.workMode); setDraftSkills(filters.skills || []);
+        setDraftSource(filters.source || []);
         setIsMobileFilterOpen(true);
     };
 
     const applyMobileFilters = () => {
-        setFilters({ location: draftLoc, year: draftYear, closingSoon: draftClosingSoon, saved: draftShowOnlySaved, sector: draftSector, qualification: draftQualification, course: draftCourse, workMode: draftWorkMode, skills: draftSkills });
+        setFilters({ location: draftLoc, year: draftYear, closingSoon: draftClosingSoon, saved: draftShowOnlySaved, sector: draftSector, qualification: draftQualification, course: draftCourse, workMode: draftWorkMode, skills: draftSkills, source: draftSource });
         setIsMobileFilterOpen(false);
     };
 
     const clearAll = () => {
         setSearch('');
-        setFilters({ location: null, year: null, closingSoon: false, saved: false, sector: null, qualification: null, course: null, workMode: null, skills: [] });
+        setFilters({ location: null, year: null, closingSoon: false, saved: false, sector: null, qualification: null, course: null, workMode: null, skills: [], source: [] });
     };
 
     return {
@@ -361,6 +387,7 @@ export function useCategoryPageState({ type: propType, initialData }: UseCategor
         draftCourse, setDraftCourse,
         draftWorkMode, setDraftWorkMode,
         draftSkills, setDraftSkills,
+        draftSource, setDraftSource,
         mobileActiveCount,
         openMobileFilters,
         applyMobileFilters,

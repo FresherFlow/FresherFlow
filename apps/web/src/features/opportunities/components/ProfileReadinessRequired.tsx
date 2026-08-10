@@ -2,7 +2,7 @@
 
 import { ShieldCheckIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/ui/Button';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface ProfileReadinessRequiredProps {
     percentage: number;
@@ -10,6 +10,7 @@ interface ProfileReadinessRequiredProps {
 }
 
 export function ProfileReadinessRequired({ percentage, message }: ProfileReadinessRequiredProps) {
+    const router = useRouter();
     return (
         <div className="p-10 md:p-16 text-center rounded-3xl border border-border bg-card/80 shadow-2xl">
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -35,11 +36,9 @@ export function ProfileReadinessRequired({ percentage, message }: ProfileReadine
                         </div>
                     </div>
                 </div>
-                <Button asChild className="h-12 px-8 text-sm font-bold capitalize tracking-widest">
-                    <Link href="/profile">
-                        Complete Profile
-                        <ChevronRightIcon className="w-4 h-4 ml-2" />
-                    </Link>
+                <Button onClick={() => router.push('/profile')} className="h-12 px-8 text-sm font-bold capitalize tracking-widest">
+                    Complete Profile
+                    <ChevronRightIcon className="w-4 h-4 ml-2" />
                 </Button>
             </div>
         </div>

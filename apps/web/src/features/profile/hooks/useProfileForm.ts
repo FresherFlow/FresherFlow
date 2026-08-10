@@ -61,7 +61,7 @@ export function useProfileForm(cityLimit = 5) {
     () =>
       COMMON_SKILLS.filter(
         (s) => s.toLowerCase().includes(skillInput.toLowerCase()) && !skills.includes(s)
-      ).slice(0, 10),
+      ).slice(0, 40),
     [skillInput, skills]
   );
 

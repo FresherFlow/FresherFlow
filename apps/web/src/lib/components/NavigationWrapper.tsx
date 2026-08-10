@@ -41,7 +41,8 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
         normalizedPathname.startsWith('/skills') ||
         normalizedPathname.startsWith('/location') ||
         normalizedPathname.startsWith('/batch') ||
-        normalizedPathname.startsWith('/roles');
+        normalizedPathname.startsWith('/roles') ||
+        normalizedPathname.startsWith('/resources');
 
     const authContext = useContext(AuthContext);
     const isAuthenticated = !!authContext?.user;

@@ -1,7 +1,7 @@
 'use client';
 
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { useContext } from 'react';
 import { AuthContext } from '@/lib/auth/AuthContext';
 import { ThemeToggle } from '@repo/ui/ThemeToggle';
@@ -16,6 +16,7 @@ export function TopUtilityBar() {
     const context = useContext(AuthContext);
     const user = context?.user;
     const logout = context?.logout;
+    const router = useRouter();
     const pathname = usePathname();
     const { theme, toggleTheme } = useTheme();
     const pendingSyncCount = useOfflineActionQueue(user?.id);
@@ -73,23 +74,17 @@ export function TopUtilityBar() {
                                     </div>
                                 </DropdownMenuLabel>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem asChild>
-                                    <Link href="/account" className="cursor-pointer flex items-center">
-                                        <Squares2X2Icon className="mr-2 h-4 w-4" />
-                                        <span>Account Hub</span>
-                                    </Link>
+                                <DropdownMenuItem onClick={() => router.push('/account')} className="cursor-pointer flex items-center">
+                                    <Squares2X2Icon className="mr-2 h-4 w-4" />
+                                    <span>Account Hub</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                    <Link href="/profile" className="cursor-pointer flex items-center">
-                                        <UserCircleIcon className="mr-2 h-4 w-4" />
-                                        <span>Profile</span>
-                                    </Link>
+                                <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer flex items-center">
+                                    <UserCircleIcon className="mr-2 h-4 w-4" />
+                                    <span>Profile</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                    <Link href="/settings" className="cursor-pointer flex items-center">
-                                        <Cog6ToothIcon className="mr-2 h-4 w-4" />
-                                        <span>Account Settings</span>
-                                    </Link>
+                                <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer flex items-center">
+                                    <Cog6ToothIcon className="mr-2 h-4 w-4" />
+                                    <span>Account Settings</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem className="text-red-600 dark:text-red-400 focus:bg-red-500/10 focus:text-red-600 dark:focus:bg-red-500/20 dark:focus:text-red-400 cursor-pointer font-medium" onSelect={handleLogout}>

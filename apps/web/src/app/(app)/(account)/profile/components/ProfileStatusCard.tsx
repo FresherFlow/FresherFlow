@@ -40,10 +40,8 @@ export const ProfileStatusCard = ({ pct, username, className }: ProfileStatusCar
                 </div>
             </div>
             {username && (
-                <Button asChild variant="secondary" size="sm" className="w-full h-9">
-                    <Link href={`/u/${username}`} target="_blank" rel="noopener noreferrer">
-                        View Profile <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5 ml-1.5" />
-                    </Link>
+                <Button variant="secondary" size="sm" className="w-full h-9" onClick={() => window.open(`/u/${username}`, '_blank')}>
+                    View Profile <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5 ml-1.5" />
                 </Button>
             )}
         </div>

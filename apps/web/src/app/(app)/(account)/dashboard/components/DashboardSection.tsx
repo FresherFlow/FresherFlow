@@ -2,6 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 interface DashboardSectionProps {
     title: string;
@@ -24,6 +25,7 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({
     children,
     className = '',
 }) => {
+    const router = useRouter();
     return (
         <section className={`space-y-4 ${className}`}>
             <div className="flex items-center justify-between gap-4 pb-2 border-b border-border/40">
@@ -53,13 +55,13 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({
                 </div>
 
                 {viewAllHref && (
-                    <Link
-                        href={viewAllHref}
-                        className="group flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors shrink-0"
+                    <div
+                        onClick={() => router.push(viewAllHref)}
+                        className="group flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors shrink-0 cursor-pointer"
                     >
                         <span>{viewAllLabel}</span>
                         <span className="inline-block transition-transform group-hover:translate-x-0.5">&rarr;</span>
-                    </Link>
+                    </div>
                 )}
             </div>
 

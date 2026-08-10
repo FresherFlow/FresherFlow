@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
-import ProgrammaticHub from '@/features/opportunities/components/ProgrammaticHub';
+import { Suspense } from 'react';
+import CategoryPage from '@/features/opportunities/components/CategoryPage';
+import { FeedPageSkeleton } from '@/ui/Skeleton';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
 import { unstable_noStore } from 'next/cache';
-import { extractHubRelations } from '@/features/opportunities/utils/hubLinking';
 
 export const revalidate = false;
 export const dynamicParams = false;
@@ -143,28 +144,18 @@ export default async function RolePage({ params }: Props) {
         notFound();
     }
 
-    const { topCompanies, relatedSkills, relatedLocations } = extractHubRelations(filtered, { role: slug });
-
-    const lastUpdated = feed?.generatedAt 
-        ? new Date(feed.generatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-        : new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-
-    const title = `${roleInfo.label} Jobs for Freshers`;
-    const description = `Find verified entry-level openings and off-campus placements for ${roleInfo.label} candidates.`;
     const seoText = `Looking for ${roleInfo.label} positions as a fresher or recent graduate? We manually aggregate and verify every off-campus drive, associate role, and tech internship matching these qualifications. Apply directly on the official careers portals using the links provided. Verify candidate criteria, batch years, and key skills to maximize your application success.`;
 
     return (
-        <ProgrammaticHub
-            title={title}
-            description={description}
-            seoText={seoText}
-            opportunities={filtered}
-            lastUpdated={lastUpdated}
-            breadcrumbLabel={roleInfo.label}
-            breadcrumbUrl={`/roles/${slug}`}
-            topCompanies={topCompanies}
-            relatedSkills={relatedSkills}
-            relatedLocations={relatedLocations}
-        />
+        <Suspense fallback={<FeedPageSkeleton />}>
+            <CategoryPage 
+                type={null} 
+                initialData={{
+                    opportunities: filtered,
+                    total: filtered.length,
+                    cachedAt: feed?.generatedAt ? new Date(feed.generatedAt).getTime() : Date.now(),
+                }} 
+            />
+        </Suspense>
     );
 }

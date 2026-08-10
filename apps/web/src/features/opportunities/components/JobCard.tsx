@@ -76,6 +76,41 @@ type JobWithActions = Opportunity & {
     matchReason?: string;
 };
 
+const getAtsName = (link?: string | null) => {
+    if (!link) return null;
+    try {
+        const url = new URL(link);
+        const host = url.hostname.toLowerCase();
+        
+        if (host.includes('greenhouse.io')) return 'Greenhouse';
+        if (host.includes('lever.co')) return 'Lever';
+        if (host.includes('myworkdayjobs.com') || host.includes('workday.com')) return 'Workday';
+        if (host.includes('ashbyhq.com')) return 'Ashby';
+        if (host.includes('bamboohr.com')) return 'BambooHR';
+        if (host.includes('breezy.hr')) return 'BreezyHR';
+        if (host.includes('smartrecruiters.com')) return 'SmartRecruiters';
+        if (host.includes('workable.com')) return 'Workable';
+        if (host.includes('icims.com')) return 'iCIMS';
+        if (host.includes('jobvite.com')) return 'Jobvite';
+        if (host.includes('recruitee.com')) return 'Recruitee';
+        if (host.includes('phenompro.com') || host.includes('phenom.com')) return 'Phenom';
+        if (host.includes('taleo.net')) return 'Taleo';
+        if (host.includes('successfactors.com') || host.includes('successfactors.eu')) return 'SuccessFactors';
+        if (host.includes('darwinbox.in') || host.includes('darwinbox.com')) return 'Darwinbox';
+        if (host.includes('eightfold.ai')) return 'Eightfold';
+        if (host.includes('mercor.com')) return 'Mercor';
+        
+        if (host.includes('careers')) return 'Careers';
+        
+        const parts = host.split('.');
+        if (parts.length >= 2) {
+            const domain = parts[parts.length - 2];
+            return domain.charAt(0).toUpperCase() + domain.slice(1);
+        }
+    } catch {}
+    return null;
+};
+
 
 function getVisibleSkills(skills: string[] = [], budget: number = 30) {
     const visible: string[] = [];
@@ -140,7 +175,6 @@ export default function JobCard({
     searchedSkill,
     className
 }: JobCardProps) {
-    const [isNavigating, setIsNavigating] = useState(false);
     const [mounted, setMounted] = useState(false);
     useEffect(() => {
         setMounted(true);
@@ -208,6 +242,14 @@ export default function JobCard({
 
     const skillsBudget = variant === 'compact' ? 52 : 80;
     const { visible: visibleSkills, remainingCount } = getVisibleSkills(orderedSkills, skillsBudget);
+
+    const selectedSkills = useMemo(() => {
+        const skills = searchParams?.getAll('skills') || [];
+        if (skills.length > 0) return skills.map(s => s.toLowerCase());
+        const str = searchParams?.get('skills');
+        if (str) return str.split(',').map(s => s.trim().toLowerCase());
+        return [];
+    }, [searchParams]);
 
     const targetId = jobId || job.id;
     const isJobSaved = isSaved !== undefined ? isSaved : Boolean(savedJobsMap[targetId] || savedJobsMap[job.id]);
@@ -375,6 +417,18 @@ export default function JobCard({
 
         return (
             <div
+                onClick={(e) => {
+                    // Ignore clicks on interactive elements
+                    if ((e.target as HTMLElement).closest('a, button, [role="menuitem"]')) {
+                        return;
+                    }
+                    if (onClick) {
+                        onClick(e as any);
+                    }
+                    if (!e.defaultPrevented) {
+                        router.push(getOpportunityPathFromItem(job));
+                    }
+                }}
                 className={cn(
                     "group relative bg-card border rounded-xl p-3.5 flex items-start gap-3 md:gap-3.5 hover:border-primary/40 hover:shadow-md transition-all duration-200 cursor-pointer",
                     isSelected ? "border-primary/70 ring-2 ring-primary/10 shadow-md" : "border-transparent",
@@ -382,12 +436,6 @@ export default function JobCard({
                     className
                 )}
             >
-                <Link
-                    href={getOpportunityPathFromItem(job)}
-                    onClick={onClick}
-                    aria-label={`View ${job.title}`}
-                    className="absolute inset-0 z-10"
-                />
 
                 {/* Left Section: Logo */}
                 <CompanyLogo
@@ -405,10 +453,19 @@ export default function JobCard({
                     {/* Header info: Title + Company + Location */}
                     <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0 flex-1">
-                            <h2 className="text-[15px] font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug">
-                                {job.normalizedRole || job.title}
-                            </h2>
-                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5 truncate">
+                            <div className="focus:outline-none cursor-pointer" onClick={(e) => {
+                                if (onClick) {
+                                    onClick(e as any);
+                                }
+                                if (!e.defaultPrevented) {
+                                    router.push(getOpportunityPathFromItem(job));
+                                }
+                            }}>
+                                <h2 className="text-[15px] font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug">
+                                    {job.normalizedRole || job.title}
+                                </h2>
+                            </div>
+                            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-0.5 truncate">
                                 <span className="font-semibold text-foreground/80 truncate shrink-0 max-w-[120px] md:max-w-none">{job.company}</span>
                                 <span className="text-muted-foreground/40 shrink-0">•</span>
                                 <span className="inline-flex items-center gap-1 truncate min-w-0">
@@ -422,7 +479,7 @@ export default function JobCard({
                         <div className="flex items-center gap-2 shrink-0 relative z-20 pointer-events-auto">
                             {getPostedLabel() && (
                                 <span className={cn(
-                                    "text-[10px] font-medium text-muted-foreground",
+                                    "text-xs font-medium text-muted-foreground",
                                     isFreshlyPosted() && "text-primary"
                                 )}>
                                     {getPostedLabel()}
@@ -468,7 +525,7 @@ export default function JobCard({
                     <div className="flex flex-wrap items-center gap-2">
                         {/* Work Mode Badge */}
                         {workModeLabel && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] md:text-xs font-medium text-muted-foreground bg-muted border border-border/50 shrink-0">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium text-muted-foreground bg-muted border border-border/50 shrink-0">
                                 {workModeLabel.toLowerCase() === 'remote' ? (
                                     <HomeIcon className="w-3.5 h-3.5" />
                                 ) : workModeLabel.toLowerCase() === 'hybrid' ? (
@@ -482,32 +539,43 @@ export default function JobCard({
 
                         {/* Salary Badge */}
                         {salaryLabel && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] md:text-xs font-semibold shrink-0 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold shrink-0 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
                                 <CurrencyRupeeIcon className="w-3.5 h-3.5" />
                                 {salaryLabel}
                             </span>
                         )}
                         
                         {/* Type Badge (Job/Intern/Walk-in) */}
-                        <Link 
-                            href={job.type === 'INTERNSHIP' ? '/jobs?type=internship' : job.type === 'WALKIN' ? '/jobs?type=walkin' : '/jobs'}
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] md:text-xs font-semibold shrink-0 bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-colors z-20 relative pointer-events-auto"
+                        <span 
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold shrink-0 bg-primary/10 border border-primary/20 text-primary transition-colors z-20 relative pointer-events-auto"
                         >
                             {isDrive ? 'Drive' : job.type === 'INTERNSHIP' ? 'Intern' : job.type === 'WALKIN' ? 'Walk-in' : 'Job'}
-                        </Link>
+                        </span>
+                        
+                        {/* ATS Badge */}
+                        {(() => {
+                            const ats = getAtsName(job.applyLink || (job as any).sourceLink);
+                            if (ats) {
+                                return (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium text-muted-foreground bg-muted border border-border/50 shrink-0">
+                                        {ats}
+                                    </span>
+                                );
+                            }
+                            return null;
+                        })()}
 
                         {/* Govt / Expiry Badge */}
                         {isGovernment && govtStatusMeta ? (
                             <span className={cn(
-                                "inline-flex items-center px-1.5 py-0.5 border text-[10px] md:text-xs font-medium rounded",
+                                "inline-flex items-center px-2 py-0.5 border text-xs font-medium rounded",
                                 govtStatusMeta.className
                             )}>
                                 {govtStatusMeta.label}
                             </span>
                         ) : !isGovernment && job.expiresAt && (
                             <span className={cn(
-                                "inline-flex items-center gap-1 px-1.5 py-0.5 border text-[10px] md:text-xs font-medium rounded",
+                                "inline-flex items-center gap-1 px-2 py-0.5 border text-xs font-medium rounded",
                                 isExpired()
                                     ? 'bg-destructive/5 border-destructive/25 text-destructive'
                                     : 'bg-muted/70 border-border/70 text-foreground/70'
@@ -529,13 +597,16 @@ export default function JobCard({
                                 {skillsList.map(s => (
                                     <SkillPill
                                         key={s}
-                                        skill={s}
-                                        size="xs"
-                                        className="py-0.5 text-[10px]"
+                                        skill={s.charAt(0).toUpperCase() + s.slice(1)}
+                                        size="sm"
+                                        className={cn(
+                                            "py-0.5 text-xs",
+                                            selectedSkills.includes(s.toLowerCase()) && "!bg-indigo-50 !text-indigo-700 !border-indigo-200"
+                                        )}
                                     />
                                 ))}
                                 {skillOverflow > 0 && (
-                                    <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-muted border border-border/50 text-muted-foreground">
+                                    <span className="px-2 py-0.5 text-xs font-medium rounded bg-muted border border-border/50 text-muted-foreground">
                                         +{skillOverflow}
                                     </span>
                                 )}
@@ -574,6 +645,17 @@ export default function JobCard({
     // ── VERTICAL variant (legacy/government) ──────────────────────────────────────────────────
     return (
         <div
+            onClick={(e) => {
+                if ((e.target as HTMLElement).closest('a, button, [role="menuitem"]')) {
+                    return;
+                }
+                if (onClick) {
+                    onClick(e as any);
+                }
+                if (!e.defaultPrevented) {
+                    router.push(getOpportunityPathFromItem(job));
+                }
+            }}
             className={cn(
                 "group relative bg-card border rounded-2xl p-3.5 md:p-4 shadow-xs transition-all duration-200 ease-out hover:shadow-md hover:border-primary/40 flex flex-col justify-start gap-2.5 overflow-hidden w-full h-auto",
                 isSelected
@@ -584,21 +666,8 @@ export default function JobCard({
                 className
             )}
         >
-            <Link
-                href={getOpportunityPathFromItem(job)}
-                onClick={(e) => {
-                    if (onClick) onClick(e as any);
-                    if (!e.defaultPrevented && !isNavigating) setIsNavigating(true);
-                }}
-                aria-label={`View ${job.title}`}
-                className="absolute inset-0 z-10"
-            />
 
-            {isNavigating && (
-                <div className="absolute inset-0 z-50 bg-background/50 flex items-center justify-center backdrop-blur-[1px] rounded-2xl">
-                    <ArrowPathIcon className="w-6 h-6 text-primary animate-spin" />
-                </div>
-            )}
+
 
             {/* Top Bar: Role Title + 3-dots Menu */}
             <div className="flex items-start justify-between gap-3 relative z-20 pointer-events-none">
@@ -669,22 +738,31 @@ export default function JobCard({
                         {job.company}
                     </span>
                     <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                        <Link
-                            href={isGovernment ? '/govt' : job.type === 'INTERNSHIP' ? '/jobs?type=internship' : job.type === 'WALKIN' ? '/jobs?type=walkin' : '/jobs'}
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex shrink-0 items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors pointer-events-auto"
+                        <span
+                            className="inline-flex shrink-0 items-center px-2 py-0.5 text-xs font-medium rounded bg-primary/10 text-primary border border-primary/20 transition-colors pointer-events-auto"
                         >
                             {isDrive ? 'Drive' : isGovernment ? ((job as any).governmentJobDetails?.jobCategory?.[0] || 'Govt') : (job.employmentType || job.type) === 'INTERNSHIP' || job.type === 'INTERNSHIP' ? 'Intern' : (job.employmentType || job.type) === 'WALKIN' || job.type === 'WALKIN' ? 'Walk-in' : 'Full-time'}
-                        </Link>
+                        </span>
+                        {(() => {
+                            const ats = getAtsName(job.applyLink || (job as any).sourceLink);
+                            if (ats) {
+                                return (
+                                    <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-muted/80 text-foreground text-xs font-bold border border-border/70">
+                                        {ats}
+                                    </span>
+                                );
+                            }
+                            return null;
+                        })()}
                         {heatBadge && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-500 text-[9px] font-bold uppercase border border-amber-500/20">
-                                <FireIcon className="w-2.5 h-2.5" />
+                            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-500 text-xs font-bold uppercase border border-amber-500/20">
+                                <FireIcon className="w-3.5 h-3.5" />
                                 {heatBadge}
                             </span>
                         )}
                         {isTrusted && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-muted/80 text-foreground text-[9px] font-bold uppercase border border-border/70">
-                                <CheckBadgeIcon className="w-2.5 h-2.5" />
+                            <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-muted/80 text-foreground text-xs font-bold uppercase border border-border/70">
+                                <CheckBadgeIcon className="w-3.5 h-3.5" />
                                 Trusted
                             </span>
                         )}
@@ -693,11 +771,11 @@ export default function JobCard({
             </div>
 
             {/* Location + Salary */}
-            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                <Link href={`/jobs?location=${encodeURIComponent(locationInfo.shortLabel)}`} onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 min-w-0 hover:text-primary transition-colors">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                <div onClick={(e) => { e.stopPropagation(); router.push(`/jobs?location=${encodeURIComponent(locationInfo.shortLabel)}`); }} className="inline-flex items-center gap-1 min-w-0 hover:text-primary transition-colors cursor-pointer">
                     <MapPinIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
                     <span className="truncate" title={locationInfo.fullLabel}>{locationInfo.shortLabel}</span>
-                </Link>
+                </div>
                 {salaryLabel && (
                     <span className="inline-flex items-center gap-1 min-w-0">
                         <CurrencyRupeeIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
@@ -705,7 +783,7 @@ export default function JobCard({
                     </span>
                 )}
                 {isGovernment && totalVacancies && (
-                    <span className="font-semibold text-foreground bg-muted/60 px-1.5 py-0.5 rounded border border-border/40 text-[10px]">
+                    <span className="font-semibold text-foreground bg-muted/60 px-2 py-0.5 rounded border border-border/40 text-xs">
                         Vacancies: <span className="text-primary font-bold">{Number(totalVacancies).toLocaleString('en-IN')}</span>
                     </span>
                 )}
@@ -721,24 +799,26 @@ export default function JobCard({
                             effectiveSearchQuery.toLowerCase().includes(skill.toLowerCase())
                         ));
                         return (
-                            <Link key={`${skill}-${idx}`} href={`/jobs?skills=${encodeURIComponent(skill)}`} onClick={(e) => e.stopPropagation()}>
+                            <div key={`${skill}-${idx}`} onClick={(e) => { e.stopPropagation(); router.push(`/jobs?skills=${encodeURIComponent(skill)}`); }} className="cursor-pointer">
                                 <SkillPill
-                                    skill={skill}
+                                    skill={skill.charAt(0).toUpperCase() + skill.slice(1)}
                                     size="xs"
                                     className={cn(
                                         "hover:bg-primary/10 hover:text-primary transition-colors cursor-pointer",
-                                        isSearched
+                                        selectedSkills.includes(skill.toLowerCase())
+                                            ? "!bg-indigo-50 !text-indigo-700 !border-indigo-200"
+                                            : isSearched
                                             ? "bg-primary/20 text-primary border-primary/30 font-bold ring-1 ring-primary/20"
                                             : isMatched
                                                 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
                                                 : ""
                                     )}
                                 />
-                            </Link>
+                            </div>
                         );
                     })}
                     {remainingCount > 0 && (
-                        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-muted text-muted-foreground border border-border/40 whitespace-nowrap shrink-0">
+                        <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-muted text-muted-foreground border border-border/40 whitespace-nowrap shrink-0">
                             +{remainingCount}
                         </span>
                     )}

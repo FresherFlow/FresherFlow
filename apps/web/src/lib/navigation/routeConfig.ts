@@ -151,6 +151,15 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             icon: BuildingLibraryIcon,
         },
         {
+            href: '/resources',
+            label: 'Resources',
+            mobileTitle: 'Resources',
+            mobileLabel: 'Resources',
+            showInDesktop: true,
+            showInMobileTabs: false,
+            icon: BuildingLibraryIcon,
+        },
+        {
             href: '/account',
             label: 'Account',
             mobileTitle: 'Account',

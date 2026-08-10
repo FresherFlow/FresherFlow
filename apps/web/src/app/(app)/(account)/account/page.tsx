@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { AuthGate, ProfileGate } from '@/lib/components/ProfileGate';
-import toast from 'react-hot-toast';
+
 import {
     UserIcon,
     BookmarkIcon,
@@ -13,15 +13,12 @@ import {
     ChatBubbleLeftRightIcon,
     ArrowRightIcon,
     ArrowLeftIcon,
-    ArrowLeftOnRectangleIcon,
     CheckBadgeIcon,
-    GlobeAltIcon,
     LinkIcon,
     AcademicCapIcon,
     Cog6ToothIcon,
     BuildingOfficeIcon,
     UserGroupIcon,
-    ShareIcon,
     PencilSquareIcon,
 } from '@heroicons/react/24/outline';
 import { VisibilitySettingsCard } from '@/features/account/components/VisibilitySettingsCard';
@@ -30,23 +27,7 @@ export default function AccountHubPage() {
     const router = useRouter();
     const { user, profile } = useAuth();
 
-    const handleSharePlatform = async () => {
-        const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}/signup` : 'https://fresherflow.in';
-        if (navigator.share) {
-            try {
-                await navigator.share({
-                    title: 'FresherFlow',
-                    text: 'Discover top off-campus jobs and walk-in drives for freshers on FresherFlow!',
-                    url: shareUrl,
-                });
-            } catch {
-                // User cancelled share
-            }
-        } else {
-            await navigator.clipboard.writeText(shareUrl);
-            toast.success('Link copied to clipboard!');
-        }
-    };
+
 
     const initials = (user?.fullName || user?.username || 'U')
         .split(' ')
@@ -199,69 +180,19 @@ export default function AccountHubPage() {
                                     </div>
                                 </div>
 
-                                {/* Actions */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                                    {!user?.username ? (
-                                        <Link
-                                            href="/choose-username"
-                                            className="col-span-2 py-2 px-3 bg-primary text-primary-foreground text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-2 shadow-sm"
-                                        >
-                                            <GlobeAltIcon className="w-4 h-4" />
-                                            <span>Set Unique Handle</span>
-                                        </Link>
-                                    ) : (
-                                        <>
-                                            <Link
-                                                href={`/u/${user.username}`}
-                                                target="_blank"
-                                                className="py-2 px-3 bg-muted hover:bg-muted/80 text-foreground text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-1.5"
-                                            >
-                                                <GlobeAltIcon className="w-4 h-4 text-primary shrink-0" />
-                                                <span className="truncate">Public Link</span>
-                                            </Link>
-                                            <Link
-                                                href="/profile"
-                                                className="py-2 px-3 bg-primary text-primary-foreground text-xs font-bold rounded-xl hover:bg-primary/90 transition-colors flex items-center justify-center gap-1.5 shadow-sm"
-                                            >
-                                                <PencilSquareIcon className="w-4 h-4 shrink-0" />
-                                                <span className="truncate">Edit Profile</span>
-                                            </Link>
-                                        </>
-                                    )}
+                                <div className="pt-1">
+                                    <Link
+                                        href="/profile"
+                                        className="w-full py-2 px-3 bg-primary text-primary-foreground text-xs font-bold rounded-xl hover:bg-primary/90 transition-colors flex items-center justify-center gap-1.5 shadow-sm"
+                                    >
+                                        <PencilSquareIcon className="w-4 h-4 shrink-0" />
+                                        <span>Edit Profile</span>
+                                    </Link>
                                 </div>
                             </div>
 
                             {/* Card 2: Merged Visibility & Discoverability Card */}
                             {profile && <VisibilitySettingsCard />}
-
-                            {/* Card 3: Quick Actions (Share & Sign Out) */}
-                            <div className="bg-card border border-border/60 rounded-2xl p-4 sm:p-5 shadow-sm space-y-4">
-                                <div>
-                                    <h3 className="text-xs font-bold text-foreground">Invite Friends & Community</h3>
-                                    <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
-                                        Share FresherFlow with freshers seeking off-campus job opportunities.
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={handleSharePlatform}
-                                    className="w-full py-2 px-4 bg-primary text-primary-foreground font-bold text-xs rounded-xl hover:bg-primary/90 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-                                >
-                                    <ShareIcon className="w-4 h-4" />
-                                    <span>Share Platform</span>
-                                </button>
-
-                                <div className="pt-2 border-t border-border/40 flex items-center justify-between gap-3">
-                                    <span className="text-xs text-muted-foreground font-medium">Session</span>
-                                    <Link
-                                        href="/logout"
-                                        className="px-3 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 shrink-0"
-                                    >
-                                        <ArrowLeftOnRectangleIcon className="w-3.5 h-3.5" />
-                                        <span>Log Out</span>
-                                    </Link>
-                                </div>
-                            </div>
                         </div>
 
                         {/* RIGHT COLUMN: Grouped Account Links Grid */}

@@ -44,7 +44,7 @@ function TopHeaderBarContent() {
         else adminTitle = formatSegment(adminPage);
     }
 
-    const isFeedRoute = !isAdminRoute && ['jobs', 'internships', 'walk-ins', 'remote', 'government-jobs', 'hackathons'].includes(segments[0]) && segments.length === 1;
+    const isFeedRoute = !isAdminRoute && ['jobs', 'internships', 'walk-ins', 'remote', 'government-jobs', 'hackathons', 'resources'].includes(segments[0]) && segments.length === 1;
     return (
         <div 
             className="hidden md:flex fixed top-0 right-0 h-14 items-center border-b border-border/40 bg-background/95 backdrop-blur-sm z-[80] pr-6 px-5 transition-[left] duration-[600ms] ease-[cubic-bezier(0.7,0,0,1)]"

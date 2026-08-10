@@ -127,6 +127,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         saved: false,
         workMode: null,
         skills: [],
+        source: [],
     });
 
     // Mobile draft state (kept separate so apply is atomic)
@@ -139,6 +140,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
     const [draftSector, setDraftSector] = useState<string | null>(null);
     const [draftQualification, setDraftQualification] = useState<string | null>(null);
     const [draftCourse, setDraftCourse] = useState<string | null>(null);
+    const [draftSource, setDraftSource] = useState<string[]>([]);
 
     const mobileActiveCount =
         (filters.location ? 1 : 0) +
@@ -147,7 +149,8 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         (filters.sector ? 1 : 0) +
         (filters.qualification ? 1 : 0) +
         (filters.course ? 1 : 0) +
-        (filters.year ? 1 : 0);
+        (filters.year ? 1 : 0) +
+        (filters.source && filters.source.length > 0 ? 1 : 0);
 
     const {
         filteredOpps,
@@ -166,13 +169,14 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         qualification: filters.qualification,
         course: filters.course,
         selectedYear: filters.year,
+        source: filters.source,
         initialData,
     });
 
     // Reset visible count when filters change
     useEffect(() => {
         setVisibleCount(PAGE_SIZE);
-    }, [search, selectedType, filters.location, filters.sector, filters.qualification, filters.course, filters.year, filters.closingSoon, filters.saved]);
+    }, [search, selectedType, filters.location, filters.sector, filters.qualification, filters.course, filters.year, filters.closingSoon, filters.saved, filters.source]);
 
     // Push filtered count to TopHeaderBar
     useEffect(() => {
@@ -230,6 +234,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         setDraftSector(filters.sector);
         setDraftQualification(filters.qualification);
         setDraftCourse(filters.course);
+        setDraftSource(filters.source);
         setIsMobileFilterOpen(true);
     };
 
@@ -245,6 +250,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
             saved: draftShowOnlySaved,
             workMode: null,
             skills: [],
+            source: draftSource,
         });
         setIsMobileFilterOpen(false);
     };
@@ -375,6 +381,8 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                     setDraftQualification={setDraftQualification}
                     draftCourse={draftCourse}
                     setDraftCourse={setDraftCourse}
+                    draftSource={draftSource}
+                    setDraftSource={setDraftSource}
                     isLoggedIn={!!user}
                     onApply={applyMobileFilters}
                     onClear={() => {
@@ -386,6 +394,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                         setDraftSector(null);
                         setDraftQualification(null);
                         setDraftCourse(null);
+                        setDraftSource([]);
                     }}
                 />
 
@@ -413,7 +422,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                                     onClearFilters={() => {
                                         setSearch('');
                                         updateType(null);
-                                        setFilters({ location: null, sector: null, qualification: null, course: null, year: null, closingSoon: false, saved: false, workMode: null, skills: [] });
+                                        setFilters({ location: null, sector: null, qualification: null, course: null, year: null, closingSoon: false, saved: false, workMode: null, skills: [], source: [] });
                                     }}
                                 />
                                 {(visibleCount < filteredOpps.length || isLoadingMore) && (

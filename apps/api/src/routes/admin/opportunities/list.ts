@@ -99,8 +99,28 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
                 includeExpired: statusFilter === 'EXPIRED' || !statusFilter,
                 includeDeleted: statusFilter === 'DELETED',
             });
+
+            // Hydrate the raw search hits with full Prisma relations
+            let fullOpportunities: any[] = [];
+            if (searchResults.hits.length > 0) {
+                const hitIds = searchResults.hits.map(h => h.id);
+                const fetchedOpportunities = await prisma.opportunity.findMany({
+                    where: { id: { in: hitIds } },
+                    include: {
+                        ...(shouldIncludeWalkInDetails ? { walkInDetails: true } : {}),
+                        governmentJobDetails: true,
+                        ...(shouldIncludeCounts ? { _count: { select: { actions: true, feedback: true } } } : {}),
+                        socialPosts: true,
+                    }
+                });
+                // Restore the original search ranking order
+                fullOpportunities = hitIds
+                    .map(id => fetchedOpportunities.find(o => o.id === id))
+                    .filter(Boolean);
+            }
+
             return res.json({
-                opportunities: searchResults.hits,
+                opportunities: fullOpportunities,
                 total: searchResults.totalHits ?? 0,
                 nextCursor: searchResults.nextCursor,
                 page: pageNumber,

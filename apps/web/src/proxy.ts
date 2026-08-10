@@ -109,7 +109,9 @@ export default function middleware(req: NextRequest) {
         }
     } else {
         // Hide standalone pages on the main domain (redirect to 404)
-        if (pathname === '/captions' || pathname === '/discovery') {
+        // EXCEPT on localhost for local development
+        const isLocalhost = host.startsWith('localhost') || host.startsWith('127.0.0.1');
+        if (!isLocalhost && (pathname === '/captions' || pathname === '/discovery')) {
             const url = req.nextUrl.clone();
             url.pathname = '/404';
             return NextResponse.rewrite(url);

@@ -75,17 +75,6 @@ export function HeadlineSection({ isEditingExternal, onCloseExternal }: Headline
         <div className="w-full">
             <div className="flex justify-between items-start mb-2">
                 <h3 className="text-base font-bold text-foreground">Headline & Bio</h3>
-                {!isEditing && (
-                    <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => setIsEditing(true)} 
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
-                        title="Edit Name, Headline & Bio"
-                    >
-                        {hasContent ? <PencilSquareIcon className="w-4 h-4" /> : <PlusIcon className="w-4 h-4" />}
-                    </Button>
-                )}
             </div>
 
             {hasContent ? (

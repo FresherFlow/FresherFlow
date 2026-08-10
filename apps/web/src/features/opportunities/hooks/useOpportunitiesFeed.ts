@@ -14,10 +14,46 @@ import { useFirebaseSaved } from '@/lib/hooks/useFirebaseSaved';
 
 const WEB_STATIC_DISCOVERY = true;
 
+const getAtsName = (link?: string | null) => {
+    if (!link) return null;
+    try {
+        const url = new URL(link);
+        const host = url.hostname.toLowerCase();
+        
+        if (host.includes('greenhouse.io')) return 'Greenhouse';
+        if (host.includes('lever.co')) return 'Lever';
+        if (host.includes('myworkdayjobs.com') || host.includes('workday.com')) return 'Workday';
+        if (host.includes('ashbyhq.com')) return 'Ashby';
+        if (host.includes('bamboohr.com')) return 'BambooHR';
+        if (host.includes('breezy.hr')) return 'BreezyHR';
+        if (host.includes('smartrecruiters.com')) return 'SmartRecruiters';
+        if (host.includes('workable.com')) return 'Workable';
+        if (host.includes('icims.com')) return 'iCIMS';
+        if (host.includes('jobvite.com')) return 'Jobvite';
+        if (host.includes('recruitee.com')) return 'Recruitee';
+        if (host.includes('phenompro.com') || host.includes('phenom.com')) return 'Phenom';
+        if (host.includes('taleo.net')) return 'Taleo';
+        if (host.includes('successfactors.com') || host.includes('successfactors.eu')) return 'SuccessFactors';
+        if (host.includes('darwinbox.in') || host.includes('darwinbox.com')) return 'Darwinbox';
+        if (host.includes('eightfold.ai')) return 'Eightfold';
+        if (host.includes('mercor.com')) return 'Mercor';
+        
+        if (host.includes('careers')) return 'Careers';
+        
+        const parts = host.split('.');
+        if (parts.length >= 2) {
+            const domain = parts[parts.length - 2];
+            return domain.charAt(0).toUpperCase() + domain.slice(1);
+        }
+    } catch {}
+    return null;
+};
+
+
 interface UseOpportunitiesFeedOptions {
     type?: string | null;
     mode?: string[] | string | null;
-    source?: string | null;
+    source?: string[];
     sort?: string | null;
     selectedLoc?: string | null;
     selectedYear?: number | null;
@@ -255,12 +291,11 @@ export function useOpportunitiesFeed({
                 if (!isRemote) return false;
             }
 
-            if (source === 'offcampus') {
-                const isOffCampus = (opp as unknown as Record<string, unknown>).source === 'OFFCAMPUS' || (opp as unknown as Record<string, unknown>).category === 'OFFCAMPUS' ||
-                    (opp.tags || []).some((t: string) => t.toLowerCase().replace('-', '') === 'offcampus') ||
-                    (opp.title || '').toLowerCase().includes('off campus') ||
-                    (opp.title || '').toLowerCase().includes('off-campus');
-                if (!isOffCampus) return false;
+            if (source && source.length > 0) {
+                const atsName = getAtsName(opp.applyLink || (opp as any).sourceLink || opp.companyWebsite);
+                if (!atsName || !source.includes(atsName)) {
+                    return false;
+                }
             }
 
             const matchesSearch = !normalizedSearch || [

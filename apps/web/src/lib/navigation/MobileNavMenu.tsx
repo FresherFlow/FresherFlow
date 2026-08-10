@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import UserIcon from '@heroicons/react/24/outline/UserIcon';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
@@ -13,7 +13,7 @@ import UserGroupIcon from '@heroicons/react/24/outline/UserGroupIcon';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
 import ArrowDownTrayIcon from '@heroicons/react/24/outline/ArrowDownTrayIcon';
 import DevicePhoneMobileIcon from '@heroicons/react/24/outline/DevicePhoneMobileIcon';
-import { ThemeToggle } from '@repo/ui/ThemeToggle';
+import { Sun as SunIcon, Moon as MoonIcon } from 'lucide-react';
 import type { User } from '@fresherflow/types';
 import { cn } from '@repo/ui/utils/cn';
 import { LogoImage } from './LogoImage';
@@ -25,6 +25,10 @@ import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 import BuildingLibraryIcon from '@heroicons/react/24/outline/BuildingLibraryIcon';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import Squares2X2Icon from '@heroicons/react/24/outline/Squares2X2Icon';
+import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
+import ChevronLeftIcon from '@heroicons/react/24/outline/ChevronLeftIcon';
+import { getNavContext, getNavItemsForContext } from './navConfig';
+import { mainNavItems, settingsNavItems } from '@/features/admin/layout/AdminSidebar';
 
 function TelegramIcon({ className }: { className?: string }) {
     return <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"><path d="M12 0C5.371 0 0 5.372 0 12s5.371 12 12 12 12-5.372 12-12S18.629 0 12 0Zm5.861 8.233-1.97 9.294c-.149.657-.538.818-1.088.51l-3.009-2.219-1.451 1.396c-.16.16-.295.295-.603.295l.213-3.049 5.549-5.012c.24-.213-.053-.333-.373-.12L8.27 13.65l-2.957-.922c-.642-.203-.656-.642.135-.949l11.557-4.456c.536-.198 1.006.12.856.91Z" /></svg>;
@@ -60,6 +64,7 @@ interface MobileNavMenuProps {
 
 export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onClose }: MobileNavMenuProps) {
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const { logout } = useAuth();
     const { theme, toggleTheme } = useTheme();
     const { canInstall, promptInstall } = useInstallPrompt();
@@ -73,29 +78,45 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
         { href: 'https://instagram.com/fresherflow', label: 'Instagram', Icon: InstagramIcon },
     ];
 
-    const platformMenu = [
-        { href: '/opportunities', label: 'Opportunities', icon: MagnifyingGlassIcon },
-        { href: '/jobs', label: 'Jobs', icon: BriefcaseIcon },
-        { href: '/internships', label: 'Internships', icon: AcademicCapIcon },
-    ];
+    const isAdmin = pathname.startsWith('/admin');
+    let navContext = getNavContext(pathname);
+    let navItems: any[];
 
-    const resourcesMenu = [
-        { href: '/resources', label: 'Career Resources', icon: BuildingLibraryIcon },
-        { href: '/contribute', label: 'Submit Job Link', icon: LinkIcon },
-        { href: '/referral', label: 'Invite Friends', icon: UserGroupIcon },
-    ];
+    if (isAdmin) {
+        navContext = 'admin' as any;
+        navItems = [
+            ...mainNavItems.map(item => ({ ...item, name: item.label, href: item.href, icon: item.icon })),
+            ...settingsNavItems.map(item => ({ ...item, name: item.label, href: item.href, icon: item.icon }))
+        ];
+    } else {
+        navItems = getNavItemsForContext(navContext);
+    }
 
-    const accountMenu = [
-        { href: '/profile', label: 'My Profile', icon: UserIcon },
-        { href: '/tracker', label: 'Application Tracker', icon: ClipboardDocumentCheckIcon },
-        { href: '/saved', label: 'Saved Jobs', icon: BookmarkIcon },
-        { href: '/alerts', label: 'Alerts', icon: BellIcon },
-        { href: '/feedback', label: 'Feedback', icon: PaperAirplaneIcon },
-    ];
+    const isAppHost = typeof window !== 'undefined' && (window.location.hostname.startsWith('app.') || window.location.hostname === 'localhost' || window.location.hostname.startsWith('127.'));
+    const homeHref = isAppHost ? '/dashboard' : '/';
+    navItems = navItems.map(item => item.name === 'Home' ? { ...item, href: homeHref } : item);
 
-    const renderMenuItem = (item: { href: string; label: string; icon: React.ElementType }) => {
-        const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(`${item.href}/`));
-        const isAlerts = item.href === '/alerts';
+    const renderMenuItem = (item: any) => {
+        let isActive = false;
+        const [itemPath, itemQuery] = item.href.split('?');
+        if (itemQuery) {
+            const itemParams = new URLSearchParams(itemQuery);
+            let match = true;
+            itemParams.forEach((val, key) => {
+                if (searchParams?.get(key) !== val) match = false;
+            });
+            isActive = pathname === itemPath && match;
+        } else if (item.href === '/jobs') {
+            isActive = pathname === '/jobs' && !searchParams?.get('type') && !searchParams?.get('mode') && !searchParams?.get('source') && !searchParams?.get('sort') && !searchParams?.get('filter');
+        } else {
+            if ('exact' in item && item.exact) {
+                isActive = pathname === item.href;
+            } else {
+                isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href + '/'));
+            }
+        }
+        
+        const isAlerts = item.href === '/alerts' || item.name === 'Alerts';
 
         return (
             <Link
@@ -103,17 +124,23 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
                 href={item.href}
                 onClick={onClose}
                 className={cn(
-                    "flex items-center gap-3.5 px-3 py-3 rounded-2xl text-sm font-medium transition-all duration-150 ease-out active:scale-[0.97] group",
+                    "relative flex items-center gap-3.5 px-3 py-3 rounded-lg text-sm transition-all duration-150 ease-out active:scale-[0.97] group overflow-hidden",
                     isActive
-                        ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20"
-                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                        ? "bg-foreground/10 text-foreground font-semibold"
+                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground font-medium"
                 )}
             >
                 <item.icon className={cn(
                     "w-5 h-5 transition-colors",
-                    isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground"
+                    isActive ? "text-foreground stroke-2" : "text-muted-foreground group-hover:text-foreground"
                 )} />
-                <span className={cn(isActive && "font-semibold tracking-tight")}>{item.label}</span>
+                <span className={cn("truncate whitespace-nowrap", isActive && "font-semibold tracking-tight")}>{item.name}</span>
+                {Boolean(item.hasSubmenu) && (
+                    <ChevronRightIcon className="w-4 h-4 ml-auto text-muted-foreground/50 shrink-0" />
+                )}
+                {isActive && (
+                    <div className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-foreground" />
+                )}
                 {isAlerts && unreadCount > 0 && (
                     <span className={cn(
                         "ml-auto inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-bold leading-none",
@@ -132,150 +159,110 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
     };
 
     return (
-        <div className="md:hidden fixed inset-0 z-[100] flex">
-            <style dangerouslySetInnerHTML={{__html: `
-                .menu-backdrop {
-                    transition: opacity 300ms ease-out;
-                    opacity: 1;
-                }
-                .menu-drawer {
-                    transition: transform 300ms cubic-bezier(0.23, 1, 0.32, 1);
-                    transform: translateX(0);
-                }
-                @starting-style {
-                    .menu-backdrop { opacity: 0; }
-                    .menu-drawer { transform: translateX(-100%); }
-                }
-            `}} />
-            {/* Backdrop overlay */}
-            <div
-                className="absolute inset-0 bg-background/80 backdrop-blur-sm menu-backdrop"
-                aria-label="Close menu"
-                onClick={onClose}
-            />
-
-            {/* Sidebar Drawer */}
-            <div className="relative z-10 w-[70%] max-w-[280px] h-full bg-background shadow-2xl flex flex-col menu-drawer border-r border-border">
-
-                {/* Header / Brand Area */}
-                <div className="flex items-center gap-3 px-5 py-5 border-b border-border/40">
-                    <LogoImage width={32} height={32} className="w-8 h-8 object-contain shrink-0" />
-                    <span className="text-base font-bold tracking-tight leading-none text-foreground">FresherFlow</span>
-                    <button onClick={onClose} aria-label="Close menu" className="ml-auto p-2 -mr-2 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted/50 transition-all duration-150 ease-out active:scale-[0.90]">
-                        <XMarkIcon className="w-5 h-5" />
+        <div className="flex flex-col h-full bg-background">
+            {/* Header / Brand Area */}
+                <div className="flex items-center justify-between px-5 py-5 border-b border-border/40">
+                    <div className="flex items-center gap-3">
+                        <LogoImage width={32} height={32} className="w-8 h-8 object-contain shrink-0" />
+                        <span className="text-base font-bold tracking-tight leading-none text-foreground">FresherFlow</span>
+                    </div>
+                    
+                    {/* Big invisible touch target for the close button */}
+                    <button 
+                        onClick={onClose} 
+                        aria-label="Close menu" 
+                        className="relative p-4 -mr-4 -my-4 group focus:outline-none"
+                    >
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground group-hover:bg-muted/50 group-hover:text-foreground transition-all duration-150 ease-out group-active:scale-[0.90]">
+                            <XMarkIcon className="w-5 h-5" />
+                        </div>
                     </button>
                 </div>
 
                 {/* Navigation Links */}
                 <nav className="flex-1 overflow-y-auto px-4 py-5 space-y-6">
-                    <div className="space-y-6">
-                        {/* Platform */}
-                        <div className="space-y-2">
-                            <h3 className="px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/70">Platform</h3>
-                            <div className="space-y-1">
-                                {platformMenu.map(renderMenuItem)}
-                            </div>
-                        </div>
-
-                        {/* Resources */}
-                        <div className="space-y-2 pt-4 border-t border-border/40">
-                            <h3 className="px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/70">Resources</h3>
-                            <div className="space-y-1">
-                                {resourcesMenu.map(renderMenuItem)}
-                            </div>
-                        </div>
-
-                        {/* Account (Only if logged in) */}
-                        {user && (
-                            <div className="space-y-2 pt-4 border-t border-border/40">
-                                <h3 className="px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/70">Account</h3>
-                                <div className="space-y-1">
-                                    {accountMenu.map(renderMenuItem)}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* App Install / Get Options */}
-                    <div className="space-y-1 border-t border-border/40 pt-4">
-                        {canInstall && (
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    promptInstall('navbar');
-                                    onClose();
-                                }}
-                                className="flex items-center gap-3.5 w-full px-3 py-3 rounded-2xl text-sm font-medium text-primary hover:bg-primary/5 transition-all duration-150 ease-out active:scale-[0.97]"
-                            >
-                                <ArrowDownTrayIcon className="w-5 h-5 text-primary" />
-                                <span>Install App</span>
-                            </button>
-                        )}
-                        {pathname !== '/app' && (
+                    <div className="space-y-1">
+                        {(navContext as string) !== 'default' && (navContext as string) !== 'admin' && (navContext as string) !== 'moderator' && (
                             <Link
-                                href="/app"
+                                href={homeHref}
                                 onClick={onClose}
-                                className="flex items-center gap-3.5 w-full px-3 py-3 rounded-2xl text-sm font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all duration-150 ease-out active:scale-[0.97]"
+                                className="flex items-center gap-3.5 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-150 ease-out active:scale-[0.97] group text-muted-foreground hover:bg-muted/50 hover:text-foreground mb-1"
                             >
-                                <DevicePhoneMobileIcon className="w-5 h-5 text-muted-foreground" />
-                                <span>Get App</span>
+                                <ChevronLeftIcon className="w-5 h-5 transition-colors text-muted-foreground group-hover:text-foreground" />
+                                <span className="font-semibold tracking-tight">
+                                    {navContext === 'account' ? 'Account' : navContext === 'government' ? 'Government' : 'Jobs'}
+                                </span>
                             </Link>
                         )}
+                        {navItems.map(renderMenuItem)}
                     </div>
 
-                    <div className="pt-2">
-                        <p className="px-3 pb-2 text-[12px] font-bold text-muted-foreground opacity-70">Connect</p>
-                        <div className="flex items-center justify-between px-3 gap-1">
-                            {socialLinks.map((s) => (
-                                <a key={s.href} href={s.href} target="_blank" rel="noopener noreferrer"
-                                    className="h-8 w-8 rounded-lg border border-divider bg-muted/30 flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:border-transparent transition-all duration-150 ease-out active:scale-[0.90] hover:shadow-sm shrink-0"
-                                    aria-label={s.label}>
-                                    <s.Icon className="w-3.5 h-3.5" />
-                                </a>
-                            ))}
-                        </div>
-                    </div>
-                </nav>
-
-                {/* Bottom User Section */}
-                <div className="p-4 border-t border-border/40 bg-card space-y-4 shrink-0">
-                    <div className="flex flex-col gap-3 px-1">
-                        <div className="flex items-center justify-between text-[13px] font-medium text-muted-foreground/80">
-                            <span>Theme</span>
-                            <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
-                        </div>
-                    </div>
-
-                    {user && (
+                    {!isAdmin && (
                         <>
-                            <button onClick={() => { if (logout) void logout('/login'); onClose(); }}
-                                className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-bold text-muted-foreground hover:text-destructive transition-all duration-150 ease-out active:scale-[0.97] rounded-xl hover:bg-destructive/5 border border-transparent hover:border-destructive/10 capitalize tracking-widest" aria-label="Sign Out">
-                                <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                                Sign out
-                            </button>
+                            {/* App Install / Get Options */}
+                            <div className="space-y-1 border-t border-border/40 pt-4">
+                                {canInstall && (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            promptInstall('navbar');
+                                            onClose();
+                                        }}
+                                        className="flex items-center gap-3.5 w-full px-3 py-3 rounded-lg text-sm font-medium text-primary hover:bg-primary/5 transition-all duration-150 ease-out active:scale-[0.97]"
+                                    >
+                                        <ArrowDownTrayIcon className="w-5 h-5 text-primary" />
+                                        <span>Install Web App</span>
+                                    </button>
+                                )}
+                                {pathname !== '/app' && (
+                                    <Link
+                                        href="/app"
+                                        onClick={onClose}
+                                        className="flex items-center gap-3.5 w-full px-3 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all duration-150 ease-out active:scale-[0.97]"
+                                    >
+                                        <DevicePhoneMobileIcon className="w-5 h-5 text-muted-foreground" />
+                                        <span>Get Android App</span>
+                                    </Link>
+                                )}
+                            </div>
 
-                            <Link href="/profile" onClick={onClose} className="group flex items-center gap-3 p-3 rounded-2xl bg-muted/40 hover:bg-muted/70 transition-all duration-150 ease-out active:scale-[0.97] border border-transparent hover:border-border">
-                                <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shrink-0 capitalize font-bold text-lg shadow-sm">
-                                    {user.fullName?.[0] || user.email?.[0] || 'U'}
+                            <div className="pt-2">
+                                <p className="px-3 pb-2 text-[12px] font-bold text-muted-foreground opacity-70">Connect</p>
+                                <div className="flex items-center justify-between px-3 gap-1">
+                                    {socialLinks.map((s) => (
+                                        <a key={s.href} href={s.href} target="_blank" rel="noopener noreferrer"
+                                            className="h-8 w-8 rounded-lg border border-divider bg-muted/30 flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:border-transparent transition-all duration-150 ease-out active:scale-[0.90] hover:shadow-sm shrink-0"
+                                            aria-label={s.label}>
+                                            <s.Icon className="w-3.5 h-3.5" />
+                                        </a>
+                                    ))}
                                 </div>
-                                <div className="min-w-0 flex-1">
-                                    <h3 className="text-sm font-semibold tracking-tight truncate group-hover:text-primary transition-colors">{user.fullName || 'User Profile'}</h3>
-                                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                                </div>
-                            </Link>
-
-                            <Link
-                                href="/account"
-                                onClick={onClose}
-                                className="flex items-center justify-center gap-2 w-full py-2.5 px-3 rounded-xl bg-primary/10 hover:bg-primary/15 text-primary text-xs font-bold transition-all duration-150 ease-out active:scale-[0.97] border border-primary/20 cursor-pointer"
-                            >
-                                <Squares2X2Icon className="w-4 h-4" />
-                                <span>Account Hub</span>
-                            </Link>
+                            </div>
                         </>
                     )}
-                </div>
-            </div>
+
+                    {user && !isAdmin && (
+                        <div className="pt-4 mt-4 border-t border-border/40">
+                            <button onClick={() => { if (logout) void logout('/login'); onClose(); }}
+                                className="flex items-center gap-3.5 w-full px-3 py-3 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-all duration-150 ease-out active:scale-[0.97]" aria-label="Sign Out">
+                                <ArrowRightOnRectangleIcon className="w-5 h-5" />
+                                <span>Sign out</span>
+                            </button>
+                        </div>
+                    )}
+
+                    <div className="pt-4 mt-4 border-t border-border/40 space-y-1">
+                        <button onClick={toggleTheme}
+                            className="flex items-center gap-3.5 w-full px-3 py-3 rounded-lg text-sm font-medium transition-all duration-150 ease-out active:scale-[0.97] group text-muted-foreground hover:bg-muted/50 hover:text-foreground" aria-label="Toggle Theme">
+                            {theme === 'dark' ? (
+                                <SunIcon size={20} strokeWidth={1.5} className="transition-colors text-muted-foreground group-hover:text-foreground" />
+                            ) : (
+                                <MoonIcon size={20} strokeWidth={1.5} className="transition-colors text-muted-foreground group-hover:text-foreground" />
+                            )}
+                            <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+                        </button>
+                    </div>
+                </nav>
         </div>
     );
 }

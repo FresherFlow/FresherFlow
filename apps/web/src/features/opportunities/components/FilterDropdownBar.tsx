@@ -6,6 +6,7 @@ import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import ChevronDownIcon from '@heroicons/react/24/outline/ChevronDownIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
+import { SkillPill } from '@/ui/SkillPill';
 
 import { INDIAN_CITIES, INDIAN_STATES } from '@fresherflow/constants';
 
@@ -25,6 +26,7 @@ export interface FilterBarFilters {
     course: string | null;
     workMode: string[] | null;
     skills: string[];
+    source: string[];
 }
 
 const CANONICAL_SKILLS = [
@@ -52,7 +54,7 @@ interface FilterDropdownBarProps {
     pageType?: string;
 }
 
-type OpenPanel = 'location' | 'year' | 'type' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | null;
+type OpenPanel = 'location' | 'year' | 'type' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | 'source' | null;
 
 const CURRENT_YEAR = new Date().getFullYear();
 const START_YEAR = 2020;
@@ -405,7 +407,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                             isSelected ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted/60'
                                         )}
                                     >
-                                        <span>{opt}</span>
+                                        <SkillPill skill={opt} className="bg-transparent border-none p-0 h-auto text-inherit shadow-none" />
                                         {isSelected && <span className="text-primary text-xs">✓</span>}
                                     </button>
                                 )})}
@@ -440,6 +442,46 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                         {opt}
                                     </button>
                                 ))}
+                            </div>
+                        )}
+                    </div>
+                    <div className="relative">
+                        <button
+                            onClick={() => toggle('source')}
+                            aria-expanded={open === 'source'}
+                            className={cn(chipBase, filters.source && filters.source.length > 0 ? chipActive : chipDefault)}
+                        >
+                            <BriefcaseIcon className="w-3.5 h-3.5" />
+                            Source
+                            {filters.source && filters.source.length > 0 && (
+                                <span className="bg-primary/20 text-primary rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none shrink-0 ml-1">
+                                    {filters.source.length}
+                                </span>
+                            )}
+                            <ChevronDownIcon className={cn('w-3 h-3 transition-transform', open === 'source' && 'rotate-180')} />
+                        </button>
+                        {open === 'source' && (
+                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-44 z-[100] max-h-60 overflow-y-auto">
+                                {['Careers', 'Workday', 'Greenhouse', 'Lever', 'Ashby', 'BambooHR', 'iCIMS', 'Taleo'].map(opt => {
+                                    const isSelected = filters.source?.includes(opt);
+                                    return (
+                                    <button
+                                        key={opt}
+                                        onClick={() => {
+                                            const newSource = isSelected
+                                                ? (filters.source || []).filter(s => s !== opt)
+                                                : [...(filters.source || []), opt];
+                                            setFilters({ ...filters, source: newSource });
+                                        }}
+                                        className={cn(
+                                            'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all flex items-center justify-between',
+                                            isSelected ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted/60'
+                                        )}
+                                    >
+                                        <span>{opt}</span>
+                                        {isSelected && <span className="text-primary text-xs">✓</span>}
+                                    </button>
+                                )})}
                             </div>
                         )}
                     </div>

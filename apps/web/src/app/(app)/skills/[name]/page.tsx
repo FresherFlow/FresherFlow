@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
-import ProgrammaticHub from '@/features/opportunities/components/ProgrammaticHub';
+import { Suspense } from 'react';
+import CategoryPage from '@/features/opportunities/components/CategoryPage';
+import { FeedPageSkeleton } from '@/ui/Skeleton';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
 import { unstable_noStore } from 'next/cache';
-import { extractHubRelations } from '@/features/opportunities/utils/hubLinking';
 
 export const revalidate = false;
 export const dynamicParams = false;
@@ -137,28 +138,20 @@ export default async function SkillPage({ params }: Props) {
         notFound();
     }
 
-    const { topCompanies, relatedSkills, relatedLocations } = extractHubRelations(filtered, { skill: slug });
-
-    const lastUpdated = feed?.generatedAt 
-        ? new Date(feed.generatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-        : new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-
-    const title = `${label} Jobs for Freshers`;
-    const description = `Explore verified off-campus drives, internships, and entry-level positions requiring ${label} skills.`;
     const seoText = `If you have skills in ${label}, this page gathers all active job openings and internships that match your expertise. We verify each posting manually to ensure the application links lead directly to official company portals and exclude third-party redirect forms. Ensure you review specific criteria such as graduation year limits, preferred degrees, and secondary skills before submitting your application.`;
 
     return (
-        <ProgrammaticHub
-            title={title}
-            description={description}
-            seoText={seoText}
-            opportunities={filtered}
-            lastUpdated={lastUpdated}
-            breadcrumbLabel={label}
-            breadcrumbUrl={`/skills/${slug}`}
-            topCompanies={topCompanies}
-            relatedSkills={relatedSkills}
-            relatedLocations={relatedLocations}
-        />
+        <Suspense fallback={<FeedPageSkeleton />}>
+            <CategoryPage 
+                type={null} 
+                initialData={{
+                    opportunities: feed?.opportunities || [],
+                    total: feed?.count || 0,
+                    cachedAt: feed?.generatedAt ? new Date(feed.generatedAt).getTime() : Date.now(),
+                }} 
+                initialFilters={{ skills: [label] }} 
+                canonicalRedirect={true}
+            />
+        </Suspense>
     );
 }

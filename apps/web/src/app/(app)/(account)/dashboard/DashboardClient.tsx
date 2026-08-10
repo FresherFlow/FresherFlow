@@ -55,9 +55,10 @@ interface DashboardStatsProps {
 }
 
 function DashboardStats({ savedCount, trackerCount }: DashboardStatsProps) {
+    const router = useRouter();
     return (
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-            <Link href="/saved" className="group">
+            <div onClick={() => router.push('/saved')} className="group cursor-pointer">
                 <Card className="hover:border-primary/40 transition-all duration-150 ease-out active:scale-[0.97] hover:shadow-sm cursor-pointer border-border/60 bg-card/80 backdrop-blur-sm">
                     <CardContent className="px-3.5 py-2 flex items-center gap-2.5">
                         <div className="p-1.5 w-fit rounded-lg bg-blue-500/10 text-blue-500 group-hover:scale-105 transition-transform">
@@ -69,9 +70,9 @@ function DashboardStats({ savedCount, trackerCount }: DashboardStatsProps) {
                         </div>
                     </CardContent>
                 </Card>
-            </Link>
+            </div>
 
-            <Link href="/tracker" className="group">
+            <div onClick={() => router.push('/tracker')} className="group cursor-pointer">
                 <Card className="hover:border-primary/40 transition-all duration-150 ease-out active:scale-[0.97] hover:shadow-sm cursor-pointer border-border/60 bg-card/80 backdrop-blur-sm">
                     <CardContent className="px-3.5 py-2 flex items-center gap-2.5">
                         <div className="p-1.5 w-fit rounded-lg bg-amber-500/10 text-amber-500 group-hover:scale-105 transition-transform">
@@ -83,7 +84,7 @@ function DashboardStats({ savedCount, trackerCount }: DashboardStatsProps) {
                         </div>
                     </CardContent>
                 </Card>
-            </Link>
+            </div>
         </div>
     );
 }
@@ -496,10 +497,10 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
                                 >
                                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
                                         {dataStreams.trendingCompanies.map((c) => (
-                                            <Link
+                                            <div
                                                 key={c.name}
-                                                href={`/companies/${slugify(c.name)}`}
-                                                className="group flex items-center gap-3 p-2.5 rounded-xl border border-border/60 bg-card/60 hover:border-primary/40 hover:bg-muted/30 transition-all duration-150 ease-out active:scale-[0.98] overflow-hidden"
+                                                onClick={() => router.push(`/companies/${slugify(c.name)}`)}
+                                                className="group cursor-pointer flex items-center gap-3 p-2.5 rounded-xl border border-border/60 bg-card/60 hover:border-primary/40 hover:bg-muted/30 transition-all duration-150 ease-out active:scale-[0.98] overflow-hidden"
                                             >
                                                 <CompanyLogo companyName={c.name} companyLogoUrl={c.logoUrl} className="w-9 h-9 text-xs rounded-lg shrink-0" />
                                                 <div className="min-w-0 flex-1">
@@ -510,7 +511,7 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
                                                         {c.roleCount} active {c.roleCount === 1 ? 'role' : 'roles'}
                                                     </p>
                                                 </div>
-                                            </Link>
+                                            </div>
                                         ))}
                                     </div>
                                 </DashboardSection>

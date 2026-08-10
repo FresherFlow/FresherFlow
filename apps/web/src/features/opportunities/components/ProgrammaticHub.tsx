@@ -10,7 +10,7 @@ import CompanyLogo from '@/ui/CompanyLogo';
 import { EmptyState } from '@/ui/EmptyState';
 import { OpportunityDetailPane } from './OpportunityDetailPane';
 import { useIntersectionObserver } from '@/lib/hooks/useIntersectionObserver';
-import { SKILL_ICON_MAP } from '@/ui/SkillPill';
+import { SkillIcon } from '@/ui/SkillPill';
 
 export interface HubLink {
     label: string;
@@ -119,24 +119,9 @@ export default function ProgrammaticHub({
                 {/* Header */}
                 <div id="hub-top-header" className="flex flex-col gap-2 pb-6">
                     <div className="flex items-center gap-3">
-                        {breadcrumbUrl.startsWith('/skills/') && (() => {
-                            const entry = SKILL_ICON_MAP[breadcrumbLabel] || Object.entries(SKILL_ICON_MAP).find(([key]) => breadcrumbLabel.toLowerCase().includes(key.toLowerCase()))?.[1];
-                            if (entry) {
-                                const color = entry.colorHex || 'currentColor';
-                                return (
-                                    <svg
-                                        role="img"
-                                        viewBox="0 0 24 24"
-                                        className="w-10 h-10 shrink-0"
-                                        style={{ fill: color }}
-                                        aria-label={entry.icon.title}
-                                    >
-                                        <path d={entry.icon.path} />
-                                    </svg>
-                                );
-                            }
-                            return null;
-                        })()}
+                        {breadcrumbUrl.startsWith('/skills/') && (
+                            <SkillIcon skill={breadcrumbLabel} className="w-10 h-10 shrink-0" />
+                        )}
                         <h1 className="text-2xl md:text-4xl font-black tracking-tight text-foreground">
                             {title}
                         </h1>

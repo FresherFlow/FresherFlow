@@ -5,13 +5,12 @@ import { AuthGate, ProfileGate } from '@/lib/components/ProfileGate';
 import { useState, useEffect, useRef } from 'react';
 import { useProfileForm } from '@/features/profile/hooks/useProfileForm';
 import toast from 'react-hot-toast';
-import { useClickOutside } from '@/lib/hooks/useClickOutside';
 import { Skeleton } from '@/ui/Skeleton';
 import { ErrorMessage } from '@/ui/ErrorMessage';
 import { Button } from '@/ui/Button';
-import Link from 'next/link';
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { CheckBadgeIcon, ArrowTopRightOnSquareIcon, PencilSquareIcon, UserIcon, AcademicCapIcon, WrenchScrewdriverIcon, BriefcaseIcon, LinkIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+import { CheckBadgeIcon, PencilSquareIcon, UserIcon, AcademicCapIcon, WrenchScrewdriverIcon, BriefcaseIcon, LinkIcon } from '@heroicons/react/24/outline';
 import { cn } from '@/ui/cn';
 
 // Section Components
@@ -23,20 +22,9 @@ import { PreferencesSection } from './components/PreferencesSection';
 
 // Hooks
 import { useProfileUpdateHandlers } from './hooks/useProfileUpdateHandlers';
-import { profileApi } from '@/lib/api/profile';
 
-function formatPublishedStatus(publishedAt?: Date | string | null): string {
-    if (!publishedAt) return 'Not published yet';
-    const date = new Date(publishedAt);
-    if (isNaN(date.getTime())) return 'Not published yet';
 
-    const diffMs = Date.now() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-    if (diffDays === 0) return 'Last published: today';
-    if (diffDays === 1) return 'Last published: 1 day ago';
-    return `Last published: ${diffDays} days ago`;
-}
 
 function ProfilePageSkeleton() {
     return (
@@ -66,27 +54,8 @@ function ProfilePageSkeleton() {
 
 export default function ProfilePage() {
     const { profile, user, refreshUser, isLoading } = useAuth();
-    const cityRef = useRef<HTMLDivElement>(null);
-    const skillRef = useRef<HTMLDivElement>(null);
-    const [cityOpen, setCityOpen] = useState(false);
-    const [skillOpen, setSkillOpen] = useState(false);
     const [isEditingIdentity, setIsEditingIdentity] = useState(false);
-    const [isPublishing, setIsPublishing] = useState(false);
-    const [lastPublishedAt, setLastPublishedAt] = useState<string | null>(null);
 
-    const handlePublishProfile = async () => {
-        try {
-            setIsPublishing(true);
-            const res = await profileApi.publishProfile();
-            setLastPublishedAt(res.publishedAt);
-            toast.success('Public profile published successfully!');
-            refreshUser();
-        } catch (err: any) {
-            toast.error(err?.message || 'Failed to publish profile');
-        } finally {
-            setIsPublishing(false);
-        }
-    };
 
     const SECTIONS = [
         { id: 'headline', label: 'Headline & Bio', icon: UserIcon },
@@ -160,19 +129,10 @@ export default function ProfilePage() {
         handleReadinessUpdate
     } = useProfileUpdateHandlers(formState, refreshUser as unknown as () => Promise<void>);
 
-    useClickOutside(skillRef, () => setSkillOpen(false));
-    useClickOutside(cityRef, () => setCityOpen(false));
-
     useEffect(() => {
         if (!profile || editingSection) return;
         hydrateFromProfile(profile, user?.fullName || '');
     }, [profile, user?.fullName, editingSection, hydrateFromProfile]);
-
-    const addCity = () => {
-        const result = addCityFromInput();
-        if (!result.ok && result.reason === 'limit') toast.error('Max 5 cities');
-        if (result.ok) setCityOpen(false);
-    };
 
 
     if (isLoading) {
@@ -224,32 +184,6 @@ export default function ProfilePage() {
                                         />
                                     </div>
                                 </div>
-                                <div className="pt-2 border-t border-border/40 space-y-2">
-                                    {user?.username && (
-                                        <>
-                                            <div className="flex items-center justify-between gap-2 flex-wrap">
-                                                <Link 
-                                                    href={`/u/${user.username}`} 
-                                                    target="_blank" 
-                                                    className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
-                                                >
-                                                    View Public Profile <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
-                                                </Link>
-                                                <Button
-                                                    onClick={handlePublishProfile}
-                                                    disabled={isPublishing}
-                                                    size="sm"
-                                                    className="h-7 px-2.5 text-xs font-medium"
-                                                >
-                                                    {isPublishing ? 'Publishing...' : 'Publish Public Profile'}
-                                                </Button>
-                                            </div>
-                                            <p className="text-[11px] text-muted-foreground">
-                                                {formatPublishedStatus(lastPublishedAt || profile?.profilePublishedAt)}
-                                            </p>
-                                        </>
-                                    )}
-                                </div>
                             </div>
 
                             {/* Desktop Sidebar Nav */}
@@ -293,7 +227,11 @@ export default function ProfilePage() {
                                             <div className="space-y-0.5 min-w-0">
                                                 <div className="flex items-center gap-2">
                                                     <h1 className="text-lg font-bold text-foreground tracking-tight">{user?.fullName || fullName || 'Candidate Profile'}</h1>
-                                                    <button onClick={() => setIsEditingIdentity(true)} className="p-1 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/60" title="Edit Full Name & Headline">
+                                                    <button 
+                                                        onClick={() => setIsEditingIdentity(true)} 
+                                                        className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                                                        title="Edit Profile"
+                                                    >
                                                         <PencilSquareIcon className="w-4 h-4" />
                                                     </button>
                                                 </div>
@@ -333,15 +271,10 @@ export default function ProfilePage() {
                                 <SkillsSection
                                     profile={profile}
                                     skillInput={skillInput} setSkillInput={setSkillInput}
-                                    skillOpen={skillOpen} setSkillOpen={setSkillOpen}
                                     filteredSkillOptions={filteredSkillOptions}
                                     skills={skills} setSkills={setSkills}
-                                    addSkill={() => {
-                                        const added = addSkillFromInput();
-                                        if (added) setSkillOpen(false);
-                                    }}
+                                    addSkill={addSkillFromInput}
                                     addSkillValue={addSkillValue}
-                                    skillRef={skillRef}
                                     isEditing={editingSection === 'skills'}
                                     onToggleEdit={() => setEditingSection(editingSection === 'skills' ? null : 'skills')}
                                     onSave={handleReadinessUpdate}
@@ -354,9 +287,8 @@ export default function ProfilePage() {
                                     workModes={workModes} toggleWorkMode={(item) => setWorkModes(workModes.includes(item) ? workModes.filter((i: string) => i !== item) : [...workModes, item])}
                                     preferredCities={preferredCities} setPreferredCities={setPreferredCities}
                                     cityInput={cityInput} setCityInput={setCityInput}
-                                    cityOpen={cityOpen} setCityOpen={setCityOpen}
-                                    filteredCityOptions={filteredCityOptions} addCity={addCity}
-                                    togglePreferredCity={togglePreferredCity} cityRef={cityRef}
+                                    filteredCityOptions={filteredCityOptions} addCity={addCityFromInput}
+                                    togglePreferredCity={togglePreferredCity}
                                     isEditing={editingSection === 'preferences'}
                                     onToggleEdit={() => setEditingSection(editingSection === 'preferences' ? null : 'preferences')}
                                     onSave={handlePreferencesUpdate}
@@ -382,7 +314,11 @@ export default function ProfilePage() {
                                             <div className="space-y-0.5 min-w-0">
                                                 <div className="flex items-center gap-2">
                                                     <h1 className="text-lg font-bold text-foreground tracking-tight">{user?.fullName || fullName || 'Candidate Profile'}</h1>
-                                                    <button onClick={() => setIsEditingIdentity(true)} className="p-1 text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/60" title="Edit Full Name & Headline">
+                                                    <button 
+                                                        onClick={() => setIsEditingIdentity(true)} 
+                                                        className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                                                        title="Edit Profile"
+                                                    >
                                                         <PencilSquareIcon className="w-4 h-4" />
                                                     </button>
                                                 </div>
@@ -428,15 +364,10 @@ export default function ProfilePage() {
                                         <SkillsSection
                                             profile={profile}
                                             skillInput={skillInput} setSkillInput={setSkillInput}
-                                            skillOpen={skillOpen} setSkillOpen={setSkillOpen}
                                             filteredSkillOptions={filteredSkillOptions}
                                             skills={skills} setSkills={setSkills}
-                                            addSkill={() => {
-                                                const added = addSkillFromInput();
-                                                if (added) setSkillOpen(false);
-                                            }}
+                                            addSkill={addSkillFromInput}
                                             addSkillValue={addSkillValue}
-                                            skillRef={skillRef}
                                             isEditing={editingSection === 'skills'}
                                             onToggleEdit={() => setEditingSection(editingSection === 'skills' ? null : 'skills')}
                                             onSave={handleReadinessUpdate}
@@ -453,9 +384,8 @@ export default function ProfilePage() {
                                             workModes={workModes} toggleWorkMode={(item) => setWorkModes(workModes.includes(item) ? workModes.filter((i: string) => i !== item) : [...workModes, item])}
                                             preferredCities={preferredCities} setPreferredCities={setPreferredCities}
                                             cityInput={cityInput} setCityInput={setCityInput}
-                                            cityOpen={cityOpen} setCityOpen={setCityOpen}
-                                            filteredCityOptions={filteredCityOptions} addCity={addCity}
-                                            togglePreferredCity={togglePreferredCity} cityRef={cityRef}
+                                            filteredCityOptions={filteredCityOptions} addCity={addCityFromInput}
+                                            togglePreferredCity={togglePreferredCity}
                                             isEditing={editingSection === 'preferences'}
                                             onToggleEdit={() => setEditingSection(editingSection === 'preferences' ? null : 'preferences')}
                                             onSave={handlePreferencesUpdate}

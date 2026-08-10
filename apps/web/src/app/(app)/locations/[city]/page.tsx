@@ -1,11 +1,12 @@
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
-import ProgrammaticHub from '@/features/opportunities/components/ProgrammaticHub';
+import { Suspense } from 'react';
+import CategoryPage from '@/features/opportunities/components/CategoryPage';
+import { FeedPageSkeleton } from '@/ui/Skeleton';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
 import { unstable_noStore } from 'next/cache';
-import { extractHubRelations } from '@/features/opportunities/utils/hubLinking';
 
 export const revalidate = false;
 export const dynamicParams = false;
@@ -131,28 +132,20 @@ export default async function LocationPage({ params }: Props) {
         notFound();
     }
 
-    const { topCompanies, relatedSkills, relatedLocations } = extractHubRelations(filtered, { city });
-
-    const lastUpdated = feed?.generatedAt 
-        ? new Date(feed.generatedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-        : new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
-
-    const title = `Fresher Jobs in ${locInfo.label}`;
-    const description = `Browse verified entry-level vacancies and off-campus placements in ${locInfo.label}.`;
     const seoText = `Searching for off-campus drives or tech internships in ${locInfo.label}? This hub collects all active, manually-reviewed jobs open to freshers and recent graduates in ${locInfo.label}. We verify official application portals to save you from spam and fake listings. Filter by your target batch year and core skills, then submit your resume directly to the companies.`;
 
     return (
-        <ProgrammaticHub
-            title={title}
-            description={description}
-            seoText={seoText}
-            opportunities={filtered}
-            lastUpdated={lastUpdated}
-            breadcrumbLabel={locInfo.label}
-            breadcrumbUrl={`/location/${city}`}
-            topCompanies={topCompanies}
-            relatedSkills={relatedSkills}
-            relatedLocations={relatedLocations}
-        />
+        <Suspense fallback={<FeedPageSkeleton />}>
+            <CategoryPage 
+                type={null} 
+                initialData={{
+                    opportunities: feed?.opportunities || [],
+                    total: feed?.count || 0,
+                    cachedAt: feed?.generatedAt ? new Date(feed.generatedAt).getTime() : Date.now(),
+                }} 
+                initialFilters={{ location: locInfo.label }} 
+                canonicalRedirect={true}
+            />
+        </Suspense>
     );
 }

@@ -6,14 +6,13 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils/utils';
 import { LogoImage } from './LogoImage';
-import { ThemeToggle } from '@repo/ui/ThemeToggle';
 import { useTheme } from '@/lib/providers/ThemeContext';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent, Hint } from '@/ui/Tooltip';
 import {
- 
     ChevronLeftIcon,
     ChevronRightIcon,
 } from '@heroicons/react/24/outline';
+import { Sun, Moon } from 'lucide-react';
 
 
 const SidebarIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -35,18 +34,44 @@ interface SidebarContentProps {
     customNavItems?: any[];
     customHeaderTitle?: string;
     showThemeToggle?: boolean;
+    forceSubContext?: boolean;
+    customHomeHref?: string;
 }
 
-export function SidebarContent({ pathname, searchParams, collapsed, onToggleCollapse, hostname, customNavItems, customHeaderTitle, showThemeToggle }: SidebarContentProps) {
+export function SidebarContent({ pathname, searchParams, collapsed, onToggleCollapse, hostname, customNavItems, customHeaderTitle, showThemeToggle, forceSubContext, customHomeHref }: SidebarContentProps) {
     const isAppHost = hostname?.startsWith('app.') || hostname === 'localhost' || hostname?.startsWith('127.');
     const { theme, toggleTheme } = useTheme();
-    const homeHref = isAppHost ? '/dashboard' : '/';
+    const homeHref = customHomeHref || (isAppHost ? '/dashboard' : '/');
     const logoHref = homeHref;
 
     const [prevContext, setPrevContext] = useState('default');
     let context = 'default';
 
-    const sharedPaths = ['/companies', '/saved', '/tracker'];
+    const [engineOnline, setEngineOnline] = useState<boolean | null>(null);
+
+    useEffect(() => {
+        if (!forceSubContext && customHeaderTitle !== 'Discovery Engine') return;
+
+        let isMounted = true;
+        const checkHealth = async () => {
+            try {
+                const INGESTION_URL = process.env.NEXT_PUBLIC_INGESTION_URL || 'http://localhost:3005';
+                const res = await fetch(`${INGESTION_URL}/health`, { cache: 'no-store' });
+                if (isMounted) setEngineOnline(res.ok);
+            } catch {
+                if (isMounted) setEngineOnline(false);
+            }
+        };
+
+        void checkHealth();
+        const interval = setInterval(() => void checkHealth(), 10000);
+        return () => {
+            isMounted = false;
+            clearInterval(interval);
+        };
+    }, [forceSubContext, customHeaderTitle]);
+
+    const sharedPaths = ['/companies', '/saved', '/tracker', '/resources'];
     const isShared = sharedPaths.some(p => pathname.startsWith(p));
 
     if (
@@ -75,7 +100,7 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
         context = prevContext;
     }
 
-    const isSubContext = context !== 'default';
+    const isSubContext = forceSubContext || context !== 'default';
 
     if (context !== prevContext) {
         setPrevContext(context);
@@ -139,11 +164,24 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
                                         <span className="font-semibold text-foreground truncate whitespace-nowrap">{headerTitle}</span>
                                     </Link>
                                 );
+                                const statusBadge = engineOnline !== null ? (
+                                    <div className={cn("flex items-center gap-2 py-1 px-1.5 mx-1 rounded text-xs", collapsed && "justify-center px-0")}>
+                                        <span className={cn("w-2 h-2 rounded-full shrink-0 transition-colors", engineOnline ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" : "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]")} />
+                                        {!collapsed && (
+                                            <span className="text-[11px] font-medium text-muted-foreground truncate">
+                                                Engine {engineOnline ? 'Online' : 'Offline'}
+                                            </span>
+                                        )}
+                                    </div>
+                                ) : null;
                                 return (
                                     <>
                                         {collapsed ? (
                                             <Hint label={headerTitle} side="right">{backLink}</Hint>
                                         ) : backLink}
+                                        {statusBadge && (collapsed ? (
+                                            <Hint label={engineOnline ? 'Engine Online' : 'Engine Offline'} side="right">{statusBadge}</Hint>
+                                        ) : statusBadge)}
                                         <div className="h-px bg-border/50 my-2 mx-1" />
                                     </>
                                 );
@@ -160,11 +198,17 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
                                     const itemParams = new URLSearchParams(itemQuery);
                                     let match = true;
                                     itemParams.forEach((val, key) => {
-                                        if (searchParams?.get(key) !== val) match = false;
+                                        const currentVal = searchParams?.get(key);
+                                        if (key === 'tab' && val === 'dashboard' && (!currentVal || currentVal === 'dashboard')) {
+                                            return;
+                                        }
+                                        if (currentVal !== val) match = false;
                                     });
                                     isActive = pathname === itemPath && match;
                                 } else if (item.href === '/jobs') {
                                     isActive = pathname === '/jobs' && !searchParams?.get('type') && !searchParams?.get('mode') && !searchParams?.get('source') && !searchParams?.get('sort') && !searchParams?.get('filter');
+                                } else if (item.href === '/admin/discovery' || item.href === '/discovery') {
+                                    isActive = pathname === item.href && !searchParams?.get('tab');
                                 } else {
                                     if ('exact' in item && item.exact) {
                                         isActive = pathname === item.href;
@@ -238,13 +282,26 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
                         {showThemeToggle && (
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <div>
-                                        <ThemeToggle theme={theme as 'light' | 'dark'} toggleTheme={toggleTheme} />
-                                    </div>
+                                    <button
+                                        onClick={toggleTheme}
+                                        className="w-full flex items-center gap-2 px-1.5 rounded-md h-9 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring overflow-hidden mb-1"
+                                        aria-label="Toggle Theme"
+                                    >
+                                        {theme === 'dark' ? (
+                                            <Sun size={20} strokeWidth={1.5} className="shrink-0 transition-colors" />
+                                        ) : (
+                                            <Moon size={20} strokeWidth={1.5} className="shrink-0 transition-colors" />
+                                        )}
+                                        {!collapsed && (
+                                            <span className="text-sm whitespace-nowrap text-left truncate">
+                                                {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                                            </span>
+                                        )}
+                                    </button>
                                 </TooltipTrigger>
                                 {collapsed && (
                                     <TooltipContent side="right" className="flex items-center gap-2">
-                                        {theme === 'dark' ? 'Dark Mode' : 'Light Mode'}
+                                        {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
                                     </TooltipContent>
                                 )}
                             </Tooltip>

@@ -18,7 +18,7 @@ interface DirectoryClientProps {
   entityType?: 'skill' | 'default';
 }
 
-import { SKILL_ICON_MAP } from '@/ui/SkillPill';
+import { SkillIcon } from '@/ui/SkillPill';
 
 export function DirectoryClient({ title, description, data, urlPrefix, entityType = 'default' }: DirectoryClientProps) {
   const [search, setSearch] = useState('');
@@ -93,22 +93,7 @@ export function DirectoryClient({ title, description, data, urlPrefix, entityTyp
               >
                 {entityType === 'skill' && (
                   <div className="mb-2">
-                    {(() => {
-                        const entry = SKILL_ICON_MAP[item.name] || Object.entries(SKILL_ICON_MAP).find(([key]) => item.name.toLowerCase().includes(key.toLowerCase()))?.[1];
-                        if (entry) {
-                            return (
-                                <svg
-                                    role="img"
-                                    viewBox="0 0 24 24"
-                                    className="w-6 h-6 shrink-0"
-                                    style={{ fill: entry.colorHex || 'currentColor' }}
-                                >
-                                    <path d={entry.icon.path} />
-                                </svg>
-                            );
-                        }
-                        return <div className="w-6 h-6" />;
-                    })()}
+                    <SkillIcon skill={item.name} className="w-6 h-6 shrink-0" />
                   </div>
                 )}
                 <span className="text-base font-bold text-foreground capitalize group-hover:text-primary transition-colors line-clamp-1">
@@ -162,22 +147,9 @@ export function DirectoryClient({ title, description, data, urlPrefix, entityTyp
                   className="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border/50 hover:border-primary/60 hover:bg-primary/5 transition-all shadow-sm"
                 >
                   <span className="flex items-center gap-1.5 text-sm font-medium text-foreground capitalize group-hover:text-primary transition-colors">
-                    {entityType === 'skill' && (() => {
-                        const entry = SKILL_ICON_MAP[item.name] || Object.entries(SKILL_ICON_MAP).find(([key]) => item.name.toLowerCase().includes(key.toLowerCase()))?.[1];
-                        if (entry) {
-                            return (
-                                <svg
-                                    role="img"
-                                    viewBox="0 0 24 24"
-                                    className="w-4 h-4 shrink-0"
-                                    style={{ fill: entry.colorHex || 'currentColor' }}
-                                >
-                                    <path d={entry.icon.path} />
-                                </svg>
-                            );
-                        }
-                        return null;
-                    })()}
+                    {entityType === 'skill' && (
+                        <SkillIcon skill={item.name} className="w-4 h-4 shrink-0" />
+                    )}
                     {item.name}
                   </span>
                   <Badge variant="secondary" className="text-[10px] px-1.5 py-0 group-hover:bg-primary/10 group-hover:text-primary transition-colors">

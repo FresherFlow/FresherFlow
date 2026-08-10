@@ -101,6 +101,7 @@ const nextConfig: NextConfig = {
     "@fresherflow/domain", 
     "@fresherflow/utils",
     "@fresherflow/api-client",
+    "@fresherflow/plugins",
     "@repo/ui"
   ],
 

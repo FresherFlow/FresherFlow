@@ -131,7 +131,7 @@ export default async function RootLayout({
         />
       </head>
       <body className={`${inter.variable} min-h-screen flex flex-col antialiased bg-background text-foreground selection:bg-primary/20`} suppressHydrationWarning>
-        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-background focus:text-foreground focus-visible:ring-2 focus-visible:ring-primary focus:outline-none">
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-background focus:text-foreground focus-visible:ring-2 focus-visible:ring-primary focus:outline-none select-none pointer-events-none focus:pointer-events-auto">
           Skip to content
         </a>
         <ThemeProvider>

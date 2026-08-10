@@ -132,7 +132,7 @@ export function MobileTopNav() {
             </header>
  
             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-                <SheetContent side="left" className="p-0 border-none w-[70%] max-w-[280px] sm:max-w-[280px]">
+                <SheetContent side="left" className="p-0 border-none w-[70%] max-w-[280px] sm:max-w-[280px] [&>button]:hidden">
                     <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
                     <SheetDescription className="sr-only">Main navigation drawer</SheetDescription>
                     <MobileNavMenu 

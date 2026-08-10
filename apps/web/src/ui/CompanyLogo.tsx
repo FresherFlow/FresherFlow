@@ -82,10 +82,10 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
         ].filter((d): d is string => !!d)));
 
         domainsToTry.forEach(d => {
-            // Google Favicon (Best overall coverage)
+            // 1. Clearbit (High quality logos, returns 404 if not found which naturally triggers onError)
+            urls.push(`https://logo.clearbit.com/${d}`);
+            // 2. Google Favicon (Good backup, returns 16px globe if not found which we manually reject)
             urls.push(`https://www.google.com/s2/favicons?domain=${d}&sz=128`);
-            // DuckDuckGo (Reliable backup)
-            urls.push(`https://icons.duckduckgo.com/ip3/${d}.ico`);
         });
 
         return Array.from(new Set(urls));
@@ -121,19 +121,19 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
 
     const handleLoad = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
         const target = e.target as HTMLImageElement;
-        // Google's S2 favicon service returns a 16px globe for unknown domains
-        // even when sz=128 is requested. Treat it as a failure to trigger next provider.
-        let isGoogle = false;
+        // Fallback services (Google, DDG) might return tiny default icons (e.g. 16px globes or arrows).
+        // If an image is 16x16 or smaller from these services, reject it to trigger the text initials fallback.
+        let isFallbackProvider = false;
         try {
             const urlStr = candidates[attemptIndex];
             if (urlStr) {
                 const parsed = new URL(urlStr);
                 const host = parsed.hostname.toLowerCase();
-                isGoogle = host === 'google.com' || host.endsWith('.google.com');
+                isFallbackProvider = host.includes('google.com') || host.includes('duckduckgo.com');
             }
         } catch {}
 
-        if ((target.naturalWidth <= 16 || target.naturalHeight <= 16 || target.naturalWidth === 0) && isGoogle) {
+        if ((target.naturalWidth <= 16 || target.naturalHeight <= 16 || target.naturalWidth === 0) && isFallbackProvider) {
             handleError();
         } else {
             // Success! Cache the working URL

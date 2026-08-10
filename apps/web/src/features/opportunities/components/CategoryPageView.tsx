@@ -3,6 +3,7 @@ import { useMemo, useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useFeedHeader } from '@/lib/context/FeedHeaderContext';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 import dynamic from 'next/dynamic';
 
@@ -28,6 +29,7 @@ import HomeIcon from '@heroicons/react/24/outline/HomeIcon';
 import WrenchScrewdriverIcon from '@heroicons/react/24/outline/WrenchScrewdriverIcon';
 import BuildingOfficeIcon from '@heroicons/react/24/outline/BuildingOfficeIcon';
 import { Breadcrumb } from '@/ui/Breadcrumb';
+import { SkillPill } from '@/ui/SkillPill';
 import { Button } from '@/ui/Button';
 import { Hint } from '@/ui/Tooltip';
 import { Input } from '@/ui/Input';
@@ -223,6 +225,8 @@ export function CategoryPageView({
     mobileActiveCount, openMobileFilters, applyMobileFilters, clearAll,
     visibleCount, setVisibleCount, isJobSaved, isJobApplied, toggleSave, reload
 }: CategoryPageState) {
+    const router = useRouter();
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
     const config = (type ? CATEGORY_CONFIG[type] : undefined) ?? { title: 'Jobs', subtitle: '', icon: BriefcaseIcon };
     const { targetRef: loadMoreRef, isIntersecting } = useIntersectionObserver({ threshold: 0.1, rootMargin: '400px' });
     const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -441,10 +445,9 @@ export function CategoryPageView({
                         </button>
                     )}
                     {filters.skills?.map(s => (
-                        <button key={s} onClick={() => setFilters({...filters, skills: filters.skills!.filter(x => x !== s)})} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
-                            <WrenchScrewdriverIcon className="w-3.5 h-3.5 text-muted-foreground" />
-                            {s}
-                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                        <button key={s} onClick={() => setFilters({...filters, skills: filters.skills!.filter(x => x !== s)})} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] font-medium hover:bg-indigo-100 transition-colors cursor-pointer outline-none">
+                            <SkillPill skill={s} className="bg-transparent border-none p-0 h-auto text-inherit shadow-none" />
+                            <XMarkIcon className="w-3.5 h-3.5 text-indigo-700 ml-1" />
                         </button>
                     ))}
                     {filters.course && (
@@ -526,8 +529,8 @@ export function CategoryPageView({
                                 </div>
                             </div>
                         </div>
-                        <Button asChild className="h-12 px-8 text-sm font-bold capitalize tracking-widest">
-                            <Link href="/profile">Complete Profile <ChevronRightIcon className="w-4 h-4 ml-2" /></Link>
+                        <Button onClick={() => router.push('/profile')} className="h-12 px-8 text-sm font-bold capitalize tracking-widest">
+                            Complete Profile <ChevronRightIcon className="w-4 h-4 ml-2" />
                         </Button>
                     </div>
                 </div>
