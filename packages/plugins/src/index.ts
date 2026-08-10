@@ -1,8 +1,8 @@
+export type { AtsJob, AtsAdapter } from './base/BaseAdapter.js';
 export {
-  AtsJob,
-  AtsAdapter,
   sleep,
   fetchJson,
+  htmlToPlainText,
   extractExperience,
   extractSalary,
   markdownConverter,
@@ -10,7 +10,7 @@ export {
   parseJsonLd
 } from './base/BaseAdapter.js';
 
-import { AtsAdapter } from './base/BaseAdapter.js';
+import type { AtsAdapter as IAtsAdapter } from './base/BaseAdapter.js';
 
 // ATS Adapters
 import { AshbyAdapter } from './adapters/ats/ashby/index.js';
@@ -143,7 +143,7 @@ export {
   NvidiaAdapter
 };
 
-export const PLUGIN_REGISTRY: Record<string, AtsAdapter> = {
+export const PLUGIN_REGISTRY: Record<string, IAtsAdapter> = {
   'ashby': new AshbyAdapter(),
   'bamboohr': new BambooHRAdapter(),
   'breezyhr': new BreezyHRAdapter(),
@@ -232,4 +232,6 @@ export function getPluginCategories() {
 
 export * from './common/experience.js';
 export * from './common/browser.js';
+export * from './common/html-utils.js';
+
 

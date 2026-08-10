@@ -1,4 +1,13 @@
 // ─── Shared types ─────────────────────────────────────────────────────────────
+import { createHttpClient } from './http-client.js';
+
+const defaultClient = createHttpClient({
+    retries: 3,
+    retryDelay: 1000,
+    retryBackoff: 'exponential',
+    timeout: 15,
+    proxies: process.env.PROXY_URLS ? process.env.PROXY_URLS.split(',').map(s => s.trim()).filter(Boolean) : []
+});
 
 export interface ParsedLocation {
     raw: string;
@@ -83,23 +92,29 @@ export async function fetchJson<T>(
     label?: string
 ): Promise<T | null> {
     try {
-        const response = await fetch(url, {
-            signal: init?.signal ?? AbortSignal.timeout(10000),
+        const method = init?.method ?? 'GET';
+        const config: any = {
+            method,
+            url,
             headers: {
                 'Accept': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                 ...((init?.headers as Record<string, string>) ?? {})
-            },
-            ...init
-        });
-        if (!response.ok) {
-            console.warn(`[${label ?? 'ATS'}] HTTP ${response.status} ${response.statusText} for ${url}`);
-            return null;
+            }
+        };
+        
+        if (init?.body) {
+            config.data = init.body;
         }
-        return await response.json() as T;
-    } catch (err) {
-        console.error(`[${label ?? 'ATS'}] fetch failed for ${url}:`, (err as Error).message);
-        return null;
+        
+        const response = await defaultClient.request<T>(config);
+        return response.data;
+    } catch (err: any) {
+        if (err.response) {
+            console.warn(`[${label ?? 'ATS'}] HTTP ${err.response.status} ${err.response.statusText} for ${url}`);
+        } else {
+            console.error(`[${label ?? 'ATS'}] fetch failed for ${url}:`, err.message);
+        }
+        throw err;
     }
 }
 

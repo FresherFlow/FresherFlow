@@ -3,6 +3,8 @@ import { applyFilter } from './filter.js';
 import { submitJobsToApi } from './api.js';
 import { recordRun } from './stats.js';
 import { withRetry } from './retry.js';
+import { checkCache, setCache } from './cache.js';
+import { redis } from '@fresherflow/redis';
 
 export interface RunTarget {
   ats: string;
@@ -12,6 +14,7 @@ export interface RunTarget {
   hoursOld?: number;
   resultsWanted?: number;
   dryRun?: boolean;
+  noCache?: boolean;
 }
 
 export interface RunResult {
@@ -29,17 +32,47 @@ export interface RunResult {
   dryRun?: boolean;
 }
 
+async function saveResultToRedis(target: RunTarget, result: RunResult): Promise<void> {
+  const key = `ingestion:result:${target.ats}:${target.slug}`;
+  try {
+    // Store result in Redis with TTL of 24h (86400 seconds)
+    await redis.setex(key, 86400, JSON.stringify(result));
+  } catch (e) {
+    console.error('Failed to store job result in Redis:', e);
+  }
+}
+
 export async function runTarget(target: RunTarget): Promise<RunResult> {
   const adapter = PLUGIN_REGISTRY[target.ats];
   const startTime = Date.now();
 
   if (!adapter) {
-    return { 
+    const durationMs = Date.now() - startTime;
+    await recordRun(0, 0, 0, true, durationMs, target);
+    const result: RunResult = { 
       ats: target.ats, slug: target.slug, company: target.company, 
       total: 0, filtered: 0, saved: 0, skipped: 0, 
       durationMs: Date.now() - startTime, 
       status: 'ERROR', error: `Unknown ATS: ${target.ats}` 
     };
+    await saveResultToRedis(target, result);
+    return result;
+  }
+
+  const cachedJobs = await checkCache(target);
+  if (cachedJobs && !target.dryRun) {
+    // If we have cached jobs and this isn't a dry run, we still submit to API
+    const filtered = target.filter !== false ? applyFilter(cachedJobs, target.hoursOld) : cachedJobs;
+    const { saved, skipped } = await submitJobsToApi(filtered, target.company);
+    const durationMs = Date.now() - startTime;
+    await recordRun(cachedJobs.length, saved, skipped, false, durationMs, target);
+    const result: RunResult = { 
+      ats: target.ats, slug: target.slug, company: target.company,
+      total: cachedJobs.length, filtered: filtered.length, saved, skipped, 
+      durationMs: Date.now() - startTime, status: 'OK' 
+    };
+    await saveResultToRedis(target, result);
+    return result;
   }
 
   try {
@@ -73,34 +106,45 @@ export async function runTarget(target: RunTarget): Promise<RunResult> {
       }
     }
     
-    const filtered = target.filter ? applyFilter(raw, target.hoursOld) : raw;
+    await setCache(target, raw);
+
+    const filtered = target.filter !== false ? applyFilter(raw, target.hoursOld) : raw;
     
     if (target.dryRun) {
-      recordRun(raw.length, 0, filtered.length, false);
-      return {
+      const durationMs = Date.now() - startTime;
+      await recordRun(raw.length, 0, filtered.length, false, durationMs, target);
+      const result: RunResult = {
         ats: target.ats, slug: target.slug, company: target.company,
         total: raw.length, filtered: filtered.length, saved: 0, skipped: filtered.length,
         durationMs: Date.now() - startTime, status: 'OK', jobs: filtered, dryRun: true
       };
+      await saveResultToRedis(target, result);
+      return result;
     }
 
     const { saved, skipped } = await submitJobsToApi(filtered, target.company);
-    recordRun(raw.length, saved, skipped, false);
+    const durationMs = Date.now() - startTime;
+    await recordRun(raw.length, saved, skipped, false, durationMs, target);
 
-    return { 
+    const result: RunResult = { 
       ats: target.ats, slug: target.slug, company: target.company,
       total: raw.length, filtered: filtered.length, saved, skipped, 
       durationMs: Date.now() - startTime, status: 'OK' 
     };
+    await saveResultToRedis(target, result);
+    return result;
   } catch (error) {
-    recordRun(0, 0, 0, true);
+    const durationMs = Date.now() - startTime;
+    await recordRun(0, 0, 0, true, durationMs, target);
     const isTimeout = (error as Error).message === 'TIMEOUT';
-    return { 
+    const result: RunResult = { 
       ats: target.ats, slug: target.slug, company: target.company, 
       total: 0, filtered: 0, saved: 0, skipped: 0, 
       durationMs: Date.now() - startTime, 
       status: isTimeout ? 'TIMEOUT' : 'ERROR', 
       error: (error as Error).message 
     };
+    await saveResultToRedis(target, result);
+    return result;
   }
 }

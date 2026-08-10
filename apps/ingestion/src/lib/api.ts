@@ -1,6 +1,9 @@
-import { AtsJob } from '@fresherflow/plugins';
-import { extractWorkMode, extractExperience, extractDegrees, extractPassoutYears } from '@fresherflow/parser';
-
+import { AtsJob, htmlToPlainText, markdownConverter, extractSalary, extractExperience as pluginExtractExperience } from '@fresherflow/plugins';
+import { extractWorkMode, extractExperience } from '@fresherflow/parser';
+import { scoreJobDescription } from '@fresherflow/domain';
+import { pool } from './db.js';
+import { normalizeRawJson, postProcessNormalize, jobSchema } from 'job-processor/src/normalizer.js';
+import { analyze } from '@fresherflow/utils/analytics/index.js';
 function resolveCompanyWebsiteAndLogo(
     company: string,
     applyLink: string,
@@ -38,14 +41,6 @@ function resolveCompanyWebsiteAndLogo(
 }
 
 export async function submitJobsToApi(jobs: AtsJob[], targetCompany: string): Promise<{ saved: number; skipped: number }> {
-    const apiUrl = process.env.INTERNAL_API_URL || 'http://localhost:5000';
-    const apiKey = process.env.INTERNAL_API_SECRET;
-
-    if (!apiUrl || !apiKey) {
-        console.error('Missing INTERNAL_API_URL or INTERNAL_API_SECRET — cannot submit to main DB');
-        return { saved: 0, skipped: jobs.length };
-    }
-
     let saved = 0;
     let skipped = 0;
 
@@ -60,8 +55,27 @@ export async function submitJobsToApi(jobs: AtsJob[], targetCompany: string): Pr
         }
 
         const { website, logoUrl } = resolveCompanyWebsiteAndLogo(company, applyLink, job.companyUrl);
-
         const fullTextForExtraction = `${job.title} ${job.description || ''} ${job.experienceRange || ''}`;
+
+        // Convert description to markdown
+        if (job.description) {
+            const md = markdownConverter(job.description);
+            if (md) job.description = md;
+        }
+
+        // Extract compensation if missing
+        if (!job.compensation) {
+            const extractedSalary = extractSalary(fullTextForExtraction);
+            if (extractedSalary && extractedSalary.minSalary) {
+                job.compensation = {
+                    interval: extractedSalary.interval || 'YEARLY',
+                    minAmount: extractedSalary.minSalary,
+                    maxAmount: extractedSalary.maxSalary || extractedSalary.minSalary,
+                    currency: extractedSalary.currency || 'INR'
+                };
+            }
+        }
+
 
         let workMode: string | null = extractWorkMode(fullTextForExtraction) ?? null;
         if (!workMode) {
@@ -75,69 +89,134 @@ export async function submitJobsToApi(jobs: AtsJob[], targetCompany: string): Pr
         }
 
         const parsedExp = extractExperience(fullTextForExtraction);
-        const experienceMin = job.experienceYears ?? (parsedExp.min !== undefined ? parsedExp.min : null);
-        const experienceMax = parsedExp.max !== undefined ? parsedExp.max : null;
+        const pluginExp = pluginExtractExperience(fullTextForExtraction);
+        const experienceMin = job.experienceYears ?? (parsedExp.min !== undefined ? parsedExp.min : pluginExp.minExperienceYears ?? null);
+        const experienceMax = parsedExp.max !== undefined ? parsedExp.max : (pluginExp.maxExperienceYears ?? null);
 
-        const allowedDegrees = extractDegrees(fullTextForExtraction);
-        const allowedPassoutYears = extractPassoutYears(fullTextForExtraction);
-
-        const payload = {
-            type: 'JOB',
+        // Build raw job object for normalization using normalizer.ts
+        const rawJob: Record<string, unknown> = {
+            type: (job.jobType && job.jobType.length > 0 && job.jobType[0].toUpperCase() === 'INTERNSHIP') ? 'INTERNSHIP' : 'JOB',
+            status: 'PUBLISHED',
             title: job.title,
             company: company,
-            companyWebsite: website || null,
-            companyLogoUrl: logoUrl || null,
+            companyWebsite: website || '',
+            companyLogoUrl: logoUrl || '',
             description: job.description || '',
-            allowedDegrees: allowedDegrees,
+            allowedDegrees: job.degree ? [job.degree] : [],
             allowedCourses: [],
             allowedSpecializations: [],
-            allowedPassoutYears: allowedPassoutYears,
-            requiredSkills: job.skills || [],
+            allowedPassoutYears: job.batchYear ? [parseInt(job.batchYear, 10)].filter(y => !isNaN(y)) : [],
+            requiredSkills: job.skills && job.skills.length > 0 ? job.skills : [],
             locations: job.location ? [job.location] : [],
-            structuredLocations: job.parsedLocation ? {
-                city: job.parsedLocation.city || '',
-                state: job.parsedLocation.region || '',
-                country: job.parsedLocation.country || ''
-            } : null,
             workMode: workMode,
-            experienceMin: experienceMin,
-            experienceMax: experienceMax,
-            salaryRange: job.compensation ? `${job.compensation.minAmount || ''}-${job.compensation.maxAmount || ''} ${job.compensation.currency || ''}`.trim() : null,
-            salaryMin: job.compensation?.minAmount ?? null,
-            salaryMax: job.compensation?.maxAmount ?? null,
-            salaryPeriod: job.compensation?.interval?.toUpperCase() || 'YEARLY',
-            employmentType: (job.jobType && job.jobType.length > 0) ? job.jobType[0].toUpperCase() : (job.employmentType || null),
+            experienceMin: experienceMin || 0,
+            experienceMax: experienceMax || 0,
+            salaryRange: job.compensation ? `${job.compensation.minAmount || ''}-${job.compensation.maxAmount || ''} ${job.compensation.currency || ''}`.trim() : '',
+            salaryPeriod: job.compensation?.interval?.toUpperCase() === 'MONTHLY' ? 'MONTHLY' : (job.compensation?.interval?.toUpperCase() === 'HOURLY' ? 'HOURLY' : 'YEARLY'),
+            employmentType: (job.jobType && job.jobType.length > 0) ? job.jobType[0].toUpperCase() : (job.employmentType || ''),
             jobFunction: job.jobFunction || job.department || null,
             applyLink: applyLink,
-            sourceLink: job.jobUrlDirect || applyLink,
-            status: 'PUBLISHED',
+            customSlug: '',
+            applicationDetails: { method: 'DIRECT', platform: '', requiredItems: [] },
         };
 
+        const preNormalized = normalizeRawJson(rawJob);
+        const parsedJob = jobSchema.parse(preNormalized);
+        const normalizedJob = postProcessNormalize(parsedJob, fullTextForExtraction);
+
+        const cleanText = job.description ? htmlToPlainText(job.description) : '';
+        const fresherScore = scoreJobDescription(normalizedJob.title, cleanText).score;
+
         try {
-            console.log(`Submitting to main API: ${job.title} @ ${company}`);
-            // codeql[js/request-forgery]
-            // lgtm[js/request-forgery]
-            const res = await fetch(`${apiUrl}/api/opportunities/submit`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'x-api-key': apiKey,
-                },
-                body: JSON.stringify(payload),
-                signal: AbortSignal.timeout(15000),
-            });
-            const result = await res.json() as { success: boolean; message?: string; id?: string };
-            if (!res.ok) {
-                console.error(`Submit API error (${res.status}): ${result.message}`);
-                skipped++;
-            } else {
-                console.log(`Submitted to API: ${job.title} @ ${company} → id=${result.id}`);
-                saved++;
-            }
-        } catch (err) {
-            console.error('Submit API call failed:', (err as Error).message);
+            // 1. Save to discovered_jobs table
+            const discoveredRes = await pool.query(
+                `INSERT INTO discovered_jobs
+                (source, source_type, company, title, location, apply_link, ats_type, ats_text, fresher_score, status, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'PROCESSED', NOW(), NOW())
+                ON CONFLICT (source, apply_link) DO UPDATE SET
+                    title = EXCLUDED.title,
+                    updated_at = NOW()
+                RETURNING id`,
+                [
+                    job.source || 'ATS',
+                    job.sourceType || 'ATS',
+                    normalizedJob.company,
+                    normalizedJob.title,
+                    normalizedJob.locations.length > 0 ? normalizedJob.locations.join(', ') : (job.location || null),
+                    applyLink,
+                    job.atsType || targetCompany,
+                    normalizedJob.description || null,
+                    fresherScore,
+                ]
+            );
+
+
+            const discoveredJobId = discoveredRes.rows[0]?.id || null;
+
+            // 2. Save to processed_jobs table
+            await pool.query(
+                `INSERT INTO processed_jobs 
+                (discovered_job_id, type, title, company, company_website, company_logo_url, description, allowed_degrees, allowed_courses, allowed_specializations, allowed_passout_years, required_skills, locations, structured_locations, work_mode, experience_min, experience_max, salary_range, salary_period, employment_type, job_function, apply_link, status, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 'PUBLISHED', NOW(), NOW())
+                ON CONFLICT (apply_link) DO UPDATE SET
+                    title = EXCLUDED.title,
+                    company = EXCLUDED.company,
+                    description = EXCLUDED.description,
+                    allowed_degrees = EXCLUDED.allowed_degrees,
+                    allowed_courses = EXCLUDED.allowed_courses,
+                    allowed_specializations = EXCLUDED.allowed_specializations,
+                    allowed_passout_years = EXCLUDED.allowed_passout_years,
+                    required_skills = EXCLUDED.required_skills,
+                    locations = EXCLUDED.locations,
+                    structured_locations = EXCLUDED.structured_locations,
+                    work_mode = EXCLUDED.work_mode,
+                    experience_min = EXCLUDED.experience_min,
+                    experience_max = EXCLUDED.experience_max,
+                    updated_at = NOW()`,
+                [
+                    discoveredJobId,
+                    normalizedJob.type || 'JOB',
+                    normalizedJob.title,
+                    normalizedJob.company,
+                    normalizedJob.companyWebsite || null,
+                    normalizedJob.companyLogoUrl || null,
+                    normalizedJob.description || '',
+                    normalizedJob.allowedDegrees,
+                    normalizedJob.allowedCourses,
+                    normalizedJob.allowedSpecializations,
+                    normalizedJob.allowedPassoutYears,
+                    normalizedJob.requiredSkills,
+                    normalizedJob.locations,
+                    normalizedJob.structuredLocations && normalizedJob.structuredLocations.length > 0
+                        ? JSON.stringify(normalizedJob.structuredLocations)
+                        : (job.parsedLocation ? JSON.stringify({
+                            city: job.parsedLocation.city || '',
+                            state: job.parsedLocation.region || '',
+                            country: job.parsedLocation.country || ''
+                        }) : null),
+                    normalizedJob.workMode || 'ONSITE',
+                    normalizedJob.experienceMin ?? 0,
+                    normalizedJob.experienceMax ?? 0,
+                    normalizedJob.salaryRange || null,
+                    normalizedJob.salaryPeriod || 'YEARLY',
+                    normalizedJob.employmentType || 'FULL_TIME',
+                    normalizedJob.jobFunction || job.department || null,
+                    applyLink,
+                ]
+            );
+            console.log(`[Ingestion DB] Saved: ${normalizedJob.title} @ ${normalizedJob.company}`);
+            saved++;
+        } catch (err: any) {
+            console.error(`[Ingestion DB Error] ${job.title} @ ${company}:`, err.message);
             skipped++;
         }
+    }
+
+    try {
+        const analysis = analyze(jobs);
+        console.log(`[Analytics] Run completed. Summary:`, JSON.stringify(analysis.summary));
+    } catch (err: any) {
+        console.error(`[Analytics Error] Failed to generate telemetry:`, err.message);
     }
 
     return { saved, skipped };

@@ -4,6 +4,7 @@ import { adminSystemApi } from './system';
 import { adminAnalyticsApi } from './analytics';
 import { adminFeedbackApi } from './feedback';
 import { adminUsersApi } from './users';
+import { adminIngestionApi } from './ingestion';
 
 export const adminApi = {
     ...adminAuthApi,
@@ -12,6 +13,7 @@ export const adminApi = {
     ...adminAnalyticsApi,
     ...adminFeedbackApi,
     ...adminUsersApi,
+    ...adminIngestionApi,
     
     // Explicit Aliases for frontend compatibility
     getOpportunities: adminOpportunitiesApi.list,
@@ -41,3 +43,5 @@ export * from './analytics';
 export * from './feedback';
 export * from './users';
 export * from './resources';
+export * from './ingestion';
+

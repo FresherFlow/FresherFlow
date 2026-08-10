@@ -17,18 +17,13 @@ router.get('/', (req: Request, res: Response) => {
   const plugins = Object.entries(PLUGIN_REGISTRY).map(([provider, adapter]) => ({
     provider,
     providerName: adapter.providerName || provider,
-    hasDetailFetcher: typeof adapter.fetchJobDetails === 'function',
-    category: categories.boards.includes(provider)
-      ? 'board'
-      : categories.companies.includes(provider)
-      ? 'company'
-      : 'ats'
+    hasDetailFetcher: typeof adapter.fetchJobDetails === 'function'
   }));
 
   res.json({
-    total: plugins.length,
-    categories,
-    plugins
+    plugins,
+    boards: categories.boards,
+    companies: categories.companies
   });
 });
 

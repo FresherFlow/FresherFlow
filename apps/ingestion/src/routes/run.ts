@@ -1,17 +1,24 @@
 import { Router, Request, Response } from 'express';
 import { runTarget, type RunTarget } from '../lib/runner.js';
-import { loadDefaultTargets, DEFAULT_INGESTION_TARGETS } from '../lib/targets.js';
+import { loadDefaultTargets } from '../lib/targets.js';
 import { requireAuth } from '../middleware/auth.js';
+import { getQueue, QUEUE_NAMES } from '@fresherflow/queue';
+import { runDorker } from '../lib/dorker.js';
 
 const router = Router();
 
 // Public endpoint for listing targets
 router.get('/targets', async (_req: Request, res: Response): Promise<void> => {
   const targets = await loadDefaultTargets();
-  res.json(targets);
+  res.json({ targets });
 });
 
 router.use(requireAuth);
+
+router.post('/dork', async (req: Request, res: Response): Promise<void> => {
+  runDorker().catch(e => console.error('Dorker failed', e));
+  res.json({ status: 'started' });
+});
 
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   const target: RunTarget = req.body;
@@ -34,15 +41,15 @@ router.post('/batch', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const results = [];
-  // Concurrency 5
-  for (let i = 0; i < targets.length; i += 5) {
-    const batch = targets.slice(i, i + 5);
-    const resBatch = await Promise.all(batch.map(t => runTarget(t)));
-    results.push(...resBatch);
+  const queue = getQueue(QUEUE_NAMES.scraper);
+  const jobIds = [];
+  
+  for (const t of targets) {
+    const job = await queue.add('run-target', t);
+    jobIds.push(job.id);
   }
 
-  res.json(results);
+  res.json({ jobIds });
 });
 
 router.post('/all', async (req: Request, res: Response): Promise<void> => {
@@ -57,25 +64,34 @@ router.post('/all', async (req: Request, res: Response): Promise<void> => {
     dryRun: t.dryRun ?? dryRun
   }));
 
-  const results = [];
-  const CONCURRENCY = 5;
-  for (let i = 0; i < targetList.length; i += CONCURRENCY) {
-    const batch = targetList.slice(i, i + CONCURRENCY);
-    const resBatch = await Promise.all(batch.map(t => runTarget(t)));
-    results.push(...resBatch);
+  const queue = getQueue(QUEUE_NAMES.scraper);
+  const jobIds = [];
+
+  for (const t of targetList) {
+    const job = await queue.add('run-target', t);
+    jobIds.push(job.id);
   }
 
-  const summary = {
-    totalTargets: results.length,
-    success: results.filter(r => r.status === 'OK').length,
-    failed: results.filter(r => r.status === 'ERROR').length,
-    timedOut: results.filter(r => r.status === 'TIMEOUT').length,
-    totalJobsFetched: results.reduce((acc, r) => acc + r.total, 0),
-    totalJobsSaved: results.reduce((acc, r) => acc + r.saved, 0),
-    results
-  };
+  res.json({ totalTargets: targetList.length, jobIds });
+});
 
-  res.json(summary);
+router.get('/status/:jobId', async (req: Request, res: Response): Promise<void> => {
+  const queue = getQueue(QUEUE_NAMES.scraper);
+  const jobId = Array.isArray(req.params.jobId) ? req.params.jobId[0] : req.params.jobId;
+  const job = await queue.getJob(jobId);
+  
+  if (!job) {
+    res.status(404).json({ error: 'Job not found' });
+    return;
+  }
+  
+  const state = await job.getState();
+  res.json({
+    id: job.id,
+    state,
+    result: job.returnvalue,
+    failedReason: job.failedReason
+  });
 });
 
 export default router;

@@ -1,14 +1,27 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "esModuleInterop": true,
     "strict": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
-    "rootDir": "./src"
+    "baseUrl": ".",
+    "paths": {
+      "job-processor/*": ["../../scripts/job-processor/*"],
+      "@fresherflow/parser/metadata": ["../../packages/parser/src/metadata.ts"],
+      "@fresherflow/parser": ["../../packages/parser/src/index.ts"],
+      "@fresherflow/types": ["../../packages/types/index.ts"],
+      "@fresherflow/constants": ["../../packages/constants/src/index.ts"],
+      "@fresherflow/domain": ["../../packages/domain/src/index.ts"],
+      "@fresherflow/utils": ["../../packages/utils/src/index.ts"],
+      "@fresherflow/utils/*": ["../../packages/utils/src/*"],
+      "@fresherflow/plugins": ["../../packages/plugins/src/index.ts"],
+      "@fresherflow/redis": ["../../packages/redis/src/index.ts"],
+      "@fresherflow/queue": ["../../packages/queue/src/index.ts"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

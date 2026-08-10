@@ -12,7 +12,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   }
 
   const token = authHeader.split(' ')[1];
-  const secret = process.env.INGESTION_SECRET || process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || 'your-super-secret-access-key-change-this-in-production-min-32-chars';
+  const secret = process.env.INTERNAL_API_SECRET || 'your-super-secret-access-key-change-this-in-production-min-32-chars';
 
   if (token !== secret) {
     res.status(403).json({ error: 'Forbidden' });

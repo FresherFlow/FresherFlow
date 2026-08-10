@@ -16,6 +16,7 @@ export const QUEUE_NAMES = {
     notifications: 'notifications', // combines email, push
     broadcast: 'broadcast',       // combines telegram, social
     internal: 'internal',         // combines cron, ingestion
+    scraper: 'scraper',
 } as const;
 
 export type QueueName = typeof QUEUE_NAMES[keyof typeof QUEUE_NAMES];
@@ -94,6 +95,8 @@ export const cronQueue = { add: (n: string, d: any, o?: any) => getQueue(QUEUE_N
 export const ingestionQueue = { add: (n: string, d: any, o?: any) => getQueue(QUEUE_NAMES.internal).add(n || 'ingestion-payload', d, o) };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const cacheRevalidateQueue = { add: (n: string, d: any, o?: any) => getQueue(QUEUE_NAMES.internal).add(n || 'cache-revalidate', d, o) };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const scraperQueue = { add: (n: string, d: any, o?: any) => getQueue(QUEUE_NAMES.scraper).add(n || 'run-target', d, o) };
 
 export async function enqueueIngestionPayload(payload: Record<string, unknown>) {
     await ingestionQueue.add('ingestion-payload', payload);
@@ -107,6 +110,7 @@ export * from './processors/telegram.processor';
 export * from './processors/ingestion.processor';
 export * from './processors/social.processor';
 export * from './processors/revalidate.processor';
+export * from './processors/scraper.processor';
 
 /**
  * CONSOLIDATED WORKER DISPATCHERS

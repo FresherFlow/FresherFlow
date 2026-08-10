@@ -99,12 +99,15 @@ const createTestRedisClient = (): MinimalRedisLike => {
             return newVal;
         },
         async expire(key: string, _seconds: number) {
+            void _seconds;
             return store.has(key) ? 1 : 0;
         },
         async pexpire(key: string, _milliseconds: number) {
+            void _milliseconds;
             return store.has(key) ? 1 : 0;
         },
         async pttl(_key: string) {
+            void _key;
             return 60000; // Mock 60s
         },
         async quit() {
