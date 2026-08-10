@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { createPortal } from 'react-dom';
 import { PlusCircleIcon, ArrowPathIcon, DocumentTextIcon, ExclamationCircleIcon, MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/ui/Button';
 
 interface AdminOpportunitiesHeaderProps {
@@ -24,25 +25,21 @@ export const AdminOpportunitiesHeader = ({
     const [headerTarget, setHeaderTarget] = useState<Element | null>(null);
     useEffect(() => { setHeaderTarget(document.getElementById('top-header-portal-target')); }, []);
 
+    const router = useRouter();
+
     const actionButtons = (
         <div className="flex items-center gap-2 shrink-0">
             <Button variant="admin" size="sm" onClick={onRefresh} className="hidden md:flex h-9 text-xs px-3 py-2 items-center gap-1.5">
                 <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> Refresh
             </Button>
-            <Button variant="admin" size="sm" asChild className="hidden md:flex h-9 text-xs px-3 py-2 items-center gap-1.5">
-                <a href={exportUrl}>
-                    <DocumentTextIcon className="w-4 h-4" /> Share Link
-                </a>
+            <Button variant="admin" size="sm" onClick={() => window.location.href = exportUrl} className="hidden md:flex h-9 text-xs px-3 py-2 items-center gap-1.5">
+                <DocumentTextIcon className="w-4 h-4" /> Share Link
             </Button>
-            <Button variant="outline" size="sm" asChild className="hidden md:flex h-9 text-xs px-3 py-2 items-center gap-1.5 border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 hover:text-amber-800 dark:hover:text-amber-300 transition-colors">
-                <Link href="/admin/opportunities?status=DRAFT">
-                    <ExclamationCircleIcon className="w-4 h-4" /> Review Queue
-                </Link>
+            <Button variant="outline" size="sm" onClick={() => router.push('/admin/opportunities?status=DRAFT')} className="hidden md:flex h-9 text-xs px-3 py-2 items-center gap-1.5 border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 hover:text-amber-800 dark:hover:text-amber-300 transition-colors">
+                <ExclamationCircleIcon className="w-4 h-4" /> Review Queue
             </Button>
-            <Button size="sm" asChild className="h-9 text-xs px-3 py-2 flex items-center gap-1.5">
-                <Link href="/admin/opportunities/create">
-                    <PlusCircleIcon className="w-4 h-4" /> New listing
-                </Link>
+            <Button size="sm" onClick={() => router.push('/admin/opportunities/create')} className="h-9 text-xs px-3 py-2 flex items-center gap-1.5">
+                <PlusCircleIcon className="w-4 h-4" /> New listing
             </Button>
         </div>
     );

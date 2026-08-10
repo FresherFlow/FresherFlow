@@ -1,3 +1,73 @@
+export interface DiscoveredJob {
+  id: string;
+  runId: string;
+  company: string;
+  title: string;
+  location: string;
+  applyLink: string;
+  atsType: string;
+  status: 'DISCOVERED' | 'PROCESSING' | 'PROCESSED' | 'DUPLICATE' | 'REJECTED' | 'FAILED';
+  fresherScore: number;
+  createdAt: string;
+}
+
+export interface DiscoveryRun {
+  id: string;
+  startedAt: string;
+  completedAt?: string;
+  durationMs?: number;
+  totalFound: number;
+  accepted: number;
+  reviewRequired: number;
+  duplicates: number;
+  failed: number;
+  status: 'COMPLETED' | 'RUNNING' | 'FAILED';
+}
+
+export interface ProcessedJob {
+  id: string;
+  discoveredJobId: string;
+  type: 'JOB' | 'INTERNSHIP';
+  title: string;
+  company: string;
+  status: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'PUBLISHED';
+  requiredSkills: string[];
+  locations: string[];
+  applyLink: string;
+  createdAt: string;
+}
+
+export interface Company {
+  id: string;
+  name: string;
+  slug: string;
+  website: string;
+  careersUrl: string;
+  industry: string;
+  size: string;
+  verificationStatus: 'UNVERIFIED' | 'PENDING' | 'VERIFIED' | 'REJECTED';
+  active: boolean;
+}
+
+export interface CompanyATS {
+  id: string;
+  companyId: string;
+  provider: string;
+  careerUrl: string;
+  health: 'HEALTHY' | 'DEGRADED' | 'FAILING' | 'UNKNOWN';
+  enabled: boolean;
+  lastSync: string;
+  failureCount: number;
+}
+
+export interface CompanyStatistics {
+  companyId: string;
+  totalJobs: number;
+  avgJobsPerMonth: number;
+  lastHiringDate: string;
+  freshersScore: number;
+}
+
 export interface IngestionTarget {
   company: string;
   ats: string;
@@ -13,15 +83,18 @@ export interface PluginEntry {
 export interface NormalizedJob {
   title: string;
   company: string;
+  company_website?: string | null;
+  description?: string;
   apply_link: string;
   locations: string[];
-  work_mode: string | null;
+  work_mode?: 'REMOTE' | 'HYBRID' | 'ONSITE' | null;
   required_skills: string[];
   experience_min: number;
   experience_max: number;
   salary_range: string;
-  posted_at: string | null;
-  department: string | null;
+  posted_at?: string | null;
+  source_ats?: string | null;
+  department?: string | null;
 }
 
 export interface RunResult {
@@ -49,11 +122,13 @@ export interface RunLog {
 }
 
 export interface TelemetryStats {
+  totalTargets?: number;
   totalJobsIngested?: number;
   totalJobsSaved?: number;
   totalJobsSkipped?: number;
   totalRuns?: number;
   uptimeSeconds?: number;
+  lastRunAt?: string;
 }
 
 export interface Opportunity {
@@ -72,4 +147,13 @@ export interface Opportunity {
 }
 
 export type HashTab = 'queue' | 'connectors' | 'runs' | 'verified';
-export type ConnectorSubTab = 'companies' | 'boards' | 'adapters';
+
+export type DiscoveryTab =
+  | 'dashboard'
+  | 'runs'
+  | 'discovered'
+  | 'processed'
+  | 'companies'
+  | 'adapters'
+  | 'ats'
+  | 'boards';

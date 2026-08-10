@@ -13,17 +13,24 @@ import {
     ShareIcon,
     BookOpenIcon,
     BellAlertIcon,
-    PlusCircleIcon
+    PlusCircleIcon,
+    QueueListIcon,
+    CheckCircleIcon,
+    BuildingOfficeIcon,
+    CpuChipIcon,
+    ChartBarIcon,
+    MagnifyingGlassIcon,
+    GlobeAltIcon,
 } from '@heroicons/react/24/outline';
 
-const mainNavItems = [
+export const mainNavItems = [
     { href: '/admin/dashboard', label: 'Dashboard', icon: Squares2X2Icon },
     { href: '/admin/opportunities', label: 'Listings', icon: BriefcaseIcon, exact: true },
     { href: '/admin/opportunities/create', label: 'New listing', icon: PlusCircleIcon },
-    { href: '/admin/discovery', label: 'Discovery Engine', icon: ShieldCheckIcon },
+    { href: '/admin/discovery', label: 'Discovery Engine', icon: ShieldCheckIcon, hasSubmenu: true },
 ];
 
-const settingsNavItems = [
+export const settingsNavItems = [
     { href: '/admin/resources', label: 'Resources', icon: BookOpenIcon },
     { href: '/admin/captions', label: 'Captions', icon: ShareIcon },
     { href: '/admin/push', label: 'Push Alerts', icon: BellAlertIcon },
@@ -36,7 +43,7 @@ export function AdminSidebar({
 }: {
     feedbackAlertCount?: number;
 }) {
-    const { } = useAdmin();
+    useAdmin();
     const pathname = usePathname();
     const searchParams = useSearchParams();
     
@@ -87,7 +94,17 @@ export function AdminSidebar({
 
     const effectiveFeedbackAlertCount = (pathname.startsWith('/feedback') || pathname.startsWith('/admin/feedback')) ? 0 : feedbackAlertCount;
 
-    const customNavItems = [
+    const isDiscovery = pathname.startsWith('/admin/discovery');
+
+    const customNavItems = isDiscovery ? [
+        { name: 'Dashboard', href: '/admin/discovery?tab=dashboard', icon: ChartBarIcon },
+        { name: 'Discovery Runs', href: '/admin/discovery?tab=runs', icon: QueueListIcon },
+        { name: 'Discovered Jobs', href: '/admin/discovery?tab=discovered', icon: MagnifyingGlassIcon },
+        { name: 'Processed Jobs', href: '/admin/discovery?tab=processed', icon: CheckCircleIcon },
+        { name: 'Target Companies', href: '/admin/discovery?tab=companies', icon: BuildingOfficeIcon },
+        { name: 'ATS Adapters', href: '/admin/discovery?tab=adapters', icon: CpuChipIcon },
+        { name: 'Job Boards', href: '/admin/discovery?tab=boards', icon: GlobeAltIcon },
+    ] : [
         ...mainNavItems.map(item => ({ ...item, name: item.label, href: item.href, icon: item.icon })),
         ...settingsNavItems.map(item => {
             const base: any = { name: item.label, href: item.href, icon: item.icon };
@@ -110,7 +127,9 @@ export function AdminSidebar({
                 onToggleCollapse={handleToggleCollapse} 
                 hostname={hostname}
                 customNavItems={customNavItems}
-                customHeaderTitle="Admin Portal"
+                customHeaderTitle={isDiscovery ? "Discovery Engine" : "Admin Portal"}
+                forceSubContext={isDiscovery}
+                customHomeHref={isDiscovery ? "/admin" : "/admin/dashboard"}
                 showThemeToggle={true}
             />
         </aside>

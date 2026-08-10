@@ -19,8 +19,8 @@ export function CareerBoardsTab({
     return (
         <div className="space-y-3">
             <div className="border-b border-border/60 pb-2 flex items-center justify-between">
-                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    MONITORED CAREER BOARDS & AGGREGATORS
+                <span className="text-xs font-bold tracking-wider text-muted-foreground">
+                    Monitored career boards & aggregators
                 </span>
                 <span className="text-xs text-muted-foreground font-mono">{boards.length} sources</span>
             </div>
@@ -39,13 +39,13 @@ export function CareerBoardsTab({
                                 />
                                 <div className="min-w-0">
                                     <h3 className="text-xs font-bold text-foreground truncate">{board.providerName}</h3>
-                                    <p className="text-[10px] font-mono text-muted-foreground truncate">{board.provider}</p>
+                                    <p className="text-xs font-mono text-muted-foreground truncate">{board.provider}</p>
                                 </div>
                             </div>
 
                             <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto shrink-0 pt-1 sm:pt-0 border-t sm:border-0 border-border/30">
                                 {board.hasDetailFetcher ? (
-                                    <span className="bg-muted/50 text-muted-foreground font-mono text-[9px] border border-border/40 px-1.5 py-0.5 rounded">
+                                    <span className="bg-muted/50 text-muted-foreground font-mono text-xs border border-border/40 px-1.5 py-0.5 rounded">
                                         Detail Fetcher ✓
                                     </span>
                                 ) : <span />}
@@ -53,7 +53,7 @@ export function CareerBoardsTab({
                                 <button
                                     onClick={() => onRunBoard(board)}
                                     disabled={isRunning}
-                                    className="h-7 px-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold transition-colors duration-150 active:scale-[0.96] cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-xs"
+                                    className="h-7 px-3 rounded-md bg-muted/40 border border-border/80 text-foreground hover:bg-muted text-xs font-medium transition-all duration-150 active:scale-[0.96] cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-xs"
                                 >
                                     <BoltIcon className={cn("w-3 h-3", isRunning && "animate-spin")} />
                                     <span>{isRunning ? 'Scraping Board...' : 'Scrape Board'}</span>

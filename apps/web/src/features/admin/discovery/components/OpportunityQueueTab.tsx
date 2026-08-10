@@ -26,23 +26,23 @@ export function OpportunityQueueTab({
   onPublishAll,
 }: OpportunityQueueTabProps) {
   const getTabTitle = () => {
-    if (activeHash === 'queue') return 'INGESTION REVIEW QUEUE (PENDING)';
-    if (activeHash === 'verified') return 'VERIFIED DIRECTORY (PUBLISHED)';
-    return 'HOLD & ARCHIVED DRAFTS';
+    if (activeHash === 'queue') return 'Ingestion review queue (pending)';
+    if (activeHash === 'verified') return 'Verified directory (published)';
+    return 'Hold & archived drafts';
   };
 
   return (
     <div className="space-y-3">
       <div className="border-b border-border/60 pb-2.5 flex items-center justify-between">
-        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        <span className="text-xs font-bold tracking-wider text-muted-foreground">
           {getTabTitle()}
         </span>
         <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground font-mono">{opportunities.length} records</span>
+          <span className="text-xs text-muted-foreground">{opportunities.length} records</span>
           {activeHash === 'queue' && opportunities.length > 0 && onPublishAll && (
             <button
               onClick={onPublishAll}
-              className="h-7 px-3 rounded-md text-[11px] font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-transform duration-100 ease-out active:scale-[0.96] shadow-xs cursor-pointer"
+              className="h-7 px-3 rounded-md text-xs font-medium bg-muted/40 border border-border/80 text-foreground hover:bg-muted transition-all duration-100 ease-out active:scale-[0.96] shadow-xs cursor-pointer"
             >
               Publish All
             </button>
@@ -52,7 +52,7 @@ export function OpportunityQueueTab({
 
       {isLoading ? (
         <div className="p-12 text-center border border-dashed border-border/80 rounded-2xl bg-card/40 backdrop-blur-xs">
-          <p className="text-xs font-mono text-muted-foreground animate-pulse">Loading opportunities...</p>
+          <p className="text-xs text-muted-foreground animate-pulse">Loading opportunities...</p>
         </div>
       ) : opportunities.length === 0 ? (
         <div className="p-16 text-center border border-dashed border-border/80 rounded-2xl max-w-md mx-auto my-6 bg-card/40 backdrop-blur-xs">
@@ -80,16 +80,16 @@ export function OpportunityQueueTab({
                   />
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="text-sm font-bold text-foreground truncate shrink-0">{job.title}</h3>
-                      <span className="text-xs font-medium text-muted-foreground truncate">{job.company}</span>
-                      <span className="bg-muted/50 text-muted-foreground font-mono text-[9px] border border-border/40 px-1.5 py-0.5 rounded truncate uppercase">
+                      <h3 className="text-sm font-medium text-foreground truncate shrink-0">{job.title}</h3>
+                      <span className="text-xs text-muted-foreground truncate">{job.company}</span>
+                      <span className="bg-muted/50 text-muted-foreground font-medium text-xs border border-border/40 px-1.5 py-0.5 rounded truncate">
                         {job.source || 'ATS'}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <button
                         onClick={() => onInspectPayload(job)}
-                        className="text-[10px] font-mono text-muted-foreground hover:text-primary transition-colors cursor-pointer flex items-center gap-1"
+                        className="text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer flex items-center gap-1"
                       >
                         <CodeBracketIcon className="w-3 h-3" /> payload
                       </button>
@@ -98,7 +98,7 @@ export function OpportunityQueueTab({
                           href={job.applyLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[10px] font-mono text-muted-foreground hover:text-primary transition-colors cursor-pointer flex items-center gap-1"
+                          className="text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer flex items-center gap-1"
                         >
                           <ArrowTopRightOnSquareIcon className="w-3 h-3" /> link
                         </a>
@@ -113,7 +113,7 @@ export function OpportunityQueueTab({
                       <button
                         onClick={() => onPublish(job.id)}
                         disabled={isActionLoading === job.id}
-                        className="h-7 px-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold transition-transform duration-100 ease-out active:scale-[0.96] shadow-xs cursor-pointer disabled:opacity-50"
+                        className="h-7 px-3 rounded-md bg-muted/40 border border-border/80 text-foreground hover:bg-muted text-xs font-medium transition-all duration-100 ease-out active:scale-[0.96] shadow-xs cursor-pointer disabled:opacity-50"
                       >
                         Publish
                       </button>
@@ -128,8 +128,8 @@ export function OpportunityQueueTab({
                     </>
                   )}
                   {activeHash === 'verified' && (
-                    <span className="text-[10px] font-mono text-emerald-500 font-bold px-2 py-0.5 bg-emerald-500/10 rounded border border-emerald-500/20">
-                      PUBLISHED
+                    <span className="text-xs font-semibold text-foreground px-2 py-0.5 bg-emerald-500/10 rounded border border-emerald-500/20">
+                      Published
                     </span>
                   )}
                 </div>

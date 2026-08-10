@@ -22,6 +22,41 @@ import { Button } from '@/ui/Button';
 
 type Opp = Opportunity & { deletedAt?: string | Date | null; expiredAt?: string | Date | null };
 
+const getAtsName = (link?: string | null) => {
+    if (!link) return null;
+    try {
+        const url = new URL(link);
+        const host = url.hostname.toLowerCase();
+        
+        if (host.includes('greenhouse.io')) return 'Greenhouse';
+        if (host.includes('lever.co')) return 'Lever';
+        if (host.includes('myworkdayjobs.com') || host.includes('workday.com')) return 'Workday';
+        if (host.includes('ashbyhq.com')) return 'Ashby';
+        if (host.includes('bamboohr.com')) return 'BambooHR';
+        if (host.includes('breezy.hr')) return 'BreezyHR';
+        if (host.includes('smartrecruiters.com')) return 'SmartRecruiters';
+        if (host.includes('workable.com')) return 'Workable';
+        if (host.includes('icims.com')) return 'iCIMS';
+        if (host.includes('jobvite.com')) return 'Jobvite';
+        if (host.includes('recruitee.com')) return 'Recruitee';
+        if (host.includes('phenompro.com') || host.includes('phenom.com')) return 'Phenom';
+        if (host.includes('taleo.net')) return 'Taleo';
+        if (host.includes('successfactors.com') || host.includes('successfactors.eu')) return 'SuccessFactors';
+        if (host.includes('darwinbox.in') || host.includes('darwinbox.com')) return 'Darwinbox';
+        if (host.includes('eightfold.ai')) return 'Eightfold';
+        if (host.includes('freshteam.com')) return 'Freshteam';
+        if (host.includes('mercor.com')) return 'Mercor';
+        if (host.includes('careers') || host.includes('jobs')) return 'Careers';
+        
+        const parts = host.split('.');
+        if (parts.length >= 2) {
+            const domain = parts[parts.length - 2];
+            return domain.charAt(0).toUpperCase() + domain.slice(1);
+        }
+    } catch {}
+    return null;
+};
+
 interface Props {
     opportunities: Opp[];
     selectedIds: string[];
@@ -199,6 +234,7 @@ const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSel
                         <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Opportunity</th>
                         <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Location / Date</th>
                         <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
+                        <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Source</th>
                         <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide text-right">Actions</th>
                     </tr>
                 </thead>
@@ -254,6 +290,13 @@ const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSel
                                 </span>
                             </td>
                             <td className="px-4 py-3">
+                                {(() => {
+                                    const ats = getAtsName(opp.applyLink || (opp as any).sourceLink);
+                                    if (ats) return <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted border border-border text-[10px] font-medium text-muted-foreground tracking-wide">{ats}</span>;
+                                    return <span className="text-muted-foreground text-xs">—</span>;
+                                })()}
+                            </td>
+                            <td className="px-4 py-3">
                                 <div className="flex justify-end">
                                     <RowActions opp={opp} {...actions} />
                                 </div>
@@ -306,6 +349,11 @@ const MobileCards = ({ opportunities, selectedIds, toggleSelect, ...actions }: P
                             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                                 <span className="text-xs text-muted-foreground">{opp.company}</span>
                                 <span className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted border border-border text-muted-foreground">{opp.type}</span>
+                                {(() => {
+                                    const ats = getAtsName(opp.applyLink || (opp as any).sourceLink);
+                                    if (ats) return <span className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted border border-border text-muted-foreground">{ats}</span>;
+                                    return null;
+                                })()}
                             </div>
                         </div>
                     </div>
