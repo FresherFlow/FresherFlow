@@ -8,6 +8,7 @@ export * from './admin/users';
 export * from './admin/resources';
 export * from './admin/social';
 export * from './admin/push';
+export * from './admin/ingestion';
 // Public APIs
 export { authApi } from './public/auth';
 export { opportunitiesApi } from './public/opportunities';

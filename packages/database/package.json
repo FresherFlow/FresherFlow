@@ -10,7 +10,7 @@
     "build": "prisma generate && tsc",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
-    "lint": "eslint ."
+    "lint": "eslint src"
   },
   "dependencies": {
     "@fresherflow/config": "^1.0.0",
