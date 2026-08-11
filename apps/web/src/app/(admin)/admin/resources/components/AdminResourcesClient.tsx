@@ -18,6 +18,8 @@ import { toast } from 'react-hot-toast';
 import { SmartInput } from '@/features/admin/ui/SmartInput';
 import { SmartTextarea } from '@/features/admin/ui/SmartTextarea';
 import { SmartSelect } from '@/features/admin/ui/SmartSelect';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/ui/Table';
+import { AlertDialog } from '@/ui/AlertDialog';
 
 const inputClasses = `
     flex w-full px-2.5 py-1.5 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50
@@ -873,20 +875,20 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
 
                                 {/* Desktop View (Table) */}
                                 <div className="hidden md:block flex-1 min-h-0 overflow-x-auto overflow-y-auto custom-scrollbar overscroll-contain">
-                                    <table className="w-full text-sm text-left whitespace-nowrap">
-                                        <thead className="sticky top-0 z-10 text-xs text-muted-foreground bg-muted/90 backdrop-blur-xs border-b border-border uppercase tracking-wider">
-                                            <tr>
-                                                <th className="px-4 py-3 font-semibold">Title & Items</th>
-                                                <th className="px-4 py-3 font-semibold">Type</th>
-                                                <th className="px-4 py-3 font-semibold">Metadata</th>
-                                                <th className="px-4 py-3 font-semibold">Date</th>
-                                                <th className="px-4 py-3 font-semibold text-right">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-border">
+                                    <Table className="whitespace-nowrap">
+                                        <TableHeader className="sticky top-0 z-10 bg-muted/90 backdrop-blur-xs">
+                                            <TableRow className="uppercase tracking-wider">
+                                                <TableHead className="px-4 py-3 font-semibold">Title & Items</TableHead>
+                                                <TableHead className="px-4 py-3 font-semibold">Type</TableHead>
+                                                <TableHead className="px-4 py-3 font-semibold">Metadata</TableHead>
+                                                <TableHead className="px-4 py-3 font-semibold">Date</TableHead>
+                                                <TableHead className="px-4 py-3 font-semibold text-right">Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody className="divide-y divide-border">
                                             {resources.map((resource) => (
-                                                <tr key={resource.id} className="hover:bg-muted/20 transition-colors">
-                                                    <td className="px-4 py-3 align-top max-w-[300px] whitespace-normal">
+                                                <TableRow key={resource.id}>
+                                                    <TableCell className="px-4 py-3 align-top max-w-[300px] whitespace-normal">
                                                         <div className="font-medium text-foreground text-sm leading-tight mb-1">{resource.title}</div>
                                                         {resource.description && (
                                                             <div className="text-xs text-muted-foreground line-clamp-1 mb-2">{resource.description}</div>
@@ -907,13 +909,13 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
                                                                 )}
                                                             </div>
                                                         )}
-                                                    </td>
-                                                    <td className="px-4 py-3 align-top">
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-3 align-top">
                                                         <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-500/10">
                                                             {resource.items?.length === 1 ? 'Single' : 'Collection'}
                                                         </span>
-                                                    </td>
-                                                    <td className="px-4 py-3 align-top max-w-[200px] whitespace-normal">
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-3 align-top max-w-[200px] whitespace-normal">
                                                         <div className="flex flex-col gap-1.5">
                                                             <div className="flex items-center gap-1.5 flex-wrap">
                                                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ring-1 ring-inset ${
@@ -935,11 +937,11 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
                                                                 </div>
                                                             )}
                                                         </div>
-                                                    </td>
-                                                    <td className="px-4 py-3 align-top text-xs text-muted-foreground">
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-3 align-top text-xs text-muted-foreground">
                                                         {new Date(resource.createdAt).toLocaleDateString()}
-                                                    </td>
-                                                    <td className="px-4 py-3 align-top text-right">
+                                                    </TableCell>
+                                                    <TableCell className="px-4 py-3 align-top text-right">
                                                         <div className="flex items-center justify-end gap-1">
                                                             {activeTab === ResourceItemStatus.PENDING_REVIEW && (
                                                                 <button onClick={() => handleApprove(resource.id)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors" title="Approve">
@@ -953,11 +955,11 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
                                                                 <TrashIcon className="w-4 h-4" />
                                                             </button>
                                                         </div>
-                                                    </td>
-                                                </tr>
+                                                    </TableCell>
+                                                </TableRow>
                                             ))}
-                                        </tbody>
-                                    </table>
+                                        </TableBody>
+                                    </Table>
                                 </div>
                             </>
                         )}
@@ -989,36 +991,15 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
                 </>
             )}
 
-            {resourceToDelete && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
-                    <div className="bg-card w-full max-w-sm rounded-xl border border-border shadow-lg p-6 text-center animate-in zoom-in-95 duration-200">
-                        <div className="w-12 h-12 mx-auto bg-destructive/10 rounded-full flex items-center justify-center mb-4">
-                            <ExclamationTriangleIcon className="w-6 h-6 text-destructive" />
-                        </div>
-                        <h3 className="text-lg font-semibold text-foreground mb-2">Delete Resource?</h3>
-                        <p className="text-sm text-muted-foreground mb-6">
-                            This action cannot be undone. Are you sure you want to permanently delete this resource?
-                        </p>
-                        <div className="flex justify-center gap-3">
-                            <button 
-                                type="button"
-                                onClick={() => setResourceToDelete(null)}
-                                className="px-4 py-2 text-sm font-medium rounded-md border border-border hover:bg-muted transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button 
-                                type="button"
-                                onClick={confirmDelete}
-                                disabled={isDeleting}
-                                className="px-4 py-2 text-sm font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-50"
-                            >
-                                {isDeleting ? 'Deleting...' : 'Delete'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <AlertDialog
+                show={!!resourceToDelete}
+                title="Delete Resource?"
+                message="This action cannot be undone. Are you sure you want to permanently delete this resource?"
+                onConfirm={confirmDelete}
+                onCancel={() => setResourceToDelete(null)}
+                type="danger"
+                confirmText={isDeleting ? 'Deleting...' : 'Delete'}
+            />
         </div>
     );
 }

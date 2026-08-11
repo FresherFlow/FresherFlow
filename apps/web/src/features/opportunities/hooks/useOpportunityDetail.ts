@@ -12,6 +12,7 @@ import { getRelatedOpportunities } from '@/features/opportunities/utils/detailUt
 import { useFirebaseTracker } from '@/lib/hooks/useFirebaseTracker';
 import { useFirebaseSaved } from '@/lib/hooks/useFirebaseSaved';
 import { readFeedCache, saveOpportunityToCache } from '@/lib/api/offline/opportunitiesFeedCache';
+import { promptLoginToast } from '@/lib/utils/toastUtils';
 
 
 
@@ -192,9 +193,7 @@ export function useOpportunityDetail(
     const handleToggleSave = async () => {
         if (!opp) return;
         if (!user) {
-            const path = getOpportunityPathFromItem(opp);
-            const sp = searchParams.get('source');
-            router.push(buildLoginFromDetailHref(path, sp, searchParams.get('ref')));
+            promptLoginToast('Sign in to save opportunities');
             return;
         }
 
@@ -209,9 +208,7 @@ export function useOpportunityDetail(
     const handleSetAction = async (actionType: ActionType) => {
         if (!opp) return;
         if (!user) {
-            const path = getOpportunityPathFromItem(opp);
-            const sp = searchParams.get('source');
-            router.push(buildLoginFromDetailHref(path, sp, searchParams.get('ref')));
+            promptLoginToast('Sign in to update application status');
             return;
         }
 

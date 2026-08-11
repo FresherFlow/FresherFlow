@@ -1,8 +1,22 @@
 'use client';
 
-import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/ui/Dialog';
 import { PluginEntry, IngestionTarget } from '../types';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Field } from '@/ui/Field';
+import { Input } from '@/ui/Input';
+import { NativeSelect as Select } from "@/ui/NativeSelect";
+
+const targetSchema = z.object({
+  ats: z.string().min(1, 'ATS provider is required'),
+  company: z.string().min(1, 'Company name is required'),
+  slug: z.string().min(1, 'Slug is required'),
+  dryRun: z.boolean(),
+});
+
+type FormValues = z.infer<typeof targetSchema>;
 
 interface AddTargetModalProps {
   open: boolean;
@@ -17,19 +31,26 @@ export function AddTargetModal({
   onClose,
   onRunCustom,
 }: AddTargetModalProps) {
-  const [ats, setAts] = useState('');
-  const [slug, setSlug] = useState('');
-  const [company, setCompany] = useState('');
-  const [dryRun, setDryRun] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(targetSchema),
+    defaultValues: {
+      ats: '',
+      company: '',
+      slug: '',
+      dryRun: false,
+    },
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!ats || !slug || !company) return;
-
-    onRunCustom({ ats, slug, company }, dryRun);
+  const onSubmit = (data: FormValues) => {
+    onRunCustom({ ats: data.ats, slug: data.slug, company: data.company }, data.dryRun);
     onClose();
-    setSlug('');
-    setCompany('');
+    // Preserve ats and dryRun choices for subsequent openings
+    reset({ ats: data.ats, company: '', slug: '', dryRun: data.dryRun });
   };
 
   return (
@@ -39,55 +60,43 @@ export function AddTargetModal({
           <DialogTitle className="text-sm font-bold">Add & Run On-Demand Target</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 py-2 text-xs">
-          <div>
-            <label className="block font-mono text-muted-foreground mb-1">ATS Provider Engine</label>
-            <select
-              value={ats}
-              onChange={(e) => setAts(e.target.value)}
-              required
-              className="w-full h-9 px-3 rounded-lg border border-border/80 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-mono text-xs"
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2 text-xs">
+          <Field label="ATS Provider Engine" error={errors.ats?.message} required labelClassName="font-mono">
+            <Select
+              {...register('ats')}
+              className="font-mono text-xs"
             >
-              <option value="">Select ATS Provider...</option>
+              <option value="" disabled hidden>Select ATS Provider...</option>
               {adapters.map((p) => (
                 <option key={p.provider} value={p.provider}>
                   {p.providerName} ({p.provider})
                 </option>
               ))}
-            </select>
-          </div>
+            </Select>
+          </Field>
 
-          <div>
-            <label className="block font-mono text-muted-foreground mb-1">Company Name</label>
-            <input
-              type="text"
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
+          <Field label="Company Name" error={errors.company?.message} required labelClassName="font-mono">
+            <Input
+              {...register('company')}
               placeholder="e.g. Razorpay"
-              required
-              className="w-full h-9 px-3 rounded-lg border border-border/80 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary text-xs"
+              className="text-xs"
             />
-          </div>
+          </Field>
 
-          <div>
-            <label className="block font-mono text-muted-foreground mb-1">Board / Target Slug</label>
-            <input
-              type="text"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
+          <Field label="Board / Target Slug" error={errors.slug?.message} required labelClassName="font-mono">
+            <Input
+              {...register('slug')}
               placeholder="e.g. razorpaysoftwareprivatelimited"
-              required
-              className="w-full h-9 px-3 rounded-lg border border-border/80 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary font-mono text-xs"
+              className="font-mono text-xs"
             />
-          </div>
+          </Field>
 
           <div className="flex items-center gap-2 pt-1">
             <input
               type="checkbox"
               id="dryRunCheck"
-              checked={dryRun}
-              onChange={(e) => setDryRun(e.target.checked)}
-              className="rounded border-border/80 bg-background text-primary focus:ring-primary"
+              {...register('dryRun')}
+              className="w-4 h-4 rounded border-border/80 bg-card text-primary focus:ring-1 focus:ring-primary focus:ring-offset-0 accent-primary cursor-pointer transition-colors"
             />
             <label htmlFor="dryRunCheck" className="font-mono text-muted-foreground cursor-pointer">
               Dry Run Mode (Preview without DB write)

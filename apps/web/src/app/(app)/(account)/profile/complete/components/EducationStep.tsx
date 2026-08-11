@@ -3,7 +3,7 @@ import { cn } from '@repo/ui/utils/cn';
 import { EDUCATION_LEVELS, DIPLOMA_DEGREES, UG_DEGREES, PG_DEGREES, getSpecializations } from '@fresherflow/domain';
 
 import { Input } from '@/ui/Input';
-import { Select } from '@/ui/Select';
+import { NativeSelect as Select } from "@/ui/NativeSelect";
 import { ArrowPathIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 
 interface EducationStepProps {

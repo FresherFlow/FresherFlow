@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ServerIcon, RocketLaunchIcon, CpuChipIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { PluginEntry, IngestionTarget } from '../types';
+import { Button } from '@/ui/Button';
 import { cn } from '@repo/ui/utils/cn';
 
 const BOARD_PROVIDERS = new Set([
@@ -91,9 +92,9 @@ export function AtsAdaptersTab({
           const targetCount = companyTargets.filter(t => t.ats === adapter.provider).length;
           const isRunning = runningAdapterId === adapter.provider;
 
-          let typeBadge = 'ATS';
-          if (BOARD_PROVIDERS.has(adapter.provider)) typeBadge = 'Job Board';
-          else if (COMPANY_PROVIDERS.has(adapter.provider)) typeBadge = 'Company Direct';
+          let typeBadge = 'Ats';
+          if (BOARD_PROVIDERS.has(adapter.provider)) typeBadge = 'Job board';
+          else if (COMPANY_PROVIDERS.has(adapter.provider)) typeBadge = 'Company direct';
 
           return (
             <div
@@ -117,11 +118,11 @@ export function AtsAdaptersTab({
                   <span
                     className={cn(
                       'text-xs font-mono font-semibold px-2 py-0.5 rounded border',
-                      typeBadge === 'Job Board'
-                        ? 'bg-purple-500/10 text-foreground border-purple-500/20'
-                        : typeBadge === 'Company Direct'
-                        ? 'bg-blue-500/10 text-foreground border-blue-500/20'
-                        : 'bg-emerald-500/10 text-foreground border-emerald-500/20'
+                      typeBadge === 'Job board'
+                        ? 'bg-purple-500/10 text-purple-600 border-purple-500/20'
+                        : typeBadge === 'Company direct'
+                        ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+                        : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
                     )}
                   >
                     {typeBadge}
@@ -139,14 +140,16 @@ export function AtsAdaptersTab({
                 </div>
               </div>
 
-              <button
+              <Button
+                variant="admin"
+                size="sm"
                 onClick={() => onRunAdapterBatch(adapter)}
                 disabled={isRunning}
-                className="w-full h-8 px-3 rounded-lg bg-muted/40 border border-border/80 text-foreground hover:bg-muted text-xs font-medium transition-all active:scale-[0.96] cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-xs"
+                className="w-full"
               >
-                <RocketLaunchIcon className={cn('w-3.5 h-3.5', isRunning && 'animate-spin')} />
-                <span>{isRunning ? 'Running Batch...' : `Run All for ${adapter.providerName}`}</span>
-              </button>
+                <RocketLaunchIcon className={cn('w-3.5 h-3.5 mr-1.5', isRunning && 'animate-spin')} />
+                {isRunning ? 'Running batch...' : `Run all for ${adapter.providerName}`}
+              </Button>
             </div>
           );
         })}

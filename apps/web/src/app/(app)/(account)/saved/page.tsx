@@ -13,7 +13,7 @@ import JobCard from '@/features/opportunities/components/JobCard';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { readFeedCache, getOpportunityFromCache } from '@/lib/api/offline/opportunitiesFeedCache';
 import { AuthGate, ProfileGate } from '@/lib/components/ProfileGate';
-import { SkeletonJobCard } from '@/ui/Skeleton';
+import { SkeletonJobCard } from '@/features/opportunities/components/OpportunitySkeletons';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import { Button } from '@/ui/Button';
 

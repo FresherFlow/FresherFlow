@@ -1,6 +1,7 @@
 export const revalidate = 300; // ISR: re-render every 5min (CDN serves; Render never touched)
 
 import type { Metadata } from 'next';
+import { CDN_URL } from '@/lib/utils/runtimeConfig';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { UserIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
@@ -67,7 +68,7 @@ function getApiBaseUrl(): string {
 }
 
 function getCdnBaseUrl(): string {
-    return (process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.fresherflow.in').replace(/\/+$/, '');
+    return CDN_URL.replace(/\/+$/, '');
 }
 
 async function fetchPublicProfile(username: string): Promise<PublicProfileData | null> {

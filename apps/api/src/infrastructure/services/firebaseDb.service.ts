@@ -1,4 +1,5 @@
-import admin from '../../lib/firebase';
+import { getFirebaseApp } from '../../lib/firebase';
+import { getDatabase } from 'firebase-admin/database';
 import { logger } from '@fresherflow/logger';
 
 export interface FirebaseOnboardingRecord {
@@ -14,7 +15,8 @@ export class FirebaseDbService {
         if (!firebaseUid) return;
 
         try {
-            const db = admin.database();
+            const app = getFirebaseApp();
+            const db = getDatabase(app);
             const ref = db.ref(`/users/${firebaseUid}/onboarding`);
             await ref.update({
                 ...payload,

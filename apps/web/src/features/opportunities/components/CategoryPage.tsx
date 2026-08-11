@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
-import { FeedPageSkeleton } from '@/ui/Skeleton';
+import { FeedPageSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
 import { useCategoryPageState } from '@/features/opportunities/hooks/useCategoryPageState';
 import { CategoryPageView } from '@/features/opportunities/components/CategoryPageView';
 

@@ -5,11 +5,12 @@ import { Opportunity, EducationLevel } from '@fresherflow/types';
 // import { opportunitiesApi, savedApi } from '@/lib/api/client';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import { readFeedCache } from '@/lib/api/offline/opportunitiesFeedCache';
 import { calculateOpportunityMatch, isNotEligible } from '@/features/opportunities/domain/matchScore';
 
 import { useFirebaseSaved } from '@/lib/hooks/useFirebaseSaved';
+import { promptLoginToast } from '@/lib/utils/toastUtils';
 
 
 const WEB_STATIC_DISCOVERY = true;
@@ -433,8 +434,7 @@ export function useOpportunitiesFeed({
 
     const toggleSave = async (opportunityId: string) => {
         if (!user) {
-            toast.error('Please log in to save opportunities');
-            router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+            promptLoginToast('Sign in to save opportunities');
             return;
         }
         try {

@@ -16,10 +16,9 @@ import TrashIcon from '@heroicons/react/24/outline/TrashIcon';
 import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
 import BuildingOfficeIcon from '@heroicons/react/24/outline/BuildingOfficeIcon';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
-import CurrencyRupeeIcon from '@heroicons/react/24/outline/CurrencyRupeeIcon';
-import DocumentTextIcon from '@heroicons/react/24/outline/DocumentTextIcon';
+import { CheckIcon, CurrencyRupeeIcon, DocumentTextIcon } from '@heroicons/react/24/solid';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/ui/Table';
 import ChevronDownIcon from '@heroicons/react/24/outline/ChevronDownIcon';
-import CheckIcon from '@heroicons/react/24/outline/CheckIcon';
 import { AuthGate, ProfileGate } from '@/lib/components/ProfileGate';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/utils/utils';
@@ -404,19 +403,19 @@ function TrackerPageContent() {
                     </Link>
                 </div>
             ) : (
-                <div className="w-full overflow-x-auto rounded-xl border border-border/60 bg-card/60 shadow-sm">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="border-b border-border/60 bg-muted/30 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
-                                <th className="py-3 px-4">Company & Role</th>
-                                <th className="py-3 px-4 hidden sm:table-cell">Location</th>
-                                <th className="py-3 px-4 hidden md:table-cell">Salary</th>
-                                <th className="py-3 px-4">Stage</th>
-                                <th className="py-3 px-4 hidden lg:table-cell">Updated</th>
-                                <th className="py-3 px-4 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/40 text-xs">
+                <div className="w-full overflow-x-auto rounded-xl border border-border/60 bg-card/60 shadow-sm border-border/40">
+                    <Table className="w-full text-left border-collapse">
+                        <TableHeader>
+                            <TableRow className="border-b border-border/60 bg-muted/30 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                                <TableHead className="py-3 px-4 font-medium text-xs text-muted-foreground">Company & Role</TableHead>
+                                <TableHead className="py-3 px-4 hidden sm:table-cell font-medium text-xs text-muted-foreground">Location</TableHead>
+                                <TableHead className="py-3 px-4 hidden md:table-cell font-medium text-xs text-muted-foreground">Salary</TableHead>
+                                <TableHead className="py-3 px-4 font-medium text-xs text-muted-foreground">Stage</TableHead>
+                                <TableHead className="py-3 px-4 hidden lg:table-cell font-medium text-xs text-muted-foreground">Updated</TableHead>
+                                <TableHead className="py-3 px-4 text-right font-medium text-xs text-muted-foreground">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody className="divide-y divide-border/40 text-xs">
                             {filteredItems.map((item) => {
                                 const companyName = typeof item.company === 'string' ? item.company : (item.company as any)?.name || 'Company';
                                 const locationInfo = parseOpportunityLocation(item.locations);
@@ -424,9 +423,9 @@ function TrackerPageContent() {
                                 const currentConfig = STATUS_CONFIGS[item.trackerStatus] || STATUS_CONFIGS[ActionType.APPLIED];
 
                                 return (
-                                    <tr key={item.id} className="hover:bg-muted/30 transition-colors group">
+                                    <TableRow key={item.id} className="hover:bg-muted/30 transition-colors group">
                                         {/* Company & Role */}
-                                        <td className="py-3 px-4">
+                                        <TableCell className="py-3 px-4">
                                             <div className="flex items-center gap-3 min-w-0">
                                                 <div className="shrink-0">
                                                     <CompanyLogo
@@ -446,18 +445,18 @@ function TrackerPageContent() {
                                                     </Link>
                                                 </div>
                                             </div>
-                                        </td>
+                                        </TableCell>
 
                                         {/* Location */}
-                                        <td className="py-3 px-4 hidden sm:table-cell text-muted-foreground">
+                                        <TableCell className="py-3 px-4 hidden sm:table-cell text-muted-foreground">
                                             <div className="flex items-center gap-1 max-w-[160px] truncate">
                                                 <MapPinIcon className="w-3.5 h-3.5 shrink-0" />
                                                 <span className="truncate">{locationInfo.shortLabel}</span>
                                             </div>
-                                        </td>
+                                        </TableCell>
 
                                         {/* Salary */}
-                                        <td className="py-3 px-4 hidden md:table-cell text-muted-foreground">
+                                        <TableCell className="py-3 px-4 hidden md:table-cell text-muted-foreground">
                                             {salaryText ? (
                                                 <div className="flex items-center gap-1 font-semibold text-foreground/80">
                                                     <CurrencyRupeeIcon className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
@@ -466,10 +465,10 @@ function TrackerPageContent() {
                                             ) : (
                                                 <span className="text-muted-foreground/50">—</span>
                                             )}
-                                        </td>
+                                        </TableCell>
 
                                         {/* Stage Selector Dropdown */}
-                                        <td className="py-3 px-4">
+                                        <TableCell className="py-3 px-4">
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <button
@@ -499,15 +498,15 @@ function TrackerPageContent() {
                                                     ))}
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
-                                        </td>
+                                        </TableCell>
 
                                         {/* Updated Date */}
-                                        <td className="py-3 px-4 hidden lg:table-cell text-muted-foreground text-[11px] whitespace-nowrap">
+                                        <TableCell className="py-3 px-4 hidden lg:table-cell text-muted-foreground text-[11px] whitespace-nowrap">
                                             {new Date(item.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                        </td>
+                                        </TableCell>
 
                                         {/* Action Buttons */}
-                                        <td className="py-3 px-4 text-right">
+                                        <TableCell className="py-3 px-4 text-right">
                                             <div className="flex items-center justify-end gap-1.5">
                                                 <TrackerNotesDialog jobId={item.id} companyName={companyName} />
                                                 
@@ -529,12 +528,12 @@ function TrackerPageContent() {
                                                     <TrashIcon className="w-3.5 h-3.5" />
                                                 </button>
                                             </div>
-                                        </td>
-                                    </tr>
+                                        </TableCell>
+                                    </TableRow>
                                 );
                             })}
-                        </tbody>
-                    </table>
+                        </TableBody>
+                    </Table>
                 </div>
             )}
         </div>

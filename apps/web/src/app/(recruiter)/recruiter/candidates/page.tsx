@@ -17,7 +17,7 @@ import {
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import { SkillPill } from '@/ui/SkillPill';
 import toast from 'react-hot-toast';
-import { Select } from '@/ui/Select';
+import { NativeSelect as Select } from "@/ui/NativeSelect";
 import ApplyToHireModal from '@/app/u/[username]/ApplyToHireModal';
 import {
     fetchRecruiterCandidates,

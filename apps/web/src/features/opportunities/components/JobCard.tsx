@@ -42,6 +42,7 @@ import {
     DropdownMenuTrigger
 } from '@/ui/DropdownMenu';
 import { Hint } from '@/ui/Tooltip';
+import { promptLoginToast } from '@/lib/utils/toastUtils';
 
 interface JobCardProps {
     job: Opportunity & { matchScore?: number; matchReason?: string };
@@ -260,8 +261,7 @@ export default function JobCard({
     const handleSaveClick = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (!user) {
-            toast.error('Please log in to save opportunities');
-            router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+            promptLoginToast('Sign in to save opportunities');
             return;
         }
         if (job) {

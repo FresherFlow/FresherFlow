@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { PlusIcon, CheckIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
+import { promptLoginToast } from '@/lib/utils/toastUtils';
 
 type Props = {
     companySlug: string;
@@ -19,8 +20,7 @@ export default function CompanyFollowButton({ companySlug, companyName }: Props)
 
     const handleToggleFollow = async () => {
         if (!user) {
-            toast.error('Please log in to follow companies');
-            router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+            promptLoginToast('Sign in to follow companies');
             return;
         }
 

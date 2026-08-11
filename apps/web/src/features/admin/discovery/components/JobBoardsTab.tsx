@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { BriefcaseIcon, BoltIcon, ClockIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import CompanyLogo from '@/ui/CompanyLogo';
 import { PluginEntry } from '../types';
+import { Button } from '@/ui/Button';
 import { cn } from '@repo/ui/utils/cn';
 
 
@@ -104,14 +105,16 @@ export function JobBoardsTab({
                 </div>
               </div>
 
-              <button
+              <Button
+                variant="admin"
+                size="sm"
                 onClick={() => handleRun(board.provider)}
                 disabled={isRunning}
-                className="w-full h-8 px-3 rounded-lg bg-muted/40 border border-border/80 text-foreground hover:bg-muted text-xs font-medium transition-all active:scale-[0.96] cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-xs"
+                className="w-full"
               >
-                <BoltIcon className={cn('w-3.5 h-3.5', isRunning && 'animate-spin')} />
-                <span>{isRunning ? 'Scraping Board...' : 'Scrape Board Now'}</span>
-              </button>
+                <BoltIcon className={cn('w-3.5 h-3.5 mr-1.5', isRunning && 'animate-spin')} />
+                {isRunning ? 'Scraping board...' : 'Scrape board now'}
+              </Button>
             </div>
           );
         })}

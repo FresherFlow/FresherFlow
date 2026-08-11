@@ -86,12 +86,13 @@ const chipActive = 'bg-muted text-foreground font-semibold';
 export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeChange, pageType }: FilterDropdownBarProps) {
     const [open, setOpen] = useState<OpenPanel>(null);
     const [locSearch, setLocSearch] = useState('');
+    const [skillSearch, setSkillSearch] = useState('');
     const barRef = useRef<HTMLDivElement>(null);
 
-    useClickOutside(barRef, () => { setOpen(null); setLocSearch(''); });
+    useClickOutside(barRef, () => { setOpen(null); setLocSearch(''); setSkillSearch(''); });
 
     useEffect(() => {
-        const onScroll = () => { setOpen(null); setLocSearch(''); };
+        const onScroll = () => { setOpen(null); setLocSearch(''); setSkillSearch(''); };
         window.addEventListener('scroll', onScroll, { passive: true });
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
@@ -99,6 +100,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
     const toggle = (panel: OpenPanel) => {
         setOpen(prev => (prev === panel ? null : panel));
         if (panel !== 'location') setLocSearch('');
+        if (panel !== 'skills') setSkillSearch('');
     };
 
 
@@ -139,12 +141,11 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                     key={opt.label}
                                     onClick={() => { onTypeChange(opt.value); setOpen(null); }}
                                     className={cn(
-                                        'w-full text-left px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all cursor-pointer',
-                                        selectedType === opt.value
-                                            ? 'bg-primary/10 text-primary font-bold'
-                                            : 'text-foreground hover:bg-muted/60'
+                                        'w-full text-left px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all cursor-pointer flex items-center gap-2',
+                                        'text-foreground hover:bg-muted/60'
                                     )}
                                 >
+                                    <input type="checkbox" checked={selectedType === opt.value} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
                                     {opt.label}
                                 </button>
                             ))}
@@ -203,15 +204,10 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                                 }}
                                                 className={cn(
                                                     'w-full text-left px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all flex items-center gap-2 cursor-pointer',
-                                                    isSelected ? 'bg-primary/10 text-primary font-bold' : 'text-foreground hover:bg-muted/60'
+                                                    'text-foreground hover:bg-muted/60'
                                                 )}
                                             >
-                                                <div className={cn(
-                                                    "w-3 h-3 rounded flex items-center justify-center shrink-0 border",
-                                                    isSelected ? "bg-primary border-primary text-primary-foreground" : "border-border bg-background"
-                                                )}>
-                                                    {isSelected && <svg viewBox="0 0 14 14" fill="none" className="w-2.5 h-2.5 stroke-current stroke-2"><path d="M3 7l3 3 5-5"/></svg>}
-                                                </div>
+                                                <input type="checkbox" checked={isSelected} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
                                                 <span>{mode === 'REMOTE' ? 'Remote' : mode === 'HYBRID' ? 'Hybrid' : 'On-site'}</span>
                                             </button>
                                         );
@@ -228,14 +224,12 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                     setLocSearch('');
                                 }}
                                 className={cn(
-                                    'w-full text-left px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all flex items-center justify-between cursor-pointer',
-                                    filters.location === null
-                                        ? 'bg-primary/10 text-primary font-bold'
-                                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                                    'w-full text-left px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all flex items-center gap-2 cursor-pointer',
+                                    'text-foreground hover:bg-muted/60'
                                 )}
                             >
+                                <input type="checkbox" checked={filters.location === null} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
                                 <span>All Locations</span>
-                                {filters.location === null && <span className="text-primary text-xs">✓</span>}
                             </button>
 
                             {/* Main Hubs / Top Cities */}
@@ -253,14 +247,12 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                                 setLocSearch('');
                                             }}
                                             className={cn(
-                                                'w-full text-left px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all flex items-center justify-between cursor-pointer',
-                                                filters.location === loc
-                                                    ? 'bg-primary/10 text-primary font-bold'
-                                                    : 'text-foreground hover:bg-muted/60'
+                                                'w-full text-left px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all flex items-center gap-2 cursor-pointer',
+                                                'text-foreground hover:bg-muted/60'
                                             )}
                                         >
+                                            <input type="checkbox" checked={filters.location === loc} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
                                             <span>{loc}</span>
-                                            {filters.location === loc && <span className="text-primary text-xs">✓</span>}
                                         </button>
                                     ))}
                                 </>
@@ -281,14 +273,12 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                                 setLocSearch('');
                                             }}
                                             className={cn(
-                                                'w-full text-left px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all flex items-center justify-between cursor-pointer',
-                                                filters.location === loc
-                                                    ? 'bg-primary/10 text-primary font-bold'
-                                                    : 'text-foreground hover:bg-muted/60'
+                                                'w-full text-left px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all flex items-center gap-2 cursor-pointer',
+                                                'text-foreground hover:bg-muted/60'
                                             )}
                                         >
+                                            <input type="checkbox" checked={filters.location === loc} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
                                             <span>{loc}</span>
-                                            {filters.location === loc && <span className="text-primary text-xs">✓</span>}
                                         </button>
                                     ))}
                                 </>
@@ -326,10 +316,11 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                             setOpen(null);
                                         }}
                                         className={cn(
-                                            'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
-                                            filters.sector === opt ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted/60'
+                                            'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all flex items-center gap-2 cursor-pointer',
+                                            'text-foreground hover:bg-muted/60'
                                         )}
                                     >
+                                        <input type="checkbox" checked={filters.sector === opt} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
                                         {opt}
                                     </button>
                                 ))}
@@ -357,10 +348,11 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                             setOpen(null);
                                         }}
                                         className={cn(
-                                            'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
-                                            filters.qualification === opt ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted/60'
+                                            'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all flex items-center gap-2 cursor-pointer',
+                                            'text-foreground hover:bg-muted/60'
                                         )}
                                     >
+                                        <input type="checkbox" checked={filters.qualification === opt} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
                                         {opt}
                                     </button>
                                 ))}
@@ -390,27 +382,47 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             <ChevronDownIcon className={cn('w-3 h-3 transition-transform', open === 'skills' && 'rotate-180')} />
                         </button>
                         {open === 'skills' && (
-                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-56 z-[100] max-h-60 overflow-y-auto">
-                                {CANONICAL_SKILLS.map(opt => {
-                                    const isSelected = filters.skills?.includes(opt);
-                                    return (
-                                    <button
-                                        key={opt}
-                                        onClick={() => {
-                                            const newSkills = isSelected
-                                                ? (filters.skills || []).filter(s => s !== opt)
-                                                : [...(filters.skills || []), opt];
-                                            setFilters({ ...filters, skills: newSkills });
-                                        }}
-                                        className={cn(
-                                            'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all flex items-center justify-between',
-                                            isSelected ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted/60'
-                                        )}
-                                    >
-                                        <SkillPill skill={opt} className="bg-transparent border-none p-0 h-auto text-inherit shadow-none" />
-                                        {isSelected && <span className="text-primary text-xs">✓</span>}
-                                    </button>
-                                )})}
+                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-56 z-[100] flex flex-col gap-1 max-h-80">
+                                <div className="px-1 pb-1 pt-0.5 shrink-0">
+                                    <input
+                                        type="text"
+                                        value={skillSearch}
+                                        onChange={e => setSkillSearch(e.target.value)}
+                                        placeholder="Search skills..."
+                                        className="w-full h-8 px-2.5 rounded-lg border border-border bg-background text-xs text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                        onClick={e => e.stopPropagation()}
+                                        autoFocus
+                                    />
+                                </div>
+                                <div className="overflow-y-auto flex-1 overscroll-contain">
+                                    {CANONICAL_SKILLS
+                                        .filter(s => s.toLowerCase().includes(skillSearch.toLowerCase()))
+                                        .map(opt => {
+                                            const isSelected = filters.skills?.includes(opt);
+                                            return (
+                                            <button
+                                                key={opt}
+                                                onClick={() => {
+                                                    const newSkills = isSelected
+                                                        ? (filters.skills || []).filter(s => s !== opt)
+                                                        : [...(filters.skills || []), opt];
+                                                    setFilters({ ...filters, skills: newSkills });
+                                                }}
+                                                className={cn(
+                                                    'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all flex items-center gap-2 cursor-pointer',
+                                                    'text-foreground hover:bg-muted/60'
+                                                )}
+                                            >
+                                                <input type="checkbox" checked={isSelected} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
+                                                <SkillPill skill={opt} className="bg-transparent border-none p-0 h-auto text-inherit shadow-none" />
+                                            </button>
+                                        )})}
+                                    {CANONICAL_SKILLS.filter(s => s.toLowerCase().includes(skillSearch.toLowerCase())).length === 0 && (
+                                        <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+                                            No skills found
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
                     </div>
@@ -435,10 +447,11 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                             setOpen(null);
                                         }}
                                         className={cn(
-                                            'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
-                                            filters.course === opt ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted/60'
+                                            'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all flex items-center gap-2 cursor-pointer',
+                                            'text-foreground hover:bg-muted/60'
                                         )}
                                     >
+                                        <input type="checkbox" checked={filters.course === opt} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
                                         {opt}
                                     </button>
                                 ))}
@@ -474,12 +487,12 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                             setFilters({ ...filters, source: newSource });
                                         }}
                                         className={cn(
-                                            'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all flex items-center justify-between',
-                                            isSelected ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted/60'
+                                            'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all flex items-center gap-2 cursor-pointer',
+                                            'text-foreground hover:bg-muted/60'
                                         )}
                                     >
+                                        <input type="checkbox" checked={isSelected} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
                                         <span>{opt}</span>
-                                        {isSelected && <span className="text-primary text-xs">✓</span>}
                                     </button>
                                 )})}
                             </div>
@@ -507,13 +520,12 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                         setOpen(null);
                                     }}
                                     className={cn(
-                                        'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
-                                        filters.year === null
-                                            ? 'bg-primary/10 text-primary'
-                                            : 'text-foreground hover:bg-muted/60'
+                                        'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all flex items-center gap-2 cursor-pointer',
+                                        'text-foreground hover:bg-muted/60'
                                     )}
                                 >
-                                    Any
+                                    <input type="checkbox" checked={filters.year === null} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
+                                    <span>Any</span>
                                 </button>
                                 {PASSOUT_YEAR_OPTIONS.map((year) => (
                                     <button
@@ -523,12 +535,11 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                             setOpen(null);
                                         }}
                                         className={cn(
-                                            'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
-                                            filters.year === year
-                                                ? 'bg-primary/10 text-primary'
-                                                : 'text-foreground hover:bg-muted/60'
+                                            'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all flex items-center gap-2 cursor-pointer',
+                                            'text-foreground hover:bg-muted/60'
                                         )}
                                     >
+                                        <input type="checkbox" checked={filters.year === year} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
                                         {year}
                                     </button>
                                 ))}

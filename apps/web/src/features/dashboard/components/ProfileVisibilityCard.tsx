@@ -4,7 +4,7 @@ import { useContext, useState } from 'react';
 import { AuthContext } from '@/lib/auth/AuthContext';
 import { profileApi } from '@/lib/api/profile';
 import { cn } from '@/ui/cn';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 import { GlobeAltIcon, LinkIcon, LockClosedIcon } from '@heroicons/react/24/outline';
 
 type Visibility = 'PUBLIC' | 'UNLISTED' | 'PRIVATE';

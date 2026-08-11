@@ -1,5 +1,7 @@
 import * as React from "react";
 import { cn } from "@repo/ui/utils/cn";
+import { Field } from "@/ui/Field";
+import { Textarea } from "@/ui/Textarea";
 
 export interface SmartTextareaProps
     extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -8,40 +10,36 @@ export interface SmartTextareaProps
     containerClassName?: string;
     labelClassName?: string;
     helpText?: React.ReactNode;
+    error?: React.ReactNode;
     required?: boolean;
 }
 
 const SmartTextarea = React.forwardRef<HTMLTextAreaElement, SmartTextareaProps>(
-    ({ className, value, label, icon, containerClassName, labelClassName, helpText, required, ...props }, ref) => {
+    ({ className, value, label, icon, containerClassName, labelClassName, helpText, error, required, id, ...props }, ref) => {
+        const fallbackId = React.useId();
+        const inputId = id ?? fallbackId;
         const isEmpty = value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0);
 
         return (
-            <div className={cn("space-y-1.5 w-full", containerClassName)}>
-                {label && (
-                    <label className={cn("text-sm font-medium text-muted-foreground/80 flex items-center gap-1.5", labelClassName)}>
-                        {icon}
-                        {label} {required && <span className="text-destructive/70">*</span>}
-                    </label>
-                )}
-                {helpText && (
-                    <div className="text-[12px] text-muted-foreground/70 mb-1.5">
-                        {helpText}
-                    </div>
-                )}
-                <textarea
+            <Field
+                className={containerClassName}
+                label={label}
+                icon={icon}
+                description={helpText}
+                error={error}
+                required={required}
+                labelClassName={labelClassName}
+                htmlFor={inputId}
+            >
+                <Textarea
                     ref={ref}
+                    id={inputId}
                     value={value}
                     required={required}
-                    className={cn(
-                        "flex w-full rounded-sm px-2.5 py-1.5 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50 placeholder:text-transparent hover:placeholder:text-muted-foreground/50 focus:placeholder:text-muted-foreground/50 transition-colors duration-200 resize-y min-h-[60px]",
-                        "border border-solid border-input bg-background text-foreground",
-                        "focus:border-primary focus:bg-background focus:ring-0",
-                        !isEmpty && "border-transparent bg-muted/20 focus:border-primary focus:bg-background",
-                        className
-                    )}
+                    className={cn(!isEmpty && "border-transparent bg-muted/20 focus:border-primary focus:bg-background", className)}
                     {...props}
                 />
-            </div>
+            </Field>
         );
     }
 );

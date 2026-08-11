@@ -6,6 +6,8 @@ import {
   XMarkIcon,
   ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
+import { cn } from '@/lib/utils/utils';
+import { toast } from 'react-hot-toast';
 
 import {
   IngestionTarget,
@@ -54,6 +56,16 @@ export const COMPANY_PROVIDERS = new Set([
   'meta',
   'nvidia',
 ]);
+
+const DISCOVERY_SUB_TABS = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'runs', label: 'Runs' },
+  { id: 'discovered', label: 'Discovered' },
+  { id: 'processed', label: 'Processed' },
+  { id: 'companies', label: 'Companies' },
+  { id: 'adapters', label: 'ATS Adapters' },
+  { id: 'boards', label: 'Job Boards' },
+];
 
 export function DiscoveryWorkspace() {
   const router = useRouter();
@@ -262,10 +274,10 @@ export function DiscoveryWorkspace() {
           ...(INGESTION_SECRET ? { Authorization: `Bearer ${INGESTION_SECRET}` } : {}),
         }
       });
-      alert('Dorker started in the background!');
+      toast.success('Dorker started in background');
     } catch (e) {
       console.error(e);
-      alert('Failed to start Dorker');
+      toast.error('Failed to start Dorker');
     }
   }
 
@@ -292,7 +304,26 @@ export function DiscoveryWorkspace() {
         setHoursOld={setHoursOld}
       />
 
-
+      {/* Mobile Sub-Tabs Bar */}
+      <div className="md:hidden flex items-center gap-1.5 overflow-x-auto no-scrollbar px-4 py-2 bg-card/90 backdrop-blur-md border-b border-border/60 shrink-0 select-none">
+        {DISCOVERY_SUB_TABS.map((tab) => {
+          const isActive = activeTab === tab.id || (activeTab === 'ats' && tab.id === 'adapters');
+          return (
+            <button
+              key={tab.id}
+              onClick={() => handleTabChange(tab.id)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 cursor-pointer border',
+                isActive
+                  ? 'bg-primary text-primary-foreground font-bold border-primary shadow-xs'
+                  : 'bg-muted/30 text-muted-foreground border-border/40 hover:bg-muted hover:text-foreground'
+              )}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
 
       {/* Main Tab Content Body */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6">

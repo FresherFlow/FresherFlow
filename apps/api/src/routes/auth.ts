@@ -21,7 +21,7 @@ import { getCookieDomain } from '../utils/runtimeConfig';
 import { calculateCompletion } from '@fresherflow/domain';
 import { Profile } from '@fresherflow/types';
 import { verifyFirebaseToken } from '../middleware/firebaseAuth';
-import { auth as firebaseAdminAuth } from '../lib/firebase';
+import { getFirebaseAuth } from '../lib/firebase';
 
 // Rate Limiters
 const otpSendLimiter = createRateLimiter({
@@ -265,7 +265,8 @@ router.post('/otp/verify', authVerifyLimiter, validate(verifyOtpSchema), async (
 
         // Generate Firebase Custom Token
         const uidForToken = user.firebase_uid || user.id;
-        const firebaseCustomToken = await firebaseAdminAuth.createCustomToken(uidForToken);
+        const auth = getFirebaseAuth();
+        const firebaseCustomToken = await auth.createCustomToken(uidForToken);
 
         res.json({
             user: {
@@ -301,7 +302,8 @@ router.post('/google', authVerifyLimiter, validate(googleAuthSchema), async (req
         await tryMergeAnonymousIdentity(req, user.id);
 
         const uidForToken = user.firebase_uid || user.id;
-        const firebaseCustomToken = await firebaseAdminAuth.createCustomToken(uidForToken);
+        const auth = getFirebaseAuth();
+        const firebaseCustomToken = await auth.createCustomToken(uidForToken);
 
         res.json({
             user: { id: user.id, email: user.email || null, fullName: user.fullName || null, username: (user as User).username || null },

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { adminApi } from '@/lib/api/admin';
-import { Select } from '@/ui/Select';
+import { NativeSelect as Select } from "@/ui/NativeSelect";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/ui/Table';
 
 type DispatchStatus = 'INITIATED' | 'SENT' | 'FAILED' | 'SKIPPED';
 type DispatchKind = 'DAILY_DIGEST' | 'CLOSING_SOON' | 'HIGHLIGHT' | 'APP_UPDATE' | 'NEW_JOB' | 'EVENT_REMINDER';
@@ -164,29 +165,29 @@ export default function AdminAlertsPage() {
           <div className="p-4 text-sm text-muted-foreground">No logs in this window.</div>
         ) : null}
         {!loading && !error && (data?.logs.length || 0) > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b text-left text-xs text-muted-foreground">
-                  <th className="px-4 py-2">Time</th>
-                  <th className="px-4 py-2">Status</th>
-                  <th className="px-4 py-2">Kind/Channel</th>
-                  <th className="px-4 py-2">Reason</th>
-                  <th className="px-4 py-2">User</th>
-                  <th className="px-4 py-2">Opportunity</th>
-                  <th className="px-4 py-2">Error</th>
-                </tr>
-              </thead>
-              <tbody>
+          <div className="overflow-x-auto border border-border/40 rounded-lg">
+            <Table className="w-full text-sm">
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Kind/Channel</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead>User</TableHead>
+                  <TableHead>Opportunity</TableHead>
+                  <TableHead>Error</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {data?.logs.map((row) => (
-                  <tr key={row.id} className="border-b align-top">
-                    <td className="px-4 py-2 whitespace-nowrap">{new Date(row.createdAt).toLocaleString('en-IN')}</td>
-                    <td className="px-4 py-2">{row.status}</td>
-                    <td className="px-4 py-2">{row.kind} {row.channel ? `/${row.channel}` : ''}</td>
-                    <td className="px-4 py-2">{row.reason || '-'}</td>
-                    <td className="px-4 py-2">{row.user?.email || '-'}</td>
-                    <td className="px-4 py-2 max-w-[260px] truncate" title={row.opportunity?.title || ''}>{row.opportunity?.title || '-'}</td>
-                    <td className="px-4 py-2">
+                  <TableRow key={row.id} className="hover:bg-muted/30 transition-colors">
+                    <TableCell className="whitespace-nowrap">{new Date(row.createdAt).toLocaleString('en-IN')}</TableCell>
+                    <TableCell>{row.status}</TableCell>
+                    <TableCell>{row.kind} {row.channel ? `/${row.channel}` : ''}</TableCell>
+                    <TableCell>{row.reason || '-'}</TableCell>
+                    <TableCell>{row.user?.email || '-'}</TableCell>
+                    <TableCell className="max-w-[260px] truncate" title={row.opportunity?.title || ''}>{row.opportunity?.title || '-'}</TableCell>
+                    <TableCell>
                       {row.errorMessage ? (
                         <button
                           className="rounded border px-2 py-1 text-xs hover:bg-muted"
@@ -195,11 +196,11 @@ export default function AdminAlertsPage() {
                           Copy Error
                         </button>
                       ) : '-'}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         ) : null}
       </div>

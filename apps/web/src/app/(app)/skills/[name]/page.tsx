@@ -3,7 +3,7 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { Suspense } from 'react';
 import CategoryPage from '@/features/opportunities/components/CategoryPage';
-import { FeedPageSkeleton } from '@/ui/Skeleton';
+import { FeedPageSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
 import { unstable_noStore } from 'next/cache';

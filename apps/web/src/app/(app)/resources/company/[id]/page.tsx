@@ -6,12 +6,11 @@ import { ArrowLeft, Building } from 'lucide-react';
 import Link from 'next/link';
 
 interface CompanyResourcesPageProps {
-    params: {
-        id: string;
-    };
+    params: Promise<{ id: string }>;
 }
 
-export async function generateMetadata({ params }: CompanyResourcesPageProps) {
+export async function generateMetadata(props: CompanyResourcesPageProps) {
+    const params = await props.params;
     const feed = await getResourcesFeed();
     const companyName = Object.keys(feed.companyMetadata || {}).find(
         name => name.toLowerCase().replace(/\s+/g, '-') === params.id
@@ -22,7 +21,8 @@ export async function generateMetadata({ params }: CompanyResourcesPageProps) {
     };
 }
 
-export default async function CompanyResourcesPage({ params }: CompanyResourcesPageProps) {
+export default async function CompanyResourcesPage(props: CompanyResourcesPageProps) {
+    const params = await props.params;
     const feed = await getResourcesFeed();
     
     // Find actual company name from feed based on slug

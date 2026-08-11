@@ -178,6 +178,25 @@ Standard scale in use:
 - Do not add custom font sizes outside the defined scale — extend `tailwind.config.ts` if needed and document here
 - Do not use `darkMode` conditionals in component code — the CSS variable layer handles it automatically
 
+## Component Ownership
+
+Where should a new component go?
+
+* **`src/ui/`**: Reusable generic UI components (buttons, inputs, dialogs, tables). Should not contain business logic.
+* **`src/features/<feature>/`**: Domain-specific UI composed of `src/ui/` primitives (e.g. `AdminOpportunitiesTable`).
+* **Route-local (`app/.../components/`)**: Single-page only UI composition.
+
+How to choose canonical components:
+
+* **Table vs DataTable**: Use `Table` (`src/ui/Table.tsx`) for simple, static, read-only data. Use `DataTable` (`src/ui/data-table/DataTable.tsx`) when you need sorting, pagination, row selection, or filtering. Do not install new table libraries.
+* **Select vs Combobox**: Use `Select` for simple, native dropdowns. Use `Combobox` (when built via Popover+Command) for searchable options. Use Shadcn/Radix for generic selections.
+* **Dialog vs AlertDialog**: Use `Dialog` for normal modal interactions (forms, content). Use `AlertDialog` strictly for destructive confirmations (delete, warning). 
+* **When to add a shadcn component?**: First check if we have the primitive in `src/ui/`. If missing, install it via shadcn (e.g., `AlertDialog`). Do not install them just to have them.
+* **Which icon library should I use?**: 
+    - `Iconify`: Skill, technology, or domain-specific icons.
+    - `Lucide`: New generic UI icons (shadcn standard).
+    - `Heroicons`: Only for existing legacy/application usage. Do not mass-migrate.
+
 ---
 
 ## Common Components & UI Catalog
@@ -216,6 +235,41 @@ Always inspect `src/ui/` for existing components before building custom UI eleme
 ### Icon Libraries
 - **Lucide Icons**: `lucide-react` (Primary line icon set for new UI components)
 - **Heroicons**: `@heroicons/react` (Legacy icon set)
+
+---
+
+## Form Field Standards
+
+### Basic Input
+`src/ui/Input.tsx`
+Use for the underlying text input primitive.
+
+### Field + Input
+Use when building a new generic form field:
+```tsx
+<Field label="Name">
+  <Input />
+</Field>
+```
+
+### SmartInput
+Use only when its convenience API is genuinely useful, especially for existing admin code.
+
+### Select
+`src/ui/Select.tsx`
+Use for simple/native selections.
+
+### SmartSelect
+Use only when its label/help/field wrapper is useful.
+
+### Textarea
+`src/ui/Textarea.tsx`
+Use as the canonical textarea primitive.
+
+### SmartTextarea
+Use only where the existing convenience API is needed.
+
+> Do not create another `CustomInput`, `CustomSelect`, `CustomTextarea`, `SmartField`, or feature-specific generic field component.
 
 ---
 

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { auth } from '../lib/firebase';
+import { getFirebaseAuth } from '../lib/firebase';
 import { AppError } from './errorHandler';
 import { DecodedIdToken } from 'firebase-admin/auth';
 import { logger } from '@fresherflow/logger';
@@ -31,6 +31,7 @@ export async function verifyFirebaseToken(req: Request, res: Response, next: Nex
     }
 
     try {
+        const auth = getFirebaseAuth();
         const decodedToken = await auth.verifyIdToken(idToken);
         req.firebaseUser = decodedToken;
         next();

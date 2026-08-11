@@ -70,14 +70,10 @@ vi.mock('../infrastructure/services/email.service', () => ({
 }));
 
 vi.mock('../lib/firebase', () => ({
-    auth: {
+    getFirebaseAuth: vi.fn().mockReturnValue({
         createCustomToken: vi.fn().mockResolvedValue('mocked-firebase-custom-token'),
-    },
-    default: {
-        auth: () => ({
-            createCustomToken: vi.fn().mockResolvedValue('mocked-firebase-custom-token'),
-        }),
-    },
+    }),
+    getFirebaseApp: vi.fn().mockReturnValue({}),
 }));
 
 

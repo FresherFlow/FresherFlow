@@ -5,7 +5,7 @@ import { adminApi } from "@/lib/api/admin";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
-import { toast } from "sonner";
+import toast from 'react-hot-toast';
 import { Loader2, RefreshCw } from "lucide-react";
 
 type BroadcastStatus = "SENT" | "FAILED" | "SKIPPED";

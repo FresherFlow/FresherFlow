@@ -20,7 +20,7 @@ import Bars3Icon from '@heroicons/react/24/outline/Bars3Icon';
 const MobileNavMenu = dynamic(() => import('@/lib/navigation/MobileNavMenu'), { ssr: false });
 import Link from 'next/link';
 import { Button } from '@/ui/Button';
-import { OpportunityDetailSkeleton } from '@/ui/Skeleton';import { cn } from '@repo/ui/utils/cn';
+import { OpportunityDetailSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';import { cn } from '@repo/ui/utils/cn';
 import { slugify } from '@fresherflow/utils/slugify';
 
 // Subcomponents

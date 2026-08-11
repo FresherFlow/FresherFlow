@@ -27,7 +27,11 @@ import React from 'react';
 
 // Import reusable UI components directly from files to avoid client-side package issues
 import { Timeline } from '@repo/ui/components/Timeline';
-import { DataTable } from '@repo/ui/components/DataTable';
+import { DataTable } from '@/ui/data-table/DataTable';
+import { DataTableColumnHeader } from '@/ui/data-table/DataTableColumnHeader';
+import { DataTableToolbar } from '@/ui/data-table/DataTableToolbar';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/ui/Table';
+import { ColumnDef } from '@tanstack/react-table';
 import { Tabs } from '@repo/ui/components/Tabs';
 
 interface GovernmentJobDetailViewProps {
@@ -125,19 +129,8 @@ const SyllabusCell = ({ topics }: { topics: string[] }) => {
     );
 };
 
-// Interactive Vacancy Table component with search, sort, and frozen sticky headers
-// Generic vacancy table — handles both { columns, rows } and legacy array-of-objects shapes
 const VacancyTable = ({ data }: { data: { columns: string[]; rows: (string | number)[][]; notes?: string } }) => {
-    const [search, setSearch] = React.useState('');
-    const [sortColIdx, setSortColIdx] = React.useState<number | null>(null);
-    const [sortAsc, setSortAsc] = React.useState(true);
-
     const { columns, rows, notes } = data;
-
-    const handleSort = (idx: number) => {
-        if (sortColIdx === idx) setSortAsc(!sortAsc);
-        else { setSortColIdx(idx); setSortAsc(true); }
-    };
 
     // Detect if a column contains numeric data (at least one number across all rows)
     const isNumericColumn = React.useMemo(() => {
@@ -155,103 +148,65 @@ const VacancyTable = ({ data }: { data: { columns: string[]; rows: (string | num
         return val;
     };
 
-    const filteredRows = React.useMemo(() => {
-        let result = [...rows];
-        if (search.trim()) {
-            const q = search.toLowerCase();
-            result = result.filter(row =>
-                row.some(cell => String(cell ?? '').toLowerCase().includes(q))
-            );
-        }
-        if (sortColIdx !== null) {
-            result.sort((a, b) => {
-                const valA = a[sortColIdx] ?? '';
-                const valB = b[sortColIdx] ?? '';
-                const numA = Number(valA);
-                const numB = Number(valB);
-                if (!isNaN(numA) && !isNaN(numB)) return sortAsc ? numA - numB : numB - numA;
-                return sortAsc
-                    ? String(valA).localeCompare(String(valB))
-                    : String(valB).localeCompare(String(valA));
+    const tableColumns = React.useMemo<ColumnDef<any>[]>(() => {
+        return columns.map((col, idx) => {
+            const isNumeric = isNumericColumn[idx];
+            return {
+                accessorKey: `col_${idx}`,
+                header: ({ column }) => <DataTableColumnHeader column={column} title={col} />,
+                cell: ({ row }) => {
+                    const val = row.original[`col_${idx}`];
+                    const formattedVal = formatCellValue(val);
+                    return (
+                        <div className={cn(
+                            idx === 0 ? "font-medium text-foreground" : isNumeric ? "font-medium text-foreground/80 tabular-nums" : "text-muted-foreground"
+                        )}>
+                            {formattedVal}
+                        </div>
+                    );
+                }
+            };
+        });
+    }, [columns, isNumericColumn]);
+
+    const tableData = React.useMemo(() => {
+        return rows.map(row => {
+            const rowData: Record<string, any> = {};
+            row.forEach((cell, idx) => {
+                rowData[`col_${idx}`] = cell;
             });
-        }
-        return result;
-    }, [rows, search, sortColIdx, sortAsc]);
+            return rowData;
+        });
+    }, [rows]);
+
+    const needsPagination = rows.length >= 20;
+    const needsFiltering = rows.length > 8;
 
     return (
         <div className="space-y-3">
-            {rows.length > 8 && (
-                <div className="relative max-w-sm">
-                    <input
-                        type="text"
-                        placeholder="Search..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full h-9 pl-3 pr-8 text-sm bg-muted border border-border/80 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/40 text-foreground"
+            {rows.length > 0 ? (
+                <div className="w-full">
+                    <DataTable 
+                        columns={tableColumns} 
+                        data={tableData} 
+                        enableSorting={true}
+                        enableFiltering={needsFiltering}
+                        enablePagination={needsPagination}
+                        toolbar={needsFiltering ? (table) => (
+                            <DataTableToolbar 
+                                table={table} 
+                                searchColumn="col_0" 
+                                searchPlaceholder="Search vacancies..." 
+                            />
+                        ) : undefined}
                     />
-                    {search && (
-                        <button onClick={() => setSearch('')} aria-label="Clear Search" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-sm font-bold">
-                            <XMarkIcon className="w-5 h-5" />
-                        </button>
-                    )}
+                </div>
+            ) : (
+                <div className="border border-border rounded-lg p-8 text-center text-muted-foreground w-full">
+                    No results found.
                 </div>
             )}
-            <div className="border border-border rounded-lg overflow-x-auto overflow-y-auto max-h-[500px] w-full scrollbar-thin">
-                <table className="w-full text-left border-collapse text-sm">
-                    <thead className="sticky top-0 z-20 bg-muted border-b border-border">
-                        <tr>
-                            {columns.map((col, idx) => {
-                                const isSorted = sortColIdx === idx;
-                                return (
-                                    <th
-                                        key={idx}
-                                        onClick={() => handleSort(idx)}
-                                        className="p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground cursor-pointer hover:bg-muted-foreground/10 transition-colors select-none whitespace-nowrap text-left"
-                                    >
-                                        <div className="flex items-center gap-1 justify-start">
-                                            {col}
-                                            <span className="opacity-60">{isSorted ? (sortAsc ? '▲' : '▼') : '↕'}</span>
-                                        </div>
-                                    </th>
-                                );
-                            })}
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/50 bg-card">
-                        {filteredRows.length > 0 ? (
-                            filteredRows.map((row, rIdx) => (
-                                <tr key={rIdx} className="hover:bg-muted/20 transition-colors">
-                                    {row.map((cell, cIdx) => {
-                                        const isNumeric = isNumericColumn[cIdx];
-                                        const formattedVal = formatCellValue(cell);
-                                        return (
-                                            <td
-                                                key={cIdx}
-                                                className={cn(
-                                                    "p-3 leading-normal text-left text-sm",
-                                                    cIdx === 0
-                                                        ? "font-medium text-foreground"
-                                                        : isNumeric
-                                                            ? "font-medium text-foreground/80 tabular-nums"
-                                                            : "text-muted-foreground"
-                                                )}
-                                            >
-                                                {formattedVal}
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan={columns.length} className="p-8 text-center text-muted-foreground">
-                                    No results matching &ldquo;{search}&rdquo;
-                                </td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+            
             {notes && <p className="text-sm text-muted-foreground leading-relaxed">{notes}</p>}
         </div>
     );
@@ -523,34 +478,47 @@ export function GovernmentJobDetailView({
         (r: any) => r.notes && r.notes.trim() !== '' && r.notes.trim() !== '-'
     );
 
-    const relaxationHeaders = hasAnyRelaxationNotes
-        ? ['Category', 'Age Relaxation', 'Notes']
-        : ['Category', 'Age Relaxation'];
+    const relaxationColumns: ColumnDef<any>[] = hasAnyRelaxationNotes
+        ? [
+            { accessorKey: "category", header: "Category", enableSorting: false },
+            { accessorKey: "relaxation", header: "Age Relaxation", enableSorting: false },
+            { accessorKey: "notes", header: "Notes", enableSorting: false },
+          ]
+        : [
+            { accessorKey: "category", header: "Category", enableSorting: false },
+            { accessorKey: "relaxation", header: "Age Relaxation", enableSorting: false },
+          ];
 
-    const relaxationRows = (Array.isArray(details.ageRelaxationRules) ? details.ageRelaxationRules : []).map((r: any) => {
+    const relaxationData = (Array.isArray(details.ageRelaxationRules) ? details.ageRelaxationRules : []).map((r: any) => {
         const category = r.category || '-';
         const relaxation = r.relaxationYears ? `+ ${r.relaxationYears} Years` : (r.relaxation || '-');
         const notes = r.notes || '-';
-        const row = [
-            <span className="font-medium text-foreground text-sm" key="cat">{category}</span>,
-            <span className="text-muted-foreground text-sm" key="years">{relaxation}</span>,
-        ];
+        const rowData: any = {
+            category: <span className="font-medium text-foreground text-sm" key="cat">{category}</span>,
+            relaxation: <span className="text-muted-foreground text-sm" key="years">{relaxation}</span>,
+        };
         if (hasAnyRelaxationNotes) {
-            row.push(<span className="text-muted-foreground text-sm" key="notes">{notes}</span>);
+            rowData.notes = <span className="text-muted-foreground text-sm" key="notes">{notes}</span>;
         }
-        return row;
+        return rowData;
     });
 
     // Mapping exam pattern syllabus tabs
     const syllabusTabs = (Array.isArray(details.examPattern?.tiers) ? details.examPattern.tiers : []).map((tier: any, index: number) => {
-        const subjectsHeaders = ['Subject', 'Questions', 'Marks', 'Duration', 'Syllabus'];
-        const subjectsRows = (Array.isArray(tier.subjects) ? tier.subjects : []).map((s: any) => [
-            <div className="font-medium text-foreground text-sm min-w-[150px] md:min-w-[200px]" key="name">{s.name}</div>,
-            <span className="text-muted-foreground text-sm whitespace-nowrap" key="q">{s.questions ?? '-'}</span>,
-            <span className="text-muted-foreground text-sm whitespace-nowrap" key="m">{s.marks ?? '-'}</span>,
-            <span className="text-muted-foreground text-sm whitespace-nowrap" key="time">{s.sectionTimeMinutes ? `${s.sectionTimeMinutes} Mins` : '-'}</span>,
-            <SyllabusCell topics={s.syllabus} key="syll" />,
-        ]);
+        const subjectsColumns: ColumnDef<any>[] = [
+            { accessorKey: "subject", header: "Subject", enableSorting: false },
+            { accessorKey: "questions", header: "Questions", enableSorting: false },
+            { accessorKey: "marks", header: "Marks", enableSorting: false },
+            { accessorKey: "duration", header: "Duration", enableSorting: false },
+            { accessorKey: "syllabus", header: "Syllabus", enableSorting: false },
+        ];
+        const subjectsData = (Array.isArray(tier.subjects) ? tier.subjects : []).map((s: any) => ({
+            subject: <div className="font-medium text-foreground text-sm min-w-[150px] md:min-w-[200px]" key="name">{s.name}</div>,
+            questions: <span className="text-muted-foreground text-sm whitespace-nowrap" key="q">{s.questions ?? '-'}</span>,
+            marks: <span className="text-muted-foreground text-sm whitespace-nowrap" key="m">{s.marks ?? '-'}</span>,
+            duration: <span className="text-muted-foreground text-sm whitespace-nowrap" key="time">{s.sectionTimeMinutes ? `${s.sectionTimeMinutes} Mins` : '-'}</span>,
+            syllabus: <SyllabusCell topics={s.syllabus} key="syll" />,
+        }));
 
         const tabContent = (
             <div className="space-y-4 pt-2">
@@ -588,7 +556,7 @@ export function GovernmentJobDetailView({
                 {tier.subjects && tier.subjects.length > 0 && (
                     <div className="space-y-2">
                         <p className="text-xs font-bold text-foreground uppercase tracking-wider">Subjects & Topics Syllabus</p>
-                        <DataTable headers={subjectsHeaders} data={subjectsRows} />
+                        <DataTable columns={subjectsColumns} data={subjectsData} />
                     </div>
                 )}
             </div>
@@ -1046,10 +1014,10 @@ export function GovernmentJobDetailView({
                     </div>
                 )}
 
-                {relaxationRows.length > 0 && (
+                {relaxationData.length > 0 && (
                     <div className="space-y-2 pt-2 border-t border-border/40">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Category Age Relaxations</p>
-                        <DataTable headers={relaxationHeaders} data={relaxationRows} />
+                        <DataTable columns={relaxationColumns} data={relaxationData} />
                     </div>
                 )}
             </div>
@@ -1289,8 +1257,8 @@ export function GovernmentJobDetailView({
                         <div className="px-5 py-3.5 border-b border-border bg-muted/30">
                             <h3 className="text-sm font-semibold text-foreground">Quick Overview</h3>
                         </div>
-                        <table className="w-full">
-                            <tbody className="divide-y divide-border/40">
+                        <Table>
+                            <TableBody className="divide-y divide-border/40">
                                 {([
                                     ['Conducting Body', details.recruitingBody || details.organization || opp.company],
                                     ['Total Vacancies', (details as any).totalVacancies ? Number((details as any).totalVacancies).toLocaleString() : null],
@@ -1305,19 +1273,19 @@ export function GovernmentJobDetailView({
                                         : null],
                                     ['Official Website', details.officialWebsiteUrl || (opp as any).companyWebsite],
                                 ] as [string, string | null | undefined][]).filter(([, val]) => val).map(([label, value], idx) => (
-                                    <tr key={idx} className={idx % 2 === 0 ? 'bg-card' : 'bg-muted/20'}>
-                                        <td className="px-4 py-2.5 text-xs font-medium text-muted-foreground w-[38%] align-top">{label}</td>
-                                        <td className="px-4 py-2.5 text-sm font-semibold text-foreground">
+                                    <TableRow key={idx} className={idx % 2 === 0 ? 'bg-card' : 'bg-muted/20'}>
+                                        <TableCell className="px-4 py-2.5 text-xs font-medium text-muted-foreground w-[38%] align-top">{label}</TableCell>
+                                        <TableCell className="px-4 py-2.5 text-sm font-semibold text-foreground">
                                             {label === 'Official Website' && value && (value as string).startsWith('http') ? (
                                                 <a href={value as string} target="_blank" rel="noreferrer" className="text-primary hover:underline">
                                                     {(() => { try { return new URL(value as string).hostname.replace('www.', ''); } catch { return value; } })()}
                                                 </a>
                                             ) : value}
-                                        </td>
-                                    </tr>
+                                        </TableCell>
+                                    </TableRow>
                                 ))}
-                            </tbody>
-                        </table>
+                            </TableBody>
+                        </Table>
                     </div>
 
                     {/* Mobile-Only Key Cards (Dates, Apply, Fee, Age) */}
@@ -1759,25 +1727,25 @@ export function GovernmentJobDetailView({
                                 <h3 className="text-base font-semibold text-foreground">Post-wise Pay Scale & Salary</h3>
                             </div>
                             <div className="border border-border rounded-lg overflow-x-auto">
-                                <table className="w-full text-left border-collapse text-sm">
-                                    <thead className="sticky top-0 z-10 bg-muted border-b border-border">
-                                        <tr>
+                                <Table className="whitespace-nowrap text-sm">
+                                    <TableHeader className="sticky top-0 z-10 bg-muted">
+                                        <TableRow>
                                             {['Post', 'Pay Level', 'Pay Scale', 'Gross Salary'].map(h => (
-                                                <th key={h} className="p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">{h}</th>
+                                                <TableHead key={h} className="p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">{h}</TableHead>
                                             ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-border/50 bg-card">
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody className="divide-y divide-border/50 bg-card">
                                         {(postWiseSalary as any[]).map((row: any, idx: number) => (
-                                            <tr key={idx} className="hover:bg-muted/20 transition-colors">
-                                                <td className="p-3 font-medium text-foreground text-sm">{row.post}</td>
-                                                <td className="p-3 text-muted-foreground text-sm whitespace-nowrap">{row.payLevel}</td>
-                                                <td className="p-3 text-muted-foreground text-sm whitespace-nowrap">{row.payScale}</td>
-                                                <td className="p-3 text-muted-foreground text-sm whitespace-nowrap">{row.grossSalary || '—'}</td>
-                                            </tr>
+                                            <TableRow key={idx} className="hover:bg-muted/20 transition-colors">
+                                                <TableCell className="p-3 font-medium text-foreground text-sm">{row.post}</TableCell>
+                                                <TableCell className="p-3 text-muted-foreground text-sm">{row.payLevel}</TableCell>
+                                                <TableCell className="p-3 text-muted-foreground text-sm">{row.payScale}</TableCell>
+                                                <TableCell className="p-3 text-muted-foreground text-sm">{row.grossSalary || '—'}</TableCell>
+                                            </TableRow>
                                         ))}
-                                    </tbody>
-                                </table>
+                                    </TableBody>
+                                </Table>
                             </div>
                             {helplineNumber && (
                                 <p className="text-xs text-muted-foreground">
@@ -1810,26 +1778,26 @@ export function GovernmentJobDetailView({
                                             };
                                             return (
                                                 <div className="border border-border rounded-lg overflow-x-auto">
-                                                    <table className="w-full text-left border-collapse text-xs">
-                                                        <thead className="bg-muted border-b border-border">
-                                                            <tr>
-                                                                <th className="p-3 font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Category</th>
+                                                    <Table className="whitespace-nowrap text-xs">
+                                                        <TableHeader className="bg-muted">
+                                                            <TableRow>
+                                                                <TableHead className="p-3 font-semibold uppercase tracking-wider text-muted-foreground">Category</TableHead>
                                                                 {posts.map(p => (
-                                                                    <th key={p} className="p-3 font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{p}</th>
+                                                                    <TableHead key={p} className="p-3 font-semibold uppercase tracking-wider text-muted-foreground">{p}</TableHead>
                                                                 ))}
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-border/50 bg-card">
+                                                            </TableRow>
+                                                        </TableHeader>
+                                                        <TableBody className="divide-y divide-border/50 bg-card">
                                                             {categories.map(cat => (
-                                                                <tr key={cat} className="hover:bg-muted/20">
-                                                                    <td className="p-3 font-medium text-foreground">{cat}</td>
+                                                                <TableRow key={cat} className="hover:bg-muted/20">
+                                                                    <TableCell className="p-3 font-medium text-foreground">{cat}</TableCell>
                                                                     {posts.map(post => (
-                                                                        <td key={post} className="p-3 text-muted-foreground tabular-nums">{getMarks(cat, post)}</td>
+                                                                        <TableCell key={post} className="p-3 text-muted-foreground tabular-nums">{getMarks(cat, post)}</TableCell>
                                                                     ))}
-                                                                </tr>
+                                                                </TableRow>
                                                             ))}
-                                                        </tbody>
-                                                    </table>
+                                                        </TableBody>
+                                                    </Table>
                                                 </div>
                                             );
                                         })()}

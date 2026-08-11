@@ -3,7 +3,7 @@ import { permanentRedirect, notFound } from 'next/navigation';
 import { logRouteResult } from '@/lib/observability';
 import { Suspense } from 'react';
 import OpportunityDetailClient from '../../jobs/[slug]/OpportunityDetailClient';
-import { OpportunityDetailSkeleton } from '@/ui/Skeleton';
+import { OpportunityDetailSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
 import { getOpportunityPath } from '@/features/opportunities/domain/opportunityPath';
 import { fetchBootstrapFeed, fetchGovernmentFeed } from '@/lib/api/cdnFeed';
 import { getRelatedOpportunities } from '@/features/opportunities/utils/detailUtils';

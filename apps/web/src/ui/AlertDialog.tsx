@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from '@/ui/Dialog';
 
-interface ConfirmModalProps {
+interface AlertDialogProps {
     show: boolean;
     title: string;
     message: string;
@@ -14,7 +21,7 @@ interface ConfirmModalProps {
     defaultStatus?: string;
 }
 
-export const ConfirmModal = ({
+export const AlertDialog = ({
     show,
     title,
     message,
@@ -26,7 +33,7 @@ export const ConfirmModal = ({
     reasonPlaceholder = 'Enter reason...',
     statusOptions,
     defaultStatus,
-}: ConfirmModalProps) => {
+}: AlertDialogProps) => {
     const [reason, setReason] = useState('');
     const [selectedStatus, setSelectedStatus] = useState(defaultStatus || '');
 
@@ -39,44 +46,52 @@ export const ConfirmModal = ({
         }
     }, [show, defaultStatus]);
 
-    if (!show) return null;
-
     const canConfirm = !requireReason || reason.trim().length > 0;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="w-full max-w-sm bg-card rounded-xl border border-border shadow-2xl p-6 animate-in zoom-in-95 duration-200">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${type === 'danger' ? 'bg-destructive/10 text-destructive' : 'bg-amber-500/10 text-amber-500'}`}>
-                    <ExclamationTriangleIcon className="w-6 h-6" />
-                </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">{title}</h3>
-                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{message}</p>
-                {requireReason && (
-                    <textarea
-                        value={reason}
-                        onChange={(e) => setReason(e.target.value)}
-                        placeholder={reasonPlaceholder}
-                        rows={3}
-                        className="w-full mb-4 px-3 py-2 text-sm rounded-md border border-input bg-secondary/20 resize-none focus:outline-none focus:ring-2 focus:ring-ring"
-                    />
-                )}
-                {statusOptions && (
-                    <div className="mb-6 space-y-3">
-                        {statusOptions.map(opt => (
-                            <label key={opt.value} className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="statusOption"
-                                    value={opt.value}
-                                    checked={selectedStatus === opt.value}
-                                    onChange={(e) => setSelectedStatus(e.target.value)}
-                                    className="w-4 h-4 text-primary focus:ring-primary border-input"
-                                />
-                                {opt.label}
-                            </label>
-                        ))}
+        <Dialog open={show} onOpenChange={(open) => { if (!open) onCancel(); }}>
+            <DialogContent className="max-w-sm sm:max-w-sm">
+                <DialogHeader className="flex flex-col items-center text-center">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${type === 'danger' ? 'bg-destructive/10 text-destructive' : 'bg-amber-500/10 text-amber-500'}`}>
+                        <ExclamationTriangleIcon className="w-6 h-6" />
                     </div>
-                )}
+                    <DialogTitle className="text-lg font-semibold text-foreground mb-2">
+                        {title}
+                    </DialogTitle>
+                    <DialogDescription className="text-sm text-muted-foreground mb-4 leading-relaxed">
+                        {message}
+                    </DialogDescription>
+                </DialogHeader>
+
+                <div className="py-2">
+                    {requireReason && (
+                        <textarea
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            placeholder={reasonPlaceholder}
+                            rows={3}
+                            className="w-full mb-4 px-3 py-2 text-sm rounded-md border border-input bg-secondary/20 resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                        />
+                    )}
+                    {statusOptions && (
+                        <div className="mb-6 space-y-3">
+                            {statusOptions.map(opt => (
+                                <label key={opt.value} className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="statusOption"
+                                        value={opt.value}
+                                        checked={selectedStatus === opt.value}
+                                        onChange={(e) => setSelectedStatus(e.target.value)}
+                                        className="w-4 h-4 text-primary focus:ring-primary border-input"
+                                    />
+                                    {opt.label}
+                                </label>
+                            ))}
+                        </div>
+                    )}
+                </div>
+                
                 <div className="flex items-center gap-3">
                     <button
                         onClick={onCancel}
@@ -92,8 +107,8 @@ export const ConfirmModal = ({
                         {confirmText}
                     </button>
                 </div>
-            </div>
-        </div>
+            </DialogContent>
+        </Dialog>
     );
 };
 

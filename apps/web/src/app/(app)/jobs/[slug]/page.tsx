@@ -4,7 +4,7 @@ import { permanentRedirect, notFound } from 'next/navigation';
 import { logRouteResult } from '@/lib/observability';
 import { Suspense } from 'react';
 import OpportunityDetailClient from './OpportunityDetailClient';
-import { OpportunityDetailSkeleton } from '@/ui/Skeleton';
+import { OpportunityDetailSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
 import { getOpportunityPath } from '@/features/opportunities/domain/opportunityPath';
 import {
     fetchOpportunityForPage,

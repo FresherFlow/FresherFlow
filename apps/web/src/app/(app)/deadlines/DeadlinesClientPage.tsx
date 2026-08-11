@@ -10,6 +10,7 @@ import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useFirebaseSaved } from '@/lib/hooks/useFirebaseSaved';
+import { promptLoginToast } from '@/lib/utils/toastUtils';
 
 type JobCardOpportunity = Opportunity & { matchScore?: number; matchReason?: string };
 
@@ -40,8 +41,7 @@ export default function DeadlinesClientPage({ initialOpportunities }: DeadlinesC
 
     const toggleSave = async (opportunityId: string) => {
         if (!user) {
-            toast.error('Please log in to save opportunities');
-            router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+            promptLoginToast('Sign in to save opportunities');
             return;
         }
         try {

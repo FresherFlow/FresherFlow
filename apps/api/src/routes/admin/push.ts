@@ -2,7 +2,8 @@ import { Router, Request, Response } from 'express';
 import { requireAdmin } from '../../middleware/auth';
 import prisma from '../../infrastructure/database/prisma';
 import { logger } from '@fresherflow/logger';
-import admin from '../../lib/firebase';
+import { getFirebaseApp } from '../../lib/firebase';
+import { getMessaging } from 'firebase-admin/messaging';
 
 const router = Router();
 
@@ -47,7 +48,7 @@ const handleBroadcast = async (req: Request, res: Response): Promise<void> => {
         const tokenList = tokens.map((t) => t.token);
         logger.info(`[Push] Broadcasting to ${tokenList.length} device(s)`);
 
-        const messaging = admin.messaging();
+        const messaging = getMessaging(getFirebaseApp());
 
         const result = await messaging.sendEachForMulticast({
             tokens: tokenList,

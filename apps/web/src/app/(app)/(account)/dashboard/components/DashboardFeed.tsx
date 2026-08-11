@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Opportunity } from '@fresherflow/types';
-import { SkeletonJobCard } from '@/ui/Skeleton';
+import { SkeletonJobCard } from '@/features/opportunities/components/OpportunitySkeletons';
 import JobCard from '@/features/opportunities/components/JobCard';
 import { Button } from '@/ui/Button';
 import { useIntersectionObserver } from '@/lib/hooks/useIntersectionObserver';

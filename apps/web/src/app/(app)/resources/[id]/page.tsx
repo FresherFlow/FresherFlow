@@ -7,12 +7,11 @@ import { ChevronRight, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 interface ResourceDetailPageProps {
-    params: {
-        id: string;
-    };
+    params: Promise<{ id: string }>;
 }
 
-export async function generateMetadata({ params }: ResourceDetailPageProps) {
+export async function generateMetadata(props: ResourceDetailPageProps) {
+    const params = await props.params;
     const feed = await getResourcesFeed();
     const collection = feed.resources.find(c => c.id === params.id);
     if (!collection) return { title: 'Resource Not Found' };
@@ -23,7 +22,8 @@ export async function generateMetadata({ params }: ResourceDetailPageProps) {
     };
 }
 
-export default async function ResourceDetailPage({ params }: ResourceDetailPageProps) {
+export default async function ResourceDetailPage(props: ResourceDetailPageProps) {
+    const params = await props.params;
     const feed = await getResourcesFeed();
     const collection = feed.resources.find(c => c.id === params.id);
 

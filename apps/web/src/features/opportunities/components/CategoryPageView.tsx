@@ -33,7 +33,7 @@ import { SkillPill } from '@/ui/SkillPill';
 import { Button } from '@/ui/Button';
 import { Hint } from '@/ui/Tooltip';
 import { Input } from '@/ui/Input';
-import { SkeletonJobCard } from '@/ui/Skeleton';
+import { SkeletonJobCard } from '@/features/opportunities/components/OpportunitySkeletons';
 import { useIntersectionObserver } from '@/lib/hooks/useIntersectionObserver';
 import { EmptyState } from '@/ui/EmptyState';
 import { FilterDropdownBar } from '@/features/opportunities/components/FilterDropdownBar';
@@ -304,10 +304,10 @@ export function CategoryPageView({
         </>
     ) : null;
     // ── Detail pane toggle (persisted) ──────────────────────────────────────
-    const [showDetail, setShowDetail] = useState(true);
+    const [showDetail, setShowDetail] = useState(false);
     useEffect(() => {
         const stored = localStorage.getItem('ff:showDetail');
-        if (stored === 'false') setShowDetail(false);
+        if (stored === 'true') setShowDetail(true);
     }, []);
     const toggleShowDetail = useCallback(() => {
         setShowDetail(prev => {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, Save } from "lucide-react";
-import { toast } from "sonner";
+import toast from 'react-hot-toast';
 import { adminApi } from "@/lib/api/admin";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/Card";
 

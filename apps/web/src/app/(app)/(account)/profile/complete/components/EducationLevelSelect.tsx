@@ -1,6 +1,6 @@
 'use client';
 
-import { Select } from '@/ui/Select';
+import { NativeSelect as Select } from "@/ui/NativeSelect";
 
 type EducationLevelSelectProps = {
     value: string;

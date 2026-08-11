@@ -6,7 +6,7 @@ import { profileApi } from '@/lib/api/profile';
 import toast from 'react-hot-toast';
 import { Input } from '@/ui/Input';
 import { Button } from '@/ui/Button';
-import { Select } from '@/ui/Select';
+import { NativeSelect as Select } from "@/ui/NativeSelect";
 import { PencilSquareIcon, PlusIcon, CheckIcon, LinkIcon, TrashIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 
 const MAX_LINKS = 5;

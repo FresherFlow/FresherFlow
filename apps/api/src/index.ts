@@ -31,8 +31,6 @@ setupCleanLogging();
 import { csrfGate } from './middleware/csrf';
 
 import { optionalAuth } from './middleware/auth';
-import './lib/firebase';
-
 // Import routes
 import authRoutes from './routes/auth';
 import profileRoutes from './routes/profile';
@@ -81,6 +79,7 @@ import candidateInterestsRoutes from './routes/candidateInterests';
 import candidateProjectsRoutes from './routes/candidateProjects';
 
 const app: Application = express();
+let isAppReady = false;
 const PORT = env.PORT || 5000;
 const APP_MODE = env.APP_MODE;
 const isUserMode = APP_MODE === 'all' || APP_MODE === 'user';
@@ -221,6 +220,15 @@ app.use(observabilityMiddleware);
 // Lightweight Health Check (Zero-DB, Zero-Auth)
 app.use('/api', healthRoutes);
 
+// Readiness Middleware for all other routes
+app.use((req, res, next) => {
+    if (req.path === '/health' || req.path === '/api/health') return next();
+    if (!isAppReady) {
+        return res.status(503).json({ error: { message: 'Service initializing...' } });
+    }
+    next();
+});
+
 // Rate Limiting
 const defaultLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -276,16 +284,6 @@ if (isUserMode) {
 }
 
 // ============================================================================
-// Sentry Error Monitoring (Disabled for first run)
-// ============================================================================
-if (env.SENTRY_DSN) {
-    Sentry.init({
-        dsn: env.SENTRY_DSN,
-        environment: env.NODE_ENV,
-        tracesSampleRate: env.NODE_ENV === 'production' ? 0.1 : 1.0,
-    });
-}
-
 // ============================================================================
 // Middleware Setup
 // ============================================================================
@@ -502,15 +500,44 @@ app.listen(PORT, () => {
     logger.info(`Frontend URL: ${process.env.FRONTEND_URL}`);
     logger.info(`Sentry: ${process.env.SENTRY_DSN ? 'Enabled' : 'Disabled'}`);
 
-    // Initialize BullMQ event listeners for admin push notifications
-    initializeQueueListeners();
-
-    // Start cron jobs - MIGRATED TO GITHUB ACTIONS
-    // startExpiryCron();
-    // startVerificationCron();
-    // startAlertsCron();
-    // startIngestionCron();
+    // Start background services asynchronously
+    initializeBackgroundServices().catch((err) => {
+        logger.error('Failed to initialize background services', err);
+    });
 });
+
+async function initializeBackgroundServices() {
+    try {
+        // 1. Firebase Admin SDK
+        const { initializeFirebase } = await import('./lib/firebase');
+        await initializeFirebase();
+        
+        // 2. Sentry Error Monitoring
+        if (env.SENTRY_DSN) {
+            Sentry.init({
+                dsn: env.SENTRY_DSN,
+                environment: env.NODE_ENV,
+                tracesSampleRate: env.NODE_ENV === 'production' ? 0.1 : 1.0,
+            });
+        }
+        
+        // 3. BullMQ Listeners
+        try {
+            initializeQueueListeners();
+        } catch (err) {
+            logger.warn('Queue listeners initialization skipped or failed', err);
+        }
+
+        isAppReady = true;
+        logger.info('Background services initialized successfully. Service is ready.');
+    } catch (err) {
+        logger.error('Critical failure in background initialization', err);
+        // We still set it to true to allow degraded service if needed,
+        // or you could leave it false to keep returning 503 depending on requirements.
+        // Let's set it to true so the API isn't completely dead.
+        isAppReady = true;
+    }
+}
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

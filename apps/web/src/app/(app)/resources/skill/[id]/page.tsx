@@ -6,18 +6,18 @@ import { ArrowLeft, Award } from 'lucide-react';
 import Link from 'next/link';
 
 interface SkillResourcesPageProps {
-    params: {
-        id: string;
-    };
+    params: Promise<{ id: string }>;
 }
 
-export async function generateMetadata({ params }: SkillResourcesPageProps) {
+export async function generateMetadata(props: SkillResourcesPageProps) {
+    const params = await props.params;
     return {
         title: `Skill Prep Resources | FresherFlow`,
     };
 }
 
-export default async function SkillResourcesPage({ params }: SkillResourcesPageProps) {
+export default async function SkillResourcesPage(props: SkillResourcesPageProps) {
+    const params = await props.params;
     const feed = await getResourcesFeed();
     
     // Find actual skill name

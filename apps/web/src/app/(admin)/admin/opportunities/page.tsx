@@ -3,7 +3,7 @@
 import { useEffect, Suspense, useState } from 'react';
 import { useAdmin } from '@/lib/auth/AdminContext';
 import { useRouter } from 'next/navigation';
-import { AdminOpportunitiesSkeleton } from '@/ui/Skeleton';
+import { AdminOpportunitiesSkeleton } from '@/features/admin/components/AdminSkeletons';
 
 // Hooks
 import { useAdminOpportunities } from './hooks/useAdminOpportunities';
@@ -14,7 +14,7 @@ import { AdminOpportunitiesHeader } from './components/AdminOpportunitiesHeader'
 import { AdminOpportunitiesFilters } from './components/AdminOpportunitiesFilters';
 import { AdminOpportunitiesTable } from './components/AdminOpportunitiesTable';
 
-import { ConfirmModal } from './components/ConfirmModal';
+import { AlertDialog } from "@/ui/AlertDialog";
 import { AdminOpportunityPreviewModal } from './components/AdminOpportunityPreviewModal';
 
 export default function AdminOpportunitiesPage() {
@@ -135,7 +135,7 @@ function OpportunitiesListPage() {
                 )}
             </div>
 
-            <ConfirmModal 
+            <AlertDialog 
                 show={confirmModal.show}
                 title={confirmModal.title}
                 message={confirmModal.message}

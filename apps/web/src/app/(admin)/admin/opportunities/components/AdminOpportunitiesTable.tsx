@@ -19,6 +19,9 @@ import {
     ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '@/ui/Button';
+import { ColumnDef } from '@tanstack/react-table';
+import { DataTable } from '@/ui/data-table/DataTable';
+import { DataTableColumnHeader } from '@/ui/data-table/DataTableColumnHeader';
 
 type Opp = Opportunity & { deletedAt?: string | Date | null; expiredAt?: string | Date | null };
 
@@ -216,101 +219,134 @@ const Pagination = ({ page, effectiveTotalPages, totalCount, pageSize, setPage }
 );
 
 // ─── Desktop Table ────────────────────────────────────────────────────────────
-const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSelect, toggleSelectAll, ...actions }: Props) => (
-    <div className="hidden md:flex flex-col flex-1 min-h-0 bg-card rounded-xl border border-border overflow-hidden">
-        <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto custom-scrollbar overscroll-contain">
-            <table className="w-full text-left text-sm">
-                <thead className="sticky top-0 z-10">
-                    <tr className="bg-muted/80 backdrop-blur-sm border-b border-border">
-                        <th className="px-4 py-3 w-10">
-                            {toggleSelectAll && (
-                                <Checkbox
-                                    checked={selectedIds.length === opportunities.length && opportunities.length > 0}
-                                    onClick={toggleSelectAll}
-                                    disabled={bulkActionPending}
-                                />
-                            )}
-                        </th>
-                        <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Opportunity</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Location / Date</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Source</th>
-                        <th className="px-4 py-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide text-right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                    {opportunities.map((opp) => (
-                        <tr key={opp.id} className={`hover:bg-muted/40 transition-colors group ${selectedIds.includes(opp.id) ? 'bg-primary/5' : ''}`}>
-                            <td className="px-4 py-3">
-                                <Checkbox
-                                    checked={selectedIds.includes(opp.id)}
-                                    onClick={() => toggleSelect(opp.id)}
-                                    disabled={bulkActionPending}
-                                />
-                            </td>
-                            <td className="px-4 py-3">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <CompanyLogo
-                                        companyName={opp.company}
-                                        companyWebsite={opp.companyWebsite}
-                                        companyLogoUrl={opp.companyLogoUrl}
-                                        applyLink={opp.applyLink}
-                                        isGovernment={opp.type === 'GOVERNMENT' || Boolean(opp.governmentJobDetails)}
-                                        className="w-8 h-8 rounded-md shrink-0"
-                                    />
-                                    <div className="min-w-0">
-                                        <button
-                                            onClick={() => actions.onPreview(opp.id)}
-                                            className="font-medium text-foreground hover:text-primary hover:underline text-left leading-snug truncate max-w-[280px] block"
-                                        >
-                                            {opp.title}
-                                        </button>
-                                        <div className="flex items-center gap-1.5 mt-0.5">
-                                            <span className="text-xs text-muted-foreground truncate max-w-[160px]">{opp.company}</span>
-                                            <span className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted border border-border text-muted-foreground">{opp.type}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td className="px-4 py-3">
-                                <div className="space-y-1 text-xs text-muted-foreground">
-                                    <div className="flex items-center gap-1.5">
-                                        <MapPinIcon className="w-3 h-3 shrink-0" />
-                                        <span className="truncate max-w-[180px]">{opp.locations?.join(', ') || '—'}</span>
-                                    </div>
-                                    <div className="flex items-center gap-1.5">
-                                        <CalendarIcon className="w-3 h-3 shrink-0" />
-                                        {new Date(opp.postedAt).toLocaleString()}
-                                    </div>
-                                </div>
-                            </td>
-                            <td className="px-4 py-3">
-                                <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold ring-1 ring-inset ${getStatusBadgeClass(opp)}`}>
-                                    {getStatusLabel(opp)}
-                                </span>
-                            </td>
-                            <td className="px-4 py-3">
-                                {(() => {
-                                    const ats = getAtsName(opp.applyLink || (opp as any).sourceLink);
-                                    if (ats) return <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted border border-border text-[10px] font-medium text-muted-foreground tracking-wide">{ats}</span>;
-                                    return <span className="text-muted-foreground text-xs">—</span>;
-                                })()}
-                            </td>
-                            <td className="px-4 py-3">
-                                <div className="flex justify-end">
-                                    <RowActions opp={opp} {...actions} />
-                                </div>
-                            </td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSelect, toggleSelectAll, ...actions }: Props) => {
+    const columns = React.useMemo<ColumnDef<Opp>[]>(() => [
+        {
+            id: 'select',
+            enableSorting: false,
+            header: ({ table }) => (
+                toggleSelectAll ? (
+                    <Checkbox
+                        checked={selectedIds.length === opportunities.length && opportunities.length > 0}
+                        onClick={toggleSelectAll}
+                        disabled={bulkActionPending}
+                    />
+                ) : null
+            ),
+            cell: ({ row }) => {
+                const opp = row.original;
+                return (
+                    <Checkbox
+                        checked={selectedIds.includes(opp.id)}
+                        onClick={() => toggleSelect(opp.id)}
+                        disabled={bulkActionPending}
+                    />
+                );
+            }
+        },
+        {
+            id: 'opportunity',
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Opportunity" />,
+            cell: ({ row }) => {
+                const opp = row.original;
+                return (
+                    <div className="flex items-center gap-3 min-w-0">
+                        <CompanyLogo
+                            companyName={opp.company}
+                            companyWebsite={opp.companyWebsite}
+                            companyLogoUrl={opp.companyLogoUrl}
+                            applyLink={opp.applyLink}
+                            isGovernment={opp.type === 'GOVERNMENT' || Boolean(opp.governmentJobDetails)}
+                            className="w-8 h-8 rounded-md shrink-0"
+                        />
+                        <div className="min-w-0">
+                            <button
+                                onClick={() => actions.onPreview(opp.id)}
+                                className="font-medium text-foreground hover:text-primary hover:underline text-left leading-snug truncate max-w-[280px] block"
+                            >
+                                {opp.title}
+                            </button>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-xs text-muted-foreground truncate max-w-[160px]">{opp.company}</span>
+                                <span className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted border border-border text-muted-foreground">{opp.type}</span>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+        },
+        {
+            id: 'location',
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Location / Date" />,
+            cell: ({ row }) => {
+                const opp = row.original;
+                return (
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1.5">
+                            <MapPinIcon className="w-3 h-3 shrink-0" />
+                            <span className="truncate max-w-[180px]">{opp.locations?.join(', ') || '—'}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <CalendarIcon className="w-3 h-3 shrink-0" />
+                            {new Date(opp.postedAt).toLocaleString()}
+                        </div>
+                    </div>
+                );
+            }
+        },
+        {
+            id: 'status',
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
+            cell: ({ row }) => {
+                const opp = row.original;
+                return (
+                    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold ring-1 ring-inset ${getStatusBadgeClass(opp)}`}>
+                        {getStatusLabel(opp)}
+                    </span>
+                );
+            }
+        },
+        {
+            id: 'source',
+            header: ({ column }) => <DataTableColumnHeader column={column} title="Source" />,
+            cell: ({ row }) => {
+                const opp = row.original;
+                const ats = getAtsName(opp.applyLink || (opp as any).sourceLink);
+                if (ats) return <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted border border-border text-[10px] font-medium text-muted-foreground tracking-wide">{ats}</span>;
+                return <span className="text-muted-foreground text-xs">—</span>;
+            }
+        },
+        {
+            id: 'actions',
+            enableSorting: false,
+            header: () => <div className="text-right">Actions</div>,
+            cell: ({ row }) => {
+                const opp = row.original;
+                return (
+                    <div className="flex justify-end">
+                        <RowActions opp={opp} {...actions} />
+                    </div>
+                );
+            }
+        }
+    ], [opportunities, selectedIds, bulkActionPending, toggleSelect, toggleSelectAll, actions]);
+
+    return (
+        <div className="hidden md:flex flex-col flex-1 min-h-0 bg-card rounded-xl border border-border/40 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto custom-scrollbar overscroll-contain">
+                <DataTable 
+                    columns={columns} 
+                    data={opportunities} 
+                    enableSorting={true}
+                    enableRowSelection={true}
+                />
+            </div>
+            <div className="shrink-0 px-5 py-3 border-t border-border bg-muted/20">
+                <Pagination page={actions.page} effectiveTotalPages={actions.effectiveTotalPages} totalCount={actions.totalCount} pageSize={actions.pageSize} setPage={actions.setPage} />
+            </div>
         </div>
-        <div className="shrink-0 px-5 py-3 border-t border-border bg-muted/20">
-            <Pagination page={actions.page} effectiveTotalPages={actions.effectiveTotalPages} totalCount={actions.totalCount} pageSize={actions.pageSize} setPage={actions.setPage} />
-        </div>
-    </div>
-);
+    );
+};
 
 // ─── Mobile Cards ─────────────────────────────────────────────────────────────
 const MobileCards = ({ opportunities, selectedIds, toggleSelect, ...actions }: Props) => (

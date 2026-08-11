@@ -405,7 +405,7 @@ export default function AdminDashboardHome() {
                     </div>
 
                     <div className="border-t border-border pt-4 mt-6 text-[11px] text-muted-foreground space-y-2 font-mono">
-                        <div className="flex justify-between items-center"><span className="opacity-70">Worker Host</span><span>{new URL(CDN_URL || 'https://cdn.fresherflow.in').hostname}</span></div>
+                        <div className="flex justify-between items-center"><span className="opacity-70">Worker Host</span><span>{new URL(CDN_URL).hostname}</span></div>
                         <div className="flex justify-between items-center"><span className="opacity-70">Cache Control</span><span>immutable</span></div>
                         <div className="flex justify-between items-center"><span className="opacity-70">CDN Gateway</span><span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Cloudflare Edge</span></div>
                     </div>

@@ -27,6 +27,12 @@ import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import Squares2X2Icon from '@heroicons/react/24/outline/Squares2X2Icon';
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
 import ChevronLeftIcon from '@heroicons/react/24/outline/ChevronLeftIcon';
+import ChartBarIcon from '@heroicons/react/24/outline/ChartBarIcon';
+import QueueListIcon from '@heroicons/react/24/outline/QueueListIcon';
+import CheckCircleIcon from '@heroicons/react/24/outline/CheckCircleIcon';
+import BuildingOfficeIcon from '@heroicons/react/24/outline/BuildingOfficeIcon';
+import CpuChipIcon from '@heroicons/react/24/outline/CpuChipIcon';
+import GlobeAltIcon from '@heroicons/react/24/outline/GlobeAltIcon';
 import { getNavContext, getNavItemsForContext } from './navConfig';
 import { mainNavItems, settingsNavItems } from '@/features/admin/layout/AdminSidebar';
 
@@ -83,11 +89,25 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
     let navItems: any[];
 
     if (isAdmin) {
-        navContext = 'admin' as any;
-        navItems = [
-            ...mainNavItems.map(item => ({ ...item, name: item.label, href: item.href, icon: item.icon })),
-            ...settingsNavItems.map(item => ({ ...item, name: item.label, href: item.href, icon: item.icon }))
-        ];
+        if (pathname.startsWith('/admin/discovery')) {
+            navContext = 'admin' as any;
+            navItems = [
+                { name: '< Back to Admin', href: '/admin/dashboard', icon: ChevronLeftIcon },
+                { name: 'Dashboard', href: '/admin/discovery?tab=dashboard', icon: ChartBarIcon },
+                { name: 'Discovery Runs', href: '/admin/discovery?tab=runs', icon: QueueListIcon },
+                { name: 'Discovered Jobs', href: '/admin/discovery?tab=discovered', icon: MagnifyingGlassIcon },
+                { name: 'Processed Jobs', href: '/admin/discovery?tab=processed', icon: CheckCircleIcon },
+                { name: 'Target Companies', href: '/admin/discovery?tab=companies', icon: BuildingOfficeIcon },
+                { name: 'ATS Adapters', href: '/admin/discovery?tab=adapters', icon: CpuChipIcon },
+                { name: 'Job Boards', href: '/admin/discovery?tab=boards', icon: GlobeAltIcon },
+            ];
+        } else {
+            navContext = 'admin' as any;
+            navItems = [
+                ...mainNavItems.map(item => ({ ...item, name: item.label, href: item.href, icon: item.icon })),
+                ...settingsNavItems.map(item => ({ ...item, name: item.label, href: item.href, icon: item.icon }))
+            ];
+        }
     } else {
         navItems = getNavItemsForContext(navContext);
     }

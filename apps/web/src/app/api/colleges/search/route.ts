@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { CDN_URL } from '@/lib/utils/runtimeConfig';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -39,7 +40,7 @@ async function loadCollegesForSlug(slug: string): Promise<CollegeItem[]> {
     let list: CollegeItem[] = [];
 
     try {
-        const cdnUrl = `https://cdn.fresherflow.in/api/colleges/${slug}.json`;
+        const cdnUrl = `${CDN_URL}/api/colleges/${slug}.json`;
         const res = await fetch(cdnUrl, { next: { revalidate: 86400 } });
         if (res.ok) {
             const json = await res.json();

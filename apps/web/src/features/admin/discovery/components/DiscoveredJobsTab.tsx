@@ -8,6 +8,7 @@ import {
   ArrowTopRightOnSquareIcon,
   MapPinIcon,
   TrashIcon,
+  EyeIcon,
 } from '@heroicons/react/24/outline';
 import CompanyLogo from '@/ui/CompanyLogo';
 import {
@@ -15,11 +16,14 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
   DialogDescription,
+  DialogFooter,
 } from '@/ui/Dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/ui/Table';
 import { cn } from '@repo/ui/utils/cn';
 import { DiscoveredJob } from '../types';
+import { PayloadModal } from '../modals/PayloadModal';
+import { toast } from 'react-hot-toast';
 
 export function DiscoveredJobsTab() {
   const [search, setSearch] = useState('');
@@ -28,6 +32,7 @@ export function DiscoveredJobsTab() {
   const [loading, setLoading] = useState(true);
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; ids: string[] }>({ open: false, ids: [] });
+  const [previewJob, setPreviewJob] = useState<DiscoveredJob | null>(null);
 
   useEffect(() => {
     let url = '/api/admin/discovery/jobs?limit=100';
@@ -75,13 +80,14 @@ export function DiscoveredJobsTab() {
         const newSet = new Set(selectedJobIds);
         ids.forEach(id => newSet.delete(id));
         setSelectedJobIds(newSet);
+        toast.success('Jobs deleted successfully');
       } else {
         const error = await res.json();
-        alert(`Failed to delete: ${error.error}`);
+        toast.error(`Failed to delete: ${error.error}`);
       }
     } catch (e) {
       console.error(e);
-      alert('Failed to delete jobs');
+      toast.error('Failed to delete jobs');
     }
   };
 
@@ -153,12 +159,12 @@ export function DiscoveredJobsTab() {
       </div>
 
       {/* Discovered Jobs List / Table */}
-      <div className="border border-border/60 rounded-xl bg-card/60 backdrop-blur-md overflow-hidden shadow-xs">
+      <div className="border border-border/60 rounded-xl bg-card/60 backdrop-blur-md overflow-hidden shadow-xs border-border/40">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-md shadow-xs">
-              <tr className="border-b border-border/60 text-sm font-mono font-semibold tracking-wider text-muted-foreground">
-                <th className="py-3 px-4 w-10">
+          <Table className="w-full text-left border-collapse">
+            <TableHeader className="sticky top-0 z-10 bg-muted/80 backdrop-blur-md shadow-xs">
+              <TableRow className="border-b border-border/60 text-sm font-mono font-semibold tracking-wider text-muted-foreground">
+                <TableHead className="py-3 px-4 w-10 font-medium text-xs text-muted-foreground">
                   <input
                     type="checkbox"
                     checked={filteredJobs.length > 0 && selectedJobIds.size === filteredJobs.length}
@@ -169,28 +175,28 @@ export function DiscoveredJobsTab() {
                         setSelectedJobIds(new Set());
                       }
                     }}
-                    className="rounded border-border/60"
+                    className="w-4 h-4 rounded border-border/80 bg-card text-primary focus:ring-1 focus:ring-primary focus:ring-offset-0 accent-primary cursor-pointer transition-colors"
                   />
-                </th>
-                <th className="py-3 px-4">Opportunity</th>
-                <th className="py-3 px-4">Location</th>
-                <th className="py-3 px-4">ATS Provider</th>
-                <th className="py-3 px-4 text-center">Fresher Score</th>
-                <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-right">Discovered At</th>
-                <th className="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/40 text-xs font-mono">
+                </TableHead>
+                <TableHead className="py-3 px-4 font-medium text-xs text-muted-foreground">Opportunity</TableHead>
+                <TableHead className="py-3 px-4 font-medium text-xs text-muted-foreground">Location</TableHead>
+                <TableHead className="py-3 px-4 font-medium text-xs text-muted-foreground">ATS Provider</TableHead>
+                <TableHead className="py-3 px-4 text-center font-medium text-xs text-muted-foreground">Fresher Score</TableHead>
+                <TableHead className="py-3 px-4 text-center font-medium text-xs text-muted-foreground">Status</TableHead>
+                <TableHead className="py-3 px-4 text-right font-medium text-xs text-muted-foreground">Discovered At</TableHead>
+                <TableHead className="py-3 px-4 text-right font-medium text-xs text-muted-foreground">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-border/40 text-xs font-mono">
               {loading ? (
-                <tr>
-                  <td colSpan={8} className="p-8 text-center text-muted-foreground text-xs">
+                <TableRow>
+                  <TableCell colSpan={8} className="p-8 text-center text-muted-foreground text-xs">
                     Loading...
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : filteredJobs.map(job => (
-                <tr key={job.id} className="hover:bg-muted/20 transition-colors">
-                  <td className="py-3 px-4">
+                <TableRow key={job.id} className="hover:bg-muted/30 transition-colors">
+                  <TableCell className="py-3 px-4">
                     <input
                       type="checkbox"
                       checked={selectedJobIds.has(job.id)}
@@ -203,10 +209,10 @@ export function DiscoveredJobsTab() {
                         }
                         setSelectedJobIds(newSet);
                       }}
-                      className="rounded border-border/60"
+                      className="w-4 h-4 rounded border-border/80 bg-card text-primary focus:ring-1 focus:ring-primary focus:ring-offset-0 accent-primary cursor-pointer transition-colors"
                     />
-                  </td>
-                  <td className="py-3 px-4">
+                  </TableCell>
+                  <TableCell className="py-3 px-4">
                     <div className="flex items-center gap-3 min-w-0">
                       <CompanyLogo
                         companyName={job.company}
@@ -227,19 +233,19 @@ export function DiscoveredJobsTab() {
                         </div>
                       </div>
                     </div>
-                  </td>
-                  <td className="py-3 px-4 text-muted-foreground font-sans">
+                  </TableCell>
+                  <TableCell className="py-3 px-4 text-muted-foreground font-sans">
                     <div className="flex items-center gap-1 text-xs">
                       <MapPinIcon className="w-3 h-3 text-muted-foreground shrink-0" />
                       <span className="truncate max-w-[150px]">{job.location || '-'}</span>
                     </div>
-                  </td>
-                  <td className="py-3 px-4 text-muted-foreground">
+                  </TableCell>
+                  <TableCell className="py-3 px-4 text-muted-foreground">
                     <span className="bg-muted/50 border border-border/40 text-muted-foreground px-1.5 py-0.5 rounded text-xs">
                       {job.atsType || (job as any).ats_type || '-'}
                     </span>
-                  </td>
-                  <td className="py-3 px-4 text-center">
+                  </TableCell>
+                  <TableCell className="py-3 px-4 text-center">
                     <span
                       className={cn(
                         'px-2 py-0.5 rounded-full text-xs font-bold border',
@@ -252,51 +258,61 @@ export function DiscoveredJobsTab() {
                     >
                       {job.fresherScore || (job as any).fresher_score || 0}%
                     </span>
-                  </td>
-                  <td className="py-3 px-4 text-center">
+                  </TableCell>
+                  <TableCell className="py-3 px-4 text-center">
                     <span
                       className={cn(
                         'px-2 py-0.5 rounded text-xs font-bold border',
                         job.status === 'PROCESSED'
-                          ? 'bg-emerald-500/10 text-foreground border-emerald-500/20'
+                          ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
                           : job.status === 'PROCESSING'
-                          ? 'bg-blue-500/10 text-foreground border-blue-500/20'
+                          ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
                           : job.status === 'DISCOVERED'
-                          ? 'bg-purple-500/10 text-foreground border-purple-500/20'
+                          ? 'bg-purple-500/10 text-purple-600 border-purple-500/20'
                           : job.status === 'DUPLICATE'
-                          ? 'bg-amber-500/10 text-foreground border-amber-500/20'
-                          : 'bg-red-500/10 text-foreground border-red-500/20'
+                          ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                          : 'bg-destructive/10 text-destructive border-destructive/20'
                       )}
                     >
                       {job.status.charAt(0).toUpperCase() + job.status.slice(1).toLowerCase().replace(/_/g, ' ')}
                     </span>
-                  </td>
-                  <td className="py-3 px-4 text-right text-muted-foreground text-xs">
+                  </TableCell>
+                  <TableCell className="py-3 px-4 text-right text-muted-foreground text-xs">
                     {new Date(job.createdAt || (job as any).created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </td>
-                  <td className="py-3 px-4 text-right">
-                    <button
-                      onClick={() => handleDeleteRequest([job.id])}
-                      className="p-1.5 rounded-md text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors inline-flex"
-                      title="Delete Job"
-                    >
-                      <TrashIcon className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
+                  </TableCell>
+                  <TableCell className="py-3 px-4 text-right">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button
+                        onClick={() => setPreviewJob(job)}
+                        className="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors inline-flex"
+                        title="Preview Raw Payload"
+                      >
+                        <EyeIcon className="w-4 h-4" />
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteRequest([job.id])}
+                        className="p-1.5 rounded-md text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors inline-flex"
+                        title="Delete Job"
+                      >
+                        <TrashIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </TableCell>
+                </TableRow>
               ))}
               {!loading && filteredJobs.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="p-8">
+                <TableRow>
+                  <TableCell colSpan={8} className="p-8">
                     <div className="py-12 flex flex-col items-center gap-2 text-center border-2 border-dashed border-border/60 rounded-xl text-muted-foreground font-mono text-xs">
                       <QueueListIcon className="w-6 h-6 opacity-50" />
                       No jobs discovered yet.
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </div>
 
@@ -324,6 +340,13 @@ export function DiscoveredJobsTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PayloadModal
+        open={Boolean(previewJob)}
+        data={previewJob}
+        onClose={() => setPreviewJob(null)}
+        title="Raw Job Payload"
+      />
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 // import { adminApi } from '@/lib/api/admin';
-import { AdminAnalyticsSkeleton } from '@/ui/Skeleton';
+import { AdminAnalyticsSkeleton } from '@/features/admin/components/AdminSkeletons';
 
 /*
 type MetricsV2 = {

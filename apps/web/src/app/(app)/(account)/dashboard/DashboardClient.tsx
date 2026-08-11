@@ -10,7 +10,7 @@ import { calculateOpportunityMatch, isNotEligible } from '@/features/opportuniti
 import { ProfileCompletionBanner } from '@/features/dashboard/components/DashboardBanners';
 import { Button } from '@/ui/Button';
 import { Card, CardContent } from '@/ui/Card';
-import { SkeletonJobCard } from '@/ui/Skeleton';
+import { SkeletonJobCard } from '@/features/opportunities/components/OpportunitySkeletons';
 import JobCard from '@/features/opportunities/components/JobCard';
 import CompanyLogo from '@/ui/CompanyLogo';
 import { calculateProfileCompletion } from '@/features/profile/profileCompletion';
@@ -36,6 +36,7 @@ import {
     ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { Input } from '@/ui/Input';
+import { promptLoginToast } from '@/lib/utils/toastUtils';
 
 // Components
 import { DashboardHeader } from './components/DashboardHeader';
@@ -147,8 +148,7 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
 
     const toggleSave = async (opportunityId: string) => {
         if (!user) {
-            toast.error('Please log in to save opportunities');
-            router.push(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+            promptLoginToast('Sign in to save opportunities');
             return;
         }
         try {

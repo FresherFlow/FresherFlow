@@ -692,7 +692,7 @@ export class ProfileService {
 
     /**
      * Fire-and-forget: push public profile JSON to R2 CDN after any profile update.
-     * Web public page reads from cdn.fresherflow.in/profiles/{username}.json — zero Render hits.
+     * Web public page reads from /profiles/{username}.json — zero Render hits.
      */
     public static async pushProfileToR2(userId: string): Promise<void> {
         try {

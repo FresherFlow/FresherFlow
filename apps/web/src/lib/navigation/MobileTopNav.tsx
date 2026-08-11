@@ -24,6 +24,7 @@ function getMobileTitle(pathname: string): string {
     const navRoutes = getNavRoutes();
     const match = navRoutes.find(r => pathname === r.href || pathname.startsWith(`${r.href}/`));
     if (match?.mobileTitle) return match.mobileTitle;
+    if (pathname.startsWith('/admin/discovery')) return 'Discovery Engine';
     if (pathname.startsWith('/admin')) return 'FF Admin';
     if (pathname.startsWith('/jobs/')) return 'Job';
     if (pathname.startsWith('/internships/')) return 'Internship';

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { adminAuthApi } from "@/lib/api/client";
 import { startRegistration } from "@simplewebauthn/browser";
 import { Loader2, Plus, Trash2, Key } from "lucide-react";
-import { toast } from "sonner";
+import toast from 'react-hot-toast';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 

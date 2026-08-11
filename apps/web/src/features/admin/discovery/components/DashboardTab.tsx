@@ -14,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { cn } from '@repo/ui/utils/cn';
 import { IngestionTarget, DiscoveryRun } from '../types';
+import { Card, CardHeader, CardTitle, CardContent } from '@/ui/Card';
 
 interface DashboardTabProps {
   engineStatus: 'online' | 'offline' | 'loading';
@@ -105,55 +106,63 @@ export function DashboardTab({
       {/* 4 Stat Cards Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {/* Card 1 */}
-        <div
+        <Card
           onClick={() => onNavigateTab('discovered')}
-          className="p-4 rounded-xl border border-border/60 bg-card/60 hover:bg-muted/30 transition-all cursor-pointer shadow-xs group"
+          className="hover:bg-muted/30 transition-all cursor-pointer shadow-xs group"
         >
-          <div className="flex items-center justify-between text-muted-foreground mb-2">
-            <span className="text-sm font-semibold tracking-wider">Discovered</span>
-            <ChartBarIcon className="w-4 h-4 group-hover:text-primary transition-colors" />
-          </div>
-          <div className="text-xl font-bold text-foreground font-mono">{totalDiscovered.toLocaleString()}</div>
-          <span className="text-xs text-muted-foreground mt-1 block">Raw ingested jobs</span>
-        </div>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-semibold tracking-wider text-muted-foreground">Discovered</CardTitle>
+            <ChartBarIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">{totalDiscovered.toLocaleString()}</div>
+            <span className="text-xs text-muted-foreground mt-1 block">Raw ingested jobs</span>
+          </CardContent>
+        </Card>
 
         {/* Card 2 */}
-        <div
+        <Card
           onClick={() => onNavigateTab('processed')}
-          className="p-4 rounded-xl border border-border/60 bg-card/60 hover:bg-muted/30 transition-all cursor-pointer shadow-xs group"
+          className="hover:bg-muted/30 transition-all cursor-pointer shadow-xs group"
         >
-          <div className="flex items-center justify-between text-muted-foreground mb-2">
-            <span className="text-sm font-semibold tracking-wider">Recently Saved</span>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-semibold tracking-wider text-muted-foreground">Recently saved</CardTitle>
             <SparklesIcon className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
-          </div>
-          <div className="text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono transition-opacity duration-300">{totalSaved.toLocaleString()}</div>
-          <span className="text-xs text-muted-foreground mt-1 block">From latest run</span>
-        </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 transition-opacity duration-300">{totalSaved.toLocaleString()}</div>
+            <span className="text-xs text-muted-foreground mt-1 block">From latest run</span>
+          </CardContent>
+        </Card>
 
         {/* Card 3 */}
-        <div
-          className="p-4 rounded-xl border border-border/60 bg-card/60 hover:bg-muted/30 transition-all cursor-pointer shadow-xs group"
+        <Card
+          className="hover:bg-muted/30 transition-all cursor-pointer shadow-xs group"
         >
-          <div className="flex items-center justify-between text-muted-foreground mb-2">
-            <span className="text-sm font-semibold tracking-wider">Recently Skipped</span>
-            <BuildingOfficeIcon className="w-4 h-4 group-hover:text-amber-500 transition-colors" />
-          </div>
-          <div className="text-xl font-bold text-foreground font-mono transition-opacity duration-300">{totalSkipped.toLocaleString()}</div>
-          <span className="text-xs text-muted-foreground mt-1 block">From latest run</span>
-        </div>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-semibold tracking-wider text-muted-foreground">Recently skipped</CardTitle>
+            <BuildingOfficeIcon className="w-4 h-4 text-muted-foreground group-hover:text-amber-500 transition-colors" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground transition-opacity duration-300">{totalSkipped.toLocaleString()}</div>
+            <span className="text-xs text-muted-foreground mt-1 block">From latest run</span>
+          </CardContent>
+        </Card>
 
         {/* Card 4 */}
-        <div
+        <Card
           onClick={() => onNavigateTab('runs')}
-          className="p-4 rounded-xl border border-border/60 bg-card/60 hover:bg-muted/30 transition-all cursor-pointer shadow-xs group"
+          className="hover:bg-muted/30 transition-all cursor-pointer shadow-xs group"
         >
-          <div className="flex items-center justify-between text-muted-foreground mb-2">
-            <span className="text-sm font-semibold tracking-wider">Total Runs</span>
-            <ServerIcon className="w-4 h-4 group-hover:text-primary transition-colors" />
-          </div>
-          <div className="text-xl font-bold text-foreground font-mono transition-opacity duration-300">{totalRuns.toLocaleString()}</div>
-          <span className="text-xs text-muted-foreground mt-1 block">Execution cycles</span>
-        </div>
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-sm font-semibold tracking-wider text-muted-foreground">Total runs</CardTitle>
+            <ServerIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground transition-opacity duration-300">{totalRuns.toLocaleString()}</div>
+            <span className="text-xs text-muted-foreground mt-1 block">Execution cycles</span>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Middle Section: System Pipeline Health */}

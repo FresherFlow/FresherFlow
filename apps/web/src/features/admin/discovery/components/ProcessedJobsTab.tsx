@@ -9,6 +9,7 @@ import {
   ArrowTopRightOnSquareIcon,
   MagnifyingGlassIcon,
   TrashIcon,
+  EyeIcon,
 } from '@heroicons/react/24/outline';
 import CompanyLogo from '@/ui/CompanyLogo';
 import {
@@ -19,8 +20,11 @@ import {
   DialogFooter,
   DialogDescription,
 } from '@/ui/Dialog';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/ui/Table';
 import { cn } from '@repo/ui/utils/cn';
 import { ProcessedJob } from '../types';
+import { PayloadModal } from '../modals/PayloadModal';
+import { toast } from 'react-hot-toast';
 
 export function ProcessedJobsTab() {
   const [jobs, setJobs] = useState<ProcessedJob[]>([]);
@@ -29,6 +33,7 @@ export function ProcessedJobsTab() {
   const [loading, setLoading] = useState(true);
   const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set());
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; ids: string[] }>({ open: false, ids: [] });
+  const [previewJob, setPreviewJob] = useState<ProcessedJob | null>(null);
 
   useEffect(() => {
     let url = '/api/admin/discovery/jobs?limit=50&queue=processed';
@@ -52,6 +57,7 @@ export function ProcessedJobsTab() {
     setJobs(prev =>
       prev.map(j => (j.id === id ? { ...j, status: 'APPROVED' } : j))
     );
+    toast.success('Job approved');
   }
 
   function handleReject(id: string) {
@@ -59,6 +65,7 @@ export function ProcessedJobsTab() {
     setJobs(prev =>
       prev.map(j => (j.id === id ? { ...j, status: 'REJECTED' } : j))
     );
+    toast.success('Job rejected');
   }
 
   function handlePublish(id: string) {
@@ -66,6 +73,7 @@ export function ProcessedJobsTab() {
     setJobs(prev =>
       prev.map(j => (j.id === id ? { ...j, status: 'PUBLISHED' } : j))
     );
+    toast.success('Job published to feed');
   }
 
   const filteredJobs = jobs.filter(j => {
@@ -97,13 +105,14 @@ export function ProcessedJobsTab() {
         const newSet = new Set(selectedJobIds);
         ids.forEach(id => newSet.delete(id));
         setSelectedJobIds(newSet);
+        toast.success('Jobs deleted successfully');
       } else {
         const error = await res.json();
-        alert(`Failed to delete: ${error.error}`);
+        toast.error(`Failed to delete: ${error.error}`);
       }
     } catch (e) {
       console.error(e);
-      alert('Failed to delete jobs');
+      toast.error('Failed to delete jobs');
     }
   };
 
@@ -180,10 +189,10 @@ export function ProcessedJobsTab() {
       {/* Table */}
       <div className="border border-border/60 rounded-xl bg-card/60 backdrop-blur-md overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-md shadow-xs">
-              <tr className="border-b border-border/60 text-sm font-mono font-semibold tracking-wider text-muted-foreground">
-                <th className="py-3 px-4 w-10">
+          <Table className="whitespace-nowrap border-collapse">
+            <TableHeader className="sticky top-0 z-10 bg-muted/80 backdrop-blur-md shadow-xs">
+              <TableRow className="border-b border-border/60 text-sm font-mono font-semibold tracking-wider text-muted-foreground">
+                <TableHead className="py-3 px-4 w-10">
                   <input
                     type="checkbox"
                     checked={filteredJobs.length > 0 && selectedJobIds.size === filteredJobs.length}
@@ -194,26 +203,26 @@ export function ProcessedJobsTab() {
                         setSelectedJobIds(new Set());
                       }
                     }}
-                    className="rounded border-border/60"
+                    className="w-4 h-4 rounded border-border/80 bg-card text-primary focus:ring-1 focus:ring-primary focus:ring-offset-0 accent-primary cursor-pointer transition-colors"
                   />
-                </th>
-                <th className="py-3 px-4">Job Title & Company</th>
-                <th className="py-3 px-4">Type</th>
-                <th className="py-3 px-4">Skills Extracted</th>
-                <th className="py-3 px-4 text-center">Locations</th>
-                <th className="py-3 px-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/40 text-xs">
+                </TableHead>
+                <TableHead className="py-3 px-4">Job Title & Company</TableHead>
+                <TableHead className="py-3 px-4">Type</TableHead>
+                <TableHead className="py-3 px-4">Skills Extracted</TableHead>
+                <TableHead className="py-3 px-4 text-center">Locations</TableHead>
+                <TableHead className="py-3 px-4 text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-border/40 text-xs">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-muted-foreground text-xs">
+                <TableRow>
+                  <TableCell colSpan={6} className="p-8 text-center text-muted-foreground text-xs">
                     Loading...
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ) : filteredJobs.map(job => (
-                <tr key={job.id} className="hover:bg-muted/20 transition-colors">
-                  <td className="py-3 px-4">
+                <TableRow key={job.id} className="hover:bg-muted/20 transition-colors">
+                  <TableCell className="py-3 px-4">
                     <input
                       type="checkbox"
                       checked={selectedJobIds.has(job.id)}
@@ -226,10 +235,10 @@ export function ProcessedJobsTab() {
                         }
                         setSelectedJobIds(newSet);
                       }}
-                      className="rounded border-border/60"
+                      className="w-4 h-4 rounded border-border/80 bg-card text-primary focus:ring-1 focus:ring-primary focus:ring-offset-0 accent-primary cursor-pointer transition-colors"
                     />
-                  </td>
-                  <td className="py-3 px-4">
+                  </TableCell>
+                  <TableCell className="py-3 px-4">
                     <div className="flex items-center gap-3 min-w-0">
                       <CompanyLogo
                         companyName={job.company}
@@ -250,9 +259,9 @@ export function ProcessedJobsTab() {
                         </div>
                       </div>
                     </div>
-                  </td>
+                  </TableCell>
 
-                  <td className="py-3 px-4 font-mono">
+                  <TableCell className="py-3 px-4 font-mono">
                     <span
                       className={cn(
                         'px-2 py-0.5 rounded text-xs font-bold border',
@@ -263,9 +272,9 @@ export function ProcessedJobsTab() {
                     >
                       {(job.type || 'JOB').charAt(0).toUpperCase() + (job.type || 'JOB').slice(1).toLowerCase().replace(/_/g, ' ')}
                     </span>
-                  </td>
+                  </TableCell>
 
-                  <td className="py-3 px-4 max-w-xs">
+                  <TableCell className="py-3 px-4 max-w-xs whitespace-normal">
                     <div className="flex gap-1.5 flex-wrap">
                       {job.requiredSkills?.map(skill => (
                         <span
@@ -277,14 +286,22 @@ export function ProcessedJobsTab() {
                       ))}
                       {!job.requiredSkills?.length && <span className="text-muted-foreground opacity-50">-</span>}
                     </div>
-                  </td>
+                  </TableCell>
 
-                  <td className="py-3 px-4 text-center font-mono">
+                  <TableCell className="py-3 px-4 text-center font-mono">
                     {job.locations?.join(', ') || '-'}
-                  </td>
+                  </TableCell>
 
-                  <td className="py-3 px-4 text-right">
+                  <TableCell className="py-3 px-4 text-right">
                     <div className="flex items-center justify-end gap-1.5">
+                      <button
+                        onClick={() => setPreviewJob(job)}
+                        className="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors inline-flex"
+                        title="Preview Job Details"
+                      >
+                        <EyeIcon className="w-4 h-4" />
+                      </button>
+
                       <button
                         onClick={() => handleDeleteRequest([job.id])}
                         className="p-1.5 rounded-md text-muted-foreground hover:bg-red-500/10 hover:text-red-500 transition-colors inline-flex mr-1"
@@ -326,21 +343,21 @@ export function ProcessedJobsTab() {
                         <span className="text-xs text-muted-foreground font-mono">No actions</span>
                       )}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
               {!loading && filteredJobs.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="p-8">
+                <TableRow>
+                  <TableCell colSpan={6} className="p-8">
                     <div className="py-12 flex flex-col items-center gap-2 text-center border-2 border-dashed border-border/60 rounded-xl text-muted-foreground font-mono text-xs">
                       <SparklesIcon className="w-6 h-6 opacity-50" />
                       No processed jobs yet.
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </div>
 
@@ -368,6 +385,25 @@ export function ProcessedJobsTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PayloadModal
+        open={Boolean(previewJob)}
+        data={previewJob}
+        onClose={() => setPreviewJob(null)}
+        title="Job Preview & Inspection"
+        onApprove={(id) => {
+          handleApprove(id);
+          setPreviewJob(null);
+        }}
+        onReject={(id) => {
+          handleReject(id);
+          setPreviewJob(null);
+        }}
+        onPublish={(id) => {
+          handlePublish(id);
+          setPreviewJob(null);
+        }}
+      />
     </div>
   );
 }

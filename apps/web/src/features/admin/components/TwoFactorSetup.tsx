@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { adminAuthApi } from "@/lib/api/client";
-import { toast } from "sonner";
+import toast from 'react-hot-toast';
 import { Button } from "@/ui/Button";
 import { Input } from "@/ui/Input";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/ui/Card";

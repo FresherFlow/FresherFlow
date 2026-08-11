@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { PlayIcon, CodeBracketIcon, MagnifyingGlassIcon, BuildingOfficeIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import CompanyLogo from '@/ui/CompanyLogo';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/ui/DropdownMenu';
+import { Button } from '@/ui/Button';
 import { COMPANY_PROVIDERS } from '../DiscoveryWorkspace';
 import { IngestionTarget, RunResult } from '../types';
 import { cn } from '@repo/ui/utils/cn';
@@ -69,7 +70,7 @@ export function TargetCompaniesTab({
             <BuildingOfficeIcon className="w-4 h-4 text-primary" />
             target company directory
           </h2>
-          <p className="text-sm text-muted-foreground mt-0.5 font-mono">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {targets.length} registered company ATS career pages
           </p>
         </div>
@@ -78,13 +79,13 @@ export function TargetCompaniesTab({
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
           <DropdownMenu>
             <DropdownMenuTrigger className="w-full sm:w-40 px-3 py-1.5 rounded-lg border border-border/80 bg-card text-sm font-medium focus:outline-none focus:ring-1 focus:ring-primary h-auto flex items-center justify-between">
-              {atsFilter === 'ALL' ? 'All ATS Types' : atsFilter}
+              {atsFilter === 'ALL' ? 'All ats types' : atsFilter}
               <ChevronDownIcon className="w-4 h-4 ml-2 opacity-50" />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-full sm:w-40 max-h-[300px] overflow-y-auto">
               {atsOptions.map(ats => (
                 <DropdownMenuItem key={ats} onClick={() => setAtsFilter(ats)}>
-                  {ats === 'ALL' ? 'All ATS Types' : ats}
+                  {ats === 'ALL' ? 'All ats types' : ats}
                 </DropdownMenuItem>
               ))}
             </DropdownMenuContent>
@@ -160,24 +161,28 @@ export function TargetCompaniesTab({
                 )}
 
                 <div className="flex items-center gap-2">
-                  <button
+                  <Button
+                    variant="admin"
+                    size="sm"
                     onClick={() => onRunTarget(t, false)}
                     disabled={isRunning}
-                    className="h-7 px-3 rounded-md border border-border/80 bg-muted/40 hover:bg-muted text-xs font-medium text-foreground transition-all active:scale-[0.96] cursor-pointer flex items-center gap-1.5 disabled:opacity-50 shadow-xs"
+                    className="h-7"
                   >
-                    <PlayIcon className={cn('w-3 h-3 fill-current', isRunning && 'animate-spin')} />
-                    <span>{isRunning ? 'Running...' : 'Run'}</span>
-                  </button>
+                    <PlayIcon className={cn('w-3 h-3 mr-1.5', isRunning && 'animate-spin')} />
+                    {isRunning ? 'Running...' : 'Run'}
+                  </Button>
 
-                  <button
+                  <Button
+                    variant="admin"
+                    size="sm"
                     onClick={() => onRunTarget(t, true)}
                     disabled={isRunning}
                     title="Test Crawl without saving to DB"
-                    className="h-7 px-2.5 rounded-md border border-border/80 bg-muted/40 hover:bg-muted text-xs font-medium text-muted-foreground hover:text-foreground transition-all active:scale-[0.96] cursor-pointer flex items-center gap-1 disabled:opacity-50 font-mono"
+                    className="h-7 font-mono"
                   >
-                    <CodeBracketIcon className={cn('w-3 h-3', isRunning && 'animate-spin')} />
-                    <span>Dry Run</span>
-                  </button>
+                    <CodeBracketIcon className={cn('w-3 h-3 mr-1', isRunning && 'animate-spin')} />
+                    Dry run
+                  </Button>
                 </div>
               </div>
             </div>

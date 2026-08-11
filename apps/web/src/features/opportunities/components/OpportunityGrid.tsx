@@ -2,7 +2,7 @@
 
 import { Opportunity, OpportunityCardDTO } from '@fresherflow/types';
 import JobCard from './JobCard';
-import { SkeletonJobCard } from '@/ui/Skeleton';
+import { SkeletonJobCard } from '@/features/opportunities/components/OpportunitySkeletons';
 import { ErrorMessage } from '@/ui/ErrorMessage';
 import { cn } from '@repo/ui/utils/cn';
 

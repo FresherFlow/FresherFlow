@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { ProfileGate } from '@/lib/components/ProfileGate';
-import { SkeletonJobCard } from '@/ui/Skeleton';
+import { SkeletonJobCard } from '@/features/opportunities/components/OpportunitySkeletons';
 import JobCard from '@/features/opportunities/components/JobCard';
 import { useFirebaseSaved } from '@/lib/hooks/useFirebaseSaved';
 import { useAuth } from '@/lib/auth/AuthContext';
 import type { Opportunity } from '@fresherflow/types';
 import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
 import toast from 'react-hot-toast';
+import { promptLoginToast } from '@/lib/utils/toastUtils';
 
 const CACHE_KEY = 'ff_deadlines_cache_v1';
 const CACHE_TTL = 5 * 60 * 1000;
@@ -84,8 +85,7 @@ function DeadlinesPageContent() {
 
     const handleToggleSave = async (oppId: string) => {
         if (!user) {
-            toast.error('Please log in to save opportunities');
-            router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+            promptLoginToast('Sign in to save opportunities');
             return;
         }
         await toggleSavedJob(oppId);
