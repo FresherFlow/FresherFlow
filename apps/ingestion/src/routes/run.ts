@@ -4,6 +4,7 @@ import { loadDefaultTargets } from '../lib/targets.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getQueue, QUEUE_NAMES } from '@fresherflow/queue';
 import { runDorker } from '../lib/dorker.js';
+import { parseJobUrl } from '../lib/url-parser.js';
 
 const router = Router();
 
@@ -50,6 +51,39 @@ router.post('/batch', async (req: Request, res: Response): Promise<void> => {
   }
 
   res.json({ jobIds });
+});
+
+router.post('/links', async (req: Request, res: Response): Promise<void> => {
+  const { urls } = req.body;
+  if (!Array.isArray(urls) || urls.length === 0) {
+    res.status(400).json({ error: 'Body must contain an array of urls' });
+    return;
+  }
+  
+  const queue = getQueue(QUEUE_NAMES.scraper);
+  const jobIds = [];
+  const invalidUrls = [];
+  
+  for (const urlStr of urls) {
+    const parsed = parseJobUrl(urlStr);
+    if (!parsed) {
+      invalidUrls.push(urlStr);
+      continue;
+    }
+    
+    const target: RunTarget = {
+      ats: parsed.ats as any,
+      slug: parsed.slug,
+      company: parsed.slug,
+      specificUrl: parsed.url,
+      resultsWanted: 1, // Only need one if we are filtering for a specific link
+    };
+    
+    const job = await queue.add('run-target', target);
+    jobIds.push(job.id);
+  }
+
+  res.json({ jobIds, invalidUrls });
 });
 
 router.post('/all', async (req: Request, res: Response): Promise<void> => {

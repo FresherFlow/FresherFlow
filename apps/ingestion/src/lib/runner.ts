@@ -15,6 +15,7 @@ export interface RunTarget {
   resultsWanted?: number;
   dryRun?: boolean;
   noCache?: boolean;
+  specificUrl?: string;
 }
 
 export interface RunResult {
@@ -82,6 +83,12 @@ export async function runTarget(target: RunTarget): Promise<RunResult> {
     });
 
     let raw = await Promise.race([fetchPromise, timeoutPromise]) as any[];
+    
+    // If we only want a specific URL, filter down to it now before any further processing
+    if (target.specificUrl) {
+      raw = raw.filter(job => job.applyLink === target.specificUrl || target.specificUrl!.includes(job.applyLink) || job.applyLink.includes(target.specificUrl!));
+    }
+
     if (target.resultsWanted && raw.length > target.resultsWanted) {
       raw = raw.slice(0, target.resultsWanted);
     }
