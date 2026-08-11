@@ -11,6 +11,8 @@ interface EmptyStateProps {
     icon?: 'search' | 'inbox';
     /** Size variant. Default: 'lg' (p-20). Use 'md' (p-12) for inline/nested empty states */
     size?: 'md' | 'lg';
+    /** Visual variant. 'card' has border and background, 'ghost' has none. Default: 'card' */
+    variant?: 'card' | 'ghost';
 }
 
 export function EmptyState({
@@ -19,12 +21,14 @@ export function EmptyState({
     action,
     icon = 'search',
     size = 'lg',
+    variant = 'card',
 }: EmptyStateProps) {
     const Icon = icon === 'inbox' ? InboxIcon : MagnifyingGlassIcon;
     const padding = size === 'md' ? 'p-12' : 'p-20';
+    const cardClasses = variant === 'card' ? 'border border-dashed border-border bg-card' : '';
 
     return (
-        <div className={`${padding} text-center rounded-2xl border border-dashed border-border bg-card animate-in fade-in slide-in-from-bottom-4 zoom-in-[0.97] duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]`}>
+        <div className={`${padding} text-center rounded-2xl ${cardClasses} animate-in fade-in slide-in-from-bottom-4 zoom-in-[0.97] duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]`}>
             <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 text-muted-foreground animate-in zoom-in-50 duration-500 delay-100 ease-[cubic-bezier(0.34,1.56,0.64,1)] fill-mode-both">
                 <Icon className="w-6 h-6" />
             </div>

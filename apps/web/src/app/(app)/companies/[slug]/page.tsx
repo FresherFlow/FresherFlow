@@ -13,7 +13,7 @@ import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
 import { detectAtsProvider } from '@/features/companies/utils/atsDetector';
 import { getCompanyDescription, TIER_A_SLUGS } from '@/features/companies/utils/companyContent';
-import { fetchCompanyShard, fetchCompaniesMetadata } from '@/lib/api/cdnFeed';
+import { fetchCompanyShard, fetchCompaniesMetadata, fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import CompanyFollowButton from '@/features/companies/components/CompanyFollowButton';
 
 export const revalidate = false;
@@ -24,13 +24,21 @@ export async function generateStaticParams() {
         const companyDirectory = await fetchCompaniesMetadata(true);
         if (!companyDirectory) return [];
 
+        // Only pre-build companies with at least 1 active job.
+        const feed = await fetchBootstrapFeed(false, undefined, true);
+        const activeCompanySlugs = new Set(
+            (feed?.opportunities || [])
+                .map((o: any) => slugify(o.company || ''))
+                .filter(Boolean)
+        );
+
         const seen = new Set<string>();
         const params: { slug: string }[] = [];
 
         for (const item of companyDirectory) {
             if (!item || !item.name) continue;
             const slug = item.slug || slugify(item.name);
-            if (slug && !seen.has(slug)) {
+            if (slug && !seen.has(slug) && activeCompanySlugs.has(slug)) {
                 seen.add(slug);
                 params.push({ slug });
             }

@@ -9,35 +9,66 @@ import { slugify } from '@fresherflow/utils/slugify';
 import { unstable_noStore } from 'next/cache';
 
 export const revalidate = false;
-export const dynamicParams = false;
 
-const VALID_ROLES = {
+// dynamicParams defaults to true — unknown role slugs render at runtime
+const ROLE_OVERRIDES: Record<string, { label: string; keywords: string[] }> = {
     'software-engineer': {
         label: 'Software Engineer',
-        keywords: ['software engineer', 'software developer', 'sde', 'full stack developer', 'backend developer', 'frontend developer', 'engineer', 'developer', 'programmer'],
+        keywords: ['software engineer', 'software developer', 'sde', 'full stack', 'backend developer', 'frontend developer', 'programmer', 'developer'],
     },
     'data-analyst': {
         label: 'Data Analyst',
-        keywords: ['data analyst', 'business intelligence', 'bi analyst', 'data analytics', 'data scientist', 'machine learning', 'ml engineer'],
+        keywords: ['data analyst', 'bi analyst', 'data analytics', 'data scientist', 'ml engineer'],
     },
     'business-analyst': {
         label: 'Business Analyst',
-        keywords: ['business analyst', 'ba', 'product analyst', 'consultant'],
+        keywords: ['business analyst', 'product analyst', 'consultant', 'ba '],
     },
     'frontend-developer': {
         label: 'Frontend Developer',
-        keywords: ['frontend developer', 'frontend engineer', 'ui developer', 'web developer', 'react developer', 'angular developer'],
+        keywords: ['frontend developer', 'frontend engineer', 'ui developer', 'web developer'],
     },
     'test-engineer': {
         label: 'Test Engineer',
-        keywords: ['test engineer', 'qa', 'quality assurance', 'testing engineer', 'sdet', 'automation engineer', 'manual testing', 'tester'],
-    }
+        keywords: ['test engineer', 'qa', 'quality assurance', 'sdet', 'automation engineer', 'tester'],
+    },
 };
 
+const ROLE_MIN_JOBS = 5;
+
 export async function generateStaticParams() {
-    return Object.keys(VALID_ROLES).map(slug => ({
-        slug
-    }));
+    try {
+        const feed = await fetchBootstrapFeed(false, undefined, true);
+        const counts = new Map<string, number>();
+
+        for (const opp of feed?.opportunities || []) {
+            const titleLower = (opp.title || '').toLowerCase();
+            const jfSlug = opp.jobFunction ? slugify(opp.jobFunction) : null;
+
+            for (const [slug, roleInfo] of Object.entries(ROLE_OVERRIDES)) {
+                // Match by jobFunction slug
+                if (jfSlug === slug) {
+                    counts.set(slug, (counts.get(slug) ?? 0) + 1);
+                    continue;
+                }
+                // Match by keyword in title
+                if (roleInfo.keywords.some(kw => titleLower.includes(kw))) {
+                    counts.set(slug, (counts.get(slug) ?? 0) + 1);
+                }
+            }
+        }
+
+        // Always include all curated overrides - they are hand-picked and guaranteed valid
+        const slugs = new Set(Object.keys(ROLE_OVERRIDES));
+        // Also include feed-derived roles that clear the threshold
+        for (const [slug, count] of counts) {
+            if (count >= ROLE_MIN_JOBS && !slugs.has(slug)) slugs.add(slug);
+        }
+
+        return Array.from(slugs).map(slug => ({ slug }));
+    } catch {
+        return Object.keys(ROLE_OVERRIDES).map(slug => ({ slug }));
+    }
 }
 
 type Props = {
@@ -46,7 +77,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug } = await params;
-    let roleInfo = VALID_ROLES[slug as keyof typeof VALID_ROLES];
+    let roleInfo = ROLE_OVERRIDES[slug];
 
     if (!roleInfo) {
         // Dynamically fallback for parsed roles not in the hardcoded list
@@ -105,7 +136,7 @@ export default async function RolePage({ params }: Props) {
     
     const slug = properSlug;
     
-    let roleInfo = VALID_ROLES[slug as keyof typeof VALID_ROLES];
+    let roleInfo = ROLE_OVERRIDES[slug];
 
     if (!roleInfo) {
         // Dynamically fallback for parsed roles not in the hardcoded list

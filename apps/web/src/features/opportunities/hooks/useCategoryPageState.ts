@@ -13,6 +13,8 @@ import {
 } from '@/features/opportunities/components/GovtPhaseTabs';
 import { formatJobFeedTitle } from '@/features/opportunities/utils/formatJobFeedTitle';
 
+const PAGE_SIZE = 20;
+
 export interface UseCategoryPageStateProps {
     type: OpportunityType | null;
     initialData?: { opportunities: Opportunity[]; total: number; cachedAt?: number } | null;
@@ -230,7 +232,7 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
         document.title = `${newTitle || 'Job Opportunities Feed'} | FresherFlow`;
     }, [type, filters, search, mounted]);
 
-    const { filteredOpps, isLoading, error, profileIncomplete, toggleSave, reload } = useOpportunitiesFeed({
+    const { opportunities, filteredOpps, isLoading, error, profileIncomplete, toggleSave, reload } = useOpportunitiesFeed({
         type,
         mode,
         source,
@@ -242,9 +244,15 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
         qualification: filters.qualification,
         course: filters.course,
         selectedYear: filters.year,
+        skills: filters.skills,
+        roles: (filters as any).roles,
         search,
         initialData,
     });
+
+    useEffect(() => {
+        setVisibleCount(PAGE_SIZE);
+    }, [type]);
 
     const phaseCounts = useMemo(() => {
         if (type !== OpportunityType.GOVERNMENT) return undefined;
@@ -351,6 +359,7 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
     return {
         type,
         user,
+        opportunities,
         filteredOpps,
         visibleOpps,
         isLoading,

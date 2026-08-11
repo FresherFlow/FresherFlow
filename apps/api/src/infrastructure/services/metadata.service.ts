@@ -1,6 +1,7 @@
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { logger } from '@fresherflow/logger';
 import { getCompanySlug } from '@fresherflow/utils';
+import { normalizeSkillName } from '@fresherflow/constants/skillTaxonomy';
 
 const endpoint = process.env.R2_ENDPOINT;
 const accessKeyId = process.env.R2_ACCESS_KEY_ID;
@@ -290,15 +291,12 @@ export class MetadataService {
                     for (const raw of opportunity.requiredSkills) {
                         if (!raw) continue;
                         const trimmed = raw.trim();
-                        const trimmedLower = trimmed.toLowerCase();
 
                         if (trimmed.length > 1) {
-                            // Match case-insensitively against existing skills
-                            const match = skills.find(s => s.toLowerCase() === trimmedLower);
+                            const canonical = normalizeSkillName(trimmed);
+                            const match = skills.find(s => s.toLowerCase() === canonical.toLowerCase());
                             if (!match) {
-                                // Apply standard Title Case for new skills
-                                const formatted = titleCase(trimmed);
-                                skills.push(formatted);
+                                skills.push(titleCase(canonical || trimmed));
                                 updated = true;
                             }
                         }

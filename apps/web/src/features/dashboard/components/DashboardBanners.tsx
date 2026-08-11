@@ -21,41 +21,30 @@ export function ProfileCompletionBanner() {
     if (isLoading || !profile || pct >= 100) return null;
 
     return (
-        <>
-            <style>{`
-                .banner-enter {
-                    opacity: 1;
-                    transform: scale(1);
-                    transition: opacity 400ms cubic-bezier(0.23, 1, 0.32, 1), transform 400ms cubic-bezier(0.23, 1, 0.32, 1);
-                }
-                @starting-style {
-                    .banner-enter {
-                        opacity: 0;
-                        transform: scale(0.95);
-                    }
-                }
-            `}</style>
-            <div className="banner-enter rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div className="space-y-1.5 flex-1">
-                    <p className="text-xs font-semibold text-foreground">
-                        Profile {pct}% complete - finish to unlock all features
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 bg-card border border-border/50 rounded-xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-8">
+            <div className="flex-1 space-y-2">
+                <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-foreground">
+                        Profile completeness
                     </p>
-                    <div className="h-1.5 w-full max-w-xs bg-muted rounded-full overflow-hidden">
-                        <div
-                            className="h-full bg-primary rounded-full transition-all duration-500"
-                            style={{ width: `${pct}%` }}
-                        />
-                    </div>
+                    <span className="text-sm font-medium text-muted-foreground">{pct}%</span>
                 </div>
+                <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                    <div
+                        className="h-full bg-primary rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                    />
+                </div>
+            </div>
+            <div className="shrink-0">
                 <Link
                     href="/profile/complete"
-                    className="inline-flex items-center gap-1.5 text-[11px] font-bold capitalize tracking-widest text-primary hover:underline whitespace-nowrap active:scale-95 transition-transform"
+                    className="inline-flex items-center justify-center h-9 px-4 text-xs font-bold bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors whitespace-nowrap active:scale-95"
                 >
                     Complete profile
-                    <ArrowRightIcon className="w-3 h-3" />
                 </Link>
             </div>
-        </>
+        </div>
     );
 }
 

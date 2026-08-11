@@ -245,16 +245,17 @@ export class StaticFeedService {
                     const exp = new Date(opp.expiresAt as string | Date);
                     return exp > fortyFiveDaysAgo;
                 });
-                const companiesSet = new Set<string>();
-                (allMapped as Record<string, unknown>[]).forEach((opp) => {
-                    if (opp.company && typeof opp.company === 'string') companiesSet.add(opp.company);
+                const companiesCounts = new Map<string, number>();
+                sitemapOpps.forEach((opp) => {
+                    if (opp.company && typeof opp.company === 'string') {
+                        companiesCounts.set(opp.company, (companiesCounts.get(opp.company) || 0) + 1);
+                    }
                 });
 
                 const baseUrl = getPublicSiteUrl();
                 const staticDate = new Date().toISOString().split('T')[0];
                 const staticRoutes = [
                     '',
-                    '/opportunities',
                     '/jobs',
                     '/internships',
                     '/walk-ins',
@@ -264,38 +265,51 @@ export class StaticFeedService {
                     '/contact',
                     '/privacy',
                     '/terms',
-                    '/feedback',
-                    '/submit-link',
+                    
                     '/app'
                 ];
 
                 // Dynamically collect skills, locations, batches, and roles
-                const skillsSet = new Set<string>();
-                const locationsSet = new Set<string>();
-                const rolesSet = new Set<string>();
-                const batchesSet = new Set<number>([2024, 2025, 2026, 2027]);
+                const skillsCounts = new Map<string, number>();
+                const locationsCounts = new Map<string, number>();
+                const rolesCounts = new Map<string, number>();
+                const batchesCounts = new Map<number, number>();
 
                 sitemapOpps.forEach(opp => {
                     ((opp.requiredSkills as string[]) || []).forEach(s => {
-                        if (s) skillsSet.add(FeedGeneratorService.slugify(s));
+                        if (s) {
+                            const slug = FeedGeneratorService.slugify(s);
+                            skillsCounts.set(slug, (skillsCounts.get(slug) || 0) + 1);
+                        }
                     });
                     ((opp.locations as string[]) || []).forEach(l => {
                         if (l && l.toLowerCase() !== 'india' && l.toLowerCase() !== 'pan india') {
-                            locationsSet.add(FeedGeneratorService.slugify(l));
+                            const slug = FeedGeneratorService.slugify(l);
+                            locationsCounts.set(slug, (locationsCounts.get(slug) || 0) + 1);
                         }
                     });
                     if (opp.jobFunction) {
-                        rolesSet.add(FeedGeneratorService.slugify(opp.jobFunction as string));
+                        const slug = FeedGeneratorService.slugify(opp.jobFunction as string);
+                        rolesCounts.set(slug, (rolesCounts.get(slug) || 0) + 1);
                     }
                     ((opp.allowedPassoutYears as number[]) || []).forEach(y => {
-                        if (y) batchesSet.add(y);
+                        if (y) {
+                            batchesCounts.set(y, (batchesCounts.get(y) || 0) + 1);
+                        }
                     });
                 });
 
-                // Guarantee pre-defined items are covered
-                ['software-engineer', 'data-analyst', 'business-analyst', 'frontend-developer', 'test-engineer'].forEach(r => rolesSet.add(r));
-                ['remote', 'delhi-ncr', ...INDIAN_CITIES.map(c => FeedGeneratorService.slugify(c))].forEach(l => locationsSet.add(l));
-                ['java', 'python', 'react', 'javascript', 'sql', 'aws', 'testing', 'node-js', 'c-plus-plus', 'data-structures', 'html-css'].forEach(s => skillsSet.add(s));
+                // Guarantee pre-defined items bypass filter
+                ['software-engineer', 'data-analyst', 'business-analyst', 'frontend-developer', 'test-engineer'].forEach(r => rolesCounts.set(r, 999));
+                ['remote', 'delhi-ncr', ...INDIAN_CITIES.map(c => FeedGeneratorService.slugify(c))].forEach(l => locationsCounts.set(l, 999));
+                ['java', 'python', 'react', 'javascript', 'sql', 'aws', 'testing', 'node-js', 'c-plus-plus', 'data-structures', 'html-css'].forEach(s => skillsCounts.set(s, 999));
+                [2024, 2025, 2026, 2027].forEach(y => batchesCounts.set(y, 999));
+
+                const validCompanies = Array.from(companiesCounts.entries()).filter(([_, count]) => count >= 1).map(([c]) => c);
+                const validSkills = Array.from(skillsCounts.entries()).filter(([_, count]) => count >= 5).map(([s]) => s);
+                const validRoles = Array.from(rolesCounts.entries()).filter(([_, count]) => count >= 5).map(([r]) => r);
+                const validLocations = Array.from(locationsCounts.entries()).filter(([_, count]) => count >= 5).map(([l]) => l);
+                const validBatches = Array.from(batchesCounts.entries()).filter(([_, count]) => count >= 5).map(([b]) => b);
 
                 // 1. sitemap-jobs.xml
                 let jobsXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
@@ -313,31 +327,31 @@ export class StaticFeedService {
                 // 2. sitemap-companies.xml
                 let companiesXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 companiesXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-                companiesSet.forEach(c => companiesXml += `  <url><loc>${baseUrl}/companies/${FeedGeneratorService.getCompanySlug(c)}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+                validCompanies.forEach(c => companiesXml += `  <url><loc>${baseUrl}/companies/${FeedGeneratorService.getCompanySlug(c)}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
                 companiesXml += '</urlset>';
 
                 // 3. sitemap-skills.xml
                 let skillsXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 skillsXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-                skillsSet.forEach(s => skillsXml += `  <url><loc>${baseUrl}/skills/${s}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+                validSkills.forEach(s => skillsXml += `  <url><loc>${baseUrl}/skills/${s}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
                 skillsXml += '</urlset>';
 
                 // 4. sitemap-roles.xml
                 let rolesXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 rolesXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-                rolesSet.forEach(r => rolesXml += `  <url><loc>${baseUrl}/roles/${r}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+                validRoles.forEach(r => rolesXml += `  <url><loc>${baseUrl}/roles/${r}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
                 rolesXml += '</urlset>';
 
                 // 5. sitemap-locations.xml
                 let locationsXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 locationsXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-                locationsSet.forEach(l => locationsXml += `  <url><loc>${baseUrl}/location/${l}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+                validLocations.forEach(l => locationsXml += `  <url><loc>${baseUrl}/locations/${l}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
                 locationsXml += '</urlset>';
 
                 // 6. sitemap-batches.xml
                 let batchesXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 batchesXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-                batchesSet.forEach(b => batchesXml += `  <url><loc>${baseUrl}/batch/${b}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+                validBatches.forEach(b => batchesXml += `  <url><loc>${baseUrl}/batch/${b}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
                 batchesXml += '</urlset>';
 
                 // 7. sitemap-index.xml
@@ -377,7 +391,7 @@ export class StaticFeedService {
                 await StorageService.uploadToR2('sitemap-batches.xml', batchesXml, 'application/xml');
 
                 const sitemapData = {
-                    companies: Array.from(companiesSet).map(name => ({
+                    companies: validCompanies.map(name => ({
                         name,
                         slug: FeedGeneratorService.slugify(name)
                     })),
@@ -422,7 +436,7 @@ export class StaticFeedService {
                     const { generateAndUploadHubOgImage } = await import('./ogImage.service');
 
                     // 1. Companies OG
-                    for (const company of Array.from(companiesSet)) {
+                    for (const company of validCompanies) {
                         const slug = FeedGeneratorService.getCompanySlug(company);
                         if (!slug) continue;
                         if (!cache.companies.includes(slug)) {
@@ -433,7 +447,7 @@ export class StaticFeedService {
                     }
 
                     // 2. Locations OG
-                    for (const loc of Array.from(locationsSet)) {
+                    for (const loc of validLocations) {
                         const slug = FeedGeneratorService.slugify(loc);
                         if (!slug) continue;
                         if (!cache.locations.includes(slug)) {
@@ -444,7 +458,7 @@ export class StaticFeedService {
                     }
 
                     // 3. Skills OG
-                    for (const skill of Array.from(skillsSet)) {
+                    for (const skill of validSkills) {
                         const slug = FeedGeneratorService.slugify(skill);
                         if (!slug) continue;
                         if (!cache.skills.includes(slug)) {
@@ -456,7 +470,7 @@ export class StaticFeedService {
                     }
 
                     // 4. Batches OG
-                    for (const year of Array.from(batchesSet)) {
+                    for (const year of validBatches) {
                         const slug = year.toString();
                         if (!cache.batches.includes(slug)) {
                             // logger.info(`[StaticFeedService] Generating OG card for batch: ${year}`);
@@ -466,7 +480,7 @@ export class StaticFeedService {
                     }
 
                     // 5. Roles OG
-                    for (const role of Array.from(rolesSet)) {
+                    for (const role of validRoles) {
                         const slug = FeedGeneratorService.slugify(role);
                         if (!slug) continue;
                         if (!cache.roles.includes(slug)) {

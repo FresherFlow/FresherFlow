@@ -39,7 +39,7 @@ export default async function SkillsIndexPage() {
 
     // Sort by count desc, then alpha
     const sorted = Object.values(skillData)
-        .filter((item) => item.count >= 1)
+        .filter((item) => item.count >= 5)
         .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
     return (

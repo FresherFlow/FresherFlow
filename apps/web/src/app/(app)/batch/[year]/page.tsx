@@ -7,14 +7,28 @@ import { FeedPageSkeleton } from '@/features/opportunities/components/Opportunit
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 
 export const revalidate = false;
-export const dynamicParams = true;
+export const dynamicParams = false;
 
-const VALID_YEARS = new Set([2024, 2025, 2026, 2027]);
+const BATCH_MIN_JOBS = 5;
 
 export async function generateStaticParams() {
-    return Array.from(VALID_YEARS).map(year => ({
-        year: year.toString()
-    }));
+    const counts = new Map<number, number>();
+    try {
+        const feed = await fetchBootstrapFeed(false, undefined, true);
+        for (const opp of feed?.opportunities || []) {
+            for (const batchNum of opp.allowedPassoutYears || []) {
+                if (typeof batchNum === 'number' && !Number.isNaN(batchNum)) {
+                    counts.set(batchNum, (counts.get(batchNum) ?? 0) + 1);
+                }
+            }
+        }
+    } catch {
+        /* if CDN is down, fall back to empty */
+    }
+
+    return Array.from(counts.entries())
+        .filter(([, count]) => count >= BATCH_MIN_JOBS)
+        .map(([year]) => ({ year: year.toString() }));
 }
 
 type Props = {
@@ -25,7 +39,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { year: rawYear } = await params;
     const year = parseInt(rawYear, 10);
     
-    if (Number.isNaN(year) || !VALID_YEARS.has(year)) {
+    if (Number.isNaN(year)) {
         return {
             title: 'Batch Not Found',
             description: 'This batch listing is not available.'
@@ -69,7 +83,7 @@ export default async function BatchPage({ params }: Props) {
     const { year: rawYear } = await params;
     const year = parseInt(rawYear, 10);
 
-    if (Number.isNaN(year) || !VALID_YEARS.has(year)) {
+    if (Number.isNaN(year)) {
         notFound();
     }
 
@@ -80,6 +94,10 @@ export default async function BatchPage({ params }: Props) {
         Array.isArray(opp.allowedPassoutYears) && 
         opp.allowedPassoutYears.includes(year)
     );
+
+    if (filtered.length === 0) {
+        notFound();
+    }
 
     const seoText = `Finding off-campus placements as a fresher can be challenging. On this page, we compile all verified jobs, internships, and walk-in drives recruiting candidates from the ${year} batch. Every listing is reviewed by our moderation team to ensure valid official application links, transparent salary ranges, and complete qualification requirements. Use the links to apply directly on the hiring organizations' official careers portal.`;
 

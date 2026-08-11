@@ -215,7 +215,7 @@ function GroupedGovtView({
 // ─── Presenter ────────────────────────────────────────────────────────────────
 
 export function CategoryPageView({
-    type, user, filteredOpps, visibleOpps, isLoading, error, profileIncomplete, mounted, isDesktop,
+    type, user, opportunities, filteredOpps, visibleOpps, isLoading, error, profileIncomplete, mounted, isDesktop,
     selectedOpp, handleSelectOpportunity, handleCloseOpportunityPane,
     search, setSearch, filters, setFilters,
     govtPhase, setGovtPhase, govtCategory, setGovtCategory, phaseCounts, categoryCounts, showGroupedView,
@@ -226,12 +226,19 @@ export function CategoryPageView({
     visibleCount, setVisibleCount, isJobSaved, isJobApplied, toggleSave, reload
 }: CategoryPageState) {
     const router = useRouter();
-    const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
     const config = (type ? CATEGORY_CONFIG[type] : undefined) ?? { title: 'Jobs', subtitle: '', icon: BriefcaseIcon };
     const { targetRef: loadMoreRef, isIntersecting } = useIntersectionObserver({ threshold: 0.1, rootMargin: '400px' });
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const { setCount } = useFeedHeader();
     const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+
+    // Reset scroll when type changes
+    useEffect(() => {
+        const container = document.getElementById('feed-scroll-container');
+        if (container) {
+            container.scrollTo(0, 0);
+        }
+    }, [type]);
 
     useEffect(() => {
         setPortalTarget(document.getElementById('top-header-portal-target'));
@@ -239,6 +246,7 @@ export function CategoryPageView({
 
     // Push filtered count to TopHeaderBar
     useEffect(() => {
+        if (!setCount) return;
         setCount(filteredOpps.length);
         return () => setCount(null);
     }, [filteredOpps.length, setCount]);
@@ -322,7 +330,7 @@ export function CategoryPageView({
     }, [handleCloseOpportunityPane]);
 
     return (
-        <div className="w-full max-w-7xl mx-auto flex flex-col" style={{ height: 'calc(100vh - 3.5rem)' }}>
+        <div id="feed-scroll-container" className="w-full max-w-7xl mx-auto flex flex-col" style={{ height: 'calc(100vh - 3.5rem)' }}>
             {portalTarget && headerPortalContent ? createPortal(headerPortalContent, portalTarget) : null}
 
             {/* Live Ticker — govt only */}
@@ -580,11 +588,26 @@ export function CategoryPageView({
                     )}
                 </div>
             ) : visibleOpps.length === 0 ? (
-                <EmptyState
-                    title={`No ${dynamicTitle} found`}
-                    description="Try removing some filters or search keywords."
-                    action={<Button variant="outline" onClick={clearAll} className="h-11 px-6 text-sm font-bold capitalize tracking-widest">Clear all filters</Button>}
-                />
+                <div className="flex flex-col min-w-0">
+                    <EmptyState
+                        title={`No ${dynamicTitle} found`}
+                        description="Try removing some filters or search keywords."
+                        action={<Button variant="outline" onClick={clearAll} className="h-11 px-6 text-sm font-bold capitalize tracking-widest">Clear all filters</Button>}
+                        variant="ghost"
+                    />
+                    
+                    {type !== OpportunityType.GOVERNMENT && (
+                        <RelatedSearches 
+                            opportunities={opportunities} 
+                            search={search} 
+                            filters={filters} 
+                            onSearch={(term) => {
+                                setSearch(term);
+                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                            }} 
+                        />
+                    )}
+                </div>
             ) : (
                 // ── Flat grid (filtered by phase / search) ─────────────────────
                 <div className={cn(
@@ -597,7 +620,7 @@ export function CategoryPageView({
                 )}>
                     {/* Left Column: list grid */}
                     <div id="category-grid-container" className={cn(
-                        "min-w-0",
+                        "min-w-0 pt-4",
                         type !== OpportunityType.GOVERNMENT && showDetail && "lg:sticky lg:top-[var(--sticky-h,8rem)] lg:h-[calc(100vh-var(--sticky-h,8rem))] lg:overflow-y-auto lg:pr-2 custom-scrollbar [:root[data-show-detail='false']_&]:lg:static [:root[data-show-detail='false']_&]:lg:h-auto [:root[data-show-detail='false']_&]:lg:overflow-y-visible [:root[data-show-detail='false']_&]:lg:pr-0"
                     )}>
                         <div className={cn('grid gap-2',
@@ -614,7 +637,7 @@ export function CategoryPageView({
                                     isApplied={isJobApplied(opp)}
                                     onToggleSave={() => toggleSave(opp.id)}
                                     isAdmin={user?.role === 'ADMIN'}
-                                    isSelected={opp.id === selectedOpp?.id || opp.slug === selectedOpp?.slug}
+                                    isSelected={Boolean(showDetail && isDesktop && (opp.id === selectedOpp?.id || opp.slug === selectedOpp?.slug))}
                                     variant={
                                         type === OpportunityType.GOVERNMENT
                                             ? 'vertical'
@@ -633,11 +656,27 @@ export function CategoryPageView({
                                 />
                             ))}
                         </div>
+                        
                         {(visibleCount < visibleOpps.length || isLoadingMore) && (
                             <div ref={loadMoreRef} className="flex justify-center pt-8 pb-4">
                                 <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
                             </div>
                         )}
+                        
+                        {visibleOpps.length > 0 && type !== OpportunityType.GOVERNMENT && (
+                            <RelatedSearches 
+                                opportunities={opportunities} 
+                                search={search} 
+                                filters={filters} 
+                                onSearch={(term) => {
+                                    setSearch(term);
+                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                }} 
+                            />
+                        )}
+                        
+                        {/* Essential spacer so the last card never sticks to the bottom of the screen */}
+                        <div className="h-24 md:h-32 shrink-0" />
                     </div>
 
                     {/* Right Column: Detail Panel (desktop, split mode only) */}
@@ -687,6 +726,81 @@ export function CategoryPageView({
             )}
 
             </div>{/* end scrollable content */}
+        </div>
+    );
+}
+
+function RelatedSearches({ 
+    opportunities, 
+    search, 
+    filters, 
+    onSearch 
+}: { 
+    opportunities: Opportunity[], 
+    search: string, 
+    filters: any, 
+    onSearch: (term: string) => void 
+}) {
+    const relatedTerms = useMemo(() => {
+        if (!opportunities || opportunities.length === 0) return [];
+        
+        const termCounts: Record<string, { original: string, count: number }> = {};
+        
+        opportunities.forEach(opp => {
+            const oppAny = opp as any;
+            const skills = Array.isArray(oppAny.requiredSkills) ? oppAny.requiredSkills : [];
+            const roles = [];
+            if (oppAny.normalizedRole) roles.push(oppAny.normalizedRole);
+            if (oppAny.jobFunction) roles.push(oppAny.jobFunction);
+            
+            const terms = [...skills, ...roles];
+            terms.forEach(t => {
+                if (!t || typeof t !== 'string') return;
+                const norm = t.toLowerCase().trim();
+                if (!norm) return;
+                if (!termCounts[norm]) termCounts[norm] = { original: t, count: 0 };
+                termCounts[norm].count++;
+            });
+        });
+
+        const searchNorm = search?.toLowerCase().trim() || '';
+        const activeSkills = (filters?.skills || []).map((s: string) => s.toLowerCase().trim());
+        const activeRoles = (filters?.roles || []).map((s: string) => s.toLowerCase().trim());
+        const activeCategories = (filters?.sector ? [filters.sector] : []).map((s: string) => s.toLowerCase().trim());
+        
+        const sorted = Object.values(termCounts)
+            .filter(t => {
+                const norm = t.original.toLowerCase().trim();
+                if (searchNorm && (norm.includes(searchNorm) || searchNorm.includes(norm))) return false;
+                if (activeSkills.includes(norm) || activeRoles.includes(norm) || activeCategories.includes(norm)) return false;
+                // Basic exclusions
+                if (norm.length < 2) return false;
+                return true;
+            })
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 8)
+            .map(t => t.original);
+            
+        return sorted;
+    }, [opportunities, search, filters]);
+
+    if (relatedTerms.length === 0) return null;
+
+    return (
+        <div className="pt-12 pb-24 border-t border-border/50 mt-12 mb-12">
+            <h3 className="text-sm font-medium text-muted-foreground mb-4">People also searched</h3>
+            <div className="flex flex-wrap gap-2.5">
+                {relatedTerms.map(term => (
+                    <button
+                        key={term}
+                        onClick={() => onSearch(term)}
+                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-muted/40 hover:bg-muted text-sm text-foreground transition-colors border border-border/40 hover:border-border"
+                    >
+                        <MagnifyingGlassIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                        {term}
+                    </button>
+                ))}
+            </div>
         </div>
     );
 }

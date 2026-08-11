@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 };
 
 export default async function BatchIndexPage() {
-    const feed = await fetchBootstrapFeed();
+    const feed = await fetchBootstrapFeed(false, undefined, true);
     const opportunities = feed?.opportunities || [];
 
     // Extract all batches with job counts
@@ -29,7 +29,7 @@ export default async function BatchIndexPage() {
 
     // Sort by batch year desc (2027, 2026, etc)
     const sorted = Object.entries(batchCounts)
-        .filter(([, count]) => count >= 1)
+        .filter(([, count]) => count >= 5)
         .sort((a, b) => b[0].localeCompare(a[0])) // String compare works for years
         .map(([batch, count]) => ({
             name: `${batch} Batch`,

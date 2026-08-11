@@ -4,7 +4,7 @@ import CategoryPage from '@/features/opportunities/components/CategoryPage';
 import { FeedPageSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { formatJobFeedTitle } from '@/features/opportunities/utils/formatJobFeedTitle';
-import { OpportunityType } from '@fresherflow/types';
+import { OpportunityType, toOpportunityCardDTO } from '@fresherflow/types';
 
 // On-demand revalidation via /api/revalidate — called when jobs are published/expired.
 export const revalidate = false;
@@ -65,9 +65,9 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 }
 
 export default async function JobsPage() {
-    const bootstrapData = await fetchBootstrapFeed();
+    const bootstrapData = await fetchBootstrapFeed(false, undefined, true);
     const initialData = bootstrapData ? {
-        opportunities: bootstrapData.opportunities,
+        opportunities: bootstrapData.opportunities.map(toOpportunityCardDTO) as any,
         total: bootstrapData.count,
         cachedAt: new Date(bootstrapData.generatedAt).getTime(),
     } : null;

@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
+import { toOpportunityCardDTO } from '@fresherflow/types';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { Suspense } from 'react';
 import CategoryPage from '@/features/opportunities/components/CategoryPage';
 import { FeedPageSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
-import { unstable_noStore } from 'next/cache';
+
 
 export const revalidate = false;
 export const dynamicParams = false;
@@ -42,10 +43,30 @@ const VALID_LOCATIONS = {
     }
 };
 
+const LOCATION_MIN_JOBS = 5;
+
 export async function generateStaticParams() {
-    return Object.keys(VALID_LOCATIONS).map(city => ({
-        city
-    }));
+    try {
+        const feed = await fetchBootstrapFeed(false, undefined, true);
+        const counts: Record<string, number> = {};
+        for (const opp of feed?.opportunities || []) {
+            for (const [city, locInfo] of Object.entries(VALID_LOCATIONS)) {
+                if (city === 'remote') {
+                    if (opp.workMode === 'REMOTE') counts[city] = (counts[city] ?? 0) + 1;
+                } else {
+                    const hasMatch = opp.locations?.some((l: string) =>
+                        locInfo.aliases.some(a => l.toLowerCase().includes(a))
+                    );
+                    if (hasMatch) counts[city] = (counts[city] ?? 0) + 1;
+                }
+            }
+        }
+        return Object.keys(VALID_LOCATIONS)
+            .filter(city => (counts[city] ?? 0) >= LOCATION_MIN_JOBS)
+            .map(city => ({ city }));
+    } catch {
+        return Object.keys(VALID_LOCATIONS).map(city => ({ city }));
+    }
 }
 
 type Props = {
@@ -128,7 +149,6 @@ export default async function LocationPage({ params }: Props) {
     });
 
     if (filtered.length === 0) {
-        unstable_noStore();
         notFound();
     }
 
@@ -139,8 +159,8 @@ export default async function LocationPage({ params }: Props) {
             <CategoryPage 
                 type={null} 
                 initialData={{
-                    opportunities: feed?.opportunities || [],
-                    total: feed?.count || 0,
+                    opportunities: filtered.map(toOpportunityCardDTO) as any,
+                    total: filtered.length,
                     cachedAt: feed?.generatedAt ? new Date(feed.generatedAt).getTime() : Date.now(),
                 }} 
                 initialFilters={{ location: locInfo.label }} 

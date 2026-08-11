@@ -14,25 +14,54 @@ export const metadata: Metadata = {
     alternates: { canonical: `${SITE_URL}/roles` },
 };
 
+const ROLE_OVERRIDES: Record<string, { label: string; keywords: string[] }> = {
+    'software-engineer': {
+        label: 'Software Engineer',
+        keywords: ['software engineer', 'software developer', 'sde', 'full stack', 'backend developer', 'frontend developer', 'programmer', 'developer'],
+    },
+    'data-analyst': {
+        label: 'Data Analyst',
+        keywords: ['data analyst', 'bi analyst', 'data analytics', 'data scientist', 'ml engineer'],
+    },
+    'business-analyst': {
+        label: 'Business Analyst',
+        keywords: ['business analyst', 'product analyst', 'consultant', 'ba '],
+    },
+    'frontend-developer': {
+        label: 'Frontend Developer',
+        keywords: ['frontend developer', 'frontend engineer', 'ui developer', 'web developer'],
+    },
+    'test-engineer': {
+        label: 'Test Engineer',
+        keywords: ['test engineer', 'qa', 'quality assurance', 'sdet', 'automation engineer', 'tester'],
+    },
+};
+
+const ROLE_MIN_JOBS = 5;
+
 export default async function RolesIndexPage() {
-    const feed = await fetchBootstrapFeed();
+    const feed = await fetchBootstrapFeed(false, undefined, true);
     const opportunities = feed?.opportunities || [];
 
-    // Extract all roles with job counts
-    const roleCounts: Record<string, DirectoryEntity> = {};
+    // Count by keyword cluster, not exact title slug
+    const counts = new Map<string, number>();
     for (const opp of opportunities) {
-        const title = opp.title; // Using title as role
-        if (!title) continue;
-        const slug = slugify(title);
-        if (!roleCounts[slug]) {
-            roleCounts[slug] = { name: title, count: 0, slug };
+        const titleLower = (opp.title || '').toLowerCase();
+        const jfSlug = opp.jobFunction ? slugify(opp.jobFunction) : null;
+
+        for (const [slug, roleInfo] of Object.entries(ROLE_OVERRIDES)) {
+            if (jfSlug === slug || roleInfo.keywords.some(kw => titleLower.includes(kw))) {
+                counts.set(slug, (counts.get(slug) ?? 0) + 1);
+            }
         }
-        roleCounts[slug].count += 1;
     }
 
-    // Sort by count desc, then alpha
-    const sorted = Object.values(roleCounts)
-        .filter((data) => data.count >= 1)
+    const sorted: DirectoryEntity[] = Object.entries(ROLE_OVERRIDES)
+        .map(([slug, roleInfo]) => ({
+            name: roleInfo.label,
+            count: counts.get(slug) ?? 0,
+            slug,
+        }))
         .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
     return (

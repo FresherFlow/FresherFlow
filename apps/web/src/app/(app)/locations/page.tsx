@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function LocationIndexPage() {
-    const feed = await fetchBootstrapFeed();
+    const feed = await fetchBootstrapFeed(false, undefined, true);
     const opportunities = feed?.opportunities || [];
 
     // Only emit links for clean, single city names — block compound strings,
@@ -48,7 +48,7 @@ export default async function LocationIndexPage() {
 
     // Sort by count desc, then alpha
     const sorted = Object.entries(locationCounts)
-        .filter(([, count]) => count >= 1)
+        .filter(([, count]) => count >= 5)
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
         .map(([location, count]) => ({
             name: location,

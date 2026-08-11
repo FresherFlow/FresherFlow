@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 export default async function CompaniesIndexPage() {
     const [companyList, feed] = await Promise.all([
         fetchCompaniesMetadata(),
-        fetchBootstrapFeed(),
+        fetchBootstrapFeed(false, undefined, true),
     ]);
 
     const opportunities = feed?.opportunities || [];
@@ -52,29 +52,27 @@ export default async function CompaniesIndexPage() {
         if (opp.sourceLink) companyData[slug].links.push(opp.sourceLink);
     }
 
-    // Merge with master directory (companies with 0 current active listings still included)
+    // Enrich active companies with logo/website from directory, but don't add dead ones.
     const directory = companyList || [];
     for (const item of directory) {
         const name = item.name;
         if (!name) continue;
         const slug = item.slug || slugify(name);
-        if (!companyData[slug]) {
-            companyData[slug] = {
-                name,
-                slug,
-                count: 0,
-                logoUrl: item.logo_url,
-                website: item.url,
-                links: item.url ? [item.url] : [],
-            };
-        } else if (item.url && !companyData[slug].website) {
-            companyData[slug].website = item.url;
-            companyData[slug].links.push(item.url);
+        // Only enrich — do NOT create new entries for companies with 0 live jobs.
+        if (companyData[slug]) {
+            if (item.url && !companyData[slug].website) {
+                companyData[slug].website = item.url;
+                companyData[slug].links.push(item.url);
+            }
+            if (item.logo_url && !companyData[slug].logoUrl) {
+                companyData[slug].logoUrl = item.logo_url;
+            }
         }
     }
 
     // Sort: active first (by count desc), then alphabetically
     const companies: CompanyDirectoryItem[] = Object.values(companyData)
+        .filter((co) => co.count > 0)
         .map((co) => ({
             name: co.name,
             slug: co.slug,

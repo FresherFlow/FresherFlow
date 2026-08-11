@@ -1,48 +1,41 @@
 import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
+import { toOpportunityCardDTO } from '@fresherflow/types';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { Suspense } from 'react';
 import CategoryPage from '@/features/opportunities/components/CategoryPage';
 import { FeedPageSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
-import { unstable_noStore } from 'next/cache';
+
+
+
+import { CANONICAL_SKILLS } from '@fresherflow/constants/skillTaxonomy';
 
 export const revalidate = false;
 export const dynamicParams = false;
 
-const TOP_SKILLS = [
-    'java',
-    'python',
-    'react',
-    'javascript',
-    'sql',
-    'aws',
-    'testing',
-    'node-js',
-    'c-plus-plus',
-    'data-structures',
-    'html-css'
-];
+const SKILL_MIN_JOBS = 5;
 
 export async function generateStaticParams() {
-    // Pre-build the hardcoded top skills + any additional skills found in the live feed.
-    // This prevents bots crawling skill slugs from triggering on-demand renders and ISR writes.
-    const staticParams = new Set(TOP_SKILLS);
+    // Count how many jobs reference each canonical skill.
+    // Only pre-build pages with >= SKILL_MIN_JOBS mentions.
+    const counts = new Map<string, number>();
     try {
         const feed = await fetchBootstrapFeed(false, undefined, true);
-        if (feed?.opportunities) {
-            for (const opp of feed.opportunities) {
-                for (const skill of opp.requiredSkills || []) {
-                    const s = slugify(skill);
-                    if (s) staticParams.add(s);
-                }
+        for (const opp of feed?.opportunities || []) {
+            for (const skill of opp.requiredSkills || []) {
+                const slug = slugify(skill);
+                if (slug) counts.set(slug, (counts.get(slug) ?? 0) + 1);
             }
         }
-    } catch {
-        // fallback to TOP_SKILLS only
-    }
-    return Array.from(staticParams).map(name => ({ name }));
+    } catch { /* if CDN is down, fall back to empty — better than garbage */ }
+
+    // Only emit canonical skills that clear the threshold.
+    return CANONICAL_SKILLS
+        .map(skill => slugify(skill))
+        .filter((slug): slug is string => !!slug && (counts.get(slug) ?? 0) >= SKILL_MIN_JOBS)
+        .map(name => ({ name }));
 }
 
 type Props = {
@@ -128,13 +121,14 @@ export default async function SkillPage({ params }: Props) {
     const filtered = opportunities.filter(opp => 
         opp.requiredSkills && 
         Array.isArray(opp.requiredSkills) && 
-        opp.requiredSkills.some(skill => slugify(skill) === slug)
+        opp.requiredSkills.some(skill => {
+            const lowerSkill = skill.toLowerCase();
+            return lowerSkill === decodedName.toLowerCase() || lowerSkill.replace(/[^a-z0-9]+/g, '-') === slug;
+        })
     );
 
-    // No jobs match this skill slug — don't cache the empty page in ISR.
-    // Bots crawling arbitrary skill URLs would write thousands of empty ISR entries.
+    // No jobs match this skill slug
     if (filtered.length === 0) {
-        unstable_noStore();
         notFound();
     }
 
@@ -145,8 +139,8 @@ export default async function SkillPage({ params }: Props) {
             <CategoryPage 
                 type={null} 
                 initialData={{
-                    opportunities: feed?.opportunities || [],
-                    total: feed?.count || 0,
+                    opportunities: filtered.map(toOpportunityCardDTO) as any,
+                    total: filtered.length,
                     cachedAt: feed?.generatedAt ? new Date(feed.generatedAt).getTime() : Date.now(),
                 }} 
                 initialFilters={{ skills: [label] }} 

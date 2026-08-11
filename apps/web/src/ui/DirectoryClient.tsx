@@ -40,14 +40,14 @@ export function DirectoryClient({ title, description, data, urlPrefix, entityTyp
   const groups: Record<string, DirectoryEntity[]> = {};
   for (const item of remaining) {
     const letter = item.name[0].toUpperCase();
-    const key = /[A-Z]/.test(letter) ? letter : '#';
+    const key = /[A-Z]/.test(letter) ? letter : '0-9';
     if (!groups[key]) groups[key] = [];
     groups[key].push(item);
   }
 
   const letters = Object.keys(groups).sort((a, b) => {
-    if (a === '#') return 1;
-    if (b === '#') return -1;
+    if (a === '0-9') return 1;
+    if (b === '0-9') return -1;
     return a.localeCompare(b);
   });
 
@@ -116,7 +116,7 @@ export function DirectoryClient({ title, description, data, urlPrefix, entityTyp
               <a
                 key={letter}
                 href={`#letter-${letter}`}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold bg-card/50 hover:bg-accent text-foreground hover:text-primary transition-colors shadow-sm border border-border/40"
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold bg-card/50 text-foreground hover:text-primary transition-colors shadow-sm border border-border/40 hover:border-primary/60 hover:bg-primary/5"
               >
                 {letter}
               </a>
@@ -126,41 +126,43 @@ export function DirectoryClient({ title, description, data, urlPrefix, entityTyp
       )}
 
       {/* A-Z List */}
-      <div className="space-y-16 pb-12">
-        {letters.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground bg-card rounded-xl border border-border/50">
-            No results found for &quot;{search}&quot;
-          </div>
-        )}
-        
-        {letters.map(letter => (
-          <div key={letter} id={`letter-${letter}`} className="scroll-mt-32 space-y-6">
-            <div className="flex items-center gap-4">
-              <span className="text-4xl font-extrabold text-foreground tracking-tighter">{letter}</span>
-              <div className="flex-1 h-px bg-border/40" />
+      {(letters.length > 0 || search || data.length === 0) && (
+        <div className="space-y-16 pb-12">
+          {letters.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground bg-card rounded-xl border border-border/50">
+              No results found{search ? ` for "${search}"` : ''}
             </div>
-            <div className="flex flex-wrap gap-2">
-              {groups[letter].map(item => (
-                <Link
-                  key={item.slug}
-                  href={`${urlPrefix}${item.slug}`}
-                  className="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border/50 hover:border-primary/60 hover:bg-primary/5 transition-all shadow-sm"
-                >
-                  <span className="flex items-center gap-1.5 text-sm font-medium text-foreground capitalize group-hover:text-primary transition-colors">
-                    {entityType === 'skill' && (
-                        <SkillIcon skill={item.name} className="w-4 h-4 shrink-0" />
-                    )}
-                    {item.name}
-                  </span>
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                    {item.count}
-                  </Badge>
-                </Link>
-              ))}
+          )}
+          
+          {letters.map(letter => (
+            <div key={letter} id={`letter-${letter}`} className="scroll-mt-32 space-y-6">
+              <div className="flex items-center gap-4">
+                <span className="text-4xl font-extrabold text-foreground tracking-tighter">{letter}</span>
+                <div className="flex-1 h-px bg-border/40" />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {groups[letter].map(item => (
+                  <Link
+                    key={item.slug}
+                    href={`${urlPrefix}${item.slug}`}
+                    className="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border/50 hover:border-primary/60 hover:bg-primary/5 transition-all shadow-sm"
+                  >
+                    <span className="flex items-center gap-1.5 text-sm font-medium text-foreground capitalize group-hover:text-primary transition-colors">
+                      {entityType === 'skill' && (
+                          <SkillIcon skill={item.name} className="w-4 h-4 shrink-0" />
+                      )}
+                      {item.name}
+                    </span>
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                      {item.count}
+                    </Badge>
+                  </Link>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

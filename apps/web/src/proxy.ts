@@ -3,6 +3,8 @@ import { handleHostRouting } from "@/lib/config/hosts";
 import { handleAuth } from "@/lib/config/auth";
 import { applySeoHeaders } from "@/lib/config/seo";
 import { logRouteResult } from "@/lib/observability";
+import { isPublicPath } from "@/lib/config/paths";
+
 
 /**
  * Standard Next.js Proxy (formerly Middleware)
@@ -124,8 +126,8 @@ export default function middleware(req: NextRequest) {
         return hostResult;
     }
 
-    // 2. Enforce Authentication Limits
-    const authResult = handleAuth(req);
+    // 2. Enforce Authentication Limits (skip for public listing paths — cookie reads bust edge cache)
+    const authResult = !isPublicPath(pathname) ? handleAuth(req) : null;
     if (authResult) return authResult;
 
     // 3. Complete response and apply SEO NoIndex rules

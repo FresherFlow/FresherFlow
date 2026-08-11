@@ -64,6 +64,8 @@ interface UseOpportunitiesFeedOptions {
     sector?: string | null;
     qualification?: string | null;
     course?: string | null;
+    skills?: string[] | null;
+    roles?: string[] | null;
     minSalary?: number | null;
     maxSalary?: number | null;
     initialData?: {
@@ -90,6 +92,8 @@ export function useOpportunitiesFeed({
     sector,
     qualification,
     course,
+    skills,
+    roles,
     initialData,
 }: UseOpportunitiesFeedOptions) {
     const router = useRouter();
@@ -304,8 +308,11 @@ export function useOpportunitiesFeed({
                 opp.normalizedRole,
                 opp.company,
                 opp.description,
-                ...(opp.allowedCourses || []),
-                ...(opp.allowedDegrees || []),
+                ...( (opp as any).allowedCourses || []),
+                ...( (opp as any).allowedDegrees || []),
+                ...( (opp as any).skills || []),
+                ...( (opp as any).roles || []),
+                ...( (opp as any).categories || []),
                 (opp.governmentJobDetails as unknown as Record<string, unknown>)?.minimumQualification
             ].some((value) => String(value || '').toLowerCase().includes(normalizedSearch.toLowerCase()));
 
@@ -343,23 +350,31 @@ export function useOpportunitiesFeed({
             const mappedQual = qualification ? qualMap[qualification.toLowerCase()] : null;
 
             const matchesQualification = !qualification || 
-                (mappedQual && (opp.allowedDegrees || []).includes(mappedQual)) ||
+                (mappedQual && ((opp as any).allowedDegrees || []).includes(mappedQual)) ||
                 ((opp.governmentJobDetails as unknown as Record<string, unknown>)?.minimumQualification && String((opp.governmentJobDetails as unknown as Record<string, unknown>).minimumQualification).toLowerCase().includes(qualification.toLowerCase()));
 
             const courseParts = course ? course.split('/').map(p => p.trim().toLowerCase()) : [];
             const matchesCourse = !course || 
-                (opp.allowedCourses || []).some(c => {
+                ((opp as any).allowedCourses || []).some((c: string) => {
                     const cl = c.toLowerCase();
                     return courseParts.some(cp => cl.includes(cp));
                 }) ||
-                (course === 'Diploma' && (opp.allowedDegrees || []).includes(EducationLevel.DIPLOMA));
+                (course === 'Diploma' && ((opp as any).allowedDegrees || []).includes(EducationLevel.DIPLOMA));
 
             const matchesYear = !selectedYear || 
-                !opp.allowedPassoutYears || 
-                opp.allowedPassoutYears.length === 0 || 
-                opp.allowedPassoutYears.map(Number).includes(Number(selectedYear));
+                !(opp as any).allowedPassoutYears || 
+                (opp as any).allowedPassoutYears.length === 0 || 
+                (opp as any).allowedPassoutYears.map(Number).includes(Number(selectedYear));
+            
+            const matchesSkills = !skills || skills.length === 0 || skills.some((s: string) =>
+                ((opp as any).skills || []).some((os: string) => os.toLowerCase() === s.toLowerCase())
+            );
 
-            return matchesSearch && matchesLoc && matchesClosingSoon && matchesSector && matchesQualification && matchesCourse && matchesYear;
+            const matchesRoles = !roles || roles.length === 0 || roles.some((r: string) =>
+                ((opp as any).roles || []).some((or: string) => or.toLowerCase() === r.toLowerCase())
+            );
+
+            return matchesSearch && matchesLoc && matchesClosingSoon && matchesSector && matchesQualification && matchesCourse && matchesYear && matchesSkills && matchesRoles;
         });
 
         const enriched = filtered.map((opp) => {
@@ -430,7 +445,7 @@ export function useOpportunitiesFeed({
 
             return timeB - timeA;
         });
-    }, [opportunities, selectedLoc, selectedYear, closingSoon, sector, qualification, course, profile, normalizedSearch, type, mode, source, sort, showOnlySaved, savedJobsMap, isMounted]);
+    }, [opportunities, selectedLoc, selectedYear, closingSoon, sector, qualification, course, skills, roles, profile, normalizedSearch, type, mode, source, sort, showOnlySaved, savedJobsMap, isMounted]);
 
     const toggleSave = async (opportunityId: string) => {
         if (!user) {

@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import CategoryPage from '@/features/opportunities/components/CategoryPage';
-import { OpportunityType } from '@fresherflow/types';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+import { toOpportunityCardDTO, OpportunityType } from '@fresherflow/types';
 
 // On-demand revalidation via /api/revalidate — called when jobs are published/expired.
 export const revalidate = false;
@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 };
 
 export default async function RemotePage() {
-    const bootstrapData = await fetchBootstrapFeed();
+    const bootstrapData = await fetchBootstrapFeed(false, undefined, true);
     const initialData = bootstrapData ? {
         opportunities: bootstrapData.opportunities.filter(o => {
             const isRemote = (o.locations || []).some(loc => {
@@ -24,7 +24,7 @@ export default async function RemotePage() {
                 return l.includes('remote') || l.includes('wfh') || l.includes('work from home');
             }) || (o as any).workMode === 'REMOTE' || o.title.toLowerCase().includes('remote');
             return isRemote;
-        }),
+        }).map(toOpportunityCardDTO) as any,
         total: bootstrapData.opportunities.filter(o => {
             const isRemote = (o.locations || []).some(loc => {
                 const l = loc.toLowerCase();
