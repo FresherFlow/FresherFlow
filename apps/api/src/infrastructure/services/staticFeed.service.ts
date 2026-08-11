@@ -426,8 +426,8 @@ export class StaticFeedService {
                         const slug = FeedGeneratorService.getCompanySlug(company);
                         if (!slug) continue;
                         if (!cache.companies.includes(slug)) {
-                            logger.info(`[StaticFeedService] Generating OG card for company: ${company}`);
-                            await generateAndUploadHubOgImage('company', company, slug);
+                            // logger.info(`[StaticFeedService] Generating OG card for company: ${company}`);
+                            // await generateAndUploadHubOgImage('company', company, slug);
                             cache.companies.push(slug);
                         }
                     }
@@ -437,8 +437,8 @@ export class StaticFeedService {
                         const slug = FeedGeneratorService.slugify(loc);
                         if (!slug) continue;
                         if (!cache.locations.includes(slug)) {
-                            logger.info(`[StaticFeedService] Generating OG card for location: ${loc}`);
-                            await generateAndUploadHubOgImage('location', loc, slug);
+                            // logger.info(`[StaticFeedService] Generating OG card for location: ${loc}`);
+                            // await generateAndUploadHubOgImage('location', loc, slug);
                             cache.locations.push(slug);
                         }
                     }
@@ -449,8 +449,8 @@ export class StaticFeedService {
                         if (!slug) continue;
                         if (!cache.skills.includes(slug)) {
                             const label = skill.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                            logger.info(`[StaticFeedService] Generating OG card for skill: ${label}`);
-                            await generateAndUploadHubOgImage('skill', label, slug);
+                            // logger.info(`[StaticFeedService] Generating OG card for skill: ${label}`);
+                            // await generateAndUploadHubOgImage('skill', label, slug);
                             cache.skills.push(slug);
                         }
                     }
@@ -459,8 +459,8 @@ export class StaticFeedService {
                     for (const year of Array.from(batchesSet)) {
                         const slug = year.toString();
                         if (!cache.batches.includes(slug)) {
-                            logger.info(`[StaticFeedService] Generating OG card for batch: ${year}`);
-                            await generateAndUploadHubOgImage('batch', year.toString(), slug);
+                            // logger.info(`[StaticFeedService] Generating OG card for batch: ${year}`);
+                            // await generateAndUploadHubOgImage('batch', year.toString(), slug);
                             cache.batches.push(slug);
                         }
                     }
@@ -471,8 +471,8 @@ export class StaticFeedService {
                         if (!slug) continue;
                         if (!cache.roles.includes(slug)) {
                             const label = role.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                            logger.info(`[StaticFeedService] Generating OG card for role: ${label}`);
-                            await generateAndUploadHubOgImage('role', label, slug);
+                            // logger.info(`[StaticFeedService] Generating OG card for role: ${label}`);
+                            // await generateAndUploadHubOgImage('role', label, slug);
                             cache.roles.push(slug);
                         }
                     }

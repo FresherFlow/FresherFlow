@@ -120,7 +120,7 @@ export async function handleOpportunityPublished(
 
   // 8. Generate static OG image and upload to R2
   // This makes Vercel OG image routes irrelevant — zero compute for OG after this.
-  if (isNew) {
+  if (isNew && ['JOB', 'INTERNSHIP', 'WALKIN'].includes(opportunity.type as string)) {
     generateAndUploadOgImage({
       id: opportunity.id,
       title: opportunity.title,
