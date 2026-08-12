@@ -36,11 +36,11 @@ export function decodeHtmlEntities(html: string): string {
   return result;
 }
 
-/**
- * Strip all HTML tags from a string, returning raw text.
- */
+import * as cheerio from 'cheerio';
+
 export function stripHtmlTags(html: string): string {
-  return html.replace(/<[^>]*>/g, '');
+  const $ = cheerio.load(html);
+  return $.text();
 }
 
 /**
@@ -49,19 +49,11 @@ export function stripHtmlTags(html: string): string {
  * strips remaining tags, decodes entities, and normalizes whitespace.
  */
 export function htmlToPlainText(html: string): string {
-  let text = html;
-
-  // Replace <br> variants with newline
-  text = text.replace(/<br\s*\/?>/gi, '\n');
-
-  // Replace block-level closing tags with newline
-  text = text.replace(/<\/(?:p|div|li|h[1-6]|tr|blockquote|section|article|header|footer)>/gi, '\n');
-
-  // Replace <li> opening tags with bullet point
-  text = text.replace(/<li[^>]*>/gi, '• ');
-
-  // Strip all remaining HTML tags
-  text = stripHtmlTags(text);
+  const $ = cheerio.load(html);
+  $('br').replaceWith('\\n');
+  $('p, div, li, h1, h2, h3, h4, h5, h6, tr, blockquote, section, article, header, footer').append('\\n');
+  $('li').prepend('• ');
+  let text = $.text();
 
   // Decode HTML entities
   text = decodeHtmlEntities(text);

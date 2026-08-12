@@ -155,6 +155,7 @@ const TITLE_NOISE_PATTERNS = [
 
 export function cleanAggregatorTitle(aggregatorTitle: string): string {
     if (!aggregatorTitle) return '';
+    if (aggregatorTitle.length > 2000) aggregatorTitle = aggregatorTitle.substring(0, 2000);
     let title = aggregatorTitle;
 
     // Pattern 1: "XYZ Recruitment: Hiring Role Name - Apply Now"

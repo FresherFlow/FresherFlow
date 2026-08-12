@@ -50,15 +50,15 @@ async function randomDelay(min = 2500, max = 5000) {
 function determineAtsProvider(urlStr: string): string | null {
     try {
         const hn = new URL(urlStr).hostname.toLowerCase();
-        if (hn.includes('greenhouse.io')) return 'greenhouse';
-        if (hn.includes('lever.co')) return 'lever';
-        if (hn.includes('myworkdayjobs.com')) return 'workday';
-        if (hn.includes('smartrecruiters.com')) return 'smartrecruiters';
-        if (hn.includes('ashbyhq.com')) return 'ashby';
-        if (hn.includes('oracle.com') || hn.includes('oraclecloud.com')) return 'oracle';
-        if (hn.includes('workable.com')) return 'workable';
-        if (hn.includes('recruitee.com')) return 'recruitee';
-        if (hn.includes('icims.com')) return 'icims';
+        if (hn === 'greenhouse.io' || hn.endsWith('.greenhouse.io')) return 'greenhouse';
+        if (hn === 'lever.co' || hn.endsWith('.lever.co')) return 'lever';
+        if (hn === 'myworkdayjobs.com' || hn.endsWith('.myworkdayjobs.com')) return 'workday';
+        if (hn === 'smartrecruiters.com' || hn.endsWith('.smartrecruiters.com')) return 'smartrecruiters';
+        if (hn === 'ashbyhq.com' || hn.endsWith('.ashbyhq.com')) return 'ashby';
+        if (hn === 'oracle.com' || hn.endsWith('.oracle.com') || hn === 'oraclecloud.com' || hn.endsWith('.oraclecloud.com')) return 'oracle';
+        if (hn === 'workable.com' || hn.endsWith('.workable.com')) return 'workable';
+        if (hn === 'recruitee.com' || hn.endsWith('.recruitee.com')) return 'recruitee';
+        if (hn === 'icims.com' || hn.endsWith('.icims.com')) return 'icims';
     } catch { }
     return null;
 }

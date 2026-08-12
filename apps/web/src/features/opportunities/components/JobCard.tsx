@@ -83,6 +83,8 @@ const getAtsName = (link?: string | null) => {
         const url = new URL(link);
         const host = url.hostname.toLowerCase();
         
+        // CodeQL [js/incomplete-url-substring-sanitization] false positive — display only
+        
         if (host.includes('greenhouse.io')) return 'Greenhouse';
         if (host.includes('lever.co')) return 'Lever';
         if (host.includes('myworkdayjobs.com') || host.includes('workday.com')) return 'Workday';

@@ -1,12 +1,14 @@
 import DOMPurify from 'dompurify';
 
 function escapeHtml(value: string): string {
-    return value
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+    const map: Record<string, string> = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#x27;'
+    };
+    return value.replace(/[&<>"']/g, m => map[m]);
 }
 
 function applyInlineFormatting(value: string): string {
@@ -88,15 +90,17 @@ export function sanitizeHtml(html: string | null | undefined): string {
     const formattedHtml = /<[a-z][\s\S]*>/i.test(html) ? html : formatPlainTextDescription(html);
 
     if (typeof window === 'undefined') {
-        // Server-side fallback: strip script tags in a single pass
-
-        // codeql[js/bad-html-filter-regexp]
-        // lgtm[js/bad-html-filter-regexp]
-        let safeHtml = formattedHtml.replace(/<(?:script|style|iframe|object|embed|applet|math|svg)\b(?:[^>"']|"[^"]*"|'[^']*')*>[\s\S]*?<\/(?:script|style|iframe|object|embed|applet|math|svg)>/gi, ' ');
-        safeHtml = safeHtml.replace(/<(?:script|style|iframe|object|embed|applet|math|svg)\b(?:[^>"']|"[^"]*"|'[^']*')*\/?>/gi, ' ');
-        safeHtml = safeHtml.replace(/\b(?:on[a-z]+|xmlns)\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]+)/gi, ' ');
-        safeHtml = safeHtml.replace(/\bhref\s*=\s*(?:'javascript:[^']*'|"javascript:[^"]*"|javascript:[^\s>]+)/gi, 'href="#"');
-        return safeHtml;
+        const allowed = new Set(['b', 'i', 'em', 'strong', 'p', 'br', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'div']);
+        return formattedHtml.replace(/<(\/?)([a-z0-9]+)([^>]*)>/gi, (match, close, tag, attrs) => {
+            const lowerTag = tag.toLowerCase();
+            if (allowed.has(lowerTag)) return `<${close}${lowerTag}>`;
+            if (lowerTag === 'a') {
+                const hrefMatch = attrs.match(/href\s*=\s*(['"])(https?:\/\/[^'"]+)\1/i);
+                if (hrefMatch) return `<${close}a href=${hrefMatch[1]}${hrefMatch[2]}${hrefMatch[1]}>`;
+                return `<${close}a>`;
+            }
+            return `&lt;${close}${tag}${attrs}&gt;`;
+        });
     }
     return DOMPurify.sanitize(formattedHtml, {
         ALLOWED_TAGS: [

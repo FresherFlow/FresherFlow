@@ -8,6 +8,15 @@ import { isSafeUrlForFetch } from '@fresherflow/utils';
 
 const router = Router();
 
+function validateOutboundUrl(raw: string, allowedHosts: string[]): URL {
+  const parsed = new URL(raw); // throws on invalid URL
+  if (!['https:', 'http:'].includes(parsed.protocol)) throw new Error('Invalid protocol');
+  if (!allowedHosts.some(h => parsed.hostname === h || parsed.hostname.endsWith('.' + h))) {
+    throw new Error('Host not allowed');
+  }
+  return parsed;
+}
+
 // Simple webpage title fetcher
 async function fetchPageTitle(urlStr: string): Promise<string | null> {
     if (!isSafeUrlForFetch(urlStr)) {
@@ -15,22 +24,16 @@ async function fetchPageTitle(urlStr: string): Promise<string | null> {
         return null;
     }
     try {
-        const parsedUrl = new URL(urlStr);
-        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
-            return null;
-        }
-
-        const hostname = parsedUrl.hostname.toLowerCase();
-        
-        // Strict validation: must be a valid domain name, rejecting all IP addresses and localhosts
-        if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$/i.test(hostname)) {
-            logger.warn(`Skipping fetch for invalid or IP-based hostname: ${hostname}`);
-            return null;
-        }
+        const allowedHosts = [
+            'youtube.com', 'youtu.be', 'roadmap.sh', 'drive.google.com',
+            'dropbox.com', 'box.com', 'sharepoint.com', 'github.com',
+            'medium.com', 'dev.to', 'hashnode.dev', 'notion.so', 'docs.google.com'
+        ];
+        const validUrl = validateOutboundUrl(urlStr, allowedHosts);
 
         // codeql[js/request-forgery]
         // lgtm[js/request-forgery]
-        const response = await fetch(parsedUrl.href, {
+        const response = await fetch(validUrl.toString(), {
             headers: {
                 'User-Agent': 'FresherFlow Bot 1.0',
                 'Accept': 'text/html,application/xhtml+xml'

@@ -55,6 +55,20 @@ export function csrfGate(req: Request, res: Response, next: NextFunction) {
         });
         return next(new AppError('CSRF Security Violation: Request must originate from the verified web application.', 403));
     }
+    
+    // 3. Origin Validation
+    const origin = req.header('origin') || req.header('referer');
+    if (origin) {
+        try {
+            const parsedOrigin = new URL(origin).hostname;
+            const allowedHosts = ['localhost', '127.0.0.1', 'fresherflow.com'];
+            if (!allowedHosts.some(h => parsedOrigin === h || parsedOrigin.endsWith('.' + h))) {
+                return next(new AppError('CSRF Security Violation: Invalid origin.', 403));
+            }
+        } catch {
+            return next(new AppError('CSRF Security Violation: Invalid origin format.', 403));
+        }
+    }
 
     next();
 }

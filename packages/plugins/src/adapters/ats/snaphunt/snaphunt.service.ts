@@ -382,7 +382,7 @@ export class SnaphuntService implements IScraper {
       const slug = companySlug.trim().toLowerCase();
       // A caller may also pass a bare host (e.g. "snappr.snaphunt.com").
       if (slug.includes(SNAPHUNT_ROOT_DOMAIN)) {
-        const host = slug.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+        const host = slug.replace(/^https?:\/\//, '').split('/')[0];
         return `https://${host}`;
       }
       return SNAPHUNT_HOST_TEMPLATE.replace('{tenant}', encodeURIComponent(slug));

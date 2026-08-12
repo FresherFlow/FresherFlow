@@ -35,6 +35,7 @@ export interface NormalizedSalary {
 }
 
 export function normalizeSalary(text: string): NormalizedSalary {
+    if (text.length > 500) text = text.substring(0, 500);
     const textLower = text.toLowerCase();
     const period =
         textLower.includes('per month') || textLower.includes('/ month') ||
@@ -146,6 +147,7 @@ function toLocalInputString(date: Date): string {
 }
 
 export const normalizeExpiry = (text: string): string | undefined => {
+    if (text.length > 1000) text = text.substring(0, 1000);
     const patterns = [
         /(?:apply\s+by|last\s+date\s+to\s+apply|last\s+date|deadline)\s*(?:[:-]\s*)?(\d{1,2}(?:st|nd|rd|th)?\s+[a-zA-Z]{3,9}(?:\s+\d{4})?)/i,
         /(?:apply\s+before)\s*(?:[:-]\s*)?(\d{1,2}(?:st|nd|rd|th)?\s+[a-zA-Z]{3,9}(?:\s+\d{4})?)/i,

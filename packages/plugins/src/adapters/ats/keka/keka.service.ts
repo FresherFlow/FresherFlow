@@ -431,7 +431,7 @@ export class KekaService implements IScraper {
       const slug = companySlug.trim().toLowerCase();
       // A caller may also pass a bare host (e.g. "algoworks.keka.com").
       if (slug.includes(KEKA_ROOT_DOMAIN)) {
-        const host = slug.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+        const host = slug.replace(/^https?:\/\//, '').split('/')[0];
         return `https://${host}`;
       }
       return KEKA_HOST_TEMPLATE.replace('{tenant}', encodeURIComponent(slug));

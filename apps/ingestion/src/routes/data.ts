@@ -1,8 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { pool } from '../lib/db.js';
 import { requireAuth } from '../middleware/auth.js';
+import rateLimit from 'express-rate-limit';
 
 const router = Router();
+const searchLimiter = rateLimit({ windowMs: 60_000, max: 60, standardHeaders: true, legacyHeaders: false });
+router.use(searchLimiter);
 
 router.get('/jobs/processed', async (req: Request, res: Response): Promise<void> => {
   try {

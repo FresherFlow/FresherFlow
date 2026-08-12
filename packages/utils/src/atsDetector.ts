@@ -21,48 +21,53 @@ export type AtsProvider =
 export function detectAtsProvider(urls: (string | null | undefined)[]): AtsProvider | null {
     for (const rawUrl of urls) {
         if (!rawUrl) continue;
-        const url = rawUrl.toLowerCase();
+        let hostname = '';
+        try {
+            hostname = new URL(rawUrl).hostname.toLowerCase();
+        } catch {
+            continue;
+        }
 
-        if (url.includes('workday') || url.includes('myworkdayjobs.com') || url.includes('myworkdaysite.com')) {
+        if (hostname.includes('workday') || hostname === 'myworkdayjobs.com' || hostname.endsWith('.myworkdayjobs.com') || hostname === 'myworkdaysite.com' || hostname.endsWith('.myworkdaysite.com')) {
             return 'Workday';
         }
-        if (url.includes('greenhouse.io') || url.includes('greenhouse')) {
+        if (hostname === 'greenhouse.io' || hostname.endsWith('.greenhouse.io') || hostname.includes('greenhouse')) {
             return 'Greenhouse';
         }
-        if (url.includes('lever.co') || url.includes('lever')) {
+        if (hostname === 'lever.co' || hostname.endsWith('.lever.co') || hostname.includes('lever')) {
             return 'Lever';
         }
-        if (url.includes('ashbyhq.com') || url.includes('ashby')) {
+        if (hostname === 'ashbyhq.com' || hostname.endsWith('.ashbyhq.com') || hostname.includes('ashby')) {
             return 'Ashby';
         }
-        if (url.includes('smartrecruiters.com') || url.includes('smartrecruiters')) {
+        if (hostname === 'smartrecruiters.com' || hostname.endsWith('.smartrecruiters.com') || hostname.includes('smartrecruiters')) {
             return 'SmartRecruiters';
         }
-        if (url.includes('icims.com') || url.includes('icims')) {
+        if (hostname === 'icims.com' || hostname.endsWith('.icims.com') || hostname.includes('icims')) {
             return 'iCIMS';
         }
-        if (url.includes('oraclecloud.com') || url.includes('oracle')) {
+        if (hostname === 'oraclecloud.com' || hostname.endsWith('.oraclecloud.com') || hostname.includes('oracle')) {
             return 'Oracle HCM';
         }
-        if (url.includes('successfactors.com') || url.includes('successfactors') || url.includes('sap.com')) {
+        if (hostname === 'successfactors.com' || hostname.endsWith('.successfactors.com') || hostname.includes('successfactors') || hostname === 'sap.com' || hostname.endsWith('.sap.com')) {
             return 'SuccessFactors';
         }
-        if (url.includes('eightfold.ai') || url.includes('eightfold')) {
+        if (hostname === 'eightfold.ai' || hostname.endsWith('.eightfold.ai') || hostname.includes('eightfold')) {
             return 'Eightfold';
         }
-        if (url.includes('darwinbox.com') || url.includes('darwinbox')) {
+        if (hostname === 'darwinbox.com' || hostname.endsWith('.darwinbox.com') || hostname.includes('darwinbox')) {
             return 'DarwinBox';
         }
-        if (url.includes('bamboohr.com') || url.includes('bamboohr')) {
+        if (hostname === 'bamboohr.com' || hostname.endsWith('.bamboohr.com') || hostname.includes('bamboohr')) {
             return 'BambooHR';
         }
-        if (url.includes('recruitee.com') || url.includes('recruitee')) {
+        if (hostname === 'recruitee.com' || hostname.endsWith('.recruitee.com') || hostname.includes('recruitee')) {
             return 'Recruitee';
         }
-        if (url.includes('teamtailor.com') || url.includes('teamtailor')) {
+        if (hostname === 'teamtailor.com' || hostname.endsWith('.teamtailor.com') || hostname.includes('teamtailor')) {
             return 'Teamtailor';
         }
-        if (url.includes('workable.com') || url.includes('workable')) {
+        if (hostname === 'workable.com' || hostname.endsWith('.workable.com') || hostname.includes('workable')) {
             return 'Workable';
         }
     }

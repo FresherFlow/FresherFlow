@@ -118,27 +118,31 @@ export async function fetchJson<T>(
     }
 }
 
+import * as cheerio from 'cheerio';
+
 export function decodeHtmlEntities(html: string): string {
-    return html
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/&#x27;/g, "'")
-        .replace(/&amp;/g, '&')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&ndash;/g, '–')
-        .replace(/&mdash;/g, '—')
-        .replace(/&bull;/g, '•');
+    const entities: Record<string, string> = {
+        '&lt;': '<',
+        '&gt;': '>',
+        '&quot;': '"',
+        '&#39;': "'",
+        '&#x27;': "'",
+        '&amp;': '&',
+        '&nbsp;': ' ',
+        '&ndash;': '–',
+        '&mdash;': '—',
+        '&bull;': '•'
+    };
+    return html.replace(/&lt;|&gt;|&quot;|&#39;|&#x27;|&amp;|&nbsp;|&ndash;|&mdash;|&bull;/g, m => entities[m]);
 }
 
 export function htmlToPlainText(html: string): string {
     if (!html) return '';
-    let text = html
-        .replace(/<br\s*\/?>/gi, '\n')
-        .replace(/<\/(?:p|div|li|h[1-6]|tr|blockquote)>/gi, '\n')
-        .replace(/<li[^>]*>/gi, '• ')
-        .replace(/<[^>]+>/g, '');
+    const $ = cheerio.load(html);
+    $('br').replaceWith('\\n');
+    $('p, div, li, h1, h2, h3, h4, h5, h6, tr, blockquote').append('\\n');
+    $('li').prepend('• ');
+    let text = $.text();
 
     text = decodeHtmlEntities(text);
     return text
@@ -247,6 +251,7 @@ export const CompensationInterval = 'YEARLY';
 
 export function extractExperience(description?: string | null): { minExperienceYears?: number; maxExperienceYears?: number; experienceLevel?: string } {
     if (!description) return {};
+    if (description.length > 5000) description = description.substring(0, 5000);
     const rangeMatch = description.match(/(\d+)\s*(?:-|to)\s*(\d+)\s*(?:years?|yrs?)/i);
     if (rangeMatch) {
         const min = parseInt(rangeMatch[1], 10);
@@ -270,6 +275,7 @@ export function extractExperience(description?: string | null): { minExperienceY
 
 export function extractSalary(description?: string | null): { minSalary?: number; maxSalary?: number; currency?: string; interval?: string } | null {
     if (!description) return null;
+    if (description.length > 5000) description = description.substring(0, 5000);
     const lpaRange = description.match(/(\d+(?:\.\d+)?)\s*(?:-|to)\s*(\d+(?:\.\d+)?)\s*(?:LPA|Lakhs?|Lakhs?\s*PA)/i);
     if (lpaRange) {
         return {
@@ -299,6 +305,7 @@ export function markdownConverter(html?: string | null): string {
 
 export function normalizeLocation(input: string | null | undefined): string {
     if (!input) return '';
+    if (input.length > 500) input = input.substring(0, 500);
     let s = input
         .normalize('NFKD')
         .replace(/\p{M}/gu, '')

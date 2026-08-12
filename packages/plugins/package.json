@@ -1,10 +1,11 @@
 {
   "name": "@fresherflow/plugins",
   "version": "0.1.0",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node ../../scripts/fix-esm-imports.mjs dist",
     "typecheck": "tsc --noEmit",
     "lint": "eslint ."
   },

@@ -71,13 +71,12 @@ export function formatDescription(desc: string): string {
         .replace(/<\/li>/gi, '')
         .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
         .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
-        .replace(/<[^>]+>/g, '') // Strip remaining HTML tags
-        .replace(/&nbsp;/gi, ' ')
-        .replace(/&amp;/gi, '&')
-        .replace(/&lt;/gi, '<')
-        .replace(/&gt;/gi, '>')
-        .replace(/\r\n/g, '\n')
-        .replace(/\r/g, '\n');
+        .replace(/<(?:[^>"']|"[^"]*"|'[^']*')*>/g, '') // Strip remaining HTML tags
+        .replace(/&(nbsp|amp|lt|gt);/gi, m => {
+            const map: Record<string, string> = { '&nbsp;': ' ', '&amp;': '&', '&lt;': '<', '&gt;': '>' };
+            return map[m.toLowerCase()] || m;
+        })
+        .replace(/\r\n?/g, '\n');
 
     // Standardize headings
     const headingPatterns = [

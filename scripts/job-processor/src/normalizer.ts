@@ -249,12 +249,13 @@ export function postProcessNormalize(job: ExtractedJob, _fullText: string): Extr
     }
 
     // Oracle company name resolution
-    if (job.applyLink && job.applyLink.includes('.oraclecloud.com')) {
+    if (job.applyLink) {
         try {
             const url = new URL(job.applyLink);
             const host = url.hostname.toLowerCase();
-            const parts = host.split('.');
-            const subdomain = parts[0];
+            if (host === 'oraclecloud.com' || host.endsWith('.oraclecloud.com')) {
+                const parts = host.split('.');
+                const subdomain = parts[0];
 
             let resolvedName = '';
 
@@ -331,6 +332,7 @@ export function postProcessNormalize(job: ExtractedJob, _fullText: string): Extr
                 job.company = domainPrefix.charAt(0).toUpperCase() + domainPrefix.slice(1);
             } else {
                 job.company = resolvedName;
+            }
             }
         } catch {
             // Ignore URL parsing errors

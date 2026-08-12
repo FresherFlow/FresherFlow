@@ -138,7 +138,8 @@ const CITY_ALIASES: Record<string, string> = {
  *   "Bengaluru, Karnataka"       ΓåÆ ["Bangalore"]
  */
 function normalizeLocationString(raw: string): string[] {
-    const s = raw.trim();
+    let s = raw.trim();
+    if (s.length > 500) s = s.substring(0, 500);
     if (!s) return [];
 
     // Home based / remote ΓåÆ "Remote"
@@ -181,7 +182,8 @@ export interface CdnMatchResult {
  * Returns partial matches ΓÇö caller decides what to do with empty arrays.
  */
 export function matchFromCdn(rawText: string, existingLocations: string[] = []): CdnMatchResult {
-    const text = rawText || '';
+    let text = rawText || '';
+    if (text.length > 10000) text = text.substring(0, 10000);
     const lowerText = text.toLowerCase();
 
     // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ

@@ -11,7 +11,7 @@ export function parseJobUrl(urlStr: string): ParsedJobUrl | null {
     const pathname = url.pathname;
     
     // Lever: https://jobs.lever.co/company-slug/job-id
-    if (hostname.includes('lever.co')) {
+    if (hostname === 'lever.co' || hostname.endsWith('.lever.co')) {
       const parts = pathname.split('/').filter(Boolean);
       if (parts.length >= 1) {
         return { ats: 'lever', slug: parts[0], url: urlStr };
@@ -19,7 +19,7 @@ export function parseJobUrl(urlStr: string): ParsedJobUrl | null {
     }
     
     // Greenhouse: https://boards.greenhouse.io/company-slug/jobs/job-id
-    if (hostname.includes('greenhouse.io')) {
+    if (hostname === 'greenhouse.io' || hostname.endsWith('.greenhouse.io')) {
       const parts = pathname.split('/').filter(Boolean);
       if (parts.length >= 1) {
         return { ats: 'greenhouse', slug: parts[0], url: urlStr };
@@ -27,7 +27,7 @@ export function parseJobUrl(urlStr: string): ParsedJobUrl | null {
     }
     
     // Ashby: https://jobs.ashbyhq.com/company-slug/job-id
-    if (hostname.includes('ashbyhq.com')) {
+    if (hostname === 'ashbyhq.com' || hostname.endsWith('.ashbyhq.com')) {
       const parts = pathname.split('/').filter(Boolean);
       if (parts.length >= 1) {
         return { ats: 'ashby', slug: parts[0], url: urlStr };
@@ -35,7 +35,7 @@ export function parseJobUrl(urlStr: string): ParsedJobUrl | null {
     }
     
     // SmartRecruiters: https://careers.smartrecruiters.com/company-slug/job-id
-    if (hostname.includes('smartrecruiters.com')) {
+    if (hostname === 'smartrecruiters.com' || hostname.endsWith('.smartrecruiters.com')) {
       const parts = pathname.split('/').filter(Boolean);
       if (parts.length >= 1) {
         return { ats: 'smartrecruiters', slug: parts[0], url: urlStr };
@@ -43,7 +43,7 @@ export function parseJobUrl(urlStr: string): ParsedJobUrl | null {
     }
     
     // Workday: https://company-slug.wd1.myworkdayjobs.com/...
-    if (hostname.includes('myworkdayjobs.com')) {
+    if (hostname === 'myworkdayjobs.com' || hostname.endsWith('.myworkdayjobs.com')) {
       const subdomain = hostname.split('.')[0];
       if (subdomain) {
         return { ats: 'workday', slug: subdomain, url: urlStr };

@@ -8,6 +8,7 @@ export const EXPERIENCED_REGEXES = [
 
 // Is this a fresher job?
 export function isFresherJob(text: string): boolean {
+    if (text.length > 10000) text = text.substring(0, 10000);
     const lowerText = text.toLowerCase().replace(/[\u2018\u2019]/g, "'");
     
     // Check for ranges like "1-3 years of experience", "2-5 years of relevant experience"
@@ -71,6 +72,7 @@ export function isFresherJob(text: string): boolean {
 
 // Is this strictly a senior job (experience >= 3 years)?
 export function isSeniorJob(text: string): boolean {
+    if (text.length > 10000) text = text.substring(0, 10000);
     const lowerText = text.toLowerCase().replace(/[\u2018\u2019]/g, "'");
     
     // Check for ranges like "2-5 years of experience", "10-13 years" (excluding ranges starting with 0 or 1)

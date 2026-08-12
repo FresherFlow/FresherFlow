@@ -96,7 +96,7 @@ export function enrichJobRuleBased(
         'MS Office', 'Excel', 'Microsoft Word',
     ];
     const extractedSkills = SKILL_LIST.filter(skill =>
-        new RegExp(`\\b${skill.replace(/[+()]/g, '\\$&')}\\b`, 'i').test(textToScan)
+        new RegExp(`\\b${skill.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\b`, 'i').test(textToScan)
     );
 
     // ── Notes highlights ─────────────────────────────────────────────────────

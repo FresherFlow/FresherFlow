@@ -1,4 +1,5 @@
 import axios from 'axios';
+import * as cheerio from 'cheerio';
 import { parseJobText } from './index.js';
 import { ParsedJob } from './types.js';
 import { GREENHOUSE_SLUG_MAP, ORACLE_SLUG_MAP } from './metadata.js';
@@ -48,6 +49,25 @@ type WorkdayPosting = {
     title?: string;
 };
 
+function validateOutboundUrl(raw: string, allowedHosts: string[]): URL {
+  const parsed = new URL(raw); // throws on invalid URL
+  if (!['https:', 'http:'].includes(parsed.protocol)) throw new Error('Invalid protocol');
+  if (!allowedHosts.some(h => parsed.hostname === h || parsed.hostname.endsWith('.' + h))) {
+    throw new Error('Host not allowed');
+  }
+  return parsed;
+}
+
+const ATS_ALLOWED_HOSTS = [
+    'greenhouse.io', 'lever.co', 'myworkdayjobs.com', 'myworkdaysite.com',
+    'ashbyhq.com', 'smartrecruiters.com', 'workable.com', 'recruitee.com',
+    'teamtailor.com', 'icims.com', 'oraclecloud.com', 'darwinbox.com',
+    'keka.com', 'freshteam.com', 'zoho.in', 'zoho.com', 'greythr.com',
+    'peoplestrong.com', 'hrone.cloud', 'turbohire.co', 'oorwin.com',
+    'zimyo.com', 'zwayam.com', 'ismartrecruit.com', 'hreasily.com',
+    'breezy.hr', 'sap'
+];
+
 /**
  * Common HTML and Meta-based extraction helpers.
  */
@@ -59,7 +79,7 @@ export class UrlParser {
         let hostname = '';
         let parsed: URL;
         try {
-            parsed = new URL(url.trim());
+            parsed = validateOutboundUrl(url.trim(), ATS_ALLOWED_HOSTS);
             if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
                 throw new Error('Invalid protocol');
             }
@@ -160,17 +180,8 @@ export class UrlParser {
     }
 
     static cleanHtml(html: string): string {
-        // codeql[js/bad-html-filter-regexp]
-        // lgtm[js/bad-html-filter-regexp]
-        const clean = html
-            .replace(/<(?:script|style)\b[^>]*>[\s\S]*?<\/(?:script|style)>/gi, ' ')
-            .replace(/<!--[\s\S]*?-->/g, ' ')
-            .replace(/<(?:[^>"']|"[^"]*"|'[^']*')*>/g, ' ')
-            .replace(/&nbsp;/g, ' ')
-            .replace(/&amp;/g, '&')
-            .replace(/\s+/g, ' ')
-            .trim();
-        return clean;
+        const $ = cheerio.load(html);
+        return $.text().replace(/\s+/g, ' ').trim();
     }
 
     static extractFromJsonLd(html: string): {
@@ -186,17 +197,10 @@ export class UrlParser {
 
         const scripts: string[] = [];
 
-        // codeql[js/bad-html-filter-regexp]
-        // lgtm[js/bad-html-filter-regexp]
-        const scriptRegex = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
-        let match;
-        while ((match = scriptRegex.exec(htmlStr)) !== null) {
-            const attrs = match[1] || '';
-            const content = match[2] || '';
-            if (/type=["']application\/ld\+json["']/i.test(attrs)) {
-                scripts.push(content);
-            }
-        }
+        const $ = cheerio.load(htmlStr);
+        $('script[type="application/ld+json"]').each((_, el) => {
+            scripts.push($(el).html() || '');
+        });
 
         for (const raw of scripts) {
             try {
@@ -240,25 +244,11 @@ export class UrlParser {
         description?: string;
         company?: string;
     } {
-        const titleTag = html.match(/<title\b[^>]*>([^<]{1,300})<\/title>/i)?.[1]?.trim();
-        const h1 = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || '';
-
-        let ogTitle: string | undefined;
-        let ogDesc: string | undefined;
-
-        const metaRegex = /<meta\b([^>]*)\/?>/gi;
-        let m;
-        while ((m = metaRegex.exec(html)) !== null) {
-            const attrs = m[1] || '';
-            if (/property=["']og:title["']/i.test(attrs)) {
-                const contentMatch = attrs.match(/content=["']([^"']+)["']/i);
-                if (contentMatch) ogTitle = contentMatch[1].trim();
-            }
-            if (/property=["']og:description["']/i.test(attrs)) {
-                const contentMatch = attrs.match(/content=["']([^"']+)["']/i);
-                if (contentMatch) ogDesc = contentMatch[1].trim();
-            }
-        }
+        const $ = cheerio.load(html);
+        const titleTag = $('title').text().substring(0, 300).trim();
+        const h1 = $('h1').first().text();
+        const ogTitle = $('meta[property="og:title"]').attr('content')?.trim();
+        const ogDesc = $('meta[property="og:description"]').attr('content')?.trim();
 
         const title = ogTitle || this.cleanHtml(h1) || titleTag || undefined;
         const description = ogDesc || undefined;

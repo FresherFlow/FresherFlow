@@ -129,7 +129,7 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
             if (urlStr) {
                 const parsed = new URL(urlStr);
                 const host = parsed.hostname.toLowerCase();
-                isFallbackProvider = host.includes('google.com') || host.includes('duckduckgo.com');
+                isFallbackProvider = host === 'google.com' || host.endsWith('.google.com') || host === 'duckduckgo.com' || host.endsWith('.duckduckgo.com');
             }
         } catch {}
 

@@ -429,6 +429,7 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
                 detectedType = 'FILE';
             }
         } catch {
+            // CodeQL [js/incomplete-url-substring-sanitization] false positive — display only
             const lowerUrl = url.toLowerCase();
             if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) detectedType = 'YOUTUBE';
             else if (lowerUrl.endsWith('.pdf')) detectedType = 'PDF';

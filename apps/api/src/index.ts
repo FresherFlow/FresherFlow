@@ -231,8 +231,8 @@ app.use((req, res, next) => {
 
 // Rate Limiting
 const defaultLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 1000, // 1000 requests per window (Relaxed for dev)
+    windowMs: 60 * 1000, // 1 minute
+    max: 200, // 200 requests per minute
     standardHeaders: true,
     legacyHeaders: false,
     keyGenerator: (req) => extractClientIp(req),

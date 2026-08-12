@@ -43,6 +43,10 @@ export class HttpClient {
     this.rateDelayMin = (options.rateDelayMin ?? 0) * 1000; // convert to ms
     this.rateDelayMax = (options.rateDelayMax ?? 0) * 1000;
 
+    if (process.env.NODE_ENV === 'production' && process.env.DISABLE_TLS_VERIFY === 'true') {
+      throw new Error('TLS verification must not be disabled in production');
+    }
+
     this.client = axios.create({
       timeout: (options.timeout ?? 60) * 1000,
       headers: {
@@ -52,7 +56,7 @@ export class HttpClient {
       },
       // Accept self-signed certs if caCert is configured
       ...(options.caCert
-        ? { httpsAgent: new (require('https').Agent)({ rejectUnauthorized: false }) }
+        ? { httpsAgent: new (require('https').Agent)({ ca: options.caCert, rejectUnauthorized: process.env.DISABLE_TLS_VERIFY === 'true' ? false : true }) }
         : {}),
     });
   }

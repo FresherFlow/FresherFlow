@@ -204,10 +204,10 @@ export async function submitJobsToApi(jobs: AtsJob[], targetCompany: string): Pr
                     applyLink,
                 ]
             );
-            console.log(`[Ingestion DB] Saved: ${normalizedJob.title} @ ${normalizedJob.company}`);
+            console.log('[Ingestion DB] Saved:', normalizedJob.title, '@', normalizedJob.company);
             saved++;
         } catch (err: any) {
-            console.error(`[Ingestion DB Error] ${job.title} @ ${company}:`, err.message);
+            console.error('[Ingestion DB Error]', job.title, '@', company, ':', err.message);
             skipped++;
         }
     }

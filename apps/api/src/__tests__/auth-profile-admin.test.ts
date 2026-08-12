@@ -87,6 +87,7 @@ describe('auth and profile gate', () => {
         const app = express();
         // codeql[js/missing-csrf-middleware]
         // lgtm[js/missing-csrf-middleware]
+        // lgtm[js/missing-token-validation]
         app.use(cookieParser());
         app.use(express.json());
         app.use('/api/auth', authRoutes);
@@ -114,6 +115,7 @@ describe('auth and profile gate', () => {
         const app = express();
         // codeql[js/missing-csrf-middleware]
         // lgtm[js/missing-csrf-middleware]
+        // lgtm[js/missing-token-validation]
         app.use(cookieParser());
         app.use(express.json());
         app.use('/api/auth', authRoutes);

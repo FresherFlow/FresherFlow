@@ -3,10 +3,10 @@ import { Page, BrowserContext } from 'playwright';
 export function unwrapRedirectors(urlStr: string): string {
     try {
         let u = new URL(urlStr);
-        if (u.hostname.includes('linkedin.com') && u.pathname.includes('/safety/go/')) {
+        if ((u.hostname === 'linkedin.com' || u.hostname.endsWith('.linkedin.com')) && u.pathname.includes('/safety/go/')) {
             const nested = u.searchParams.get('url');
             if (nested) return new URL(nested).href;
-        } else if (u.hostname.includes('google.com') && u.pathname.includes('/url')) {
+        } else if ((u.hostname === 'google.com' || u.hostname.endsWith('.google.com')) && u.pathname.includes('/url')) {
             const nested = u.searchParams.get('q') || u.searchParams.get('url');
             if (nested) return new URL(nested).href;
         }

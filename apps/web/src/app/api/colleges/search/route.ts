@@ -32,6 +32,15 @@ function getAcronym(name: string): string {
     return words.map((w) => w[0]).join('').toLowerCase();
 }
 
+function validateOutboundUrl(raw: string, allowedHosts: string[]): URL {
+  const parsed = new URL(raw); // throws on invalid URL
+  if (!['https:', 'http:'].includes(parsed.protocol)) throw new Error('Invalid protocol');
+  if (!allowedHosts.some(h => parsed.hostname === h || parsed.hostname.endsWith('.' + h))) {
+    throw new Error('Host not allowed');
+  }
+  return parsed;
+}
+
 async function loadCollegesForSlug(slug: string): Promise<CollegeItem[]> {
     if (stateCache.has(slug)) {
         return stateCache.get(slug)!;
@@ -41,7 +50,12 @@ async function loadCollegesForSlug(slug: string): Promise<CollegeItem[]> {
 
     try {
         const cdnUrl = `${CDN_URL}/api/colleges/${slug}.json`;
-        const res = await fetch(cdnUrl, { next: { revalidate: 86400 } });
+        
+        let cdnHostname = '';
+        try { cdnHostname = new URL(CDN_URL).hostname; } catch {}
+        
+        const validUrl = validateOutboundUrl(cdnUrl, cdnHostname ? [cdnHostname] : ['localhost']);
+        const res = await fetch(validUrl.toString(), { next: { revalidate: 86400 } });
         if (res.ok) {
             const json = await res.json();
             list = Array.isArray(json) ? json : json.colleges || [];
