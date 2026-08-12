@@ -1,1 +1,1 @@
-export * from './canonical-job.schema';
+export * from './canonical-job.schema.js';
