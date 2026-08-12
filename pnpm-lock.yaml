@@ -494,6 +494,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.25.2
         version: 1.30.0(zod@4.4.3)
+      '@types/web-push':
+        specifier: ^3.6.4
+        version: 3.6.4
       bullmq:
         specifier: ^6.0.6
         version: 6.0.7(ioredis@6.0.0)(pg@8.22.0)(redis@5.12.1)
@@ -528,9 +531,6 @@ importers:
       '@types/pg':
         specifier: ^8.20.3
         version: 8.20.3
-      '@types/web-push':
-        specifier: ^3.6.4
-        version: 3.6.4
       tsx:
         specifier: ^4.23.5
         version: 4.23.5
@@ -1376,6 +1376,9 @@ importers:
       '@fresherflow/utils':
         specifier: ^1.0.0
         version: link:../utils
+      '@types/web-push':
+        specifier: ^3.6.4
+        version: 3.6.4
       axios:
         specifier: ^1.19.0
         version: 1.19.0
@@ -1398,9 +1401,6 @@ importers:
       '@types/node':
         specifier: ^26.1.2
         version: 26.1.2
-      '@types/web-push':
-        specifier: ^3.6.4
-        version: 3.6.4
       eslint:
         specifier: ^9.14.0
         version: 9.14.0(jiti@2.7.0)
@@ -17126,7 +17126,7 @@ snapshots:
     dependencies:
       nanoid: 3.3.17
 
-  '@redis/bloom@5.12.1(@redis/client@5.12.1(@opentelemetry/api@1.9.1))':
+  '@redis/bloom@5.12.1(@redis/client@5.12.1)':
     dependencies:
       '@redis/client': 5.12.1(@opentelemetry/api@1.9.1)
 
@@ -17136,15 +17136,15 @@ snapshots:
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
 
-  '@redis/json@5.12.1(@redis/client@5.12.1(@opentelemetry/api@1.9.1))':
+  '@redis/json@5.12.1(@redis/client@5.12.1)':
     dependencies:
       '@redis/client': 5.12.1(@opentelemetry/api@1.9.1)
 
-  '@redis/search@5.12.1(@redis/client@5.12.1(@opentelemetry/api@1.9.1))':
+  '@redis/search@5.12.1(@redis/client@5.12.1)':
     dependencies:
       '@redis/client': 5.12.1(@opentelemetry/api@1.9.1)
 
-  '@redis/time-series@5.12.1(@redis/client@5.12.1(@opentelemetry/api@1.9.1))':
+  '@redis/time-series@5.12.1(@redis/client@5.12.1)':
     dependencies:
       '@redis/client': 5.12.1(@opentelemetry/api@1.9.1)
 
@@ -24709,11 +24709,11 @@ snapshots:
 
   redis@5.12.1(@opentelemetry/api@1.9.1):
     dependencies:
-      '@redis/bloom': 5.12.1(@redis/client@5.12.1(@opentelemetry/api@1.9.1))
+      '@redis/bloom': 5.12.1(@redis/client@5.12.1)
       '@redis/client': 5.12.1(@opentelemetry/api@1.9.1)
-      '@redis/json': 5.12.1(@redis/client@5.12.1(@opentelemetry/api@1.9.1))
-      '@redis/search': 5.12.1(@redis/client@5.12.1(@opentelemetry/api@1.9.1))
-      '@redis/time-series': 5.12.1(@redis/client@5.12.1(@opentelemetry/api@1.9.1))
+      '@redis/json': 5.12.1(@redis/client@5.12.1)
+      '@redis/search': 5.12.1(@redis/client@5.12.1)
+      '@redis/time-series': 5.12.1(@redis/client@5.12.1)
     transitivePeerDependencies:
       - '@node-rs/xxhash'
       - '@opentelemetry/api'

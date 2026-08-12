@@ -21,6 +21,7 @@
     "@fresherflow/search": "^1.0.0",
     "@fresherflow/types": "^1.0.0",
     "@fresherflow/utils": "^1.0.0",
+    "@types/web-push": "^3.6.4",
     "axios": "^1.19.0",
     "bullmq": "^6.0.6",
     "ioredis": "^6.0.0",
@@ -30,7 +31,6 @@
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
-    "@types/web-push": "^3.6.4",
     "eslint": "^9.14.0",
     "eslint-config-prettier": "^10.1.8",
     "typescript": "^5.7.3",

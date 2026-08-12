@@ -1,7 +1,7 @@
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { logger } from '@fresherflow/logger';
 import { getCompanySlug } from '@fresherflow/utils';
-import { normalizeSkillName } from '@fresherflow/constants/skillTaxonomy';
+import { normalizeSkillName } from '@fresherflow/constants';
 
 const endpoint = process.env.R2_ENDPOINT;
 const accessKeyId = process.env.R2_ACCESS_KEY_ID;
