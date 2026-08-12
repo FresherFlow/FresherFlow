@@ -18,6 +18,7 @@ import { circuitBreaker, bindCircuitBreakerMetrics } from './lib/circuit-breaker
 import { registerHealthSnapshotCron, processHealthSnapshot } from './cron/health-snapshot.js';
 
 const app = express();
+app.set('trust proxy', 1); // Trust Render's reverse proxy for rate limiting
 const port = process.env.PORT || 3005;
 
 app.use(cors());
