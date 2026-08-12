@@ -217,25 +217,32 @@ function LoginContent() {
                                 disabled={(mounted && isLoading) || isProcessing}
                                 className="w-full !h-11 text-xs font-semibold !rounded-xl flex items-center justify-center gap-2.5 border-border/80 hover:bg-muted/40 active:scale-[0.98] transition-all"
                             >
-                                <svg className="w-4.5 h-4.5" viewBox="0 0 24 24">
-                                    <path
-                                        fill="#EA4335"
-                                        d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.37 0 3.412 2.667 1.48 6.555l3.786 3.21z"
-                                    />
-                                    <path
-                                        fill="#FBBC05"
-                                        d="M1.48 6.555A12.049 12.049 0 0 0 0 12c0 1.927.455 3.746 1.258 5.373l3.967-3.07a7.086 7.086 0 0 1-.225-2.303c0-1.442.434-2.776 1.18-3.885L1.48 6.555z"
-                                    />
-                                    <path
-                                        fill="#4285F4"
-                                        d="M12 24c3.245 0 5.973-1.076 7.964-2.912l-3.836-2.973c-1.127.755-2.564 1.203-4.128 1.203-3.18 0-5.88-2.154-6.845-5.064L1.258 17.373C3.12 21.294 7.234 24 12 24z"
-                                    />
-                                    <path
-                                        fill="#34A853"
-                                        d="M24 12c0-.864-.077-1.697-.22-2.509H12v4.8h6.732c-.29 1.549-1.164 2.863-2.477 3.745l3.836 2.973C22.336 19.167 24 15.827 24 12z"
-                                    />
-                                </svg>
-                                <span>Continue with Google</span>
+                                {isProcessing ? (
+                                    <svg className="w-4.5 h-4.5 animate-spin text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                ) : (
+                                    <svg className="w-4.5 h-4.5" viewBox="0 0 24 24">
+                                        <path
+                                            fill="#EA4335"
+                                            d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.37 0 3.412 2.667 1.48 6.555l3.786 3.21z"
+                                        />
+                                        <path
+                                            fill="#FBBC05"
+                                            d="M1.48 6.555A12.049 12.049 0 0 0 0 12c0 1.927.455 3.746 1.258 5.373l3.967-3.07a7.086 7.086 0 0 1-.225-2.303c0-1.442.434-2.776 1.18-3.885L1.48 6.555z"
+                                        />
+                                        <path
+                                            fill="#4285F4"
+                                            d="M12 24c3.245 0 5.973-1.076 7.964-2.912l-3.836-2.973c-1.127.755-2.564 1.203-4.128 1.203-3.18 0-5.88-2.154-6.845-5.064L1.258 17.373C3.12 21.294 7.234 24 12 24z"
+                                        />
+                                        <path
+                                            fill="#34A853"
+                                            d="M24 12c0-.864-.077-1.697-.22-2.509H12v4.8h6.732c-.29 1.549-1.164 2.863-2.477 3.745l3.836 2.973C22.336 19.167 24 15.827 24 12z"
+                                        />
+                                    </svg>
+                                )}
+                                <span>{isProcessing ? 'Connecting...' : 'Continue with Google'}</span>
                             </Button>
 
                             {/* EMAIL OTP LOGIN TEMPORARILY DISABLED FOR PROD 

@@ -22,14 +22,6 @@ export function AuthHeader() {
 
             <div className="flex items-center gap-3 md:gap-4">
                 <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
-                <div className="h-4 w-px bg-border/60" />
-                <a
-                    href={SITE_URL || "/"}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                >
-                    <ArrowLeftIcon className="w-3.5 h-3.5" />
-                    <span>Back to Home</span>
-                </a>
             </div>
         </header>
     );

@@ -2,24 +2,21 @@
 
 import {
   ChartBarIcon,
-  CheckCircleIcon,
-  BriefcaseIcon,
   BuildingOfficeIcon,
   CpuChipIcon,
   ServerIcon,
   PlayIcon,
   ClockIcon,
   SparklesIcon,
-  ArrowPathIcon,
 } from '@heroicons/react/24/outline';
-import { cn } from '@repo/ui/utils/cn';
-import { IngestionTarget, DiscoveryRun } from '../types';
+import { cn } from '@/lib/utils/utils';
+import { IngestionTarget, DiscoveryRun, TelemetryStats } from '../types';
 import { Card, CardHeader, CardTitle, CardContent } from '@/ui/Card';
 
 interface DashboardTabProps {
   engineStatus: 'online' | 'offline' | 'loading';
   enginePlugins: number;
-  stats: any;
+  stats: TelemetryStats | null | any;
   allTargets: IngestionTarget[];
   recentRuns: DiscoveryRun[];
   onRunAll: () => void;
@@ -35,12 +32,23 @@ export function DashboardTab({
   onRunAll,
   onNavigateTab,
 }: DashboardTabProps) {
+  const totalTargets = stats?.totalTargets ?? allTargets.length ?? 0;
   const totalDiscovered = stats?.totalJobsIngested ?? stats?.totalDiscovered ?? 0;
+  const totalSaved = stats?.totalJobsSaved ?? stats?.lastRun?.accepted ?? 0;
+  const totalSkipped =
+    stats?.totalJobsSkipped ??
+    Math.max(0, (stats?.lastRun?.totalFound ?? stats?.lastRun?.total_found ?? 0) - (stats?.lastRun?.accepted ?? 0));
   const totalRuns = stats?.totalRuns ?? 0;
-  const lastRunData = stats?.lastRun;
-  
-  const totalSaved = lastRunData?.accepted ?? 0;
-  const totalSkipped = (lastRunData?.totalFound ?? lastRunData?.total_found ?? 0) - totalSaved;
+  const uptimeSeconds = stats?.uptimeSeconds ?? 0;
+  const lastRunAt = stats?.lastRunAt ?? stats?.lastRun?.startedAt ?? stats?.lastRun?.started_at;
+
+  const formatUptime = (seconds: number) => {
+    if (!seconds || seconds <= 0) return '0m';
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) return `${hours}h ${mins}m`;
+    return `${mins}m`;
+  };
 
   return (
     <div className="space-y-6">
@@ -80,8 +88,25 @@ export function DashboardTab({
                   : 'Engine Offline'}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-1 font-mono">
-              Active Plugins: <span className="text-foreground font-semibold">{enginePlugins}</span> · Node Ingestion Service
+            <p className="text-xs text-muted-foreground mt-1 font-mono flex items-center gap-2 flex-wrap">
+              <span>Active Plugins: <strong className="text-foreground font-semibold">{enginePlugins}</strong></span>
+              <span>·</span>
+              <span>Node Ingestion Service</span>
+              {uptimeSeconds > 0 && (
+                <>
+                  <span>·</span>
+                  <span className="flex items-center gap-1">
+                    <ClockIcon className="w-3 h-3 text-muted-foreground inline" />
+                    Uptime: <strong className="text-foreground font-semibold">{formatUptime(uptimeSeconds)}</strong>
+                  </span>
+                </>
+              )}
+              {lastRunAt && (
+                <>
+                  <span>·</span>
+                  <span>Last Run: <strong className="text-foreground font-semibold">{new Date(lastRunAt).toLocaleTimeString()}</strong></span>
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -105,57 +130,57 @@ export function DashboardTab({
 
       {/* 4 Stat Cards Grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        {/* Card 1 */}
+        {/* Card 1: Total Jobs Ingested / Discovered */}
         <Card
           onClick={() => onNavigateTab('discovered')}
-          className="hover:bg-muted/30 transition-all cursor-pointer shadow-xs group"
+          className="hover:bg-muted/30 transition-all cursor-pointer shadow-xs group border-border/60"
         >
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-semibold tracking-wider text-muted-foreground">Discovered</CardTitle>
+            <CardTitle className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Discovered Jobs</CardTitle>
             <ChartBarIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{totalDiscovered.toLocaleString()}</div>
-            <span className="text-xs text-muted-foreground mt-1 block">Raw ingested jobs</span>
+            <span className="text-xs text-muted-foreground mt-1 block">Total raw ingested jobs</span>
           </CardContent>
         </Card>
 
-        {/* Card 2 */}
+        {/* Card 2: Total Jobs Saved */}
         <Card
           onClick={() => onNavigateTab('processed')}
-          className="hover:bg-muted/30 transition-all cursor-pointer shadow-xs group"
+          className="hover:bg-muted/30 transition-all cursor-pointer shadow-xs group border-border/60"
         >
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-semibold tracking-wider text-muted-foreground">Recently saved</CardTitle>
+            <CardTitle className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Jobs Saved</CardTitle>
             <SparklesIcon className="w-4 h-4 text-emerald-500 group-hover:scale-110 transition-transform" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 transition-opacity duration-300">{totalSaved.toLocaleString()}</div>
-            <span className="text-xs text-muted-foreground mt-1 block">From latest run</span>
+            <span className="text-xs text-muted-foreground mt-1 block">Saved in database</span>
           </CardContent>
         </Card>
 
-        {/* Card 3 */}
+        {/* Card 3: Total Jobs Skipped */}
         <Card
-          className="hover:bg-muted/30 transition-all cursor-pointer shadow-xs group"
+          className="hover:bg-muted/30 transition-all cursor-pointer shadow-xs group border-border/60"
         >
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-semibold tracking-wider text-muted-foreground">Recently skipped</CardTitle>
+            <CardTitle className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Jobs Skipped</CardTitle>
             <BuildingOfficeIcon className="w-4 h-4 text-muted-foreground group-hover:text-amber-500 transition-colors" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground transition-opacity duration-300">{totalSkipped.toLocaleString()}</div>
-            <span className="text-xs text-muted-foreground mt-1 block">From latest run</span>
+            <span className="text-xs text-muted-foreground mt-1 block">Duplicates / Filtered</span>
           </CardContent>
         </Card>
 
-        {/* Card 4 */}
+        {/* Card 4: Total Runs */}
         <Card
           onClick={() => onNavigateTab('runs')}
-          className="hover:bg-muted/30 transition-all cursor-pointer shadow-xs group"
+          className="hover:bg-muted/30 transition-all cursor-pointer shadow-xs group border-border/60"
         >
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-semibold tracking-wider text-muted-foreground">Total runs</CardTitle>
+            <CardTitle className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">Total Runs</CardTitle>
             <ServerIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
           </CardHeader>
           <CardContent>
@@ -168,7 +193,7 @@ export function DashboardTab({
       {/* Middle Section: System Pipeline Health */}
       <div className="p-4 sm:p-5 rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xs flex flex-col justify-between space-y-3 shadow-xs">
         <div className="flex items-center justify-between border-b border-border/40 pb-2.5">
-          <span className="text-xs font-bold tracking-wider text-muted-foreground flex items-center gap-1.5">
+          <span className="text-xs font-bold tracking-wider text-muted-foreground flex items-center gap-1.5 uppercase">
             <ServerIcon className="w-3.5 h-3.5" />
             Ingestion & Processing Pipeline Summary
           </span>
@@ -177,18 +202,18 @@ export function DashboardTab({
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="p-3 rounded-xl border border-border/40 bg-card/40 flex flex-col">
-            <span className="text-sm font-semibold text-muted-foreground">Phase 1: Scraping</span>
-            <span className="text-sm font-bold text-foreground mt-1">{allTargets.length} Targets Active</span>
+            <span className="text-xs font-semibold text-muted-foreground">Phase 1: Scraping</span>
+            <span className="text-sm font-bold text-foreground mt-1">{totalTargets} Targets Active</span>
             <p className="text-xs text-muted-foreground mt-1">Greenhouse, Lever, Workday, Ashby + Boards</p>
           </div>
           <div className="p-3 rounded-xl border border-border/40 bg-card/40 flex flex-col">
-            <span className="text-sm font-semibold text-muted-foreground">Phase 2: Deduplication</span>
-            <span className="text-sm font-bold text-foreground mt-1">{totalSkipped} Skipped (Last Run)</span>
+            <span className="text-xs font-semibold text-muted-foreground">Phase 2: Deduplication</span>
+            <span className="text-sm font-bold text-foreground mt-1">{totalSkipped.toLocaleString()} Skipped Total</span>
             <p className="text-xs text-muted-foreground mt-1">Exact URL & title fingerprint matching</p>
           </div>
           <div className="p-3 rounded-xl border border-border/40 bg-card/40 flex flex-col">
-            <span className="text-sm font-semibold text-muted-foreground">Phase 3: AI Normalization</span>
-            <span className="text-sm font-bold text-foreground mt-1">Fresher Scoring</span>
+            <span className="text-xs font-semibold text-muted-foreground">Phase 3: AI Normalization</span>
+            <span className="text-sm font-bold text-foreground mt-1">{totalSaved.toLocaleString()} Saved Jobs</span>
             <p className="text-xs text-muted-foreground mt-1">Extracts skills, salary, experience & eligibility</p>
           </div>
         </div>
@@ -206,7 +231,7 @@ export function DashboardTab({
       {/* Recent Activity Feed */}
       <div className="space-y-3">
         <div className="flex items-center justify-between border-b border-border/60 pb-2">
-          <span className="text-xs font-bold tracking-wider text-muted-foreground">
+          <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase">
             Recent Scraper Activity Feed
           </span>
           <button
@@ -225,12 +250,13 @@ export function DashboardTab({
           ) : (
             recentRuns.map((activity) => {
               const status = activity.status;
-              const found = activity.totalFound ?? 0;
+              const found = activity.totalFound ?? activity.total_found ?? 0;
               const accepted = activity.accepted ?? 0;
-              const durationMs = activity.durationMs ?? 0;
-              const timeAgo = activity.startedAt ? new Date(activity.startedAt).toLocaleTimeString() : 'Just now';
+              const durationMs = activity.durationMs ?? activity.duration_ms ?? 0;
+              const startedAtTime = activity.startedAt || activity.started_at;
+              const timeAgo = startedAtTime ? new Date(startedAtTime).toLocaleTimeString() : 'Just now';
               const id = activity.id;
-              
+
               return (
                 <div
                   key={id}
@@ -259,8 +285,8 @@ export function DashboardTab({
 
                   <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto font-mono text-xs">
                     <span className="text-muted-foreground">
-                      <strong className="text-foreground">{found ?? 0}</strong> found ·{' '}
-                      <strong className="text-emerald-600 dark:text-emerald-400">{accepted ?? 0}</strong> saved
+                      <strong className="text-foreground">{found}</strong> found ·{' '}
+                      <strong className="text-emerald-600 dark:text-emerald-400">{accepted}</strong> saved
                     </span>
                     <span className="text-muted-foreground">({(durationMs / 1000).toFixed(1)}s)</span>
                     <span

@@ -49,7 +49,15 @@ export const authApi = {
             body: JSON.stringify({ ref })
         });
         if (!response.ok) {
-            throw new Error(`Handshake failed: ${response.statusText}`);
+            let errorMessage = `HTTP ${response.status} - ${response.statusText || 'Error'}`;
+            try {
+                const errorData = await response.json();
+                if (errorData.message) errorMessage = errorData.message;
+                else if (errorData.error) errorMessage = errorData.error;
+            } catch (e) {
+                // Ignore parse errors for non-JSON responses
+            }
+            throw new Error(`Authentication failed: ${errorMessage}`);
         }
         return response.json() as Promise<AuthResponse>;
     }

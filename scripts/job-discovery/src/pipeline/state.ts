@@ -88,6 +88,7 @@ export interface DiscoveryState {
     discoveredCareers: Set<string>;
     discoveredRemaining: Set<string>;
     stats: RunStats;
+    isTimeUp: () => boolean;
 }
 
 export function createInitialState(): DiscoveryState {
@@ -132,6 +133,7 @@ export function createInitialState(): DiscoveryState {
             review_required: 0,
             new_ats_boards: 0,
             new_career_domains: 0,
-        }
+        },
+        isTimeUp: () => false
     };
 }

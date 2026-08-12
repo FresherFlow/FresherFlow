@@ -1,58 +1,46 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { NextResponse } from 'next/server';
 
-const pool = new Pool({
-  connectionString: process.env.INGESTION_DATABASE_URL || process.env.DATABASE_URL || 'postgresql://fresherflow:fresherflow_local_dev@localhost:5432/fresherflow_jobs',
-});
+const INGESTION_URL = process.env.INGESTION_SERVICE_URL || process.env.NEXT_PUBLIC_INGESTION_URL || process.env.INGESTION_URL || 'http://localhost:3005';
 
-export async function GET(req: NextRequest) {
+export const dynamic = 'force-dynamic';
+
+export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status');
-
-    let query = `
-      SELECT id, company, title, location, apply_link as "applyLink", ats_provider as "atsType", status, created_at as "createdAt"
-      FROM processed_jobs 
-    `;
-    const values: any[] = [];
-
-    if (status && status !== 'ALL') {
-      query += ` WHERE status = $1`;
-      values.push(status);
-    }
-
-    query += ` ORDER BY created_at DESC LIMIT 100`;
-
-    const result = await pool.query(query, values);
-    
-    return NextResponse.json({ jobs: result.rows });
-  } catch (error) {
-    console.error('Error fetching processed jobs:', error);
-    return NextResponse.json({ jobs: [], error: 'Failed to fetch jobs' }, { status: 500 });
+    const { searchParams } = new URL(request.url);
+    const query = searchParams.toString();
+    const res = await fetch(`${INGESTION_URL}/data/jobs/processed${query ? '?' + query : ''}`, {
+      headers: { 'Cache-Control': 'no-store' },
+      next: { revalidate: 0 },
+    });
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch (e) {
+    return NextResponse.json({ error: 'Ingestion service unreachable' }, { status: 503 });
   }
 }
 
-export async function PATCH(req: NextRequest) {
+export async function PATCH(request: Request) {
   try {
-    const body = await req.json();
+    const body = await request.json();
     const { id, status } = body;
+    const { searchParams } = new URL(request.url);
+    const jobId = id || searchParams.get('id');
 
-    if (!id || !status) {
-      return NextResponse.json({ error: 'Missing id or status' }, { status: 400 });
+    if (!jobId) {
+      return NextResponse.json({ error: 'Job ID is required' }, { status: 400 });
     }
 
-    const result = await pool.query(
-      `UPDATE processed_jobs SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
-      [status, id]
-    );
-
-    if (result.rowCount === 0) {
-      return NextResponse.json({ error: 'Job not found' }, { status: 404 });
-    }
-
-    return NextResponse.json({ job: result.rows[0] });
-  } catch (error) {
-    console.error('Error updating processed job:', error);
-    return NextResponse.json({ error: 'Failed to update job' }, { status: 500 });
+    const res = await fetch(`${INGESTION_URL}/data/jobs/${jobId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-store',
+      },
+      body: JSON.stringify({ status }),
+    });
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
+  } catch (e) {
+    return NextResponse.json({ error: 'Ingestion service unreachable' }, { status: 503 });
   }
 }

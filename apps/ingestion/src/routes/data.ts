@@ -24,6 +24,17 @@ router.get('/jobs/processed', async (req: Request, res: Response): Promise<void>
   }
 });
 
+router.post('/push', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const q = 'SELECT id, discovered_job_id as "discoveredId", title, company, company_website as "companyWebsite", company_logo_url as "companyLogoUrl", description, type, locations, structured_locations as "structuredLocations", required_skills as "requiredSkills", allowed_degrees as "allowedDegrees", allowed_courses as "allowedCourses", allowed_specializations as "allowedSpecializations", allowed_passout_years as "allowedPassoutYears", work_mode as "workMode", experience_min as "experienceMin", experience_max as "experienceMax", salary_range as "salaryRange", salary_period as "salaryPeriod", employment_type as "employmentType", job_function as "jobFunction", apply_link as "applyLink", status, created_at as "createdAt", updated_at as "updatedAt" FROM processed_jobs WHERE status = \'PUBLISHED\' ORDER BY created_at DESC LIMIT 500';
+    const result = await pool.query(q);
+    res.json({ jobs: result.rows });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+
 router.get('/jobs', async (req: Request, res: Response): Promise<void> => {
   try {
     const { status, limit = 50 } = req.query;

@@ -111,6 +111,10 @@ export async function discoverDorkerJobs(state: DiscoveryState) {
         const page = await context.newPage();
         try {
             while (pendingQueries.length > 0) {
+                if (state.isTimeUp()) {
+                    console.log(`\n[Timeout] ⏱️ Exceeded 55 minutes, halting dorker queries.`);
+                    break;
+                }
                 const item = pendingQueries.shift();
                 if (!item) continue;
                 const { query, index: qi } = item;

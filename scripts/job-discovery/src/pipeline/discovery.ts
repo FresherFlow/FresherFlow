@@ -42,6 +42,11 @@ export async function discoverAtsJobs(state: DiscoveryState) {
 
     let atsQueued = 0, atsRejected = 0;
     for (const job of atsJobs) {
+        if (state.isTimeUp()) {
+            console.log(`\n[Timeout] ⏱️ Exceeded 55 minutes, halting ATS job processing.`);
+            break;
+        }
+
         if (!job.title || job.title === 'Unknown Title') {
             console.log(`  [ATS] Skipping — invalid title: ${job.title}`);
             continue;
@@ -128,6 +133,11 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
         });
 
         while (activeSites.length > 0) {
+            if (state.isTimeUp()) {
+                console.log(`\n[Timeout] ⏱️ Exceeded 55 minutes, halting aggregator scraping.`);
+                break;
+            }
+
             const site = activeSites.shift();
             if (!site) continue;
             
@@ -188,6 +198,11 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                 console.log(`Found ${unvisitedLinks.length} new unvisited links for ${site.name}.`);
 
                 for (const jobLink of unvisitedLinks.slice(0, 20)) {
+                    if (state.isTimeUp()) {
+                        console.log(`\n[Timeout] ⏱️ Exceeded 55 minutes, halting aggregator post processing.`);
+                        break;
+                    }
+
                     console.log(`Checking aggregator post: ${jobLink}`);
                     state.visited[site.name].push(jobLink);
                     

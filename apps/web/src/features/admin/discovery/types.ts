@@ -1,40 +1,63 @@
 export interface DiscoveredJob {
   id: string;
-  runId: string;
+  runId?: string;
   company: string;
   title: string;
-  location: string;
-  applyLink: string;
-  atsType: string;
-  status: 'DISCOVERED' | 'PROCESSING' | 'PROCESSED' | 'DUPLICATE' | 'REJECTED' | 'FAILED';
-  fresherScore: number;
-  createdAt: string;
+  location?: string;
+  applyLink?: string;
+  atsType?: string;
+  status: 'DISCOVERED' | 'PROCESSING' | 'PROCESSED' | 'DUPLICATE' | 'REJECTED' | 'FAILED' | string;
+  fresherScore?: number;
+  createdAt?: string;
+  // Fallbacks for API returning snake_case
+  apply_link?: string;
+  ats_type?: string;
+  fresher_score?: number;
+  created_at?: string;
+  rawData?: any;
 }
 
 export interface DiscoveryRun {
   id: string;
-  startedAt: string;
+  startedAt?: string;
   completedAt?: string;
   durationMs?: number;
-  totalFound: number;
-  accepted: number;
-  reviewRequired: number;
-  duplicates: number;
-  failed: number;
-  status: 'COMPLETED' | 'RUNNING' | 'FAILED';
+  totalFound?: number;
+  accepted?: number;
+  reviewRequired?: number;
+  duplicates?: number;
+  failed?: number;
+  status: 'COMPLETED' | 'RUNNING' | 'FAILED' | string;
+  // Fallbacks for API returning snake_case
+  started_at?: string;
+  completed_at?: string;
+  duration_ms?: number;
+  total_found?: number;
+  review_required?: number;
 }
 
 export interface ProcessedJob {
   id: string;
-  discoveredJobId: string;
-  type: 'JOB' | 'INTERNSHIP';
+  discoveredJobId?: string;
+  type?: 'JOB' | 'INTERNSHIP' | string;
   title: string;
   company: string;
-  status: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'PUBLISHED';
-  requiredSkills: string[];
-  locations: string[];
-  applyLink: string;
-  createdAt: string;
+  status: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'PUBLISHED' | string;
+  requiredSkills?: string[];
+  locations?: string[];
+  applyLink?: string;
+  createdAt?: string;
+  workMode?: 'REMOTE' | 'HYBRID' | 'ONSITE' | string;
+  experienceMin?: number;
+  experienceMax?: number;
+  // Fallbacks for API returning snake_case
+  experience_min?: number;
+  experience_max?: number;
+  work_mode?: string;
+  required_skills?: string[];
+  apply_link?: string;
+  created_at?: string;
+  rawData?: any;
 }
 
 export interface Company {
@@ -129,6 +152,13 @@ export interface TelemetryStats {
   totalRuns?: number;
   uptimeSeconds?: number;
   lastRunAt?: string;
+  lastRun?: {
+    accepted?: number;
+    totalFound?: number;
+    total_found?: number;
+  };
+  totalDiscovered?: number;
+  configured?: boolean;
 }
 
 export interface Opportunity {
