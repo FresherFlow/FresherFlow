@@ -343,6 +343,9 @@ export function toAtsJob(
         locStr = job.location.displayLocation();
     } else if (job.location) {
         locStr = [job.location.city, job.location.state, job.location.country].filter(Boolean).join(', ');
+        if (!locStr && job.location.raw) {
+            locStr = job.location.raw;
+        }
     }
 
     let postedAt: string | undefined = undefined;
@@ -359,7 +362,7 @@ export function toAtsJob(
         applyLink: job.jobUrl || job.applyLink || '',
         applyUrl: job.applyUrl || undefined,
         jobUrlDirect: job.jobUrlDirect || undefined,
-        company: companyName || job.companyName || '',
+        company: (job.companyName && job.companyName !== 'unknown') ? job.companyName : (companyName || ''),
         companyUrl: job.companyUrl || undefined,
         companyUrlDirect: job.companyUrlDirect || undefined,
         companyIndustry: job.companyIndustry || undefined,

@@ -54,6 +54,7 @@ export async function saveJobToSupabase(
         selection_process: job.selectionProcess || null,
         notes_highlights: job.notesHighlights || null,
         apply_link: applyLink,
+        source_url: sourceLink || applyLink,
         custom_slug: job.customSlug || null,
         application_details: job.applicationDetails || null,
         walk_in_details: job.walkInDetails || null,

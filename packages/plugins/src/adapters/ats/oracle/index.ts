@@ -11,10 +11,20 @@ const service = new OracleService();
 export class OracleAdapter implements AtsAdapter {
   providerName = 'Oracle';
   async fetchJobs(companyId: string, companyName: string): Promise<AtsJob[]> {
-    const res = await service.scrape({ companySlug: companyId, searchTerm: companyName });
+    // Support compound format: "tenant-region:SITE_NUMBER" e.g. "jpmc:CX_1001"
+    // If no colon, treat whole thing as the slug with default siteNumber
+    let slug = companyId;
+    let siteNumber: string | undefined;
+    const colonIdx = companyId.indexOf(':');
+    if (colonIdx !== -1) {
+      slug = companyId.slice(0, colonIdx);
+      siteNumber = companyId.slice(colonIdx + 1);
+    }
+    const res = await service.scrape({ companySlug: slug, searchTerm: companyName, siteNumber });
     return (res?.jobs || []).map(j => toAtsJob(j, 'oracle', companyName, 'ATS'));
   }
   async fetchJobDetails(job: AtsJob, page?: any): Promise<any> {
     return fetchOracleDetails(job.applyLink, page);
   }
 }
+

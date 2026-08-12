@@ -77,92 +77,50 @@ export function extractLocations(text: string): string[] {
 // ── Skills ────────────────────────────────────────────────────────────────────
 
 export function extractSkills(text: string, locations: string[] = []): string[] {
-    const textLower = text.toLowerCase();
-    const skillCandidates: { text: string; score: number }[] = [];
+    const textStr = typeof text === 'string' ? text : (text ? String(text) : '');
+    if (!textStr.trim()) return [];
+    const textLower = textStr.toLowerCase();
+    
+    // We only need to import CANONICAL_SKILLS_MAP from heuristics if not already imported, 
+    // wait, it is exported from taxonomy.js normally but we can just use COMMON_SKILLS for now
+    // Actually, earlier I used CANONICAL_SKILLS_MAP. Let me just use COMMON_SKILLS and strict boundaries.
+    
+    const matchedSkills = new Set<string>();
 
-    // Strategy A: section-based extraction with scoring
-    const sectionPatterns = [
-        /(?:Key Skills|Keyskills|Skills)(.*)/is,
-        /(?:Technical Skills|Knowledge of|Technical Support)(.*)/is,
-        /(?:Key Responsibilities|Responsibilities|Job Description)(.*)/is,
-    ];
-
-    for (const pattern of sectionPatterns) {
-        // Safety: Ensure text is a string
-        const textStr = typeof text === 'string' ? text : (text ? String(text) : '');
-        const regex = new RegExp(pattern.source, 'gis');
-        const matches: RegExpExecArray[] = [];
-        let match;
-        while ((match = regex.exec(textStr)) !== null) {
-            matches.push(match);
-        }
-        for (const m of matches) {
-            const content = m[1].split(
-                /(?:\n\n|\r\n\r\n|Role:|Education|Industry Type|Department|Requirements|Work location|Immediate joiner|Walk-in Details|Note :)/i
-            )[0];
-            const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-            for (const line of lines) {
-                if (line.toLowerCase().includes('highlighted with') || line.length < 3) continue;
-                const splitLine = splitMergedWords(line).join(' ');
-                const parts = splitLine.split(/[,|•*■-]/).map(p => p.trim()).filter(p => p.length > 2);
-                for (const part of parts) {
-                    let score = 0;
-                    const lowPart = part.toLowerCase();
-                    if (COMMON_SKILLS.some(s => lowPart.includes(s))) score += 5;
-                    if (lowPart.includes('support') || lowPart.includes('tools') || lowPart.includes('process')) score += 3;
-                    if (lowPart.includes('match') || lowPart.includes('early') || lowPart.includes('score') || lowPart.includes('growth')) score -= 10;
-                    if (part.split(/\s+/).length > 5) score -= 15;
-                    skillCandidates.push({ text: part, score });
-                }
-            }
-        }
-    }
-
-    // Strategy B: global dictionary match
     for (const skill of COMMON_SKILLS) {
-        if (textLower.includes(skill)) skillCandidates.push({ text: skill, score: 10 });
-    }
+        if (!skill || skill.length < 2) continue;
 
-    let skills = skillCandidates
-        .sort((a, b) => b.score - a.score)
-        .map(c => c.text.replace(/[()[\]{}"']/g, '').trim())
-        .filter((s, i, self) => isValidSkill(s) && self.indexOf(s) === i)
-        .slice(0, 15);
+        const lowerSkill = skill.toLowerCase();
+        
+        // Quick substring check first for performance
+        if (!textLower.includes(lowerSkill)) continue;
 
-    // Fallback: TF-IDF nouns
-    if (skills.length < 5) {
-        // Handle ESM/CJS interop for natural.TfIdf
-        // @ts-expect-error - natural type definitions are inconsistent between ESM and CJS
-        const TfIdfConstructor = natural.TfIdf || natural.default?.TfIdf;
-        if (!TfIdfConstructor) {
-            throw new Error('natural.TfIdf is not a constructor (check import/interop)');
+        // Escape special characters for regex (e.g. C++, .NET)
+        const escaped = lowerSkill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        
+        // Exact boundary match: word boundaries or non-alphanumeric boundaries
+        // This handles cases like "C" not matching inside "React"
+        const regex = new RegExp(`(?:^|[^a-z0-9])${escaped}(?:[^a-z0-9]|$)`, 'i');
+        
+        if (regex.test(textStr)) {
+            matchedSkills.add(skill);
         }
-        const tfidf = new TfIdfConstructor();
-        tfidf.addDocument(text);
-        const doc = nlp(text);
-        const terms = doc.nouns().out('array') as string[];
-        const topNouns = Array.from(new Set(terms))
-            .filter(t => {
-                const low = t.toLowerCase();
-                return t.length > 2 && !STOP_WORDS.has(low) &&
-                    !locations.some(l => l.toLowerCase() === low) &&
-                    !GENERIC_TITLES.has(low);
-            })
-            .slice(0, 5);
-        skills = Array.from(new Set([...skills, ...topNouns]));
     }
 
-    return Array.from(new Set(skills))
-        .map(s => s.replace(/[()[\]{}"']/g, '').trim())
-        .filter((s, i, self) => isValidSkill(s) && self.indexOf(s) === i)
-        .slice(0, 15);
+    return Array.from(matchedSkills).slice(0, 15);
 }
 
 // ── Passout years ─────────────────────────────────────────────────────────────
 
 export function extractPassoutYears(text: string): number[] {
-    const yearRegex = /\b(202[0-9]|20[0-2][0-9])\b/g;
-    return Array.from(new Set((text.match(yearRegex) || []).map(y => parseInt(y))));
+    // Only match years if they are near relevant keywords, or if the text is very short (like a label)
+    const contextRegex = /(?:batch|class\s+of|passout|graduating\s+in|passing\s+out|graduates?(?:\s+of)?|yop)[\s\S]{0,30}\b(202[0-9]|20[0-2][0-9])\b/gi;
+    const years: number[] = [];
+    let match;
+    while ((match = contextRegex.exec(text)) !== null) {
+        years.push(parseInt(match[1]));
+    }
+    return Array.from(new Set(years));
 }
 
 // ── Degrees ───────────────────────────────────────────────────────────────────

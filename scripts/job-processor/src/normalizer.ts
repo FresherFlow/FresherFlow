@@ -89,6 +89,7 @@ export const jobSchema = z.object({
     selectionProcess: z.union([z.string(), z.array(z.string())]).transform(v => Array.isArray(v) ? v.join('\n') : v).optional().nullable(),
     notesHighlights: z.union([z.string(), z.array(z.string())]).transform(v => Array.isArray(v) ? v.join('\n') : v).optional().nullable(),
     applyLink: z.string().optional().default(''),
+    sourceLink: z.string().optional().default(''),
     customSlug: z.string().optional().default(''),
     expiresAt: z.string().optional().default(''),
     applicationDetails: applicationDetailsSchema,
@@ -202,8 +203,19 @@ export function postProcessNormalize(job: ExtractedJob, _fullText: string): Extr
         // Strip numeric prefix (starts with at least 4 digits, optional dash/space-dash)
         job.title = job.title.replace(/^\d{4,}\b\s*[-–]?\s*/u, '').trim();
 
-        // Strip company branding suffix
+        // Strip general generic branding suffixes
         job.title = job.title.replace(/\s*[-–|]\s*[A-Z][^-|]{2,50}(?:Careers|Jobs|Hiring|Recruitment|Talent)\s*$/i, '').trim();
+        
+        // Strip the specific company name from the end if it's there
+        if (job.company) {
+            // Escape regex special chars in company name
+            const escapedCompany = job.company.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const companyRegex = new RegExp(`\\s*[-–|,|]\\s*${escapedCompany}\\s*$`, 'i');
+            job.title = job.title.replace(companyRegex, '').trim();
+        }
+        
+        // Final fallback: strip trailing | if it exists
+        job.title = job.title.replace(/\s*\|\s*$/, '').trim();
     }
 
     // --- 0. Pre-processing fixes ---

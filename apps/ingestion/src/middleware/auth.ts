@@ -1,10 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
+import { timingSafeEqual, createHash } from 'crypto';
+
+const secret = process.env.INTERNAL_API_SECRET;
+if (!secret) {
+  console.error('FATAL: INTERNAL_API_SECRET is not set. Auth middleware will reject all requests.');
+}
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
-  if (process.env.NODE_ENV !== 'production') {
-    return next();
-  }
-
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     res.status(401).json({ error: 'Missing or invalid Authorization header' });
@@ -12,9 +14,18 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   }
 
   const token = authHeader.split(' ')[1];
-  const secret = process.env.INTERNAL_API_SECRET || 'your-super-secret-access-key-change-this-in-production-min-32-chars';
 
-  if (token !== secret) {
+  if (!secret) {
+    res.status(500).json({ error: 'Server misconfiguration' });
+    return;
+  }
+
+  // Timing-safe comparison to prevent side-channel attacks
+  // Hash both to ensure equal length buffers (required by timingSafeEqual)
+  const tokenHash = createHash('sha256').update(token).digest();
+  const secretHash = createHash('sha256').update(secret).digest();
+
+  if (!timingSafeEqual(tokenHash, secretHash)) {
     res.status(403).json({ error: 'Forbidden' });
     return;
   }

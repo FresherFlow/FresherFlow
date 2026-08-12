@@ -22,7 +22,7 @@ import { Button } from '@/ui/Button';
 import { ColumnDef } from '@tanstack/react-table';
 import { DataTable } from '@/ui/data-table/DataTable';
 import { DataTableColumnHeader } from '@/ui/data-table/DataTableColumnHeader';
-
+import { PaginationControls } from '@/ui/data-table/DataTablePagination';
 type Opp = Opportunity & { deletedAt?: string | Date | null; expiredAt?: string | Date | null };
 
 const getAtsName = (link?: string | null) => {
@@ -173,52 +173,22 @@ const Checkbox = ({ checked, onClick, disabled }: { checked: boolean; onClick: (
 );
 
 // ─── Pagination ───────────────────────────────────────────────────────────────
-const Pagination = ({ page, effectiveTotalPages, totalCount, pageSize, setPage }: Pick<Props, 'page' | 'effectiveTotalPages' | 'totalCount' | 'pageSize' | 'setPage'>) => (
-    <div className="flex items-center justify-between gap-3 flex-wrap">
-        <span className="text-xs text-muted-foreground">
-            Showing <span className="font-medium text-foreground">{(page - 1) * pageSize + 1}</span>–<span className="font-medium text-foreground">{Math.min(page * pageSize, totalCount)}</span> of <span className="font-medium text-foreground">{totalCount}</span>
-        </span>
-        <div className="flex items-center gap-1">
-            <Button
-                variant="admin"
-                size="sm"
-                onClick={() => setPage(p => Math.max(1, (typeof p === 'number' ? p : 1) - 1))}
-                disabled={page === 1}
-                className="h-8 px-2.5 flex items-center gap-1 text-xs"
-            >
-                <ChevronLeftIcon className="w-3.5 h-3.5" /> Prev
-            </Button>
-            {[...Array(Math.min(5, effectiveTotalPages))].map((_, i) => {
-                let p = i + 1;
-                if (effectiveTotalPages > 5) {
-                    if (page <= 3) p = i + 1;
-                    else if (page >= effectiveTotalPages - 2) p = effectiveTotalPages - 4 + i;
-                    else p = page - 2 + i;
-                }
-                return (
-                    <Button
-                        key={p}
-                        variant={page === p ? "default" : "admin"}
-                        size="sm"
-                        onClick={() => setPage(p)}
-                        className={`w-8 h-8 p-0 text-xs ${page === p ? '' : 'border-input bg-muted/40'}`}
-                    >
-                        {p}
-                    </Button>
-                );
-            })}
-            <Button
-                variant="admin"
-                size="sm"
-                onClick={() => setPage(p => Math.min(effectiveTotalPages, (typeof p === 'number' ? p : 1) + 1))}
-                disabled={page >= effectiveTotalPages}
-                className="h-8 px-2.5 flex items-center gap-1 text-xs"
-            >
-                Next <ChevronRightIcon className="w-3.5 h-3.5" />
-            </Button>
-        </div>
-    </div>
-);
+const Pagination = ({ page, effectiveTotalPages, totalCount, pageSize, setPage }: Pick<Props, 'page' | 'effectiveTotalPages' | 'totalCount' | 'pageSize' | 'setPage'>) => {
+    return (
+        <PaginationControls
+            pageIndex={page - 1}
+            pageSize={pageSize}
+            pageCount={effectiveTotalPages}
+            totalRows={totalCount}
+            canPreviousPage={page > 1}
+            canNextPage={page < effectiveTotalPages}
+            setPageIndex={(idx) => setPage(idx + 1)}
+            setPageSize={() => {}}
+            previousPage={() => setPage(p => Math.max(1, (typeof p === 'number' ? p : 1) - 1))}
+            nextPage={() => setPage(p => Math.min(effectiveTotalPages, (typeof p === 'number' ? p : 1) + 1))}
+        />
+    );
+};
 
 // ─── Desktop Table ────────────────────────────────────────────────────────────
 const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSelect, toggleSelectAll, ...actions }: Props) => {
@@ -343,9 +313,7 @@ const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSel
                     enableRowSelection={true}
                 />
             </div>
-            <div className="shrink-0 px-5 py-3 border-t border-border bg-muted/20">
-                <Pagination page={actions.page} effectiveTotalPages={actions.effectiveTotalPages} totalCount={actions.totalCount} pageSize={actions.pageSize} setPage={actions.setPage} />
-            </div>
+            <Pagination page={actions.page} effectiveTotalPages={actions.effectiveTotalPages} totalCount={actions.totalCount} pageSize={actions.pageSize} setPage={actions.setPage} />
         </div>
     );
 };
@@ -422,7 +390,7 @@ const MobileCards = ({ opportunities, selectedIds, toggleSelect, ...actions }: P
         
         {/* Pagination */}
         {opportunities.length > 0 && (
-            <div className="shrink-0 pt-3 border-t border-border/40 pb-2">
+            <div className="shrink-0 mt-3 rounded-xl border border-border/40 overflow-hidden bg-card">
                 <Pagination page={actions.page} effectiveTotalPages={actions.effectiveTotalPages} totalCount={actions.totalCount} pageSize={actions.pageSize} setPage={actions.setPage} />
             </div>
         )}

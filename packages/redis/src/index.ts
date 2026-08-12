@@ -121,7 +121,7 @@ const createTestRedisClient = (): MinimalRedisLike => {
 
 const redisClientSingleton = () => {
     console.log(`[redis] init: env.REDIS_ENABLED=${env.REDIS_ENABLED}, NODE_ENV=${env.NODE_ENV}`);
-    if (env.NODE_ENV === 'test' || env.REDIS_ENABLED === false) {
+    if (env.NODE_ENV === 'test' || env.REDIS_ENABLED === false || (env.REDIS_ENABLED as unknown) === 'false') {
         console.log('[redis] bypass active, using in-memory mock');
         return createTestRedisClient();
     }

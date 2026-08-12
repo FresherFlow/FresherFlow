@@ -9,6 +9,7 @@ import { listR2Objects, deleteR2Object } from '@fresherflow/utils/r2';
 await loadEnv();
 
 const API_URL = (process.env.API_URL || '').trim().replace(/\/$/, '');
+const INGESTION_URL = (process.env.INGESTION_URL || 'http://localhost:3005').trim().replace(/\/$/, '');
 if (!process.env.INTERNAL_API_SECRET) {
     console.error('FATAL: INTERNAL_API_SECRET environment variable is required but not set.');
     process.exit(1);
@@ -135,12 +136,13 @@ async function checkJob(page: Page, url: string, isSecondPass = false): Promise<
 
 interface FeedOpportunity {
     id: string;
-    slug: string;
+    slug?: string;
     title: string;
     company: string;
     applyLink?: string;
     sourceLink?: string;
     publishedAt?: string;
+    type?: 'production' | 'discovered' | 'processed';
 }
 
 interface FeedJson {
@@ -167,7 +169,28 @@ async function run() {
         process.exit(1);
     }
 
-    const opportunities = feed?.opportunities || [];
+    let opportunities = feed?.opportunities || [];
+
+    try {
+        console.log("Fetching jobs from Ingestion API...");
+        const res = await fetch(`${INGESTION_URL}/data/jobs/sweep-feed`, {
+            headers: {
+                'Authorization': `Bearer ${INTERNAL_API_SECRET}`
+            }
+        });
+        if (res.ok) {
+            const ingestionFeed = await res.json() as { opportunities?: FeedOpportunity[] };
+            if (ingestionFeed.opportunities && Array.isArray(ingestionFeed.opportunities)) {
+                opportunities = opportunities.concat(ingestionFeed.opportunities);
+                console.log(`Added ${ingestionFeed.opportunities.length} jobs from Ingestion API.`);
+            }
+        } else {
+            console.warn(`Ingestion feed fetch returned status: ${res.status}`);
+        }
+    } catch (err) {
+        console.error("Failed to fetch ingestion sweep feed:", err instanceof Error ? err.message : String(err));
+    }
+
     console.log(`Found ${opportunities.length} active opportunities to check.`);
     
     // Message 1: Summary
@@ -208,7 +231,7 @@ async function run() {
                         if (!opp) continue;
                         
                         const currentChecked = ++checked;
-                        const targetUrl = opp.applyLink || opp.sourceLink;
+                        const targetUrl = opp.sourceLink || opp.applyLink;
                         if (!targetUrl) continue;
 
                         // Minimum age guard: Do not sweep jobs published in the last 24 hours
@@ -279,7 +302,7 @@ async function run() {
                             if (!opp) continue;
                             
                             const currentChecked = ++secondPassChecked;
-                            const targetUrl = opp.applyLink || opp.sourceLink;
+                            const targetUrl = opp.sourceLink || opp.applyLink;
                             if (!targetUrl) continue;
 
                             console.log(`[Second Pass ${currentChecked}] Checking: ${opp.title} @ ${opp.company}`);
@@ -323,9 +346,25 @@ async function run() {
     }
 
     // Auto-expire confirmed dead jobs via API
-    if (expiredJobs.length > 0 && API_URL && INTERNAL_API_SECRET) {
-        const ids = expiredJobs.map((j) => j.slug || j.id).filter(Boolean);
-        console.log(`\nCalling expire API for ${ids.length} dead jobs...`);
+    const productionIds: string[] = [];
+    const discoveredIds: string[] = [];
+    const processedIds: string[] = [];
+
+    for (const job of expiredJobs) {
+        const id = job.slug || job.id;
+        if (!id) continue;
+        
+        if (job.type === 'discovered') {
+            discoveredIds.push(id);
+        } else if (job.type === 'processed') {
+            processedIds.push(id);
+        } else {
+            productionIds.push(id);
+        }
+    }
+
+    if (productionIds.length > 0 && API_URL && INTERNAL_API_SECRET) {
+        console.log(`\nCalling expire API for ${productionIds.length} dead production jobs...`);
         try {
             const res = await fetch(`${API_URL}/api/pipeline/expire-jobs`, {
                 method: 'POST',
@@ -333,7 +372,7 @@ async function run() {
                     'Content-Type': 'application/json',
                     'x-api-key': INTERNAL_API_SECRET,
                 },
-                body: JSON.stringify({ ids }),
+                body: JSON.stringify({ ids: productionIds }),
             });
             const responseText = await res.text();
             if (res.ok) {
@@ -349,8 +388,30 @@ async function run() {
         } catch (err) {
             console.error('Failed to call expire API:', err instanceof Error ? err.message : String(err));
         }
-    } else if (expiredJobs.length > 0) {
-        console.warn('API_URL or INTERNAL_API_SECRET not set — skipping auto-expire API call.');
+    } else if (productionIds.length > 0) {
+        console.warn('API_URL or INTERNAL_API_SECRET not set — skipping auto-expire API call for production jobs.');
+    }
+
+    if ((discoveredIds.length > 0 || processedIds.length > 0) && INGESTION_URL) {
+        console.log(`\nCalling ingestion expire API for ${discoveredIds.length} discovered and ${processedIds.length} processed jobs...`);
+        try {
+            const res = await fetch(`${INGESTION_URL}/data/jobs/expire`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${INTERNAL_API_SECRET}`
+                },
+                body: JSON.stringify({ discoveredIds, processedIds }),
+            });
+            const responseText = await res.text();
+            if (res.ok) {
+                console.log(`Ingestion expire API result: ${responseText}`);
+            } else {
+                console.error(`Ingestion expire API error: Status ${res.status} — ${responseText}`);
+            }
+        } catch (err) {
+            console.error('Failed to call ingestion expire API:', err instanceof Error ? err.message : String(err));
+        }
     }
 
     // Message 2: Results
@@ -361,7 +422,7 @@ async function run() {
             msg += `🚨 <b>Found ${expiredJobs.length} Expired Jobs — Automatically Removed from Platform</b> 🚨\n\n`;
             const displayJobs = expiredJobs.slice(0, 15);
             for (const job of displayJobs) {
-                msg += `- <b>${escapeHtml(job.company)}</b>: ${escapeHtml(job.title)}\n  Apply Link: ${job.applyLink || job.sourceLink || 'None'}\n`;
+                msg += `- <b>${escapeHtml(job.company)}</b>: ${escapeHtml(job.title)}\n  Apply Link: ${job.sourceLink || job.applyLink || 'None'}\n`;
             }
             if (expiredJobs.length > 15) {
                 msg += `...and ${expiredJobs.length - 15} more!\n\n`;
@@ -372,7 +433,7 @@ async function run() {
             msg += `⚠️ <b>Found ${reviewJobs.length} Review Required Jobs (Generic Titles/Redirects)</b> ⚠️\n\n`;
             const displayReview = reviewJobs.slice(0, 10);
             for (const job of displayReview) {
-                msg += `- <b>${escapeHtml(job.company)}</b>: ${escapeHtml(job.title)}\n  Apply Link: ${job.applyLink || job.sourceLink || 'None'}\n`;
+                msg += `- <b>${escapeHtml(job.company)}</b>: ${escapeHtml(job.title)}\n  Apply Link: ${job.sourceLink || job.applyLink || 'None'}\n`;
             }
             if (reviewJobs.length > 10) {
                 msg += `...and ${reviewJobs.length - 10} more!\n\n`;
@@ -484,7 +545,7 @@ async function run() {
         if (expiredJobs.length > 0) {
             summary += `### Expired Jobs\n`;
             expiredJobs.forEach(j => {
-                summary += `- **${j.company}**: ${j.title} (Apply Link: ${j.applyLink || j.sourceLink || 'None'})\n`;
+                summary += `- **${j.company}**: ${j.title} (Apply Link: ${j.sourceLink || j.applyLink || 'None'})\n`;
             });
             summary += `\n`;
         }

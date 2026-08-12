@@ -37,60 +37,111 @@ export function cleanAndResolveLocations(rawLocations: string[]): { locations: s
         }
     };
 
+    const allExtractedCities: {name: string, structured: StructuredLocation}[] = [];
+    const allExtractedStates: {name: string, structured: StructuredLocation}[] = [];
+    let hasSpecials = false;
+    const fallbackRawTokens: string[] = [];
+
     for (const loc of rawLocations) {
         const trimmed = loc.trim();
         if (!trimmed) continue;
 
         const lower = trimmed.toLowerCase();
+        const parts = lower.split(/[,|;:\/]+/).map(p => p.trim()).filter(Boolean);
 
-        // 1. Handle specials (Remote / Pan India)
-        if (lower === 'remote' || lower === 'work from home' || lower === 'wfh') {
-            addLocation('Remote', { name: 'Remote', type: 'remote' });
-            continue;
-        }
-        if (lower === 'pan india' || lower === 'across india') {
-            addLocation('Pan India', { name: 'Pan India', country: 'IN', type: 'country' });
-            continue;
+        let foundAnyKnown = false;
+
+        for (let part of parts) {
+            let subParts = [part];
+            if (part.includes('-')) {
+                if (!cityMap.has(part) && !CITY_TO_STATE[part]) {
+                    subParts = part.split('-').map(p => p.trim()).filter(Boolean);
+                }
+            }
+
+            for (const sp of subParts) {
+                if (sp === 'india' || sp === 'in' || sp === 'india (in)') continue;
+                
+                if (sp === 'remote' || sp === 'work from home' || sp === 'wfh') {
+                    addLocation('Remote', { name: 'Remote', type: 'remote' });
+                    hasSpecials = true;
+                    foundAnyKnown = true;
+                    continue;
+                }
+                if (sp === 'pan india' || sp === 'across india') {
+                    addLocation('Pan India', { name: 'Pan India', country: 'IN', type: 'country' });
+                    hasSpecials = true;
+                    foundAnyKnown = true;
+                    continue;
+                }
+
+                if (CITY_TO_STATE[sp]) {
+                    const canonicalName = cityMap.get(sp)?.name || sp.replace(/\b\w/g, c => c.toUpperCase());
+                    allExtractedCities.push({name: canonicalName, structured: { name: canonicalName, state: CITY_TO_STATE[sp], country: 'IN', type: 'city' }});
+                    foundAnyKnown = true;
+                    continue;
+                }
+                
+                if (cityMap.has(sp)) {
+                    const cityData = cityMap.get(sp)!;
+                    const stateData = statesInIndia.find(s => s.isoCode === cityData.stateCode);
+                    allExtractedCities.push({name: cityData.name, structured: { name: cityData.name, state: stateData?.name || cityData.stateCode, country: 'IN', type: 'city' }});
+                    foundAnyKnown = true;
+                    continue;
+                }
+
+                if (isStateName(sp)) {
+                    const canonicalName = stateMap.get(sp)?.name || sp.replace(/\b\w/g, c => c.toUpperCase());
+                    allExtractedStates.push({name: canonicalName, structured: { name: canonicalName, country: 'IN', type: 'state' }});
+                    foundAnyKnown = true;
+                    continue;
+                }
+
+                if (stateMap.has(sp)) {
+                    const stateData = stateMap.get(sp)!;
+                    allExtractedStates.push({name: stateData.name, structured: { name: stateData.name, country: 'IN', type: 'state' }});
+                    foundAnyKnown = true;
+                    continue;
+                }
+
+                const stateByCode = statesInIndia.find(s => s.isoCode.toLowerCase() === sp);
+                if (stateByCode) {
+                    allExtractedStates.push({name: stateByCode.name, structured: { name: stateByCode.name, country: 'IN', type: 'state' }});
+                    foundAnyKnown = true;
+                    continue;
+                }
+            }
         }
 
-        // 2. Try matching from canonical locationTaxonomy first (handles aliases)
-        if (CITY_TO_STATE[lower]) {
-            const stateName = CITY_TO_STATE[lower];
-            // Find canonical city name by checking taxonomy, but wait, CITY_TO_STATE has lower -> State.
-            // If it's an alias like "bangalore", what is the canonical name?
-            // Wait, we need to map the lower case name to the canonical name. We don't have CITY_ALIASES explicitly exporting the original casing.
-            // Let's use the country-state-city map to get the canonical case, or fallback to Capitalized case.
-            const cityData = cityMap.get(lower);
-            const canonicalName = cityData?.name || trimmed.replace(/\b\w/g, c => c.toUpperCase());
-            addLocation(canonicalName, { name: canonicalName, state: stateName, country: 'IN', type: 'city' });
-            continue;
+        if (!foundAnyKnown && !hasSpecials) {
+            let cleanedRaw = trimmed.replace(/,\s*(india|in)\s*$/i, '');
+            const capitalized = cleanedRaw.replace(/\b\w/g, c => c.toUpperCase());
+            fallbackRawTokens.push(capitalized);
         }
+    }
 
-        if (isStateName(lower)) {
-            // Find canonical state name
-            const stateData = stateMap.get(lower);
-            const canonicalName = stateData?.name || trimmed.replace(/\b\w/g, c => c.toUpperCase());
-            addLocation(canonicalName, { name: canonicalName, country: 'IN', type: 'state' });
-            continue;
+    // Process all aggregated cities
+    const coveredStates = new Set<string>();
+    for (const ec of allExtractedCities) {
+        addLocation(ec.name, ec.structured);
+        if (ec.structured.state) {
+            coveredStates.add(ec.structured.state.toLowerCase());
         }
+    }
 
-        // 3. Fallback to country-state-city (Tier 3 cities etc.)
-        if (cityMap.has(lower)) {
-            const cityData = cityMap.get(lower)!;
-            const stateData = statesInIndia.find(s => s.isoCode === cityData.stateCode);
-            addLocation(cityData.name, { name: cityData.name, state: stateData?.name || cityData.stateCode, country: 'IN', type: 'city' });
-            continue;
+    // Process all aggregated states
+    for (const es of allExtractedStates) {
+        // Only add the state if it's NOT covered by any city we found
+        if (!coveredStates.has(es.name.toLowerCase())) {
+            addLocation(es.name, es.structured);
         }
+    }
 
-        if (stateMap.has(lower)) {
-            const stateData = stateMap.get(lower)!;
-            addLocation(stateData.name, { name: stateData.name, country: 'IN', type: 'state' });
-            continue;
+    // If nothing at all was found, add fallbacks
+    if (allExtractedCities.length === 0 && allExtractedStates.length === 0 && !hasSpecials) {
+        for (const raw of fallbackRawTokens) {
+            addLocation(raw, { name: raw, type: 'city' });
         }
-
-        // 4. Fallback: Keep the capitalized raw value if it is completely unrecognized
-        const capitalized = trimmed.replace(/\b\w/g, c => c.toUpperCase());
-        addLocation(capitalized, { name: capitalized, type: 'city' }); // default to city if unknown
     }
 
     return { locations: parsedLocations, structuredLocations };

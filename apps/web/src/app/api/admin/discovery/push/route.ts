@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import prisma from '@fresherflow/database';
 import { generateSlug } from '@fresherflow/utils';
 
@@ -34,21 +34,44 @@ interface ProcessedJob {
   employmentType?: string;
   jobFunction?: string;
   applyLink: string;
+  sourceUrl?: string;
+  sourceLink?: string;
   status?: string;
 }
 
-async function handlePush() {
+async function handlePush(req?: NextRequest) {
   try {
-    let res = await fetch(`${INGESTION_URL}/data/jobs/processed?status=PUBLISHED&limit=500`, {
-      headers: { 'Cache-Control': 'no-store' },
-      next: { revalidate: 0 },
-    });
+    let ids: string[] | undefined;
+    if (req && req.method === 'POST') {
+      try {
+        const body = await req.json();
+        if (body && Array.isArray(body.ids) && body.ids.length > 0) {
+          ids = body.ids;
+        }
+      } catch (e) {
+        // Ignore JSON parse errors for empty bodies
+      }
+    }
 
-    if (!res.ok) {
-      res = await fetch(`${INGESTION_URL}/data/push`, {
+    let res;
+    if (ids) {
+      res = await fetch(`${INGESTION_URL}/data/jobs/processed/push-batch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
       });
+    } else {
+      res = await fetch(`${INGESTION_URL}/data/jobs/processed?status=PUBLISHED&limit=500`, {
+        headers: { 'Cache-Control': 'no-store' },
+        next: { revalidate: 0 },
+      });
+
+      if (!res.ok) {
+        res = await fetch(`${INGESTION_URL}/data/push`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
     }
 
     if (!res.ok) {
@@ -165,7 +188,7 @@ async function handlePush() {
               employmentType: job.employmentType || null,
               jobFunction: job.jobFunction || null,
               applyLink: job.applyLink,
-              sourceLink: job.applyLink,
+              sourceLink: job.sourceUrl || job.sourceLink || job.applyLink,
               status: 'PUBLISHED',
             },
           });
@@ -196,7 +219,7 @@ async function handlePush() {
               employmentType: job.employmentType || null,
               jobFunction: job.jobFunction || null,
               applyLink: job.applyLink,
-              sourceLink: job.applyLink,
+              sourceLink: job.sourceUrl || job.sourceLink || job.applyLink,
               status: 'PUBLISHED',
               postedByUserId: adminId,
             },
@@ -223,10 +246,10 @@ async function handlePush() {
   }
 }
 
-export async function GET() {
-  return handlePush();
+export async function GET(req: NextRequest) {
+  return handlePush(req);
 }
 
-export async function POST() {
-  return handlePush();
+export async function POST(req: NextRequest) {
+  return handlePush(req);
 }

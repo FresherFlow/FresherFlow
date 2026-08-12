@@ -46,8 +46,9 @@ jobs:
           curl -f -X POST "$API_BASE_URL/api/cron/verify" \
             -H "Authorization: Bearer $CRON_SECRET"
 
-      - name: Refresh Bootstrap Feed (Scheduled)
-        if: github.event_name == 'workflow_dispatch' || (github.event.schedule != '0 21 * * *' && github.event.schedule != '30 2,14 * * *' && github.event.schedule != '30 18 * * *')
+      - name: Refresh Bootstrap Feed (After Daily Expiry)
+        # Runs after the daily expiry cron at midnight IST so the feed reflects newly expired jobs
+        if: github.event.schedule == '30 18 * * *' || github.event_name == 'workflow_dispatch'
         env:
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -65,8 +66,19 @@ jobs:
             echo "Deploying to Cloudflare Pages..."
             mkdir -p dist-cdn
             mv bootstrap-feed.min.json dist-cdn/
-            # Note: Project 'fresherflow-cdn' must be created in Cloudflare Pages first
             npx wrangler pages deploy dist-cdn --project-name fresherflow-cdn --branch main
           else
             echo "CLOUDFLARE_API_TOKEN not found, skipping Pages deploy. JSON generated at bootstrap-feed.min.json"
           fi
+
+      - name: Keep-Alive Ping (Ingestion + API)
+        # Warm up both services every scheduled run to prevent cold-start delays
+        if: vars.INGESTION_URL != ''
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          INGESTION_URL: ${{ secrets.INGESTION_URL }}
+        run: |
+          echo "Pinging API health..."
+          curl -sf "$API_BASE_URL/api/health" || echo "API health check failed (non-fatal)"
+          echo "Pinging Ingestion health..."
+          curl -sf "$INGESTION_URL/health" || echo "Ingestion health check failed (non-fatal)"

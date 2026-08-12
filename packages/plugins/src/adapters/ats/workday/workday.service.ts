@@ -186,10 +186,31 @@ export class WorkdayService implements IScraper {
     const title = listing.title;
     if (!title) return null;
     const info = detail?.jobPostingInfo;
-    const hiringOrganizationName = detail?.hiringOrganization?.name;
-    const companyName = hiringOrganizationName?.trim()
-      ? hiringOrganizationName
-      : company;
+    const hiringOrganizationName = detail?.hiringOrganization?.name?.trim();
+
+    // Extract subtitle info (often contains category/department, or company name)
+    const subtitleTexts = listing.subtitles
+      ?.flatMap((sub) => sub.instances?.map((i) => i.text) ?? [])
+      .filter((t): t is string => Boolean(t?.trim())) ?? [];
+
+    const bulletTexts = (listing.bulletFields ?? [])
+      .filter((t): t is string => Boolean(t?.trim()));
+
+    // Prefer hiringOrganizationName from detail API, then try list item's subtitles/bulletFields,
+    // before falling back to the raw company slug.
+    let companyName = hiringOrganizationName;
+    if (!companyName) {
+      const candidate = subtitleTexts.find((text) =>
+        text &&
+        !/^\d+[\s\w]*$/i.test(text) &&
+        !/posted|ago|full-time|part-time|contract|remote|hybrid/i.test(text)
+      ) || bulletTexts.find((text) =>
+        text &&
+        !/^\d+[\s\w]*$/i.test(text) &&
+        !/posted|ago|full-time|part-time|contract|remote|hybrid/i.test(text)
+      );
+      companyName = candidate || company;
+    }
 
     // Extract job path for URL construction
     const externalPath = listing.externalPath ?? '';
@@ -239,11 +260,6 @@ export class WorkdayService implements IScraper {
     // Compensation: Workday CXS has no structured pay field; recover the
     // pay-transparency range from the description body text.
     const compensation = this.extractCompensationFromText(info?.jobDescription);
-
-    // Extract subtitle info (often contains category/department)
-    const subtitleTexts = listing.subtitles
-      ?.flatMap((sub) => sub.instances?.map((i) => i.text) ?? [])
-      .filter(Boolean) ?? [];
 
     // Extract job ID from externalPath (e.g., "/job/123456")
     const jobIdMatch = externalPath.match(/\/(\d+)(?:\/|$)/);

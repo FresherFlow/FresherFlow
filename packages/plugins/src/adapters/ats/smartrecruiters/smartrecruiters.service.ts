@@ -207,8 +207,8 @@ export class SmartRecruitersService implements IScraper {
     const datePosted = job.releasedDate ?? null;
 
     // Job URL
-    const jobUrl =
-      job.ref ?? `https://jobs.smartrecruiters.com/${companySlug}/${job.id}`;
+    const publicUrl = `https://jobs.smartrecruiters.com/${companySlug}/${job.id}`;
+    const jobUrl = (job.ref && !job.ref.includes('api.smartrecruiters.com')) ? job.ref : publicUrl;
 
     // Description from jobAd sections
     let description: string | null = null;

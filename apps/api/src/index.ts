@@ -1,14 +1,8 @@
-import dotenv from 'dotenv';
-import path from 'path';
+import './bootstrap';
 
-// Load environment variables immediately
-dotenv.config();
-dotenv.config({ path: path.join(__dirname, '../.env') });
-dotenv.config({ path: path.join(__dirname, '../../.env') });
-
-process.env.IS_API = 'true';
 
 import fs from 'fs';
+import path from 'path';
 
 import express, { Application } from 'express';
 import cors from 'cors';

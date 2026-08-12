@@ -31,6 +31,14 @@ interface DataTableProps<TData, TValue> {
   enableFiltering?: boolean
   enablePagination?: boolean
   enableRowSelection?: boolean
+  manualPagination?: boolean
+  pageCount?: number
+  rowCount?: number
+  pagination?: {
+    pageIndex: number
+    pageSize: number
+  }
+  onPaginationChange?: (updater: any) => void
   onRowSelectionChange?: (selectedRows: TData[]) => void
   toolbar?: (table: ReactTable<TData>) => React.ReactNode
 }
@@ -42,12 +50,30 @@ export function DataTable<TData, TValue>({
   enableFiltering,
   enablePagination,
   enableRowSelection,
+  manualPagination,
+  pageCount,
+  rowCount,
+  pagination,
+  onPaginationChange,
   onRowSelectionChange,
   toolbar,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [rowSelection, setRowSelection] = React.useState({})
+  
+  // Local pagination state for client-side pagination
+  const [localPagination, setLocalPagination] = React.useState({
+    pageIndex: 0,
+    pageSize: 10,
+  })
+
+  // Reset pagination when local sorting or filtering changes (client-side only)
+  React.useEffect(() => {
+    if (!manualPagination) {
+      setLocalPagination((prev) => ({ ...prev, pageIndex: 0 }))
+    }
+  }, [sorting, columnFilters, manualPagination])
 
   const table = useReactTable({
     data,
@@ -57,13 +83,18 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: enableSorting ? getSortedRowModel() : undefined,
     onColumnFiltersChange: setColumnFilters,
     getFilteredRowModel: enableFiltering ? getFilteredRowModel() : undefined,
-    getPaginationRowModel: enablePagination ? getPaginationRowModel() : undefined,
+    getPaginationRowModel: enablePagination && !manualPagination ? getPaginationRowModel() : undefined,
     onRowSelectionChange: setRowSelection,
     enableRowSelection,
+    manualPagination,
+    pageCount,
+    rowCount,
+    onPaginationChange: manualPagination ? onPaginationChange : setLocalPagination,
     state: {
       sorting,
       columnFilters,
       rowSelection,
+      ...(enablePagination ? { pagination: manualPagination ? pagination : localPagination } : {}),
     },
   })
 

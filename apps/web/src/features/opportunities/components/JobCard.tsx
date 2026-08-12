@@ -432,7 +432,7 @@ export default function JobCard({
                     }
                 }}
                 className={cn(
-                    "group relative bg-card border rounded-xl p-3.5 flex items-start gap-3 md:gap-3.5 hover:border-primary/40 hover:shadow-md transition-all duration-200 cursor-pointer",
+                    "group relative bg-card border rounded-xl p-3.5 flex items-start gap-3 md:gap-3.5 hover:border-border hover:shadow-md transition-all duration-200 cursor-pointer",
                     isSelected ? "border-primary/70 ring-2 ring-primary/10 shadow-md" : "border-transparent",
                     isExpired() && "opacity-60",
                     className
@@ -659,7 +659,7 @@ export default function JobCard({
                 }
             }}
             className={cn(
-                "group relative bg-card border rounded-2xl p-3.5 md:p-4 shadow-xs transition-all duration-200 ease-out hover:shadow-md hover:border-primary/40 flex flex-col justify-start gap-2.5 overflow-hidden w-full h-auto",
+                "group relative bg-card border rounded-2xl p-3.5 md:p-4 shadow-xs transition-all duration-200 ease-out hover:shadow-md hover:border-border flex flex-col justify-start gap-2.5 overflow-hidden w-full h-auto",
                 isSelected
                     ? "border-primary/70 ring-2 ring-primary/10 shadow-md"
                     : "border-transparent",

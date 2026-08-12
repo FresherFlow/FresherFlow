@@ -4,6 +4,7 @@ export interface DiscoveredJobRow {
     id: string;
     apply_link: string;
     source: string;
+    source_url?: string;
     company: string;
     title: string;
     ats_text?: string;
@@ -34,7 +35,7 @@ export async function fetchUnprocessedFromSupabase(limit = 100): Promise<Discove
     const sb = getSupabaseClient();
     const { data: rows, error } = await sb
         .from('discovered_jobs')
-        .select('id, apply_link, source, company, title, ats_text, description, location, location_city, is_remote, experience_years, employment_type, skills, posted_at, batch_year, degree, department, status')
+        .select('id, apply_link, source, source_url, company, title, ats_text, description, location, location_city, is_remote, experience_years, employment_type, skills, posted_at, batch_year, degree, department, status')
         .eq('status', 'DISCOVERED')
         .order('created_at', { ascending: false })
         .limit(limit);

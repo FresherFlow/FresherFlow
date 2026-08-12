@@ -24,7 +24,7 @@ function resolveCompanyWebsiteAndLogo(
             }
         } catch {
             const cleanName = company.toLowerCase().replace(/[^a-z0-9]/g, '');
-            website = `https://${cleanName}.com`;
+            website = cleanName ? `https://${cleanName}.com` : 'https://example.com';
         }
     }
 
@@ -116,10 +116,12 @@ export async function submitJobsToApi(jobs: AtsJob[], targetCompany: string): Pr
             employmentType: (job.jobType && job.jobType.length > 0) ? job.jobType[0].toUpperCase() : (job.employmentType || ''),
             jobFunction: job.jobFunction || job.department || null,
             applyLink: applyLink,
+            sourceLink: job.jobUrlDirect || applyLink,
             customSlug: '',
             applicationDetails: { method: 'DIRECT', platform: '', requiredItems: [] },
         };
 
+        try {
         const preNormalized = normalizeRawJson(rawJob);
         const parsedJob = jobSchema.parse(preNormalized);
         const normalizedJob = postProcessNormalize(parsedJob, fullTextForExtraction);
@@ -131,10 +133,11 @@ export async function submitJobsToApi(jobs: AtsJob[], targetCompany: string): Pr
             // 1. Save to discovered_jobs table
             const discoveredRes = await pool.query(
                 `INSERT INTO discovered_jobs
-                (source, source_type, company, title, location, apply_link, ats_type, ats_text, fresher_score, status, created_at, updated_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'PROCESSED', NOW(), NOW())
+                (source, source_type, company, title, location, apply_link, source_url, ats_type, ats_text, fresher_score, status, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'PROCESSED', NOW(), NOW())
                 ON CONFLICT (source, apply_link) DO UPDATE SET
                     title = EXCLUDED.title,
+                    source_url = EXCLUDED.source_url,
                     updated_at = NOW()
                 RETURNING id`,
                 [
@@ -144,6 +147,7 @@ export async function submitJobsToApi(jobs: AtsJob[], targetCompany: string): Pr
                     normalizedJob.title,
                     normalizedJob.locations.length > 0 ? normalizedJob.locations.join(', ') : (job.location || null),
                     applyLink,
+                    normalizedJob.sourceLink || job.jobUrlDirect || applyLink,
                     job.atsType || targetCompany,
                     normalizedJob.description || null,
                     fresherScore,
@@ -156,8 +160,8 @@ export async function submitJobsToApi(jobs: AtsJob[], targetCompany: string): Pr
             // 2. Save to processed_jobs table
             await pool.query(
                 `INSERT INTO processed_jobs 
-                (discovered_job_id, type, title, company, company_website, company_logo_url, description, allowed_degrees, allowed_courses, allowed_specializations, allowed_passout_years, required_skills, locations, structured_locations, work_mode, experience_min, experience_max, salary_range, salary_period, employment_type, job_function, apply_link, status, created_at, updated_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 'PUBLISHED', NOW(), NOW())
+                (discovered_job_id, type, title, company, company_website, company_logo_url, description, allowed_degrees, allowed_courses, allowed_specializations, allowed_passout_years, required_skills, locations, structured_locations, work_mode, experience_min, experience_max, salary_range, salary_period, employment_type, job_function, apply_link, source_url, status, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, 'PUBLISHED', NOW(), NOW())
                 ON CONFLICT (apply_link) DO UPDATE SET
                     title = EXCLUDED.title,
                     company = EXCLUDED.company,
@@ -202,12 +206,17 @@ export async function submitJobsToApi(jobs: AtsJob[], targetCompany: string): Pr
                     normalizedJob.employmentType || 'FULL_TIME',
                     normalizedJob.jobFunction || job.department || null,
                     applyLink,
+                    normalizedJob.sourceLink || job.jobUrlDirect || applyLink,
                 ]
             );
             console.log('[Ingestion DB] Saved:', normalizedJob.title, '@', normalizedJob.company);
             saved++;
         } catch (err: any) {
             console.error('[Ingestion DB Error]', job.title, '@', company, ':', err.message);
+            skipped++;
+        }
+        } catch (err: any) {
+            console.error('[Ingestion Normalize Error] Skipping job:', job.title, ':', err.message);
             skipped++;
         }
     }

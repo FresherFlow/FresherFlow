@@ -103,7 +103,12 @@ export async function runTarget(target: RunTarget): Promise<RunResult> {
             if (!job.description || job.description.length < 50) {
               try {
                 const details = await adapter.fetchJobDetails!(job);
-                if (details) job.description = details;
+                if (typeof details === 'string') {
+                    job.description = details;
+                } else if (details && typeof details === 'object') {
+                    if ('html' in details || 'text' in details) job.description = (details as any).html || (details as any).text;
+                    if ('applyLink' in details && (details as any).applyLink) job.applyLink = (details as any).applyLink;
+                }
               } catch (e) {
                 // Ignore individual detail fetch errors
               }

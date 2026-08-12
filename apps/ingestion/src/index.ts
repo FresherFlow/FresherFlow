@@ -83,31 +83,12 @@ if (process.env.REDIS_ENABLED !== 'false') {
   applyPluginPolicies();
   bindCircuitBreakerMetrics();
 
-  const schedulerQueue = getQueue(QUEUE_NAMES.scraper);
-  await (schedulerQueue.add as any)(
-    'scheduled-run-all',
-    { scheduled: true },
-    {
-      repeat: { every: 6 * 60 * 60 * 1000 },
-      jobId: 'auto-run-all',
-    }
-  );
-  console.log('[ingestion] Scheduled auto-run every 6 hours');
+
 
   await registerHealthSnapshotCron();
 
   const scraperWorker = new Worker(QUEUE_NAMES.scraper, async (job) => {
-    if (job.name === 'scheduled-run-all') {
-      console.log(`[Worker] Executing scheduled-run-all`);
-      const queue = getQueue(QUEUE_NAMES.scraper);
-      const targets = await loadDefaultTargets();
-      let count = 0;
-      for (const t of targets) {
-        await queue.add('run-target', { ...t, filter: true });
-        count++;
-      }
-      return { status: 'OK', message: `Queued ${count} targets` };
-    }
+
     if (job.name === 'health-snapshot') {
       return await processHealthSnapshot();
     }

@@ -96,7 +96,7 @@ export function evaluateTitle(title: string): { contributions: ScoreContribution
     }
 
     // Senior titles in blockers
-    const seniorTitles = ['senior', 'sr.', 'lead', 'manager', 'director', 'principal', 'head', 'vp', 'president', 'chief', 'architect'];
+    const seniorTitles = ['senior', 'sr.', 'lead', 'manager', 'director', 'principal', 'head', 'vp', 'president', 'chief', 'architect', 'partner', 'expert'];
     for (const st of seniorTitles) {
         const stRegex = new RegExp(`\\b${st}\\b`, 'i');
         if (stRegex.test(lowerTitle)) {
@@ -150,8 +150,15 @@ export function evaluateExperience(sectionType: SectionType, text: string): { co
     while ((match = exp2to5.exec(lowerText)) !== null) {
         if (sectionType === 'ABOUT_COMPANY' || sectionType === 'BENEFITS') continue;
         
-        const weight = (sectionType === 'REQUIREMENTS' || sectionType === 'BODY' || sectionType === 'INTRO') ? -100 : -10;
-        const rule = (sectionType === 'REQUIREMENTS' || sectionType === 'BODY' || sectionType === 'INTRO') ? 'BLOCKER_EXP_3_5' : 'EXP_3_5';
+        // If the starting number is >= 2, make it a hard blocker everywhere!
+        const matchStr = match[0].replace(/[^\d-]/g, ' ');
+        const nums = matchStr.split('-').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
+        const minYears = nums.length > 0 ? nums[0] : parseInt(match[0].match(/\d+/)?.[0] || '2');
+        
+        // Block anything that explicitly asks for 2+ years, regardless of section.
+        const isBlocker = (minYears >= 2) || (sectionType === 'REQUIREMENTS' || sectionType === 'BODY' || sectionType === 'INTRO');
+        const weight = isBlocker ? -100 : -20;
+        const rule = isBlocker ? 'BLOCKER_EXP_3_5' : 'EXP_3_5';
         
         signals.push({
             type: 'experience',
@@ -162,7 +169,7 @@ export function evaluateExperience(sectionType: SectionType, text: string): { co
             context: getContext(lowerText, match.index, match[0].length)
         });
         contributions.push({ rule, delta: weight, section: sectionType });
-        trace.push({ step: 'evaluateExperience', result: '2-5 years', rule, delta: weight });
+        trace.push({ step: 'evaluateExperience', result: '2+ years', rule, delta: weight });
     }
 
     // Blocker / Strong Negative: 1+ years, 2+ years, 3+ years...
@@ -170,8 +177,12 @@ export function evaluateExperience(sectionType: SectionType, text: string): { co
     while ((match = plusExpRegex.exec(lowerText)) !== null) {
         if (sectionType === 'ABOUT_COMPANY' || sectionType === 'BENEFITS') continue;
         
-        const isBlocker = sectionType === 'REQUIREMENTS' || sectionType === 'BODY' || sectionType === 'INTRO';
-        const weight = isBlocker ? -100 : -15; // weaker penalty in PREFERRED/RESPONSIBILITIES
+        const minYears = parseInt(match[0].match(/\d+/)?.[0] || '1');
+        
+        // If it explicitly asks for 2+ or 3+ years, it's a blocker regardless of section. 
+        // If it asks for 1+ year in a requirements section, it's a blocker.
+        const isBlocker = (minYears >= 2) || (sectionType === 'REQUIREMENTS' || sectionType === 'BODY' || sectionType === 'INTRO');
+        const weight = isBlocker ? -100 : -20; // weaker penalty in PREFERRED/RESPONSIBILITIES if only 1+ years
         const rule = isBlocker ? 'BLOCKER_EXP_PLUS' : 'EXP_PLUS';
 
         signals.push({
@@ -191,8 +202,9 @@ export function evaluateExperience(sectionType: SectionType, text: string): { co
     while ((match = minExpRegex.exec(lowerText)) !== null) {
         if (sectionType === 'ABOUT_COMPANY' || sectionType === 'BENEFITS') continue;
         
-        const isBlocker = sectionType === 'REQUIREMENTS' || sectionType === 'BODY' || sectionType === 'INTRO';
-        const weight = isBlocker ? -100 : -15;
+        const minYears = parseInt(match[0].match(/\d+/)?.[0] || '1');
+        const isBlocker = (minYears >= 2) || (sectionType === 'REQUIREMENTS' || sectionType === 'BODY' || sectionType === 'INTRO');
+        const weight = isBlocker ? -100 : -20;
         const rule = isBlocker ? 'BLOCKER_REQUIRED_SENIORITY' : 'REQUIRED_SENIORITY';
 
         signals.push({

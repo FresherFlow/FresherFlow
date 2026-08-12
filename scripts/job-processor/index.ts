@@ -203,6 +203,7 @@ async function run(): Promise<void> {
             jobs = rows.map(r => ({
                 id: r.id,
                 applyLink: r.apply_link,
+                sourceLink: r.source_url || r.apply_link,
                 source: r.source,
                 company: r.company,
                 title: r.title,
@@ -401,7 +402,16 @@ async function run(): Promise<void> {
                     employmentType: nativeData?.employmentType,
                 });
 
-                const dbLocations = job.location ? [job.location] : (job.locationCity ? [job.locationCity] : []);
+                let parsedLocation: string[] = [];
+                if (job.location) {
+                    if (job.location.startsWith('[')) {
+                        try { parsedLocation = JSON.parse(job.location); }
+                        catch (e) { parsedLocation = [job.location]; }
+                    } else {
+                        parsedLocation = job.location.split(',').map((s: string) => s.trim()).filter(Boolean);
+                    }
+                }
+                const dbLocations = parsedLocation.length > 0 ? parsedLocation : (job.locationCity ? [job.locationCity] : []);
                 const dbSalary = job.salaryMin ? `${job.salaryCurrency || 'INR'} ${job.salaryMin}${job.salaryMax ? '-' + job.salaryMax : ''} / ${job.salaryInterval || 'year'}` : '';
                 const dbWorkMode = job.workFromHomeType ? (job.workFromHomeType.toUpperCase().includes('REMOTE') ? 'REMOTE' : job.workFromHomeType.toUpperCase().includes('HYBRID') ? 'HYBRID' : 'ONSITE') : (job.isRemote ? 'REMOTE' : null);
 
@@ -418,6 +428,7 @@ async function run(): Promise<void> {
                     companyWebsite: job.companyUrl || job.companyWebsite || '',
                     companyLogoUrl: job.companyLogo || job.companyLogoUrl || '',
                     applyLink: nativeData?.applyLink || job.applyLink,
+                    sourceLink: job.sourceLink || job.source_url || job.aggregatorUrl || job.jobUrlDirect || nativeData?.applyLink || job.applyLink,
                     locations: (nativeData?.locations && nativeData.locations.length > 0) ? nativeData.locations : dbLocations,
                     requiredSkills: (nativeData?.nativeSkills && nativeData.nativeSkills.length > 0) ? nativeData.nativeSkills : (Array.isArray(job.skills) ? job.skills : []),
                     workMode: nativeData?.workplaceType ?? dbWorkMode ?? rules.workMode ?? null,
@@ -544,7 +555,8 @@ async function run(): Promise<void> {
                 allExtracted.push(extracted);
                 
                 if (ENABLE_API_UPLOAD) {
-                    const apiSuccess = await saveJobToSupabase(extracted, job.aggregatorUrl || extracted.applyLink, extracted.applyLink);
+                    const sourceUrl = job.sourceLink || job.source_url || job.aggregatorUrl || job.jobUrlDirect || extracted.sourceLink || extracted.applyLink;
+                    const apiSuccess = await saveJobToSupabase(extracted, sourceUrl, extracted.applyLink);
                     if (apiSuccess) {
                         successList.push({ title: extracted.title, company: extracted.company, url: extracted.applyLink });
                         await saveState(job.applyLink, 'PROCESSED');

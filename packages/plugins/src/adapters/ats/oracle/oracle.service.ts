@@ -135,7 +135,7 @@ export class OracleService implements IScraper {
     }
 
     const jobs: JobPostDto[] = collected.map((r) =>
-      this.toJobPost(r, tenant),
+      this.toJobPost(r, tenant, siteNumber),
     );
     console.log(
       `OracleService: ${jobs.length} jobs from ${tenant.domain} (resultsWanted=${resultsWanted}, siteNumber=${siteNumber})`,
@@ -249,6 +249,7 @@ export class OracleService implements IScraper {
   private toJobPost(
     req: OracleRequisition,
     tenant: OracleTenantContext,
+    siteNumber: string,
   ): JobPostDto {
     const location = req.PrimaryLocation
       ? new LocationDto({ city: req.PrimaryLocation })
@@ -256,7 +257,7 @@ export class OracleService implements IScraper {
     const isRemote =
       req.PrimaryLocation?.toLowerCase().includes('remote') ?? false;
 
-    const jobUrl = this.buildJobUrl(req, tenant.baseUrl);
+    const jobUrl = this.buildJobUrl(req, tenant.baseUrl, siteNumber);
 
     return new JobPostDto({
       id: `oracle-${req.Id}`,
@@ -273,17 +274,20 @@ export class OracleService implements IScraper {
   }
 
   /**
-   * Build a job-detail URL. Oracle exposes a SEO-friendly path under
-   * `/careers/job/<id>` that all CandidateExperience tenants honour;
-   * we fall back to that pattern unless the upstream payload provided
-   * an explicit `ExternalUrl` (rare).
+   * Build a job-detail URL using the Oracle CandidateExperience path:
+   * `/hcmUI/CandidateExperience/en/sites/{siteNumber}/job/{id}`
+   *
+   * This matches the actual URLs that Oracle tenants serve to candidates
+   * (e.g. jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/job/210775289).
+   * Falls back to `ExternalUrl` if the tenant provides one.
    */
   private buildJobUrl(
     req: OracleRequisition,
     baseUrl: string,
+    siteNumber: string,
   ): string {
     if (req.ExternalUrl) return req.ExternalUrl;
-    const slug = req.ExternalUrlSeo ?? req.Id;
-    return `${baseUrl}/careers/job/${slug}`;
+    const jobId = req.RequisitionNumber ?? req.Id;
+    return `${baseUrl}/hcmUI/CandidateExperience/en/sites/${siteNumber}/job/${jobId}`;
   }
 }

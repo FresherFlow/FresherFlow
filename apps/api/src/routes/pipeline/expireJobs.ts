@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import prisma from '../../infrastructure/database/prisma';
 import { requireInternalApiKey } from '../../middleware/auth';
@@ -7,6 +8,14 @@ import { adminCache } from '../../infrastructure/cache/adminCache';
 import { logger } from '@fresherflow/logger';
 
 const router = Router();
+
+const pipelineLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests' },
+});
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -69,6 +78,7 @@ const expireJobsSchema = z.object({
  */
 router.post(
     '/expire-jobs',
+    pipelineLimiter,
     requireInternalApiKey,
     async (req: Request, res: Response, next: NextFunction) => {
         try {
@@ -97,7 +107,7 @@ router.post(
                     where: {
                         OR: ids.map((idOrSlug) => [{ id: idOrSlug }, { slug: idOrSlug }]).flat(),
                     },
-                    select: { id: true, slug: true, expiredAt: true, type: true },
+                    select: { id: true, slug: true, expiredAt: true, status: true, type: true },
                 });
 
                 const foundIdSet = new Set(found.map((o) => o.id));
@@ -111,7 +121,7 @@ router.post(
                 }
 
                 for (const opp of found) {
-                    if (opp.expiredAt) {
+                    if (opp.expiredAt || opp.status === 'ARCHIVED') {
                         // Already expired — skip to keep idempotency
                         skippedIds.push(opp.id);
                         continue;
@@ -120,7 +130,7 @@ router.post(
                     await prisma.opportunity.update({
                         where: { id: opp.id },
                         data: {
-                            expiresAt: new Date(now.getTime() - 60 * 60 * 1000), // backdated 1h
+                            status: 'ARCHIVED',
                             expiredAt: now,
                         },
                     });
@@ -147,6 +157,7 @@ router.post(
                         status: 'PUBLISHED',
                         expiresAt: { lt: now },
                         expiredAt: null,
+                        deletedAt: null,
                     },
                     select: { id: true, slug: true, type: true },
                 });
@@ -157,7 +168,7 @@ router.post(
                     await prisma.opportunity.update({
                         where: { id: opp.id },
                         data: {
-                            expiresAt: new Date(now.getTime() - 60 * 60 * 1000), // backdated 1h
+                            status: 'ARCHIVED',
                             expiredAt: now,
                         },
                     });
@@ -185,6 +196,54 @@ router.post(
                 expiredIds,
                 skippedIds,
                 notFoundIds,
+            });
+        } catch (error) {
+            next(error);
+        }
+    },
+);
+
+// ---------------------------------------------------------------------------
+// GET /api/pipeline/sweep-feed
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns active, non-expired, non-deleted published opportunities
+ * with their sourceLink and applyLink for sweeper pipeline consumption.
+ */
+router.get(
+    '/sweep-feed',
+    pipelineLimiter,
+    requireInternalApiKey,
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const now = new Date();
+            const opportunities = await prisma.opportunity.findMany({
+                where: {
+                    status: 'PUBLISHED',
+                    deletedAt: null,
+                    expiredAt: null,
+                    OR: [
+                        { expiresAt: null },
+                        { expiresAt: { gt: now } },
+                    ],
+                },
+                select: {
+                    id: true,
+                    slug: true,
+                    title: true,
+                    company: true,
+                    sourceLink: true,
+                    applyLink: true,
+                    publishedAt: true,
+                },
+                orderBy: {
+                    publishedAt: 'desc',
+                },
+            });
+
+            return res.json({
+                opportunities,
             });
         } catch (error) {
             next(error);

@@ -10,7 +10,7 @@ router.use(searchLimiter);
 router.get('/jobs/processed', async (req: Request, res: Response): Promise<void> => {
   try {
     const { status, limit = 50 } = req.query;
-    let q = 'SELECT id, discovered_job_id as "discoveredId", title, company, company_website as "companyWebsite", company_logo_url as "companyLogoUrl", description, type, locations, structured_locations as "structuredLocations", required_skills as "requiredSkills", allowed_degrees as "allowedDegrees", allowed_courses as "allowedCourses", allowed_specializations as "allowedSpecializations", allowed_passout_years as "allowedPassoutYears", work_mode as "workMode", experience_min as "experienceMin", experience_max as "experienceMax", salary_range as "salaryRange", salary_period as "salaryPeriod", employment_type as "employmentType", job_function as "jobFunction", apply_link as "applyLink", status, created_at as "createdAt", updated_at as "updatedAt" FROM processed_jobs';
+    let q = 'SELECT id, discovered_job_id as "discoveredId", title, company, company_website as "companyWebsite", company_logo_url as "companyLogoUrl", description, type, locations, structured_locations as "structuredLocations", required_skills as "requiredSkills", allowed_degrees as "allowedDegrees", allowed_courses as "allowedCourses", allowed_specializations as "allowedSpecializations", allowed_passout_years as "allowedPassoutYears", work_mode as "workMode", experience_min as "experienceMin", experience_max as "experienceMax", salary_range as "salaryRange", salary_period as "salaryPeriod", employment_type as "employmentType", job_function as "jobFunction", apply_link as "applyLink", source_url as "sourceUrl", status, created_at as "createdAt", updated_at as "updatedAt" FROM processed_jobs';
     const params: any[] = [];
     if (status && status !== 'ALL') {
       q += ' WHERE status = $1';
@@ -24,9 +24,27 @@ router.get('/jobs/processed', async (req: Request, res: Response): Promise<void>
   }
 });
 
+router.post('/jobs/processed/push-batch', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { ids } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      res.status(400).json({ error: 'Missing or invalid ids' });
+      return;
+    }
+    
+    await pool.query("UPDATE processed_jobs SET status = 'PUBLISHED' WHERE id = ANY($1)", [ids]);
+    
+    const q = 'SELECT id, discovered_job_id as "discoveredId", title, company, company_website as "companyWebsite", company_logo_url as "companyLogoUrl", description, type, locations, structured_locations as "structuredLocations", required_skills as "requiredSkills", allowed_degrees as "allowedDegrees", allowed_courses as "allowedCourses", allowed_specializations as "allowedSpecializations", allowed_passout_years as "allowedPassoutYears", work_mode as "workMode", experience_min as "experienceMin", experience_max as "experienceMax", salary_range as "salaryRange", salary_period as "salaryPeriod", employment_type as "employmentType", job_function as "jobFunction", apply_link as "applyLink", source_url as "sourceUrl", status, created_at as "createdAt", updated_at as "updatedAt" FROM processed_jobs WHERE id = ANY($1)';
+    const result = await pool.query(q, [ids]);
+    res.json({ jobs: result.rows });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
 router.post('/push', async (_req: Request, res: Response): Promise<void> => {
   try {
-    const q = 'SELECT id, discovered_job_id as "discoveredId", title, company, company_website as "companyWebsite", company_logo_url as "companyLogoUrl", description, type, locations, structured_locations as "structuredLocations", required_skills as "requiredSkills", allowed_degrees as "allowedDegrees", allowed_courses as "allowedCourses", allowed_specializations as "allowedSpecializations", allowed_passout_years as "allowedPassoutYears", work_mode as "workMode", experience_min as "experienceMin", experience_max as "experienceMax", salary_range as "salaryRange", salary_period as "salaryPeriod", employment_type as "employmentType", job_function as "jobFunction", apply_link as "applyLink", status, created_at as "createdAt", updated_at as "updatedAt" FROM processed_jobs WHERE status = \'PUBLISHED\' ORDER BY created_at DESC LIMIT 500';
+    const q = 'SELECT id, discovered_job_id as "discoveredId", title, company, company_website as "companyWebsite", company_logo_url as "companyLogoUrl", description, type, locations, structured_locations as "structuredLocations", required_skills as "requiredSkills", allowed_degrees as "allowedDegrees", allowed_courses as "allowedCourses", allowed_specializations as "allowedSpecializations", allowed_passout_years as "allowedPassoutYears", work_mode as "workMode", experience_min as "experienceMin", experience_max as "experienceMax", salary_range as "salaryRange", salary_period as "salaryPeriod", employment_type as "employmentType", job_function as "jobFunction", apply_link as "applyLink", source_url as "sourceUrl", status, created_at as "createdAt", updated_at as "updatedAt" FROM processed_jobs WHERE status = \'PUBLISHED\' ORDER BY created_at DESC LIMIT 500';
     const result = await pool.query(q);
     res.json({ jobs: result.rows });
   } catch (error) {
@@ -39,7 +57,7 @@ router.get('/jobs', async (req: Request, res: Response): Promise<void> => {
   try {
     const { status, limit = 50 } = req.query;
     let q =
-      'SELECT id, company, title, location, apply_link, status, ats_type, fresher_score, created_at FROM discovered_jobs';
+      'SELECT id, company, title, location, apply_link, status, source_type as ats_type, fresher_score, created_at FROM discovered_jobs';
     const params: any[] = [];
     if (status && status !== 'ALL') {
       q += ' WHERE status = $1';
@@ -106,6 +124,58 @@ router.delete('/jobs', requireAuth, async (req: Request, res: Response): Promise
     res.json({ ok: true, deleted: ids.length });
   } catch (error) {
     res.status(500).json({ error: String(error) });
+  }
+});
+
+router.get('/jobs/sweep-feed', async (_req: Request, res: Response): Promise<void> => {
+  try {
+    // Fetch non-terminal discovered jobs
+    const discoveredResult = await pool.query(`
+      SELECT id, title, company, apply_link as "applyLink", job_url_direct as "sourceLink", 'discovered' as type 
+      FROM discovered_jobs 
+      WHERE status IN ('DISCOVERED', 'PROCESSING', 'PROCESSED')
+    `);
+    
+    // Fetch non-terminal processed jobs
+    const processedResult = await pool.query(`
+      SELECT id, title, company, apply_link as "applyLink", source_url as "sourceLink", 'processed' as type 
+      FROM processed_jobs 
+      WHERE status IN ('PENDING_REVIEW', 'APPROVED')
+    `);
+    
+    res.json({
+      opportunities: [...discoveredResult.rows, ...processedResult.rows]
+    });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+router.post('/jobs/expire', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { discoveredIds = [], processedIds = [] } = req.body;
+    
+    let expiredCount = 0;
+    
+    if (discoveredIds.length > 0) {
+      const res1 = await pool.query(
+        "UPDATE discovered_jobs SET status = 'EXPIRED' WHERE id = ANY($1)", 
+        [discoveredIds]
+      );
+      expiredCount += res1.rowCount ?? 0;
+    }
+    
+    if (processedIds.length > 0) {
+      const res2 = await pool.query(
+        "UPDATE processed_jobs SET status = 'EXPIRED' WHERE id = ANY($1)", 
+        [processedIds]
+      );
+      expiredCount += res2.rowCount ?? 0;
+    }
+    
+    res.json({ ok: true, expired: expiredCount });
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
   }
 });
 

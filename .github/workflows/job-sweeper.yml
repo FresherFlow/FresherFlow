@@ -43,4 +43,5 @@ jobs:
           NEXT_PUBLIC_CDN_URL: ${{ secrets.NEXT_PUBLIC_CDN_URL }}
           INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
           API_URL: ${{ secrets.API_BASE_URL }}
+          INGESTION_URL: ${{ secrets.INGESTION_URL }}
         run: pnpm start

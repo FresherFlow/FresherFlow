@@ -14,7 +14,13 @@ export async function upsertJobs(jobs: any[], runId: string | null) {
     if (parsed) {
       source = parsed.adapter;
       external_id = parsed.jobId;
-      company = parsed.company;
+      // For ATS jobs, the adapter already resolved the real company name from the API.
+      // Only fall back to URL-parsed company for aggregator jobs.
+      if (job.sourceType === 'ATS' && job.company && job.company !== 'unknown') {
+        company = job.company; // keep what the adapter returned
+      } else {
+        company = parsed.company || job.company || 'unknown';
+      }
     } else if (job.sourceType === 'AGGREGATOR') {
       // For aggregators (e.g. YC, Wellfound), we might not have a clean parser yet.
       // Use the domain as the source.
@@ -39,7 +45,18 @@ export async function upsertJobs(jobs: any[], runId: string | null) {
       review_required: job.reviewRequired || false,
       status: job.reviewRequired ? 'PENDING' : 'APPROVED',
       updated_at: new Date().toISOString(),
-      last_seen_at: new Date().toISOString()
+      last_seen_at: new Date().toISOString(),
+      department: job.department || null,
+      batch_year: job.batchYear || null,
+      degree: job.degree || null,
+      skills: job.skills && Array.isArray(job.skills) ? JSON.stringify(job.skills) : null,
+      location_city: job.parsedLocation?.city || null,
+      location_country: job.parsedLocation?.country || null,
+      description: job.description || null,
+      experience_level: job.experienceLevel || null,
+      experience_years: job.experienceYears || null,
+      is_remote: job.isRemote || false,
+      posted_at: job.postedAt || null
     };
   });
 

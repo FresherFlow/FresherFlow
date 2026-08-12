@@ -222,7 +222,8 @@ export async function fetchSmartRecruitersDetails(applyLink: string): Promise<an
             html,
             text: htmlToPlainText(html),
             locations,
-            company: data.company?.name || ''
+            company: data.company?.name || '',
+            applyLink: data.applyUrl || data.jobAd?.applyUrl || `https://careers.smartrecruiters.com/${company}/${jobId}`
         };
     } catch {
         return undefined;
