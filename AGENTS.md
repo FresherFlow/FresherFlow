@@ -89,6 +89,18 @@ Write code that passes CodeQL without suppressing real issues.
 | Workflows | GitHub Actions need explicit top-level `permissions` |
 | HTML | Do not use regex as a security sanitizer |
 
+### Additional CodeQL rules (preventing known violations)
+| Risk | Rule |
+|---|---|
+| Incomplete URL substring sanitization | Never use `url.includes('domain.com')` for security checks. Always use `new URL(url).hostname === 'domain.com'` or `.endsWith('.domain.com')` |
+| ReDoS (polynomial regex) | Before running a regex on untrusted input, add `if (input.length > 10000) return fallback;`. Avoid nested quantifiers on variable-length patterns |
+| Bad HTML filtering | Never use regex to strip HTML for security. Use a proper allowlist sanitizer or `encodeHtml()` helper |
+| Incomplete multi-char sanitization | When HTML-encoding, always replace `&` first, then `< > " '` in a single encoding function |
+| SSRF | Validate outbound URLs with `new URL()`, check `protocol` and `hostname` against an allowlist. Never use `includes()` on the full URL string |
+| Missing rate limiting | All public API routes (GET and POST) must have `express-rate-limit` middleware |
+| Cert validation | Never set `rejectUnauthorized: false` or `NODE_TLS_REJECT_UNAUTHORIZED=0` in production code |
+| Format string injection | Never interpolate user input directly into format strings, SQL, or URLs without encoding |
+
 CDN and R2 URLs must use signed URL helpers. Do not expose raw private R2 object URLs.
 
 ## ISR and caching policy
