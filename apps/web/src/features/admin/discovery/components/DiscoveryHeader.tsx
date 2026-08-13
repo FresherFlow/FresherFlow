@@ -142,7 +142,7 @@ export function DiscoveryHeader({
 
  {hoursOld !== undefined && setHoursOld && (
  <Select value={hoursOld.toString()} onValueChange={(val) => setHoursOld(Number(val))}>
- <SelectTrigger className="h-7 px-2 w-[110px] rounded-lg bg-background border border-border/80 text-foreground text-xs focus:outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer">
+ <SelectTrigger className="h-7 px-2 w-[110px] rounded-lg bg-background border border-border/80 text-foreground text-xs focus:outline-none focus-visible:bg-muted/60 focus-visible:text-foreground cursor-pointer">
  <SelectValue placeholder="Hours" />
  </SelectTrigger>
  <SelectContent className="min-w-[110px]">

@@ -3,6 +3,7 @@ import { useMemo, useEffect, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useFeedHeader } from '@/lib/context/FeedHeaderContext';
 import Link from 'next/link';
+import { getAtsName } from '@/features/opportunities/hooks/useOpportunitiesFeed';
 import { useRouter } from 'next/navigation';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 import dynamic from 'next/dynamic';
@@ -232,6 +233,51 @@ export function CategoryPageView({
     const { setCount } = useFeedHeader();
     const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
 
+    const filterAggregates = useMemo(() => {
+        const locations: Record<string, number> = {};
+        const skills: Record<string, number> = {};
+        const sources: Record<string, number> = {};
+        const years: Record<string, number> = {};
+
+        opportunities.forEach(opp => {
+            (opp.locations || []).forEach(loc => {
+                const l = loc.trim();
+                if (l) locations[l] = (locations[l] || 0) + 1;
+            });
+            ((opp as any).skills || opp.requiredSkills || []).forEach((s: string) => {
+                const skill = s.trim();
+                if (skill) skills[skill] = (skills[skill] || 0) + 1;
+            });
+            const atsName = getAtsName(opp.applyLink || (opp as any).sourceLink || opp.companyWebsite);
+            if (atsName) {
+                sources[atsName] = (sources[atsName] || 0) + 1;
+            }
+            let passoutYears = [...((opp as any).allowedPassoutYears || [])];
+            if (passoutYears.length === 0 && opp.passoutYearMin && opp.passoutYearMax) {
+                const min = Number(opp.passoutYearMin);
+                const max = Number(opp.passoutYearMax);
+                if (!isNaN(min) && !isNaN(max) && min <= max) {
+                    passoutYears = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+                }
+            }
+            if (passoutYears.length === 0) {
+                const match = opp.title.match(/(202[0-9]|2030)/);
+                if (match) passoutYears = [Number(match[0])];
+            }
+            passoutYears.forEach((y: string | number) => {
+                const year = String(y).trim();
+                if (year) years[year] = (years[year] || 0) + 1;
+            });
+        });
+
+        const filteredLocations: Record<string, number> = {};
+        for (const [loc, count] of Object.entries(locations)) {
+            if (count >= 2) filteredLocations[loc] = count;
+        }
+
+        return { locations: filteredLocations, skills, sources, years };
+    }, [opportunities]);
+
     // Reset scroll when type changes
     useEffect(() => {
         const container = document.getElementById('feed-scroll-container');
@@ -388,7 +434,7 @@ export function CategoryPageView({
                     {/* Desktop filter dropdowns + toggle */}
                     <div className="hidden lg:flex items-center gap-2 flex-wrap">
 
-                        <FilterDropdownBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} />
+                        <FilterDropdownBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} aggregates={filterAggregates} />
                         {type !== OpportunityType.GOVERNMENT && (
                             <Hint label={showDetail ? 'Hide detail pane' : 'Show detail pane'} side="top" avoidCollisions={false}>
                                 <button
@@ -425,66 +471,73 @@ export function CategoryPageView({
             {type !== OpportunityType.GOVERNMENT && (
                 <div className={cn("flex flex-wrap items-center gap-2 pb-4", selectedOpp && "hidden lg:flex")}>
                     {search && (
-                        <button onClick={() => setSearch('')} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
-                            <MagnifyingGlassIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                        <button onClick={() => setSearch('')} className="inline-flex items-center gap-1.5 pl-3.5 pr-2.5 py-1.5 rounded-full bg-muted/60 text-foreground text-sm font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
+                            <MagnifyingGlassIcon className="w-4 h-4 text-muted-foreground" />
                             {search}
-                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                            <XMarkIcon className="w-4 h-4 text-muted-foreground ml-1" />
                         </button>
                     )}
                     {filters.workMode?.map(m => (
-                        <button key={m} onClick={() => setFilters({...filters, workMode: filters.workMode!.filter(x => x !== m).length > 0 ? filters.workMode!.filter(x => x !== m) : null})} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
-                            <HomeIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                        <button key={m} onClick={() => setFilters({...filters, workMode: filters.workMode!.filter(x => x !== m).length > 0 ? filters.workMode!.filter(x => x !== m) : null})} className="inline-flex items-center gap-1.5 pl-3.5 pr-2.5 py-1.5 rounded-full bg-muted/60 text-foreground text-sm font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
+                            <HomeIcon className="w-4 h-4 text-muted-foreground" />
                             {m === 'REMOTE' ? 'Remote' : m === 'HYBRID' ? 'Hybrid' : 'On-site'}
-                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                            <XMarkIcon className="w-4 h-4 text-muted-foreground ml-1" />
                         </button>
                     ))}
                     {filters.location && (
-                        <button onClick={() => setFilters({...filters, location: null})} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
-                            <MapPinIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                        <button onClick={() => setFilters({...filters, location: null})} className="inline-flex items-center gap-1.5 pl-3.5 pr-2.5 py-1.5 rounded-full bg-muted/60 text-foreground text-sm font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
+                            <MapPinIcon className="w-4 h-4 text-muted-foreground" />
                             {filters.location}
-                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                            <XMarkIcon className="w-4 h-4 text-muted-foreground ml-1" />
                         </button>
                     )}
                     {filters.sector && (
-                        <button onClick={() => setFilters({...filters, sector: null})} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
-                            <BuildingOfficeIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                        <button onClick={() => setFilters({...filters, sector: null})} className="inline-flex items-center gap-1.5 pl-3.5 pr-2.5 py-1.5 rounded-full bg-muted/60 text-foreground text-sm font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
+                            <BuildingOfficeIcon className="w-4 h-4 text-muted-foreground" />
                             {filters.sector}
-                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                            <XMarkIcon className="w-4 h-4 text-muted-foreground ml-1" />
                         </button>
                     )}
                     {filters.skills?.map(s => (
-                        <button key={s} onClick={() => setFilters({...filters, skills: filters.skills!.filter(x => x !== s)})} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] font-medium hover:bg-indigo-100 transition-colors cursor-pointer outline-none">
+                        <button key={s} onClick={() => setFilters({...filters, skills: filters.skills!.filter(x => x !== s)})} className="inline-flex items-center gap-1.5 pl-3.5 pr-2.5 py-1.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-sm font-medium hover:bg-indigo-100 transition-colors cursor-pointer outline-none">
                             <SkillPill skill={s} className="bg-transparent border-none p-0 h-auto text-inherit shadow-none" />
-                            <XMarkIcon className="w-3.5 h-3.5 text-indigo-700 ml-1" />
+                            <XMarkIcon className="w-4 h-4 text-indigo-700 ml-1" />
+                        </button>
+                    ))}
+                    {filters.source?.map(src => (
+                        <button key={src} onClick={() => setFilters({...filters, source: filters.source!.filter(x => x !== src)})} className="inline-flex items-center gap-1.5 pl-3.5 pr-2.5 py-1.5 rounded-full bg-muted/60 text-foreground text-sm font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
+                            <BriefcaseIcon className="w-4 h-4 text-muted-foreground" />
+                            {src}
+                            <XMarkIcon className="w-4 h-4 text-muted-foreground ml-1" />
                         </button>
                     ))}
                     {filters.course && (
-                        <button onClick={() => setFilters({...filters, course: null})} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
-                            <AcademicCapIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                        <button onClick={() => setFilters({...filters, course: null})} className="inline-flex items-center gap-1.5 pl-3.5 pr-2.5 py-1.5 rounded-full bg-muted/60 text-foreground text-sm font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
+                            <AcademicCapIcon className="w-4 h-4 text-muted-foreground" />
                             {filters.course}
-                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                            <XMarkIcon className="w-4 h-4 text-muted-foreground ml-1" />
                         </button>
                     )}
                     {filters.qualification && (
-                        <button onClick={() => setFilters({...filters, qualification: null})} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
-                            <AcademicCapIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                        <button onClick={() => setFilters({...filters, qualification: null})} className="inline-flex items-center gap-1.5 pl-3.5 pr-2.5 py-1.5 rounded-full bg-muted/60 text-foreground text-sm font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
+                            <AcademicCapIcon className="w-4 h-4 text-muted-foreground" />
                             {filters.qualification}
-                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                            <XMarkIcon className="w-4 h-4 text-muted-foreground ml-1" />
                         </button>
                     )}
                     {filters.year && (
-                        <button onClick={() => setFilters({...filters, year: null})} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-muted/60 text-foreground text-xs font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
-                            <AcademicCapIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                        <button onClick={() => setFilters({...filters, year: null})} className="inline-flex items-center gap-1.5 pl-3.5 pr-2.5 py-1.5 rounded-full bg-muted/60 text-foreground text-sm font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
+                            <AcademicCapIcon className="w-4 h-4 text-muted-foreground" />
                             Class of {filters.year}
-                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                            <XMarkIcon className="w-4 h-4 text-muted-foreground ml-1" />
                         </button>
                     )}
-                    {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0)) ? (
+                    {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0) || (filters.source && filters.source.length > 0)) ? (
                         <button
                             onClick={clearAll}
-                            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors ml-1 outline-none"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors ml-1 outline-none"
                         >
-                            <XMarkIcon className="w-3.5 h-3.5" />
+                            <XMarkIcon className="w-4 h-4" />
                             clear all
                         </button>
                     ) : null}
@@ -507,6 +560,7 @@ export function CategoryPageView({
                 draftCourse={draftCourse} setDraftCourse={setDraftCourse}
                 isLoggedIn={!!user}
                 pageType={type ?? undefined}
+                aggregates={filterAggregates}
                 onApply={applyMobileFilters}
                 onClear={() => {
                     setDraftLoc(null); setDraftYear(null); setDraftClosingSoon(false);
@@ -748,7 +802,7 @@ function RelatedSearches({
         
         opportunities.forEach(opp => {
             const oppAny = opp as any;
-            const skills = Array.isArray(oppAny.requiredSkills) ? oppAny.requiredSkills : [];
+            const skills = ((oppAny as any).skills || oppAny.requiredSkills || []);
             const roles = [];
             if (oppAny.normalizedRole) roles.push(oppAny.normalizedRole);
             if (oppAny.jobFunction) roles.push(oppAny.jobFunction);

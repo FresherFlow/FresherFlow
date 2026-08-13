@@ -17,7 +17,7 @@ export async function generateMetadata(props: CompanyResourcesPageProps) {
     );
     
     return {
-        title: `${companyName || 'Company'} Prep Resources | FresherFlow`,
+        title: `${companyName || 'Company'} Prep Resources`,
     };
 }
 

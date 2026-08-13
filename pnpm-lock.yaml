@@ -1705,6 +1705,12 @@ importers:
 
   scripts/sweeper:
     dependencies:
+      '@fresherflow/parser':
+        specifier: workspace:^
+        version: link:../../packages/parser
+      '@fresherflow/plugins':
+        specifier: workspace:^
+        version: link:../../packages/plugins
       '@fresherflow/utils':
         specifier: workspace:*
         version: link:../../packages/utils

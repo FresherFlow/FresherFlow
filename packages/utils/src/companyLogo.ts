@@ -28,7 +28,10 @@ export function resolveCompanyWebsiteAndLogo(
             return h.includes('oraclecloud') || h.includes('myworkdayjobs') || h.includes('eightfold') ||
                    h.includes('greenhouse') || h.includes('lever') || h.includes('darwinbox') ||
                    h.includes('successfactors') || h.includes('taleo') || h.includes('icims') ||
-                   h.includes('jobvite') || h.includes('recruitee');
+                   h.includes('jobvite') || h.includes('recruitee') || h.includes('smartrecruiters') ||
+                   h.includes('ashbyhq') || h.includes('freshteam') || h.includes('keka') ||
+                   h.includes('peoplestrong') || h.includes('phenom') || h.includes('bamboohr') ||
+                   h.includes('workable') || h.includes('zoho') || h.includes('breezy');
         } catch {
             return false;
         }
@@ -51,7 +54,11 @@ export function resolveCompanyWebsiteAndLogo(
                 host === 'taleo.net' || host.endsWith('.taleo.net') ||
                 host === 'icims.com' || host.endsWith('.icims.com') ||
                 host === 'jobvite.com' || host.endsWith('.jobvite.com') ||
-                host === 'recruitee.com' || host.endsWith('.recruitee.com')
+                host === 'recruitee.com' || host.endsWith('.recruitee.com') ||
+                host === 'freshteam.com' || host.endsWith('.freshteam.com') ||
+                host === 'keka.com' || host.endsWith('.keka.com') ||
+                host === 'bamboohr.com' || host.endsWith('.bamboohr.com') ||
+                host === 'workable.com' || host.endsWith('.workable.com')
             ) {
                 const parts = host.split('.');
                 let subdomain = parts[0];
@@ -67,6 +74,11 @@ export function resolveCompanyWebsiteAndLogo(
                 } else {
                     website = `https://${subdomain}.com`;
                 }
+            } else if (isAtsUrl(applyLink)) {
+                // For ATS domains where company is in the path (e.g. jobs.smartrecruiters.com/Company)
+                // or we don't have a reliable subdomain extraction logic, fallback to company name
+                const cleanName = company.toLowerCase().replace(/[^a-z0-9]/g, '');
+                website = `https://${cleanName}.com`;
             } else {
                 // E.g. careers.cisco.com -> cisco.com
                 const parts = host.split('.');

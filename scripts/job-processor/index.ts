@@ -531,9 +531,9 @@ async function run(): Promise<void> {
                 }
 
                 // Fresher-only gate: skip non-fresher roles
-                if ((extracted.experienceMin ?? 0) > 2) {
+                if ((extracted.experienceMin ?? 0) > 1) {
                     console.log(`[FILTER] Non-fresher skipped: experienceMin=${extracted.experienceMin}`);
-                    failureList.push({ url: job.applyLink, reason: 'Non-fresher (experienceMin > 2)' });
+                    failureList.push({ url: job.applyLink, reason: 'Non-fresher (experienceMin > 1)' });
                     if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
                     continue;
                 }

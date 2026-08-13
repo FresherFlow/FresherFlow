@@ -88,7 +88,7 @@ export function TargetCompaniesTab({
         {/* Filters */}
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
           <DropdownMenu>
-            <DropdownMenuTrigger className="w-full sm:w-40 px-3 py-1.5 rounded-lg border border-border/80 bg-card text-sm font-medium focus:outline-none focus-visible:ring-1 focus-visible:ring-primary h-auto flex items-center justify-between">
+            <DropdownMenuTrigger className="w-full sm:w-40 px-3 py-1.5 rounded-lg border border-border/80 bg-card text-sm font-medium focus:outline-none focus-visible:bg-muted/60 focus-visible:text-foreground h-auto flex items-center justify-between">
               {atsFilter === 'ALL' ? 'All ats types' : atsFilter}
               <ChevronDownIcon className="w-4 h-4 ml-2 opacity-50" />
             </DropdownMenuTrigger>
@@ -107,7 +107,7 @@ export function TargetCompaniesTab({
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search targets or ATS..."
-              className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-border/80 bg-card text-sm font-medium placeholder:text-muted-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+              className="w-full pl-9 pr-3 py-1.5 rounded-lg border border-border/80 bg-card text-sm font-medium placeholder:text-muted-foreground focus:outline-none focus-visible:bg-muted/60 focus-visible:text-foreground"
             />
           </div>
         </div>

@@ -9,8 +9,10 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "playwright": "^1.62.1",
-    "@fresherflow/utils": "workspace:*"
+    "@fresherflow/parser": "workspace:^",
+    "@fresherflow/plugins": "workspace:^",
+    "@fresherflow/utils": "workspace:*",
+    "playwright": "^1.62.1"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

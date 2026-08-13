@@ -78,9 +78,24 @@ export function ProcessedJobsTab() {
         body: JSON.stringify({ ids }),
       });
       if (res.ok) {
-        setJobs(prev => prev.map(j => (j.id && ids.includes(j.id)) ? { ...j, status: 'PUBLISHED' } : j));
-        setSelectedJobIds(new Set());
-        toast.success('Selected jobs pushed to DB');
+        const { pushed, failed, successfulIds = [], failedIds = [] } = await res.json();
+        setJobs(prev => prev.map(j => {
+          if (j.id && successfulIds.includes(j.id)) return { ...j, status: 'PUBLISHED' };
+          if (j.id && failedIds.includes(j.id)) return { ...j, status: 'REJECTED' };
+          return j;
+        }));
+        
+        // Remove successful and failed ones from the selected set
+        const newSet = new Set(selectedJobIds);
+        successfulIds.forEach((id: string) => newSet.delete(id));
+        failedIds.forEach((id: string) => newSet.delete(id));
+        setSelectedJobIds(newSet);
+        
+        if (failed > 0) {
+          toast.success(`${pushed} jobs pushed, but ${failed} failed validation.`);
+        } else {
+          toast.success(`${pushed} jobs pushed to DB`);
+        }
       } else {
         const error = await res.json();
         toast.error(`Failed to push: ${error.error || 'Unknown error'}`);
@@ -212,7 +227,7 @@ export function ProcessedJobsTab() {
          value={search}
          onChange={e => setSearch(e.target.value)}
          placeholder="Search processed jobs..."
-         className="w-full pl-9 pr-3 py-1.5 h-10 rounded-lg border border-border/80 bg-card text-xs font-medium placeholder:text-muted-foreground focus:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+         className="w-full pl-9 pr-3 py-1.5 h-10 rounded-lg border border-border/80 bg-card text-xs font-medium placeholder:text-muted-foreground focus:outline-none focus-visible:bg-muted/60 focus-visible:text-foreground"
        />
      </div>
       {selectedJobIds.size > 0 && (
@@ -240,7 +255,7 @@ export function ProcessedJobsTab() {
      <div className="flex items-center gap-2 shrink-0">
        <FunnelIcon className="w-4 h-4 text-muted-foreground" />
         <Select value={atsFilter} onValueChange={setAtsFilter}>
-          <SelectTrigger className="h-10 text-xs py-1 min-w-[120px] w-auto border-border/80 bg-card focus:outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer">
+          <SelectTrigger className="h-10 text-xs py-1 min-w-[120px] w-auto border-border/80 bg-card focus:outline-none focus-visible:bg-muted/60 focus-visible:text-foreground cursor-pointer">
             <SelectValue placeholder="All ATS" />
           </SelectTrigger>
           <SelectContent>
@@ -251,7 +266,7 @@ export function ProcessedJobsTab() {
           </SelectContent>
         </Select>
        <Select value={statusFilter} onValueChange={setStatusFilter}>
-         <SelectTrigger className="h-10 text-xs py-1 min-w-[140px] w-auto border-border/80 bg-card focus:outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer">
+         <SelectTrigger className="h-10 text-xs py-1 min-w-[140px] w-auto border-border/80 bg-card focus:outline-none focus-visible:bg-muted/60 focus-visible:text-foreground cursor-pointer">
            <SelectValue placeholder="All Status" />
          </SelectTrigger>
          <SelectContent>
@@ -448,7 +463,7 @@ export function ProcessedJobsTab() {
  <TableCell className="py-3 px-4 text-right">
    <DropdownMenu>
      <DropdownMenuTrigger asChild>
-       <button className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-colors cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-primary">
+       <button className="p-1.5 rounded-md hover:bg-muted text-muted-foreground transition-colors cursor-pointer focus:outline-none focus-visible:bg-muted/60 focus-visible:text-foreground">
          <EllipsisHorizontalIcon className="w-5 h-5" />
        </button>
      </DropdownMenuTrigger>

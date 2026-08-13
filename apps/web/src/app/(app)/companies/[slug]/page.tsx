@@ -2,19 +2,16 @@ import type { Metadata } from 'next';
 import { permanentRedirect, notFound } from 'next/navigation';
 import { logRouteResult } from '@/lib/observability';
 import JobCard from '@/features/opportunities/components/JobCard';
-import { GlobeAltIcon, BriefcaseIcon, CheckBadgeIcon, BuildingOffice2Icon } from '@heroicons/react/24/outline';
 
 import Link from 'next/link';
 import CompanyLogo from '@/ui/CompanyLogo';
 import { Card } from '@/ui/Card';
-import { Badge } from '@/ui/Badge';
-import { PageTagLinks } from '@/ui/PageTagLinks';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
-import { detectAtsProvider } from '@/features/companies/utils/atsDetector';
-import { getCompanyDescription, TIER_A_SLUGS } from '@/features/companies/utils/companyContent';
+import { TIER_A_SLUGS, getCompanyDescription } from '@/features/companies/utils/companyContent';
 import { fetchCompanyShard, fetchCompaniesMetadata, fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import CompanyFollowButton from '@/features/companies/components/CompanyFollowButton';
+import { PageTagLinks } from '@/features/companies/components/PageTagLinks';
 
 export const revalidate = false;
 export const dynamicParams = false;
@@ -145,40 +142,43 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     const companyName = (feed as any)?.company || companyJobs[0]?.company ||
         targetSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
-    const allSkills = Array.from(new Set(companyJobs.flatMap(j => j.requiredSkills || []))).filter(Boolean);
-    const allLocations = Array.from(new Set(companyJobs.flatMap(j => j.locations || []))).filter(Boolean);
-
-    const stats = {
-        activeJobsCount: companyJobs.length,
-        locations: allLocations,
-        skills: allSkills,
-        roles: Array.from(new Set(companyJobs.map(j => j.jobFunction || j.title))).filter(Boolean),
-    };
-
     const firstJob = companyJobs[0];
-    const atsProvider = detectAtsProvider([
-        firstJob?.companyWebsite,
-        ...companyJobs.flatMap(j => [j.applyLink, j.sourceLink])
-    ]);
 
+    const allSkills = Array.from(new Set(companyJobs.flatMap(j => (j as any).requiredSkills || []))).filter(Boolean);
+    const allLocations = Array.from(new Set(companyJobs.flatMap(j => (j as any).locations || []))).filter(Boolean);
+    const stats = { locations: allLocations, skills: allSkills };
     const companyDescriptionHtml = getCompanyDescription(targetSlug, companyName, stats);
 
     if (companyJobs.length === 0) {
         logRouteResult('/companies/[slug]', '200');
         return (
-            <div className="min-h-screen bg-background pb-20">
-                <main className="max-w-7xl mx-auto px-4 md:px-6 py-16 space-y-8">
-                    <Card className="text-center space-y-4 py-16 p-8">
-                        <h1 className="text-3xl font-bold tracking-tight text-foreground">{companyName}</h1>
-                        <p className="text-sm text-muted-foreground">No active fresher listings right now. Check back soon.</p>
-                        <Link href="/" className="inline-block mt-2 text-sm font-semibold text-primary hover:underline">Browse all opportunities →</Link>
+            <div className="bg-background pb-10 font-sans">
+                <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
+                    <div className="flex items-center justify-between gap-4 pb-2.5">
+                        <div className="flex items-center gap-3.5 min-w-0">
+                            <CompanyLogo
+                                companyName={companyName}
+                                className="w-10 h-10 md:w-12 md:h-12 rounded-xl shrink-0 border border-border/40 bg-background p-0.5 object-contain"
+                            />
+                            <h1 className="text-xl md:text-2xl font-extrabold text-foreground tracking-tight leading-tight truncate">
+                                {companyName}
+                            </h1>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                            <CompanyFollowButton companySlug={targetSlug} companyName={companyName} />
+                        </div>
+                    </div>
+
+                    <Card className="text-center space-y-3 py-12 p-6">
+                        <p className="text-sm text-muted-foreground">No active job listings for {companyName} right now.</p>
+                        <Link href="/jobs" className="inline-block text-sm font-semibold text-primary hover:underline">
+                            Browse all opportunities →
+                        </Link>
                     </Card>
-                    <Card className="p-6 md:p-8 space-y-3">
-                        <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">About {companyName}</h2>
-                        <div
-                            className="text-sm text-muted-foreground leading-relaxed space-y-3 company-description-prose"
-                            dangerouslySetInnerHTML={{ __html: companyDescriptionHtml }}
-                        />
+
+                    <Card className="p-6 md:p-8 space-y-3 shadow-none bg-muted/20 border-border/40 mt-8">
+                        <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">About {companyName}</h2>
+                        <div className="text-sm text-muted-foreground leading-relaxed space-y-3 company-description-prose" dangerouslySetInnerHTML={{ __html: companyDescriptionHtml }} />
                     </Card>
                 </main>
             </div>
@@ -188,95 +188,58 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     logRouteResult('/companies/[slug]', '200');
 
     return (
-        <div className="min-h-screen bg-background pb-20 font-sans">
-            <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 space-y-8">
+        <div className="bg-background pb-10 font-sans">
+            <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
 
-                {/* Single Elegant Company Header */}
-                <Card className="p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="flex items-center gap-4">
+                {/* Clean Transparent Header: Company Logo, Company Name, Follow button */}
+                <div className="flex items-center justify-between gap-4 pb-2.5">
+                    <div className="flex items-center gap-3.5 min-w-0">
                         <CompanyLogo
                             companyName={companyName}
                             companyWebsite={firstJob.companyWebsite}
                             companyLogoUrl={firstJob.companyLogoUrl}
                             applyLink={firstJob.applyLink}
                             isGovernment={firstJob.type === 'GOVERNMENT' || Boolean(firstJob.governmentJobDetails)}
-                            className="w-16 h-16 md:w-20 md:h-20 rounded-2xl shrink-0"
+                            className="w-10 h-10 md:w-12 md:h-12 rounded-xl shrink-0 border border-border/40 bg-background p-0.5 object-contain"
                         />
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
-                                    {companyName}
-                                </h1>
-                                <Badge variant="default" className="gap-1 px-2.5 py-0.5 text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
-                                    <CheckBadgeIcon className="w-3.5 h-3.5" /> Verified Hirer
-                                </Badge>
-                                {atsProvider && !['direct ats', 'official portal', 'unknown', 'direct'].includes(atsProvider.toLowerCase().trim()) && (
-                                    <Badge variant="outline" className="gap-1 px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-                                        <BuildingOffice2Icon className="w-3.5 h-3.5" /> {atsProvider}
-                                    </Badge>
-                                )}
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground font-medium">
-                                {firstJob.companyWebsite && (
-                                    <a
-                                        href={firstJob.companyWebsite as string}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-1.5 hover:text-primary transition-colors"
-                                    >
-                                        <GlobeAltIcon className="w-3.5 h-3.5" />
-                                        Official Website
-                                    </a>
-                                )}
-                                <span className="flex items-center gap-1.5">
-                                    <BriefcaseIcon className="w-3.5 h-3.5" />
-                                    {companyJobs.length} Active {companyJobs.length === 1 ? 'Opening' : 'Openings'}
-                                </span>
-                            </div>
-                        </div>
+                        <h1 className="text-xl md:text-2xl font-extrabold text-foreground tracking-tight leading-tight truncate">
+                            {companyName}
+                        </h1>
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0">
                         <CompanyFollowButton companySlug={targetSlug} companyName={companyName} />
                     </div>
-                </Card>
-
-                {/* Job Cards — full width grid */}
-                <div className="space-y-3">
-                    <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Active Roles at {companyName}</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
-                        {companyJobs.map((job) => (
-                            <JobCard
-                                key={job.id}
-                                job={{
-                                    ...job,
-                                    company: companyName,
-                                    normalizedRole: job.title,
-                                    salary: (job.salaryMin !== undefined && job.salaryMax !== undefined)
-                                        ? { min: job.salaryMin, max: job.salaryMax }
-                                        : undefined,
-                                }}
-                                jobId={job.id}
-                                isApplied={(job.actions || []).some((a: { actionType: string }) => a.actionType === 'APPLIED')}
-                            />
-                        ))}
-                    </div>
                 </div>
 
-                {/* Tech Stack & Tags */}
+                {/* Job Cards */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+                    {companyJobs.map((job) => (
+                        <JobCard
+                            key={job.id}
+                            job={{
+                                ...job,
+                                company: companyName,
+                                normalizedRole: job.title,
+                                salary: (job.salaryMin !== undefined && job.salaryMax !== undefined)
+                                    ? { min: job.salaryMin, max: job.salaryMax }
+                                    : undefined,
+                            }}
+                            jobId={job.id}
+                            isApplied={(job.actions || []).some((a: { actionType: string }) => a.actionType === 'APPLIED')}
+                        />
+                    ))}
+                </div>
+
                 <PageTagLinks skills={allSkills} locations={allLocations} />
 
-                {/* About — clean content card at the bottom */}
-                <Card className="p-6 md:p-8 space-y-3">
+                <Card className="p-6 md:p-8 space-y-3 shadow-none bg-muted/20 border-border/40 mt-8">
                     <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">About {companyName}</h2>
-                    <div
-                        className="text-sm text-muted-foreground leading-relaxed space-y-3 company-description-prose"
-                        dangerouslySetInnerHTML={{ __html: companyDescriptionHtml }}
-                    />
+                    <div className="text-sm text-muted-foreground leading-relaxed space-y-3 company-description-prose" dangerouslySetInnerHTML={{ __html: companyDescriptionHtml }} />
                 </Card>
 
             </main>
         </div>
     );
 }
+

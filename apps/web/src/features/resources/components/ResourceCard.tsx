@@ -243,9 +243,12 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ collection, isSaved,
                                             window.open(item.url, '_blank', 'noopener,noreferrer');
                                         }
                                     }}
-                                    className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/80 text-foreground hover:text-primary transition-colors cursor-pointer"
+                                    className="group/btn inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/80 text-foreground hover:text-primary transition-colors cursor-pointer"
                                 >
                                     <span className="truncate max-w-[200px]">{item.title || `Resource ${idx + 1}`}</span>
+                                    <div className="w-0 overflow-hidden opacity-0 group-hover/btn:w-3.5 group-hover/btn:ml-1 group-hover/btn:opacity-100 transition-all duration-200">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                                    </div>
                                 </button>
                             ))}
                         </div>

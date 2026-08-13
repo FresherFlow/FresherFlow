@@ -51,7 +51,7 @@ async function checkJob(page: Page, url: string, isSecondPass = false): Promise<
         }
 
         const finalUrl = page.url().toLowerCase();
-        if (finalUrl.includes('not_found') || finalUrl.includes('jobnotfound') || finalUrl.includes('job-not-found') || finalUrl.includes('/jobnotfound') || finalUrl.includes('/job-not-found')) {
+        if (finalUrl.includes('not_found') || finalUrl.includes('jobnotfound') || finalUrl.includes('job-not-found') || finalUrl.includes('/jobnotfound') || finalUrl.includes('/job-not-found') || finalUrl.includes('/expired') || finalUrl.includes('error=true')) {
             console.log(`  -> URL indicates job not found / redirect to portal: ${page.url()}. Marking as expired.`);
             return { status: 'expired' };
         }
@@ -102,12 +102,14 @@ async function checkJob(page: Page, url: string, isSecondPass = false): Promise<
         } catch (e) {}
 
         const rawBody = await page.locator('body').innerText({ timeout: 500 }).catch(() => "");
-        const bodyText = mainText || (rawBody + " " + iframeText);
-        const lowerText = bodyText.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/\s+/g, ' ');
+        const bodyText = mainText || (rawBody + " " + iframeText); // Used for length check
+        
+        // Always check the FULL raw body (including toasts/modals outside main) for expired phrases
+        const checkText = (rawBody + " " + iframeText).toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/\s+/g, ' ');
 
         let hasExpiredPhrase = false;
         for (const pattern of EXPIRED_REGEXES) {
-            if (pattern.test(lowerText)) {
+            if (pattern.test(checkText)) {
                 hasExpiredPhrase = true;
                 break;
             }

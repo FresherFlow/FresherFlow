@@ -35,6 +35,13 @@ export const GREENHOUSE_COMPANY_TO_SLUG = new Map<string, string>();
 // candidate experience URL prefix -> company name (e.g. 'https://jpmc.fa.oraclecloud.com/...' -> 'Jpmc')
 export const ORACLE_SLUG_MAP = new Map<string, string>();
 
+// Workday candidate experience / posting URL prefix or slug -> company name
+export const WORKDAY_URL_MAP = new Map<string, string>();
+
+// SmartRecruiters board slug -> company name
+export const SMARTRECRUITERS_SLUG_MAP = new Map<string, string>();
+
+
 export let CANONICAL_EDUCATION: EducationData = {
     educationLevels: ['DIPLOMA', 'DEGREE', 'PG'],
     courses: {},
@@ -216,6 +223,7 @@ export async function loadCdnMetadata(): Promise<void> {
         try {
             const slugMap = JSON.parse(oracleJson) as Record<string, string>;
             for (const [prefix, company] of Object.entries(slugMap)) {
+                if (prefix.startsWith('//')) continue;
                 ORACLE_SLUG_MAP.set(prefix.toLowerCase().trim(), company);
             }
             console.log(`Loaded ${ORACLE_SLUG_MAP.size} Oracle candidate experience URL prefix mappings.`);
@@ -223,6 +231,52 @@ export async function loadCdnMetadata(): Promise<void> {
             console.error('Failed to parse ats/oracle.json:', err);
         }
     }
+
+    // 7. ATS Workday URL prefix / slug mappings (ats/workday.json → { key: companyName })
+    const workdayJson = await fetchWithCache('ats/workday.json');
+    if (workdayJson) {
+        try {
+            const map = JSON.parse(workdayJson) as Record<string, string>;
+            for (const [key, company] of Object.entries(map)) {
+                if (key.startsWith('//')) continue;
+                const lowerKey = key.toLowerCase().trim();
+                WORKDAY_URL_MAP.set(lowerKey, company);
+                if (lowerKey.startsWith('http://') || lowerKey.startsWith('https://')) {
+                    try {
+                        const host = new URL(lowerKey).hostname;
+                        const sub = host.split('.')[0];
+                        if (sub && !WORKDAY_URL_MAP.has(sub)) {
+                            WORKDAY_URL_MAP.set(sub, company);
+                        }
+                    } catch { /* ignore */ }
+                } else if (lowerKey.includes(':')) {
+                    const sub = lowerKey.split(':')[0];
+                    if (sub && !WORKDAY_URL_MAP.has(sub)) {
+                        WORKDAY_URL_MAP.set(sub, company);
+                    }
+                }
+            }
+            console.log(`Loaded ${WORKDAY_URL_MAP.size} Workday URL/slug mappings.`);
+        } catch (err) {
+            console.error('Failed to parse ats/workday.json:', err);
+        }
+    }
+
+    // 8. ATS SmartRecruiters slug mappings (ats/smartrecruiters.json → { slug: companyName })
+    const smartrecruitersJson = await fetchWithCache('ats/smartrecruiters.json');
+    if (smartrecruitersJson) {
+        try {
+            const map = JSON.parse(smartrecruitersJson) as Record<string, string>;
+            for (const [slug, company] of Object.entries(map)) {
+                if (slug.startsWith('//')) continue;
+                SMARTRECRUITERS_SLUG_MAP.set(slug.toLowerCase().trim(), company);
+            }
+            console.log(`Loaded ${SMARTRECRUITERS_SLUG_MAP.size} SmartRecruiters board slugs.`);
+        } catch (err) {
+            console.error('Failed to parse ats/smartrecruiters.json:', err);
+        }
+    }
+
 
     // Call template-parser's setCdnMetadata
     setCdnMetadata({

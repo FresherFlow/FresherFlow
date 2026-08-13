@@ -60,7 +60,9 @@ export function cleanAndResolveLocations(rawLocations: string[]): { locations: s
             }
 
             for (const sp of subParts) {
-                if (sp === 'india' || sp === 'in' || sp === 'india (in)') continue;
+                if (sp === 'india' || sp === 'in' || sp === 'india (in)') {
+                    continue;
+                }
                 
                 if (sp === 'remote' || sp === 'work from home' || sp === 'wfh') {
                     addLocation('Remote', { name: 'Remote', type: 'remote' });
@@ -139,8 +141,23 @@ export function cleanAndResolveLocations(rawLocations: string[]): { locations: s
 
     // If nothing at all was found, add fallbacks
     if (allExtractedCities.length === 0 && allExtractedStates.length === 0 && !hasSpecials) {
-        for (const raw of fallbackRawTokens) {
-            addLocation(raw, { name: raw, type: 'city' });
+        if (fallbackRawTokens.length > 0) {
+            // Check if the only tokens are 'India' or 'IN'
+            const allAreIndia = fallbackRawTokens.every(l => {
+                const lower = l.trim().toLowerCase();
+                return lower === 'india' || lower === 'in';
+            });
+            if (allAreIndia) {
+                addLocation('Pan India', { name: 'Pan India', country: 'IN', type: 'country' });
+            } else {
+                for (let raw of fallbackRawTokens) {
+                    if (raw.toLowerCase() === 'india' || raw.toLowerCase() === 'in') {
+                        addLocation('Pan India', { name: 'Pan India', country: 'IN', type: 'country' });
+                    } else {
+                        addLocation(raw, { name: raw, type: 'city' });
+                    }
+                }
+            }
         }
     }
 

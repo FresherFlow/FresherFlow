@@ -85,6 +85,7 @@ function clearAllClientCaches() {
 
 function clearClientSessionHints() {
     if (typeof document === 'undefined') return;
+    document.documentElement.setAttribute('data-logged-in', 'false');
     const hostname = typeof window !== 'undefined' ? window.location.hostname : undefined;
     const cookiesToClear = ['ff_logged_in', 'accessToken', 'refreshToken'];
     cookiesToClear.forEach((name) => {
@@ -97,6 +98,7 @@ function clearClientSessionHints() {
 
 function setClientSessionHints() {
     if (typeof document === 'undefined') return;
+    document.documentElement.setAttribute('data-logged-in', 'true');
     const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
     document.cookie = `ff_logged_in=true; path=/; max-age=${SESSION_HINT_COOKIE_MAX_AGE_SECONDS}; SameSite=Lax${secure}`;
 }

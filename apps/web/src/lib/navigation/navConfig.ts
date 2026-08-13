@@ -61,6 +61,7 @@ export const JOBS_NAV_ITEMS = [
     { name: 'Location', href: '/locations', icon: MapPinIcon },
     { name: 'Company', href: '/companies', icon: BuildingOfficeIcon },
     { name: 'Batch', href: '/batch', icon: CalendarIcon },
+    { name: 'Resources', href: '/resources', icon: BookOpenIcon },
     { name: 'Government', href: '/govt', icon: BuildingLibraryIcon, hasSubmenu: true },
 ];
 

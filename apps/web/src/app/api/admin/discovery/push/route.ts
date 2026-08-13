@@ -37,6 +37,11 @@ interface ProcessedJob {
   sourceUrl?: string;
   sourceLink?: string;
   status?: string;
+  incentives?: string;
+  selectionProcess?: string;
+  notesHighlights?: string;
+  applicationDetails?: any;
+  walkInDetails?: any;
 }
 
 async function handlePush(req?: NextRequest) {
@@ -109,15 +114,31 @@ async function handlePush(req?: NextRequest) {
     const adminId = adminUser.id;
     let pushed = 0;
     let failed = 0;
+    const successfulIds: string[] = [];
+    const failedIds: string[] = [];
 
     const VALID_TYPES = new Set(['JOB', 'INTERNSHIP', 'WALKIN', 'GOVERNMENT']);
     const VALID_DEGREES = new Set(['TENTH', 'INTER', 'DIPLOMA', 'DEGREE', 'PG']);
     const VALID_WORK_MODES = new Set(['ONSITE', 'HYBRID', 'REMOTE']);
 
+    const DEGREE_MAP: Record<string, string> = {
+      'B.TECH': 'DEGREE', 'BE': 'DEGREE', 'BTECH': 'DEGREE', 'B.E': 'DEGREE',
+      'UG': 'DEGREE', 'GRADUATE': 'DEGREE', 'ANY DEGREE': 'DEGREE', 'BACHELOR': 'DEGREE',
+      'B.SC': 'DEGREE', 'BSC': 'DEGREE', 'BCA': 'DEGREE', 'BBA': 'DEGREE',
+      'B.COM': 'DEGREE', 'BCOM': 'DEGREE', 'BA': 'DEGREE', 'B.A': 'DEGREE',
+      'MBA': 'PG', 'M.TECH': 'PG', 'MTECH': 'PG', 'M.E': 'PG', 'ME': 'PG',
+      'MASTERS': 'PG', 'M.SC': 'PG', 'MSC': 'PG', 'MCA': 'PG', 'M.COM': 'PG',
+      'POST GRADUATE': 'PG', 'POSTGRADUATE': 'PG',
+      'POLYTECHNIC': 'DIPLOMA',
+      '12TH': 'INTER', 'HSC': 'INTER', 'PUC': 'INTER', 'PLUS TWO': 'INTER',
+      '10TH': 'TENTH', 'SSC': 'TENTH', 'MATRICULATION': 'TENTH',
+    };
+
     for (const job of jobs) {
       try {
         if (!job.applyLink || !job.title || !job.company) {
           failed++;
+          if (job.id) failedIds.push(job.id);
           continue;
         }
 
@@ -127,8 +148,11 @@ async function handlePush(req?: NextRequest) {
             : 'JOB';
 
         const degrees = (job.allowedDegrees || [])
-          .map((d) => String(d).toUpperCase())
-          .filter((d) => VALID_DEGREES.has(d)) as any[];
+          .map((d) => {
+            const upper = String(d).toUpperCase().trim();
+            return DEGREE_MAP[upper] || (VALID_DEGREES.has(upper) ? upper : null);
+          })
+          .filter((d): d is string => d !== null) as any[];
 
         const workMode =
           job.workMode && VALID_WORK_MODES.has(job.workMode.toUpperCase())
@@ -189,7 +213,13 @@ async function handlePush(req?: NextRequest) {
               jobFunction: job.jobFunction || null,
               applyLink: job.applyLink,
               sourceLink: job.sourceUrl || job.sourceLink || job.applyLink,
+              incentives: job.incentives || null,
+              selectionProcess: job.selectionProcess || null,
+              notesHighlights: job.notesHighlights || null,
+              applicationDetails: job.applicationDetails ?? undefined,
+              walkInDetails: job.walkInDetails ?? undefined,
               status: 'PUBLISHED',
+              expiresAt: null,
             },
           });
         } else {
@@ -220,20 +250,56 @@ async function handlePush(req?: NextRequest) {
               jobFunction: job.jobFunction || null,
               applyLink: job.applyLink,
               sourceLink: job.sourceUrl || job.sourceLink || job.applyLink,
+              incentives: job.incentives || null,
+              selectionProcess: job.selectionProcess || null,
+              notesHighlights: job.notesHighlights || null,
+              applicationDetails: job.applicationDetails ?? undefined,
+              walkInDetails: job.walkInDetails ?? undefined,
               status: 'PUBLISHED',
+              expiresAt: null,
               postedByUserId: adminId,
             },
           });
         }
 
+        if (job.id) {
+          successfulIds.push(job.id);
+        }
         pushed++;
-      } catch (err) {
-        console.error('[Push API Error] Failed job:', job.id || job.applyLink, err);
+      } catch (err: any) {
+        const msg = err?.message || String(err);
+        const code = err?.code || '';
+        console.error('[Push API Error] Failed job:', job.id || job.applyLink, `code=${code}`, msg);
         failed++;
+        if (job.id) failedIds.push(job.id);
       }
     }
 
-    return NextResponse.json({ pushed, failed, total: jobs.length });
+    if (successfulIds.length > 0) {
+      try {
+        await fetch(`${INGESTION_URL}/data/jobs/processed/mark-published`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: successfulIds }),
+        });
+      } catch (err) {
+        console.error('[Push API Error] Failed to mark jobs as published in Ingestion DB', err);
+      }
+    }
+
+    if (failedIds.length > 0) {
+      try {
+        await fetch(`${INGESTION_URL}/data/jobs/processed/mark-rejected`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: failedIds }),
+        });
+      } catch (err) {
+        console.error('[Push API Error] Failed to mark jobs as rejected in Ingestion DB', err);
+      }
+    }
+
+    return NextResponse.json({ pushed, failed, total: jobs.length, successfulIds, failedIds });
   } catch (error) {
     console.error('[Push API Error]:', error);
     return NextResponse.json(

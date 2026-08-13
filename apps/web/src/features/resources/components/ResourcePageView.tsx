@@ -106,7 +106,7 @@ export function ResourcePageView({ feed }: { feed: ResourcesFeed }) {
                 <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <Input
                     type="text"
-                    placeholder="Search roles, companies, skills..."
+                    placeholder="Search resources, guides, materials..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     className="pl-9 h-9 text-xs rounded-xl bg-card border-border shadow-sm w-full focus:bg-background"
@@ -136,7 +136,7 @@ export function ResourcePageView({ feed }: { feed: ResourcesFeed }) {
                     <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                     <Input
                         type="text"
-                        placeholder="Search roles, companies, skills..."
+                        placeholder="Search resources, guides, materials..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
                         className="pl-9 h-9 text-xs rounded-xl bg-card border-border shadow-sm w-full focus:bg-background"

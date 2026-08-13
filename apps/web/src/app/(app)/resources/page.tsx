@@ -3,7 +3,7 @@ import { getResourcesFeed } from '@/features/resources/api/getResourcesFeed';
 import { ResourcePageView } from '@/features/resources/components/ResourcePageView';
 
 export const metadata = {
-    title: 'Prep Resources | FresherFlow',
+    title: 'Preparation Resources',
     description: 'Explore preparation roadmaps, interview guides, and study materials for companies and skills.',
 };
 

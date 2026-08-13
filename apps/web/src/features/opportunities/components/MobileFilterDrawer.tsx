@@ -6,13 +6,7 @@ import { Button } from '@/ui/Button';
 import { SkillPill } from '@/ui/SkillPill';
 import { cn } from '@repo/ui/utils/cn';
 
-import { INDIAN_CITIES, INDIAN_STATES } from '@fresherflow/constants';
-
-const PRIMARY_CITIES = ['Remote', 'Bengaluru', 'Mumbai', 'Delhi NCR', 'Hyderabad', 'Pune', 'Chennai', 'Noida', 'Gurugram', 'Kolkata'];
-const OTHER_CITIES = INDIAN_CITIES.filter(c => !PRIMARY_CITIES.includes(c));
-
-const PRIMARY_STATES = ['All India', 'Delhi NCR', 'Karnataka', 'Maharashtra', 'Tamil Nadu', 'Telangana', 'Uttar Pradesh'];
-const OTHER_STATES = INDIAN_STATES.filter(s => !PRIMARY_STATES.includes(s));
+// Removed hardcoded locations
 
 const TYPE_OPTIONS = [
     { label: 'All', value: '' },
@@ -25,25 +19,7 @@ const GOVT_SECTORS = ['Defense', 'Railways', 'Banking', 'Teaching', 'Police', 'S
 const GOVT_QUALIFICATIONS = ['10th Pass', '12th Pass', 'Diploma', 'Graduate', 'Postgraduate'];
 const CORP_COURSES = ['B.Tech/B.E.', 'M.C.A.', 'MBA', 'B.Sc/B.Com/B.A', 'Diploma'];
 
-const CURRENT_YEAR = new Date().getFullYear();
-const START_YEAR = 2020;
-const END_YEAR = CURRENT_YEAR + 2;
-const PASSOUT_YEAR_OPTIONS = Array.from(
-    { length: Math.max(0, END_YEAR - START_YEAR + 1) },
-    (_, idx) => START_YEAR + idx
-);
-
-const CANONICAL_SKILLS = [
-  '.NET', 'A.I.', 'Analytics', 'Android', 'Angular',
-  'Back-End', 'C#', 'C++', 'Data Science', 'DevOps',
-  'Django', 'Docker', 'Front-End', 'Golang', 'GraphQL',
-  'Hardware', 'iOS', 'Java', 'JavaScript', 'Linux',
-  'Microservices', 'Machine Learning', 'MySQL', 'NextJS', 'NodeJS',
-  'Objective-C', 'Perl', 'PHP', 'PostgreSQL', 'Python',
-  'Quality Assurance', 'React', 'React Native', 'Redis', 'Ruby',
-  'Ruby on Rails', 'Salesforce', 'Scala', 'Shopify', 'TypeScript',
-  'VueJS'
-];
+// Removed hardcoded years and skills
 
 type OpenSection = 'type' | 'location' | 'year' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | 'source' | null;
 
@@ -74,6 +50,12 @@ interface MobileFilterDrawerProps {
     setDraftSource?: (val: string[]) => void;
     isLoggedIn: boolean;
     pageType?: string;
+    aggregates?: {
+        locations: Record<string, number>;
+        skills: Record<string, number>;
+        sources: Record<string, number>;
+        years: Record<string, number>;
+    };
     onApply: () => void;
     onClear: () => void;
 }
@@ -155,6 +137,7 @@ export function MobileFilterDrawer({
     draftSource,
     setDraftSource,
     pageType,
+    aggregates,
     onApply,
     onClear,
 }: MobileFilterDrawerProps) {
@@ -186,13 +169,23 @@ export function MobileFilterDrawer({
         draftShowOnlySaved ? 'saved' : null,
     ].filter(Boolean).length;
 
-    const isGovt = pageType === 'GOVERNMENT';
-    const primaryList = isGovt ? PRIMARY_STATES : PRIMARY_CITIES;
-    const secondaryList = isGovt ? OTHER_STATES : OTHER_CITIES;
-
+    const sortedLocations = Object.entries(aggregates?.locations || {})
+        .sort((a, b) => b[1] - a[1])
+        .map(([loc, count]) => ({ loc, count }));
     const query = locSearch.trim().toLowerCase();
-    const filteredPrimary = query ? primaryList.filter(l => l.toLowerCase().includes(query)) : primaryList;
-    const filteredSecondary = query ? secondaryList.filter(l => l.toLowerCase().includes(query)) : secondaryList;
+    const filteredLocations = query ? sortedLocations.filter(l => l.loc.toLowerCase().includes(query)) : sortedLocations;
+
+    const sortedSkills = Object.entries(aggregates?.skills || {})
+        .sort((a, b) => b[1] - a[1])
+        .map(([skill, count]) => ({ skill, count }));
+        
+    const sortedSources = Object.entries(aggregates?.sources || {})
+        .sort((a, b) => b[1] - a[1])
+        .map(([source, count]) => ({ source, count }));
+
+    const sortedYears = Object.entries(aggregates?.years || {})
+        .sort((a, b) => Number(b[0]) - Number(a[0]))
+        .map(([year, count]) => ({ year: Number(year), count }));
 
     return (
         <div className="fixed inset-0 z-90 lg:hidden" role="dialog" aria-modal="true" aria-labelledby="mobile-filter-title">
@@ -257,34 +250,17 @@ export function MobileFilterDrawer({
                                     <Pill active={draftLoc === null} onClick={() => setDraftLoc(null)}>All Locations</Pill>
                                 </div>
 
-                                {filteredPrimary.length > 0 && (
+                                {filteredLocations.length > 0 && (
                                     <div className="space-y-1.5">
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">{isGovt ? 'Top States' : 'Top Tech Hubs'}</p>
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Locations</p>
                                         <div className="flex flex-wrap gap-2">
-                                            {filteredPrimary.map((location) => (
+                                            {filteredLocations.map(({ loc, count }) => (
                                                 <Pill
-                                                    key={location}
-                                                    active={draftLoc === location}
-                                                    onClick={() => setDraftLoc(location)}
+                                                    key={loc}
+                                                    active={draftLoc === loc}
+                                                    onClick={() => setDraftLoc(loc)}
                                                 >
-                                                    {location}
-                                                </Pill>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {filteredSecondary.length > 0 && (
-                                    <div className="space-y-1.5 pt-1">
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">{isGovt ? 'Other States' : 'Other Cities'}</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {filteredSecondary.map((location) => (
-                                                <Pill
-                                                    key={location}
-                                                    active={draftLoc === location}
-                                                    onClick={() => setDraftLoc(location)}
-                                                >
-                                                    {location}
+                                                    {loc} ({count})
                                                 </Pill>
                                             ))}
                                         </div>
@@ -363,7 +339,7 @@ export function MobileFilterDrawer({
                                 onToggle={() => setOpenSection(openSection === 'source' ? null : 'source')}
                             >
                                 <div className="flex flex-wrap gap-2">
-                                    {['Careers', 'Workday', 'Greenhouse', 'Lever', 'Ashby', 'BambooHR', 'iCIMS', 'Taleo'].map((src) => {
+                                    {sortedSources.map(({ source: src, count }) => {
                                         const isSelected = draftSource?.includes(src);
                                         return (
                                         <Pill
@@ -376,7 +352,7 @@ export function MobileFilterDrawer({
                                                 setDraftSource(newSource);
                                             }}
                                         >
-                                            {src}
+                                            {src} ({count})
                                         </Pill>
                                     )})}
                                 </div>
@@ -389,13 +365,13 @@ export function MobileFilterDrawer({
                             >
                                 <div className="flex flex-wrap gap-2">
                                     <Pill active={draftYear === null} onClick={() => setDraftYear(null)}>Any</Pill>
-                                    {PASSOUT_YEAR_OPTIONS.map((year) => (
+                                    {sortedYears.map(({ year, count }) => (
                                         <Pill
                                             key={year}
                                             active={draftYear === year}
                                             onClick={() => setDraftYear(year)}
                                         >
-                                            {year}
+                                            {year} ({count})
                                         </Pill>
                                     ))}
                                 </div>
@@ -421,7 +397,7 @@ export function MobileFilterDrawer({
                                 onToggle={() => setOpenSection(openSection === 'skills' ? null : 'skills')}
                             >
                                 <div className="flex flex-wrap gap-2">
-                                    {CANONICAL_SKILLS.map((skill) => {
+                                    {sortedSkills.map(({ skill, count }) => {
                                         const isSelected = draftSkills?.includes(skill);
                                         return (
                                         <Pill
@@ -435,6 +411,7 @@ export function MobileFilterDrawer({
                                             }}
                                         >
                                             <SkillPill skill={skill} className="bg-transparent border-none p-0 h-auto text-inherit shadow-none" />
+                                            <span className="ml-1 opacity-75">({count})</span>
                                         </Pill>
                                     )})}
                                 </div>

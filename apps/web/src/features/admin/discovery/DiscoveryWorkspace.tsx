@@ -308,7 +308,7 @@ export function DiscoveryWorkspace() {
  isRunningAllBoards={isRunningAllBoards}
  onRunAllCompanies={runAllCompanies}
  onRunAllBoards={runAllBoards}
- onRefreshHealth={checkHealth}
+ onRefreshHealth={loadInitialData}
  onOpenAddModal={() => {}}
  onRunDorker={runDorker}
  autoRefresh={autoRefresh}

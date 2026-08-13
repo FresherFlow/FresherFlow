@@ -308,31 +308,26 @@ export default function CompaniesDirectoryClient({ companies, totalJobs }: Compa
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
                                 {grouped[letter].map((co) => (
                                     <Link key={co.slug} href={`/companies/${co.slug}`}>
-                                        <Card className="group flex items-start gap-3 p-4 rounded-2xl bg-card border border-border/70 hover:border-primary/40 hover:-translate-y-0.5 transition-all shadow-sm h-full cursor-pointer">
+                                        <Card className="group flex items-center gap-3.5 p-3.5 sm:p-4 rounded-xl bg-card border border-border/60 hover:border-primary/40 hover:shadow-sm transition-all h-full cursor-pointer">
                                             <CompanyLogo
                                                 companyName={co.name}
                                                 companyLogoUrl={co.logoUrl}
                                                 companyWebsite={co.website}
-                                                className="w-10 h-10 rounded-lg shrink-0"
+                                                className="w-10 h-10 rounded-xl shrink-0 border border-border/40 bg-background object-contain p-0.5"
                                             />
                                             <div className="min-w-0 flex-1 space-y-1">
-                                                <div className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors truncate">
+                                                <div className="text-sm font-bold text-foreground group-hover:text-primary transition-colors truncate">
                                                     {co.name}
                                                 </div>
 
-                                                <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium">
-                                                    {co.count > 0 ? (
-                                                        <Badge variant="default" className="text-[10px] py-0 px-2 font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                                            {co.count} active {co.count === 1 ? 'role' : 'roles'}
-                                                        </Badge>
-                                                    ) : (
-                                                        <span className="text-muted-foreground text-xs">No active roles</span>
-                                                    )}
-
+                                                <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                                                    <span className="font-medium text-[11px] truncate">
+                                                        {co.count > 0 ? `${co.count} active ${co.count === 1 ? 'role' : 'roles'}` : 'No active roles'}
+                                                    </span>
                                                     {co.atsProvider && !isGenericAts(co.atsProvider) && (
-                                                        <Badge variant="outline" className="text-[10px] py-0 px-1.5 font-normal text-muted-foreground">
+                                                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-muted/80 border border-border/40 text-muted-foreground shrink-0 truncate">
                                                             {co.atsProvider}
-                                                        </Badge>
+                                                        </span>
                                                     )}
                                                 </div>
                                             </div>

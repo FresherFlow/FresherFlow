@@ -1,9 +1,9 @@
 
 interface CompanyStats {
-    activeJobsCount: number;
-    locations: string[];
-    skills: string[];
-    roles: string[];
+    activeJobsCount?: number;
+    locations?: string[];
+    skills?: string[];
+    roles?: string[];
 }
 
 export const TIER_A_SLUGS = new Set([
@@ -180,21 +180,25 @@ export function getCompanyDescription(slug: string, name: string, stats: Company
     // Programmatically generate a rich description (300-500 words) for other companies (Tier B)
     const cleanName = stripTags(name);
 
-    const locList = stats.locations.length > 0 
-        ? stripTags(stats.locations.slice(0, 4).join(', ')) 
+    const locations = stats.locations || [];
+    const skills = stats.skills || [];
+    const roles = stats.roles || [];
+
+    const locList = locations.length > 0 
+        ? stripTags(locations.slice(0, 4).join(', ')) 
         : 'various technology hubs across India';
     
-    const skillList = stats.skills.length > 0 
-        ? stripTags(stats.skills.slice(0, 5).join(', ')) 
+    const skillList = skills.length > 0 
+        ? stripTags(skills.slice(0, 5).join(', ')) 
         : 'software engineering and logical reasoning skills';
 
-    const roleList = stats.roles.length > 0 
-        ? stripTags(stats.roles.slice(0, 3).join(', ')) 
+    const roleList = roles.length > 0 
+        ? stripTags(roles.slice(0, 3).join(', ')) 
         : 'Associate, Developer, and Intern';
 
     const countText = stats.activeJobsCount === 1 
         ? '1 active opportunity' 
-        : `${stats.activeJobsCount} active opportunities`;
+        : `${stats.activeJobsCount ?? 'Multiple'} active opportunities`;
 
     return `
         <h3>About ${cleanName}</h3>

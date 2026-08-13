@@ -19,7 +19,10 @@ import {
     CANONICAL_SKILLS_MAP,
     CANONICAL_CITIES_MAP,
     CANONICAL_EDUCATION,
-    ORACLE_SLUG_MAP
+    ORACLE_SLUG_MAP,
+    GREENHOUSE_SLUG_MAP,
+    WORKDAY_URL_MAP,
+    SMARTRECRUITERS_SLUG_MAP
 } from '@fresherflow/parser/metadata';
 
 import {
@@ -260,8 +263,8 @@ export function postProcessNormalize(job: ExtractedJob, _fullText: string): Extr
         }
     }
 
-    // Oracle company name resolution
-    if (job.applyLink) {
+    // Oracle company name resolution (only if missing or mistakenly scraped as 'Oracle' due to ATS domain)
+    if (job.applyLink && (!job.company || job.company.toLowerCase().trim() === 'oracle')) {
         try {
             const url = new URL(job.applyLink);
             const host = url.hostname.toLowerCase();
@@ -352,9 +355,107 @@ export function postProcessNormalize(job: ExtractedJob, _fullText: string): Extr
     }
 
     // --- 1. Company Casing and Lookup ---
-    const rawCompany = (job.company || '').trim();
+    let rawCompany = (job.company || '').trim();
+
+    // Strip Workday/Oracle internal entity codes:
+    // Pure alphanumeric: "LE400 Automation Anywhere..." → "Automation Anywhere..."
+    // Mixed start:  "1G5 Pfizer Healthcare..." → "Pfizer Healthcare..."
+    // Note: We require at least one digit in the prefix to avoid stripping valid acronyms like "GE Appliances" or "CDK Global"
+    rawCompany = rawCompany
+        .replace(/^(?=[A-Z0-9]*\d)[A-Z0-9]{2,6}\s+(?=[A-Z])/u, '')
+        .replace(/^\d[A-Z]\d\s+(?=[A-Z])/u, '')
+        .trim();
+    // Strip trailing junk suffixes added by some ATS:
+    // "Synechron Technologies Pvt. Ltd._INDIA Company" → strip "_INDIA Company" etc.
+    rawCompany = rawCompany.replace(/_[A-Z][A-Za-z0-9 ]{2,50}$/, '').trim();
+
+    // 1A. ATS maps resolution FIRST (exact URL/slug mappings from docs/data/ats/*.json)
+    let atsResolvedName = '';
+    if (job.applyLink) {
+        try {
+            const urlObj = new URL(job.applyLink);
+            const lowerLink = job.applyLink.toLowerCase();
+            const host = urlObj.hostname.toLowerCase();
+
+            // Workday ATS
+            if (host.endsWith('.myworkdayjobs.com') || host.endsWith('.myworkdaysite.com') || lowerLink.includes('workday')) {
+                for (const [prefix, compName] of WORKDAY_URL_MAP.entries()) {
+                    if (prefix.startsWith('http') && lowerLink.startsWith(prefix)) {
+                        atsResolvedName = compName;
+                        break;
+                    }
+                }
+                if (!atsResolvedName) {
+                    const subdomain = host.split('.')[0];
+                    if (subdomain && WORKDAY_URL_MAP.has(subdomain)) {
+                        atsResolvedName = WORKDAY_URL_MAP.get(subdomain)!;
+                    }
+                }
+            }
+
+            // SmartRecruiters ATS
+            if (!atsResolvedName && (host === 'jobs.smartrecruiters.com' || host === 'api.smartrecruiters.com' || lowerLink.includes('smartrecruiters'))) {
+                const parts = urlObj.pathname.split('/').filter(Boolean);
+                const compIdx = parts.indexOf('companies');
+                const urlSlug = compIdx !== -1 && parts[compIdx + 1] ? parts[compIdx + 1] : (parts[0] || '');
+                if (urlSlug && SMARTRECRUITERS_SLUG_MAP.has(urlSlug.toLowerCase())) {
+                    atsResolvedName = SMARTRECRUITERS_SLUG_MAP.get(urlSlug.toLowerCase())!;
+                }
+            }
+
+            // Greenhouse ATS
+            if (!atsResolvedName && (host.includes('greenhouse.io') || lowerLink.includes('greenhouse'))) {
+                const parts = urlObj.pathname.split('/').filter(Boolean);
+                const slug = parts[0] || '';
+                if (slug && GREENHOUSE_SLUG_MAP.has(slug.toLowerCase())) {
+                    atsResolvedName = GREENHOUSE_SLUG_MAP.get(slug.toLowerCase())!;
+                }
+            }
+
+            // Oracle ATS
+            if (!atsResolvedName && (host.endsWith('.oraclecloud.com') || lowerLink.includes('oraclecloud'))) {
+                for (const [prefix, compName] of ORACLE_SLUG_MAP.entries()) {
+                    if (lowerLink.startsWith(prefix)) {
+                        atsResolvedName = compName;
+                        break;
+                    }
+                }
+            }
+        } catch { /* ignore */ }
+    }
+
+    // Check ATS maps by rawCompany if applyLink didn't match
+    if (!atsResolvedName && rawCompany) {
+        const lowerRaw = rawCompany.toLowerCase();
+        if (WORKDAY_URL_MAP.has(lowerRaw)) {
+            atsResolvedName = WORKDAY_URL_MAP.get(lowerRaw)!;
+        } else if (SMARTRECRUITERS_SLUG_MAP.has(lowerRaw)) {
+            atsResolvedName = SMARTRECRUITERS_SLUG_MAP.get(lowerRaw)!;
+        } else if (GREENHOUSE_SLUG_MAP.has(lowerRaw)) {
+            atsResolvedName = GREENHOUSE_SLUG_MAP.get(lowerRaw)!;
+        }
+    }
+
+    if (atsResolvedName) {
+        rawCompany = atsResolvedName;
+        job.company = atsResolvedName;
+    }
+
+
+    if (atsResolvedName) {
+        rawCompany = atsResolvedName;
+        job.company = atsResolvedName;
+    }
+
+    // Strip verbose legal suffixes to get brand name for CDN lookup:
+    // "Genpact India Pvt. Ltd." → "Genpact"
+    // "Pfizer Healthcare India Private Limited" → "Pfizer"
+    const legalSuffixMatch = rawCompany.match(/^([A-Za-z][A-Za-z0-9\s&.'-()]{0,40?}?)\s+(?:India|Solutions|Technologies|Services|Holdings|Group|International|Global|Limited|Private|Pvt\.?|Ltd\.?|Inc\.?|Corp\.?|LLC\.?|Company|P\.L\.)/i);
+    const brandName = legalSuffixMatch ? legalSuffixMatch[1].trim() : rawCompany;
+
     if (rawCompany) {
-        let canonicalCompany = CANONICAL_COMPANIES.get(rawCompany.toLowerCase());
+        let canonicalCompany = CANONICAL_COMPANIES.get(rawCompany.toLowerCase())
+            ?? CANONICAL_COMPANIES.get(brandName.toLowerCase());
         
         // If no direct match, try matching by slug
         if (!canonicalCompany) {
@@ -367,16 +468,65 @@ export function postProcessNormalize(job: ExtractedJob, _fullText: string): Extr
             }
         }
 
+        // Try stripping trailing digits (e.g. 'nagarro1' -> 'nagarro')
+        if (!canonicalCompany) {
+            const withoutDigits = rawCompany.toLowerCase().replace(/\d+$/, '');
+            if (withoutDigits && withoutDigits !== rawCompany.toLowerCase()) {
+                canonicalCompany = CANONICAL_COMPANIES.get(withoutDigits);
+                if (!canonicalCompany) {
+                    for (const company of CANONICAL_COMPANIES.values()) {
+                        if (company.slug && company.slug.toLowerCase() === withoutDigits) {
+                            canonicalCompany = company;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Try extracting company from apply link URL (Workday subdomain, SmartRecruiters path slug)
+        if (!canonicalCompany && job.applyLink) {
+            try {
+                const urlObj = new URL(job.applyLink);
+                const host = urlObj.hostname.toLowerCase();
+                let urlSlug = '';
+                // Workday: subdomain.wd1.myworkdayjobs.com
+                if (host.endsWith('.myworkdayjobs.com') || host.endsWith('.myworkdaysite.com')) {
+                    urlSlug = host.split('.')[0];
+                }
+                // SmartRecruiters: jobs.smartrecruiters.com/CompanySlug/... or api.smartrecruiters.com/v1/companies/CompanySlug/...
+                else if (host === 'jobs.smartrecruiters.com' || host === 'api.smartrecruiters.com') {
+                    const parts = urlObj.pathname.split('/').filter(Boolean);
+                    // api.smartrecruiters.com/v1/companies/CompanySlug/postings/ID
+                    const compIdx = parts.indexOf('companies');
+                    urlSlug = compIdx !== -1 && parts[compIdx + 1] ? parts[compIdx + 1] : (parts[0] || '');
+                }
+                if (urlSlug) {
+                    canonicalCompany = CANONICAL_COMPANIES.get(urlSlug.toLowerCase());
+                    if (!canonicalCompany) {
+                        for (const company of CANONICAL_COMPANIES.values()) {
+                            if (company.slug && company.slug.toLowerCase() === urlSlug.toLowerCase()) {
+                                canonicalCompany = company;
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch { /* ignore */ }
+        }
+
         if (canonicalCompany) {
             job.company = canonicalCompany.name;
             if (canonicalCompany.url && (!job.companyWebsite || !job.companyWebsite.startsWith('http'))) {
                 job.companyWebsite = canonicalCompany.url;
             }
         } else {
-            // Cleanup common URL slug artifacts (dashes → spaces, title-case)
-            job.company = job.company
-                .replace(/-/g, ' ')
-                .replace(/\b\w/g, c => c.toUpperCase())
+            // Cleanup: dashes/underscores to spaces, split camelCase, title-case
+            job.company = rawCompany
+                .replace(/([a-z])([A-Z])/g, '$1 $2')  // camelCase split
+                .replace(/[-_]/g, ' ')                  // dashes/underscores to spaces
+                .replace(/\b\w/g, c => c.toUpperCase()) // title-case
+                .replace(/\s{2,}/g, ' ')
                 .trim();
         }
     }
@@ -562,34 +712,26 @@ export function postProcessNormalize(job: ExtractedJob, _fullText: string): Extr
  */
 function stripAtsOfficeCode(raw: string): string {
     let s = raw
-        // Drop pure noise tokens: 'in', 'India', 'ph', 'us', ISO codes
-        .replace(/^(in|india|ph|us|uk|sg|ind)$/i, '')
-        // Strip "1401-G-India: " style prefixes (digit starts, colon after)
+        .replace(/^(ph|us|uk|sg|ind|in)$/i, '')
         .replace(/^\d[\w-]*:\s*/i, '')
-        // Strip "IND-City-Code, " style prefixes
         .replace(/^[A-Z]{2,4}-[A-Za-z]+-[A-Z]\s*,\s*/i, '')
-        // Strip parenthetical office codes like "(INNOIGAL)" or "(INMANBP)"
+        .replace(/^[A-Z]{2,3}-\s*/i, '')
         .replace(/\([A-Z0-9]{4,}\)/g, '')
-        // Strip known ATS building/park names that are NOT cities
-        .replace(/\b(WeWork|RMZ|Manyatha|EPIP|STPI|SEZ|Technopark|Pritech|Prestige|Godrej|DLF Cyber City|Experio|Carnival|Express Zone|Hafeezpet Phoenix|Novus Tower|Sricity Mill|Uppal L&R|Vibhuti Khand|Sitapura)\b[^,]*/gi, '')
-        // Strip state codes at end: ", WB" ", KA" ", TG" ", TN" ", UP" etc.
-        .replace(/,\s*(WB|KA|TG|TN|UP|GJ|MH|HR|NCR|IND)\b/gi, '')
-        // Strip trailing ", India" or ", IN"
-        .replace(/,?\s*(India|IN|IND)\s*$/i, '')
-        // Strip all-caps code prefix before space: "TPIN Mohali" → "Mohali"
+        .replace(/\b(WeWork|RMZ|Manyatha|EPIP|STPI|SEZ|Technopark|Pritech|Prestige|Godrej|DLF Cyber City|Experio|Carnival|Express Zone|Hafeezpet Phoenix|Novus Tower|Uppal L&R|Vibhuti Khand|Sitapura)\b[^,]*/gi, '')
+        .replace(/,\s*(WB|KA|TG|TN|UP|GJ|MH|HR|NCR|IND|DL|KL|TS|PB|RJ|MP)\b/gi, '')
+        .replace(/,\s*(India|IN|IND|in|es|us|uk|de|sg|au|ca)\s*$/i, '')
+        // Strip leading "IN - " prefix (SmartRecruiters style: "IN - Chennai, India")
+        .replace(/^IN\s*[-\u2013]\s*/i, '')
+        // Strip leading "India, " prefix (Workday style: "India, Mumbai, 400079, India")
+        .replace(/^India,\s*/i, '')
         .replace(/^[A-Z]{3,6}\s+(?=[A-Z][a-z])/, '')
-        // Strip numbers with 3+ digits (pin codes, building numbers)
-        .replace(/\b\d{3,}\b/g, '')
-        // Strip Floor/Plot/Phase/Block/Flr/FL indicators
+        .replace(/\b\d{5,6}\b/g, '')
         .replace(/\b(Floor|Flr|FL|Plot|Phase|Block|Tower|Gate|Near|Opp|Beside)\b[^,]*/gi, '')
         .replace(/\s{2,}/g, ' ')
         .trim();
 
-    // After all cleanup, take the LAST comma-segment as the city
-    // (city is typically at the end of an address string)
     const parts = s.split(',').map(p => p.trim()).filter(p => p.length > 1);
     if (parts.length > 1) {
-        // Return the last meaningful part
         return parts[parts.length - 1];
     }
     return s;

@@ -11,6 +11,7 @@ import {
     STOP_WORDS, GENERIC_TITLES,
     splitMergedWords, isValidSkill,
 } from './heuristics.js';
+import { CANONICAL_SKILLS_MAP } from './metadata.js';
 
 // ── Title ─────────────────────────────────────────────────────────────────────
 
@@ -81,13 +82,14 @@ export function extractSkills(text: string, locations: string[] = []): string[] 
     if (!textStr.trim()) return [];
     const textLower = textStr.toLowerCase();
     
-    // We only need to import CANONICAL_SKILLS_MAP from heuristics if not already imported, 
-    // wait, it is exported from taxonomy.js normally but we can just use COMMON_SKILLS for now
-    // Actually, earlier I used CANONICAL_SKILLS_MAP. Let me just use COMMON_SKILLS and strict boundaries.
+    // Use live CDN skills if available, otherwise fallback to heuristics COMMON_SKILLS
+    const skillsToSearch = CANONICAL_SKILLS_MAP.size > 0 
+        ? Array.from(CANONICAL_SKILLS_MAP.values()) 
+        : COMMON_SKILLS;
     
     const matchedSkills = new Set<string>();
 
-    for (const skill of COMMON_SKILLS) {
+    for (const skill of skillsToSearch) {
         if (!skill || skill.length < 2) continue;
 
         const lowerSkill = skill.toLowerCase();

@@ -34,6 +34,10 @@
 }
 
 @layer base {
+  * {
+    @apply focus-visible:outline-none focus-visible:ring-0;
+  }
+
   :root {
     color-scheme: light dark;
     /* Light Mode - High-Contrast Trust + Energy */

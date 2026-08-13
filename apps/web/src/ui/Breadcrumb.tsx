@@ -17,12 +17,12 @@ interface BreadcrumbProps {
  */
 export function Breadcrumb({ items }: BreadcrumbProps) {
     return (
-        <nav className="flex items-center gap-1.5 text-[13px] text-muted-foreground font-medium select-none" aria-label="Breadcrumb">
+        <nav className="flex items-center gap-1.5 text-sm text-muted-foreground font-medium select-none" aria-label="Breadcrumb">
             {items.map((item, index) => {
                 const isLast = index === items.length - 1;
                 return (
                     <span key={index} className="flex items-center gap-1.5">
-                        {index > 0 && <ChevronRightIcon className="w-3.5 h-3.5 shrink-0" />}
+                        {index > 0 && <ChevronRightIcon className="w-4 h-4 shrink-0" />}
                         {isLast || !item.href ? (
                             <span className={isLast ? 'text-foreground font-semibold' : ''}>
                                 {item.label}

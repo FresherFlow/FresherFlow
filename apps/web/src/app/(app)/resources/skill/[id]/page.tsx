@@ -12,7 +12,7 @@ interface SkillResourcesPageProps {
 export async function generateMetadata(props: SkillResourcesPageProps) {
     const params = await props.params;
     return {
-        title: `Skill Prep Resources | FresherFlow`,
+        title: `Skill Prep Resources`,
     };
 }
 

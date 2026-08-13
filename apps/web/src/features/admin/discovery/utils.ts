@@ -19,6 +19,13 @@ export function detectAtsFromUrl(url: string | null | undefined): string {
   if (lowerUrl.includes('phenompro.com') || lowerUrl.includes('phenompeople.com')) return 'Phenom';
   if (lowerUrl.includes('taleo.net')) return 'Taleo';
   if (lowerUrl.includes('brassring.com')) return 'BrassRing';
+
+  if (lowerUrl.includes('internshala.com')) return 'Internshala';
+  if (lowerUrl.includes('linkedin.com')) return 'LinkedIn';
+  if (lowerUrl.includes('wellfound.com') || lowerUrl.includes('angel.co')) return 'Wellfound';
+  if (lowerUrl.includes('naukri.com')) return 'Naukri';
+  if (lowerUrl.includes('instahyre.com')) return 'Instahyre';
+  if (lowerUrl.includes('unstop.com')) return 'Unstop';
   
   return 'Other/Direct';
 }

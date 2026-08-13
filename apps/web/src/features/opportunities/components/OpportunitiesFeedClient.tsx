@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
 const PAGE_SIZE = 20;
 import { cn } from '@repo/ui/utils/cn';
@@ -11,7 +11,7 @@ import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import FunnelIcon from '@heroicons/react/24/outline/FunnelIcon';
 import { Input } from '@/ui/Input';
-import { useOpportunitiesFeed } from '@/features/opportunities/hooks/useOpportunitiesFeed';
+import { useOpportunitiesFeed, getAtsName } from '@/features/opportunities/hooks/useOpportunitiesFeed';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { EmptyState } from '@/ui/EmptyState';
 import dynamic from 'next/dynamic';
@@ -158,7 +158,8 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         error,
         profileIncomplete,
         toggleSave,
-        reload
+        reload,
+        opportunities
     } = useOpportunitiesFeed({
         type: selectedType,
         selectedLoc: filters.location,
@@ -172,6 +173,51 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         source: filters.source,
         initialData,
     });
+
+    const filterAggregates = useMemo(() => {
+        const locations: Record<string, number> = {};
+        const skills: Record<string, number> = {};
+        const sources: Record<string, number> = {};
+        const years: Record<string, number> = {};
+
+        opportunities.forEach(opp => {
+            (opp.locations || []).forEach(loc => {
+                const l = loc.trim();
+                if (l) locations[l] = (locations[l] || 0) + 1;
+            });
+            ((opp as any).skills || opp.requiredSkills || []).forEach((s: string) => {
+                const skill = s.trim();
+                if (skill) skills[skill] = (skills[skill] || 0) + 1;
+            });
+            const atsName = getAtsName(opp.applyLink || (opp as any).sourceLink || opp.companyWebsite);
+            if (atsName) {
+                sources[atsName] = (sources[atsName] || 0) + 1;
+            }
+            let passoutYears = [...((opp as any).allowedPassoutYears || [])];
+            if (passoutYears.length === 0 && opp.passoutYearMin && opp.passoutYearMax) {
+                const min = Number(opp.passoutYearMin);
+                const max = Number(opp.passoutYearMax);
+                if (!isNaN(min) && !isNaN(max) && min <= max) {
+                    passoutYears = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+                }
+            }
+            if (passoutYears.length === 0) {
+                const match = opp.title.match(/(202[0-9]|2030)/);
+                if (match) passoutYears = [Number(match[0])];
+            }
+            passoutYears.forEach((y: string | number) => {
+                const year = String(y).trim();
+                if (year) years[year] = (years[year] || 0) + 1;
+            });
+        });
+
+        const filteredLocations: Record<string, number> = {};
+        for (const [loc, count] of Object.entries(locations)) {
+            if (count >= 2) filteredLocations[loc] = count;
+        }
+
+        return { locations: filteredLocations, skills, sources, years };
+    }, [opportunities]);
 
     // Reset visible count when filters change
     useEffect(() => {
@@ -355,6 +401,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                             isLoggedIn={!!user}
                             selectedType={selectedType}
                             onTypeChange={updateType}
+                            aggregates={filterAggregates}
                         />
                     </div>
                 </div>
@@ -384,6 +431,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                     draftSource={draftSource}
                     setDraftSource={setDraftSource}
                     isLoggedIn={!!user}
+                    aggregates={filterAggregates}
                     onApply={applyMobileFilters}
                     onClear={() => {
                         setDraftType(null);

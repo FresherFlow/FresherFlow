@@ -76,8 +76,8 @@ export function SkillPill({ skill, className, size = 'sm' }: SkillPillProps) {
     return (
       <span
         className={cn(
-          'inline-flex items-center gap-1 rounded-md border border-transparent font-medium whitespace-nowrap',
-          size === 'xs' ? 'h-5 px-1.5 text-[10px]' : 'h-6 px-2 text-[11px]',
+          'inline-flex items-center gap-1.5 rounded-md border border-transparent font-medium whitespace-nowrap',
+          size === 'xs' ? 'h-5 px-1.5 text-[10px]' : 'h-7 px-2.5 text-sm',
           'bg-muted/60 text-foreground/80',
           className
         )}
@@ -86,7 +86,7 @@ export function SkillPill({ skill, className, size = 'sm' }: SkillPillProps) {
           icon={iconName} 
           className={cn(
             'shrink-0', 
-            size === 'xs' ? 'w-2.5 h-2.5' : 'w-3 h-3',
+            size === 'xs' ? 'w-2.5 h-2.5' : 'w-3.5 h-3.5',
             iconName.startsWith('simple-icons:') ? 'text-current' : ''
           )}
         />
@@ -100,7 +100,7 @@ export function SkillPill({ skill, className, size = 'sm' }: SkillPillProps) {
     <span
       className={cn(
         'inline-flex items-center rounded-md border border-border/50 font-medium whitespace-nowrap bg-muted/40 text-muted-foreground',
-        size === 'xs' ? 'h-5 px-1.5 text-[10px]' : 'h-6 px-2 text-[11px]',
+        size === 'xs' ? 'h-5 px-1.5 text-[10px]' : 'h-7 px-2.5 text-sm',
         className
       )}
     >

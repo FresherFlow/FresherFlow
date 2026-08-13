@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 import { calculateOpportunityMatch, isNotEligible } from '@/features/opportunities/domain/matchScore';
-import { ProfileCompletionBanner } from '@/features/dashboard/components/DashboardBanners';
 import { Button } from '@/ui/Button';
 import { Card, CardContent } from '@/ui/Card';
 import { SkeletonJobCard } from '@/features/opportunities/components/OpportunitySkeletons';
@@ -34,6 +33,7 @@ import {
     BuildingLibraryIcon,
     CodeBracketIcon,
     ExclamationTriangleIcon,
+    UserIcon,
 } from '@heroicons/react/24/outline';
 import { Input } from '@/ui/Input';
 import { promptLoginToast } from '@/lib/utils/toastUtils';
@@ -53,9 +53,10 @@ const hasAppliedAction = (opp: Opportunity): boolean =>
 interface DashboardStatsProps {
     savedCount: number;
     trackerCount: number;
+    profileCompletion: number;
 }
 
-function DashboardStats({ savedCount, trackerCount }: DashboardStatsProps) {
+function DashboardStats({ savedCount, trackerCount, profileCompletion }: DashboardStatsProps) {
     const router = useRouter();
     return (
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
@@ -66,7 +67,7 @@ function DashboardStats({ savedCount, trackerCount }: DashboardStatsProps) {
                             <BookmarkIcon className="w-4 h-4" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none">Wishlist</p>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none">Saved</p>
                             <p className="text-base font-black text-foreground leading-tight mt-0.5">{savedCount}</p>
                         </div>
                     </CardContent>
@@ -82,6 +83,20 @@ function DashboardStats({ savedCount, trackerCount }: DashboardStatsProps) {
                         <div>
                             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none">Applied</p>
                             <p className="text-base font-black text-foreground leading-tight mt-0.5">{trackerCount}</p>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <div onClick={() => router.push('/profile/complete')} className="group cursor-pointer">
+                <Card className="hover:border-primary/40 transition-all duration-150 ease-out active:scale-[0.97] hover:shadow-sm cursor-pointer border-border/60 bg-card/80 backdrop-blur-sm">
+                    <CardContent className="px-3.5 py-2 flex items-center gap-2.5">
+                        <div className="p-1.5 w-fit rounded-lg bg-emerald-500/10 text-emerald-500 group-hover:scale-105 transition-transform">
+                            <UserIcon className="w-4 h-4" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none">Profile</p>
+                            <p className="text-base font-black text-foreground leading-tight mt-0.5">{profileCompletion}%</p>
                         </div>
                     </CardContent>
                 </Card>
@@ -336,6 +351,7 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
                         <DashboardStats
                             savedCount={Object.keys(savedJobsMap).filter((k) => savedJobsMap[k]).length}
                             trackerCount={Object.keys(trackerMap).length}
+                            profileCompletion={profileCompletion}
                         />
                     </div>
 
@@ -345,8 +361,6 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
                             <Button variant="outline" onClick={retryAll} className="h-8 px-3 text-[10px] border-primary/30 text-primary">Retry</Button>
                         </div>
                     )}
-
-                    {profileCompletion < 100 && <ProfileCompletionBanner />}
 
                     {/* Search & Quick Access Bar */}
                     <div className="relative w-full max-w-md">

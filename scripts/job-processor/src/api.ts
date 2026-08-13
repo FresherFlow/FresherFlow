@@ -63,15 +63,39 @@ export async function saveJobToSupabase(
 
     try {
         console.log(`Saving to Supabase: ${job.title} @ ${job.company}`);
-        const { error } = await supabase
+        
+        // Check if job with this apply_link already exists in processed_jobs
+        const { data: existing } = await supabase
             .from('processed_jobs')
-            .insert(payload);
-            
-        if (error) {
-            console.error("Supabase insert error:", error.message);
-            return false;
+            .select('id')
+            .eq('apply_link', applyLink)
+            .limit(1);
+
+        if (existing && existing.length > 0) {
+            // Update existing job
+            const { error } = await supabase
+                .from('processed_jobs')
+                .update(payload)
+                .eq('apply_link', applyLink);
+                
+            if (error) {
+                console.error("Supabase update error:", error.message);
+                return false;
+            }
+            console.log(`Updated existing job in Supabase successfully`);
+        } else {
+            // Insert new job
+            const { error } = await supabase
+                .from('processed_jobs')
+                .insert(payload);
+                
+            if (error) {
+                console.error("Supabase insert error:", error.message);
+                return false;
+            }
+            console.log(`Saved to Supabase successfully`);
         }
-        console.log(`Saved to Supabase successfully`);
+        
         return true;
     } catch (err) {
         console.error(`Failed to save job to Supabase:`, (err as Error).message);

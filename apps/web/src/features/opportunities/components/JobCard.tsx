@@ -44,6 +44,8 @@ import {
 import { Hint } from '@/ui/Tooltip';
 import { promptLoginToast } from '@/lib/utils/toastUtils';
 
+import { getAtsName } from '@/features/opportunities/hooks/useOpportunitiesFeed';
+
 interface JobCardProps {
     job: Opportunity & { matchScore?: number; matchReason?: string };
     jobId: string;
@@ -75,43 +77,6 @@ type JobWithActions = Opportunity & {
     actions?: JobAction[];
     matchScore?: number;
     matchReason?: string;
-};
-
-const getAtsName = (link?: string | null) => {
-    if (!link) return null;
-    try {
-        const url = new URL(link);
-        const host = url.hostname.toLowerCase();
-        
-        // CodeQL [js/incomplete-url-substring-sanitization] false positive — display only
-        
-        if (host.includes('greenhouse.io')) return 'Greenhouse';
-        if (host.includes('lever.co')) return 'Lever';
-        if (host.includes('myworkdayjobs.com') || host.includes('workday.com')) return 'Workday';
-        if (host.includes('ashbyhq.com')) return 'Ashby';
-        if (host.includes('bamboohr.com')) return 'BambooHR';
-        if (host.includes('breezy.hr')) return 'BreezyHR';
-        if (host.includes('smartrecruiters.com')) return 'SmartRecruiters';
-        if (host.includes('workable.com')) return 'Workable';
-        if (host.includes('icims.com')) return 'iCIMS';
-        if (host.includes('jobvite.com')) return 'Jobvite';
-        if (host.includes('recruitee.com')) return 'Recruitee';
-        if (host.includes('phenompro.com') || host.includes('phenom.com')) return 'Phenom';
-        if (host.includes('taleo.net')) return 'Taleo';
-        if (host.includes('successfactors.com') || host.includes('successfactors.eu')) return 'SuccessFactors';
-        if (host.includes('darwinbox.in') || host.includes('darwinbox.com')) return 'Darwinbox';
-        if (host.includes('eightfold.ai')) return 'Eightfold';
-        if (host.includes('mercor.com')) return 'Mercor';
-        
-        if (host.includes('careers')) return 'Careers';
-        
-        const parts = host.split('.');
-        if (parts.length >= 2) {
-            const domain = parts[parts.length - 2];
-            return domain.charAt(0).toUpperCase() + domain.slice(1);
-        }
-    } catch {}
-    return null;
 };
 
 
@@ -240,8 +205,8 @@ export default function JobCard({
     ).trim();
 
     const orderedSkills = useMemo(() => {
-        return reorderSkillsBySearch(job.requiredSkills || [], effectiveSearchQuery);
-    }, [job.requiredSkills, effectiveSearchQuery]);
+        return reorderSkillsBySearch(((job as any).skills || job.requiredSkills || []), effectiveSearchQuery);
+    }, [job.requiredSkills, (job as any).skills, effectiveSearchQuery]);
 
     const skillsBudget = variant === 'compact' ? 52 : 80;
     const { visible: visibleSkills, remainingCount } = getVisibleSkills(orderedSkills, skillsBudget);
@@ -414,8 +379,8 @@ export default function JobCard({
     if (variant === 'compact' || variant === 'wide') {
         const isCompact = variant === 'compact';
         const workModeLabel = (job.workMode as string) || (job as any).mode || null;
-        const skillsList = (job.requiredSkills || []).slice(0, 6);
-        const skillOverflow = (job.requiredSkills?.length || 0) - skillsList.length;
+        const skillsList = (((job as any).skills || job.requiredSkills || [])).slice(0, 6);
+        const skillOverflow = (((job as any).skills || job.requiredSkills || []).length) - skillsList.length;
 
         return (
             <div
@@ -596,7 +561,7 @@ export default function JobCard({
                                 "flex flex-wrap items-center gap-1.5 overflow-hidden",
                                 isCompact ? "max-h-[24px]" : "max-h-[24px] md:max-h-[50px]"
                             )}>
-                                {skillsList.map(s => (
+                                {skillsList.map((s: string) => (
                                     <SkillPill
                                         key={s}
                                         skill={s.charAt(0).toUpperCase() + s.slice(1)}
@@ -883,7 +848,7 @@ export default function JobCard({
                             e.stopPropagation();
                             router.push(`/opportunities/edit/${job.slug || job.id}`);
                         }}
-                        className="absolute top-2 right-12 p-1.5 rounded-full bg-card border border-border shadow-lg text-primary hover:bg-primary/10 transition-colors z-30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        className="absolute top-2 right-12 p-1.5 rounded-full bg-card border border-border shadow-lg text-primary hover:bg-primary/10 transition-colors z-30 focus-visible:outline-none"
                         aria-label="Edit Listing (Admin)"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-3.5 h-3.5">

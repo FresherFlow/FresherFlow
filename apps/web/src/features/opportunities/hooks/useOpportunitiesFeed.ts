@@ -15,7 +15,7 @@ import { promptLoginToast } from '@/lib/utils/toastUtils';
 
 const WEB_STATIC_DISCOVERY = true;
 
-const getAtsName = (link?: string | null) => {
+export const getAtsName = (link?: string | null) => {
     if (!link) return null;
     try {
         const url = new URL(link);
@@ -40,16 +40,30 @@ const getAtsName = (link?: string | null) => {
         if (host.includes('darwinbox.in') || host.includes('darwinbox.com')) return 'Darwinbox';
         if (host.includes('eightfold.ai')) return 'Eightfold';
         if (host.includes('mercor.com')) return 'Mercor';
+        if (host.includes('keka.com')) return 'Keka';
+        if (host.includes('oraclecloud.com')) return 'Oracle';
         
-        if (host.includes('careers')) return 'Careers';
-        
-        const parts = host.split('.');
-        if (parts.length >= 2) {
-            const domain = parts[parts.length - 2];
-            return domain.charAt(0).toUpperCase() + domain.slice(1);
+        if (host.includes('internshala.com')) return 'Internshala';
+        if (host.includes('linkedin.com')) return 'LinkedIn';
+        if (host.includes('wellfound.com') || host.includes('angel.co')) return 'Wellfound';
+        if (host.includes('naukri.com')) return 'Naukri';
+        if (host.includes('instahyre.com')) return 'Instahyre';
+        if (host.includes('unstop.com')) return 'Unstop';
+
+        if (host.includes('amazon.jobs')) return 'Amazon';
+        if (host.includes('careers.google.com')) return 'Google';
+        if (host.includes('apple.com')) return 'Apple';
+        if (host.includes('metacareers.com')) return 'Meta';
+        if (host.includes('microsoft.com')) return 'Microsoft';
+        if (host.includes('oraclecloud.com')) return 'Oracle';
+        if (host.includes('keka.com')) return 'Keka';
+
+        const path = url.pathname.toLowerCase();
+        if (host.includes('careers.') || host.includes('jobs.') || path.includes('/careers') || path.includes('/jobs') || host.includes('careers')) {
+            return 'Careers';
         }
     } catch {}
-    return null;
+    return 'Website';
 };
 
 
@@ -300,7 +314,7 @@ export function useOpportunitiesFeed({
 
             if (source && source.length > 0) {
                 const atsName = getAtsName(opp.applyLink || (opp as any).sourceLink || opp.companyWebsite);
-                if (!atsName || !source.includes(atsName)) {
+                if (!atsName || !source.some(s => s.toLowerCase() === atsName.toLowerCase())) {
                     return false;
                 }
             }
@@ -312,7 +326,7 @@ export function useOpportunitiesFeed({
                 opp.description,
                 ...( (opp as any).allowedCourses || []),
                 ...( (opp as any).allowedDegrees || []),
-                ...( (opp as any).skills || []),
+                ...((opp as any).skills || opp.requiredSkills || []),
                 ...( (opp as any).roles || []),
                 ...( (opp as any).categories || []),
                 (opp.governmentJobDetails as unknown as Record<string, unknown>)?.minimumQualification
@@ -363,13 +377,24 @@ export function useOpportunitiesFeed({
                 }) ||
                 (course === 'Diploma' && ((opp as any).allowedDegrees || []).includes(EducationLevel.DIPLOMA));
 
+            let passoutYears = [...((opp as any).allowedPassoutYears || [])];
+            if (passoutYears.length === 0 && opp.passoutYearMin && opp.passoutYearMax) {
+                const min = Number(opp.passoutYearMin);
+                const max = Number(opp.passoutYearMax);
+                if (!isNaN(min) && !isNaN(max) && min <= max) {
+                    passoutYears = Array.from({ length: max - min + 1 }, (_, i) => min + i);
+                }
+            }
+            if (passoutYears.length === 0) {
+                const titleMatch = opp.title.match(/(202[0-9]|2030)/);
+                if (titleMatch) passoutYears.push(Number(titleMatch[0]));
+            }
+
             const matchesYear = !selectedYear || 
-                !(opp as any).allowedPassoutYears || 
-                (opp as any).allowedPassoutYears.length === 0 || 
-                (opp as any).allowedPassoutYears.map(Number).includes(Number(selectedYear));
+                passoutYears.map(Number).includes(Number(selectedYear));
             
             const matchesSkills = !skills || skills.length === 0 || skills.some((s: string) =>
-                ((opp as any).skills || []).some((os: string) => os.toLowerCase() === s.toLowerCase())
+                ((opp as any).skills || opp.requiredSkills || []).some((os: string) => os.toLowerCase() === s.toLowerCase())
             );
 
             const matchesRoles = !roles || roles.length === 0 || roles.some((r: string) =>
