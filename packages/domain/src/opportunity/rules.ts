@@ -70,6 +70,17 @@ function extractBatches(text: string): number[] {
 
 // Parse experience range from description text
 function extractExperienceFromText(text: string): { min: number; max: number } | null {
+    // Guard: skip if the experience mention is clearly about the company, not a requirement
+    const FALSE_POSITIVE_PATTERNS = [
+        /\d+\s*years?\s+(?:in\s+)?(?:business|operation|the\s+industry|of\s+history|of\s+growth|of\s+success)/i,
+        /(?:over|more\s+than|nearly)\s+\d+\s*years?\s+(?:of\s+)?(?:history|experience\s+serving|experience\s+in\s+the\s+market)/i,
+        /company\s+(?:has|with|having)\s+\d+\s*years?/i,
+        /founded\s+(?:in|over)\s+\d+/i,
+    ];
+    if (FALSE_POSITIVE_PATTERNS.some(p => p.test(text.slice(0, 400)))) {
+        return null;
+    }
+
     const rangeMatch = text.match(/\b(\d+)\s*(?:-|–|to)\s*(\d+)\s*(?:\+\s*)?(?:year|yr)/i);
     if (rangeMatch) {
         const min = parseInt(rangeMatch[1], 10);

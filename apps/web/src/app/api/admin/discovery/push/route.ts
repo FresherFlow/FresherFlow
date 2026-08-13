@@ -114,6 +114,8 @@ async function handlePush(req?: NextRequest) {
     const adminId = adminUser.id;
     let pushed = 0;
     let failed = 0;
+    let skipped = 0;
+    const seenApplyLinks = new Set<string>();
     const successfulIds: string[] = [];
     const failedIds: string[] = [];
 
@@ -141,6 +143,12 @@ async function handlePush(req?: NextRequest) {
           if (job.id) failedIds.push(job.id);
           continue;
         }
+
+        if (seenApplyLinks.has(job.applyLink)) {
+          skipped++;
+          continue;
+        }
+        seenApplyLinks.add(job.applyLink);
 
         const oppType =
           job.type && VALID_TYPES.has(job.type.toUpperCase())
@@ -181,7 +189,6 @@ async function handlePush(req?: NextRequest) {
           where: {
             OR: [
               { applyLink: job.applyLink },
-              { sourceLink: job.applyLink },
               ...(job.id ? [{ id: job.id }] : []),
             ],
           },
@@ -223,43 +230,54 @@ async function handlePush(req?: NextRequest) {
             },
           });
         } else {
-          const slug = generateSlug(job.title, job.company, job.id);
-          await prisma.opportunity.create({
-            data: {
-              id: job.id || undefined,
-              slug,
-              title: job.title,
-              company: job.company,
-              companyWebsite: job.companyWebsite || null,
-              companyLogoUrl: job.companyLogoUrl || null,
-              description: job.description || '',
-              type: oppType,
-              allowedDegrees: degrees,
-              allowedCourses: job.allowedCourses || [],
-              allowedSpecializations: job.allowedSpecializations || [],
-              allowedPassoutYears: passoutYears,
-              requiredSkills: job.requiredSkills || [],
-              locations: job.locations || [],
-              structuredLocations: job.structuredLocations ?? undefined,
-              experienceMin: expMin,
-              experienceMax: expMax,
-              workMode,
-              salaryRange: job.salaryRange || null,
-              salaryPeriod,
-              employmentType: job.employmentType || null,
-              jobFunction: job.jobFunction || null,
-              applyLink: job.applyLink,
-              sourceLink: job.sourceUrl || job.sourceLink || job.applyLink,
-              incentives: job.incentives || null,
-              selectionProcess: job.selectionProcess || null,
-              notesHighlights: job.notesHighlights || null,
-              applicationDetails: job.applicationDetails ?? undefined,
-              walkInDetails: job.walkInDetails ?? undefined,
-              status: 'PUBLISHED',
-              expiresAt: null,
-              postedByUserId: adminId,
-            },
-          });
+          const baseSlug = generateSlug(job.title, job.company, job.id);
+          for (let attempt = 1; attempt <= 5; attempt++) {
+            const slug = attempt === 1 ? baseSlug : `${baseSlug}-${attempt}`;
+            try {
+              await prisma.opportunity.create({
+                data: {
+                  id: job.id || undefined,
+                  slug,
+                  title: job.title,
+                  company: job.company,
+                  companyWebsite: job.companyWebsite || null,
+                  companyLogoUrl: job.companyLogoUrl || null,
+                  description: job.description || '',
+                  type: oppType,
+                  allowedDegrees: degrees,
+                  allowedCourses: job.allowedCourses || [],
+                  allowedSpecializations: job.allowedSpecializations || [],
+                  allowedPassoutYears: passoutYears,
+                  requiredSkills: job.requiredSkills || [],
+                  locations: job.locations || [],
+                  structuredLocations: job.structuredLocations ?? undefined,
+                  experienceMin: expMin,
+                  experienceMax: expMax,
+                  workMode,
+                  salaryRange: job.salaryRange || null,
+                  salaryPeriod,
+                  employmentType: job.employmentType || null,
+                  jobFunction: job.jobFunction || null,
+                  applyLink: job.applyLink,
+                  sourceLink: job.sourceUrl || job.sourceLink || job.applyLink,
+                  incentives: job.incentives || null,
+                  selectionProcess: job.selectionProcess || null,
+                  notesHighlights: job.notesHighlights || null,
+                  applicationDetails: job.applicationDetails ?? undefined,
+                  walkInDetails: job.walkInDetails ?? undefined,
+                  status: 'PUBLISHED',
+                  expiresAt: null,
+                  postedByUserId: adminId,
+                },
+              });
+              break;
+            } catch (createErr: any) {
+              if (createErr?.code === 'P2002' && attempt < 5) {
+                continue;
+              }
+              throw createErr;
+            }
+          }
         }
 
         if (job.id) {
@@ -299,7 +317,7 @@ async function handlePush(req?: NextRequest) {
       }
     }
 
-    return NextResponse.json({ pushed, failed, total: jobs.length, successfulIds, failedIds });
+    return NextResponse.json({ pushed, failed, skipped, total: jobs.length, successfulIds, failedIds });
   } catch (error) {
     console.error('[Push API Error]:', error);
     return NextResponse.json(

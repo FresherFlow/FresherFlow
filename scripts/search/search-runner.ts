@@ -1,9 +1,10 @@
 import { DEFAULT_TARGETS, loadAtsDataTargets, SearchTarget } from './search-config.js';
 import { executeSearch, SearchOptions } from './search.js';
+import { executeDorkSearch } from './dorker.js';
 import { startRun, finishRun } from '../job-discovery/src/repositories/discoveryRuns.js';
 
-function parseRunnerArgs(args: string[]): SearchOptions & { all?: boolean; indiaOnly?: boolean; delay?: number; only?: string } {
-  const options: SearchOptions & { all?: boolean; indiaOnly?: boolean; delay?: number; only?: string } = {};
+function parseRunnerArgs(args: string[]): SearchOptions & { all?: boolean; indiaOnly?: boolean; delay?: number; only?: string; dork?: boolean } {
+  const options: SearchOptions & { all?: boolean; indiaOnly?: boolean; delay?: number; only?: string; dork?: boolean } = {};
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--all') options.all = true;
@@ -13,6 +14,7 @@ function parseRunnerArgs(args: string[]): SearchOptions & { all?: boolean; india
     else if (arg === '--hoursOld' && args[i + 1]) options.hoursOld = parseInt(args[++i], 10);
     else if (arg === '--only' && args[i + 1]) options.only = args[++i].toLowerCase();
     else if (arg === '--dry-run') options.dryRun = true;
+    else if (arg === '--dork') options.dork = true;
   }
   return options;
 }
@@ -109,6 +111,17 @@ async function runSweep() {
       if (i + CONCURRENCY_LIMIT < targets.length && delay > 0) {
         const jitter = Math.floor(delay * 0.2 * (Math.random() * 2 - 1));
         await sleep(delay + jitter);
+      }
+    }
+
+    if (args.dork) {
+      try {
+        const dorkResult = await executeDorkSearch(args);
+        totalRaw += dorkResult.totalFound;
+        totalFound += dorkResult.jobs.length;
+        allDiscoveredJobs.push(...dorkResult.jobs);
+      } catch (err: any) {
+        console.error(`❌ Dorker Search Failed: ${err.message}`);
       }
     }
 

@@ -159,16 +159,16 @@ router.get('/jobs/sweep-feed', async (_req: Request, res: Response): Promise<voi
   try {
     // Fetch non-terminal discovered jobs
     const discoveredResult = await pool.query(`
-      SELECT id, title, company, apply_link as "applyLink", apply_link as "sourceLink", 'discovered' as type 
+      SELECT id, title, company, apply_link as "applyLink", apply_link as "sourceLink", created_at as "publishedAt", 'discovered' as type 
       FROM discovered_jobs 
       WHERE status IN ('DISCOVERED', 'PROCESSING', 'PROCESSED')
     `);
     
     // Fetch non-terminal processed jobs
     const processedResult = await pool.query(`
-      SELECT id, title, company, apply_link as "applyLink", source_url as "sourceLink", 'processed' as type 
+      SELECT id, title, company, apply_link as "applyLink", apply_link as "sourceLink", created_at as "publishedAt", 'processed' as type 
       FROM processed_jobs 
-      WHERE status IN ('PENDING_REVIEW', 'APPROVED')
+      WHERE status IN ('PENDING_REVIEW', 'APPROVED', 'PUBLISHED')
     `);
     
     res.json({

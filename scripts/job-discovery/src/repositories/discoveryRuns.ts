@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase.js';
+import { supabase } from '../lib/db.js';
 
 export async function startRun(): Promise<string | null> {
   if (!process.env.SUPABASE_URL) return null;

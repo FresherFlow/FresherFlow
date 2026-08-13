@@ -106,6 +106,9 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ collection, isSaved,
     const targetUrl = primaryItem?.url || '#';
 
     const hasMultipleItems = collection.items && collection.items.length > 1;
+    const visibleCount = collection.skills
+        ? (isMobile ? calculateVisibleSkills(collection.skills, true) : collection.skills.length)
+        : 0;
 
     useEffect(() => {
         const checkOverflow = () => {
@@ -206,8 +209,8 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ collection, isSaved,
 
                 {/* Skills Row */}
                 {(collection.skills && collection.skills.length > 0) && (
-                    <div className="flex items-center gap-1.5 mt-1 mb-2 max-w-[85%] md:max-w-none overflow-hidden whitespace-nowrap">
-                        {collection.skills.slice(0, calculateVisibleSkills(collection.skills, isMobile)).map(skill => (
+                    <div className="flex items-center gap-1.5 mt-1 mb-2 max-w-[85%] md:max-w-none overflow-hidden whitespace-nowrap md:flex-wrap md:whitespace-normal md:overflow-visible">
+                        {collection.skills.slice(0, visibleCount).map(skill => (
                             <SkillPill
                                 key={skill}
                                 skill={skill.charAt(0).toUpperCase() + skill.slice(1)}
@@ -215,9 +218,9 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ collection, isSaved,
                                 className="py-0.5 text-xs shrink-0"
                             />
                         ))}
-                        {collection.skills.length > calculateVisibleSkills(collection.skills, isMobile) && (
+                        {collection.skills.length > visibleCount && (
                             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold text-muted-foreground bg-muted border border-border/50 shrink-0">
-                                +{collection.skills.length - calculateVisibleSkills(collection.skills, isMobile)}
+                                +{collection.skills.length - visibleCount}
                             </span>
                         )}
                     </div>

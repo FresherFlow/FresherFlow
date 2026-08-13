@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import { timingSafeEqual, createHash } from 'crypto';
 
-const secret = process.env.INTERNAL_API_SECRET;
+const secret = process.env.INTERNAL_API_SECRET || process.env.INGESTION_SECRET || process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
 if (!secret) {
-  console.error('FATAL: INTERNAL_API_SECRET is not set. Auth middleware will reject all requests.');
+  console.error('FATAL: INTERNAL_API_SECRET (or fallbacks) is not set. Auth middleware will reject all requests.');
 }
 
 export function requireAuth(req: Request, res: Response, next: NextFunction) {

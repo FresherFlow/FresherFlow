@@ -1,30 +1,24 @@
 import { ExtractedJob } from './normalizer';
-import { createClient } from '@supabase/supabase-js';
 import { resolveCompanyWebsiteAndLogo } from '@fresherflow/utils';
+import pg from 'pg';
+const { Pool } = pg;
 
+const connectionString =
+  process.env.INGESTION_DATABASE_URL ||
+  process.env.STAGING_DATABASE_URL ||
+  process.env.DATABASE_URL;
 
-// POST parsed job to Supabase ProcessedJobs table
+const pool = new Pool({
+  connectionString,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+});
+
+// POST parsed job to ingestion postgres processed_jobs table
 export async function saveJobToSupabase(
     job: ExtractedJob,
     sourceLink: string,
     applyLink: string
 ): Promise<boolean> {
-    const supabaseUrl = process.env.SUPABASE_DISCOVERY_DATABASE_URL || process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    
-    if (!supabaseUrl || !supabaseKey) {
-        console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
-        return false;
-    }
-
-    const restUrl = process.env.SUPABASE_URL || process.env.SUPABASE_DISCOVERY_URL;
-    
-    if (!restUrl) {
-         console.error("Missing SUPABASE_URL (needs REST API endpoint)");
-         return false;
-    }
-
-    const supabase = createClient(restUrl, supabaseKey);
     const { website, logoUrl } = resolveCompanyWebsiteAndLogo(job.company, applyLink, job.companyWebsite);
 
     const payload = {
@@ -41,7 +35,7 @@ export async function saveJobToSupabase(
         allowed_passout_years: job.allowedPassoutYears || [],
         required_skills: job.requiredSkills || [],
         locations: job.locations || [],
-        structured_locations: job.structuredLocations || [],
+        structured_locations: job.structuredLocations ? JSON.stringify(job.structuredLocations) : null,
         work_mode: job.workMode || null,
         experience_min: job.experienceMin !== undefined ? job.experienceMin : null,
         experience_max: job.experienceMax !== undefined ? job.experienceMax : null,
@@ -56,51 +50,174 @@ export async function saveJobToSupabase(
         apply_link: applyLink,
         source_url: sourceLink || applyLink,
         custom_slug: job.customSlug || null,
-        application_details: job.applicationDetails || null,
-        walk_in_details: job.walkInDetails || null,
+        application_details: job.applicationDetails ? JSON.stringify(job.applicationDetails) : null,
+        walk_in_details: job.walkInDetails ? JSON.stringify(job.walkInDetails) : null,
         status: 'PENDING_REVIEW'
     };
 
     try {
-        console.log(`Saving to Supabase: ${job.title} @ ${job.company}`);
-        
+        console.log(`Saving to DB: ${job.title} @ ${job.company}`);
+
         // Check if job with this apply_link already exists in processed_jobs
-        const { data: existing } = await supabase
-            .from('processed_jobs')
-            .select('id')
-            .eq('apply_link', applyLink)
-            .limit(1);
+        const { rows: existing } = await pool.query(
+            `SELECT id FROM processed_jobs WHERE apply_link = $1 LIMIT 1`,
+            [applyLink]
+        );
 
         if (existing && existing.length > 0) {
             // Update existing job
-            const { error } = await supabase
-                .from('processed_jobs')
-                .update(payload)
-                .eq('apply_link', applyLink);
-                
-            if (error) {
-                console.error("Supabase update error:", error.message);
-                return false;
-            }
-            console.log(`Updated existing job in Supabase successfully`);
+            await pool.query(
+                `UPDATE processed_jobs SET
+                    type = $1,
+                    title = $2,
+                    company = $3,
+                    company_id = $4,
+                    company_website = $5,
+                    company_logo_url = $6,
+                    description = $7,
+                    allowed_degrees = $8,
+                    allowed_courses = $9,
+                    allowed_specializations = $10,
+                    allowed_passout_years = $11,
+                    required_skills = $12,
+                    locations = $13,
+                    structured_locations = $14,
+                    work_mode = $15,
+                    experience_min = $16,
+                    experience_max = $17,
+                    salary_range = $18,
+                    salary_amount = $19,
+                    salary_period = $20,
+                    employment_type = $21,
+                    job_function = $22,
+                    incentives = $23,
+                    selection_process = $24,
+                    notes_highlights = $25,
+                    source_url = $26,
+                    custom_slug = $27,
+                    application_details = $28,
+                    walk_in_details = $29,
+                    status = $30,
+                    updated_at = NOW()
+                WHERE apply_link = $31`,
+                [
+                    payload.type,
+                    payload.title,
+                    payload.company,
+                    payload.company_id,
+                    payload.company_website,
+                    payload.company_logo_url,
+                    payload.description,
+                    payload.allowed_degrees,
+                    payload.allowed_courses,
+                    payload.allowed_specializations,
+                    payload.allowed_passout_years,
+                    payload.required_skills,
+                    payload.locations,
+                    payload.structured_locations,
+                    payload.work_mode,
+                    payload.experience_min,
+                    payload.experience_max,
+                    payload.salary_range,
+                    payload.salary_amount,
+                    payload.salary_period,
+                    payload.employment_type,
+                    payload.job_function,
+                    payload.incentives,
+                    payload.selection_process,
+                    payload.notes_highlights,
+                    payload.source_url,
+                    payload.custom_slug,
+                    payload.application_details,
+                    payload.walk_in_details,
+                    payload.status,
+                    applyLink
+                ]
+            );
+            console.log(`Updated existing job in DB successfully`);
         } else {
             // Insert new job
-            const { error } = await supabase
-                .from('processed_jobs')
-                .insert(payload);
-                
-            if (error) {
-                console.error("Supabase insert error:", error.message);
-                return false;
-            }
-            console.log(`Saved to Supabase successfully`);
+            await pool.query(
+                `INSERT INTO processed_jobs (
+                    type,
+                    title,
+                    company,
+                    company_id,
+                    company_website,
+                    company_logo_url,
+                    description,
+                    allowed_degrees,
+                    allowed_courses,
+                    allowed_specializations,
+                    allowed_passout_years,
+                    required_skills,
+                    locations,
+                    structured_locations,
+                    work_mode,
+                    experience_min,
+                    experience_max,
+                    salary_range,
+                    salary_amount,
+                    salary_period,
+                    employment_type,
+                    job_function,
+                    incentives,
+                    selection_process,
+                    notes_highlights,
+                    apply_link,
+                    source_url,
+                    custom_slug,
+                    application_details,
+                    walk_in_details,
+                    status,
+                    created_at,
+                    updated_at
+                ) VALUES (
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+                    $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
+                    $21, $22, $23, $24, $25, $26, $27, $28, $29, $30,
+                    $31, NOW(), NOW()
+                )`,
+                [
+                    payload.type,
+                    payload.title,
+                    payload.company,
+                    payload.company_id,
+                    payload.company_website,
+                    payload.company_logo_url,
+                    payload.description,
+                    payload.allowed_degrees,
+                    payload.allowed_courses,
+                    payload.allowed_specializations,
+                    payload.allowed_passout_years,
+                    payload.required_skills,
+                    payload.locations,
+                    payload.structured_locations,
+                    payload.work_mode,
+                    payload.experience_min,
+                    payload.experience_max,
+                    payload.salary_range,
+                    payload.salary_amount,
+                    payload.salary_period,
+                    payload.employment_type,
+                    payload.job_function,
+                    payload.incentives,
+                    payload.selection_process,
+                    payload.notes_highlights,
+                    payload.apply_link,
+                    payload.source_url,
+                    payload.custom_slug,
+                    payload.application_details,
+                    payload.walk_in_details,
+                    payload.status
+                ]
+            );
+            console.log(`Saved to DB successfully`);
         }
-        
+
         return true;
     } catch (err) {
-        console.error(`Failed to save job to Supabase:`, (err as Error).message);
+        console.error(`Failed to save job to DB:`, (err as Error).message);
         return false;
     }
 }
-
-

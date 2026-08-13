@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@fresherflow/domain": "workspace:*",
+    "@fresherflow/parser": "workspace:*",
     "@fresherflow/plugins": "workspace:*",
     "@fresherflow/types": "workspace:*",
     "@supabase/supabase-js": "^2.112.0",

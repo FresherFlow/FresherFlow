@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase.js';
+import { supabase } from '../lib/db.js';
 import { parseJobUrl } from '@fresherflow/parser';
 
 export async function upsertJobs(jobs: any[], runId: string | null) {

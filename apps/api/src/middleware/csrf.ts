@@ -61,7 +61,10 @@ export function csrfGate(req: Request, res: Response, next: NextFunction) {
     if (origin) {
         try {
             const parsedOrigin = new URL(origin).hostname;
-            const allowedHosts = ['localhost', '127.0.0.1', 'fresherflow.com'];
+            const envHosts = process.env.ALLOWED_ORIGINS
+                ? process.env.ALLOWED_ORIGINS.split(',').map(h => h.trim()).filter(Boolean)
+                : [];
+            const allowedHosts = envHosts.length > 0 ? envHosts : ['localhost', '127.0.0.1', 'fresherflow.com', 'fresherflow.in'];
             if (!allowedHosts.some(h => parsedOrigin === h || parsedOrigin.endsWith('.' + h))) {
                 return next(new AppError('CSRF Security Violation: Invalid origin.', 403));
             }

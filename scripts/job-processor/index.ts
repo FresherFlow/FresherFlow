@@ -174,7 +174,7 @@ async function run(): Promise<void> {
         !['--chunk', '--limit', '--batch-size', '--batch-delay'].includes(args[idx - 1])
     );
 
-    const { fetchUnprocessedFromSupabase, markDiscoveredJobStatus } = await import('./src/supabase-source.js');
+    const { fetchUnprocessedFromSupabase, markDiscoveredJobStatus } = await import('./src/db-source.js');
     const { isJobLive } = await import('./src/liveness.js');
 
     let jobs: any[] = [];
@@ -531,9 +531,9 @@ async function run(): Promise<void> {
                 }
 
                 // Fresher-only gate: skip non-fresher roles
-                if ((extracted.experienceMin ?? 0) > 1) {
+                if ((extracted.experienceMin ?? 0) >= 3) {
                     console.log(`[FILTER] Non-fresher skipped: experienceMin=${extracted.experienceMin}`);
-                    failureList.push({ url: job.applyLink, reason: 'Non-fresher (experienceMin > 1)' });
+                    failureList.push({ url: job.applyLink, reason: 'Non-fresher (experienceMin >= 3)' });
                     if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
                     continue;
                 }

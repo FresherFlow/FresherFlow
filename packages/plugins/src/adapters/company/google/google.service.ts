@@ -68,7 +68,11 @@ export class GoogleCareersService implements IScraper {
 
       console.log(`Google Careers: scraped ${jobs.length} jobs`);
     } catch (err: any) {
-      console.error(`Google Careers scrape failed: ${err.message}`);
+      if (err.message && err.message.includes('404')) {
+        // API deprecated, silently fail
+      } else {
+        console.error(`Google Careers scrape failed: ${err.message}`);
+      }
     }
 
     return { jobs };

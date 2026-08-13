@@ -1658,6 +1658,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.112.0
         version: 2.112.0(@opentelemetry/api@1.9.1)
+      pg:
+        specifier: ^8.22.0
+        version: 8.22.0
       playwright:
         specifier: ^1.62.1
         version: 1.62.1
@@ -1668,6 +1671,9 @@ importers:
       '@types/node':
         specifier: ^26.1.2
         version: 26.1.2
+      '@types/pg':
+        specifier: ^8.20.3
+        version: 8.20.3
       tsx:
         specifier: ^4.23.5
         version: 4.23.5
@@ -1680,6 +1686,9 @@ importers:
       '@fresherflow/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@fresherflow/parser':
+        specifier: workspace:*
+        version: link:../../packages/parser
       '@fresherflow/plugins':
         specifier: workspace:*
         version: link:../../packages/plugins

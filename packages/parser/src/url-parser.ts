@@ -127,6 +127,7 @@ export class UrlParser {
 
         const sourceType = this.detectSourceType(hostname);
         let html = '';
+        let finalUrl = url;
         try {
             // codeql[js/request-forgery]
             // lgtm[js/request-forgery]
@@ -137,6 +138,7 @@ export class UrlParser {
                 }
             });
             html = resp.data;
+            finalUrl = resp.request?.res?.responseUrl || url;
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Unknown fetch error';
             return {
@@ -155,12 +157,57 @@ export class UrlParser {
         const meta = this.extractFromMeta(html);
 
         // Merge sources with LD priority
-        const title = ld.title || meta.title || '';
+        let title = ld.title || meta.title || '';
         const description = ld.description || meta.description || '';
         const company = ld.company || meta.company;
 
+        // Try to extract title from URL if it is missing
+        if (!title && url) {
+            try {
+                const u = new URL(url);
+                const pathParts = u.pathname.split('/').filter(Boolean);
+                if (pathParts.length > 0) {
+                    const lastPart = pathParts[pathParts.length - 1];
+                    let extracted = lastPart.split('.')[0].replace(/-/g, ' ');
+                    if (url.includes('smartrecruiters.com')) {
+                        extracted = extracted.replace(/^[0-9]+\s/g, '');
+                    }
+                    if (extracted.length > 3) {
+                        // title case
+                        title = extracted.replace(/\b\w/g, l => l.toUpperCase());
+                    }
+                }
+            } catch (e) {}
+        }
+
         // Semantic NLP pass
         const semantic = parseJobText(`${title}\n${description}`);
+
+        // Check for expired job
+        const htmlStr = typeof html === 'string' ? html : String(html);
+        const htmlLower = htmlStr.toLowerCase();
+        if (
+            url.toLowerCase().includes('/expired') ||
+            finalUrl.toLowerCase().includes('/expired') ||
+            title.toLowerCase().includes('this job ad has expired') ||
+            htmlLower.includes('this job ad has expired') ||
+            htmlLower.includes('job is no longer available') ||
+            htmlLower.includes('position has been filled') ||
+            htmlLower.includes('no longer accepting applications') ||
+            title.toLowerCase().includes('job not found') ||
+            htmlLower.includes('this job is no longer available')
+        ) {
+            return {
+                parsed: {},
+                meta: {
+                    sourceType,
+                    confidence: 0,
+                    missing: ['content'],
+                    warnings: ['EXPIRED'],
+                    finalUrl
+                }
+            };
+        }
 
         return {
             parsed: {
@@ -174,7 +221,7 @@ export class UrlParser {
                 confidence: title ? 0.8 : 0.2,
                 missing: title ? [] : ['title'],
                 warnings: [],
-                finalUrl: url
+                finalUrl
             }
         };
     }

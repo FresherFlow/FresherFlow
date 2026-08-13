@@ -563,7 +563,8 @@ export class StaticFeedService {
                     };
                     const body = JSON.stringify(shardData);
                     StorageService.writeLocalFile(path.join(this.COMPANIES_DIR, `${slug}.json`), body);
-                    await StorageService.uploadToR2(`companies/${slug}.json`, body, 'application/json');
+                    // TODO: company shards R2 upload disabled - not used by any consumer
+                    // await StorageService.uploadToR2(`companies/${slug}.json`, body, 'application/json');
                 }
             }
 

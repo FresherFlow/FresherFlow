@@ -232,7 +232,7 @@ export async function fetchSmartRecruitersDetails(applyLink: string): Promise<an
 
 export async function fetchWorkdayDetails(applyLink: string, page: any): Promise<any> {
     try {
-        await page.goto(applyLink, { waitUntil: 'networkidle', timeout: 45000 });
+        await page.goto(applyLink, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await page.waitForTimeout(3000);
 
         const title = await page.locator('[data-automation-id="jobPostingHeader"]').innerText().catch(() => '');
@@ -257,7 +257,7 @@ export async function fetchWorkdayDetails(applyLink: string, page: any): Promise
 
 export async function fetchOracleDetails(applyLink: string, page: any): Promise<any> {
     try {
-        await page.goto(applyLink, { waitUntil: 'networkidle', timeout: 45000 });
+        await page.goto(applyLink, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await page.waitForTimeout(4000);
 
         const title = await page.locator('.requisitionTitle, h1.title, [data-bind*="Title"]').first().innerText().catch(() => '');
@@ -299,7 +299,7 @@ export async function fetchOracleDetails(applyLink: string, page: any): Promise<
 
 export async function fetchICimsDetails(applyLink: string, page: any): Promise<any> {
     try {
-        await page.goto(applyLink, { waitUntil: 'networkidle', timeout: 45000 });
+        await page.goto(applyLink, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await page.waitForTimeout(2000);
 
         const title = await page.locator('#job-position-title, .iCIMS_JobTitle h1, h1.title').first().innerText().catch(() => '');
@@ -323,7 +323,7 @@ export async function fetchICimsDetails(applyLink: string, page: any): Promise<a
 
 export async function fetchSuccessFactorsDetails(applyLink: string, page: any): Promise<any> {
     try {
-        await page.goto(applyLink, { waitUntil: 'networkidle', timeout: 45000 });
+        await page.goto(applyLink, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await page.waitForTimeout(3000);
 
         const title = await page.locator('[class*="jobTitle"], .jobTitle h1, .job-header h1').first().innerText().catch(() => '');
@@ -347,7 +347,7 @@ export async function fetchSuccessFactorsDetails(applyLink: string, page: any): 
 
 export async function fetchPhenomDetails(applyLink: string, page: any): Promise<any> {
     try {
-        await page.goto(applyLink, { waitUntil: 'networkidle', timeout: 45000 });
+        await page.goto(applyLink, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await page.waitForTimeout(3000);
 
         const title = await page.locator('.phenom-job-title, h1[class*="title"], .job-title').first().innerText().catch(() => '');
@@ -371,7 +371,7 @@ export async function fetchPhenomDetails(applyLink: string, page: any): Promise<
 
 export async function fetchDarwinboxDetails(applyLink: string, page: any): Promise<any> {
     try {
-        await page.goto(applyLink, { waitUntil: 'networkidle', timeout: 45000 });
+        await page.goto(applyLink, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await page.waitForTimeout(2000);
 
         const title = await page.locator('.job-title, h1.title, .career-title').first().innerText().catch(() => '');

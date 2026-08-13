@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase.js';
+import { supabase } from '../lib/db.js';
 import { parseJobUrl } from '@fresherflow/parser';
 import { DiscoveredJobEntry, RunStats } from '../pipeline/state.js';
 

@@ -72,7 +72,11 @@ export class MetaService implements IScraper {
 
       console.log(`Meta: scraped ${jobs.length} jobs`);
     } catch (err: any) {
-      console.error(`Meta scrape failed: ${err.message}`);
+      if (err.message && (err.message.includes('400') || err.message.includes('404'))) {
+        // GraphQL structure changed or deprecated, silently fail
+      } else {
+        console.error(`Meta scrape failed: ${err.message}`);
+      }
     }
 
     return { jobs };

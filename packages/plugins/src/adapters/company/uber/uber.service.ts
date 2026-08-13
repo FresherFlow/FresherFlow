@@ -80,7 +80,11 @@ export class UberService implements IScraper {
 
       console.log(`Uber: scraped ${jobs.length} jobs`);
     } catch (err: any) {
-      console.error(`Uber scrape failed: ${err.message}`);
+      if (err.message && (err.message.includes('404') || err.message.includes('403'))) {
+        // API deprecated/blocked, silently fail
+      } else {
+        console.error(`Uber scrape failed: ${err.message}`);
+      }
     }
 
     return { jobs };
