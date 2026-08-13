@@ -1,7 +1,7 @@
 import prisma, { Prisma } from '../database/prisma';
 import { AlertChannel, AlertDispatchReason, AlertDispatchStatus, AlertKind, UserFollow } from '@fresherflow/database';
 import { OpportunityStatus, Opportunity, Profile } from '@fresherflow/types';
-import { filterAndRankOpportunitiesForUser } from '@fresherflow/domain';
+import { filterAndRankOpportunitiesForUser, buildOpportunityUrl } from '@fresherflow/domain';
 import { logger } from '@fresherflow/logger';
 import { EmailService } from './email.service';
 import { sendNewJobPush } from './push.service';
@@ -331,7 +331,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                     title: opportunity.title,
                     company: opportunity.company,
                     location: opportunity.locations?.[0] || null,
-                    applyUrl: `${frontendUrl.replace(/\/$/, '')}/${opportunity.slug}`,
+                    applyUrl: buildOpportunityUrl(frontendUrl, opportunity.slug, opportunity.type),
                 });
                 emailsSent++;
                 deliveriesToCreate.push({
@@ -398,6 +398,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                 company: opportunity.company,
                 opportunityId: opportunity.id,
                 opportunitySlug: opportunity.slug,
+                type: opportunity.type,
             });
             pushSentCount += 1;
             await prisma.alertDelivery.create({

@@ -292,7 +292,8 @@ class TelegramService {
 
         const locationText = locations.length > 0 ? locations.join(' / ') : 'India';
         const frontendOrigin = this.resolveCanonicalShareOrigin();
-        const jobUrl = `${frontendOrigin}/${slug}`;
+        const prefix = type === 'GOVERNMENT' ? 'govt' : 'jobs';
+        const jobUrl = `${frontendOrigin}/${prefix}/${slug}`;
         const opportunity = await prisma.opportunity.findUnique({
             where: { id: opportunityId },
             select: {

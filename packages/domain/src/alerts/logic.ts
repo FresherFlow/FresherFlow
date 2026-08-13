@@ -21,8 +21,9 @@ export function getTimezoneParts(date: Date, timezone: string): TzParts {
     };
 }
 
-export function buildOpportunityUrl(frontendUrl: string, slug: string) {
-    return `${frontendUrl.replace(/\/$/, '')}/opportunities/${slug}`;
+export function buildOpportunityUrl(frontendUrl: string, slug: string, type?: string) {
+    const prefix = type === 'GOVERNMENT' ? 'govt' : 'jobs';
+    return `${frontendUrl.replace(/\/$/, '')}/${prefix}/${slug}`;
 }
 
 export function getClosingSoonHours(opportunity: Opportunity, now: Date): number | null {

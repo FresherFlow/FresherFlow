@@ -129,7 +129,7 @@ export class OpportunityService {
             },
         });
 
-        discoveryEmitter.trigger();
+        // discoveryEmitter.trigger();
         return updated;
     }
 
@@ -160,7 +160,7 @@ export class OpportunityService {
         });
 
 
-        discoveryEmitter.trigger();
+        // discoveryEmitter.trigger();
         return deleted;
     }
 
@@ -175,7 +175,7 @@ export class OpportunityService {
             },
         });
 
-        discoveryEmitter.trigger();
+        // discoveryEmitter.trigger();
         return expired;
     }
 

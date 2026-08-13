@@ -106,9 +106,9 @@ export async function handleOpportunityPublished(
   });
 
   // 6. Debounced Feed Refresh
-  import('./staticFeed.service').then(({ StaticFeedService }) => {
-    StaticFeedService.scheduleRefresh();
-  });
+  // import('./staticFeed.service').then(({ StaticFeedService }) => {
+  //   StaticFeedService.scheduleRefresh();
+  // });
 
   // 7. Append new opportunity metadata to R2 CDN files
   MetadataService.appendOpportunityMetadata(opportunity).catch((err) => {

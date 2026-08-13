@@ -30,11 +30,8 @@ export function buildSocialOpportunityUrl({
     source = 'opportunity_share',
     ref = 'social',
 }: BuildSocialOpportunityUrlArgs) {
-    let path = `/${slug}`;
-    
-    if (type === OpportunityType.JOB) path = `/${slug}`;
-    else if (type === OpportunityType.INTERNSHIP) path = `/${slug}`;
-    else if (type === OpportunityType.WALKIN) path = `/${slug}`;
+    const prefix = type === OpportunityType.GOVERNMENT ? 'govt' : 'jobs';
+    const path = `/${prefix}/${slug}`;
 
     const url = new URL(path, frontendOrigin);
     url.searchParams.set('ref', ref);

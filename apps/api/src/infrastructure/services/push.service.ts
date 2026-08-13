@@ -8,6 +8,7 @@ export type NewJobPushPayload = {
     company: string;
     opportunityId: string;
     opportunitySlug: string;
+    type?: string;
 };
 
 function getFrontendOrigin() {
@@ -21,8 +22,9 @@ function getFrontendOrigin() {
         : configuredOrigin;
 }
 
-function buildOpportunityUrl(opportunitySlug: string) {
-    const url = new URL(`/${opportunitySlug}`, getFrontendOrigin());
+function buildOpportunityUrl(opportunitySlug: string, type?: string) {
+    const prefix = type === 'GOVERNMENT' ? 'govt' : 'jobs';
+    const url = new URL(`/${prefix}/${opportunitySlug}`, getFrontendOrigin());
     url.searchParams.set('source', 'push_notification');
     url.searchParams.set('ref', 'push');
     return url.toString();
@@ -49,7 +51,7 @@ export async function sendNewJobPush(userId: string, payload: NewJobPushPayload)
         userId,
         title: `New job: ${payload.title}`,
         body: `${payload.company} posted a new opening for freshers.`,
-        url: buildOpportunityUrl(payload.opportunitySlug),
+        url: buildOpportunityUrl(payload.opportunitySlug, payload.type),
         kind: 'NEW_JOB',
         opportunityId: payload.opportunityId,
         platform: isExpo ? 'expo' : 'web',

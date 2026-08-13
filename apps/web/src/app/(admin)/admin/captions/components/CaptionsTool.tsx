@@ -47,6 +47,11 @@ import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
 const PROD_SITE_URL = SITE_URL.includes('localhost') ? 'https://fresherflow.in' : SITE_URL;
 
+const getOpportunityUrl = (opp: Opportunity) => {
+    const basePath = opp.type === 'GOVERNMENT' ? 'govt' : 'jobs';
+    return `${PROD_SITE_URL}/${basePath}/${opp.slug || opp.id}`;
+};
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 type SendPlatform = 'telegram' | 'x' | 'linkedin';
 type SendStatus = 'idle' | 'sending' | 'sent' | 'error';
@@ -317,7 +322,7 @@ export default function CaptionsTool({ isAdmin = false }: { isAdmin?: boolean })
 📍 Location: ${locations}${tgSkills}${tgSalary}
 
 ⭕️ Apply Now:
-${PROD_SITE_URL}/${opp.slug}
+${getOpportunityUrl(opp)}
 
 📱 More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/app`;
         }
@@ -332,7 +337,7 @@ ${twBatch}
 📍 ${locations}
 
 Apply 👇
-${PROD_SITE_URL}/${opp.slug}
+${getOpportunityUrl(opp)}
 
 ${twHashtags}`;
         }
@@ -350,7 +355,7 @@ ${twHashtags}`;
 📍 Location: ${locations}${liSkills}${liSalary}
 
 Apply:
-${PROD_SITE_URL}/${opp.slug}
+${getOpportunityUrl(opp)}
 
 📱 More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/app
 
@@ -369,7 +374,7 @@ ${liHashtags}`;
 > 📍 *Location:* ${locations}${waSkills}${waSalary}
 
 ⭕️ *Apply Now:*
-${PROD_SITE_URL}/${opp.slug}
+${getOpportunityUrl(opp)}
 
 📱 *More jobs on FresherFlow:* ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/app`;
     };
@@ -383,7 +388,7 @@ ${PROD_SITE_URL}/${opp.slug}
             let body = `🚨 *Today's Job Updates*\n\n`;
             selectedOpps.forEach((opp, index) => {
                 const numEmoji = getNumberEmoji(index + 1);
-                body += `${numEmoji} *${opp.company}*\n> ${opp.title}\n🔗 ${PROD_SITE_URL}/${opp.slug}\n\n`;
+                body += `${numEmoji} *${opp.company}*\n> ${opp.title}\n🔗 ${getOpportunityUrl(opp)}\n\n`;
             });
             body += `📱 *More jobs:* ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/app`;
             return body;
@@ -393,7 +398,7 @@ ${PROD_SITE_URL}/${opp.slug}
             let body = `🚨 Today's Job Updates\n\n`;
             selectedOpps.forEach((opp, index) => {
                 const numEmoji = getNumberEmoji(index + 1);
-                body += `${numEmoji} ${opp.company} — ${opp.title}\n🔗 ${PROD_SITE_URL}/${opp.slug}\n\n`;
+                body += `${numEmoji} ${opp.company} — ${opp.title}\n🔗 ${getOpportunityUrl(opp)}\n\n`;
             });
             body += `📱 More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/app`;
             return body;
@@ -885,7 +890,7 @@ ${PROD_SITE_URL}/${opp.slug}
                                                     const pushLocations = opp.locations && opp.locations.length > 0 ? opp.locations.join(', ') : 'India';
                                                     const pushDegrees = getDegreesText(opp);
                                                     const pushMessage = `Location: ${pushLocations} | Eligibility: ${pushDegrees}. Tap to apply.`;
-                                                    const pushUrl = `${PROD_SITE_URL}/${opp.slug || opp.id}`;
+                                                    const pushUrl = getOpportunityUrl(opp);
                                                     const pushQuery = `?title=${encodeURIComponent(pushTitle)}&message=${encodeURIComponent(pushMessage)}&url=${encodeURIComponent(pushUrl)}`;
 
                                                     return (
@@ -1038,7 +1043,7 @@ ${PROD_SITE_URL}/${opp.slug}
                                                                             <button onClick={() => copyToClipboard(formatSingleCaption(opp, 'linkedin'), `li_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={formatSingleCaption(opp, 'linkedin')}>
                                                                                 {copiedStates[`li_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <LinkedInBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
                                                                             </button>
-                                                                            <button onClick={() => copyToClipboard(`${PROD_SITE_URL}/${opp.slug}`, `link_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={`${PROD_SITE_URL}/${opp.slug}`}>
+                                                                            <button onClick={() => copyToClipboard(getOpportunityUrl(opp), `link_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={getOpportunityUrl(opp)}>
                                                                                 {copiedStates[`link_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <LinkIcon className="w-4 h-4 md:w-5 md:h-5" />}
                                                                             </button>
                                                                             {isAdmin && (

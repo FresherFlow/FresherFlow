@@ -66,7 +66,7 @@ async function sendDailyDigestForUser(
                 title: item.opportunity.title,
                 company: item.opportunity.company,
                 location: item.opportunity.locations?.[0] || null,
-                applyUrl: buildOpportunityUrl(frontendUrl, item.opportunity.slug),
+                applyUrl: buildOpportunityUrl(frontendUrl, item.opportunity.slug, item.opportunity.type),
             }))
         );
     }
@@ -148,7 +148,7 @@ async function sendClosingSoonForUser(
                 title: item.opportunity.title,
                 company: item.opportunity.company,
                 expiresText,
-                applyUrl: buildOpportunityUrl(frontendUrl, item.opportunity.slug),
+                applyUrl: buildOpportunityUrl(frontendUrl, item.opportunity.slug, item.opportunity.type),
             });
         }
 
@@ -226,7 +226,7 @@ async function sendEventRemindersForUser(
                     eventDate: event.eventDate,
                     reminderWindow: window.key,
                     sourceLink: event.sourceLink || null,
-                    applyUrl: buildOpportunityUrl(frontendUrl, event.opportunity.slug),
+                    applyUrl: buildOpportunityUrl(frontendUrl, event.opportunity.slug, event.opportunity.type),
                 })
             }
         });
@@ -272,7 +272,7 @@ async function sendTrendingAlertsForUser(
             title: `🔥 Trending: ${item.opportunity.title}`,
             company: item.opportunity.company,
             location: item.opportunity.locations?.[0] || 'Remote',
-            applyUrl: buildOpportunityUrl(frontendUrl, item.opportunity.slug),
+            applyUrl: buildOpportunityUrl(frontendUrl, item.opportunity.slug, item.opportunity.type),
         });
     }
 

@@ -80,9 +80,26 @@ async function runDorker() {
     console.log(`\n--- Dorker Finished ---`);
     console.log(`Total unique ATS links found: ${foundLinks.size}`);
     
+    let summary = `🤖 *ATS Search Engine Bot Results*\n\n`;
+    summary += `Total unique ATS links found: ${foundLinks.size}\n\n`;
+
     if (foundLinks.size > 0) {
         console.log("Sample links:");
         Array.from(foundLinks).slice(0, 5).forEach(l => console.log(` - ${l}`));
+        
+        summary += `*Sample links:*\n`;
+        Array.from(foundLinks).slice(0, 15).forEach(l => {
+            summary += `• ${l}\n`;
+        });
+    }
+
+    try {
+        const { sendTelegramMessage } = await import('@fresherflow/utils');
+        console.log("\nSending Telegram message...");
+        await sendTelegramMessage(summary);
+        console.log("Telegram message sent successfully.");
+    } catch (err) {
+        console.error("Failed to send Telegram message:", err);
     }
 }
 
