@@ -17,7 +17,7 @@ import PaperAirplaneIcon from '@heroicons/react/24/outline/PaperAirplaneIcon';
 import BuildingOfficeIcon from '@heroicons/react/24/outline/BuildingOfficeIcon';
 import HomeIcon from '@heroicons/react/24/outline/HomeIcon';
 import ArrowsRightLeftIcon from '@heroicons/react/24/outline/ArrowsRightLeftIcon';
-import { useState, useMemo, useEffect } from 'react';
+import { useMemo, useRef } from 'react';
 import CompanyLogo from '@/ui/CompanyLogo';
 import toast from 'react-hot-toast';
 import { toastError } from '@repo/ui/utils/error-web';
@@ -143,10 +143,8 @@ export default function JobCard({
     searchedSkill,
     className
 }: JobCardProps) {
-    const [mounted, setMounted] = useState(false);
-    useEffect(() => {
-        setMounted(true);
-    }, []);
+    const mountedRef = useRef(false);
+    if (typeof window !== 'undefined') mountedRef.current = true;
     const router = useRouter();
     const { user, profile } = useAuth();
     const pathname = usePathname();
@@ -760,7 +758,7 @@ export default function JobCard({
             {visibleSkills.length > 0 && (
                 <div className="flex flex-row flex-wrap items-center gap-1">
                     {visibleSkills.map((skill, idx) => {
-                        const isMatched = mounted && Boolean(profile?.skills?.some(s => s.toLowerCase() === skill.toLowerCase()));
+                        const isMatched = mountedRef.current && Boolean(profile?.skills?.some(s => s.toLowerCase() === skill.toLowerCase()));
                         const isSearched = Boolean(effectiveSearchQuery && (
                             skill.toLowerCase().includes(effectiveSearchQuery.toLowerCase()) ||
                             effectiveSearchQuery.toLowerCase().includes(skill.toLowerCase())

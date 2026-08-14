@@ -23,23 +23,19 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
     const segments = normalizedPathname.split('/').filter(Boolean);
     const firstSegment = segments[0] || '';
     const reservedSegments = new Set([
-        'batch', 'companies', 'deadlines', 'government-jobs', 'internships', 'jobs', 'location', 
-        'opportunities', 'remote', 'roles', 'skills', 'walk-ins', 'account'
+        'account', 'batch', 'companies', 'deadlines', 'govt', 'jobs', 'locations', 
+        'resources', 'roles', 'skills'
     ]);
     const isDetailPage =
-        /^\/(jobs|internships|walk-ins|government-jobs|opportunities)\/[^/]+/.test(normalizedPathname) ||
+        /^\/(jobs|govt)\/[^/]+/.test(normalizedPathname) ||
         (segments.length === 1 && !reservedSegments.has(firstSegment) && !firstSegment.includes('.'));
 
     const isJobRelatedPage =
         normalizedPathname.startsWith('/jobs') ||
-        normalizedPathname.startsWith('/internships') ||
-        normalizedPathname.startsWith('/walk-ins') ||
-        normalizedPathname.startsWith('/government-jobs') ||
-        normalizedPathname.startsWith('/opportunities') ||
-        normalizedPathname.startsWith('/remote') ||
+        normalizedPathname.startsWith('/govt') ||
         normalizedPathname.startsWith('/companies') ||
         normalizedPathname.startsWith('/skills') ||
-        normalizedPathname.startsWith('/location') ||
+        normalizedPathname.startsWith('/locations') ||
         normalizedPathname.startsWith('/batch') ||
         normalizedPathname.startsWith('/roles') ||
         normalizedPathname.startsWith('/resources');

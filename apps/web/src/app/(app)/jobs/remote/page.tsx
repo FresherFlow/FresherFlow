@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     description: 'Find verified remote jobs and work-from-home internships for freshers.',
     keywords: 'remote jobs, wfh, work from home jobs, fresher remote jobs, remote internships',
     alternates: {
-        canonical: '/remote',
+        canonical: '/jobs/remote',
     },
 };
 

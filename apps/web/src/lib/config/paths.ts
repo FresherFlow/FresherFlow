@@ -54,7 +54,7 @@ export function isPublicPath(pathname: string) {
         '/', '/about', '/privacy', '/terms', '/careers', 
         '/contact', '/resources', '/blog', '/govt', 
         '/batch', '/roles', '/skills', '/locations', 
-        '/location', '/app', '/join', '/pricing'
+        '/app', '/join', '/pricing'
     ];
     if (exactPaths.includes(pathname)) return true;
 
@@ -62,23 +62,24 @@ export function isPublicPath(pathname: string) {
     if (pathname.startsWith("/u/")) return true;
     if (pathname.startsWith("/r/")) return true;
     if (pathname.startsWith("/jobs")) return true;
-    if (pathname.startsWith("/internships")) return true;
-    if (pathname.startsWith("/walk-ins")) return true;
-    if (pathname.startsWith("/walkins")) return true;
     if (pathname.startsWith("/companies")) return true;
-    if (pathname.startsWith("/remote")) return true;
+    if (pathname.startsWith("/walkins")) return true;
     if (pathname.startsWith("/off-campus")) return true;
     if (pathname.startsWith("/hackathons")) return true;
-    
-    if (isOpportunityPublic(pathname)) return true;
+    if (pathname.startsWith('/locations/')) return true;
+    if (pathname.startsWith('/skills/')) return true;
+    if (pathname.startsWith('/batch/')) return true;
+    if (pathname.startsWith('/roles/')) return true;
+    if (pathname.startsWith('/govt/')) return true;
+    if (pathname.startsWith('/resources/')) return true;
+    if (pathname.startsWith('/blog/')) return true;
+    if (pathname.startsWith('/companies/')) return true;
     
     return false;
 }
 
 export function isPublicDetailPath(pathname: string): boolean {
-    if (pathname.startsWith('/walk-ins/details/') || pathname.startsWith('/walkins/details/')) return true;
     if (pathname.startsWith('/jobs/')) return pathname !== '/jobs/new';
-    if (pathname.startsWith('/internships/')) return true;
-    if (isOpportunityPublic(pathname)) return true;
+    if (pathname.startsWith('/govt/')) return true;
     return false;
 }

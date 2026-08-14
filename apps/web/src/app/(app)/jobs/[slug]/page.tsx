@@ -15,7 +15,7 @@ import {
     getTypeHubPath,
     ExtendedOpportunity
 } from './opportunitySeo';
-import { fetchBootstrapFeed, fetchGovernmentFeed, fetchExpiredFeed } from '@/lib/api/cdnFeed';
+import { fetchBootstrapFeed, fetchGovernmentFeed } from '@/lib/api/cdnFeed';
 import { getRelatedOpportunities } from '@/features/opportunities/utils/detailUtils';
 
 const CRAWLER_PATHS = new Set(['wp-admin', 'wp-login.php', 'xmlrpc.php', 'ads.txt', 'phpmyadmin', 'admin.php', 'demo', 'generate', 'blog', 'null', 'undefined', 'login', 'jobs', 'saved', 'tracker']);
@@ -41,14 +41,14 @@ export const revalidate = false;
 // dynamicParams = true: allows newly published jobs to be dynamically generated on their first visit,
 // rather than 404ing. This will result in 1 ISR write per new job. If we notice an ISR write burst,
 // we may need to revisit this approach or check our cache tags.
-export const dynamicParams = false;
+export const dynamicParams = true;
+
 
 export async function generateStaticParams() {
     try {
-        const [feed, govtFeed, expiredFeed] = await Promise.all([
+        const [feed, govtFeed] = await Promise.all([
             fetchBootstrapFeed(false, undefined, true),
             fetchGovernmentFeed(false, undefined, true),
-            fetchExpiredFeed(undefined, true)
         ]);
 
         const slugs = new Set<string>();
@@ -59,11 +59,6 @@ export async function generateStaticParams() {
         });
 
         govtFeed?.opportunities?.forEach((opp) => {
-            const slug = opp.slug || opp.id;
-            if (slug) slugs.add(slug);
-        });
-
-        expiredFeed?.opportunities?.forEach((opp) => {
             const slug = opp.slug || opp.id;
             if (slug) slugs.add(slug);
         });

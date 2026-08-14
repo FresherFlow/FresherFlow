@@ -120,7 +120,7 @@ export default function OpportunityDetailClient({
                         </p>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                        <Link href="/opportunities">
+                        <Link href="/jobs">
                             <Button className="min-w-40 h-11 rounded-full">
                                 Browse Opportunities
                             </Button>
@@ -153,7 +153,7 @@ export default function OpportunityDetailClient({
                     <ClockIcon className="w-4 h-4" />
                     Retry Loading
                 </Button>
-                <Link href="/opportunities">
+                <Link href="/jobs">
                     <Button variant="ghost">Browse other jobs</Button>
                 </Link>
                 
@@ -256,7 +256,7 @@ export default function OpportunityDetailClient({
                             Home
                         </Link>
                         <span className="text-muted-foreground/40">/</span>
-                        <Link href={opp.type === 'INTERNSHIP' ? '/internships' : opp.type === 'WALKIN' ? '/walk-ins' : '/jobs'} className="hover:text-primary transition-colors">
+                        <Link href={opp.type === 'INTERNSHIP' ? '/jobs/internships' : opp.type === 'WALKIN' ? '/jobs/walk-ins' : '/jobs'} className="hover:text-primary transition-colors">
                             {opp.type === 'INTERNSHIP' ? 'Internships' : opp.type === 'WALKIN' ? 'Walk-ins' : 'Jobs'}
                         </Link>
                         <span className="text-muted-foreground/40">/</span>
@@ -357,7 +357,7 @@ export default function OpportunityDetailClient({
                                     const locSlug = slugify(loc);
                                     if (loc.toLowerCase() === 'india' || loc.toLowerCase() === 'pan india') return null;
                                     return (
-                                        <Link key={loc} href={`/location/${locSlug}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
+                                        <Link key={loc} href={`/locations/${locSlug}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
                                             <MapPinIcon className="w-3.5 h-3.5" />
                                             Jobs in {loc}
                                         </Link>
@@ -373,7 +373,7 @@ export default function OpportunityDetailClient({
                                 {/* Role / Job Function Link */}
                                 {opp.jobFunction && (
                                     <Link 
-                                        href={opp.jobFunction.toLowerCase() === 'internship' ? '/internships' : `/roles/${slugify(opp.jobFunction)}`} 
+                                        href={opp.jobFunction.toLowerCase() === 'internship' ? '/jobs/internships' : `/roles/${slugify(opp.jobFunction)}`} 
                                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors"
                                     >
                                         <UserIcon className="w-3.5 h-3.5" />

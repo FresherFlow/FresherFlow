@@ -13,6 +13,7 @@ import { InstallPromptProvider } from "@/lib/providers/InstallPromptContext";
 // import OfflineNotification from "@/ui/OfflineNotification";
 import dynamic from "next/dynamic";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 
 const InstallAppBanner = dynamic(() => import("@/ui/InstallAppBanner"));
 
@@ -20,7 +21,6 @@ const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
   variable: '--font-inter',
-  weight: ['300', '400', '500', '600', '700', '800', '900']
 });
 
 import { PageTransitionWrapper } from '@/lib/components/PageTransitionWrapper';
@@ -102,7 +102,6 @@ export default async function RootLayout({
         <HeadInjections />
         <link rel="manifest" href="/manifest.webmanifest" id="ff-manifest-link" />
         <link rel="preload" as="image" href="/logo-optimized.png?v=3" />
-        <link rel="preload" as="image" href="/logo-white-optimized.png?v=3" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -113,20 +112,6 @@ export default async function RootLayout({
               ...(SITE_ORIGIN ? { url: SITE_ORIGIN } : {}),
               logo: LOGO_URL,
             }),
-          }}
-        />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              if (typeof window !== 'undefined' && Element.prototype.releasePointerCapture) {
-                const originalRelease = Element.prototype.releasePointerCapture;
-                Element.prototype.releasePointerCapture = function(pointerId) {
-                  try {
-                    originalRelease.call(this, pointerId);
-                  } catch (e) {}
-                };
-              }
-            `
           }}
         />
       </head>
@@ -150,6 +135,22 @@ export default async function RootLayout({
         {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
         {enableVercelAnalytics ? <Analytics /> : null}
         {enableSpeedInsights ? <SpeedInsights /> : null}
+        <Script
+          id="release-pointer-capture-patch"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof window !== 'undefined' && Element.prototype.releasePointerCapture) {
+                const originalRelease = Element.prototype.releasePointerCapture;
+                Element.prototype.releasePointerCapture = function(pointerId) {
+                  try {
+                    originalRelease.call(this, pointerId);
+                  } catch (e) {}
+                };
+              }
+            `
+          }}
+        />
       </body>
     </html>
   );

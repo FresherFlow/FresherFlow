@@ -19,11 +19,16 @@ const HUB_PATHS = new Set([
     '/opportunities',
     '/jobs',
     '/internships',
+    '/jobs/internships',
     '/walk-ins',
+    '/jobs/walk-ins',
     '/remote',
+    '/jobs/remote',
     '/government-jobs',
+    '/govt',
     '/companies',
     '/location',
+    '/locations',
     '/batch',
     '/skills',
     '/roles',
@@ -44,10 +49,10 @@ function isHubPath(path: string): boolean {
 function deriveTagsFromPaths(paths: string[]): string[] {
     const tags: string[] = [];
 
-    const hasGovt = paths.some(p => p.startsWith('/government-jobs'));
+    const hasGovt = paths.some(p => p.startsWith('/government-jobs') || p.startsWith('/govt'));
     const hasCompany = paths.some(p => p.startsWith('/companies/'));
-    const hasWalkin = paths.some(p => p.startsWith('/walk-ins/'));
-    const hasNormal = paths.some(p => !p.startsWith('/government-jobs') && !p.startsWith('/companies/'));
+    const hasWalkin = paths.some(p => p.startsWith('/jobs/walk-ins') || p.startsWith('/walk-ins/'));
+    const hasNormal = paths.some(p => !p.startsWith('/government-jobs') && !p.startsWith('/govt') && !p.startsWith('/companies/'));
 
     if (hasNormal || hasWalkin) tags.push('homepage-feed');
     if (hasGovt) tags.push('government-feed');
@@ -62,7 +67,7 @@ function deriveTagsFromPaths(paths: string[]): string[] {
 
         if (path.startsWith('/companies/')) {
             tags.push(`company-${lastPart}`);
-        } else if (path.startsWith('/walk-ins/')) {
+        } else if (path.startsWith('/jobs/walk-ins') || path.startsWith('/walk-ins/')) {
             tags.push(`city-${lastPart}`);
         } else {
             tags.push(`opportunity-${lastPart}`);

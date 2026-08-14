@@ -10,7 +10,8 @@ import { getRelatedOpportunities } from '@/features/opportunities/utils/detailUt
 import { generateOpportunityMetadata, generateOpportunityJsonLd, generateOpportunityBreadcrumbsJsonLd, getExpiryState, ExtendedOpportunity } from '../../jobs/[slug]/opportunitySeo';
 
 export const revalidate = false;
-export const dynamicParams = false;
+export const dynamicParams = true;
+
 
 const CRAWLER_PATHS = new Set(['wp-admin', 'wp-login.php', 'xmlrpc.php', 'ads.txt', 'phpmyadmin', 'admin.php', 'demo', 'generate', 'blog', 'null', 'undefined', 'login', 'jobs', 'saved', 'tracker']);
 function isInvalidSlug(slug: string): boolean {
@@ -57,6 +58,8 @@ export default async function GovernmentJobDetailPage({ params }: { params: Prom
 
     if (!opp) {
         logRouteResult('/govt/[slug]', '404');
+        const { unstable_noStore } = await import('next/cache');
+        unstable_noStore();
         notFound();
     }
 

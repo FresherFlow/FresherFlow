@@ -93,14 +93,14 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
     );
 
     if (!hasCity) {
-        logRouteResult('/walk-ins/[city]', '404');
+        logRouteResult('/jobs/walk-ins/[city]', '404');
         notFound();
     }
 
-    logRouteResult('/walk-ins/[city]', '200');
+    logRouteResult('/jobs/walk-ins/[city]', '200');
 
     const cityLabel = formatLabel(city);
-    const pageUrl = `${SITE_URL}/walk-ins/${city}`;
+    const pageUrl = `${SITE_URL}/jobs/walk-ins/${city}`;
     const jsonLd = {
         '@context': 'https://schema.org',
         '@type': 'CollectionPage',
@@ -126,7 +126,7 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
                         We verify walk-in drives and entry-level openings so you can apply confidently.
                     </p>
                     <div className="flex flex-wrap gap-2">
-                        <Link href="/opportunities" className="premium-button h-10 px-5 text-xs rounded-lg">
+                        <Link href="/jobs" className="premium-button h-10 px-5 text-xs rounded-lg">
                             Browse verified walk-ins
                         </Link>
                         <Link

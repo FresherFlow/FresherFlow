@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     description: 'Find internship opportunities for students and recent graduates. Explore verified internship openings with stipends, skill development programs, and career kickstart opportunities.',
     keywords: 'internships for students, paid internships, summer internships, fresher internships, internship opportunities india, student internships',
     alternates: {
-        canonical: '/internships',
+        canonical: '/jobs/internships',
     },
     openGraph: {
         title: 'Internships for Students',

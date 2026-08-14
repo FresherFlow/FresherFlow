@@ -179,6 +179,7 @@ export function DetailHeroSection({
                                 companyLogoUrl={opp.companyLogoUrl}
                                 applyLink={opp.applyLink}
                                 isGovernment={isGovernmentJob}
+                                priority={true}
                                 className="w-9 h-9 md:w-10 md:h-10 rounded-lg"
                             />
                             <div>

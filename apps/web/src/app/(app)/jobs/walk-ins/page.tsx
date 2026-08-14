@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     description: 'Find direct walk-in interview drives near you. Explore verified on-site hiring events for freshers with clear venue details, eligibility criteria, and interview dates.',
     keywords: 'walk-in interviews, direct hiring events, fresher walk-ins, off campus drives, interview venues, direct interview openings',
     alternates: {
-        canonical: '/walk-ins',
+        canonical: '/jobs/walk-ins',
     },
     openGraph: {
         title: 'Walk-in Interview Drives',

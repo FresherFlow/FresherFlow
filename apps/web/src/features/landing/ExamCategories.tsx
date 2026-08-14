@@ -8,11 +8,11 @@ import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
 import { cn } from '@repo/ui/utils/cn';
 
 const EXAM_CATEGORIES = [
-    { title: 'Banking & Insurance', icon: BuildingLibraryIcon, href: '/government-jobs?category=Banking', color: 'text-blue-500', bg: 'bg-blue-500/10' },
-    { title: 'SSC & Railway Exams', icon: TrophyIcon, href: '/government-jobs?category=SSC', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-    { title: 'Teaching & UGC', icon: AcademicCapIcon, href: '/government-jobs?category=Teaching', color: 'text-amber-500', bg: 'bg-amber-500/10' },
-    { title: 'State Level Exams', icon: MapPinIcon, href: '/government-jobs?category=State', color: 'text-violet-500', bg: 'bg-violet-500/10' },
-    { title: 'Engineering & ITI', icon: CpuChipIcon, href: '/government-jobs?category=Engineering', color: 'text-rose-500', bg: 'bg-rose-500/10' },
+    { title: 'Banking & Insurance', icon: BuildingLibraryIcon, href: '/jobs', color: 'text-blue-500', bg: 'bg-blue-500/10' },
+    { title: 'SSC & Railway Exams', icon: TrophyIcon, href: '/jobs', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+    { title: 'Teaching & UGC', icon: AcademicCapIcon, href: '/jobs', color: 'text-amber-500', bg: 'bg-amber-500/10' },
+    { title: 'State Level Exams', icon: MapPinIcon, href: '/jobs', color: 'text-violet-500', bg: 'bg-violet-500/10' },
+    { title: 'Engineering & ITI', icon: CpuChipIcon, href: '/jobs', color: 'text-rose-500', bg: 'bg-rose-500/10' },
 ];
 
 export function ExamCategories() {

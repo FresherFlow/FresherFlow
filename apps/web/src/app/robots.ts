@@ -31,9 +31,9 @@ export default function robots(): MetadataRoute.Robots {
                 allow: [
                     '/',
                     '/jobs',
-                    '/internships',
-                    '/walk-ins',
-                    '/opportunities',
+                    '/jobs/internships',
+                    '/jobs/walk-ins',
+                    '/govt',
                     '/companies',
                 ],
                 disallow: [

@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     description: 'Discover verified government job notifications, SSC recruitment, public sector vacancies, and exam circulars with direct apply options.',
     keywords: 'government jobs, govt jobs, ssc, banking jobs, railway jobs, upsc, sarkari naukri',
     alternates: {
-        canonical: '/government-jobs',
+        canonical: '/govt',
     },
     openGraph: {
         title: 'Verified Government Jobs',

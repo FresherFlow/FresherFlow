@@ -11,7 +11,7 @@ export const revalidate = false;
 export const metadata: Metadata = {
     title: 'Jobs by Location',
     description: 'Find verified fresher jobs, internships, and walk-in drives by city. Explore opportunities in Bangalore, Pune, Hyderabad, Chennai, Delhi NCR, and more.',
-    alternates: { canonical: `${SITE_URL}/location` },
+    alternates: { canonical: `${SITE_URL}/locations` },
 };
 
 export default async function LocationIndexPage() {
@@ -67,7 +67,7 @@ export default async function LocationIndexPage() {
                     title="Browse Jobs by Location"
                     description="Find verified fresher jobs and internships in your preferred city."
                     data={sorted}
-                    urlPrefix="/location/"
+                    urlPrefix="/locations/"
                 />
             </main>
         </div>

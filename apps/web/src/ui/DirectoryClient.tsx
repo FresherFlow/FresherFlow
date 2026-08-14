@@ -33,23 +33,27 @@ export function DirectoryClient({ title, description, data, urlPrefix, entityTyp
   const isSearching = search.trim().length > 0;
 
   // Split into featured vs remaining (if not searching)
-  const featured = isSearching ? [] : filteredData.slice(0, 8);
-  const remaining = isSearching ? filteredData : filteredData.slice(8);
+  const featured = useMemo(() => (isSearching ? [] : filteredData.slice(0, 8)), [isSearching, filteredData]);
+  const remaining = useMemo(() => (isSearching ? filteredData : filteredData.slice(8)), [isSearching, filteredData]);
 
   // Group remaining
-  const groups: Record<string, DirectoryEntity[]> = {};
-  for (const item of remaining) {
-    const letter = item.name[0].toUpperCase();
-    const key = /[A-Z]/.test(letter) ? letter : '0-9';
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(item);
-  }
+  const { groups, letters } = useMemo(() => {
+    const grps: Record<string, DirectoryEntity[]> = {};
+    for (const item of remaining) {
+      const letter = item.name[0].toUpperCase();
+      const key = /[A-Z]/.test(letter) ? letter : '0-9';
+      if (!grps[key]) grps[key] = [];
+      grps[key].push(item);
+    }
 
-  const letters = Object.keys(groups).sort((a, b) => {
-    if (a === '0-9') return 1;
-    if (b === '0-9') return -1;
-    return a.localeCompare(b);
-  });
+    const ltrs = Object.keys(grps).sort((a, b) => {
+      if (a === '0-9') return 1;
+      if (b === '0-9') return -1;
+      return a.localeCompare(b);
+    });
+
+    return { groups: grps, letters: ltrs };
+  }, [remaining]);
 
   return (
     <div className="space-y-10">

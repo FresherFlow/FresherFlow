@@ -138,7 +138,9 @@ const nextConfig: NextConfig = {
       "@fresherflow/domain",
       "@fresherflow/types",
       "@fresherflow/utils",
-      "@fresherflow/constants"
+      "@fresherflow/constants",
+      "@heroicons/react",
+      "lucide-react",
     ],
     staleTimes: {
       dynamic: 300, // 5 minutes for dynamic pages
@@ -147,7 +149,7 @@ const nextConfig: NextConfig = {
   },
 
   images: {
-    unoptimized: true,
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: [
       {
         protocol: 'https',

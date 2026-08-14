@@ -26,7 +26,7 @@ export default function NotFoundPage() {
                                 </p>
                             </div>
                             <div className="flex flex-col gap-3 sm:flex-row">
-                                <Link href="/opportunities" className="inline-flex h-12 items-center justify-center rounded-full bg-foreground px-6 text-sm font-semibold text-background transition-opacity hover:opacity-90">
+                                <Link href="/jobs" className="inline-flex h-12 items-center justify-center rounded-full bg-foreground px-6 text-sm font-semibold text-background transition-opacity hover:opacity-90">
                                     Go to opportunities
                                 </Link>
                                 <Link href="/jobs" className="inline-flex h-12 items-center justify-center rounded-full border border-border bg-card px-6 text-sm font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary">
@@ -49,7 +49,7 @@ export default function NotFoundPage() {
                                 </div>
                                 <ArrowRight className="h-4 w-4 text-muted-foreground transition-all duration-300 transform group-hover:translate-x-1 group-hover:text-primary" />
                             </Link>
-                            <Link href="/internships" className="group flex items-center gap-4 rounded-xl border border-border/70 bg-card p-3.5 transition-all duration-300 hover:border-primary/30 hover:shadow-[0_8px_20px_rgba(var(--primary-rgb),0.02)]">
+                            <Link href="/jobs/internships" className="group flex items-center gap-4 rounded-xl border border-border/70 bg-card p-3.5 transition-all duration-300 hover:border-primary/30 hover:shadow-[0_8px_20px_rgba(var(--primary-rgb),0.02)]">
                                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
                                     <GraduationCap className="h-5 w-5" />
                                 </div>
@@ -62,7 +62,7 @@ export default function NotFoundPage() {
                                 </div>
                                 <ArrowRight className="h-4 w-4 text-muted-foreground transition-all duration-300 transform group-hover:translate-x-1 group-hover:text-primary" />
                             </Link>
-                            <Link href="/walk-ins" className="group flex items-center gap-4 rounded-xl border border-border/70 bg-card p-3.5 transition-all duration-300 hover:border-primary/30 hover:shadow-[0_8px_20px_rgba(var(--primary-rgb),0.02)]">
+                            <Link href="/jobs/walk-ins" className="group flex items-center gap-4 rounded-xl border border-border/70 bg-card p-3.5 transition-all duration-300 hover:border-primary/30 hover:shadow-[0_8px_20px_rgba(var(--primary-rgb),0.02)]">
                                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
                                     <MapPin className="h-5 w-5" />
                                 </div>

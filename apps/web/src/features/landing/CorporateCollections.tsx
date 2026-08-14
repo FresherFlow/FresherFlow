@@ -24,7 +24,7 @@ const COLLECTIONS = [
     { 
         title: 'Early Career Internships', 
         desc: 'Paid off-cycle, summer, and winter internships with direct team matching.', 
-        href: '/internships',
+        href: '/jobs/internships',
         icon: AcademicCapIcon,
         color: 'text-sky-500',
         bg: 'bg-sky-500/10',
@@ -33,7 +33,7 @@ const COLLECTIONS = [
     { 
         title: 'Walk-In Recruitment Drives', 
         desc: 'Direct on-site interview schedules with verified physical venues and contact coordinates.', 
-        href: '/walk-ins',
+        href: '/jobs/walk-ins',
         icon: MapPinIcon,
         color: 'text-emerald-500',
         bg: 'bg-emerald-500/10',
@@ -117,7 +117,7 @@ export function CorporateCollections() {
                         {JOB_CATEGORIES.map((cat) => (
                             <Link
                                 key={cat.name}
-                                href={`/opportunities?query=${encodeURIComponent(cat.query)}`}
+                                href={`/jobs?query=${encodeURIComponent(cat.query)}`}
                                 className="group relative overflow-hidden bg-card/65 backdrop-blur border border-border/60 hover:border-primary/45 hover:shadow-md hover:shadow-primary/5 hover:-translate-y-0.5 rounded-xl p-4 transition-all duration-[250ms] ease-[cubic-bezier(0.23,1,0.32,1)] flex items-center gap-4 active:scale-[0.97]"
                             >
                                 <div className="absolute -inset-px bg-gradient-to-br from-primary/5 via-transparent to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />

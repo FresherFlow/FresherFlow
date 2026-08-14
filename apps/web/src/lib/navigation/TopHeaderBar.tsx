@@ -6,7 +6,7 @@ import { Breadcrumb } from '@/ui/Breadcrumb';
 
 
 const LABEL_OVERRIDES: Record<string, string> = {
-    'government-jobs': 'Government Jobs',
+    'govt': 'Government Jobs',
     'walk-ins': 'Walk-ins',
 };
 
@@ -44,7 +44,10 @@ function TopHeaderBarContent() {
         else adminTitle = formatSegment(adminPage);
     }
 
-    const isFeedRoute = !isAdminRoute && ['jobs', 'internships', 'walk-ins', 'remote', 'government-jobs', 'hackathons', 'resources'].includes(segments[0]) && segments.length === 1;
+    const isFeedRoute = !isAdminRoute && (
+        (segments[0] === 'jobs' && (segments.length === 1 || ['internships', 'walk-ins', 'remote'].includes(segments[1]))) ||
+        (['govt', 'hackathons', 'resources'].includes(segments[0]) && segments.length === 1)
+    );
     return (
         <div 
             className="hidden md:flex fixed top-0 right-0 h-14 items-center border-b border-border/40 bg-background/95 backdrop-blur-sm z-[80] pr-6 px-5 transition-[left] duration-[600ms] ease-[cubic-bezier(0.7,0,0,1)]"
@@ -60,7 +63,7 @@ function TopHeaderBarContent() {
                         <div className="flex items-center text-sm font-medium text-muted-foreground whitespace-nowrap">
                             Home
                             <svg className="w-4 h-4 mx-1 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                            <span className="text-foreground">{formatSegment(segments[0])}</span>
+                            <span className="text-foreground">{formatSegment(segments[segments.length - 1])}</span>
                         </div>
                         <div className="relative group w-full max-w-xl mx-auto flex-1 lg:ml-6 hidden lg:block">
                             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>

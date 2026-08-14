@@ -90,7 +90,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         title,
         description,
         alternates: {
-            canonical: `${base}/location/${city}`
+            canonical: `${base}/locations/${city}`
         },
         openGraph: {
             title,
@@ -122,7 +122,7 @@ export default async function LocationPage({ params }: Props) {
     const properSlug = slugify(decodedCity);
     
     if (city !== properSlug) {
-        permanentRedirect(`/location/${properSlug}`);
+        permanentRedirect(`/locations/${properSlug}`);
     }
 
     const locInfo = VALID_LOCATIONS[properSlug as keyof typeof VALID_LOCATIONS] || {

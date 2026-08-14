@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 import { useOpportunitiesFeed } from '@/features/opportunities/hooks/useOpportunitiesFeed';
@@ -108,6 +108,7 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
     const [draftSource, setDraftSource] = useState<string[]>([]);
     const [mounted, setMounted] = useState(false);
     const [visibleCount, setVisibleCount] = useState(20);
+    const replaceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     useEffect(() => { setMounted(true); }, []);
 
@@ -214,8 +215,15 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
         }
 
         if (changed) {
-            router.replace(`?${params.toString()}`, { scroll: false });
+            if (replaceTimerRef.current) clearTimeout(replaceTimerRef.current);
+            replaceTimerRef.current = setTimeout(() => {
+                router.replace(`?${params.toString()}`, { scroll: false });
+            }, 300);
         }
+
+        return () => {
+            if (replaceTimerRef.current) clearTimeout(replaceTimerRef.current);
+        };
     }, [search, govtCategory, filters.location, filters.year, filters.closingSoon, filters.saved, filters.sector, filters.qualification, filters.course, filters.skills, filters.source, filters.workMode, mounted, router]);
 
     useEffect(() => {
@@ -275,51 +283,53 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
         return counts;
     }, [filteredOpps, type]);
 
-    const visibleOpps = filteredOpps.filter(opp => {
-        if (filters.saved) return true;
-        if (type !== OpportunityType.GOVERNMENT && opp.expiresAt && new Date(opp.expiresAt) < new Date()) return false;
-        if (type === OpportunityType.GOVERNMENT && govtPhase !== 'ALL') {
-            const s = (opp.governmentJobDetails as any)?.applicationStatus;
-            if (!s || !GOVT_PHASE_STATUSES[govtPhase].includes(s)) return false;
-        }
-        if (type === OpportunityType.GOVERNMENT && govtCategory !== null) {
-            if (!jobMatchesCategory(opp.governmentJobDetails, govtCategory)) return false;
-        }
-        if (type !== OpportunityType.GOVERNMENT) {
-            if (filters.workMode && filters.workMode.length > 0) {
-                const isMatch = filters.workMode.some(m => {
-                    const sel = m.toLowerCase();
-                    const oppWorkMode = String((opp as any).workMode || '').toLowerCase();
-                    if (sel === 'remote') {
-                        return (opp.locations || []).some(loc => {
-                            const l = loc.toLowerCase();
-                            return l.includes('remote') || l.includes('wfh') || l.includes('work from home');
-                        }) || oppWorkMode === 'remote' || (opp.title || '').toLowerCase().includes('remote');
-                    }
-                    if (sel === 'hybrid') {
-                        return (opp.locations || []).some(loc => loc.toLowerCase().includes('hybrid')) 
-                            || oppWorkMode === 'hybrid' || (opp.title || '').toLowerCase().includes('hybrid');
-                    }
-                    if (sel === 'on_site' || sel === 'onsite') {
-                        return oppWorkMode === 'on_site' || oppWorkMode === 'onsite' || 
-                        (!oppWorkMode && !((opp.locations || []).some(loc => {
-                            const l = loc.toLowerCase();
-                            return l.includes('remote') || l.includes('wfh') || l.includes('work from home') || l.includes('hybrid');
-                        })) && !(opp.title || '').toLowerCase().includes('remote') && !(opp.title || '').toLowerCase().includes('hybrid'));
-                    }
-                    return false;
-                });
-                if (!isMatch) return false;
+    const visibleOpps = useMemo(() => {
+        return filteredOpps.filter(opp => {
+            if (filters.saved) return true;
+            if (type !== OpportunityType.GOVERNMENT && opp.expiresAt && new Date(opp.expiresAt) < new Date()) return false;
+            if (type === OpportunityType.GOVERNMENT && govtPhase !== 'ALL') {
+                const s = (opp.governmentJobDetails as any)?.applicationStatus;
+                if (!s || !GOVT_PHASE_STATUSES[govtPhase].includes(s)) return false;
             }
-            if (filters.skills && filters.skills.length > 0) {
-                const hasAllSkills = filters.skills.every(s => 
-                    opp.requiredSkills?.some(rs => rs.toLowerCase() === s.toLowerCase())
-                );
-                if (!hasAllSkills) return false;
+            if (type === OpportunityType.GOVERNMENT && govtCategory !== null) {
+                if (!jobMatchesCategory(opp.governmentJobDetails, govtCategory)) return false;
             }
-        }
-        return true;
-    });
+            if (type !== OpportunityType.GOVERNMENT) {
+                if (filters.workMode && filters.workMode.length > 0) {
+                    const isMatch = filters.workMode.some(m => {
+                        const sel = m.toLowerCase();
+                        const oppWorkMode = String((opp as any).workMode || '').toLowerCase();
+                        if (sel === 'remote') {
+                            return (opp.locations || []).some(loc => {
+                                const l = loc.toLowerCase();
+                                return l.includes('remote') || l.includes('wfh') || l.includes('work from home');
+                            }) || oppWorkMode === 'remote' || (opp.title || '').toLowerCase().includes('remote');
+                        }
+                        if (sel === 'hybrid') {
+                            return (opp.locations || []).some(loc => loc.toLowerCase().includes('hybrid')) 
+                                || oppWorkMode === 'hybrid' || (opp.title || '').toLowerCase().includes('hybrid');
+                        }
+                        if (sel === 'on_site' || sel === 'onsite') {
+                            return oppWorkMode === 'on_site' || oppWorkMode === 'onsite' || 
+                            (!oppWorkMode && !((opp.locations || []).some(loc => {
+                                const l = loc.toLowerCase();
+                                return l.includes('remote') || l.includes('wfh') || l.includes('work from home') || l.includes('hybrid');
+                            })) && !(opp.title || '').toLowerCase().includes('remote') && !(opp.title || '').toLowerCase().includes('hybrid'));
+                        }
+                        return false;
+                    });
+                    if (!isMatch) return false;
+                }
+                if (filters.skills && filters.skills.length > 0) {
+                    const hasAllSkills = filters.skills.every(s => 
+                        opp.requiredSkills?.some(rs => rs.toLowerCase() === s.toLowerCase())
+                    );
+                    if (!hasAllSkills) return false;
+                }
+            }
+            return true;
+        });
+    }, [filteredOpps, filters.saved, filters.workMode, filters.skills, type, govtPhase, govtCategory]);
 
     // Keep selectedOpp in sync with visibleOpps on desktop without flashing null/skeleton
     useEffect(() => {

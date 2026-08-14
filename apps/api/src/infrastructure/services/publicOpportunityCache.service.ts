@@ -17,8 +17,9 @@ async function deleteByPattern(pattern: string) {
     }
 }
 
-function getCanonicalPath(slugOrId: string): string {
-    return `/${slugOrId}`;
+function getCanonicalPath(slugOrId: string, type?: string): string {
+    if (type === 'GOVERNMENT') return `/govt/${slugOrId}`;
+    return `/jobs/${slugOrId}`;
 }
 
 export async function invalidatePublicOpportunityCache(options?: {
@@ -43,23 +44,20 @@ export async function invalidatePublicOpportunityCache(options?: {
                 await deleteByPattern(`opportunity_detail|v3|*|id:${value}`);
             }
 
-            const uuid = idsOrSlugs.find(v => !!v.match(/^[0-9a-f-]{36}$/i));
             const slug = idsOrSlugs.find(v => !v.match(/^[0-9a-f-]{36}$/i)) ?? idsOrSlugs[0];
-            pathsToRevalidate.push(getCanonicalPath(slug));
-            
-            if (uuid) {
-                pathsToRevalidate.push(`/government-jobs/${uuid}`);
-            }
+            // Use type-aware path so revalidatePath targets the correct Next.js route:
+            // /jobs/[slug] for standard jobs, /govt/[slug] for government jobs.
+            pathsToRevalidate.push(getCanonicalPath(slug, options?.type));
         }
 
         // Convert tags to paths for background revalidation
         const tagPaths = tags.map(tag => {
             if (tag === 'hub-jobs') return '/jobs';
-            if (tag === 'hub-internships') return '/internships';
-            if (tag === 'hub-walkins') return '/walk-ins';
-            if (tag === 'hub-government') return '/government-jobs';
+            if (tag === 'hub-internships') return '/jobs/internships';
+            if (tag === 'hub-walkins') return '/jobs/walk-ins';
+            if (tag === 'hub-government') return '/govt';
             if (tag.startsWith('company-')) return `/companies/${tag.replace('company-', '')}`;
-            if (tag.startsWith('location-')) return `/location/${tag.replace('location-', '')}`;
+            if (tag.startsWith('location-')) return `/locations/${tag.replace('location-', '')}`;
             if (tag.startsWith('skill-')) return `/skills/${tag.replace('skill-', '')}`;
             if (tag.startsWith('batch-')) return `/batch/${tag.replace('batch-', '')}`;
             if (tag.startsWith('role-')) return `/roles/${tag.replace('role-', '')}`;

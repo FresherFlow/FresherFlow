@@ -426,10 +426,22 @@ export function useOpportunitiesFeed({
             return 0;
         };
 
+        const now = Date.now();
+        const sortKeys = new Map(enriched.map(opp => [
+            opp.id,
+            {
+                expiresAt: opp.expiresAt ? new Date(opp.expiresAt).getTime() : Infinity,
+                postedAt: opp.postedAt ? new Date(opp.postedAt).getTime() : 0,
+            }
+        ]));
+
         return enriched.sort((a, b) => {
+            const keysA = sortKeys.get(a.id)!;
+            const keysB = sortKeys.get(b.id)!;
+
             // 1. Expired opportunities always go to the absolute bottom
-            const isExpiredA = a.expiresAt ? new Date(a.expiresAt) < new Date() : false;
-            const isExpiredB = b.expiresAt ? new Date(b.expiresAt) < new Date() : false;
+            const isExpiredA = keysA.expiresAt < now;
+            const isExpiredB = keysB.expiresAt < now;
             if (isExpiredA !== isExpiredB) return isExpiredA ? 1 : -1;
 
             // 2. Not-eligible jobs always go to the bottom
@@ -441,12 +453,12 @@ export function useOpportunitiesFeed({
 
             // 4. Sort override
             if (sort === 'expiring') {
-                const expA = a.expiresAt ? new Date(a.expiresAt).getTime() : Number.MAX_SAFE_INTEGER;
-                const expB = b.expiresAt ? new Date(b.expiresAt).getTime() : Number.MAX_SAFE_INTEGER;
+                const expA = keysA.expiresAt;
+                const expB = keysB.expiresAt;
                 if (expA !== expB) return expA - expB;
             } else if (sort === 'latest') {
-                const timeA = a.postedAt ? new Date(a.postedAt).getTime() : 0;
-                const timeB = b.postedAt ? new Date(b.postedAt).getTime() : 0;
+                const timeA = keysA.postedAt;
+                const timeB = keysB.postedAt;
                 if (timeB !== timeA) return timeB - timeA;
             } else if (sort === 'trending') {
                 const trendA = (a as unknown as Record<string, unknown>).views || (a as unknown as Record<string, unknown>).applicationsCount || a.matchScore || 0;
@@ -455,8 +467,8 @@ export function useOpportunitiesFeed({
             }
 
             // 5. Mobile Architecture: Recency priority (newer postedAt date comes first)
-            const timeA = a.postedAt ? new Date(a.postedAt).getTime() : 0;
-            const timeB = b.postedAt ? new Date(b.postedAt).getTime() : 0;
+            const timeA = keysA.postedAt;
+            const timeB = keysB.postedAt;
 
             const diff = Math.abs(timeB - timeA);
             if (diff > 24 * 60 * 60 * 1000) {

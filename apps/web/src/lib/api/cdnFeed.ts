@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { Opportunity } from '@fresherflow/types';
 import { 
     BOOTSTRAP_FEED_URL, 
@@ -140,7 +141,7 @@ function getCDNFetchOptions(options: CDNFetchOptions = {}): CDNFetchOptions {
 /**
  * Fetches the centrally stored R2 feed version through Next's tagged cache.
  */
-export async function fetchFeedVersion(untracked = false): Promise<FeedVersion> {
+const _fetchFeedVersion = async (untracked = false): Promise<FeedVersion> => {
     const IS_CLIENT = typeof window !== 'undefined';
     if (IS_CLIENT) {
         if (clientVersionCache) {
@@ -171,13 +172,14 @@ export async function fetchFeedVersion(untracked = false): Promise<FeedVersion> 
     }
 
     return { version: 'fallback', stable: false };
-}
+};
+export const fetchFeedVersion = cache(_fetchFeedVersion);
 
 /**
  * Fetches the static bootstrap feed from the CDN (or local API fallback in development).
  * Used for "Zero-Spinner" instant discovery and SEO.
  */
-export async function fetchBootstrapFeed(forceLive = false, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> {
+const _fetchBootstrapFeed = async (forceLive = false, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> => {
     const IS_CLIENT = typeof window !== 'undefined';
     const IS_SERVER = typeof window === 'undefined';
 
@@ -297,13 +299,14 @@ export async function fetchBootstrapFeed(forceLive = false, customTags?: string[
         }
         return null;
     }
-}
+};
+export const fetchBootstrapFeed = cache(_fetchBootstrapFeed);
 
 /**
  * Fetches the static expired feed from the CDN.
  * Used as a fallback by detail pages to prevent 404s for recently expired opportunities.
  */
-export async function fetchExpiredFeed(customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> {
+const _fetchExpiredFeed = async (customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> => {
     if (typeof window !== 'undefined') {
         return null;
     }
@@ -347,13 +350,14 @@ export async function fetchExpiredFeed(customTags?: string[], untracked = false)
         console.warn('Expired CDN fetch failed:', err instanceof Error ? err.message : err);
         return null;
     }
-}
+};
+export const fetchExpiredFeed = cache(_fetchExpiredFeed);
 
 /**
  * Fetches the static government jobs feed from the CDN.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function fetchGovernmentFeed(_forceLive = false, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> {
+const _fetchGovernmentFeed = async (_forceLive = false, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> => {
     if (typeof window !== 'undefined') {
         return null;
     }
@@ -394,7 +398,8 @@ export async function fetchGovernmentFeed(_forceLive = false, customTags?: strin
         console.warn('Government CDN fetch failed:', err instanceof Error ? err.message : err);
         return null;
     }
-}
+};
+export const fetchGovernmentFeed = cache(_fetchGovernmentFeed);
 
 /**
  * Fetches a specific category shard (e.g. trending, remote, 2026)
@@ -550,7 +555,7 @@ export interface CompanyMetadata {
 /**
  * Fetches companies list from CDN.
  */
-export async function fetchCompaniesMetadata(untracked = false): Promise<CompanyMetadata[] | null> {
+const _fetchCompaniesMetadata = async (untracked = false): Promise<CompanyMetadata[] | null> => {
     if (typeof window !== 'undefined') {
         return null;
     }
@@ -573,7 +578,8 @@ export async function fetchCompaniesMetadata(untracked = false): Promise<Company
         console.warn('Failed to fetch companies metadata from CDN:', err);
         return null;
     }
-}
+};
+export const fetchCompaniesMetadata = cache(_fetchCompaniesMetadata);
 
 export interface SitemapDataResponse {
     companies: Array<{ name: string; slug: string }>;
