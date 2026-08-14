@@ -276,12 +276,6 @@ export default function CaptionsTool({ isAdmin = false }: { isAdmin?: boolean })
         return '';
     };
 
-    const getNumberEmoji = (num: number): string => {
-        const emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟'];
-        if (num <= 10) return emojis[num - 1];
-        return `🔹`;
-    };
-
     const getCleanHashtag = (str?: string) => {
         if (!str) return '';
         const clean = str.replace(/[^a-zA-Z0-9]/g, '');
@@ -311,72 +305,64 @@ export default function CaptionsTool({ isAdmin = false }: { isAdmin?: boolean })
         const locationHash = cleanLoc ? `#${cleanLoc}Jobs` : '';
 
         if (platform === 'telegram') {
-            const tgSkills = skillsLine ? `\n⚡ Skills: ${skillsLine}` : '';
-            const tgSalary = salary ? `\n💰 Salary: ${salary}` : '';
-            const tgBatch = batchYears ? `\n🎯 Batch: ${batchYears}` : '';
+            return `${opp.company} is hiring ${opp.title}
 
-            return `🚀 ${opp.company} Hiring ${opp.title}
+• Batch: ${batchYears || 'Any'}
+• Eligibility: ${degrees}
+• Location: ${locations}
+• Experience: ${exp}${salary ? `\n• Salary: ${salary}` : ''}${skillsLine ? `\n• Skills: ${skillsLine}` : ''}
 
-🎓 Eligibility: ${degrees}${tgBatch}
-💼 Experience: ${exp}
-📍 Location: ${locations}${tgSkills}${tgSalary}
-
-⭕️ Apply Now:
+Apply:
 ${getOpportunityUrl(opp)}
 
-📱 More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/app`;
+More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs`;
         }
 
         if (platform === 'twitter') {
-            const twBatch = batchYears ? `\n🎯 ${batchYears}` : '';
             const twHashtags = (companyHash && locationHash) ? `${companyHash} ${locationHash} #Freshers` : '#Jobs #Hiring #Freshers';
 
-            return `🚀 ${opp.company} Hiring ${opp.title}
-${twBatch}
-💼 ${exp}
-📍 ${locations}
+            return `${opp.company} is hiring ${opp.title}
 
-Apply 👇
+• Batch: ${batchYears || 'Freshers'}
+• Location: ${locations}
+• Exp: ${exp}
+
+Apply:
 ${getOpportunityUrl(opp)}
 
 ${twHashtags}`;
         }
 
         if (platform === 'linkedin') {
-            const liSkills = skillsLine ? `\n⚡ Skills: ${skillsLine}` : '';
-            const liSalary = salary ? `\n💰 Salary: ${salary}` : '';
-            const liBatch = batchYears ? `\n🎯 Batch: ${batchYears}` : '';
             const liHashtags = (companyHash && locationHash) ? `${companyHash} ${locationHash} #Careers` : '#Hiring #Freshers #Jobs';
 
-            return `🚀 ${opp.company} Hiring ${opp.title}
+            return `${opp.company} is hiring ${opp.title}
 
-🎓 Eligibility: ${degrees}${liBatch}
-💼 Experience: ${exp}
-📍 Location: ${locations}${liSkills}${liSalary}
+• Batch: ${batchYears || 'Any'}
+• Location: ${locations}
+• Eligibility: ${degrees}
+• Experience: ${exp}${salary ? `\n• CTC: ${salary}` : ''}${skillsLine ? `\n• Skills: ${skillsLine}` : ''}
 
 Apply:
 ${getOpportunityUrl(opp)}
 
-📱 More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/app
+More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
 
 ${liHashtags}`;
         }
 
         // Default: whatsapp
-        const waSkills = skillsLine ? `\n> ⚡ *Skills:* ${skillsLine}` : '';
-        const waSalary = salary ? `\n> 💰 *Salary:* ${salary}` : '';
-        const waBatch = batchYears ? `\n> 🎯 *Batch:* ${batchYears}` : '';
+        return `*${opp.company} is hiring ${opp.title}*
 
-        return `🚀 *${opp.company}* Hiring *${opp.title}*
+> • *Batch:* ${batchYears || 'Any'}
+> • *Eligibility:* ${degrees}
+> • *Location:* ${locations}
+> • *Experience:* ${exp}${salary ? `\n> • *Salary:* ${salary}` : ''}${skillsLine ? `\n> • *Skills:* ${skillsLine}` : ''}
 
-> 🎓 *Eligibility:* ${degrees}${waBatch}
-> 💼 *Experience:* ${exp}
-> 📍 *Location:* ${locations}${waSkills}${waSalary}
-
-⭕️ *Apply Now:*
+*Apply:*
 ${getOpportunityUrl(opp)}
 
-📱 *More jobs on FresherFlow:* ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/app`;
+_More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs_`;
     };
 
     const formatBulkCaption = (platformOverride?: Platform) => {
@@ -385,31 +371,41 @@ ${getOpportunityUrl(opp)}
         if (selectedOpps.length === 0) return '';
 
         if (p === 'whatsapp') {
-            let body = `🚨 *Today's Job Updates*\n\n`;
-            selectedOpps.forEach((opp, index) => {
-                const numEmoji = getNumberEmoji(index + 1);
-                body += `${numEmoji} *${opp.company}*\n> ${opp.title}\n🔗 ${getOpportunityUrl(opp)}\n\n`;
-            });
-            body += `📱 *More jobs:* ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/app`;
-            return body;
+            return `*Today's Verified Fresher Job Updates*
+
+${selectedOpps.map((opp, index) => `${index + 1}. *${opp.company} — ${opp.title}*
+> • *Batch:* ${getBatchYearsText(opp) || 'Any'} | *Location:* ${opp.locations && opp.locations.length > 0 ? opp.locations.join(', ') : 'India'}
+> • *Apply:* ${getOpportunityUrl(opp)}`).join('\n\n')}
+
+_More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs_`;
         }
 
         if (p === 'telegram') {
-            let body = `🚨 Today's Job Updates\n\n`;
-            selectedOpps.forEach((opp, index) => {
-                const numEmoji = getNumberEmoji(index + 1);
-                body += `${numEmoji} ${opp.company} — ${opp.title}\n🔗 ${getOpportunityUrl(opp)}\n\n`;
-            });
-            body += `📱 More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/app`;
-            return body;
+            return `Today's Fresher Job Updates
+
+${selectedOpps.map((opp, index) => `${index + 1}. ${opp.company} — ${opp.title}
+• Batch: ${getBatchYearsText(opp) || 'Any'} | Location: ${opp.locations && opp.locations.length > 0 ? opp.locations.join(', ') : 'India'}
+• Apply: ${getOpportunityUrl(opp)}`).join('\n\n')}
+
+More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs`;
         }
 
         if (p === 'linkedin') {
-            return `⚠️ LinkedIn is not optimized for long job lists. To maximize engagement, we recommend posting each job as an individual post instead!`;
+            return `Top Fresher Jobs Today
+
+Here are the latest curated jobs for freshers and recent graduates:
+
+${selectedOpps.map((opp, index) => `${index + 1}. ${opp.company} — ${opp.title}
+• Batch: ${getBatchYearsText(opp) || 'Any'} | Location: ${opp.locations && opp.locations.length > 0 ? opp.locations.join(', ') : 'India'}
+• Apply: ${getOpportunityUrl(opp)}`).join('\n\n')}
+
+More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
+
+#Hiring #Freshers #Jobs #Careers #EngineeringJobs`;
         }
 
         // Twitter Bulk
-        return `⚠️ Twitter/X is not optimized for long job lists. To maximize engagement, we recommend posting each job as an individual tweet instead!`;
+        return `⚠️ Twitter/X is not optimized for long job lists. To maximize engagement, we recommend posting each job as an individual tweet instead.`;
     };
 
     // ─── Worker health ────────────────────────────────────────────────────────
