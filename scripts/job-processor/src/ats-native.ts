@@ -270,7 +270,10 @@ export async function extractNativeAtsData(
                     sourceType: 'ATS' as const
                 };
 
-                const result = await plugin.fetchJobDetails(dummyJob, page);
+                let result = null;
+                if (page) {
+                    result = await plugin.fetchJobDetails(dummyJob, page);
+                }
                 if (result) {
                     if (typeof result === 'string') {
                         console.log(`[Native] @fresherflow/plugins (${plugin.providerName}) fetchJobDetails success`);

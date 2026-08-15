@@ -15,13 +15,20 @@ export function generateCompanyLogoUrl(website?: string | null): string | null {
     return domain ? `https://logo.clearbit.com/${domain}` : null;
 }
 
+export interface CanonicalCompanyLookup {
+    url?: string;
+    logo_url?: string;
+}
+
 export function resolveCompanyWebsiteAndLogo(
     company: string,
     applyLink: string,
-    extractedWebsite: string | null | undefined
+    extractedWebsite: string | null | undefined,
+    canonical?: CanonicalCompanyLookup | null
 ): { website: string; logoUrl: string } {
-    let website = (extractedWebsite || "").trim();
-    
+    let website = (canonical?.url || extractedWebsite || "").trim();
+    let logoUrl = (canonical?.logo_url || "").trim();
+
     const isAtsUrl = (urlStr: string) => {
         try {
             const h = new URL(urlStr).hostname.toLowerCase();
@@ -76,9 +83,8 @@ export function resolveCompanyWebsiteAndLogo(
                 }
             } else if (isAtsUrl(applyLink)) {
                 // For ATS domains where company is in the path (e.g. jobs.smartrecruiters.com/Company)
-                // or we don't have a reliable subdomain extraction logic, fallback to company name
-                const cleanName = company.toLowerCase().replace(/[^a-z0-9]/g, '');
-                website = `https://${cleanName}.com`;
+                // or we don't have a reliable subdomain extraction logic, fallback to empty to avoid corrupting db
+                website = '';
             } else {
                 // E.g. careers.cisco.com -> cisco.com
                 const parts = host.split('.');
@@ -90,18 +96,20 @@ export function resolveCompanyWebsiteAndLogo(
                 }
             }
         } catch {
-            const cleanName = company.toLowerCase().replace(/[^a-z0-9]/g, '');
-            website = `https://${cleanName}.com`;
+            // Do not guess "https://${cleanName}.com" when applyLink parsing fails.
+            // Leaving it empty is safer.
+            website = '';
         }
     }
 
-    let logoUrl = "";
-    try {
-        const parsedUrl = new URL(website);
-        const domain = parsedUrl.hostname.replace(/^www\./i, '');
-        logoUrl = `https://logo.clearbit.com/${domain}`;
-    } catch {
-        // Ignore
+    if (!logoUrl) {
+        try {
+            const parsedUrl = new URL(website);
+            const domain = parsedUrl.hostname.replace(/^www\./i, '');
+            logoUrl = `https://logo.clearbit.com/${domain}`;
+        } catch {
+            // Ignore
+        }
     }
 
     return { website, logoUrl };

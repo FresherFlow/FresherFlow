@@ -15,13 +15,13 @@ import { cn } from "@/lib/utils/utils";
  * - Text: minimum text-sm (14px), prefer text-base (16px)
  */
 const buttonVariants = cva(
-    "inline-flex items-center justify-center cursor-pointer whitespace-nowrap rounded-xl font-medium focus-visible:outline-none focus:outline-none disabled:pointer-events-none disabled:opacity-50 border border-transparent transition-transform duration-[160ms] ease-out active:scale-[0.97]",
+    "inline-flex items-center justify-center cursor-pointer whitespace-nowrap rounded-xl font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-transparent transition-[transform,background-color,border-color,color] duration-150 ease-out active:scale-[0.97] motion-reduce:transform-none motion-reduce:transition-none",
     {
         variants: {
             variant: {
                 default: "bg-primary text-primary-foreground shadow-sm [@media(hover:hover)_and_(pointer:fine)]:hover:bg-primary/90",
                 destructive: "bg-destructive text-destructive-foreground shadow-sm [@media(hover:hover)_and_(pointer:fine)]:hover:bg-destructive/90",
-                outline: "border border-border bg-background text-foreground shadow-sm [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted/60",
+                outline: "border border-border bg-background text-foreground shadow-sm [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted",
                 secondary: "bg-secondary text-secondary-foreground shadow-sm [@media(hover:hover)_and_(pointer:fine)]:hover:bg-secondary/80",
                 ghost: "[@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted [@media(hover:hover)_and_(pointer:fine)]:hover:text-foreground",
                 admin: "border border-input bg-muted/50 text-foreground shadow-sm [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent [@media(hover:hover)_and_(pointer:fine)]:hover:text-accent-foreground",

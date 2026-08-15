@@ -6,7 +6,7 @@ import { ChevronDownIcon, RocketLaunchIcon, ArrowPathIcon, XMarkIcon } from '@he
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/ui/DropdownMenu';
 import { Button } from '@/ui/Button';
 import { cn } from '@repo/ui/utils/cn';
-import { ThemeToggle } from '@repo/ui/ThemeToggle';
+import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
 import { useTheme } from '@/lib/providers/ThemeContext';
 import { TelemetryStats } from '../types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/Select';
@@ -69,7 +69,7 @@ export function DiscoveryHeader({
         <span className="hidden md:inline text-base font-semibold text-foreground shrink-0">{title}</span>
       </div>
       <div className="flex items-center gap-2 shrink-0 ml-auto">
-        <ThemeToggle theme={theme as any} toggleTheme={toggleTheme} />
+        <ThemeSwitcher/>
       </div>
     </div>
   ) : null;
@@ -192,7 +192,7 @@ export function DiscoveryHeader({
  </button>
 
  {isStandalone && (
- <ThemeToggle theme={theme as any} toggleTheme={toggleTheme} />
+ <ThemeSwitcher/>
  )}
  </div>
  </div>

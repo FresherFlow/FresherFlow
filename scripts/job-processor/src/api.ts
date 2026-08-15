@@ -32,7 +32,7 @@ export async function saveJobToSupabase(
         allowed_degrees: job.allowedDegrees || [],
         allowed_courses: job.allowedCourses || [],
         allowed_specializations: job.allowedSpecializations || [],
-        allowed_passout_years: job.allowedPassoutYears || [],
+        allowed_passout_years: (job.allowedPassoutYears || []).map(String),
         required_skills: job.requiredSkills || [],
         locations: job.locations || [],
         structured_locations: job.structuredLocations ? JSON.stringify(job.structuredLocations) : null,
@@ -216,8 +216,10 @@ export async function saveJobToSupabase(
         }
 
         return true;
-    } catch (err) {
-        console.error(`Failed to save job to DB:`, (err as Error).message);
+    } catch (err: any) {
+        console.error(`Failed to save job to DB:`, err.message || err);
+        if (err.detail) console.error(`Detail:`, err.detail);
+        if (err.hint) console.error(`Hint:`, err.hint);
         return false;
     }
 }

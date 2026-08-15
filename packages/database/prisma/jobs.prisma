@@ -113,20 +113,20 @@ model DiscoveredJob {
   applyLink           String               @map("apply_link")
   applyUrl            String?              @map("apply_url")
   jobUrlDirect        String?              @map("job_url_direct")
+  sourceUrl           String?              @map("source_url")
+  description         String?
   externalId          String?              @map("external_id")
   atsId               String?              @map("ats_id")
-  atsType             String?              @map("ats_type")
   boardToken          String?              @map("board_token")
-  atsText             String?              @map("ats_text")
   descriptionSource   String?              @map("description_source")
   department          String?
   team                String?
-  postedAt            String?              @map("posted_at")
+  postedAt            DateTime?            @map("posted_at") @db.Timestamptz
   batchYear           String?              @map("batch_year")
   degree              String?
   experienceLevel     String?              @map("experience_level")
   experienceRange     String?              @map("experience_range")
-  experienceYears     Int?                 @map("experience_years")
+  experienceYears     String?              @map("experience_years")
   vacancyCount        Int?                 @map("vacancy_count")
   skills              String?              // JSON array
   emails              String?              // JSON array
@@ -140,7 +140,8 @@ model DiscoveredJob {
   status              String?              @default("DISCOVERED")
   createdAt           DateTime?            @default(now()) @map("created_at")
   updatedAt           DateTime?            @default(now()) @map("updated_at")
-  lastSeenAt          DateTime?            @default(now()) @map("last_seen_at")
+  companyId           String?              @map("company_id")
+  companyRef          Company?             @relation(fields: [companyId], references: [id])
 
   @@unique([source, applyLink])
   @@map("discovered_jobs")
@@ -251,7 +252,7 @@ model ProcessedJob {
   allowedDegrees         String[]           @map("allowed_degrees")
   allowedCourses         String[]           @map("allowed_courses")
   allowedSpecializations String[]           @map("allowed_specializations")
-  allowedPassoutYears    Int[]              @map("allowed_passout_years")
+  allowedPassoutYears    String[]           @map("allowed_passout_years")
   requiredSkills         String[]           @map("required_skills")
   locations              String[]
   
@@ -278,10 +279,10 @@ model ProcessedJob {
   // Links
   applyLink              String             @map("apply_link")
   sourceUrl              String?            @map("source_url")
-  customSlug             String?            @map("custom_slug")
+  customSlug             String?            @unique @map("custom_slug")
   
   // State
-  status                 ProcessedJobStatus @default(PENDING_REVIEW)
+  status                 String?            @default("PENDING_REVIEW")
   createdAt              DateTime?          @default(now()) @map("created_at") @db.Timestamptz
   updatedAt              DateTime?          @default(now()) @map("updated_at") @db.Timestamptz
 

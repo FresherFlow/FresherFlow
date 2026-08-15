@@ -9,61 +9,65 @@ import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
 
 
+import { VALID_LOCATIONS, getCanonicalLocation } from '@/features/opportunities/utils/locationUtils';
+
 export const revalidate = false;
 export const dynamicParams = false;
-
-const VALID_LOCATIONS = {
-    'bangalore': {
-        label: 'Bangalore',
-        aliases: ['bangalore', 'bengaluru']
-    },
-    'hyderabad': {
-        label: 'Hyderabad',
-        aliases: ['hyderabad']
-    },
-    'pune': {
-        label: 'Pune',
-        aliases: ['pune']
-    },
-    'chennai': {
-        label: 'Chennai',
-        aliases: ['chennai']
-    },
-    'mumbai': {
-        label: 'Mumbai',
-        aliases: ['mumbai']
-    },
-    'delhi-ncr': {
-        label: 'Delhi NCR',
-        aliases: ['delhi', 'noida', 'gurugram', 'ncr', 'gurgaon']
-    },
-    'remote': {
-        label: 'Remote',
-        aliases: ['remote', 'work from home', 'wfh', 'telecommute']
-    }
-};
 
 const LOCATION_MIN_JOBS = 5;
 
 export async function generateStaticParams() {
     try {
         const feed = await fetchBootstrapFeed(false, undefined, true);
-        const counts: Record<string, number> = {};
-        for (const opp of feed?.opportunities || []) {
-            for (const [city, locInfo] of Object.entries(VALID_LOCATIONS)) {
-                if (city === 'remote') {
-                    if (opp.workMode === 'REMOTE') counts[city] = (counts[city] ?? 0) + 1;
-                } else {
-                    const hasMatch = opp.locations?.some((l: string) =>
-                        locInfo.aliases.some(a => l.toLowerCase().includes(a))
-                    );
-                    if (hasMatch) counts[city] = (counts[city] ?? 0) + 1;
-                }
+        const opportunities = feed?.opportunities || [];
+
+        const BLOCKED_LOCATIONS = new Set([
+            'pan india', 'india', 'remote', 'work from home', 'wfh',
+            'multiple locations', 'various locations', 'anywhere', 'worldwide',
+            'across india', 'all india', 'multiple cities',
+        ]);
+        const isCleanLocation = (loc: string) => {
+            const l = loc.toLowerCase().trim();
+            if (BLOCKED_LOCATIONS.has(l)) return false;
+            if (l.includes(',')) return false;
+            if (l.includes('(')) return false;
+            if (loc.length > 40) return false;
+            if (loc.length < 2) return false;
+            return true;
+        };
+
+        const locationCounts: Record<string, number> = {};
+        for (const opp of opportunities) {
+            // Count remote via workMode
+            if (opp.workMode === 'REMOTE') {
+                locationCounts['remote'] = (locationCounts['remote'] || 0) + 1;
+            }
+
+            for (const location of opp.locations || []) {
+                if (!location) continue;
+                const key = location.trim();
+                if (!isCleanLocation(key)) continue;
+                
+                const slug = slugify(key);
+                const canonicalSlug = getCanonicalLocation(slug) || slug;
+                locationCounts[canonicalSlug] = (locationCounts[canonicalSlug] || 0) + 1;
             }
         }
-        return Object.keys(VALID_LOCATIONS)
-            .filter(city => (counts[city] ?? 0) >= LOCATION_MIN_JOBS)
-            .map(city => ({ city }));
+
+        const validCities = Object.keys(locationCounts).filter(city => (locationCounts[city] ?? 0) >= LOCATION_MIN_JOBS);
+        
+        // Also pre-generate aliases of valid cities so they can be properly redirected
+        // instead of throwing 404s
+        const aliasesToGenerate = new Set<string>();
+        validCities.forEach(city => {
+            const locInfo = VALID_LOCATIONS[city as keyof typeof VALID_LOCATIONS];
+            if (locInfo) {
+                locInfo.aliases.forEach(alias => aliasesToGenerate.add(alias));
+            }
+        });
+
+        const allPaths = new Set([...validCities, ...aliasesToGenerate]);
+        return Array.from(allPaths).map(city => ({ city }));
     } catch {
         return Object.keys(VALID_LOCATIONS).map(city => ({ city }));
     }
@@ -80,8 +84,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         aliases: [city.replace(/-/g, ' ').toLowerCase(), city.toLowerCase()]
     };
 
-    const title = `Fresher Jobs in ${locInfo.label} 2026 | Off-Campus Placements`;
-    const description = `Find verified entry-level job openings, off-campus drives, and internships in ${locInfo.label} for freshers. Direct application links with zero redirect spam.`;
+    const title = `Fresher Jobs in ${locInfo.label} | Off-Campus & Internships`;
+    const description = `Find verified fresher jobs, internships and off-campus opportunities in ${locInfo.label}, with direct application links and eligibility details.`;
     const base = SITE_URL.replace(/\/+$/, '');
     const slug = slugify(decodeURIComponent(city));
     const ogImageUrl = `${CDN_URL}/og/location/${slug}.png`;
@@ -121,7 +125,15 @@ export default async function LocationPage({ params }: Props) {
     const decodedCity = decodeURIComponent(city);
     const properSlug = slugify(decodedCity);
     
-    if (city !== properSlug) {
+    // Check if the current slug is an alias that needs canonicalization
+    const canonicalSlug = getCanonicalLocation(properSlug);
+    
+    if (canonicalSlug && canonicalSlug !== properSlug) {
+        // Redirect aliases like 'bengaluru' -> 'bangalore'
+        const label = VALID_LOCATIONS[canonicalSlug as keyof typeof VALID_LOCATIONS].label;
+        // Optionally append ?location=Label as requested, though our page reads the URL slug directly
+        permanentRedirect(`/locations/${canonicalSlug}?location=${encodeURIComponent(label)}`);
+    } else if (city !== properSlug) {
         permanentRedirect(`/locations/${properSlug}`);
     }
 

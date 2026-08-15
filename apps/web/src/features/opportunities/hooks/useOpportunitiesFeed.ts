@@ -319,6 +319,7 @@ export function useOpportunitiesFeed({
                 }
             }
 
+            const govtDetails = opp.governmentJobDetails as unknown as Record<string, unknown> | undefined;
             const matchesSearch = !normalizedSearch || [
                 opp.title,
                 opp.normalizedRole,
@@ -329,7 +330,14 @@ export function useOpportunitiesFeed({
                 ...((opp as any).skills || opp.requiredSkills || []),
                 ...( (opp as any).roles || []),
                 ...( (opp as any).categories || []),
-                (opp.governmentJobDetails as unknown as Record<string, unknown>)?.minimumQualification
+                govtDetails?.recruitingBody,
+                govtDetails?.organization,
+                govtDetails?.department,
+                govtDetails?.examName,
+                govtDetails?.postName,
+                govtDetails?.advertisementNumber,
+                ...(Array.isArray(govtDetails?.jobCategory) ? govtDetails.jobCategory : []),
+                govtDetails?.minimumQualification
             ].some((value) => String(value || '').toLowerCase().includes(normalizedSearch.toLowerCase()));
 
             const matchesLoc = !selectedLoc || (opp.locations || []).some((loc) => {

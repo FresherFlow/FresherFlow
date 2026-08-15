@@ -1,21 +1,21 @@
 import { Metadata } from 'next';
 import CategoryPage from '@/features/opportunities/components/CategoryPage';
-import { fetchGovernmentFeed } from '@/lib/api/cdnFeed';
+import { fetchGovernmentFeed, fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { toOpportunityCardDTO, OpportunityType } from '@fresherflow/types';
 
 // On-demand revalidation via /api/revalidate — called when jobs are published/expired.
 export const revalidate = false;
 
 export const metadata: Metadata = {
-    title: 'Government Jobs',
-    description: 'Discover verified government job notifications, SSC recruitment, public sector vacancies, and exam circulars with direct apply options.',
-    keywords: 'government jobs, govt jobs, ssc, banking jobs, railway jobs, upsc, sarkari naukri',
+    title: 'Government Jobs in India | Govt Jobs & Recruitment',
+    description: 'Find verified government job notifications, SSC, banking, railway, UPSC and public sector recruitment opportunities with official apply links.',
+    keywords: 'government jobs, govt jobs, government jobs India, SSC jobs, railway jobs, banking jobs, UPSC jobs, Sarkari jobs',
     alternates: {
         canonical: '/govt',
     },
     openGraph: {
-        title: 'Verified Government Jobs',
-        description: 'Discover verified government job notifications, SSC recruitment, public sector vacancies, and exam circulars.',
+        title: 'Government Jobs in India | Govt Jobs & Recruitment',
+        description: 'Find verified government job notifications, SSC, banking, railway, UPSC and public sector recruitment opportunities with official apply links.',
         type: 'website',
         images: [
             {
@@ -28,14 +28,28 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Verified Government Jobs',
-        description: 'Discover verified government job notifications, SSC recruitment, public sector vacancies, and exam circulars.',
+        title: 'Government Jobs in India | Govt Jobs & Recruitment',
+        description: 'Find verified government job notifications, SSC, banking, railway, UPSC and public sector recruitment opportunities with official apply links.',
         images: ['/main.png'],
     },
 };
 
 export default async function GovernmentJobsPage() {
-    const govtData = await fetchGovernmentFeed(false, undefined, true);
+    let govtData = await fetchGovernmentFeed(false, undefined, true);
+    if (!govtData || !govtData.opportunities || govtData.opportunities.length === 0) {
+        const bootstrapData = await fetchBootstrapFeed(false, undefined, true);
+        if (bootstrapData && bootstrapData.opportunities) {
+            const govtOpps = bootstrapData.opportunities.filter(
+                (o) => o.type === OpportunityType.GOVERNMENT || Boolean(o.governmentJobDetails)
+            );
+            govtData = {
+                opportunities: govtOpps,
+                count: govtOpps.length,
+                generatedAt: bootstrapData.generatedAt,
+            };
+        }
+    }
+
     const initialData = govtData ? {
         opportunities: govtData.opportunities.map(toOpportunityCardDTO) as any,
         total: govtData.opportunities.length,

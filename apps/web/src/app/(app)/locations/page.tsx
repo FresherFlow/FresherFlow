@@ -6,11 +6,13 @@ import { SITE_URL } from '@/lib/utils/runtimeConfig';
 import { HeaderPortal } from '@/lib/components/HeaderPortal';
 import { DirectoryClient } from '@/ui/DirectoryClient';
 
+import { VALID_LOCATIONS, getCanonicalLocation } from '@/features/opportunities/utils/locationUtils';
+
 export const revalidate = false;
 
 export const metadata: Metadata = {
-    title: 'Jobs by Location',
-    description: 'Find verified fresher jobs, internships, and walk-in drives by city. Explore opportunities in Bangalore, Pune, Hyderabad, Chennai, Delhi NCR, and more.',
+    title: 'Fresher Jobs by Location in India',
+    description: 'Find verified fresher jobs, internships, off-campus drives and walk-in interviews by city across India.',
     alternates: { canonical: `${SITE_URL}/locations` },
 };
 
@@ -42,7 +44,12 @@ export default async function LocationIndexPage() {
             if (!location) continue;
             const key = location.trim();
             if (!isCleanLocation(key)) continue;
-            locationCounts[key] = (locationCounts[key] || 0) + 1;
+            
+            // Map to canonical slug if it's an alias (e.g. 'Bengaluru' -> 'bangalore')
+            const slug = slugify(key);
+            const canonicalSlug = getCanonicalLocation(slug) || slug;
+            
+            locationCounts[canonicalSlug] = (locationCounts[canonicalSlug] || 0) + 1;
         }
     }
 
@@ -50,11 +57,15 @@ export default async function LocationIndexPage() {
     const sorted = Object.entries(locationCounts)
         .filter(([, count]) => count >= 5)
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-        .map(([location, count]) => ({
-            name: location,
-            count,
-            slug: slugify(location)
-        }));
+        .map(([slug, count]) => {
+            const label = VALID_LOCATIONS[slug as keyof typeof VALID_LOCATIONS]?.label || 
+                          slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            return {
+                name: label,
+                count,
+                slug: slug
+            };
+        });
 
     return (
         <div className="min-h-screen bg-background pb-20 font-sans">

@@ -13,6 +13,7 @@ import {
     ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { Sun, Moon } from 'lucide-react';
+import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
 
 
 const SidebarIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -282,22 +283,23 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
                         {showThemeToggle && (
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <button
-                                        onClick={toggleTheme}
-                                        className="w-full flex items-center gap-2 px-1.5 rounded-md h-9 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring overflow-hidden mb-1"
-                                        aria-label="Toggle Theme"
-                                    >
-                                        {theme === 'dark' ? (
-                                            <Sun size={20} strokeWidth={1.5} className="shrink-0 transition-colors" />
-                                        ) : (
-                                            <Moon size={20} strokeWidth={1.5} className="shrink-0 transition-colors" />
-                                        )}
-                                        {!collapsed && (
-                                            <span className="text-sm whitespace-nowrap text-left truncate">
-                                                {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
-                                            </span>
-                                        )}
-                                    </button>
+                                    <ThemeSwitcher className="w-full">
+                                        <button
+                                            className="w-full flex items-center gap-2 px-1.5 rounded-md h-9 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring overflow-hidden mb-1"
+                                            aria-label="Toggle Theme"
+                                        >
+                                            {theme === 'dark' ? (
+                                                <Sun size={20} strokeWidth={1.5} className="shrink-0 transition-colors" />
+                                            ) : (
+                                                <Moon size={20} strokeWidth={1.5} className="shrink-0 transition-colors" />
+                                            )}
+                                            {!collapsed && (
+                                                <span className="text-sm whitespace-nowrap text-left truncate">
+                                                    {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
+                                                </span>
+                                            )}
+                                        </button>
+                                    </ThemeSwitcher>
                                 </TooltipTrigger>
                                 {collapsed && (
                                     <TooltipContent side="right" className="flex items-center gap-2">

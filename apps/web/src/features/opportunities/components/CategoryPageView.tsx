@@ -20,15 +20,11 @@ import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 import UserGroupIcon from '@heroicons/react/24/outline/UserGroupIcon';
-import IdentificationIcon from '@heroicons/react/24/outline/IdentificationIcon';
-import CheckCircleIcon from '@heroicons/react/24/solid/CheckCircleIcon';
-import KeyIcon from '@heroicons/react/24/outline/KeyIcon';
-import TrophyIcon from '@heroicons/react/24/outline/TrophyIcon';
-import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import HomeIcon from '@heroicons/react/24/outline/HomeIcon';
-import WrenchScrewdriverIcon from '@heroicons/react/24/outline/WrenchScrewdriverIcon';
 import BuildingOfficeIcon from '@heroicons/react/24/outline/BuildingOfficeIcon';
+import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
+import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import { Breadcrumb } from '@/ui/Breadcrumb';
 import { SkillPill } from '@/ui/SkillPill';
 import { Button } from '@/ui/Button';
@@ -41,10 +37,6 @@ import { FilterDropdownBar } from '@/features/opportunities/components/FilterDro
 import {
     GovtPhaseTabs,
     GovtCategoryFilter as GovtCategoryFilterComponent,
-    GOVT_PHASE_STATUSES,
-    jobMatchesCategory,
-    type GovtPhaseFilter,
-    type GovtCategoryFilter,
 } from '@/features/opportunities/components/GovtPhaseTabs';
 import { type CategoryPageState } from '@/features/opportunities/hooks/useCategoryPageState';
 import { formatJobFeedTitle } from '@/features/opportunities/utils/formatJobFeedTitle';
@@ -64,151 +56,54 @@ const CATEGORY_CONFIG = {
     HACKATHONS: { title: 'Hackathons',                 subtitle: 'Competitions, challenges, and builder programs',  icon: AcademicCapIcon },
 } satisfies Record<OpportunityType, { title: string; subtitle: string; icon: typeof BriefcaseIcon }>;
 
-// Phase groups displayed in "What's Happening Now" layout
-const PHASE_GROUPS: { key: GovtPhaseFilter; label: string; Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>; urgency: 'high' | 'medium' | 'normal' }[] = [
-    { key: 'ADMIT_CARD', label: 'Admit Card Out',      Icon: IdentificationIcon, urgency: 'high' },
-    { key: 'APPLY_NOW',  label: 'Apply Now',           Icon: CheckCircleIcon,    urgency: 'high' },
-    { key: 'ANSWER_KEY', label: 'Answer Key Released', Icon: KeyIcon,            urgency: 'medium' },
-    { key: 'RESULT',     label: 'Result Declared',     Icon: TrophyIcon,         urgency: 'medium' },
-    { key: 'UPCOMING',   label: 'Coming Soon',         Icon: ClockIcon,          urgency: 'normal' },
-];
-
 // Ticker tag styles per applicationStatus
 const TICKER_TAG_MAP: Record<string, { tag: string; color: string }> = {
-    ADMIT_CARD_RELEASED: { tag: 'Admit Card', color: 'bg-violet-500/20 text-violet-300' },
-    RESULT_DECLARED:     { tag: 'Result Out', color: 'bg-emerald-500/20 text-emerald-300' },
-    ANSWER_KEY_RELEASED: { tag: 'Answer Key', color: 'bg-amber-500/20 text-amber-300' },
-    OPEN:                { tag: 'Apply Now',  color: 'bg-sky-500/20 text-sky-300' },
+    ADMIT_CARD_RELEASED: { tag: 'Admit Card', color: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border border-violet-500/20' },
+    RESULT_DECLARED:     { tag: 'Result Out',  color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' },
+    ANSWER_KEY_RELEASED: { tag: 'Answer Key', color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' },
+    OPEN:                { tag: 'Apply Now',  color: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20' },
 };
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function LiveTicker({ items }: { items: { label: string; href: string; tag: string; tagColor: string }[] }) {
     if (items.length === 0) return null;
-    const doubled = [...items, ...items];
+
+    // Ensure there are at least 4 items so continuous marquee scrolls smoothly without gaps
+    const baseItems = items.length === 1
+        ? [items[0], items[0], items[0], items[0]]
+        : items.length === 2
+        ? [items[0], items[1], items[0], items[1]]
+        : items;
+    const doubled = [...baseItems, ...baseItems];
+
     return (
-        <div className="flex items-stretch bg-foreground text-background overflow-hidden rounded-xl text-xs font-semibold select-none">
-            <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground font-bold uppercase tracking-wider text-[10px] whitespace-nowrap">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary-foreground animate-pulse" />
+        <div className="flex items-center gap-2 px-2.5 py-1 bg-muted/40 border border-border/60 rounded-xl text-xs max-w-md w-full overflow-hidden h-8 select-none">
+            <div className="shrink-0 flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-foreground/10 text-foreground font-bold text-[10px] uppercase tracking-wider border border-foreground/10 whitespace-nowrap">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
                 LIVE
             </div>
-            <div className="overflow-hidden flex-1 min-w-0">
+            <div className="overflow-hidden flex-1 min-w-0 flex items-center">
                 <div
                     className="flex items-center whitespace-nowrap will-change-transform"
-                    style={{ animation: `ticker ${Math.max(items.length * 7, 24)}s linear infinite` }}
+                    style={{ animation: `ticker ${Math.max(baseItems.length * 7, 24)}s linear infinite` }}
                 >
                     {doubled.map((item, i) => (
                         <Link
                             key={i}
                             href={item.href}
-                            className="inline-flex items-center gap-2 px-4 py-2 hover:bg-background/10 transition-colors shrink-0"
+                            className="inline-flex items-center gap-2 px-4 py-1 hover:text-primary transition-colors shrink-0 text-xs font-medium text-foreground/80"
                         >
-                            <span className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider', item.tagColor)}>
-                                {item.tag}
-                            </span>
-                            <span className="text-background/90 text-xs">{item.label}</span>
+                            {item.tag && item.tag !== 'Apply Now' && (
+                                <span className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider', item.tagColor)}>
+                                    {item.tag}
+                                </span>
+                            )}
+                            <span>{item.label}</span>
                         </Link>
                     ))}
                 </div>
             </div>
-        </div>
-    );
-}
-
-function GroupedGovtView({
-    opps,
-    govtCategory,
-    isJobSaved,
-    isJobApplied,
-    toggleSave,
-    user,
-    onSelectPhase,
-}: {
-    opps: Opportunity[];
-    govtCategory: GovtCategoryFilter;
-    isJobSaved: (o: Opportunity) => boolean;
-    isJobApplied: (o: Opportunity) => boolean;
-    toggleSave: (id: string) => void;
-    user: any;
-    onSelectPhase: (phase: GovtPhaseFilter) => void;
-}) {
-    const groups = PHASE_GROUPS.map(group => {
-        const statuses = GOVT_PHASE_STATUSES[group.key];
-        const items = opps.filter(o => {
-            const s = (o.governmentJobDetails as any)?.applicationStatus;
-            if (!s || !statuses.includes(s)) return false;
-            if (govtCategory !== null && !jobMatchesCategory(o.governmentJobDetails, govtCategory)) return false;
-            return true;
-        });
-        return { ...group, items };
-    }).filter(g => g.items.length > 0);
-
-    if (groups.length === 0) return (
-        <EmptyState
-            title="No government jobs yet"
-            description="Check back soon — new notifications are added regularly."
-        />
-    );
-
-    return (
-        <div className="space-y-8">
-            {groups.map(group => (
-                <div key={group.key} className="space-y-3">
-                    {/* Group header */}
-                    <div id="category-top-header" className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <group.Icon className="w-5 h-5 text-current" />
-                            <h2 className="text-sm font-bold text-foreground tracking-tight">{group.label}</h2>
-                            <span className={cn(
-                                'text-[9px] font-bold px-2 py-0.5 rounded-full border',
-                                group.urgency === 'high'   ? 'bg-destructive/10 text-destructive border-destructive/20' :
-                                group.urgency === 'medium' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
-                                                             'bg-muted text-muted-foreground border-border'
-                            )}>
-                                {group.items.length} exam{group.items.length !== 1 ? 's' : ''}
-                            </span>
-                        </div>
-                        <button
-                            onClick={() => onSelectPhase(group.key)}
-                            className="text-[10px] font-semibold text-primary hover:underline flex items-center gap-0.5"
-                        >
-                            View all <ChevronRightIcon className="w-3 h-3" />
-                        </button>
-                    </div>
-
-                    {/* Cards — max 4 visible */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {group.items.slice(0, 4).map((opp, index) => (
-                            <JobCard
-                                key={opp.id}
-                                job={{
-                                    ...opp,
-                                    normalizedRole: opp.title,
-                                    salary: (opp.salaryMin !== undefined && opp.salaryMax !== undefined)
-                                        ? { min: opp.salaryMin, max: opp.salaryMax }
-                                        : undefined,
-                                }}
-                                jobId={opp.id}
-                                isSaved={isJobSaved(opp)}
-                                isApplied={isJobApplied(opp)}
-                                onToggleSave={() => toggleSave(opp.id)}
-                                isAdmin={user?.role === 'ADMIN'}
-                                priority={index < 2}
-                                variant="vertical"
-                            />
-                        ))}
-                    </div>
-
-                    {group.items.length > 4 && (
-                        <button
-                            onClick={() => onSelectPhase(group.key)}
-                            className="w-full h-10 text-xs font-semibold text-muted-foreground border border-dashed border-border rounded-xl hover:border-foreground/30 hover:text-foreground transition-colors"
-                        >
-                            + {group.items.length - 4} more in {group.label}
-                        </button>
-                    )}
-                </div>
-            ))}
         </div>
     );
 }
@@ -219,7 +114,7 @@ export function CategoryPageView({
     type, user, opportunities, filteredOpps, visibleOpps, isLoading, error, profileIncomplete, mounted, isDesktop,
     selectedOpp, handleSelectOpportunity, handleCloseOpportunityPane,
     search, setSearch, filters, setFilters,
-    govtPhase, setGovtPhase, govtCategory, setGovtCategory, phaseCounts, categoryCounts, showGroupedView,
+    govtPhase, setGovtPhase, govtCategory, setGovtCategory, phaseCounts, categoryCounts,
     isMobileFilterOpen, setIsMobileFilterOpen, draftLoc, setDraftLoc, draftYear, setDraftYear,
     draftClosingSoon, setDraftClosingSoon, draftShowOnlySaved, setDraftShowOnlySaved,
     draftSector, setDraftSector, draftQualification, setDraftQualification, draftCourse, setDraftCourse,
@@ -272,7 +167,7 @@ export function CategoryPageView({
 
         const filteredLocations: Record<string, number> = {};
         for (const [loc, count] of Object.entries(locations)) {
-            if (count >= 2) filteredLocations[loc] = count;
+            if (count >= 1) filteredLocations[loc] = count;
         }
 
         return { locations: filteredLocations, skills, sources, years };
@@ -331,7 +226,20 @@ export function CategoryPageView({
         search: search
     }) || config.title;
 
-    const headerPortalContent = type !== OpportunityType.GOVERNMENT ? (
+    const headerPortalContent = type === OpportunityType.GOVERNMENT ? (
+        <>
+            <div className="flex items-center shrink-0">
+                <Breadcrumb items={[
+                    { label: 'Home', href: '/' },
+                    { label: config.title, href: '#' }
+                ]} />
+            </div>
+            
+            <div className="absolute left-1/2 -translate-x-1/2 max-w-lg w-full pointer-events-auto">
+                <LiveTicker items={tickerItems} />
+            </div>
+        </>
+    ) : (
         <>
             <div className={cn("flex items-center", selectedOpp && isDesktop !== false && "hidden lg:flex")}>
                 <Breadcrumb items={[
@@ -347,7 +255,7 @@ export function CategoryPageView({
                     placeholder="Search roles, companies, skills..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    className="pl-9 h-9 text-xs rounded-xl bg-card border-border shadow-sm w-full focus:bg-background"
+                    className="pl-9 h-9 text-xs rounded-xl bg-card border-border shadow-sm w-full focus:bg-background focus:ring-2 focus:ring-ring/30 transition-shadow duration-150 ease-out"
                 />
                 {search && (
                     <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-full p-0.5 hover:bg-muted">
@@ -356,7 +264,8 @@ export function CategoryPageView({
                 )}
             </div>
         </>
-    ) : null;
+    );
+
     // ── Detail pane toggle (persisted) ──────────────────────────────────────
     const [showDetail, setShowDetail] = useState(false);
     useEffect(() => {
@@ -379,81 +288,116 @@ export function CategoryPageView({
         <div id="feed-scroll-container" className="w-full max-w-7xl mx-auto flex flex-col" style={{ height: 'calc(100vh - 3.5rem)' }}>
             {portalTarget && headerPortalContent ? createPortal(headerPortalContent, portalTarget) : null}
 
-            {/* Live Ticker — govt only */}
-            {type === OpportunityType.GOVERNMENT && mounted && tickerItems.length > 0 && (
-                <div className="px-3 md:px-6 pt-2">
-                    <LiveTicker items={tickerItems} />
-                </div>
-            )}
+            {/* Sticky header */}
+            <div className={cn("shrink-0 bg-background/95 border-b border-border/50 px-3 md:px-6 pt-2.5 pb-0 space-y-2", selectedOpp && "hidden lg:block")}>
 
-            {/* Sticky header: Title + Filters + Active chips */}
-            <div className={cn("shrink-0 bg-background/95 border-b border-border/50 px-3 md:px-6 pt-3 pb-0 space-y-2.5", selectedOpp && "hidden lg:block")}>
-
-            {/* Mobile search bar — inline, full width. Desktop search is portaled to TopHeaderBar */}
-            {type !== OpportunityType.GOVERNMENT && (
-                <div className="relative group lg:hidden">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                    <Input
-                        type="text"
-                        placeholder="Search roles, companies, skills..."
-                        value={search}
-                        onChange={e => setSearch(e.target.value)}
-                        className="pl-9 h-9 text-xs rounded-xl bg-card border-border shadow-sm w-full focus:bg-background"
-                    />
-                    {search && (
-                        <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-full p-0.5 hover:bg-muted">
-                            <XMarkIcon className="w-3 h-3" />
-                        </button>
-                    )}
-                </div>
-            )}
-
-            {/* Title row: Title+Count LEFT | Filters RIGHT */}
-            <div className={cn("flex items-center justify-between gap-3 pb-2.5", selectedOpp && "hidden lg:flex")}>
-                {/* Left: Title + Count */}
-                <div className="flex items-baseline gap-2.5 min-w-0">
-                    <h1 className="text-xl md:text-2xl font-extrabold text-foreground tracking-tight leading-tight truncate">
-                        {type !== OpportunityType.GOVERNMENT ? dynamicTitle : config.title}
-                    </h1>
-                    <span className="text-sm font-medium text-muted-foreground shrink-0 whitespace-nowrap">
-                        {mounted && visibleOpps.length > 0 ? visibleOpps.length : '0'} found
-                    </span>
-                </div>
-
-                {/* Right: Filters */}
-                <div className="flex items-center gap-2 shrink-0">
-                    {/* Mobile Filters button */}
-                    <button
-                        onClick={openMobileFilters}
-                        className="lg:hidden h-9 flex items-center gap-2 px-3 rounded-xl border border-border bg-card text-[11px] font-bold capitalize tracking-widest shrink-0"
-                    >
-                        <FunnelIcon className="w-4 h-4" />
-                        {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
-                    </button>
-
-                    {/* Desktop filter dropdowns + toggle */}
-                    <div className="hidden lg:flex items-center gap-2 flex-wrap">
-
-                        <FilterDropdownBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} aggregates={filterAggregates} />
-                        {type !== OpportunityType.GOVERNMENT && (
-                            <Hint label={showDetail ? 'Hide detail pane' : 'Show detail pane'} side="top" avoidCollisions={false}>
-                                <button
-                                    onClick={toggleShowDetail}
-                                    className="flex items-center gap-1.5 h-9 px-3 rounded-xl border border-border bg-card text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                    aria-label={showDetail ? 'Hide detail pane' : 'Show detail pane'}
-                                >
-                                    {showDetail ? <Bars3Icon className="w-4 h-4" /> : <Squares2X2Icon className="w-4 h-4" />}
-                                    {showDetail ? 'List' : 'Split'}
+            {type === OpportunityType.GOVERNMENT ? (
+                /* Govt Compact Top Row: Search + Count on left, Filters on right */
+                <div className="flex items-center justify-between gap-3 pb-1">
+                    {/* Left: Compact Search Bar + Title/Count */}
+                    <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                        <div className="relative group max-w-md w-full">
+                            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                            <Input
+                                type="text"
+                                placeholder="Search exams, posts, departments..."
+                                value={search}
+                                onChange={e => setSearch(e.target.value)}
+                                className="pl-9 h-9 text-xs rounded-xl bg-card border-border shadow-xs w-full focus:bg-background focus:ring-2 focus:ring-ring/30 transition-shadow duration-150 ease-out"
+                            />
+                            {search && (
+                                <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-full p-0.5 hover:bg-muted">
+                                    <XMarkIcon className="w-3.5 h-3.5" />
                                 </button>
-                            </Hint>
-                        )}
+                            )}
+                        </div>
+                        <div className="hidden lg:flex items-center text-sm font-semibold text-muted-foreground whitespace-nowrap">
+                            <span className="text-foreground font-bold mr-1.5">Government Jobs</span>
+                            • <span className="ml-1.5">{mounted && visibleOpps.length > 0 ? visibleOpps.length : '0'} found</span>
+                        </div>
+                    </div>
+
+                    {/* Right: Filters */}
+                    <div className="flex items-center gap-2 shrink-0">
+                        {/* Mobile Filters button */}
+                        <button
+                            onClick={openMobileFilters}
+                            className="lg:hidden h-9 flex items-center gap-2 px-3 rounded-xl border border-border bg-card text-[11px] font-bold capitalize tracking-widest shrink-0"
+                        >
+                            <FunnelIcon className="w-4 h-4" />
+                            {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
+                        </button>
+
+                        {/* Desktop filter dropdowns */}
+                        <div className="hidden lg:flex items-center gap-2 flex-wrap">
+                            <FilterDropdownBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} aggregates={filterAggregates} />
+                        </div>
                     </div>
                 </div>
-            </div>
+            ) : (
+                <>
+                    {/* Non-govt mobile search bar — inline, full width. Desktop search is portaled to TopHeaderBar */}
+                    <div className="relative group lg:hidden">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                        <Input
+                            type="text"
+                            placeholder="Search roles, companies, skills..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            className="pl-9 h-9 text-xs rounded-xl bg-card border-border shadow-sm w-full focus:bg-background focus:ring-2 focus:ring-ring/30 transition-shadow duration-150 ease-out"
+                        />
+                        {search && (
+                            <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-full p-0.5 hover:bg-muted">
+                                <XMarkIcon className="w-3 h-3" />
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Title row: Title+Count LEFT | Filters RIGHT */}
+                    <div className={cn("flex items-center justify-between gap-3 pb-2.5", selectedOpp && "hidden lg:flex")}>
+                        {/* Left: Title + Count */}
+                        <div className="flex items-baseline gap-2.5 min-w-0">
+                            <h1 className="text-xl md:text-2xl font-extrabold text-foreground tracking-tight leading-tight truncate">
+                                {dynamicTitle}
+                            </h1>
+                            <span className="text-sm font-medium text-muted-foreground shrink-0 whitespace-nowrap">
+                                {mounted && visibleOpps.length > 0 ? visibleOpps.length : '0'} found
+                            </span>
+                        </div>
+
+                        {/* Right: Filters */}
+                        <div className="flex items-center gap-2 shrink-0">
+                            {/* Mobile Filters button */}
+                            <button
+                                onClick={openMobileFilters}
+                                className="lg:hidden h-9 flex items-center gap-2 px-3 rounded-xl border border-border bg-card text-[11px] font-bold capitalize tracking-widest shrink-0"
+                            >
+                                <FunnelIcon className="w-4 h-4" />
+                                {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
+                            </button>
+
+                            {/* Desktop filter dropdowns + toggle */}
+                            <div className="hidden lg:flex items-center gap-2 flex-wrap">
+                                <FilterDropdownBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} aggregates={filterAggregates} />
+                                <Hint label={showDetail ? 'Hide detail pane' : 'Show detail pane'} side="top" avoidCollisions={false}>
+                                    <button
+                                        onClick={toggleShowDetail}
+                                        className="flex items-center gap-1.5 h-9 px-3 rounded-xl border border-border bg-card text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                        aria-label={showDetail ? 'Hide detail pane' : 'Show detail pane'}
+                                    >
+                                        {showDetail ? <Bars3Icon className="w-4 h-4" /> : <Squares2X2Icon className="w-4 h-4" />}
+                                        {showDetail ? 'List' : 'Split'}
+                                    </button>
+                                </Hint>
+                            </div>
+                        </div>
+                    </div>
+                </>
+            )}
 
             {/* Govt tabs — shown below title row */}
             {type === OpportunityType.GOVERNMENT && (
-                <div className="space-y-2 pb-3">
+                <div className="space-y-1.5 pb-1">
                     <GovtPhaseTabs
                         active={govtPhase}
                         onChange={phase => { setGovtPhase(phase); setGovtCategory(null); }}
@@ -468,85 +412,97 @@ export function CategoryPageView({
             )}
 
             {/* Active Chips */}
-            {type !== OpportunityType.GOVERNMENT && (
-                <div className={cn("flex flex-wrap items-center gap-2 pb-4", selectedOpp && "hidden lg:flex")}>
+            {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0) || (filters.source && filters.source.length > 0)) ? (
+                <div className={cn("flex flex-wrap items-center gap-1.5 pb-2", selectedOpp && "hidden lg:flex")}>
                     {search && (
-                        <button onClick={() => setSearch('')} className="inline-flex items-center gap-1.5 pl-3.5 pr-2.5 py-1.5 rounded-full bg-muted/60 text-foreground text-sm font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
-                            <MagnifyingGlassIcon className="w-4 h-4 text-muted-foreground" />
-                            {search}
-                            <XMarkIcon className="w-4 h-4 text-muted-foreground ml-1" />
+                        <button onClick={() => setSearch('')} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
+                            <MagnifyingGlassIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-xs font-semibold ">{search}</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
                         </button>
                     )}
                     {filters.workMode?.map(m => (
-                        <button key={m} onClick={() => setFilters({...filters, workMode: filters.workMode!.filter(x => x !== m).length > 0 ? filters.workMode!.filter(x => x !== m) : null})} className="inline-flex items-center gap-1.5 pl-3.5 pr-2.5 py-1.5 rounded-full bg-muted/60 text-foreground text-sm font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
-                            <HomeIcon className="w-4 h-4 text-muted-foreground" />
-                            {m === 'REMOTE' ? 'Remote' : m === 'HYBRID' ? 'Hybrid' : 'On-site'}
-                            <XMarkIcon className="w-4 h-4 text-muted-foreground ml-1" />
+                        <button key={m} onClick={() => setFilters({...filters, workMode: filters.workMode!.filter(x => x !== m).length > 0 ? filters.workMode!.filter(x => x !== m) : null})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
+                            <HomeIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-xs font-semibold ">{m === 'REMOTE' ? 'Remote' : m === 'HYBRID' ? 'Hybrid' : 'On-site'}</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
                         </button>
                     ))}
                     {filters.location && (
-                        <button onClick={() => setFilters({...filters, location: null})} className="inline-flex items-center gap-1.5 pl-3.5 pr-2.5 py-1.5 rounded-full bg-muted/60 text-foreground text-sm font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
-                            <MapPinIcon className="w-4 h-4 text-muted-foreground" />
-                            {filters.location}
-                            <XMarkIcon className="w-4 h-4 text-muted-foreground ml-1" />
+                        <button onClick={() => setFilters({...filters, location: null})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
+                            <MapPinIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-xs font-semibold ">{filters.location}</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
                         </button>
                     )}
                     {filters.sector && (
-                        <button onClick={() => setFilters({...filters, sector: null})} className="inline-flex items-center gap-1.5 pl-3.5 pr-2.5 py-1.5 rounded-full bg-muted/60 text-foreground text-sm font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
-                            <BuildingOfficeIcon className="w-4 h-4 text-muted-foreground" />
-                            {filters.sector}
-                            <XMarkIcon className="w-4 h-4 text-muted-foreground ml-1" />
+                        <button onClick={() => setFilters({...filters, sector: null})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
+                            <BuildingOfficeIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-xs font-semibold ">{filters.sector}</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
                         </button>
                     )}
                     {filters.skills?.map(s => (
-                        <button key={s} onClick={() => setFilters({...filters, skills: filters.skills!.filter(x => x !== s)})} className="inline-flex items-center gap-1.5 pl-3.5 pr-2.5 py-1.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-sm font-medium hover:bg-indigo-100 transition-colors cursor-pointer outline-none">
-                            <SkillPill skill={s} className="bg-transparent border-none p-0 h-auto text-inherit shadow-none" />
-                            <XMarkIcon className="w-4 h-4 text-indigo-700 ml-1" />
+                        <button key={s} onClick={() => setFilters({...filters, skills: filters.skills!.filter(x => x !== s)})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
+                            <SkillPill skill={s} className="bg-transparent border-none p-0 h-auto text-inherit shadow-none text-xs font-semibold" />
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
                         </button>
                     ))}
                     {filters.source?.map(src => (
-                        <button key={src} onClick={() => setFilters({...filters, source: filters.source!.filter(x => x !== src)})} className="inline-flex items-center gap-1.5 pl-3.5 pr-2.5 py-1.5 rounded-full bg-muted/60 text-foreground text-sm font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
-                            <BriefcaseIcon className="w-4 h-4 text-muted-foreground" />
-                            {src}
-                            <XMarkIcon className="w-4 h-4 text-muted-foreground ml-1" />
+                        <button key={src} onClick={() => setFilters({...filters, source: filters.source!.filter(x => x !== src)})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
+                            <BriefcaseIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-xs font-semibold ">{src}</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
                         </button>
                     ))}
                     {filters.course && (
-                        <button onClick={() => setFilters({...filters, course: null})} className="inline-flex items-center gap-1.5 pl-3.5 pr-2.5 py-1.5 rounded-full bg-muted/60 text-foreground text-sm font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
-                            <AcademicCapIcon className="w-4 h-4 text-muted-foreground" />
-                            {filters.course}
-                            <XMarkIcon className="w-4 h-4 text-muted-foreground ml-1" />
+                        <button onClick={() => setFilters({...filters, course: null})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
+                            <AcademicCapIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-xs font-semibold ">{filters.course}</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
                         </button>
                     )}
                     {filters.qualification && (
-                        <button onClick={() => setFilters({...filters, qualification: null})} className="inline-flex items-center gap-1.5 pl-3.5 pr-2.5 py-1.5 rounded-full bg-muted/60 text-foreground text-sm font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
-                            <AcademicCapIcon className="w-4 h-4 text-muted-foreground" />
-                            {filters.qualification}
-                            <XMarkIcon className="w-4 h-4 text-muted-foreground ml-1" />
+                        <button onClick={() => setFilters({...filters, qualification: null})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
+                            <AcademicCapIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-xs font-semibold ">{filters.qualification}</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
                         </button>
                     )}
                     {filters.year && (
-                        <button onClick={() => setFilters({...filters, year: null})} className="inline-flex items-center gap-1.5 pl-3.5 pr-2.5 py-1.5 rounded-full bg-muted/60 text-foreground text-sm font-medium hover:bg-muted transition-colors cursor-pointer outline-none">
-                            <AcademicCapIcon className="w-4 h-4 text-muted-foreground" />
-                            Class of {filters.year}
-                            <XMarkIcon className="w-4 h-4 text-muted-foreground ml-1" />
+                        <button onClick={() => setFilters({...filters, year: null})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
+                            <AcademicCapIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-xs font-semibold ">Class of {filters.year}</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
                         </button>
                     )}
-                    {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0) || (filters.source && filters.source.length > 0)) ? (
-                        <button
-                            onClick={clearAll}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors ml-1 outline-none"
-                        >
-                            <XMarkIcon className="w-4 h-4" />
-                            clear all
+                    {filters.closingSoon && (
+                        <button onClick={() => setFilters({...filters, closingSoon: false})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
+                            <ClockIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-xs font-semibold ">Closing Soon</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
                         </button>
-                    ) : null}
+                    )}
+                    {filters.saved && (
+                        <button onClick={() => setFilters({...filters, saved: false})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
+                            <BookmarkIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-xs font-semibold ">Saved Only</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
+                        </button>
+                    )}
+                    <button
+                        onClick={clearAll}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-[transform,background-color] duration-100 ease-out active:scale-[0.97] motion-reduce:transform-none ml-1 rounded-xl hover:bg-muted"
+                    >
+                        <XMarkIcon className="w-3.5 h-3.5" />
+                        clear all
+                    </button>
                 </div>
-            )}
+            ) : null}
             </div>{/* end sticky header */}
 
             {/* Scrollable content */}
-            <div className="flex-1 overflow-y-auto px-3 md:px-6 pb-2 space-y-4">
+            <div className="flex-1 overflow-y-auto px-3 md:px-6 pb-2 space-y-2">
             {/* Mobile filter drawer */}
             <MobileFilterDrawer
                 isOpen={isMobileFilterOpen}
@@ -598,11 +554,11 @@ export function CategoryPageView({
                 </div>
             ) : isLoading ? (
                 type === OpportunityType.GOVERNMENT ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-                        {[1,2,3,4,5,6].map(i => <SkeletonJobCard key={i} variant="vertical" />)}
+                    <div className="max-w-3xl mx-auto grid grid-cols-1 gap-2 pt-3.5">
+                        {[1,2,3,4,5,6].map(i => <SkeletonJobCard key={i} variant={isDesktop === false ? 'compact' : 'wide'} />)}
                     </div>
                 ) : (
-                    <div className="w-full grid gap-6 items-start grid-cols-1 lg:grid-cols-[1.1fr_1.3fr] xl:grid-cols-[45%_55%]">
+                    <div className="w-full grid gap-6 items-start grid-cols-1 lg:grid-cols-[1.1fr_1.3fr] xl:grid-cols-[45%_55%] pt-3.5">
                         <div className="min-w-0 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-2 custom-scrollbar">
                             <div className="grid grid-cols-1 gap-4 md:gap-6">
                                 {[1,2,3,4,5].map(i => <SkeletonJobCard key={i} variant="compact" />)}
@@ -626,23 +582,8 @@ export function CategoryPageView({
                     size="md"
                     action={<Button variant="outline" onClick={reload} className="h-10 px-6 text-xs font-bold capitalize tracking-widest">Retry</Button>}
                 />
-            ) : showGroupedView ? (
-                // ── "What's Happening Now" grouped layout ──────────────────────
-                <div className="space-y-2">
-                    {mounted && (
-                        <GroupedGovtView
-                            opps={filteredOpps}
-                            govtCategory={govtCategory}
-                            isJobSaved={isJobSaved}
-                            isJobApplied={isJobApplied}
-                            toggleSave={toggleSave}
-                            user={user}
-                            onSelectPhase={phase => setGovtPhase(phase)}
-                        />
-                    )}
-                </div>
             ) : visibleOpps.length === 0 ? (
-                <div className="flex flex-col min-w-0">
+                <div className="flex flex-col min-w-0 pt-3.5">
                     <EmptyState
                         title={`No ${dynamicTitle} found`}
                         description="Try removing some filters or search keywords."
@@ -666,22 +607,16 @@ export function CategoryPageView({
                 // ── Flat grid (filtered by phase / search) ─────────────────────
                 <div className={cn(
                     "w-full grid gap-2 items-start",
-                    type !== OpportunityType.GOVERNMENT
-                        ? (showDetail
-                            ? "grid-cols-1 lg:grid-cols-[1.1fr_1.3fr] xl:grid-cols-[45%_55%] [:root[data-show-detail='false']_&]:lg:grid-cols-1 [:root[data-show-detail='false']_&]:max-w-3xl [:root[data-show-detail='false']_&]:mx-auto"
-                            : "grid-cols-1 max-w-3xl mx-auto")
-                        : "grid-cols-1 max-w-4xl mx-auto"
+                    (type !== OpportunityType.GOVERNMENT && showDetail)
+                        ? "grid-cols-1 lg:grid-cols-[1.1fr_1.3fr] xl:grid-cols-[45%_55%] [:root[data-show-detail='false']_&]:lg:grid-cols-1 [:root[data-show-detail='false']_&]:max-w-3xl [:root[data-show-detail='false']_&]:mx-auto"
+                        : "grid-cols-1 max-w-3xl mx-auto"
                 )}>
                     {/* Left Column: list grid */}
                     <div id="category-grid-container" className={cn(
-                        "min-w-0 pt-4",
+                        "min-w-0 pt-3.5",
                         type !== OpportunityType.GOVERNMENT && showDetail && "lg:sticky lg:top-[var(--sticky-h,8rem)] lg:h-[calc(100vh-var(--sticky-h,8rem))] lg:overflow-y-auto lg:pr-2 custom-scrollbar [:root[data-show-detail='false']_&]:lg:static [:root[data-show-detail='false']_&]:lg:h-auto [:root[data-show-detail='false']_&]:lg:overflow-y-visible [:root[data-show-detail='false']_&]:lg:pr-0"
                     )}>
-                        <div className={cn('grid gap-2',
-                            type === OpportunityType.GOVERNMENT
-                                ? 'grid-cols-1 lg:grid-cols-2'
-                                : 'grid-cols-1'
-                        )}>
+                        <div className="grid grid-cols-1 gap-2">
                             {visibleOpps.slice(0, visibleCount).map((opp, index) => (
                                 <JobCard
                                     key={opp.id}
@@ -691,13 +626,11 @@ export function CategoryPageView({
                                     isApplied={isJobApplied(opp)}
                                     onToggleSave={() => toggleSave(opp.id)}
                                     isAdmin={user?.role === 'ADMIN'}
-                                    isSelected={Boolean(showDetail && isDesktop && (opp.id === selectedOpp?.id || opp.slug === selectedOpp?.slug))}
+                                    isSelected={Boolean(type !== OpportunityType.GOVERNMENT && showDetail && isDesktop && (opp.id === selectedOpp?.id || opp.slug === selectedOpp?.slug))}
                                     variant={
-                                        type === OpportunityType.GOVERNMENT
-                                            ? 'vertical'
-                                            : (isDesktop === false || showDetail)
-                                                ? 'compact'
-                                                : 'wide'
+                                        (isDesktop === false || (type !== OpportunityType.GOVERNMENT && showDetail))
+                                            ? 'compact'
+                                            : 'wide'
                                     }
                                     searchQuery={search}
                                     onClick={(e) => {
@@ -735,7 +668,7 @@ export function CategoryPageView({
 
                     {/* Right Column: Detail Panel (desktop, split mode only) */}
                     {type !== OpportunityType.GOVERNMENT && showDetail && (
-                        <div className="hidden lg:flex flex-col sticky top-24 h-[calc(100vh-8rem)] bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm [:root[data-show-detail='false']_&]:!hidden">
+                        <div className="hidden lg:flex flex-col sticky top-24 h-[calc(100vh-8rem)] bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm mt-3.5 [:root[data-show-detail='false']_&]:!hidden">
                             {selectedOpp ? (
                                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                                     <OpportunityDetailPane
@@ -763,7 +696,7 @@ export function CategoryPageView({
                     )}
 
                     {/* Mobile Detail Modal */}
-                    {selectedOpp && (
+                    {selectedOpp && type !== OpportunityType.GOVERNMENT && (
                         <div id="mobile-detail-modal" className={cn("lg:hidden fixed inset-0 z-[120] flex flex-col bg-background animate-in slide-in-from-bottom duration-300")}>
                             <div className="pt-[env(safe-area-inset-top)] bg-card shrink-0" />
                             <div className="flex-1 flex flex-col min-h-0">

@@ -15,6 +15,7 @@
     "@fresherflow/parser": "workspace:*",
     "@fresherflow/plugins": "workspace:*",
     "@fresherflow/types": "workspace:*",
+    "@fresherflow/utils": "workspace:*",
     "@supabase/supabase-js": "^2.112.0",
     "playwright": "^1.62.1"
   },

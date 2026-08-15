@@ -51,12 +51,14 @@ const formatLabel = (value: string) =>
 export async function generateMetadata({ params }: { params: Promise<{ city: string }> }): Promise<Metadata> {
     const { city } = await params;
     const cityLabel = formatLabel(city);
-    const title = `Walk-ins in ${cityLabel}`;
-    const description = `Verified walk-in drives and fresher opportunities in ${cityLabel}. Direct apply and venue details included.`;
+    const title = `${cityLabel} Walk-in Interviews for Freshers`;
+    const description = `Find verified walk-in interviews and direct hiring opportunities for freshers in ${cityLabel}, with venue, date and eligibility details.`;
+    const keywords = `${cityLabel} walk in interviews, ${cityLabel} walk in jobs, ${cityLabel} fresher jobs, ${cityLabel} hiring, ${cityLabel} off campus drives`;
 
     return {
         title,
         description,
+        keywords,
         robots: {
             index: false,
         },

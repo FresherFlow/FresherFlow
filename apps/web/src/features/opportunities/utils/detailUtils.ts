@@ -185,3 +185,30 @@ function formatEducationLevel(degree: string): string {
 function normalizeAcademic(value: string) {
     return value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
 }
+
+export function getValidDirectoryLinks(opportunities: Opportunity[]) {
+    const skillCounts: Record<string, number> = {};
+    const locCounts: Record<string, number> = {};
+    
+    opportunities.forEach(opp => {
+        if (opp.status && opp.status !== 'PUBLISHED') return;
+        if (opp.expiresAt && new Date(opp.expiresAt) < new Date()) return;
+        
+        (opp.requiredSkills || []).forEach(skill => {
+            if (!skill) return;
+            const s = skill.trim().toLowerCase();
+            skillCounts[s] = (skillCounts[s] || 0) + 1;
+        });
+        
+        (opp.locations || []).forEach(loc => {
+            if (!loc) return;
+            const l = loc.trim().toLowerCase();
+            locCounts[l] = (locCounts[l] || 0) + 1;
+        });
+    });
+
+    const validSkills = new Set(Object.keys(skillCounts).filter(k => skillCounts[k] >= 5));
+    const validLocations = new Set(Object.keys(locCounts).filter(k => locCounts[k] >= 5));
+
+    return { validSkills, validLocations };
+}

@@ -1,69 +1,57 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import * as React from 'react';
+import { ThemeProvider as NextThemesProvider, useTheme as useNextTheme } from 'next-themes';
 
-type Theme = 'light' | 'dark';
-
-interface ThemeContextType {
-    theme: Theme;
-    toggleTheme: () => void;
-}
-
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const LIGHT_THEME_COLOR = '#e2eaf2'; // hsl(210 28% 92%)
 const DARK_THEME_COLOR = '#0d0f14'; // hsl(222 20% 7%)
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-    const [theme, setTheme] = useState<Theme>('light');
-
-    useEffect(() => {
-        // Sync with the class applied by ThemeScript (which runs before hydration)
-        const isDark = document.documentElement.classList.contains('dark');
-         
-        setTheme(isDark ? 'dark' : 'light');
-
-        // Ensure state and storage are consistent
-        const savedTheme = localStorage.getItem('theme') as Theme;
-        if (savedTheme) {
-            setTheme(savedTheme);
-            document.documentElement.classList.toggle('dark', savedTheme === 'dark');
-        }
-    }, []);
-
-    const setThemeColor = (newTheme: string) => {
-        const metaThemeColor = document.getElementById('theme-color-meta') || document.querySelector('meta[name="theme-color"]');
-        if (metaThemeColor) {
-            metaThemeColor.setAttribute('content', newTheme === 'dark' ? DARK_THEME_COLOR : LIGHT_THEME_COLOR);
-        }
-    };
-
-    const toggleTheme = () => {
-        const newTheme = theme === 'light' ? 'dark' : 'light';
-        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            document.documentElement.classList.add('theme-transition');
-            window.setTimeout(() => {
-                document.documentElement.classList.remove('theme-transition');
-            }, 250);
-        }
-        setTheme(newTheme);
-        localStorage.setItem('theme', newTheme);
-        document.documentElement.classList.toggle('dark', newTheme === 'dark');
-        // Keep PWA status bar in sync with the app chrome.
-        setThemeColor(newTheme);
-    };
-
+export function ThemeProvider({ children, ...props }: React.ComponentProps<typeof NextThemesProvider>) {
     return (
-        <ThemeContext.Provider value={{ theme, toggleTheme }}>
+        <NextThemesProvider 
+            attribute="class" 
+            defaultTheme="system" 
+            enableSystem
+            disableTransitionOnChange
+            {...props}
+        >
+            <ThemeMetaSync />
             {children}
-        </ThemeContext.Provider>
+        </NextThemesProvider>
     );
 }
 
-export function useTheme() {
-    const context = useContext(ThemeContext);
-    if (context === undefined) {
-        throw new Error('useTheme must be used within a ThemeProvider');
-    }
-    return context;
+function ThemeMetaSync() {
+    const { resolvedTheme } = useNextTheme();
+
+    React.useEffect(() => {
+        const metaThemeColor = document.getElementById('theme-color-meta') || document.querySelector('meta[name="theme-color"]');
+        if (metaThemeColor && resolvedTheme) {
+            metaThemeColor.setAttribute('content', resolvedTheme === 'dark' ? DARK_THEME_COLOR : LIGHT_THEME_COLOR);
+        }
+    }, [resolvedTheme]);
+
+    return null;
 }
 
+export function useTheme() {
+    const { theme, setTheme, resolvedTheme, systemTheme } = useNextTheme();
+    
+    const toggleTheme = async () => {
+        const nextTheme = resolvedTheme === 'dark' ? 'light' : 'dark';
+        if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            setTheme(nextTheme);
+            return;
+        }
+
+        document.documentElement.style.viewTransitionName = 'theme-transition';
+        const transition = document.startViewTransition(() => {
+            setTheme(nextTheme);
+        });
+        
+        await transition.finished;
+        document.documentElement.style.viewTransitionName = '';
+    };
+
+    return { theme, resolvedTheme, systemTheme, setTheme, toggleTheme };
+}

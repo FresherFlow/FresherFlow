@@ -85,9 +85,9 @@ export function FeedPageSkeleton({ isGovt = false }: { isGovt?: boolean }) {
                 </div>
             </div>
             {isGovt ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+                <div className="max-w-3xl mx-auto grid grid-cols-1 gap-2">
                     {Array.from({ length: 6 }).map((_, index) => (
-                        <SkeletonJobCard key={index} variant="vertical" />
+                        <SkeletonJobCard key={index} variant="wide" />
                     ))}
                 </div>
             ) : (

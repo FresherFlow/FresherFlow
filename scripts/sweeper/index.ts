@@ -438,10 +438,20 @@ async function run() {
         let msg = "";
         
         if (expiredJobs.length > 0) {
-            msg += `🚨 <b>Found ${expiredJobs.length} Expired Jobs — Automatically Removed from Platform</b> 🚨\n\n`;
+            const expiredProduction = expiredJobs.filter(j => j.type !== 'discovered' && j.type !== 'processed');
+            const expiredProcessed = expiredJobs.filter(j => j.type === 'processed');
+            const expiredDiscovered = expiredJobs.filter(j => j.type === 'discovered');
+
+            msg += `🚨 <b>Found ${expiredJobs.length} Expired Jobs — Automatically Removed</b> 🚨\n`;
+            if (expiredProduction.length > 0) msg += `• Production Jobs: ${expiredProduction.length}\n`;
+            if (expiredProcessed.length > 0) msg += `• Processed (Pending): ${expiredProcessed.length}\n`;
+            if (expiredDiscovered.length > 0) msg += `• Discovered (New): ${expiredDiscovered.length}\n`;
+            msg += `\n`;
+
             const displayJobs = expiredJobs.slice(0, 15);
             for (const job of displayJobs) {
-                msg += `- <b>${escapeHtml(job.company)}</b>: ${escapeHtml(job.title)}\n  Apply Link: ${job.sourceLink || job.applyLink || 'None'}\n`;
+                const badge = job.type === 'discovered' ? '[Disc]' : job.type === 'processed' ? '[Proc]' : '[Prod]';
+                msg += `- <b>${badge} ${escapeHtml(job.company)}</b>: ${escapeHtml(job.title)}\n  Apply Link: ${job.sourceLink || job.applyLink || 'None'}\n`;
             }
             if (expiredJobs.length > 15) {
                 msg += `...and ${expiredJobs.length - 15} more!\n\n`;
@@ -470,22 +480,6 @@ async function run() {
     if (process.env.GITHUB_STEP_SUMMARY) {
         const fs = await import('fs/promises');
         
-        // Message 3: Results
-        let finalMsg = `🏁 <b>Job Sweeper Finished</b>\n\n`;
-        finalMsg += `Checked: ${opportunities.length}\n`;
-        finalMsg += `Expired & Removed: ${expiredJobs.length}\n`;
-        finalMsg += `Failed Verification: ${reviewJobs.length}\n\n`;
-        
-        if (expiredJobs.length > 0) {
-            finalMsg += `<b>Removed Jobs (First 10):</b>\n`;
-            for (const opp of expiredJobs.slice(0, 10)) {
-                finalMsg += `- ${opp.title} (${opp.company})\n`;
-            }
-        }
-        
-        console.log("Sending final summary to Telegram...");
-        await sendTelegramMessage(finalMsg);
-
 
         let summary = `## Job Sweeper Results\n\nChecked ${opportunities.length} jobs. Found ${expiredJobs.length} expired jobs and ${reviewJobs.length} review required jobs.\n\n`;
         if (expiredJobs.length > 0) {

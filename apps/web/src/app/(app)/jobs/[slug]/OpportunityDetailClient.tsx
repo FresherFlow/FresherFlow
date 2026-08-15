@@ -20,6 +20,7 @@ import Bars3Icon from '@heroicons/react/24/outline/Bars3Icon';
 const MobileNavMenu = dynamic(() => import('@/lib/navigation/MobileNavMenu'), { ssr: false });
 import Link from 'next/link';
 import { Button } from '@/ui/Button';
+import { CopyButton } from '@/ui/CopyButton';
 import { OpportunityDetailSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';import { cn } from '@repo/ui/utils/cn';
 import { slugify } from '@fresherflow/utils/slugify';
 
@@ -46,16 +47,37 @@ import { AppPromoBanner } from '@/ui/AppPromoBanner';
 import { useOpportunityDetail } from '@/features/opportunities/hooks/useOpportunityDetail';
 import { useOpportunityDerivedState } from '@/features/opportunities/hooks/useOpportunityDerivedState';
 
+/** Derive company slug from domain. Falls back to company name. */
+function getCompanySlug(companyWebsite?: string | null, companyName?: string): string {
+    if (companyWebsite) {
+        try {
+            const raw = companyWebsite.trim();
+            const withProtocol = raw.startsWith('http') ? raw : `https://${raw}`;
+            const hostname = new URL(withProtocol).hostname
+                .toLowerCase()
+                .replace(/^www\./i, '')
+                .replace(/^(careers|jobs|talent|work|apply|hr)\./i, '');
+            const parts = hostname.split('.');
+            const main = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+            if (main && main.length > 1) return main;
+        } catch {}
+    }
+    return slugify(companyName || '');
+}
+
+type Props = {
+    id: string;
+    initialData?: Opportunity | null;
+    initialRelatedData?: Opportunity[];
+    validDirectoryLinks?: { validSkills: string[]; validLocations: string[] };
+};
 
 export default function OpportunityDetailClient({ 
     id, 
     initialData,
-    initialRelatedData = []
-}: { 
-    id: string; 
-    initialData?: Opportunity | null;
-    initialRelatedData?: Opportunity[];
-}) {
+    initialRelatedData = [],
+    validDirectoryLinks
+}: Props) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user, profile } = useAuth();
@@ -88,6 +110,8 @@ export default function OpportunityDetailClient({
     }, []);
 
     const [menuOpen, setMenuOpen] = useState(false);
+    const [isMounted, setIsMounted] = useState(false);
+    useEffect(() => { setIsMounted(true); }, []);
 
     const relatedForMode = relatedOpps;
 
@@ -238,13 +262,16 @@ export default function OpportunityDetailClient({
                         </h2>
                     </div>
                 </div>
-                <button
-                    onClick={() => setMenuOpen(true)}
-                    className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all shrink-0"
-                    aria-label="Open menu"
-                >
-                    <Bars3Icon className="w-5 h-5" />
-                </button>
+                <div className="flex items-center shrink-0">
+                    <button onClick={handleShare} className="p-2 -mr-1 hover:bg-muted rounded-full transition-colors active:scale-95" title="Share"><ShareIcon className="w-5 h-5 text-foreground" /></button>
+                    <button
+                        onClick={() => setMenuOpen(true)}
+                        className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all shrink-0"
+                        aria-label="Open menu"
+                    >
+                        <Bars3Icon className="w-5 h-5" />
+                    </button>
+                </div>
             </div>
 
             {/* Edge-to-Edge Banner Header on Desktop / Standard Detail Top Section */}
@@ -260,7 +287,7 @@ export default function OpportunityDetailClient({
                             {opp.type === 'INTERNSHIP' ? 'Internships' : opp.type === 'WALKIN' ? 'Walk-ins' : 'Jobs'}
                         </Link>
                         <span className="text-muted-foreground/40">/</span>
-                        <Link href={`/companies/${(opp as any).companySlug || slugify(opp.company)}`} className="hover:text-primary transition-colors truncate max-w-[120px]">
+                        <Link href={`/companies/${(opp as any).companySlug || getCompanySlug((opp as any).companyWebsite, opp.company)}`} className="hover:text-primary transition-colors truncate max-w-[120px]">
                             {opp.company}
                         </Link>
                         <span className="text-muted-foreground/40">/</span>
@@ -341,7 +368,7 @@ export default function OpportunityDetailClient({
                             <h3 className="text-base font-bold text-foreground tracking-tight">Explore Related Placements</h3>
                             <div className="flex flex-wrap gap-2 text-xs">
                                 {/* Company Link */}
-                                <Link href={`/companies/${(opp as any).companySlug || slugify(opp.company)}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/5 hover:bg-primary/10 text-primary font-semibold border border-primary/10 transition-colors">
+                                <Link href={`/companies/${(opp as any).companySlug || getCompanySlug((opp as any).companyWebsite, opp.company)}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/5 hover:bg-primary/10 text-primary font-semibold border border-primary/10 transition-colors">
                                     <BriefcaseIcon className="w-3.5 h-3.5" />
                                     {opp.company} Careers
                                 </Link>
@@ -353,9 +380,14 @@ export default function OpportunityDetailClient({
                                     </Link>
                                 ))}
                                 {/* Location Links */}
-                                {opp.locations?.map(loc => {
+                                {opp.locations?.filter(loc => {
+                                    if (loc.toLowerCase() === 'india' || loc.toLowerCase() === 'pan india') return false;
+                                    if (validDirectoryLinks?.validLocations?.length) {
+                                        return validDirectoryLinks.validLocations.includes(loc.trim().toLowerCase());
+                                    }
+                                    return true;
+                                }).map(loc => {
                                     const locSlug = slugify(loc);
-                                    if (loc.toLowerCase() === 'india' || loc.toLowerCase() === 'pan india') return null;
                                     return (
                                         <Link key={loc} href={`/locations/${locSlug}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
                                             <MapPinIcon className="w-3.5 h-3.5" />
@@ -364,27 +396,49 @@ export default function OpportunityDetailClient({
                                     );
                                 })}
                                 {/* Skill Links */}
-                                {opp.requiredSkills?.map(skill => (
+                                {opp.requiredSkills?.filter(skill => {
+                                    if (validDirectoryLinks?.validSkills?.length) {
+                                        return validDirectoryLinks.validSkills.includes(skill.trim().toLowerCase());
+                                    }
+                                    return true;
+                                }).slice(0, 5).map(skill => (
                                     <Link key={skill} href={`/skills/${slugify(skill)}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
                                         <TagIcon className="w-3.5 h-3.5" />
-                                        <span className="capitalize">{skill}</span> Jobs
+                                        <span className="capitalize">{skill}</span>{' '}Jobs
                                     </Link>
                                 ))}
                                 {/* Role / Job Function Link */}
-                                {opp.jobFunction && (
-                                    <Link 
-                                        href={opp.jobFunction.toLowerCase() === 'internship' ? '/jobs/internships' : `/roles/${slugify(opp.jobFunction)}`} 
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors"
-                                    >
-                                        <UserIcon className="w-3.5 h-3.5" />
-                                        <span className="capitalize">{opp.jobFunction}</span> Jobs
-                                    </Link>
-                                )}
+                                {(() => {
+                                    if (!opp.jobFunction) return null;
+                                    if (opp.jobFunction.toLowerCase() === 'internship') {
+                                        return (
+                                            <Link 
+                                                href="/jobs/internships"
+                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors"
+                                            >
+                                                <UserIcon className="w-3.5 h-3.5" />
+                                                <span className="capitalize">{opp.jobFunction}</span> Jobs
+                                            </Link>
+                                        );
+                                    }
+                                    const roleSlug = slugify(opp.jobFunction);
+                                    const CURATED_ROLES = new Set(['software-engineer', 'data-analyst', 'business-analyst', 'frontend-developer', 'test-engineer']);
+                                    if (!CURATED_ROLES.has(roleSlug)) return null;
+                                    return (
+                                        <Link 
+                                            href={`/roles/${roleSlug}`}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors"
+                                        >
+                                            <UserIcon className="w-3.5 h-3.5" />
+                                            <span className="capitalize">{opp.jobFunction}</span> Jobs
+                                        </Link>
+                                    );
+                                })()}
                             </div>
                         </div>
 
                         {/* Mobile-Only Progress Tracker */}
-                        {user && (
+                        {isMounted && user && (
                             <div className="lg:hidden p-4 bg-muted/10 border border-border/60 rounded-xl space-y-2">
                                 <h4 className="text-xs font-bold text-foreground/80">Track your progress</h4>
                                 <div className="grid grid-cols-2 gap-2">
@@ -412,7 +466,7 @@ export default function OpportunityDetailClient({
                         )}
 
                         {/* Mobile-Only Admin Actions */}
-                        {user?.role === 'ADMIN' && (
+                        {isMounted && user?.role === 'ADMIN' && (
                             <div className="lg:hidden bg-card p-4 border border-primary/20 rounded-xl space-y-2">
                                 <h4 className="text-xs font-bold text-primary">Admin Control</h4>
                                 <Link href={`/opportunities/edit/${opp.id}`} className="block">
@@ -485,20 +539,13 @@ export default function OpportunityDetailClient({
                             </button>
                         )}
                     </div>
-                    <button
-                        onClick={handleShare}
-                        className="shrink-0 w-12 h-12 rounded-xl border border-border bg-muted/20 text-muted-foreground flex items-center justify-center hover:bg-muted/40 hover:text-foreground active:scale-[0.98] transition-all"
-                        aria-label="Share"
-                    >
-                        <ShareIcon className="w-5 h-5" />
-                    </button>
-                    <button
-                        onClick={handleCopyLink}
-                        className="shrink-0 w-12 h-12 rounded-xl border border-border bg-muted/20 text-muted-foreground flex items-center justify-center hover:bg-muted/40 hover:text-foreground active:scale-[0.98] transition-all"
-                        aria-label="Copy Link"
-                    >
-                        <LinkIcon className="w-5 h-5" />
-                    </button>
+                    <CopyButton
+                        variant="ghost"
+                        value={typeof window !== 'undefined' ? window.location.href : ''}
+                        icon={LinkIcon}
+                        iconClassName="w-5 h-5"
+                        className="shrink-0 w-12 h-12 !p-0 rounded-xl border border-border bg-muted/20 text-muted-foreground flex items-center justify-center hover:bg-muted/40 hover:text-foreground active:scale-[0.98] transition-all"
+                    />
                 </div>
             )}
 

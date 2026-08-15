@@ -9,8 +9,8 @@ import { DirectoryClient, DirectoryEntity } from '@/ui/DirectoryClient';
 export const revalidate = false;
 
 export const metadata: Metadata = {
-    title: 'Browse Jobs by Skill',
-    description: 'Explore all in-demand skills for freshers in India. Find verified jobs, internships and off-campus drives filtered by technology, domain, or role skill.',
+    title: 'Jobs by Skill | Fresher Jobs & Internships',
+    description: 'Find verified fresher jobs and internships based on technical and professional skills, technologies and tools.',
     alternates: { canonical: `${SITE_URL}/skills` },
 };
 

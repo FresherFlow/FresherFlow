@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { DiscoveryState } from './state.js';
 import { ATS_CDN_BASE, ATS_PROVIDERS, TARGET_SITES } from '../config.js';
 import { normalizeUrl, sanitizeAtsUrl } from '../utils/url.js';
@@ -41,7 +43,22 @@ export async function discoverAtsJobs(state: DiscoveryState) {
     );
 
     let atsQueued = 0, atsRejected = 0;
+
+    let companiesList: any[] = [];
+    try {
+        const p1 = path.resolve(process.cwd(), 'docs/data/companies.json');
+        const p2 = path.resolve(process.cwd(), '../../docs/data/companies.json');
+        if (fs.existsSync(p1)) companiesList = JSON.parse(fs.readFileSync(p1, 'utf8'));
+        else if (fs.existsSync(p2)) companiesList = JSON.parse(fs.readFileSync(p2, 'utf8'));
+    } catch (e) {
+        console.error('Failed to load companies.json', e);
+    }
+    const companySlugMap = new Map(companiesList.map(c => [c.slug, c.name]));
+
     for (const job of atsJobs) {
+        if (job.company && companySlugMap.has(job.company.toLowerCase())) {
+            job.company = companySlugMap.get(job.company.toLowerCase())!;
+        }
         if (state.isTimeUp()) {
             console.log(`\n[Timeout] ⏱️ Exceeded 55 minutes, halting ATS job processing.`);
             break;

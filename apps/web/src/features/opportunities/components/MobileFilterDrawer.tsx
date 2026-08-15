@@ -5,6 +5,7 @@ import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/ui/Button';
 import { SkillPill } from '@/ui/SkillPill';
 import { cn } from '@repo/ui/utils/cn';
+import { Drawer } from 'vaul';
 
 // Removed hardcoded locations
 
@@ -188,30 +189,30 @@ export function MobileFilterDrawer({
         .map(([year, count]) => ({ year: Number(year), count }));
 
     return (
-        <div className="fixed inset-0 z-90 lg:hidden" role="dialog" aria-modal="true" aria-labelledby="mobile-filter-title">
-            <div className="absolute inset-0 bg-black/40 animate-in fade-in duration-300 ease-out" onClick={onClose} />
-
-            <div className="absolute bottom-0 pb-[env(safe-area-inset-bottom)] left-0 right-0 max-h-[85vh] rounded-t-3xl bg-background border-t border-border shadow-2xl flex flex-col animate-in slide-in-from-bottom-[100%] duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] overscroll-contain">
-                <div className="flex justify-center py-3">
-                    <div className="h-1.5 w-10 rounded-full bg-muted" />
-                </div>
-
-                <div className="px-5 pb-3 border-b border-border/70 flex items-start justify-between">
-                    <div>
-                        <h3 id="mobile-filter-title" className="text-xl font-bold text-foreground">Filters</h3>
-                        <p className="text-sm text-muted-foreground">{activeCount} filters active</p>
+        <Drawer.Root open={isOpen} onOpenChange={(open) => !open && onClose()} modal={false}>
+            <Drawer.Portal>
+                <Drawer.Overlay className="fixed inset-0 z-50 bg-transparent lg:hidden" />
+                <Drawer.Content className="fixed bottom-0 pb-[env(safe-area-inset-bottom)] left-0 right-0 z-50 flex flex-col max-h-[85vh] rounded-t-3xl border-t border-border bg-background shadow-2xl lg:hidden overscroll-contain">
+                    <div className="flex justify-center py-3 sticky top-0 z-20 bg-background rounded-t-3xl">
+                        <div className="h-1.5 w-12 rounded-full bg-muted" />
                     </div>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="h-10 w-10 rounded-xl border border-border bg-card text-muted-foreground hover:bg-muted transition-colors flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
-                        aria-label="Close filters"
-                    >
-                        <XMarkIcon className="w-5 h-5" />
-                    </button>
-                </div>
 
-                <div className="px-5 overflow-y-auto overscroll-contain flex-1">
+                    <div className="px-5 pb-3 border-b border-border/70 flex items-start justify-between">
+                        <div>
+                            <h3 id="mobile-filter-title" className="text-xl font-bold text-foreground">Filters</h3>
+                            <p className="text-sm text-muted-foreground">{activeCount} filters active</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="h-10 w-10 rounded-xl border border-border bg-card text-muted-foreground hover:bg-muted transition-colors flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
+                            aria-label="Close filters"
+                        >
+                            <XMarkIcon className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <div className="px-5 overflow-y-auto overscroll-contain flex-1">
                     {setDraftType ? (
                         <Section
                             title="Type"
@@ -437,8 +438,9 @@ export function MobileFilterDrawer({
                         </Button>
                     </div>
                 </div>
-            </div>
-        </div>
+            </Drawer.Content>
+            </Drawer.Portal>
+        </Drawer.Root>
     );
 }
 

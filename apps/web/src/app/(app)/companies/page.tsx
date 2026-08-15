@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { fetchCompaniesMetadata, fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { slugify } from '@fresherflow/utils/slugify';
+import { CompanySlugger } from '@/features/companies/utils/companySlugger';
 import { detectAtsProvider } from '@/features/companies/utils/atsDetector';
 import { Breadcrumb } from '@/ui/Breadcrumb';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
@@ -10,8 +11,8 @@ import CompaniesDirectoryClient, { CompanyDirectoryItem } from '@/features/compa
 export const revalidate = false;
 
 export const metadata: Metadata = {
-    title: 'Browse Companies Hiring Freshers | Monitored Directory',
-    description: 'Explore all companies actively hiring freshers in India. Filter by active fresher jobs, ATS recruitment portals, and search by keywords.',
+    title: 'Companies Hiring Freshers in India',
+    description: 'Browse companies hiring freshers in India and discover their active entry-level jobs, internships and off-campus opportunities.',
     alternates: { canonical: `${SITE_URL}/companies` },
 };
 
@@ -33,12 +34,18 @@ export default async function CompaniesIndexPage() {
         links: string[];
     }> = {};
 
+    const directory = companyList || [];
+    const slugger = new CompanySlugger(directory);
+
     for (const opp of opportunities) {
         if (!opp.company) continue;
-        const slug = slugify(opp.company);
+        
+        const slug = slugger.getSlug(opp);
+        if (!slug) continue;
+        
         if (!companyData[slug]) {
             companyData[slug] = {
-                name: opp.company,
+                name: slugger.getCanonicalName(slug, opp.company),
                 slug,
                 count: 0,
                 logoUrl: opp.companyLogoUrl,
@@ -53,7 +60,6 @@ export default async function CompaniesIndexPage() {
     }
 
     // Enrich active companies with logo/website from directory, but don't add dead ones.
-    const directory = companyList || [];
     for (const item of directory) {
         const name = item.name;
         if (!name) continue;

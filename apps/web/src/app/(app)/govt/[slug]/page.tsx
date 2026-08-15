@@ -6,6 +6,7 @@ import OpportunityDetailClient from '../../jobs/[slug]/OpportunityDetailClient';
 import { OpportunityDetailSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
 import { getOpportunityPath } from '@/features/opportunities/domain/opportunityPath';
 import { fetchBootstrapFeed, fetchGovernmentFeed } from '@/lib/api/cdnFeed';
+import { OpportunityType } from '@fresherflow/types';
 import { getRelatedOpportunities } from '@/features/opportunities/utils/detailUtils';
 import { generateOpportunityMetadata, generateOpportunityJsonLd, generateOpportunityBreadcrumbsJsonLd, getExpiryState, ExtendedOpportunity } from '../../jobs/[slug]/opportunitySeo';
 
@@ -21,9 +22,20 @@ function isInvalidSlug(slug: string): boolean {
 
 export async function generateStaticParams() {
     try {
-        const feed = await fetchGovernmentFeed(false, undefined, true);
-        if (!feed?.opportunities) return [];
-        return feed.opportunities.map((opp) => ({ slug: opp.slug || opp.id }));
+        const [feed, bootstrapFeed] = await Promise.all([
+            fetchGovernmentFeed(false, undefined, true),
+            fetchBootstrapFeed(false, undefined, true),
+        ]);
+        const opps = [
+            ...(feed?.opportunities || []),
+            ...(bootstrapFeed?.opportunities?.filter(o => o.type === OpportunityType.GOVERNMENT || Boolean(o.governmentJobDetails)) || [])
+        ];
+        const slugs = new Set<string>();
+        opps.forEach(opp => {
+            const slug = opp.slug || opp.id;
+            if (slug) slugs.add(slug);
+        });
+        return Array.from(slugs).map(slug => ({ slug }));
     } catch {
         return [];
     }
@@ -33,8 +45,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     const { slug } = await params;
     if (isInvalidSlug(slug)) notFound();
     try {
-        const feed = await fetchGovernmentFeed(false, undefined, true);
-        const opp = feed?.opportunities?.find((o) => o.slug === slug || o.id === slug);
+        const [govtFeed, bootstrapFeed] = await Promise.all([
+            fetchGovernmentFeed(false, undefined, true),
+            fetchBootstrapFeed(false, undefined, true),
+        ]);
+        const opp = (govtFeed?.opportunities?.find((o) => o.slug === slug || o.id === slug) ||
+            bootstrapFeed?.opportunities?.find((o) => (o.slug === slug || o.id === slug) && (o.type === OpportunityType.GOVERNMENT || Boolean(o.governmentJobDetails)))) as ExtendedOpportunity | undefined;
         if (!opp) throw new Error('Not found');
         return await generateOpportunityMetadata(opp as ExtendedOpportunity);
     } catch {
@@ -54,7 +70,8 @@ export default async function GovernmentJobDetailPage({ params }: { params: Prom
         fetchBootstrapFeed(false, undefined, true)
     ]);
 
-    const opp = govtFeed?.opportunities?.find((o) => o.slug === slug || o.id === slug) as ExtendedOpportunity | undefined;
+    const opp = (govtFeed?.opportunities?.find((o) => o.slug === slug || o.id === slug) ||
+        bootstrapFeed?.opportunities?.find((o) => (o.slug === slug || o.id === slug) && (o.type === OpportunityType.GOVERNMENT || Boolean(o.governmentJobDetails)))) as ExtendedOpportunity | undefined;
 
     if (!opp) {
         logRouteResult('/govt/[slug]', '404');

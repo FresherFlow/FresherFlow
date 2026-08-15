@@ -9,8 +9,8 @@ import { DirectoryClient, DirectoryEntity } from '@/ui/DirectoryClient';
 export const revalidate = false;
 
 export const metadata: Metadata = {
-    title: 'Jobs by Role',
-    description: 'Find verified fresher jobs, internships, and walk-in drives by job role. Explore opportunities for Software Engineer, Data Analyst, Product Manager, and more.',
+    title: 'Fresher Jobs by Role | Entry-Level Careers',
+    description: 'Explore verified fresher jobs and internships by role, including software development, data analytics, testing, support, sales and more.',
     alternates: { canonical: `${SITE_URL}/roles` },
 };
 

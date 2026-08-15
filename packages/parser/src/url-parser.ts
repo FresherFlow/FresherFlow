@@ -214,7 +214,24 @@ export class UrlParser {
                 ...semantic,
                 title: title || semantic.title || undefined,
                 company: company || semantic.company || undefined,
-                locations: ld.locations || semantic.locations,
+                locations: ld.locations?.length ? ld.locations : semantic.locations?.length ? semantic.locations : (() => {
+                    // Try extracting location from URL path e.g., /job/Location/Title
+                    if (url) {
+                        try {
+                            const u = new URL(url);
+                            const parts = u.pathname.split('/').filter(Boolean);
+                            const jobIndex = parts.indexOf('job');
+                            if (jobIndex !== -1 && jobIndex + 1 < parts.length - 1) {
+                                const locStr = parts[jobIndex + 1].replace(/-/g, ' ');
+                                // basic check
+                                if (locStr.length > 2 && !locStr.match(/^[0-9]+$/)) {
+                                    return [locStr];
+                                }
+                            }
+                        } catch {}
+                    }
+                    return undefined;
+                })()
             },
             meta: {
                 sourceType: ld.used ? 'JSON_LD' : sourceType,

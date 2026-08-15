@@ -10,6 +10,7 @@ import {
  TrashIcon,
  EyeIcon,
  EllipsisHorizontalIcon,
+ PlayIcon,
 } from '@heroicons/react/24/outline';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/ui/DropdownMenu';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/ui/Select';
@@ -117,6 +118,32 @@ export function DiscoveredJobsTab() {
  }
  };
 
+ const handleProcessRequest = async (ids: string[]) => {
+    const toastId = toast.loading(`Processing ${ids.length} job(s)...`);
+    try {
+      const res = await fetch('/api/admin/discovery/jobs/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids }),
+      });
+      if (res.ok) {
+        toast.success(`Successfully processed ${ids.length} job(s)`, { id: toastId });
+        setJobs(prev => 
+          prev.map(j => ids.includes(j.id) ? { ...j, status: 'PROCESSED' } : j)
+        );
+        const newSet = new Set(selectedJobIds);
+        ids.forEach(id => newSet.delete(id));
+        setSelectedJobIds(newSet);
+      } else {
+        const error = await res.json();
+        toast.error(`Failed to process: ${error.error || 'Unknown error'}`, { id: toastId });
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to process jobs', { id: toastId });
+    }
+  };
+
  return (
  <div className="flex flex-col h-full space-y-2 sm:space-y-4 min-h-0">
  {/* Header & Controls */}
@@ -153,15 +180,24 @@ export function DiscoveredJobsTab() {
          className="w-full pl-9 pr-3 py-1.5 h-10 rounded-lg border border-border/80 bg-card text-xs font-medium placeholder:text-muted-foreground focus:outline-none focus-visible:bg-muted/60 focus-visible:text-foreground"
        />
      </div>
-     {selectedJobIds.size > 0 && (
-       <button
-         onClick={() => handleDeleteRequest(Array.from(selectedJobIds))}
-         className="h-10 px-3 rounded-md bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 border border-red-500/20 text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
-       >
-         <TrashIcon className="w-3.5 h-3.5" />
-         Delete Selected ({selectedJobIds.size})
-       </button>
-     )}
+      {selectedJobIds.size > 0 && (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => handleProcessRequest(Array.from(selectedJobIds))}
+            className="h-10 px-3 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
+          >
+            <PlayIcon className="w-3.5 h-3.5" />
+            Process Selected ({selectedJobIds.size})
+          </button>
+          <button
+            onClick={() => handleDeleteRequest(Array.from(selectedJobIds))}
+            className="h-10 px-3 rounded-md bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 border border-red-500/20 text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
+          >
+            <TrashIcon className="w-3.5 h-3.5" />
+            Delete Selected ({selectedJobIds.size})
+          </button>
+        </div>
+      )}
    </div>
 
    {/* Right Side: Filters */}
@@ -373,6 +409,10 @@ export function DiscoveredJobsTab() {
        </DropdownMenuItem>
 
        <DropdownMenuSeparator />
+       
+       <DropdownMenuItem onClick={() => handleProcessRequest([job.id])} className="cursor-pointer text-blue-600 dark:text-blue-400 focus:bg-blue-500/10 focus:text-blue-600">
+         <PlayIcon className="w-4 h-4 mr-2" /> Process Job
+       </DropdownMenuItem>
        
        <DropdownMenuItem onClick={() => handleDeleteRequest([job.id])} className="cursor-pointer text-red-600 dark:text-red-400 focus:bg-red-500/10 focus:text-red-600">
          <TrashIcon className="w-4 h-4 mr-2" /> Delete

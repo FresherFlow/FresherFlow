@@ -217,28 +217,16 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
         if (changed) {
             if (replaceTimerRef.current) clearTimeout(replaceTimerRef.current);
             replaceTimerRef.current = setTimeout(() => {
-                router.replace(`?${params.toString()}`, { scroll: false });
+                const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
+                window.history.replaceState(null, '', newUrl);
             }, 300);
         }
 
         return () => {
             if (replaceTimerRef.current) clearTimeout(replaceTimerRef.current);
         };
-    }, [search, govtCategory, filters.location, filters.year, filters.closingSoon, filters.saved, filters.sector, filters.qualification, filters.course, filters.skills, filters.source, filters.workMode, mounted, router]);
+    }, [search, govtCategory, filters.location, filters.year, filters.closingSoon, filters.saved, filters.sector, filters.qualification, filters.course, filters.skills, filters.source, filters.workMode, mounted]);
 
-    useEffect(() => {
-        if (!mounted) return;
-        const newTitle = formatJobFeedTitle({
-            type: type,
-            workMode: filters.workMode,
-            location: filters.location,
-            skills: filters.skills,
-            sector: filters.sector,
-            course: filters.course,
-            search: search
-        });
-        document.title = `${newTitle || 'Job Opportunities Feed'} | FresherFlow`;
-    }, [type, filters, search, mounted]);
 
     const { opportunities, filteredOpps, isLoading, error, profileIncomplete, toggleSave, reload } = useOpportunitiesFeed({
         type,
@@ -269,7 +257,7 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
             const key = phase as GovtPhaseFilter;
             counts[key] = key === 'ALL'
                 ? filteredOpps.length
-                : filteredOpps.filter(o => { const s = (o.governmentJobDetails as any)?.applicationStatus; return s && statuses.includes(s); }).length;
+                : filteredOpps.filter(o => { const s = (o.governmentJobDetails as any)?.applicationStatus || 'OPEN'; return s && statuses.includes(s); }).length;
         }
         return counts;
     }, [filteredOpps, type]);
@@ -288,7 +276,7 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
             if (filters.saved) return true;
             if (type !== OpportunityType.GOVERNMENT && opp.expiresAt && new Date(opp.expiresAt) < new Date()) return false;
             if (type === OpportunityType.GOVERNMENT && govtPhase !== 'ALL') {
-                const s = (opp.governmentJobDetails as any)?.applicationStatus;
+                const s = (opp.governmentJobDetails as any)?.applicationStatus || 'OPEN';
                 if (!s || !GOVT_PHASE_STATUSES[govtPhase].includes(s)) return false;
             }
             if (type === OpportunityType.GOVERNMENT && govtCategory !== null) {
@@ -331,6 +319,43 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
         });
     }, [filteredOpps, filters.saved, filters.workMode, filters.skills, type, govtPhase, govtCategory]);
 
+    useEffect(() => {
+        if (!mounted) return;
+        const newTitle = formatJobFeedTitle({
+            type: type,
+            workMode: filters.workMode,
+            location: filters.location,
+            skills: filters.skills,
+            sector: filters.sector,
+            course: filters.course,
+            search: search,
+            year: filters.year,
+        });
+        if (newTitle) {
+            const count = visibleOpps.length;
+            const countPrefix = count > 0 ? `${count} ` : '';
+            const finalTitle = `${countPrefix}${newTitle} | FresherFlow`;
+            
+            if (document.title !== finalTitle) {
+                document.title = finalTitle;
+            }
+
+            // Next.js completely replaces the <title> tag on soft navigation.
+            // We MUST observe the document head to catch the replacement and enforce our dynamic title.
+            const observer = new MutationObserver(() => {
+                if (document.title !== finalTitle) {
+                    document.title = finalTitle;
+                }
+            });
+            
+            if (document.head) {
+                observer.observe(document.head, { childList: true, subtree: true, characterData: true });
+            }
+            
+            return () => observer.disconnect();
+        }
+    }, [type, filters, search, mounted, searchParams, visibleOpps.length]);
+
     // Keep selectedOpp in sync with visibleOpps on desktop without flashing null/skeleton
     useEffect(() => {
         if (isDesktop === true && type !== OpportunityType.GOVERNMENT) {
@@ -342,7 +367,12 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
         }
     }, [isDesktop, visibleOpps, selectedOpp, type]);
 
-    const showGroupedView = type === OpportunityType.GOVERNMENT && govtPhase === 'ALL' && !search && !filters.saved;
+    // Ensure selectedOpp is strictly null on government page
+    useEffect(() => {
+        if (type === OpportunityType.GOVERNMENT) {
+            setSelectedOpp(null);
+        }
+    }, [type]);
 
     const isJobSaved = (opp: Opportunity) => opp.isSaved || false;
     const isJobApplied = (opp: Opportunity) => !!(opp.actions && opp.actions.length > 0);
@@ -393,7 +423,6 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
         setGovtCategory,
         phaseCounts,
         categoryCounts,
-        showGroupedView,
         
         isMobileFilterOpen,
         setIsMobileFilterOpen,

@@ -168,7 +168,7 @@ export class StaticFeedService {
 
             // 5. Generate & Upload Government Feed
             if (target === 'all' || target === 'govt') {
-                const governmentMapped = activeMapped.filter(opp => opp.type === 'GOVERNMENT');
+                const governmentMapped = activeMapped.filter(opp => opp.type === 'GOVERNMENT' || Boolean(opp.governmentJobDetails));
                 const government = {
                     opportunities: governmentMapped,
                     timestamp: Date.now(),

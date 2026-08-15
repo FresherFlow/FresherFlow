@@ -18,6 +18,7 @@ export async function generateMetadata(props: CompanyResourcesPageProps) {
     
     return {
         title: `${companyName || 'Company'} Prep Resources`,
+        description: `Explore interview preparation guides, study materials, and career resources for ${companyName || 'this company'}.`,
     };
 }
 

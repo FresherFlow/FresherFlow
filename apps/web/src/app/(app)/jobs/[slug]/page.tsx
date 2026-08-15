@@ -16,7 +16,7 @@ import {
     ExtendedOpportunity
 } from './opportunitySeo';
 import { fetchBootstrapFeed, fetchGovernmentFeed } from '@/lib/api/cdnFeed';
-import { getRelatedOpportunities } from '@/features/opportunities/utils/detailUtils';
+import { getRelatedOpportunities, getValidDirectoryLinks } from '@/features/opportunities/utils/detailUtils';
 
 const CRAWLER_PATHS = new Set(['wp-admin', 'wp-login.php', 'xmlrpc.php', 'ads.txt', 'phpmyadmin', 'admin.php', 'demo', 'generate', 'blog', 'null', 'undefined', 'login', 'jobs', 'saved', 'tracker']);
 
@@ -96,6 +96,7 @@ export default async function OpportunityDetailPage({ params }: Props) {
     }
     let opportunityData: ExtendedOpportunity | null = null;
     let relatedOpportunitiesData: Opportunity[] = [];
+    let validDirectoryLinks = { validSkills: new Set<string>(), validLocations: new Set<string>() };
 
     try {
         // Parallelize opportunity details and bootstrap feed fetching
@@ -131,6 +132,7 @@ export default async function OpportunityDetailPage({ params }: Props) {
 
         if (feed?.opportunities) {
             relatedOpportunitiesData = getRelatedOpportunities(opportunityData, feed.opportunities);
+            validDirectoryLinks = getValidDirectoryLinks(feed.opportunities);
         }
     } catch (err) {
         // Re-throw Next.js navigation errors (notFound, redirect) so they work correctly.
@@ -164,6 +166,10 @@ export default async function OpportunityDetailPage({ params }: Props) {
                     id={slugOrId} 
                     initialData={opportunityData as Opportunity} 
                     initialRelatedData={relatedOpportunitiesData}
+                    validDirectoryLinks={{
+                        validSkills: Array.from(validDirectoryLinks.validSkills),
+                        validLocations: Array.from(validDirectoryLinks.validLocations)
+                    }}
                 />
             </Suspense>
         </>

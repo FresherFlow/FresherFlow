@@ -3,7 +3,7 @@
 
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { LogoImage } from '@/lib/navigation/LogoImage';
-import { ThemeToggle } from '@repo/ui/ThemeToggle';
+import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
 import { useTheme } from '@/lib/providers/ThemeContext';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
@@ -21,7 +21,7 @@ export function AuthHeader() {
             </a>
 
             <div className="flex items-center gap-3 md:gap-4">
-                <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+                <ThemeSwitcher/>
             </div>
         </header>
     );

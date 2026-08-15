@@ -13,6 +13,7 @@ import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
+import { CopyButton } from '@/ui/CopyButton';
 
 import { DriveMetadata } from '@/lib/utils/driveTimeline';
 
@@ -35,6 +36,23 @@ function formatEmploymentText(text: string | null | undefined): string {
     if (!text) return 'Not specified';
     const formatted = text.replace(/_/g, ' ');
     return formatted.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
+
+function getCompanySlug(companyWebsite?: string | null, companyName?: string): string {
+    if (companyWebsite) {
+        try {
+            const raw = companyWebsite.trim();
+            const withProtocol = raw.startsWith('http') ? raw : `https://${raw}`;
+            const hostname = new URL(withProtocol).hostname
+                .toLowerCase()
+                .replace(/^www\./i, '')
+                .replace(/^(careers|jobs|talent|work|apply|hr)\./i, '');
+            const parts = hostname.split('.');
+            const main = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+            if (main && main.length > 1) return main;
+        } catch {}
+    }
+    return slugify(companyName || '');
 }
 
 interface DetailHeroSectionProps {
@@ -111,7 +129,7 @@ export function DetailHeroSection({
                         </div>
                     ) : listingState === 'ACTIVE' ? (
                         <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold rounded-md">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>
                             Active
                         </div>
                     ) : (
@@ -120,15 +138,7 @@ export function DetailHeroSection({
                             {listingState.charAt(0).toUpperCase() + listingState.slice(1).toLowerCase()}
                         </div>
                     )}
-                    <Link
-                        href="/resources"
-                        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-semibold rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-all group"
-                        title="Practice Interview Questions & Tech Skills for this Role"
-                    >
-                        <AcademicCapIcon className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform" />
-                        <span>Practice Interview Questions & Tech Skills for this Role</span>
-                        <span className="text-amber-600 dark:text-amber-400 font-bold ml-0.5">→</span>
-                    </Link>
+
                 </div>
                 {driveDateItems.length > 0 && (
                     <div className="flex flex-wrap items-center gap-2">
@@ -185,7 +195,7 @@ export function DetailHeroSection({
                             <div>
                                 <div className="flex flex-wrap items-center gap-1.5">
                                     <h2 className="text-base font-semibold text-foreground tracking-tight leading-none">
-                                        <Link href={`/companies/${(opp as any).companySlug || slugify(opp.company)}`} className="hover:text-primary transition-colors">
+                                        <Link href={`/companies/${(opp as any).companySlug || getCompanySlug((opp as any).companyWebsite, opp.company)}`} className="hover:text-primary transition-colors">
                                             {opp.company}
                                         </Link>
                                     </h2>
@@ -227,24 +237,14 @@ export function DetailHeroSection({
                                 </button>
                             )
                         )}
-                        {handleShare && (
-                            <button
-                                onClick={handleShare}
-                                className="p-3 rounded-xl border border-border bg-muted/20 text-muted-foreground hover:bg-muted/40 hover:text-foreground active:scale-[0.98] transition-all"
-                                aria-label="Share"
-                            >
-                                <ShareIcon className="w-4 h-4" />
-                            </button>
-                        )}
-                        {handleCopyLink && (
-                            <button
-                                onClick={handleCopyLink}
-                                className="p-3 rounded-xl border border-border bg-muted/20 text-muted-foreground hover:bg-muted/40 hover:text-foreground active:scale-[0.98] transition-all"
-                                aria-label="Copy Link"
-                            >
-                                <LinkIcon className="w-4 h-4" />
-                            </button>
-                        )}
+                        {handleShare && (<button onClick={handleShare} className="h-11 w-11 rounded-xl border border-border bg-card hover:bg-muted text-muted-foreground flex items-center justify-center transition-colors shadow-sm" title="Share"><ShareIcon className="w-5 h-5" /></button>)}
+                        <CopyButton
+                            variant="ghost"
+                            value={typeof window !== 'undefined' ? window.location.href : ''}
+                            icon={LinkIcon}
+                            iconClassName="w-4 h-4"
+                            className="p-3 !h-auto !w-auto rounded-xl border border-border bg-muted/20 text-muted-foreground hover:bg-muted/40 hover:text-foreground active:scale-[0.98] transition-all"
+                        />
                     </div>
                 </div>
 

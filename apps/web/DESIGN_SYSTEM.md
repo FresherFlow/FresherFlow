@@ -314,7 +314,7 @@ When fixing hardcoded values, use this table to replace them with tokens.
 
 ### Colors
 
-| Hardcoded | Token | Class |
+| Hardcoded | Token | Class / Utility |
 |---|---|---|
 | `#ffffff` / white | `--background` (light) | `bg-background` |
 | `#000000` / black | `--foreground` (dark) | `text-foreground` |
@@ -322,6 +322,9 @@ When fixing hardcoded values, use this table to replace them with tokens.
 | `#6b7280` / gray-500 | `--muted-foreground` | `text-muted-foreground` |
 | `#e5e7eb` / gray-200 | `--border` | `border-border` |
 | card bg | `--card` | `bg-card` |
+| `bg-slate-200 dark:bg-zinc-800` (active chips) | `--chip-active-*` | `.chip-active` |
+| `hover:bg-foreground/10` (dropdown hover) | `--muted` | `hover:bg-muted` |
+| `bg-foreground/10` (active chip) | `--chip-active-*` | `.chip-active` |
 
 ### Spacing
 

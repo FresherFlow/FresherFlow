@@ -41,7 +41,7 @@ import { Opportunity } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 import CompanyLogo from '@/ui/CompanyLogo';
 import { useTheme } from '@/lib/providers/ThemeContext';
-import { ThemeToggle } from '@repo/ui/ThemeToggle';
+import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
 import { capitalizeSkill } from '@/features/opportunities/domain/opportunityDisplay';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
@@ -827,7 +827,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                             </div>
                             {!isAdmin && (
                                 <div className="shrink-0 pt-0.5">
-                                    <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+                                    <ThemeSwitcher/>
                                 </div>
                             )}
                         </div>

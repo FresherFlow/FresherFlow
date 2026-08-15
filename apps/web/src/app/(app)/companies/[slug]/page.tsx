@@ -8,8 +8,9 @@ import CompanyLogo from '@/ui/CompanyLogo';
 import { Card } from '@/ui/Card';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
-import { TIER_A_SLUGS, getCompanyDescription } from '@/features/companies/utils/companyContent';
+import { getCompanyDescription } from '@/features/companies/utils/companyContent';
 import { fetchCompanyShard, fetchCompaniesMetadata, fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+import { CompanySlugger } from '@/features/companies/utils/companySlugger';
 import CompanyFollowButton from '@/features/companies/components/CompanyFollowButton';
 import { PageTagLinks } from '@/features/companies/components/PageTagLinks';
 
@@ -20,24 +21,43 @@ export async function generateStaticParams() {
     try {
         const companyDirectory = await fetchCompaniesMetadata(true);
         if (!companyDirectory) return [];
+        const directory = companyDirectory || [];
+        
+        const slugger = new CompanySlugger(directory);
 
         // Only pre-build companies with at least 1 active job.
         const feed = await fetchBootstrapFeed(false, undefined, true);
         const activeCompanySlugs = new Set(
             (feed?.opportunities || [])
-                .map((o: any) => slugify(o.company || ''))
+                .map((o: any) => slugger.getSlug(o))
                 .filter(Boolean)
         );
 
         const seen = new Set<string>();
         const params: { slug: string }[] = [];
 
-        for (const item of companyDirectory) {
+        // Pre-build all canonical slugs that have active jobs
+        for (const item of directory) {
             if (!item || !item.name) continue;
             const slug = item.slug || slugify(item.name);
             if (slug && !seen.has(slug) && activeCompanySlugs.has(slug)) {
                 seen.add(slug);
                 params.push({ slug });
+            }
+            
+            // Also pre-build the raw slugified name to support the redirect
+            const rawSlug = slugify(item.name);
+            if (rawSlug && rawSlug !== slug && !seen.has(rawSlug) && activeCompanySlugs.has(slug)) {
+                seen.add(rawSlug);
+                params.push({ slug: rawSlug });
+            }
+        }
+
+        // Catch any companies in the feed that aren't in the JSON
+        for (const slug of activeCompanySlugs) {
+            if (slug && !seen.has(slug as string)) {
+                seen.add(slug as string);
+                params.push({ slug: slug as string });
             }
         }
 
@@ -56,10 +76,9 @@ export async function generateMetadata(
     const canonicalUrl = `${base}/companies/${slug}`;
 
     const companyName = slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    const isTierA = TIER_A_SLUGS.has(slug);
 
-    const title = `${companyName} Jobs & Internships 2026 | ${isTierA ? 'Careers Guide' : 'Fresher Jobs'}`;
-    const description = `Explore verified entry-level jobs, off-campus placements, and tech internships at ${companyName} on FresherFlow. Direct official apply links, no fake listings.`;
+    const title = `${companyName} Jobs & Internships for Freshers`;
+    const description = `Find verified fresher jobs, internships and off-campus opportunities at ${companyName}, with direct official application links.`;
     const ogImageUrl = `${CDN_URL}/og/companies/${slug}.png`;
 
     return {

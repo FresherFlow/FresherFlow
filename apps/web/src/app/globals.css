@@ -31,6 +31,12 @@
   --radius-xl: var(--radius);
   --radius-2xl: calc(var(--radius) + 4px);
   --radius-3xl: calc(var(--radius) + 8px);
+
+  --color-chip-active: hsl(var(--chip-active-bg));
+  --color-chip-active-text: hsl(var(--chip-active-text));
+  --color-chip-active-border: hsl(var(--chip-active-border));
+  --color-dropdown-hover: hsl(var(--dropdown-hover-bg));
+  --color-dropdown-hover-text: hsl(var(--dropdown-hover-text));
 }
 
 @layer base {
@@ -62,6 +68,20 @@
     --ring: 222 47% 11%; /* Navy focus ring to match primary */
     --icon: 222 47% 11%;
     --radius: 10px;
+
+    /* Active chip / pill tokens */
+    --chip-active-bg: 210 20% 86%;        /* soft silver-gray for active state */
+    --chip-active-text: 222 47% 11%;      /* same as --foreground */
+    --chip-active-border: 214 20% 72%;    /* slightly darker than --border */
+
+    /* Strong easing curves (Emil Kowalski) */
+    --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+    --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+    --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+    /* Dropdown item hover tokens */
+    --dropdown-hover-bg: 210 22% 86%;     /* same as --muted */
+    --dropdown-hover-text: 222 47% 11%;   /* same as foreground */
 
     /* Success/Warning/Error/Destructive States */
     --success: 150 75% 35%;
@@ -117,14 +137,23 @@
     --border: 195 10% 14%;
     --input: 195 10% 14%;
     
-    /* Muted backgrounds equivalent to 3% white */
-    --muted: 195 10% 4%;
+    /* Muted backgrounds equivalent to 10% white (lighter than card for hovers) */
+    --muted: 195 10% 12%;
     
     /* Muted text opacity equivalent */
     --muted-foreground: 200 15% 75%;
 
     --ring: 200 23% 97%;
     --icon: 200 23% 97%;
+
+    /* Active chip / pill tokens - dark mode */
+    --chip-active-bg: 195 10% 15%;        /* zinc-dark equivalent */
+    --chip-active-text: 200 23% 97%;      /* same as --foreground */
+    --chip-active-border: 195 10% 24%;    /* slightly lighter border */
+
+    /* Dropdown item hover tokens */
+    --dropdown-hover-bg: 195 10% 12%;     /* slightly lighter than card */
+    --dropdown-hover-text: 200 23% 97%;   /* same as foreground */
 
     --success: 150 50% 45%;
     --warning: 40 80% 60%;
@@ -182,15 +211,24 @@
   }
 
   html, body {
-    transition: background-color 300ms, color 300ms;
+    /* Fast switch by default; view-transition handles the animation */
   }
 
-  .theme-transition,
-  .theme-transition body,
-  .theme-transition *,
-  .theme-transition *::before,
-  .theme-transition *::after {
-    transition: background-color 240ms ease, color 240ms ease, border-color 240ms ease, fill 240ms ease, stroke 240ms ease, box-shadow 240ms ease !important;
+  @media (prefers-reduced-motion: no-preference) {
+    ::view-transition-new(theme-transition) {
+      clip-path: inset(0 0 100% 0);
+      animation: slide-in-from-top 0.65s forwards cubic-bezier(0.65, 0, 0.35, 1);
+    }
+
+    ::view-transition-old(theme-transition) {
+      animation: none;
+    }
+
+    @keyframes slide-in-from-top {
+      to {
+        clip-path: inset(0 0 0 0);
+      }
+    }
   }
 
   body {
@@ -584,6 +622,24 @@
   
   .text-balance {
     text-wrap: balance;
+  }
+
+  .chip-active {
+    background-color: hsl(var(--chip-active-bg));
+    color: hsl(var(--chip-active-text));
+    border-color: hsl(var(--chip-active-border));
+  }
+  .chip-active:hover {
+    filter: brightness(0.96);
+  }
+  .dropdown-item-hover:hover {
+    background-color: hsl(var(--dropdown-hover-bg));
+    color: hsl(var(--dropdown-hover-text));
+  }
+  .dropdown-item-active {
+    background-color: hsl(var(--dropdown-hover-bg));
+    color: hsl(var(--dropdown-hover-text));
+    font-weight: 600;
   }
 }
 

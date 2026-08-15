@@ -7,15 +7,15 @@ import { toOpportunityCardDTO, OpportunityType } from '@fresherflow/types';
 export const revalidate = false;
 
 export const metadata: Metadata = {
-    title: 'Internships for Students',
-    description: 'Find internship opportunities for students and recent graduates. Explore verified internship openings with stipends, skill development programs, and career kickstart opportunities.',
-    keywords: 'internships for students, paid internships, summer internships, fresher internships, internship opportunities india, student internships',
+    title: 'Internships for Students & Freshers in India',
+    description: 'Find verified internships for students and freshers in India, including paid internships, technical internships and career-start opportunities.',
+    keywords: 'internships for students, internships for freshers, paid internships, fresher internships, internship opportunities India, technical internships',
     alternates: {
         canonical: '/jobs/internships',
     },
     openGraph: {
-        title: 'Internships for Students',
-        description: 'Find internship opportunities for students and recent graduates across India.',
+        title: 'Internships for Students & Freshers in India',
+        description: 'Find verified internships for students and freshers in India, including paid internships, technical internships and career-start opportunities.',
         type: 'website',
         images: [
             {
@@ -28,8 +28,8 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Internships for Students',
-        description: 'Find internship opportunities for students and recent graduates across India.',
+        title: 'Internships for Students & Freshers in India',
+        description: 'Find verified internships for students and freshers in India, including paid internships, technical internships and career-start opportunities.',
         images: ['/main.png'],
     },
 };

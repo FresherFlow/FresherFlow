@@ -13,11 +13,13 @@ import UserGroupIcon from '@heroicons/react/24/outline/UserGroupIcon';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
 import ArrowDownTrayIcon from '@heroicons/react/24/outline/ArrowDownTrayIcon';
 import DevicePhoneMobileIcon from '@heroicons/react/24/outline/DevicePhoneMobileIcon';
-import { Sun as SunIcon, Moon as MoonIcon } from 'lucide-react';
+import { Sun as SunIcon, Moon as MoonIcon, Monitor as MonitorIcon } from 'lucide-react';
 import type { User } from '@fresherflow/types';
 import { cn } from '@repo/ui/utils/cn';
 import { LogoImage } from './LogoImage';
 import { useTheme } from '@/lib/providers/ThemeContext';
+import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
+import { ResponsivePopover } from '@/ui/ResponsivePopover';
 import { useInstallPrompt } from '@/lib/providers/InstallPromptContext';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
@@ -272,15 +274,17 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
                     )}
 
                     <div className="pt-4 mt-4 border-t border-border/40 space-y-1">
-                        <button onClick={toggleTheme}
-                            className="flex items-center gap-3.5 w-full px-3 py-3 rounded-lg text-sm font-medium transition-all duration-150 ease-out active:scale-[0.97] group text-muted-foreground hover:bg-muted/50 hover:text-foreground" aria-label="Toggle Theme">
-                            {theme === 'dark' ? (
-                                <SunIcon size={20} strokeWidth={1.5} className="transition-colors text-muted-foreground group-hover:text-foreground" />
-                            ) : (
-                                <MoonIcon size={20} strokeWidth={1.5} className="transition-colors text-muted-foreground group-hover:text-foreground" />
-                            )}
-                            <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
-                        </button>
+                        <ThemeSwitcher className="w-full">
+                            <button
+                                className="flex items-center gap-3.5 w-full px-3 py-3 rounded-lg text-sm font-medium transition-all duration-150 ease-out active:scale-[0.97] group text-muted-foreground hover:bg-muted/50 hover:text-foreground" aria-label="Toggle Theme">
+                                {theme === 'dark' ? (
+                                    <SunIcon size={20} strokeWidth={1.5} className="transition-colors text-muted-foreground group-hover:text-foreground" />
+                                ) : (
+                                    <MoonIcon size={20} strokeWidth={1.5} className="transition-colors text-muted-foreground group-hover:text-foreground" />
+                                )}
+                                <span>{theme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+                            </button>
+                        </ThemeSwitcher>
                     </div>
                 </nav>
         </div>

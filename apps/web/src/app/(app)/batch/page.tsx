@@ -8,8 +8,8 @@ import { DirectoryClient } from '@/ui/DirectoryClient';
 export const revalidate = false;
 
 export const metadata: Metadata = {
-    title: 'Jobs by Graduation Batch',
-    description: 'Find verified fresher jobs, internships, and walk-in drives by graduation batch (2025, 2024, 2023, 2022).',
+    title: 'Jobs by Graduation Batch | Fresher Jobs',
+    description: 'Find verified jobs, internships and off-campus opportunities for specific graduation batches, including 2026, 2025, 2024 and earlier.',
     alternates: { canonical: `${SITE_URL}/batch` },
 };
 

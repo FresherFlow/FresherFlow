@@ -10,8 +10,6 @@ import { slugify } from '@fresherflow/utils/slugify';
 
 
 
-import { CANONICAL_SKILLS } from '@fresherflow/constants/skillTaxonomy';
-
 export const revalidate = false;
 export const dynamicParams = false;
 
@@ -31,11 +29,15 @@ export async function generateStaticParams() {
         }
     } catch { /* if CDN is down, fall back to empty — better than garbage */ }
 
-    // Only emit canonical skills that clear the threshold.
-    return CANONICAL_SKILLS
-        .map(skill => slugify(skill))
-        .filter((slug): slug is string => !!slug && (counts.get(slug) ?? 0) >= SKILL_MIN_JOBS)
-        .map(name => ({ name }));
+    // Only emit skills that clear the threshold.
+    const validSlugs: string[] = [];
+    counts.forEach((count, slug) => {
+        if (count >= SKILL_MIN_JOBS) {
+            validSlugs.push(slug);
+        }
+    });
+
+    return validSlugs.map(name => ({ name }));
 }
 
 type Props = {
@@ -64,8 +66,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const slug = slugify(decodeURIComponent(name));
     const label = formatSkillLabel(name);
 
-    const title = `${label} Jobs for Freshers 2026`;
-    const description = `Find verified entry-level software jobs and internships requiring ${label} skills. Direct apply links, detailed eligibility criteria, and no fake listings.`;
+    const title = `${label} Jobs for Freshers | Jobs & Internships`;
+    const description = `Find verified fresher jobs and internships requiring ${label}, including entry-level opportunities with direct official apply links.`;
     const base = SITE_URL.replace(/\/+$/, '');
     const ogImageUrl = `${CDN_URL}/og/skills/${slug}.png`;
 

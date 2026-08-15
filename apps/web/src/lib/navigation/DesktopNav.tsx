@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils/utils';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import BellIcon from '@heroicons/react/24/outline/BellIcon';
 import UserCircleIcon from '@heroicons/react/24/outline/UserCircleIcon';
-import { ThemeToggle } from '@repo/ui/ThemeToggle';
+import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
 import { LogoImage } from './LogoImage';
 import { useUnreadNotifications } from '@/features/notifications/hooks/useUnreadNotifications';
 import { AlertsDropdown } from '@/features/notifications/components/AlertsDropdown';
@@ -140,7 +140,7 @@ export function DesktopNav() {
                 {/* Right Actions */}
                 <div className="flex items-center gap-2 shrink-0 z-10">
                     <div className="shrink-0 flex items-center mr-1">
-                        <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+                        <ThemeSwitcher/>
                     </div>
 
                     {isCandidatePortfolioRoute ? (

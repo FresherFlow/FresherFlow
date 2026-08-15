@@ -7,15 +7,15 @@ import { toOpportunityCardDTO, OpportunityType } from '@fresherflow/types';
 export const revalidate = false;
 
 export const metadata: Metadata = {
-    title: 'Walk-in Interview Drives',
-    description: 'Find direct walk-in interview drives near you. Explore verified on-site hiring events for freshers with clear venue details, eligibility criteria, and interview dates.',
-    keywords: 'walk-in interviews, direct hiring events, fresher walk-ins, off campus drives, interview venues, direct interview openings',
+    title: 'Walk-in Interviews for Freshers | India',
+    description: 'Find verified walk-in interviews and direct hiring drives for freshers across India with interview dates, locations and eligibility details.',
+    keywords: 'walk in interviews, walk in jobs, fresher walk ins, walk in drives, direct hiring, off campus drives',
     alternates: {
         canonical: '/jobs/walk-ins',
     },
     openGraph: {
-        title: 'Walk-in Interview Drives',
-        description: 'Find direct walk-in interview drives for freshers across India.',
+        title: 'Walk-in Interviews for Freshers | India',
+        description: 'Find verified walk-in interviews and direct hiring drives for freshers across India with interview dates, locations and eligibility details.',
         type: 'website',
         images: [
             {
@@ -28,8 +28,8 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Walk-in Interview Drives',
-        description: 'Find direct walk-in interview drives for freshers across India.',
+        title: 'Walk-in Interviews for Freshers | India',
+        description: 'Find verified walk-in interviews and direct hiring drives for freshers across India with interview dates, locations and eligibility details.',
         images: ['/main.png'],
     },
 };

@@ -9,8 +9,8 @@ import { slugify } from '@fresherflow/utils/slugify';
 import { unstable_noStore } from 'next/cache';
 
 export const revalidate = false;
+export const dynamicParams = false;
 
-// dynamicParams defaults to true — unknown role slugs render at runtime
 const ROLE_OVERRIDES: Record<string, { label: string; keywords: string[] }> = {
     'software-engineer': {
         label: 'Software Engineer',
@@ -85,8 +85,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         roleInfo = { label, keywords: [label.toLowerCase()] };
     }
 
-    const title = `${roleInfo.label} Jobs for Freshers 2026`;
-    const description = `Explore verified off-campus job openings, entry-level vacancies, and internships for ${roleInfo.label}s. Direct apply links and zero spam.`;
+    const title = `${roleInfo.label} Jobs for Freshers | Entry-Level Opportunities`;
+    const description = `Find verified ${roleInfo.label} jobs, internships and off-campus opportunities for freshers with direct apply links and eligibility details.`;
     const base = SITE_URL.replace(/\/+$/, '');
     const slugNormalized = slugify(decodeURIComponent(slug));
     const ogImageUrl = `${CDN_URL}/og/roles/${slugNormalized}.png`;

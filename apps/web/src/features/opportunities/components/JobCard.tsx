@@ -7,7 +7,7 @@ import { cn } from '@repo/ui/utils/cn';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import CurrencyRupeeIcon from '@heroicons/react/24/outline/CurrencyRupeeIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
-import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
+import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
 import FireIcon from '@heroicons/react/24/outline/FireIcon';
 import CheckBadgeIcon from '@heroicons/react/24/outline/CheckBadgeIcon';
 import ArrowPathIcon from '@heroicons/react/24/outline/ArrowPathIcon';
@@ -19,6 +19,7 @@ import HomeIcon from '@heroicons/react/24/outline/HomeIcon';
 import ArrowsRightLeftIcon from '@heroicons/react/24/outline/ArrowsRightLeftIcon';
 import { useMemo, useRef } from 'react';
 import CompanyLogo from '@/ui/CompanyLogo';
+import { CopyButton } from '@/ui/CopyButton';
 import toast from 'react-hot-toast';
 import { toastError } from '@repo/ui/utils/error-web';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
@@ -253,42 +254,15 @@ export default function JobCard({
     );
     const trackerStatus: string | null = trackerAction?.actionType ?? null;
 
-    const handleShareClick = async (e: React.MouseEvent) => {
-        e.stopPropagation();
-        const shareUrl = buildShareUrl(`${window.location.origin}${getOpportunityPathFromItem(job)}`, {
+    const shareUrl = typeof window !== 'undefined'
+        ? buildShareUrl(`${window.location.origin}${getOpportunityPathFromItem(job)}`, {
             platform: 'other',
             source: 'opportunity_share',
             medium: 'share',
             campaign: 'opportunity_share',
             ref: 'share',
-        });
-        const shareData = {
-            title: job.normalizedRole || job.title,
-            text: `Check out this ${job.normalizedRole || job.title} opportunity at ${job.company} on FresherFlow!`,
-            url: shareUrl,
-        };
-
-        import('@/lib/api/client').then(({ growthApi }) => {
-            growthApi.trackEvent('SHARE_JOB', 'opportunity_card').catch(() => undefined);
-        });
-
-        if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
-            try {
-                await navigator.share(shareData);
-            } catch (err: unknown) {
-                if ((err as Error).name !== 'AbortError') {
-                    toastError(err, 'Failed to share');
-                }
-            }
-        } else {
-            try {
-                await navigator.clipboard.writeText(shareUrl);
-                toast.success('Link copied to clipboard!');
-            } catch (err: unknown) {
-                toastError(err, 'Failed to copy link');
-            }
-        }
-    };
+        })
+        : '';
 
     const isExpired = () => {
         if (!job.expiresAt) return false;
@@ -395,7 +369,7 @@ export default function JobCard({
                     }
                 }}
                 className={cn(
-                    "group relative bg-card border rounded-xl p-3.5 flex items-start gap-3 md:gap-3.5 hover:border-border hover:shadow-md transition-all duration-200 cursor-pointer",
+                    "group relative bg-card border rounded-xl p-3.5 flex items-start gap-3 md:gap-3.5 hover:border-border hover:shadow-md transition-[border-color,box-shadow] duration-150 ease-out cursor-pointer",
                     isSelected ? "border-primary/70 ring-2 ring-primary/10 shadow-md" : "border-transparent",
                     isExpired() && "opacity-60",
                     className
@@ -454,7 +428,7 @@ export default function JobCard({
                                 <DropdownMenuTrigger asChild>
                                     <button
                                         type="button"
-                                        className="h-6 w-6 rounded border-transparent hover:border-border/60 bg-transparent hover:bg-muted/35 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all outline-none"
+                                        className="h-6 w-6 rounded border-transparent hover:border-border/60 bg-transparent hover:bg-muted/35 text-muted-foreground hover:text-foreground flex items-center justify-center transition-[background-color,border-color,color] duration-100 ease-out outline-none"
                                         aria-label="Job options"
                                     >
                                         <EllipsisVerticalIcon className="w-4 h-4" />
@@ -464,10 +438,6 @@ export default function JobCard({
                                     <DropdownMenuItem onClick={handleSaveClick} className="cursor-pointer text-xs">
                                         {isJobSaved ? <BookmarkSolidIcon className="w-3.5 h-3.5 mr-2 text-primary" /> : <BookmarkIcon className="w-3.5 h-3.5 mr-2" />}
                                         <span>{isJobSaved ? 'Remove Bookmark' : 'Save Job'}</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={handleShareClick} className="cursor-pointer text-xs">
-                                        <ShareIcon className="w-3.5 h-3.5 mr-2" />
-                                        <span>Share Job</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     {[
@@ -531,14 +501,14 @@ export default function JobCard({
                         })()}
 
                         {/* Govt / Expiry Badge */}
-                        {isGovernment && govtStatusMeta ? (
+                        {isGovernment && govtStatusMeta && govtStatus !== 'OPEN' ? (
                             <span className={cn(
                                 "inline-flex items-center px-2 py-0.5 border text-xs font-medium rounded",
                                 govtStatusMeta.className
                             )}>
                                 {govtStatusMeta.label}
                             </span>
-                        ) : !isGovernment && job.expiresAt && (
+                        ) : !isGovernment && job.expiresAt ? (
                             <span className={cn(
                                 "inline-flex items-center gap-1 px-2 py-0.5 border text-xs font-medium rounded",
                                 isExpired()
@@ -548,7 +518,7 @@ export default function JobCard({
                                 <ClockIcon className="w-3.5 h-3.5" />
                                 {getExpiryLabel()}
                             </span>
-                        )}
+                        ) : null}
                     </div>
 
                     {/* Bottom Row: Skills on left, Save/Apply on right */}
@@ -557,7 +527,7 @@ export default function JobCard({
                             {/* Skills (Max 2 rows for wide, 1 row for compact) */}
                             <div className={cn(
                                 "flex flex-wrap items-center gap-1.5 overflow-hidden",
-                                isCompact ? "max-h-[24px]" : "max-h-[24px] md:max-h-[50px]"
+                                isCompact ? "max-h-[32px]" : "max-h-[32px] md:max-h-[72px]"
                             )}>
                                 {skillsList.map((s: string) => (
                                     <SkillPill
@@ -580,10 +550,17 @@ export default function JobCard({
 
                         {/* Actions (Bookmark + Apply) */}
                         <div className="flex items-center gap-2 shrink-0 relative z-20 pointer-events-auto h-8">
+                            <CopyButton
+                                variant="ghost"
+                                value={shareUrl}
+                                icon={LinkIcon}
+                                iconClassName="w-4 h-4"
+                                className="h-8 w-8 !p-0 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-[transform,background-color,color] duration-100 ease-out active:scale-[0.95]"
+                            />
                             <button
                                 type="button"
                                 onClick={handleSaveClick}
-                                className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-[transform,background-color,color] duration-100 ease-out active:scale-[0.95] motion-reduce:transform-none"
                                 aria-label="Save Job"
                             >
                                 {isJobSaved ? <BookmarkSolidIcon className="w-4 h-4 text-primary" /> : <BookmarkIcon className="w-4 h-4" />}
@@ -592,7 +569,7 @@ export default function JobCard({
                                 type="button"
                                 onClick={handleApplyClick}
                                 className={cn(
-                                    "inline-flex items-center justify-center gap-1.5 px-4 h-8 text-xs font-semibold rounded-lg bg-primary text-primary-foreground transition-all duration-200 cursor-pointer shadow-xs",
+                                    "inline-flex items-center justify-center gap-1.5 px-4 h-8 text-xs font-semibold rounded-lg bg-primary text-primary-foreground transition-[transform,background-color,opacity] duration-100 ease-out active:scale-[0.95] motion-reduce:transform-none cursor-pointer shadow-xs",
                                     "opacity-100 md:opacity-0 md:-translate-y-1 md:group-hover:opacity-100 md:group-hover:translate-y-0",
                                     "hover:bg-primary/90"
                                 )}
@@ -622,7 +599,7 @@ export default function JobCard({
                 }
             }}
             className={cn(
-                "group relative bg-card border rounded-2xl p-3.5 md:p-4 shadow-xs transition-all duration-200 ease-out hover:shadow-md hover:border-border flex flex-col justify-start gap-2.5 overflow-hidden w-full h-auto",
+                "group relative bg-card border rounded-2xl p-3.5 md:p-4 shadow-xs transition-[border-color,box-shadow] duration-150 ease-out hover:shadow-md hover:border-border flex flex-col justify-start gap-2.5 overflow-hidden w-full h-auto",
                 isSelected
                     ? "border-primary/70 ring-2 ring-primary/10 shadow-md"
                     : "border-transparent",
@@ -642,13 +619,20 @@ export default function JobCard({
                     </h2>
                 </div>
 
-                {/* 3-dots Menu Button */}
-                <div className="relative z-20 pointer-events-auto shrink-0 -mt-1 -mr-1" onClick={(e) => e.stopPropagation()}>
+                {/* Top Right Actions */}
+                <div className="flex items-center gap-1 relative z-20 pointer-events-auto shrink-0 -mt-1 -mr-1" onClick={(e) => e.stopPropagation()}>
+                    <CopyButton
+                        variant="ghost"
+                        value={shareUrl}
+                        icon={LinkIcon}
+                        iconClassName="w-5 h-5"
+                        className="h-8 w-8 !p-0 rounded-lg border-transparent hover:border-border/60 bg-transparent hover:bg-muted/35 text-muted-foreground hover:text-foreground flex items-center justify-center transition-[transform,background-color,border-color,color] duration-100 ease-out active:scale-[0.95]"
+                    />
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <button
                                 type="button"
-                                className="h-8 w-8 rounded-lg border-transparent hover:border-border/60 bg-transparent hover:bg-muted/35 text-muted-foreground hover:text-foreground flex items-center justify-center transition-all duration-150 active:scale-95 outline-none"
+                                className="h-8 w-8 rounded-lg border-transparent hover:border-border/60 bg-transparent hover:bg-muted/35 text-muted-foreground hover:text-foreground flex items-center justify-center transition-[transform,background-color,border-color,color] duration-100 ease-out active:scale-[0.95] motion-reduce:transform-none outline-none"
                                 aria-label="Job options"
                             >
                                 <EllipsisVerticalIcon className="w-5 h-5" aria-hidden="true" />
@@ -658,10 +642,6 @@ export default function JobCard({
                             <DropdownMenuItem onClick={handleSaveClick} className="cursor-pointer text-xs">
                                 {isJobSaved ? <BookmarkSolidIcon className="w-4 h-4 mr-2 text-primary" /> : <BookmarkIcon className="w-4 h-4 mr-2" />}
                                 <span>{isJobSaved ? 'Remove Bookmark' : 'Save Job'}</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={handleShareClick} className="cursor-pointer text-xs">
-                                <ShareIcon className="w-4 h-4 mr-2" />
-                                <span>Share Job</span>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider px-2 py-1">

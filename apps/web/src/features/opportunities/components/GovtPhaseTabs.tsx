@@ -64,10 +64,10 @@ export function GovtPhaseTabs({ active, onChange, counts }: GovtPhaseTabsProps) 
                         key={key}
                         onClick={() => onChange(key)}
                         className={cn(
-                            'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all duration-150 shrink-0',
+                            'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap border transition-colors transition-transform duration-150 ease-out active:scale-[0.97] shrink-0',
                             isActive
-                                ? 'bg-foreground text-background border-foreground shadow-sm'
-                                : 'bg-card text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground'
+                                ? 'chip-active border font-semibold shadow-xs'
+                                : 'bg-card text-muted-foreground border border-border/80 hover:border-foreground/30 hover:text-foreground'
                         )}
                     >
                         <Icon className="w-3.5 h-3.5 shrink-0" />
@@ -75,7 +75,7 @@ export function GovtPhaseTabs({ active, onChange, counts }: GovtPhaseTabsProps) 
                         {count !== undefined && count > 0 && (
                             <span className={cn(
                                 'text-[9px] font-bold px-1.5 py-0.5 rounded-full',
-                                isActive ? 'bg-background/20 text-background' : 'bg-muted text-muted-foreground'
+                                isActive ? 'bg-background text-foreground shadow-2xs' : 'bg-muted text-muted-foreground'
                             )}>
                                 {count}
                             </span>
@@ -127,8 +127,8 @@ export function GovtCategoryFilter({ active, onChange, counts }: GovtCategoryFil
                 className={cn(
                     'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap border transition-all duration-150 shrink-0',
                     active === null
-                        ? 'bg-foreground text-background border-foreground'
-                        : 'bg-card text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground'
+                        ? 'chip-active border font-semibold shadow-xs'
+                        : 'bg-card text-muted-foreground border border-border/80 hover:border-foreground/30 hover:text-foreground'
                 )}
             >
                 <BuildingLibraryIcon className="w-3.5 h-3.5 shrink-0" />
@@ -142,10 +142,10 @@ export function GovtCategoryFilter({ active, onChange, counts }: GovtCategoryFil
                         key={label}
                         onClick={() => onChange(isActive ? null : label)}
                         className={cn(
-                            'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap border transition-all duration-150 shrink-0',
+                            'flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap border transition-colors transition-transform duration-150 ease-out active:scale-[0.97] shrink-0',
                             isActive
-                                ? 'bg-foreground text-background border-foreground'
-                                : 'bg-card text-muted-foreground border-border hover:border-foreground/30 hover:text-foreground'
+                                ? 'chip-active border font-semibold shadow-xs'
+                                : 'bg-card text-muted-foreground border border-border/80 hover:border-foreground/30 hover:text-foreground'
                         )}
                     >
                         <CatIcon className="w-3.5 h-3.5 shrink-0" />
@@ -153,7 +153,7 @@ export function GovtCategoryFilter({ active, onChange, counts }: GovtCategoryFil
                         {count !== undefined && count > 0 && (
                             <span className={cn(
                                 'text-[9px] font-bold px-1.5 py-0.5 rounded-full',
-                                isActive ? 'bg-background/20 text-background' : 'bg-muted text-muted-foreground'
+                                isActive ? 'bg-background text-foreground shadow-2xs' : 'bg-muted text-muted-foreground'
                             )}>
                                 {count}
                             </span>

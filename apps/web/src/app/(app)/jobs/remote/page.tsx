@@ -7,9 +7,9 @@ import { toOpportunityCardDTO, OpportunityType } from '@fresherflow/types';
 export const revalidate = false;
 
 export const metadata: Metadata = {
-    title: 'Remote Jobs & Internships',
-    description: 'Find verified remote jobs and work-from-home internships for freshers.',
-    keywords: 'remote jobs, wfh, work from home jobs, fresher remote jobs, remote internships',
+    title: 'Remote Jobs for Freshers | Work From Home Jobs',
+    description: 'Find verified remote jobs and work-from-home opportunities for freshers, including entry-level roles and remote internships.',
+    keywords: 'remote jobs for freshers, work from home jobs, WFH jobs, remote fresher jobs, remote internships, entry level remote jobs',
     alternates: {
         canonical: '/jobs/remote',
     },

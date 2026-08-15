@@ -48,15 +48,15 @@ export const metadata: Metadata = {
   metadataBase: METADATA_BASE,
   applicationName: "FresherFlow",
   title: {
-    default: "FresherFlow - Verified Off-Campus Opportunities",
+    default: "FresherFlow | Verified Jobs & Internships for Freshers",
     template: "%s | FresherFlow",
   },
-  description: "The community-driven fresher job network. Share verified opportunities with zero redirect spam.",
+  description: "Find verified fresher jobs, internships, off-campus drives and walk-in interviews across India with direct official apply links.",
   openGraph: {
     type: "website",
     siteName: "FresherFlow",
-    title: "FresherFlow - Verified Off-Campus Opportunities",
-    description: "The community-driven fresher job network. Share verified opportunities with zero redirect spam.",
+    title: "FresherFlow | Verified Jobs & Internships for Freshers",
+    description: "Find verified fresher jobs, internships, off-campus drives and walk-in interviews across India with direct official apply links.",
     images: [
       {
         url: OG_IMAGE_URL,
@@ -69,8 +69,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "FresherFlow - Verified Off-Campus Opportunities",
-    description: "The community-driven fresher job network. Share verified opportunities with zero redirect spam.",
+    title: "FresherFlow | Verified Jobs & Internships for Freshers",
+    description: "Find verified fresher jobs, internships, off-campus drives and walk-in interviews across India with direct official apply links.",
     images: [TWITTER_IMAGE_URL],
   },
   icons: {

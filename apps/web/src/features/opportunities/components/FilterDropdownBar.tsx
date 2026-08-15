@@ -70,9 +70,9 @@ function useClickOutside(ref: React.RefObject<HTMLElement | null>, handler: () =
     }, [ref, handler]);
 }
 
-const chipBase = 'h-9 px-3.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-all whitespace-nowrap select-none cursor-pointer outline-none';
-const chipDefault = 'bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground';
-const chipActive = 'bg-muted text-foreground font-semibold';
+const chipBase = 'h-9 px-3.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors transition-transform duration-150 ease-out active:scale-[0.97] whitespace-nowrap select-none cursor-pointer outline-none motion-reduce:transform-none motion-reduce:transition-none';
+const chipDefault = 'bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent transition-colors duration-100';
+const chipActive = 'chip-active border font-semibold';
 
 const TYPE_OPTIONS = [
     { label: 'All types', value: null },
@@ -305,7 +305,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                         <ChevronDownIcon className={cn('w-3.5 h-3.5 transition-transform', open === 'type' && 'rotate-180')} />
                     </button>
                     {open === 'type' && (
-                        <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-1.5 w-48 z-[100] overscroll-contain">
+                        <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-1.5 w-48 z-[100] overscroll-contain">
                             {TYPE_OPTIONS.map((opt, idx) => (
                                 <button
                                     key={opt.label}
@@ -315,7 +315,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                     onMouseEnter={() => setActiveIndex(idx)}
                                     className={cn(
                                         'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer flex items-center gap-2.5 outline-none select-none text-foreground',
-                                        idx === activeIndex ? 'bg-muted/60' : 'hover:bg-muted/60'
+                                        idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                     )}
                                 >
                                     <input type="checkbox" tabIndex={-1} checked={selectedType === opt.value} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
@@ -347,7 +347,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                 {open === 'location' && (() => {
                     let itemIdx = 0;
                     return (
-                        <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl p-2 w-72 z-[100] space-y-1.5 overscroll-contain">
+                        <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-72 z-[100] space-y-1.5 overscroll-contain">
                             <div className="px-1">
                                 <input
                                     type="text"
@@ -377,8 +377,8 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                                     onClick={() => handleSelectOption(options[idx])}
                                                     onMouseEnter={() => setActiveIndex(idx)}
                                                     className={cn(
-                                                        'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none text-foreground',
-                                                        idx === activeIndex ? 'bg-muted/60' : 'hover:bg-muted/60'
+                                                        'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                                        idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                                     )}
                                                 >
                                                     <input type="checkbox" tabIndex={-1} checked={isSelected} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
@@ -401,8 +401,8 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                             onClick={() => handleSelectOption(options[idx])}
                                             onMouseEnter={() => setActiveIndex(idx)}
                                             className={cn(
-                                                'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none text-foreground',
-                                                idx === activeIndex ? 'bg-muted/60' : 'hover:bg-muted/60'
+                                                'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                                idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                             )}
                                         >
                                             <input type="checkbox" tabIndex={-1} checked={filters.location === null} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
@@ -427,8 +427,8 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                                     onClick={() => handleSelectOption(options[idx])}
                                                     onMouseEnter={() => setActiveIndex(idx)}
                                                     className={cn(
-                                                        'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none text-foreground',
-                                                        idx === activeIndex ? 'bg-muted/60' : 'hover:bg-muted/60'
+                                                        'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                                        idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                                     )}
                                                 >
                                                     <input type="checkbox" tabIndex={-1} checked={isSelected} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
@@ -463,7 +463,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             <ChevronDownIcon className={cn('w-3.5 h-3.5 transition-transform', open === 'sector' && 'rotate-180')} />
                         </button>
                         {open === 'sector' && (
-                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-52 z-[100]">
+                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-52 z-[100]">
                                 {GOVT_SECTORS.map((opt, idx) => (
                                     <button
                                         key={opt}
@@ -472,8 +472,8 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                         onClick={() => handleSelectOption(options[idx])}
                                         onMouseEnter={() => setActiveIndex(idx)}
                                         className={cn(
-                                            'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none text-foreground',
-                                            idx === activeIndex ? 'bg-muted/60' : 'hover:bg-muted/60'
+                                            'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                            idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                         )}
                                     >
                                         <input type="checkbox" tabIndex={-1} checked={filters.sector === opt} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
@@ -495,7 +495,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             <ChevronDownIcon className={cn('w-3.5 h-3.5 transition-transform', open === 'qualification' && 'rotate-180')} />
                         </button>
                         {open === 'qualification' && (
-                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-52 z-[100]">
+                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-52 z-[100]">
                                 {GOVT_QUALIFICATIONS.map((opt, idx) => (
                                     <button
                                         key={opt}
@@ -504,8 +504,8 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                         onClick={() => handleSelectOption(options[idx])}
                                         onMouseEnter={() => setActiveIndex(idx)}
                                         className={cn(
-                                            'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none text-foreground',
-                                            idx === activeIndex ? 'bg-muted/60' : 'hover:bg-muted/60'
+                                            'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                            idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                         )}
                                     >
                                         <input type="checkbox" tabIndex={-1} checked={filters.qualification === opt} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
@@ -537,7 +537,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             <ChevronDownIcon className={cn('w-3.5 h-3.5 transition-transform', open === 'skills' && 'rotate-180')} />
                         </button>
                         {open === 'skills' && (
-                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-72 min-w-[18rem] z-[100] flex flex-col gap-1 max-h-80">
+                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-72 min-w-[18rem] z-[100] flex flex-col gap-1 max-h-80">
                                 <div className="px-1 pb-1 pt-0.5 shrink-0">
                                     <input
                                         type="text"
@@ -560,8 +560,8 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                                 onClick={() => handleSelectOption(options[idx])}
                                                 onMouseEnter={() => setActiveIndex(idx)}
                                                 className={cn(
-                                                    'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none text-foreground',
-                                                    idx === activeIndex ? 'bg-muted/60' : 'hover:bg-muted/60'
+                                                    'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                                    idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                                 )}
                                             >
                                                 <input type="checkbox" tabIndex={-1} checked={isSelected} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
@@ -591,7 +591,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             <ChevronDownIcon className={cn('w-3.5 h-3.5 transition-transform', open === 'course' && 'rotate-180')} />
                         </button>
                         {open === 'course' && (
-                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-52 z-[100]">
+                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-52 z-[100]">
                                 {CORP_COURSES.map((opt, idx) => (
                                     <button
                                         key={opt}
@@ -600,8 +600,8 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                         onClick={() => handleSelectOption(options[idx])}
                                         onMouseEnter={() => setActiveIndex(idx)}
                                         className={cn(
-                                            'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none text-foreground',
-                                            idx === activeIndex ? 'bg-muted/60' : 'hover:bg-muted/60'
+                                            'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                            idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                         )}
                                     >
                                         <input type="checkbox" tabIndex={-1} checked={filters.course === opt} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
@@ -627,7 +627,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             <ChevronDownIcon className={cn('w-3.5 h-3.5 transition-transform', open === 'source' && 'rotate-180')} />
                         </button>
                         {open === 'source' && (
-                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-52 z-[100] max-h-60 overflow-y-auto">
+                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-52 z-[100] max-h-60 overflow-y-auto">
                                 {sortedSources.map(({ source: opt, count }, idx) => {
                                     const isSelected = filters.source?.includes(opt);
                                     return (
@@ -638,8 +638,8 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                             onClick={() => handleSelectOption(options[idx])}
                                             onMouseEnter={() => setActiveIndex(idx)}
                                             className={cn(
-                                                'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none text-foreground',
-                                                idx === activeIndex ? 'bg-muted/60' : 'hover:bg-muted/60'
+                                                'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                                idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                             )}
                                         >
                                             <input type="checkbox" tabIndex={-1} checked={isSelected} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
@@ -667,7 +667,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                         {open === 'year' && (() => {
                             let itemIdx = 0;
                             return (
-                                <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-44 z-[100]">
+                                <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-44 z-[100]">
                                     {(() => {
                                         const idx = itemIdx++;
                                         return (
@@ -678,8 +678,8 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                                 onClick={() => handleSelectOption(options[idx])}
                                                 onMouseEnter={() => setActiveIndex(idx)}
                                                 className={cn(
-                                                    'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none text-foreground',
-                                                    idx === activeIndex ? 'bg-muted/60' : 'hover:bg-muted/60'
+                                                    'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                                    idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                                 )}
                                             >
                                                 <input type="checkbox" tabIndex={-1} checked={filters.year === null} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
@@ -697,8 +697,8 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                                 onClick={() => handleSelectOption(options[idx])}
                                                 onMouseEnter={() => setActiveIndex(idx)}
                                                 className={cn(
-                                                    'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none text-foreground',
-                                                    idx === activeIndex ? 'bg-muted/60' : 'hover:bg-muted/60'
+                                                    'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                                    idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                                 )}
                                             >
                                                 <input type="checkbox" tabIndex={-1} checked={filters.year === year} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />

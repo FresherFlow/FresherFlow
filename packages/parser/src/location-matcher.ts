@@ -116,9 +116,27 @@ export function cleanAndResolveLocations(rawLocations: string[]): { locations: s
         }
 
         if (!foundAnyKnown && !hasSpecials) {
-            let cleanedRaw = trimmed.replace(/,\s*(india|in)\s*$/i, '');
-            const capitalized = cleanedRaw.replace(/\b\w/g, c => c.toUpperCase());
-            fallbackRawTokens.push(capitalized);
+            // Fallback: try substring matching against known Indian cities
+            let bestCityMatch: typeof citiesInIndia[0] | null = null;
+            for (const city of citiesInIndia) {
+                // Must match whole word
+                const regex = new RegExp(`\\b${city.name.toLowerCase()}\\b`, 'i');
+                if (regex.test(lower)) {
+                    if (!bestCityMatch || city.name.length > bestCityMatch.name.length) {
+                        bestCityMatch = city;
+                    }
+                }
+            }
+
+            if (bestCityMatch) {
+                const stateData = statesInIndia.find(s => s.isoCode === bestCityMatch!.stateCode);
+                allExtractedCities.push({name: bestCityMatch.name, structured: { name: bestCityMatch.name, state: stateData?.name || bestCityMatch.stateCode, country: 'IN', type: 'city' }});
+                foundAnyKnown = true;
+            } else {
+                let cleanedRaw = trimmed.replace(/,\s*(india|in)\s*$/i, '');
+                const capitalized = cleanedRaw.replace(/\b\w/g, c => c.toUpperCase());
+                fallbackRawTokens.push(capitalized);
+            }
         }
     }
 

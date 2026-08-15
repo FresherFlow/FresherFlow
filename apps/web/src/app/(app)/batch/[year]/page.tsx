@@ -47,7 +47,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
 
     const title = `${year} Batch Jobs & Internships for Freshers`;
-    const description = `Explore manually verified off-campus jobs and internships open to the ${year} graduation batch. Direct official apply links with no fake listings.`;
+    const description = `Find verified jobs, internships and off-campus opportunities open to the ${year} graduation batch with direct official apply links.`;
     const base = SITE_URL.replace(/\/+$/, '');
     const ogImageUrl = `${CDN_URL}/og/batch/${year}.png`;
 

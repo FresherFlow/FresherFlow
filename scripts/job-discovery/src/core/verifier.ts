@@ -42,7 +42,7 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
 
         const finalUrl = page.url();
         const finalUrlLower = finalUrl.toLowerCase();
-        if (finalUrlLower.includes('not_found') || finalUrlLower.includes('jobnotfound') || finalUrlLower.includes('job-not-found') || finalUrlLower.includes('/jobnotfound') || finalUrlLower.includes('/job-not-found')) {
+        if (finalUrlLower.includes('not_found') || finalUrlLower.includes('jobnotfound') || finalUrlLower.includes('job-not-found') || finalUrlLower.includes('/jobnotfound') || finalUrlLower.includes('/job-not-found') || finalUrlLower.includes('/expired') || finalUrlLower.includes('error=true')) {
             console.log(`  -> URL indicates job not found / redirect to portal: ${finalUrl}. Marking as expired.`);
             return { live: false, status: 'expired', atsText: '', rejectReason: `URL pattern indicates job not found (${finalUrl})` };
         }
@@ -86,27 +86,52 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
         // Smart Wait: Wait for actual job content — 800 chars minimum so nav menus
         // don't fire the snapshot early before the real job status/body content renders via JavaScript.
         await page.waitForFunction(() => {
+            const main = document.querySelector('main, article, [data-automation-id="jobPostingSection"], #content, .job-description, [role="main"]');
+            if (main && (main as HTMLElement).innerText.trim().length > 150) return true;
             return document.body && document.body.innerText.trim().length > 800;
         }, { timeout: 10000 }).catch(() => {});
         
         // Wait for network idle to allow cross-origin iframes (like ICIMS on custom domains) to finish loading
         await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
 
-        // Extract text using Playwright's native locator, which automatically pierces open Shadow DOMs!
-        let bodyText = await page.locator('body').innerText({ timeout: 5000 }).catch(() => "");
+        // Target main content containers first to avoid false positives from sidebars/footers
+        let mainText = "";
+        const contentSelectors = [
+            '[data-automation-id="jobPostingSection"]',
+            '#careers-portal',
+            '.job-description',
+            'article',
+            'main',
+            '[role="main"]',
+            '#content',
+            '#main'
+        ];
+        for (const selector of contentSelectors) {
+            const text = await page.locator(selector).first().innerText({ timeout: 100 }).catch(() => "");
+            if (text && text.trim().length > 200) {
+                mainText = text;
+                break;
+            }
+        }
+
+        // Extract raw body text
+        const rawBody = await page.locator('body').innerText({ timeout: 5000 }).catch(() => "");
         
         // Also extract text from any iframes IN PARALLEL (Playwright handles cross-origin iframes natively)
-        // We use a 2000ms timeout per frame to avoid blocking on hidden tracking pixels.
         const frameTexts = await Promise.all(page.frames().map(async (frame) => {
             if (frame === page.mainFrame()) return "";
             return await frame.locator('body').innerText({ timeout: 2000 }).catch(() => "");
         }));
 
+        let iframeText = "";
         for (const text of frameTexts) {
             if (text && text.trim().length > 0) {
-                bodyText += '\n' + text.trim();
+                iframeText += '\n' + text.trim();
             }
         }
+
+        let bodyText = mainText || (rawBody + iframeText);
+        
         if (!bodyText || bodyText.trim().length < 100) {
             if (loadFailed) {
                 console.log(`  -> Navigation failed and page body is empty/too short. Marking as failed.`);
@@ -114,17 +139,19 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
             }
             // Retry: wait 3 more seconds for JS-heavy pages to render
             await page.waitForTimeout(3000);
-            bodyText = await page.locator('body').innerText({ timeout: 3000 }).catch(() => '');
+            const retryBody = await page.locator('body').innerText({ timeout: 3000 }).catch(() => '');
+            bodyText = mainText || (retryBody + iframeText);
             if (!bodyText || bodyText.trim().length < 100) {
                 console.log(`  -> Page body still too short after retry (${bodyText?.trim().length || 0} chars). Marking as failed to avoid bypassing NLP.`);
                 return { live: false, status: 'failed', atsText: '', rejectReason: `Body too short after retry: ${bodyText?.trim().length || 0} chars` };
             }
         }
 
-        const lowerText = bodyText.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/\s+/g, ' ');
+        // Always check the FULL raw body for expired phrases
+        const checkText = (rawBody + iframeText).toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/\s+/g, ' ');
 
         for (const pattern of EXPIRED_REGEXES) {
-            if (pattern.test(lowerText)) {
+            if (pattern.test(checkText)) {
                 return { live: false, status: 'expired', atsText: '', rejectReason: `Found expired pattern: ${pattern.toString()}` };
             }
         }

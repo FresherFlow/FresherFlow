@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ThemeToggle } from '@repo/ui/ThemeToggle';
+import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
 import { useTheme } from '@/lib/providers/ThemeContext';
 import { SparklesIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 
@@ -29,7 +29,7 @@ export function PublicProfileHeader() {
                 {/* Right Actions */}
                 <div className="flex items-center gap-2.5">
                     <div className="shrink-0">
-                        <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+                        <ThemeSwitcher />
                     </div>
 
                     <Link

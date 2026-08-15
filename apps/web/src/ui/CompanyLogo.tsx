@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import Image from 'next/image';
+import { BlurImage } from '@/ui/BlurImage';
 import { cn } from '@/lib/utils/utils';
 import { BRAND_DOMAINS, getRootDomain } from '@fresherflow/utils/domains';
 import { CDN_URL } from '@/lib/utils/runtimeConfig';
@@ -170,7 +170,7 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
                 : "relative w-12 h-12 rounded-lg shrink-0 flex items-center justify-center bg-white p-1 border border-border/50 shadow-sm overflow-hidden",
             className
         )}>
-            <Image
+            <BlurImage
                 src={currentSrc}
                 alt={`${companyName} logo`}
                 width={isGovDetected ? 64 : 48}

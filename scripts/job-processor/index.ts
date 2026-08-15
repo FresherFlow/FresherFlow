@@ -538,6 +538,16 @@ async function run(): Promise<void> {
                     continue;
                 }
 
+                // Domain scorer gate
+                const { scoreJobDescription } = await import('@fresherflow/domain');
+                const scoreResult = scoreJobDescription(extracted.title || '', extracted.description || '');
+                if (scoreResult.verdict === 'REJECT') {
+                    console.log(`[FILTER] Domain Scorer rejected: ${scoreResult.metadata.blockingRule || 'Low Score'}`);
+                    failureList.push({ url: job.applyLink, reason: `Domain Scorer rejected: ${scoreResult.metadata.blockingRule || 'Low Score'}` });
+                    if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
+                    continue;
+                }
+
                 console.log('Job extracted:', {
                     title: extracted.title,
                     company: extracted.company,

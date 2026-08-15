@@ -64,6 +64,9 @@ export function isPublicPath(pathname: string) {
     if (pathname.startsWith("/jobs")) return true;
     if (pathname.startsWith("/companies")) return true;
     if (pathname.startsWith("/walkins")) return true;
+    if (pathname.startsWith("/walk-ins")) return true;
+    if (pathname.startsWith("/internships")) return true;
+    if (pathname.startsWith("/remote")) return true;
     if (pathname.startsWith("/off-campus")) return true;
     if (pathname.startsWith("/hackathons")) return true;
     if (pathname.startsWith('/locations/')) return true;

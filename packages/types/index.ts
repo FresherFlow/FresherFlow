@@ -1143,6 +1143,11 @@ export interface OpportunityCardDTO {
     employmentType?: string;
     tags?: string[];
     requiredSkills: string[];
+    allowedPassoutYears?: number[];
+    passoutYearMin?: number | null;
+    passoutYearMax?: number | null;
+    allowedDegrees?: EducationLevel[];
+    allowedCourses?: string[];
     normalizedRole?: string;
     applyLink?: string;
     linkHealth?: LinkHealth;
@@ -1178,6 +1183,11 @@ export function toOpportunityCardDTO(opp: Opportunity): OpportunityCardDTO {
         employmentType: opp.employmentType,
         tags: opp.tags || [],
         requiredSkills: opp.requiredSkills || [],
+        allowedPassoutYears: opp.allowedPassoutYears || [],
+        passoutYearMin: opp.passoutYearMin,
+        passoutYearMax: opp.passoutYearMax,
+        allowedDegrees: opp.allowedDegrees || [],
+        allowedCourses: opp.allowedCourses || [],
         normalizedRole: opp.normalizedRole,
         applyLink: opp.applyLink,
         linkHealth: opp.linkHealth,

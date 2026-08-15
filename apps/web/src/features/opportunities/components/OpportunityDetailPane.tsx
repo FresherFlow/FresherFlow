@@ -23,6 +23,7 @@ import Link from 'next/link';
 import { Button } from '@/ui/Button';
 import { AppPromoBanner } from '@/ui/AppPromoBanner';
 import { Hint } from '@/ui/Tooltip';
+import { CopyButton } from '@/ui/CopyButton';
 
 // Subcomponents from detail page
 import { WalkInDetailsCard } from '@/app/(app)/jobs/[slug]/components/WalkInDetailsCard';
@@ -157,23 +158,14 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                             <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
                         </button>
                     )}
-                    <Hint label="Share" side="top" avoidCollisions={false}>
-                        <button
-                            onClick={handleShare}
-                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors hidden sm:flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                            aria-label="Share"
-                        >
-                            <ShareIcon className="w-4 h-4" />
-                        </button>
-                    </Hint>
                     <Hint label="Copy link" side="top" avoidCollisions={false}>
-                        <button
-                            onClick={handleCopyLink}
-                            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors hidden sm:flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
-                            aria-label="Copy link"
-                        >
-                            <LinkIcon className="w-4 h-4" />
-                        </button>
+                        <CopyButton
+                            variant="ghost"
+                            value={typeof window !== 'undefined' ? `${window.location.origin}${getOpportunityPathFromItem(opp)}` : ''}
+                            icon={LinkIcon}
+                            iconClassName="w-4 h-4"
+                            className="p-1.5 !h-auto !w-auto rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors hidden sm:flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                        />
                     </Hint>
                     <Hint label="Open full page" side="top" avoidCollisions={false}>
                         <Link
@@ -500,20 +492,13 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                             </button>
                         )}
                     </div>
-                    <button
-                        onClick={handleShare}
-                        className="shrink-0 w-12 h-12 rounded-xl border border-border bg-muted/20 text-muted-foreground flex items-center justify-center hover:bg-muted/40 hover:text-foreground active:scale-[0.98] transition-all"
-                        aria-label="Share"
-                    >
-                        <ShareIcon className="w-5 h-5" />
-                    </button>
-                    <button
-                        onClick={handleCopyLink}
-                        className="shrink-0 w-12 h-12 rounded-xl border border-border bg-muted/20 text-muted-foreground flex items-center justify-center hover:bg-muted/40 hover:text-foreground active:scale-[0.98] transition-all"
-                        aria-label="Copy Link"
-                    >
-                        <LinkIcon className="w-5 h-5" />
-                    </button>
+                    <CopyButton
+                        variant="ghost"
+                        value={typeof window !== 'undefined' ? `${window.location.origin}${getOpportunityPathFromItem(opp)}` : ''}
+                        icon={LinkIcon}
+                        iconClassName="w-5 h-5"
+                        className="shrink-0 w-12 h-12 !p-0 rounded-xl border border-border bg-muted/20 text-muted-foreground flex items-center justify-center hover:bg-muted/40 hover:text-foreground active:scale-[0.98] transition-all"
+                    />
                 </div>
             )}
         </div>

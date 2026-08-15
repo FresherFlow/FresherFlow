@@ -110,6 +110,14 @@ export const jobSchema = z.object({
     startTime: z.string().optional().default('10:00'),
     endTime: z.string().optional().default('13:00'),
     walkInDetails: walkInDetailsSchema
+}).refine(data => {
+    const min = data.experienceMin ?? 0;
+    const max = data.experienceMax ?? 0;
+    if (min > 1) return false;
+    if (max > 2) return false;
+    return true;
+}, {
+    message: "Experience exceeds fresher limits (min <= 1, max <= 2)"
 });
 
 export type ExtractedJob = z.infer<typeof jobSchema>;
@@ -552,6 +560,11 @@ export function postProcessNormalize(job: ExtractedJob, _fullText: string): Extr
                 } catch {
                     s = '';
                 }
+            }
+
+            // Strip HTML tags if present
+            if (s && s.includes('<') && s.includes('>')) {
+                s = s.replace(/<[^>]*>?/gm, ' ').replace(/\s{2,}/g, ' ').trim();
             }
 
             for (const part of s.split(';')) {

@@ -1,6 +1,6 @@
 import prisma from '../database/prisma';
 import { Prisma } from '@prisma/client';
-import { OpportunityStatus } from '@fresherflow/types';
+import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { logger } from '@fresherflow/logger';
 import { StorageService } from './storage.service';
 
@@ -210,10 +210,17 @@ export class FeedGeneratorService {
                 where: {
                     status: OpportunityStatus.PUBLISHED,
                     deletedAt: null,
-                    governmentJobDetails: { isNot: null },
                     OR: [
-                        { expiresAt: null },
-                        { expiresAt: { gt: new Date() } }
+                        { type: OpportunityType.GOVERNMENT },
+                        { governmentJobDetails: { isNot: null } }
+                    ],
+                    AND: [
+                        {
+                            OR: [
+                                { expiresAt: null },
+                                { expiresAt: { gt: new Date() } }
+                            ]
+                        }
                     ]
                 },
                 orderBy: { postedAt: 'desc' },

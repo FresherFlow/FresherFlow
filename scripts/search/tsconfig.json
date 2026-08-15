@@ -10,7 +10,8 @@
     "paths": {
       "@fresherflow/domain": ["../../packages/domain/src/index.ts"],
       "@fresherflow/plugins": ["../../packages/plugins/src/index.ts"],
-      "@fresherflow/types": ["../../packages/types/index.ts"]
+      "@fresherflow/types": ["../../packages/types/index.ts"],
+      "@fresherflow/utils": ["../../packages/utils/src/index.ts"]
     }
   }
 }

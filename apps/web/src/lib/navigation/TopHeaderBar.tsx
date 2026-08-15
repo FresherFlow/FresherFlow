@@ -54,7 +54,7 @@ function TopHeaderBarContent() {
             style={{ left: 'var(--sidebar-w, 12rem)' }}
         >
             {/* The portal target. Hidden when empty. Serves as a peer. */}
-            <div id="top-header-portal-target" className="peer empty:hidden flex items-center gap-6 w-full" />
+            <div id="top-header-portal-target" className="peer empty:hidden flex items-center gap-6 w-full relative" />
             
             {/* Fallback for pages that do not inject into this portal */}
             <div className="hidden peer-empty:flex items-center gap-6 w-full" id="top-header-fallback">

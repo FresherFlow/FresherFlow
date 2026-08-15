@@ -213,7 +213,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
 
         const filteredLocations: Record<string, number> = {};
         for (const [loc, count] of Object.entries(locations)) {
-            if (count >= 2) filteredLocations[loc] = count;
+            if (count >= 1) filteredLocations[loc] = count;
         }
 
         return { locations: filteredLocations, skills, sources, years };

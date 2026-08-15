@@ -4,7 +4,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useContext } from 'react';
 import { AuthContext } from '@/lib/auth/AuthContext';
-import { ThemeToggle } from '@repo/ui/ThemeToggle';
+import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
 import { useTheme } from '@/lib/providers/ThemeContext';
 import { AlertsDropdown } from '@/features/notifications/components/AlertsDropdown';
 import { useOfflineActionQueue } from '@/lib/api/offline/useOfflineActionQueue';
@@ -32,7 +32,7 @@ export function TopUtilityBar() {
 
     return (
         <div className="hidden md:flex fixed top-0 right-0 h-14 items-center gap-2 pr-6 z-[90]">
-            <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+            <ThemeSwitcher/>
 
             {isCandidatePortfolioRoute ? (
                 <div className="flex items-center gap-2">

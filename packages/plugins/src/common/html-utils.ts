@@ -2,6 +2,8 @@
  * HTML utility functions for ATS scrapers that return HTML descriptions.
  */
 
+import { markdownConverter } from './description-converter.js';
+
 const HTML_ENTITY_MAP: Record<string, string> = {
   '&amp;': '&',
   '&lt;': '<',
@@ -49,6 +51,12 @@ export function stripHtmlTags(html: string): string {
  * strips remaining tags, decodes entities, and normalizes whitespace.
  */
 export function htmlToPlainText(html: string): string {
+  // Added to fix newlines and markdown (do not remove original code below)
+  if (html) {
+      const md = markdownConverter(html);
+      if (md) return md;
+  }
+
   const $ = cheerio.load(html);
   $('br').replaceWith('\\n');
   $('p, div, li, h1, h2, h3, h4, h5, h6, tr, blockquote, section, article, header, footer').append('\\n');

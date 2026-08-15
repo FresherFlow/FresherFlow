@@ -30,6 +30,9 @@ type FeedVersion = {
 let clientVersionCache: FeedVersion | null = null;
 let clientBootstrapCache: BootstrapFeedResponse | null = null;
 
+let __serverBootstrapCache: BootstrapFeedResponse | null = null;
+let __serverBootstrapCacheTime = 0;
+
 type CDNFetchOptions = RequestInit & {
     next?: {
         revalidate?: false | number;
@@ -200,6 +203,12 @@ const _fetchBootstrapFeed = async (forceLive = false, customTags?: string[], unt
         return clientBootstrapCache || null;
     }
 
+    if (IS_SERVER) {
+        if (__serverBootstrapCache && !forceLive && (Date.now() - __serverBootstrapCacheTime < 5 * 60 * 1000)) {
+            return __serverBootstrapCache;
+        }
+    }
+
     try {
         const feedVersion = await fetchFeedVersion(untracked);
         const rawUrl = BOOTSTRAP_FEED_URL;
@@ -270,6 +279,10 @@ const _fetchBootstrapFeed = async (forceLive = false, customTags?: string[], unt
 
         if (IS_CLIENT) {
             clientBootstrapCache = data;
+        }
+        if (IS_SERVER) {
+            __serverBootstrapCache = data;
+            __serverBootstrapCacheTime = Date.now();
         }
 
         return data;
@@ -372,13 +385,26 @@ const _fetchGovernmentFeed = async (_forceLive = false, customTags?: string[], u
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-        const res = await fetch(signedUrl, getCDNFetchOptions({
+        let res = await fetch(signedUrl, getCDNFetchOptions({
             cache: feedVersion.stable ? 'force-cache' : 'no-store',
             ...(feedVersion.stable && !untracked ? { next: { revalidate: false, tags: customTags ?? ['government-feed'] } } : {}),
             signal: controller.signal,
         }));
 
         clearTimeout(timeoutId);
+
+        // Fallback if CDN fetch fails in development mode (e.g. 403 due to missing local signature secret)
+        if (!res.ok && process.env.NODE_ENV === 'development') {
+            try {
+                const localApiUrl = `${API_URL}/government-feed.json`;
+                const localRes = await fetch(localApiUrl, { cache: 'no-store' });
+                if (localRes.ok) {
+                    res = localRes;
+                } else {
+                    cancelResponseBody(localRes);
+                }
+            } catch {}
+        }
 
         if (!res.ok) {
             cancelResponseBody(res);
@@ -395,6 +421,22 @@ const _fetchGovernmentFeed = async (_forceLive = false, customTags?: string[], u
 
         return data;
     } catch (err) {
+        if (process.env.NODE_ENV === 'development') {
+            try {
+                const localApiUrl = `${API_URL}/government-feed.json`;
+                const localRes = await fetch(localApiUrl, { cache: 'no-store' });
+                if (localRes.ok) {
+                    const data = await localRes.json() as BootstrapFeedResponse;
+                    if (data && Array.isArray(data.opportunities)) {
+                        return data;
+                    }
+                } else {
+                    cancelResponseBody(localRes);
+                }
+            } catch {
+                // Ignore fallback error
+            }
+        }
         console.warn('Government CDN fetch failed:', err instanceof Error ? err.message : err);
         return null;
     }

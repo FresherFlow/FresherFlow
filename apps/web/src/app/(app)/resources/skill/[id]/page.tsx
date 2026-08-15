@@ -11,8 +11,18 @@ interface SkillResourcesPageProps {
 
 export async function generateMetadata(props: SkillResourcesPageProps) {
     const params = await props.params;
+    const feed = await getResourcesFeed();
+    let skillName: string | undefined;
+    for (const res of feed.resources) {
+        const found = res.skills.find(s => s.toLowerCase().replace(/\s+/g, '-') === params.id);
+        if (found) {
+            skillName = found;
+            break;
+        }
+    }
     return {
-        title: `Skill Prep Resources`,
+        title: `${skillName || 'Skill'} Prep Resources`,
+        description: `Preparation material, interview guides, and resources for ${skillName || 'this skill'}.`,
     };
 }
 

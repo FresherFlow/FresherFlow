@@ -22,7 +22,7 @@ export function RelatedOpportunities({ relatedOpps, isLoadingRelated }: RelatedO
                     Related opportunities
                 </h2>
                 <Link
-                    href="/opportunities"
+                    href="/jobs"
                     className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
                 >
                     Explore all →

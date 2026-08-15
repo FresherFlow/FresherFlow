@@ -54,6 +54,13 @@ async function runSweep() {
   console.log(`   └─ Dry Run: ${args.dryRun ? 'YES' : 'NO'}`);
   console.log(`======================================================`);
 
+  try {
+    const { sendTelegramMessage } = await import('@fresherflow/utils');
+    await sendTelegramMessage(`🚀 <b>Search Bot Started</b>\n\nTarget Count: ${targets.length} companies\nMode: ${args.dork ? 'Dork + Scrape' : 'Scrape'}`);
+  } catch (err) {
+    console.error("Failed to send TG start message", err);
+  }
+
   let totalFound = 0;
   let totalStale = 0;
   let totalRaw = 0;
@@ -138,6 +145,20 @@ async function runSweep() {
     console.log(`   ├─ Total Stale Jobs Filtered: ${totalStale}`);
     console.log(`   └─ Total Fresh Jobs Saved:    ${totalFound} (saved to discovered_jobs.json)`);
     console.log(`======================================================\n`);
+
+    try {
+      const { sendTelegramMessage } = await import('@fresherflow/utils');
+      const tgMessage = `✅ <b>Search Bot Sweep Finished</b>\n\n` +
+        `🏢 Processed: ${successfulCompanies}/${targets.length} companies\n` +
+        `🔍 Raw Fetched: ${totalRaw}\n` +
+        `🗑️ Stale/Duplicate: ${totalStale}\n` +
+        `✨ Fresh Jobs: <b>${totalFound}</b>\n\n` +
+        `⏱️ Duration: ${Math.round((Date.now() - startTime) / 1000)}s\n` +
+        (failedCompanies > 0 ? `❌ Failed: ${failedCompanies}` : `✅ All targets succeeded.`);
+      await sendTelegramMessage(tgMessage);
+    } catch (err) {
+      console.error("Failed to send TG completion message", err);
+    }
 
     await finishRun(runId, {
       total_found: totalRaw,
