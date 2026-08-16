@@ -931,7 +931,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                 <div className="py-6 text-center border-t border-border/40 mt-12 bg-card/30 rounded-xl">
                     <p className="text-xs font-medium text-muted-foreground">
                         Built with FresherFlow •{' '}
-                        <Link href="/opportunities" className="font-bold text-foreground hover:text-primary transition-colors duration-150 ease-out">
+                        <Link href="/jobs" className="font-bold text-foreground hover:text-primary transition-colors duration-150 ease-out">
                             Explore Verified Fresher Jobs →
                         </Link>
                     </p>

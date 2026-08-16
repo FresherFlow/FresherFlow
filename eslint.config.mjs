@@ -125,7 +125,7 @@ export default [
   },
   // 5. Scripts & Scrapers (scraping / utility / plugin / ingestion packages)
   {
-    files: ["scripts/**/*", "packages/plugins/**/*", "packages/parser/**/*", "apps/ingestion/**/*", "packages/utils/**/*"],
+    files: ["scripts/**/*", "packages/plugins/**/*", "packages/parser/**/*", "apps/ingestion/**/*", "packages/utils/**/*", "packages/pipeline/**/*"],
     rules: {
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-explicit-any": "off",

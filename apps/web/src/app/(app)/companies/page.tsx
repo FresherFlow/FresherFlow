@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { fetchCompaniesMetadata, fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { slugify } from '@fresherflow/utils/slugify';
 import { CompanySlugger } from '@/features/companies/utils/companySlugger';
-import { detectAtsProvider } from '@/features/companies/utils/atsDetector';
+import { detectAtsProvider } from '@fresherflow/utils';
 import { Breadcrumb } from '@/ui/Breadcrumb';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 import { HeaderPortal } from '@/lib/components/HeaderPortal';

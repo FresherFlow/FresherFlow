@@ -3,7 +3,6 @@ import { runTarget, type RunTarget } from '../lib/runner.js';
 import { loadDefaultTargets } from '../lib/targets.js';
 import { requireAuth } from '../middleware/auth.js';
 import { getQueue, QUEUE_NAMES } from '@fresherflow/queue';
-import { runDorker } from '../lib/dorker.js';
 import { parseJobUrl } from '../lib/url-parser.js';
 
 const router = Router();
@@ -15,11 +14,6 @@ router.get('/targets', async (_req: Request, res: Response): Promise<void> => {
 });
 
 router.use(requireAuth);
-
-router.post('/dork', async (req: Request, res: Response): Promise<void> => {
-  runDorker().catch(e => console.error('Dorker failed', e));
-  res.json({ status: 'started' });
-});
 
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   const target: RunTarget = req.body;

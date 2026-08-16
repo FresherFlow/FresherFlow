@@ -134,7 +134,7 @@ function DeadlinesPageContent() {
                         </p>
                     </div>
                     <Link
-                        href="/opportunities"
+                        href="/jobs"
                         className="relative z-10 inline-flex h-10 items-center justify-center px-8 bg-foreground text-background font-bold capitalize tracking-widest text-[10px] rounded-xl hover:opacity-90 transition-all shadow-sm"
                     >
                         Explore Feed

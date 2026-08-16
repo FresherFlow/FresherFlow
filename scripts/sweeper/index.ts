@@ -1,8 +1,7 @@
 import { chromium, Page } from 'playwright';
 
 // Shared utilities — canonical source lives in job-discovery/src
-import { signUrl, normalizeUrl } from '../job-discovery/src/utils/url.js';
-import { EXPIRED_REGEXES, loadEnv } from '../job-discovery/src/config.js';
+import { signUrl, normalizeUrl, loadEnv, EXPIRED_REGEXES } from '@fresherflow/pipeline';
 import { sendTelegramMessage } from '@fresherflow/utils';
 
 await loadEnv();
@@ -58,7 +57,7 @@ async function checkJob(page: Page, url: string, isSecondPass = false): Promise<
         
         // Smart Wait: Wait dynamically for Javascript/SPAs (like Workday/Upstox) to paint the job description text.
         await page.waitForFunction(() => {
-            const main = document.querySelector('main, article, [data-automation-id="jobPostingSection"], #content, .job-description, [role="main"]');
+            const main = document.querySelector('main, article, [data-automation-id="jobPostingSection"], #content, .job-description, [role="main"], [itemprop="description"], .job-sections, .sr-job-description');
             if (main && (main as HTMLElement).innerText.trim().length > 150) return true;
             return document.body && document.body.innerText.trim().length > 400;
         }, { timeout: isSecondPass ? 25000 : 8000 }).catch(() => {});
@@ -76,6 +75,9 @@ async function checkJob(page: Page, url: string, isSecondPass = false): Promise<
         // Target main content containers first to avoid false positives from sidebars/footers
         let mainText = "";
         const contentSelectors = [
+            '[itemprop="description"]',
+            '.job-sections',
+            '.sr-job-description',
             '[data-automation-id="jobPostingSection"]',
             '#careers-portal',
             '.job-description',

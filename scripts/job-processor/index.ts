@@ -21,7 +21,7 @@ import {
     normalizeRawJson,
     ExtractedJob,
     postProcessNormalize
-} from './src/normalizer.js';
+} from '@fresherflow/pipeline';
 
 
 
@@ -32,7 +32,7 @@ import {
     trimForLlm
 } from '@fresherflow/plugins';
 
-import { extractNativeAtsData } from './src/ats-native';
+import { extractNativeAtsData } from '@fresherflow/pipeline';
 import { applyRuleEngine } from '@fresherflow/domain';
 
 import {
@@ -516,9 +516,21 @@ async function run(): Promise<void> {
 
                 // India/Remote filter
                 if (extracted.structuredLocations && extracted.structuredLocations.length > 0) {
-                    const ok = extracted.structuredLocations.some(
-                        (loc: any) => loc.country === 'IN' || loc.type === 'remote' || loc.name.toLowerCase() === 'pan india'
+                    const hasIndia = extracted.structuredLocations.some(
+                        (loc: any) => loc.country === 'IN' || loc.name.toLowerCase() === 'pan india'
                     );
+                    const hasRemote = extracted.structuredLocations.some(
+                        (loc: any) => loc.type === 'remote'
+                    );
+                    // Any unmapped fallback string (e.g. "Austin, TX", "Hybrid") is considered foreign
+                    const hasForeign = extracted.structuredLocations.some(
+                        (loc: any) => !loc.country && loc.type !== 'remote' && loc.name.toLowerCase() !== 'pan india'
+                    );
+
+                    // Accept if it explicitly has an Indian location.
+                    // If no Indian location, but has Remote, accept ONLY if it doesn't have an explicit foreign location.
+                    const ok = hasIndia || (hasRemote && !hasForeign);
+
                     if (!ok) {
                         console.log(`[FILTER] International job skipped: ${JSON.stringify(extracted.structuredLocations)}`);
                         failureList.push({ url: job.applyLink, reason: 'International/unsupported location' });

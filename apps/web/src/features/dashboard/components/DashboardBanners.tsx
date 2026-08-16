@@ -11,7 +11,7 @@ import { analytics } from '@/lib/api/analytics';
 import { buildInviteUrl } from '@/lib/utils/share';
 import { referralApi } from '@/lib/api/client';
 import { SHARE_BASE_URL } from '@/lib/utils/runtimeConfig';
-import { calculateProfileCompletion } from '@/features/profile/profileCompletion';
+import { calculateProfileCompletion } from '@fresherflow/utils';
 
 // Profile completion banner
 export function ProfileCompletionBanner() {

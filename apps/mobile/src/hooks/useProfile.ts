@@ -6,7 +6,7 @@ import { useSaved } from '@repo/frontend-core';
 import { Profile } from '@fresherflow/types';
 import { saveLocalProfile, getLocalProfile } from '@/utils/cache/localProfile';
 import { enqueueProfileSync } from '@/utils/onboardingState';
-import { calculateProfileCompletion } from '@/utils/profileCompletion';
+import { calculateProfileCompletion } from '@fresherflow/utils';
 import { readFirebaseProfile, writeFirebaseProfile } from '@/utils/firebaseProfileDb';
 
 

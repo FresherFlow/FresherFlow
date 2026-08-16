@@ -9,14 +9,18 @@ export function ThemeScript() {
     const scriptContent = `
         (function() {
             try {
-                const savedTheme = localStorage.getItem('theme');
-                const theme = savedTheme === 'dark' ? 'dark' : 'light';
+                let theme = localStorage.getItem('theme');
+                if (!theme || theme === 'system') {
+                    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                }
                 const themeColor = theme === 'dark' ? '#0d0f14' : '#e2eaf2';
                 
                 if (theme === 'dark') {
                     document.documentElement.classList.add('dark');
+                    document.documentElement.style.colorScheme = 'dark';
                 } else {
                     document.documentElement.classList.remove('dark');
+                    document.documentElement.style.colorScheme = 'light';
                 }
                 var themeMeta = document.querySelector('meta[name="theme-color"]');
                 if (themeMeta) themeMeta.setAttribute('content', themeColor);
@@ -24,5 +28,5 @@ export function ThemeScript() {
         })();
     `;
 
-    return <script dangerouslySetInnerHTML={{ __html: scriptContent }} />;
+    return <script dangerouslySetInnerHTML={{ __html: scriptContent }} suppressHydrationWarning />;
 }

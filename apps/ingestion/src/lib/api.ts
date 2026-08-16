@@ -2,7 +2,7 @@ import { AtsJob, htmlToPlainText, markdownConverter, extractSalary, extractExper
 import { extractWorkMode, extractExperience } from '@fresherflow/parser';
 import { scoreJobDescription } from '@fresherflow/domain';
 import { pool } from './db.js';
-import { normalizeRawJson, postProcessNormalize, jobSchema } from '../../../../scripts/job-processor/src/normalizer.js';
+import { normalizeRawJson, postProcessNormalize, jobSchema } from '@fresherflow/pipeline';
 import { analyze } from '@fresherflow/utils/analytics/index';
 function resolveCompanyWebsiteAndLogo(
     company: string,

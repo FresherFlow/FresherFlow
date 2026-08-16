@@ -1,9 +1,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { extractAtsBoard } from '../src/core/ats-detector.js';
-import { AtsRegistry } from '../src/ats/index.js';
+import { extractAtsBoard } from '@fresherflow/pipeline';
+import { AtsRegistry } from '@fresherflow/pipeline';
 import { uploadToR2 } from '@fresherflow/utils/r2';
-import { loadEnv } from '../src/config.js';
+import { loadEnv } from '@fresherflow/pipeline';
 
 async function run() {
     await loadEnv();

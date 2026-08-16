@@ -32,7 +32,7 @@ export function RecentOpportunities({ opportunities }: RecentOpportunitiesProps)
                         </p>
                     </div>
                     <Link
-                        href="/opportunities"
+                        href="/jobs"
                         className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-primary hover:opacity-80 transition-opacity"
                     >
                         View All

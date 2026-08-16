@@ -60,7 +60,7 @@ import {
 } from '@fresherflow/plugins';
 
 import { isPotentialFresherJob, isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/domain';
-import type { RunStats } from '../pipeline/state.js';
+// RunStats import removed
 import { normalizeUrl } from '../utils/url.js';
 
 export interface AtsRegistry {
@@ -147,7 +147,7 @@ async function runProvider(
     data: Record<string, string>,
     delay: number,
     companyConcurrency: number,
-    stats: RunStats,
+    stats: any,
     knownLinks: Set<string>,
     visitedSet: Set<string>
 ): Promise<AtsJob[]> {
@@ -221,7 +221,7 @@ async function runProvider(
 
 export async function runAtsDiscovery(
     registry: AtsRegistry,
-    stats: RunStats,
+    stats: any,
     knownLinks: Set<string>,
     visitedApplyLinks: string[]
 ): Promise<AtsJob[]> {

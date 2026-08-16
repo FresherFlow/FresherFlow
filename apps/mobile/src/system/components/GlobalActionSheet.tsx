@@ -150,8 +150,6 @@ const GlobalShareSheet = () => {
 
     const getPublicOpportunityPath = (opp: Opportunity) => {
         const slugOrId = encodeURIComponent(opp.slug || opp.id);
-        if (opp.type === 'INTERNSHIP') return `/internships/${slugOrId}`;
-        if (opp.type === 'WALKIN') return `/walk-ins/details/${slugOrId}`;
         return `/jobs/${slugOrId}`;
     };
 

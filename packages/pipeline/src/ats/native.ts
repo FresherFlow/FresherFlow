@@ -288,13 +288,29 @@ export async function extractNativeAtsData(
                         };
                     } else {
                         console.log(`[Native] @fresherflow/plugins (${plugin.providerName}) fetchJobDetails success (structured)`);
+                        
+                        const expLevel = ((result as any).experienceLevel || '').toLowerCase().replace(/[-\s]/g, '_');
+                        let expMin: number | undefined = (result as any).experienceMin;
+                        
+                        if (expMin === undefined && expLevel) {
+                            if (['mid_senior_level', 'director', 'executive', 'senior', 'manager', 'lead'].includes(expLevel)) {
+                                expMin = 4;
+                            } else if (['entry_level', 'internship', 'student'].includes(expLevel)) {
+                                expMin = 0;
+                            } else if (['associate'].includes(expLevel)) {
+                                expMin = 1;
+                            }
+                        }
+
                         return {
                             ...EMPTY,
                             title: result.title || '',
                             html: result.html || '',
                             text: result.text || stripHtml(result.html || ''),
                             locations: normalizeLocations(result.locations || []),
-                            company: result.company || ''
+                            company: result.company || '',
+                            experienceLevel: (result as any).experienceLevel || '',
+                            experienceMin: expMin
                         };
                     }
                 }

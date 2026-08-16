@@ -158,7 +158,7 @@ export function cleanAndResolveLocations(rawLocations: string[]): { locations: s
     }
 
     // If nothing at all was found, add fallbacks
-    if (allExtractedCities.length === 0 && allExtractedStates.length === 0 && !hasSpecials) {
+    if (allExtractedCities.length === 0 && allExtractedStates.length === 0) {
         if (fallbackRawTokens.length > 0) {
             // Check if the only tokens are 'India' or 'IN'
             const allAreIndia = fallbackRawTokens.every(l => {

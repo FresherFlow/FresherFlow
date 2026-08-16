@@ -257,9 +257,9 @@ export class StaticFeedService {
                 const staticRoutes = [
                     '',
                     '/jobs',
-                    '/internships',
-                    '/walk-ins',
-                    '/government-jobs',
+                    '/jobs/internships',
+                    '/jobs/walk-ins',
+                    '/govt',
                     '/about',
                     '/blog',
                     '/contact',

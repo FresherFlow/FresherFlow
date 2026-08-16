@@ -1,9 +1,10 @@
 import { DiscoveryState } from './state.js';
-import { normalizeUrl } from '../utils/url.js';
+import { normalizeUrl } from '@fresherflow/pipeline';
 import { PLUGIN_REGISTRY, AtsJob } from '@fresherflow/plugins';
 import { parseJobUrl } from '@fresherflow/parser';
 import { isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/domain';
-import { isJobLive } from '../core/verifier.js';
+import { isJobLive } from '@fresherflow/pipeline';
+import { BAD_TITLE_REGEXES } from '@fresherflow/pipeline';
 
 export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning: () => boolean) {
     const VERIFIER_CONCURRENCY = 4;
@@ -93,6 +94,14 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                         continue;
                     }
 
+                    const titleToCheck = nativeData.rawPayload.title || candidate.aggregatorTitle || 'Unknown';
+                    const isBadTitle = BAD_TITLE_REGEXES.some(regex => regex.test(titleToCheck));
+                    if (isBadTitle) {
+                        console.log(`  -> ❌ Skipping API job: Bad title (${titleToCheck})`);
+                        state.visited["__discovered_apply_links__"].push(normalizeUrl(candidate.applyLink));
+                        continue;
+                    }
+
                     console.log(`  ✅ API LIVE: ${candidate.applyLink}`);
                     const normalizedApplyLink = normalizeUrl(candidate.applyLink);
                     state.visited["__discovered_apply_links__"].push(normalizedApplyLink);
@@ -134,6 +143,23 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
 
                 if (checkResult.live) {
                     let actualApplyLink = checkResult.finalUrl || candidate.applyLink;
+
+                    // Fix SmartRecruiters API URLs — convert internal API URLs to public job page URLs
+                    if (actualApplyLink.includes('api.smartrecruiters.com')) {
+                        try {
+                            const u = new URL(actualApplyLink);
+                            const parts = u.pathname.split('/').filter(Boolean);
+                            const compIdx = parts.indexOf('companies');
+                            const postIdx = parts.indexOf('postings');
+                            const slug = compIdx !== -1 ? parts[compIdx + 1] : '';
+                            const jobId = postIdx !== -1 ? parts[postIdx + 1] : '';
+                            if (slug && jobId) {
+                                actualApplyLink = `https://jobs.smartrecruiters.com/${slug}/${jobId}`;
+                                console.log(`  -> Fixed SR API URL to public URL: ${actualApplyLink}`);
+                            }
+                        } catch {}
+                    }
+
                     try {
                         const parsedUrl = new URL(actualApplyLink);
                         const host = parsedUrl.hostname.toLowerCase();
@@ -171,6 +197,16 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                         state.visited["__discovered_apply_links__"].push(normalizedApplyLink);
                         if (state.visited["__discovered_apply_links__"].length > 50000) state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
                         state.rejectedReasons[normalizedApplyLink] = `Unknown Job Title`;
+                        continue;
+                    }
+
+                    const isBadTitle = BAD_TITLE_REGEXES.some(regex => regex.test(jobTitle));
+                    if (isBadTitle) {
+                        console.log(`  -> ❌ Skipping job: Bad title (${jobTitle})`);
+                        const normalizedApplyLink = normalizeUrl(actualApplyLink);
+                        state.visited["__discovered_apply_links__"].push(normalizedApplyLink);
+                        if (state.visited["__discovered_apply_links__"].length > 50000) state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
+                        state.rejectedReasons[normalizedApplyLink] = `Bad Job Title: ${jobTitle}`;
                         continue;
                     }
 

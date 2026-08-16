@@ -43,9 +43,9 @@ export function isAuthPath(pathname: string) {
 }
 
 export function isOpportunityPublic(pathname: string) {
-    if (pathname === '/opportunities/create') return false;
-    if (pathname.startsWith('/opportunities/edit/')) return false;
-    return pathname.startsWith('/opportunities/');
+    if (pathname === '/jobs/create') return false;
+    if (pathname.startsWith('/jobs/edit/')) return false;
+    return pathname.startsWith('/jobs/');
 }
 
 export function isPublicPath(pathname: string) {

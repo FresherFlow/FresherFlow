@@ -1,5 +1,5 @@
 import { listR2Objects, downloadJsonFromR2, uploadJsonToR2 } from '@fresherflow/utils/r2';
-import { ATS_PROVIDERS } from '../config.js';
+import { ATS_PROVIDERS } from '@fresherflow/pipeline';
 
 function getBucket(): string {
     if (!process.env.R2_BUCKET_NAME) throw new Error('R2_BUCKET_NAME is not set.');

@@ -158,6 +158,15 @@ export class UrlParser {
 
         // Merge sources with LD priority
         let title = ld.title || meta.title || '';
+
+        // Clean ATS title noise
+        if (title) {
+            title = title.replace(/\s*[-–]\s*Job Detail\s*$/i, '');
+            title = title.replace(/\s*[-–]\s*Careers Marketplace\s*$/i, '');
+            title = title.replace(/(?:\s*[-–]\s*)+(?:[A-Za-z\s]+\s*[-–]\s*)?\d+\s*[-–]\s*[A-Za-z0-9\s&]+$/, '');
+            title = title.trim();
+        }
+
         const description = ld.description || meta.description || '';
         const company = ld.company || meta.company;
 
@@ -441,6 +450,12 @@ function extractAtsBoard(urlStr: string): { provider: string, boardId: string } 
             if (companyId) return { provider: 'successfactors', boardId: companyId };
         }
 
+        // Eightfold: /externaljobs/JobDetail/ or /careers/JobDetail/ or /Jobs/FolderDetail
+        const lowerPath = path.toLowerCase();
+        if (lowerPath.includes('/jobdetail/') || lowerPath.includes('/folderdetail')) {
+            return { provider: 'eightfold', boardId: host };
+        }
+
         // Darwinbox: company.darwinbox.com
         if (host.endsWith('.darwinbox.com')) return { provider: 'darwinbox', boardId: host.split('.')[0] };
         // Keka: company.keka.com
@@ -490,11 +505,17 @@ export function parseJobUrl(urlStr: string): ParsedJobUrl | null {
             }
         } else if (provider === 'oracle') {
             const lowerLink = urlStr.toLowerCase();
+            let found = false;
             for (const [prefix, compName] of ORACLE_SLUG_MAP.entries()) {
                 if (lowerLink.startsWith(prefix)) {
                     company = compName;
+                    found = true;
                     break;
                 }
+            }
+            if (!found) {
+                // Try to extract from domain, e.g. ejgk.fa.em2.oraclecloud.com
+                company = u.hostname.split('.')[0];
             }
         }
 
@@ -507,6 +528,15 @@ export function parseJobUrl(urlStr: string): ParsedJobUrl | null {
             } else {
                 jobId = parts[parts.length - 1];
             }
+        } 
+        else if (provider === 'eightfold') {
+            if (u.searchParams.has('folderId')) {
+                jobId = u.searchParams.get('folderId') || parts[parts.length - 1];
+            } else {
+                jobId = parts[parts.length - 1];
+            }
+            const domain = boardId.replace(/^(jobs|jobsearch|careers|careers-new)\./i, '');
+            company = domain.split('.')[0];
         } 
         else if (provider === 'greenhouse') {
             const jobsIdx = parts.indexOf('jobs');

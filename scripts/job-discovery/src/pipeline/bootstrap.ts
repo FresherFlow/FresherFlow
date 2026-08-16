@@ -1,8 +1,8 @@
 import { chromium } from 'playwright';
 import { DiscoveryState, createInitialState } from './state.js';
 import { loadVisited, loadRejectedReasons } from '../utils/storage.js';
-import { CDN_SECRET } from '../config.js';
-import { signUrl, normalizeUrl } from '../utils/url.js';
+import { CDN_SECRET } from '@fresherflow/pipeline';
+import { signUrl, normalizeUrl } from '@fresherflow/pipeline';
 
 export async function bootstrapState(): Promise<DiscoveryState> {
     const state = createInitialState();

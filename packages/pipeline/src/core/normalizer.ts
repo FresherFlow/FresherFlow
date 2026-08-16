@@ -417,6 +417,14 @@ export function postProcessNormalize(job: ExtractedJob, _fullText: string): Extr
                 if (urlSlug && SMARTRECRUITERS_SLUG_MAP.has(urlSlug.toLowerCase())) {
                     atsResolvedName = SMARTRECRUITERS_SLUG_MAP.get(urlSlug.toLowerCase())!;
                 }
+                
+                if (host === 'api.smartrecruiters.com') {
+                    const postIdx = parts.indexOf('postings');
+                    const jobId = postIdx !== -1 ? parts[postIdx + 1] : '';
+                    if (urlSlug && jobId) {
+                        job.applyLink = `https://jobs.smartrecruiters.com/${urlSlug}/${jobId}`;
+                    }
+                }
             }
 
             // Greenhouse ATS

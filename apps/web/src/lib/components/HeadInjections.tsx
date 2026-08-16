@@ -13,29 +13,7 @@ import { ADMIN_WEB_HOST } from '@/lib/utils/runtimeConfig';
 export function HeadInjections() {
     useServerInsertedHTML(() => (
         <>
-            {/* Theme Initialization Script */}
-            <script
-                id="ff-theme-init"
-                dangerouslySetInnerHTML={{
-                    __html: `
-                        (function() {
-                            try {
-                                const savedTheme = localStorage.getItem('theme');
-                                const theme = savedTheme === 'dark' ? 'dark' : 'light';
-                                const themeColor = theme === 'dark' ? '#0d0f14' : '#e2eaf2';
-                                
-                                if (theme === 'dark') {
-                                    document.documentElement.classList.add('dark');
-                                } else {
-                                    document.documentElement.classList.remove('dark');
-                                }
-                                var themeMeta = document.querySelector('meta[name="theme-color"]');
-                                if (themeMeta) themeMeta.setAttribute('content', themeColor);
-                            } catch (e) {}
-                        })();
-                    `,
-                }}
-            />
+
 
             {/* Hydration State Script */}
             <script

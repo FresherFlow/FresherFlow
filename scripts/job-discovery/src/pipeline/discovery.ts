@@ -1,13 +1,13 @@
 import fs from 'fs';
 import path from 'path';
 import { DiscoveryState } from './state.js';
-import { ATS_CDN_BASE, ATS_PROVIDERS, TARGET_SITES } from '../config.js';
-import { normalizeUrl, sanitizeAtsUrl } from '../utils/url.js';
+import { ATS_CDN_BASE, ATS_PROVIDERS, TARGET_SITES } from '@fresherflow/pipeline';
+import { normalizeUrl, sanitizeAtsUrl } from '@fresherflow/pipeline';
 import { isLocationIndiaOrRemote, scoreJobDescription, hasFresherKeyword, isActualJob, isFresherJob, isSeniorJob } from '@fresherflow/domain';
-import { logDecision } from '../utils/logger.js';
-import { findActualApplyLink } from '../core/extractor.js';
-import { extractAtsBoard } from '../core/ats-detector.js';
-import { runAtsDiscovery } from '../ats/index.js';
+import { logDecision } from '@fresherflow/pipeline';
+import { findActualApplyLink } from '@fresherflow/pipeline';
+import { extractAtsBoard } from '@fresherflow/pipeline';
+import { runAtsDiscovery } from '@fresherflow/pipeline';
 
 export async function discoverAtsJobs(state: DiscoveryState) {
     console.log(`\n=== Phase 0: Scraping ATS APIs ===\n`);

@@ -12,7 +12,7 @@ import { Card, CardContent } from '@/ui/Card';
 import { SkeletonJobCard } from '@/features/opportunities/components/OpportunitySkeletons';
 import JobCard from '@/features/opportunities/components/JobCard';
 import CompanyLogo from '@/ui/CompanyLogo';
-import { calculateProfileCompletion } from '@/features/profile/profileCompletion';
+import { calculateProfileCompletion } from '@fresherflow/utils';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { readFeedCache, saveFeedCache } from '@/lib/api/offline/opportunitiesFeedCache';
 import { useFirebaseTracker } from '@/lib/hooks/useFirebaseTracker';

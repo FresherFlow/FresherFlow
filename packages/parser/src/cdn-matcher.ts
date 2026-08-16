@@ -98,11 +98,11 @@ const PASSOUT_YEAR_REGEX = /\b(20(2[3-9]|3[0-2]))\b/g;
 const BATCH_PHRASE_REGEX = /(?:batch|passout|pass.?out|graduated?|graduating)\s*(?:of\s*)?(?:year\s*)?(?:20)?(\d{2})/gi;
 
 // Salary patterns (India-specific)
-const SALARY_REGEX = /(?:Γé╣|INR|Rs\.?)\s*[\d,.]+\s*(?:to|-|ΓÇô)\s*[\d,.]+\s*(?:LPA|CTC|lakh|lakhs|per annum|\/month|per month)?|[\d.]+\s*(?:to|-|ΓÇô)\s*[\d.]+\s*LPA|[\d]+\s*LPA/i;
+const SALARY_REGEX = /(?:\u20B9|INR|Rs\.?)\s*[\d,.]+\s*(?:to|-|\u2013)\s*[\d,.]+\s*(?:LPA|CTC|lakh|lakhs|per annum|\/month|per month)?|[\d.]+\s*(?:to|-|\u2013)\s*[\d.]+\s*LPA|[\d]+\s*LPA/i;
 
 // Experience patterns
-const EXP_RANGE_REGEX = /\b(\d+)\s*(?:to|-|ΓÇô)\s*(\d+)\s*(?:\+\s*)?years?\s*(?:of\s+(?:work\s+)?experience)?/i;
-const EXP_PLUS_REGEX = /\b(\d+)\s*\+\s*years?\s*(?:of\s+(?:work\s+)?experience)?/i;
+const EXP_RANGE_REGEX = /(?:\[\s*)?\b(\d+)\s*(?:to|-|\u2013)\s*(\d+)(?:\s*\])?\s*(?:(?:\+|&#43;)\s*)?years?\s*(?:of\s+(?:work\s+)?experience)?/i;
+const EXP_PLUS_REGEX = /(?:\[\s*)?\b(\d+)\s*(?:(?:\+|&#43;)\s*\]?|\]?\s*(?:\+|&#43;))\s*years?\s*(?:of\s+(?:work\s+)?experience)?/i;
 const EXP_FRESHER_REGEX = /\b(?:fresher|fresh graduate|0\s*(?:to|-)\s*[12]\s*years?|no\s+experience\s+required)/i;
 
 // Work mode keywords
@@ -306,8 +306,7 @@ export function matchFromCdn(rawText: string, existingLocations: string[] = []):
     // Merge: normalizedRaw descriptors + Indian cities + international (if no India)
     const locationsFound = new Set<string>();
     for (const loc of normalizedRaw) {
-        // Keep remote/PAN India descriptors; drop raw office strings already cleaned
-        if (/^(remote|pan india|remote india|worldwide)$/i.test(loc)) locationsFound.add(loc);
+        locationsFound.add(loc);
     }
     for (const city of indianCitiesFound) locationsFound.add(city);
     for (const city of internationalCitiesFound) locationsFound.add(city);

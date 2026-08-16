@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { normalizeCompany, normalizeLocation, normalizeTitle } from './normalize';
+import { normalizeCompany, normalizeLocation, normalizeTitle } from '@fresherflow/parser';
 
 /**
  * Triple of normalised fields that, joined with `|`, defines the canonical

@@ -86,10 +86,10 @@ export function DesktopNav() {
             <nav className={cn(
                 isLandingPage
                     ? cn(
-                        'pointer-events-auto w-full flex items-center justify-between gap-4 transition-[max-width,height,background-color,box-shadow,backdrop-filter,padding] duration-200 ease-out px-6 shadow-none',
+                        'pointer-events-auto w-full flex items-center justify-between gap-4 transition-[max-width,height,background-color,border-color,box-shadow,backdrop-filter,padding,border-radius] duration-300 ease-[cubic-bezier(0.77,0,0.175,1)] px-6 shadow-none',
                         scrolled
-                            ? 'max-w-4xl h-[52px] rounded-2xl border border-border/40 bg-background/80 dark:bg-card/75 backdrop-blur-md shadow-[0_12px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)]'
-                            : 'max-w-7xl h-[64px] bg-transparent'
+                            ? 'max-w-[980px] h-[52px] rounded-2xl border border-border/40 bg-background/80 dark:bg-card/75 backdrop-blur-md shadow-[0_12px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)]'
+                            : 'max-w-7xl h-[64px] rounded-none border border-transparent bg-transparent'
                       )
                     : 'relative w-full max-w-7xl h-full flex items-center justify-between gap-4 px-6'
             )}>
@@ -124,7 +124,7 @@ export function DesktopNav() {
                                 }}
                                 aria-current={isActive ? 'page' : undefined}
                                 className={cn(
-                                    'px-2.5 md:px-3 py-1.5 text-xs md:text-sm font-medium whitespace-nowrap transition-all duration-150 ease-out active:scale-[0.97] relative shrink-0 after:absolute after:bottom-0 after:left-2.5 after:right-2.5 after:h-[2px] after:rounded-full after:bg-foreground/40 after:transition-transform after:duration-300 after:origin-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded',
+                                    'px-2.5 md:px-3 py-1.5 text-xs md:text-sm font-medium whitespace-nowrap transition-[color,transform] duration-150 ease active:scale-[0.97] relative shrink-0 after:absolute after:bottom-0 after:left-2.5 after:right-2.5 after:h-[2px] after:rounded-full after:bg-foreground/40 after:transition-transform after:duration-300 after:ease-[cubic-bezier(0.77,0,0.175,1)] after:origin-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded',
                                     isActive
                                         ? 'text-foreground after:scale-x-100'
                                         : 'text-muted-foreground hover:text-foreground after:scale-x-0'
@@ -148,14 +148,14 @@ export function DesktopNav() {
                             {resolvedUser ? (
                                 <Link
                                     href="/dashboard"
-                                    className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-[0.97] shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                                    className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-[opacity,transform] duration-150 ease-out active:scale-[0.97] shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                 >
                                     Dashboard
                                 </Link>
                             ) : (
                                 <Link
                                     href="/register"
-                                    className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-[0.97] shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                                    className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-[opacity,transform] duration-150 ease-out active:scale-[0.97] shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                 >
                                     Create Profile
                                 </Link>
@@ -175,7 +175,7 @@ export function DesktopNav() {
 
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <button aria-label="User Menu" suppressHydrationWarning className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border border-border/60 text-xs font-bold uppercase transition-all duration-150 ease-out active:scale-[0.97] hover:border-primary/40 cursor-pointer focus:outline-none">
+                                    <button aria-label="User Menu" suppressHydrationWarning className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border border-border/60 text-xs font-bold uppercase transition-[border-color,transform] duration-150 ease-out active:scale-[0.97] hover:border-primary/40 cursor-pointer focus:outline-none">
                                         {initialLetter}
                                     </button>
                                 </DropdownMenuTrigger>
@@ -211,14 +211,14 @@ export function DesktopNav() {
                         <div className="flex items-center gap-2">
                             <Link
                                 href="/login"
-                                className="px-2.5 py-1.5 text-xs font-semibold text-foreground hover:text-primary transition-all duration-150 ease-out active:scale-[0.97] shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+                                className="px-2.5 py-1.5 text-xs font-semibold text-foreground hover:text-primary transition-[color,transform] duration-150 ease active:scale-[0.97] shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
                             >
                                 Log in
                             </Link>
                             <Link
                                 href="/app"
                                 target="_self"
-                                className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-[0.97] shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                                className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-[opacity,transform] duration-150 ease-out active:scale-[0.97] shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                             >
                                 Get App
                             </Link>

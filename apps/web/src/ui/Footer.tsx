@@ -81,8 +81,8 @@ export function Footer({ className }: FooterProps) {
     return (
         <footer className={cn("bg-card border-t border-border mt-auto", className)}>
             {/* Top Footer */}
-            <div className="container px-4 md:px-6 mx-auto py-10 md:py-16">
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-10 lg:gap-8">
+            <div className="container px-4 md:px-6 mx-auto py-8 md:py-12">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-8 lg:gap-8">
                     
                     {/* Brand Column */}
                     <div className="col-span-2 md:col-span-4 lg:col-span-2 space-y-6">
@@ -163,23 +163,20 @@ export function Footer({ className }: FooterProps) {
                     </div>
 
                 </div>
-                {/* Disclaimer Below Routes */}
-                <div className="mt-12 pt-8 border-t border-border/40">
-                    <p className="text-sm text-muted-foreground max-w-4xl">
-                        <span className="font-semibold text-foreground">Disclaimer:</span> We aggregate information from official sources for educational purposes. We are not affiliated with any government org.
-                    </p>
-                </div>
             </div>
 
             {/* Bottom Footer */}
             <div className="border-t border-border bg-muted/20">
-                <div className="container px-4 md:px-6 mx-auto py-6">
+                <div className="container px-4 md:px-6 mx-auto py-5 space-y-3">
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
                         <p className="text-sm text-muted-foreground">
-                            &copy; {currentYear} FresherFlow.in. All rights reserved.
+                            &copy; {currentYear} FresherFlow.in. All rights reserved.{" "}
+                            <span className="block mt-1 text-xs text-muted-foreground/80 leading-relaxed">
+                                <span className="font-semibold text-foreground/80">Disclaimer:</span> We aggregate information from official sources for educational purposes. We are not affiliated with any government org.
+                            </span>
                         </p>
                         
-                        {/* Social Icons in Disclaimer Position */}
+                        {/* Social Icons */}
                         <div className="flex flex-wrap items-center justify-center md:justify-end gap-1.5 sm:gap-2">
                             {socialLinks.map(({ href, label, Icon, colorClass }) => (
                                 <a

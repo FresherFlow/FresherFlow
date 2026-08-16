@@ -11,6 +11,7 @@ import {
  EyeIcon,
  EllipsisHorizontalIcon,
  PlayIcon,
+ ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/ui/DropdownMenu';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/ui/Select';
@@ -44,26 +45,41 @@ export function DiscoveredJobsTab() {
  const [pageIndex, setPageIndex] = useState(0);
  const [pageSize, setPageSize] = useState(20);
 
+ const [cache, setCache] = useState<Record<string, DiscoveredJob[]>>({});
+
  useEffect(() => {
    setPageIndex(0);
  }, [search, statusFilter, atsFilter]);
 
+ const loadData = async (forceRefresh = false) => {
+   if (!forceRefresh && cache[statusFilter]) {
+     setJobs(cache[statusFilter]);
+     setLoading(false);
+     return;
+   }
+
+   let url = '/api/admin/discovery/jobs?limit=1000';
+   if (statusFilter !== 'ALL') {
+     url += `&status=${statusFilter}`;
+   }
+
+   setLoading(true);
+   try {
+     const res = await fetch(url);
+     const data = await res.json();
+     const fetchedJobs = data.jobs || [];
+     setJobs(fetchedJobs);
+     setCache(prev => ({ ...prev, [statusFilter]: fetchedJobs }));
+   } catch (err) {
+     console.error('Failed to fetch discovered jobs:', err);
+   } finally {
+     setLoading(false);
+   }
+ };
+
  useEffect(() => {
- let url = '/api/admin/discovery/jobs?limit=1000';
- if (statusFilter !== 'ALL') {
- url += `&status=${statusFilter}`;
- }
- setLoading(true);
- fetch(url)
- .then(r => r.json())
- .then(d => {
- setJobs(d.jobs || []);
- setLoading(false);
- })
- .catch((err) => {
- console.error('Failed to fetch discovered jobs:', err);
- setLoading(false);
- });
+   loadData();
+   // eslint-disable-next-line react-hooks/exhaustive-deps
  }, [statusFilter]);
 
  const uniqueAtsTypes = Array.from(new Set(jobs.map(j => detectAtsFromUrl(j.applyLink || j.apply_link)))).filter(Boolean).sort();
@@ -200,10 +216,18 @@ export function DiscoveredJobsTab() {
       )}
    </div>
 
-   {/* Right Side: Filters */}
+   {/* Right Side: Filters & Refresh */}
    <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
      <div className="flex items-center gap-2 shrink-0">
-       <FunnelIcon className="w-4 h-4 text-muted-foreground" />
+       <button
+         onClick={() => loadData(true)}
+         title="Refresh Data"
+         className="h-10 px-3 rounded-md bg-card border border-border/80 hover:bg-muted/60 text-muted-foreground hover:text-foreground text-xs font-medium flex items-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
+       >
+         <ArrowPathIcon className="w-4 h-4" />
+         <span className="hidden sm:inline">Refresh</span>
+       </button>
+       <FunnelIcon className="w-4 h-4 text-muted-foreground ml-1" />
         <Select value={atsFilter} onValueChange={setAtsFilter}>
           <SelectTrigger className="h-10 text-xs py-1 min-w-[120px] w-auto border-border/80 bg-card focus:outline-none focus-visible:bg-muted/60 focus-visible:text-foreground cursor-pointer">
             <SelectValue placeholder="All ATS" />
@@ -221,10 +245,11 @@ export function DiscoveredJobsTab() {
          </SelectTrigger>
          <SelectContent>
            <SelectItem value="ALL">All Status</SelectItem>
+           <SelectItem value="PENDING">Pending</SelectItem>
+           <SelectItem value="APPROVED">Approved</SelectItem>
            <SelectItem value="DISCOVERED">Discovered</SelectItem>
-           <SelectItem value="PROCESSED">Processed</SelectItem>
            <SelectItem value="PROCESSING">Processing</SelectItem>
-           <SelectItem value="DUPLICATE">Duplicate</SelectItem>
+           <SelectItem value="PROCESSED">Processed</SelectItem>
            <SelectItem value="REJECTED">Rejected</SelectItem>
            <SelectItem value="FAILED">Failed</SelectItem>
            <SelectItem value="EXPIRED">Expired</SelectItem>

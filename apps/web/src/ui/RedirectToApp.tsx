@@ -18,7 +18,7 @@ export default function RedirectToApp({ title = "Feature moved to Mobile", messa
                 </div>
                 <div className="pt-4 flex flex-col gap-3">
                     <Link 
-                        href="/opportunities" 
+                        href="/jobs" 
                         className="premium-button w-full justify-center text-xs capitalize tracking-widest"
                     >
                         Get the Mobile App

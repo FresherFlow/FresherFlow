@@ -147,10 +147,15 @@ export function extractWorkMode(text: string): WorkMode {
 // ── Experience ────────────────────────────────────────────────────────────────
 
 export function extractExperience(text: string): { min?: number; max?: number } {
-    const rangeMatch = text.match(/(\d+)\s*(?:-|to)\s*(\d+)\s*(?:year|yr)s?/i);
+    const rangeMatch = text.match(/(?:\[\s*)?\b(\d+)\s*(?:-|to|\u2013)\s*(\d+)(?:\s*\])?\s*(?:(?:\+|&#43;)\s*)?(?:year|yr)s?/i);
     if (rangeMatch) return { min: parseInt(rangeMatch[1]), max: parseInt(rangeMatch[2]) };
-    const minOnly = text.match(/(\d+)\+?\s*(?:year|yr)s?\s*exp/i);
-    if (minOnly) return { min: parseInt(minOnly[1]) };
+    
+    const plusMatch = text.match(/(?:\[\s*)?\b(\d+)\s*(?:(?:\+|&#43;)\s*\]?|\]?\s*(?:\+|&#43;))\s*(?:year|yr)s?/i);
+    if (plusMatch) return { min: parseInt(plusMatch[1]), max: parseInt(plusMatch[1]) };
+
+    const expMatch = text.match(/(?:\[\s*)?\b(\d+)(?:\s*\])?\s*(?:year|yr)s?\s*(?:of\s+(?:work\s+)?)?exp/i);
+    if (expMatch) return { min: parseInt(expMatch[1]), max: parseInt(expMatch[1]) };
+
     return {};
 }
 

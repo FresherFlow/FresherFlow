@@ -15,6 +15,7 @@ import {
  ClipboardDocumentIcon,
  EllipsisHorizontalIcon,
  ArrowTopRightOnSquareIcon,
+ ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/ui/DropdownMenu';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/ui/Select';
@@ -47,27 +48,42 @@ export function ProcessedJobsTab() {
  const [pageIndex, setPageIndex] = useState(0);
  const [pageSize, setPageSize] = useState(20);
 
+ const [cache, setCache] = useState<Record<string, ProcessedJob[]>>({});
+
  useEffect(() => {
    setPageIndex(0);
  }, [search, statusFilter, atsFilter]);
 
- useEffect(() => {
- let url = '/api/admin/discovery/jobs/processed?limit=1000';
- if (statusFilter !== 'ALL') {
- url += `&status=${statusFilter}`;
- }
- setLoading(true);
- fetch(url)
- .then(res => res.json())
- .then(data => {
- setJobs(data.jobs || []);
- setLoading(false);
- })
- .catch((err) => {
- console.error('Failed to fetch processed jobs:', err);
- setLoading(false);
- });
- }, [statusFilter]);
+  const loadData = async (forceRefresh = false) => {
+    if (!forceRefresh && cache[statusFilter]) {
+      setJobs(cache[statusFilter]);
+      setLoading(false);
+      return;
+    }
+
+    let url = '/api/admin/discovery/jobs/processed?limit=1000';
+    if (statusFilter !== 'ALL') {
+      url += `&status=${statusFilter}`;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(url);
+      const data = await res.json();
+      const fetchedJobs = data.jobs || [];
+      setJobs(fetchedJobs);
+      setCache(prev => ({ ...prev, [statusFilter]: fetchedJobs }));
+    } catch (err) {
+      console.error('Failed to fetch processed jobs:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusFilter]);
 
   const handlePushSelected = async () => {
     const ids = Array.from(selectedJobIds);
@@ -180,7 +196,7 @@ export function ProcessedJobsTab() {
  const formatExperience = (job: ProcessedJob) => {
  const min = job.experienceMin ?? job.experience_min;
  const max = job.experienceMax ?? job.experience_max;
- if (min === undefined && max === undefined) return '0 - 2 yrs';
+ if (min === null || min === undefined) return max !== null && max !== undefined ? `Up to ${max} yrs` : '–';
  if (min !== undefined && max !== undefined) {
  if (min === max) return `${min} yrs`;
  return `${min} - ${max} yrs`;
@@ -250,10 +266,18 @@ export function ProcessedJobsTab() {
       )}
    </div>
 
-   {/* Right Side: Filters */}
+   {/* Right Side: Filters & Refresh */}
    <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
      <div className="flex items-center gap-2 shrink-0">
-       <FunnelIcon className="w-4 h-4 text-muted-foreground" />
+       <button
+         onClick={() => loadData(true)}
+         title="Refresh Data"
+         className="h-10 px-3 rounded-md bg-card border border-border/80 hover:bg-muted/60 text-muted-foreground hover:text-foreground text-xs font-medium flex items-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
+       >
+         <ArrowPathIcon className="w-4 h-4" />
+         <span className="hidden sm:inline">Refresh</span>
+       </button>
+       <FunnelIcon className="w-4 h-4 text-muted-foreground ml-1" />
         <Select value={atsFilter} onValueChange={setAtsFilter}>
           <SelectTrigger className="h-10 text-xs py-1 min-w-[120px] w-auto border-border/80 bg-card focus:outline-none focus-visible:bg-muted/60 focus-visible:text-foreground cursor-pointer">
             <SelectValue placeholder="All ATS" />

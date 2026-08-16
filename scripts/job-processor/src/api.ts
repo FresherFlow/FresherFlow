@@ -1,4 +1,4 @@
-import { ExtractedJob } from './normalizer';
+import { ExtractedJob } from '@fresherflow/pipeline';
 import { resolveCompanyWebsiteAndLogo } from '@fresherflow/utils';
 import pg from 'pg';
 const { Pool } = pg;

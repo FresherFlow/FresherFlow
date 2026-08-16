@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@fresherflow/parser": "workspace:^",
+    "@fresherflow/pipeline": "workspace:*",
     "@fresherflow/plugins": "workspace:^",
     "@fresherflow/utils": "workspace:*",
     "playwright": "^1.62.1"

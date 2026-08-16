@@ -36,7 +36,7 @@ export function DetailActionHeader({
     return (
         <div className="flex items-center justify-between">
             <button
-                onClick={() => (window.history.length > 1 ? router.back() : router.push('/opportunities'))}
+                onClick={() => (window.history.length > 1 ? router.back() : router.push('/jobs'))}
                 className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-muted/30 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
             >
                 <ArrowLeftIcon className="w-4 h-4" />

@@ -11,6 +11,27 @@ This file is for AI coding agents working in the FresherFlow monorepo. Read the 
 | Job discovery | `scripts/job-discovery/AGENTS.md` |
 | Job processor | `scripts/job-processor/AGENTS.md` |
 
+## Core Principles
+
+Always understand the user's actual objective before acting. 
+
+Before making changes:
+- inspect the existing project
+- understand the current architecture
+- reuse existing patterns
+- avoid unnecessary changes
+
+When implementing:
+- make the smallest correct change
+- verify the result
+- test important paths
+- don't claim something works without checking it
+
+When uncertain:
+- investigate rather than guessing
+
+Prefer complete solutions over superficial answers.
+
 ## Project shape
 
 FresherFlow is a production job and walk-in opportunity platform.

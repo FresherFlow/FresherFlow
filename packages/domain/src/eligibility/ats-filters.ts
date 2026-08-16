@@ -139,7 +139,7 @@ export function isLocationIndiaOrRemote(location: string, title?: string): boole
     // Fallback basic keywords
     const BASIC_KEYWORDS = [
         /\bindia\b/i, /\bremote\b/i, /\bwork from home\b/i, /\bwfh\b/i, /\banywhere\b/i, /\bhome based\b/i, /\bhome-based\b/i,
-        /\bvirtual\b/i, /\bonline\b/i, /\bhybrid\b/i, /\btelecommute\b/i, /\bdistributed\b/i, /\bpan india\b/i, /\bflexible\b/i,
+        /\bvirtual\b/i, /\bonline\b/i, /\btelecommute\b/i, /\bdistributed\b/i, /\bpan india\b/i,
     ];
     for (const regex of BASIC_KEYWORDS) {
         if (regex.test(loc)) {

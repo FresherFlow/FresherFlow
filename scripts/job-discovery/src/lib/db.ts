@@ -1,6 +1,6 @@
 import pg from 'pg';
 const { Pool } = pg;
-import { loadEnv } from '../config.js';
+import { loadEnv } from '@fresherflow/pipeline';
 
 await loadEnv();
 

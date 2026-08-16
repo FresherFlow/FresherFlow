@@ -30,8 +30,6 @@ type FeedVersion = {
 let clientVersionCache: FeedVersion | null = null;
 let clientBootstrapCache: BootstrapFeedResponse | null = null;
 
-let __serverBootstrapCache: BootstrapFeedResponse | null = null;
-let __serverBootstrapCacheTime = 0;
 
 type CDNFetchOptions = RequestInit & {
     next?: {
@@ -203,12 +201,6 @@ const _fetchBootstrapFeed = async (forceLive = false, customTags?: string[], unt
         return clientBootstrapCache || null;
     }
 
-    if (IS_SERVER) {
-        if (__serverBootstrapCache && !forceLive && (Date.now() - __serverBootstrapCacheTime < 5 * 60 * 1000)) {
-            return __serverBootstrapCache;
-        }
-    }
-
     try {
         const feedVersion = await fetchFeedVersion(untracked);
         const rawUrl = BOOTSTRAP_FEED_URL;
@@ -280,11 +272,6 @@ const _fetchBootstrapFeed = async (forceLive = false, customTags?: string[], unt
         if (IS_CLIENT) {
             clientBootstrapCache = data;
         }
-        if (IS_SERVER) {
-            __serverBootstrapCache = data;
-            __serverBootstrapCacheTime = Date.now();
-        }
-
         return data;
     } catch (err) {
         // Fallback to local Express API server in development mode if network fetch threw an exception

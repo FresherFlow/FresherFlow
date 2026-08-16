@@ -9,7 +9,7 @@ import { InstallPromptProvider } from "@/lib/providers/InstallPromptContext";
 // WEB PIVOT: keep these imports disabled until web app mode returns.
 // import ServiceWorkerRegister from "@/lib/providers/ServiceWorkerRegister";
 // import PushNotificationProvider from "@/lib/providers/PushNotificationProvider";
-// import { ThemeScript } from '@/lib/components/ThemeScript';
+import { ThemeScript } from '@/lib/components/ThemeScript';
 // import OfflineNotification from "@/ui/OfflineNotification";
 import dynamic from "next/dynamic";
 import { Inter } from "next/font/google";
@@ -99,6 +99,7 @@ export default async function RootLayout({
         <meta charSet="utf-8" />
         <meta name="color-scheme" content="light dark" />
         <meta name="theme-color" content="#e2eaf2" id="theme-color-meta" />
+        <ThemeScript />
         <HeadInjections />
         <link rel="manifest" href="/manifest.webmanifest" id="ff-manifest-link" />
         <link rel="preload" as="image" href="/logo-optimized.png?v=3" />

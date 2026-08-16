@@ -1,5 +1,5 @@
 import { Browser } from 'playwright';
-import { AtsRegistry } from '../ats/index.js';
+import { AtsRegistry } from '@fresherflow/pipeline';
 
 export interface Candidate {
     applyLink: string;

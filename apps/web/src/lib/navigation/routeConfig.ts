@@ -3,6 +3,7 @@ import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 import BuildingLibraryIcon from '@heroicons/react/24/outline/BuildingLibraryIcon';
+import GlobeAltIcon from '@heroicons/react/24/outline/GlobeAltIcon';
 import UserCircleIcon from '@heroicons/react/24/outline/UserCircleIcon';
 import type { SVGProps } from 'react';
 
@@ -158,6 +159,15 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             showInDesktop: true,
             showInMobileTabs: false,
             icon: BuildingLibraryIcon,
+        },
+        {
+            href: '/platforms',
+            label: 'Platforms',
+            mobileTitle: 'Internship Platforms',
+            mobileLabel: 'Platforms',
+            showInDesktop: true,
+            showInMobileTabs: false,
+            icon: GlobeAltIcon,
         },
         {
             href: '/account',

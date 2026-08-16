@@ -86,7 +86,7 @@ export const DashboardFeed = ({
                 ) : opportunities.length === 0 ? (
                     <div className="p-12 text-center border border-dashed border-border rounded-xl">
                         <p className="text-sm font-medium text-muted-foreground">No results found in this section.</p>
-                        <Button onClick={() => router.push('/opportunities')} variant="outline" className="mt-4 h-8 text-[10px] font-bold capitalize tracking-widest">
+                        <Button onClick={() => router.push('/jobs')} variant="outline" className="mt-4 h-8 text-[10px] font-bold capitalize tracking-widest">
                             Browse all feed
                         </Button>
                     </div>

@@ -12,6 +12,7 @@
     "@fresherflow/constants": "workspace:*",
     "@fresherflow/domain": "workspace:*",
     "@fresherflow/parser": "workspace:*",
+    "@fresherflow/pipeline": "workspace:*",
     "@fresherflow/plugins": "workspace:*",
     "@fresherflow/queue": "workspace:^1.0.0",
     "@fresherflow/redis": "workspace:*",

@@ -24,7 +24,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
     const firstSegment = segments[0] || '';
     const reservedSegments = new Set([
         'account', 'batch', 'companies', 'deadlines', 'govt', 'jobs', 'locations', 
-        'resources', 'roles', 'skills'
+        'platforms', 'resources', 'roles', 'skills'
     ]);
     const isDetailPage =
         /^\/(jobs|govt)\/[^/]+/.test(normalizedPathname) ||

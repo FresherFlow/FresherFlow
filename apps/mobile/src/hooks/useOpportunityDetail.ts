@@ -26,8 +26,6 @@ type Props = NativeStackScreenProps<RootStackParamList, 'JobDetail'>;
 
 const getPublicOpportunityPath = (opportunity: Opportunity) => {
     const slugOrId = encodeURIComponent(opportunity.slug || opportunity.id);
-    if (opportunity.type === OpportunityType.INTERNSHIP) return `/internships/${slugOrId}`;
-    if (opportunity.type === OpportunityType.WALKIN) return `/walk-ins/details/${slugOrId}`;
     return `/jobs/${slugOrId}`;
 };
 

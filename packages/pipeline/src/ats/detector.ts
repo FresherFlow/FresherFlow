@@ -1,4 +1,4 @@
-import { AtsRegistry } from '../ats/index.js';
+import { AtsRegistry } from './parser.js';
 
 export function extractAtsBoard(urlStr: string): { provider: keyof AtsRegistry, boardId: string } | null {
     try {

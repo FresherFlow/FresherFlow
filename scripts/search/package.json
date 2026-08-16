@@ -13,6 +13,7 @@
   "dependencies": {
     "@fresherflow/domain": "workspace:*",
     "@fresherflow/parser": "workspace:*",
+    "@fresherflow/pipeline": "workspace:*",
     "@fresherflow/plugins": "workspace:*",
     "@fresherflow/types": "workspace:*",
     "@fresherflow/utils": "workspace:*",

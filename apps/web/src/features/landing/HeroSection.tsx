@@ -46,7 +46,7 @@ export function HeroSection({ liveCount, companiesCount }: HeroSectionProps) {
                 {/* CTAs */}
                 <motion.div variants={itemVariants} className="flex flex-col sm:flex-row items-center gap-3 pt-2 w-full sm:w-auto">
                     <Link
-                        href="/opportunities"
+                        href="/jobs"
                         className="premium-button w-full sm:w-auto px-8 py-3.5 text-sm font-semibold tracking-wide flex items-center justify-center gap-2 active:scale-[0.97] transition-transform duration-[160ms] ease-out"
                     >
                         Browse Jobs

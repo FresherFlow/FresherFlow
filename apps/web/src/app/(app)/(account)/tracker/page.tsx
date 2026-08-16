@@ -396,7 +396,7 @@ function TrackerPageContent() {
                         </p>
                     </div>
                     <Link
-                        href="/opportunities"
+                        href="/jobs"
                         className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold capitalize tracking-widest text-[11px] rounded-lg hover:bg-primary/90 transition-all shadow"
                     >
                         Browse feed

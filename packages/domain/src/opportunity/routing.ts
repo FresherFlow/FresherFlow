@@ -22,12 +22,12 @@ export function getOpportunityPathFromItem(item: { id: string; slug?: string; ty
 }
 
 function getTypePrefix(type?: string): string {
-    if (!type) return '/opportunities';
+    if (!type) return '/jobs';
     const t = type.toUpperCase();
     if (t === 'JOB') return '/jobs';
-    if (t === 'INTERNSHIP') return '/internships';
-    if (t === 'WALKIN') return '/walk-ins';
-    return '/opportunities';
+    if (t === 'INTERNSHIP') return '/jobs/internships';
+    if (t === 'WALKIN') return '/jobs/walk-ins';
+    return '/jobs';
 }
 
 export function getOpportunityPath(type: string, slugOrId: string) {

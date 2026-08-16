@@ -1,4 +1,4 @@
-import { loadEnv } from './src/config.js';
+import { loadEnv } from '@fresherflow/pipeline';
 import { bootstrapState } from './src/pipeline/bootstrap.js';
 import { discoverAtsJobs, discoverAggregatorJobs } from './src/pipeline/discovery.js';
 import { discoverDorkerJobs } from './src/pipeline/dorker.js';

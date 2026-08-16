@@ -145,6 +145,24 @@ export function evaluateExperience(sectionType: SectionType, text: string): { co
         trace.push({ step: 'evaluateExperience', result: '0-2 years', rule: 'EXP_0_2', delta: WEIGHTS.EXP_0_2_YEARS });
     }
 
+    // Broad catch-all: any "N-M years" or "N+ years" where N >= 2 is a hard blocker
+    const broadYearsRange = /\b([2-9]|\d{2,})\s*(?:-|–|to)\s*\d+\s*(?:years?|yrs?)\b/gi;
+    while ((match = broadYearsRange.exec(lowerText)) !== null) {
+        if (sectionType === 'ABOUT_COMPANY' || sectionType === 'BENEFITS') continue;
+        signals.push({ type: 'experience', section: sectionType, rule: 'BLOCKER_EXP_BROAD_RANGE', weight: -100, matched: match[0], context: getContext(lowerText, match.index, match[0].length) });
+        contributions.push({ rule: 'BLOCKER_EXP_BROAD_RANGE', delta: -100, section: sectionType });
+        trace.push({ step: 'evaluateExperience', result: 'broad range blocker', rule: 'BLOCKER_EXP_BROAD_RANGE', delta: -100 });
+    }
+
+    // Broad catch-all: "N years of experience" or "N+ years of experience"
+    const broadYearsExp = /\b([2-9]|\d{2,})\s*\+?\s*(?:years?|yrs?)\s+(?:of\s+)?experience\b/gi;
+    while ((match = broadYearsExp.exec(lowerText)) !== null) {
+        if (sectionType === 'ABOUT_COMPANY' || sectionType === 'BENEFITS') continue;
+        signals.push({ type: 'experience', section: sectionType, rule: 'BLOCKER_EXP_BROAD_OF', weight: -100, matched: match[0], context: getContext(lowerText, match.index, match[0].length) });
+        contributions.push({ rule: 'BLOCKER_EXP_BROAD_OF', delta: -100, section: sectionType });
+        trace.push({ step: 'evaluateExperience', result: 'broad of-experience blocker', rule: 'BLOCKER_EXP_BROAD_OF', delta: -100 });
+    }
+
     // Negative (Not blocker, just negative points): 2+ years range or standalone
     const exp2to5 = /(?:(?:[2-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|building|working|developing|engineering|leading|managing))|(?:(?:experience|exp(?:n|erience|\.)?|requires?|requiring|minimum|min)[^a-z0-9]{1,10}(?:[2-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)(?:\s*(?:years?|yrs?|y\b))?)|(?:\b(?:[2-9]|[1-9]\d)\s*(?:-|–|\bto\b)\s*(?:[2-9]|[1-9]\d)\s*(?:years?|yrs?)\b)/gi;
     while ((match = exp2to5.exec(lowerText)) !== null) {

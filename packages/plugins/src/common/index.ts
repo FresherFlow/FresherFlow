@@ -5,7 +5,7 @@ export * from './html-utils.js';
 export * from './location-parser.js';
 export * from './helpers.js';
 export * from './description-converter.js';
-export * from './normalize.js';
+
 export * from './canonical-key.js';
 export * from './jsonld.js';
 export * from './country-name.js';

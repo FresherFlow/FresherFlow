@@ -30,7 +30,8 @@ import {
     BuildingOffice2Icon,
     LinkIcon,
     UserGroupIcon,
-    ShareIcon
+    ShareIcon,
+    GlobeAltIcon
 } from '@heroicons/react/24/outline';
 import {
     TrainFront,
@@ -62,6 +63,7 @@ export const JOBS_NAV_ITEMS = [
     { name: 'Company', href: '/companies', icon: BuildingOfficeIcon },
     { name: 'Batch', href: '/batch', icon: CalendarIcon },
     { name: 'Resources', href: '/resources', icon: BookOpenIcon },
+    { name: 'Platforms', href: '/platforms', icon: GlobeAltIcon },
     { name: 'Government', href: '/govt', icon: BuildingLibraryIcon, hasSubmenu: true },
 ];
 

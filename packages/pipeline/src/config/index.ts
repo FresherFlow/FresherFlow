@@ -48,6 +48,72 @@ export const ATS_PROVIDERS = [
     'zohorecruit', 'freshteam', 'keka', 'workable'
 ];
 
+export const ATS_HOSTNAMES = [
+    'myworkdayjobs.com',
+    'greenhouse.io',
+    'lever.co',
+    'smartrecruiters.com',
+    'ashbyhq.com',
+    'oracle.com',
+    'oraclecloud.com',
+    'workable.com',
+    'recruitee.com',
+    'icims.com',
+    'internshala.com',
+    'wellfound.com',
+    'ycombinator.com',
+    'naukri.com',
+    'instahyre.com',
+    'cuvette.tech',
+    'unstop.com',
+];
+
+export const HEAVY_DORK_QUERIES = [
+    // Tier 1: Internships
+    'site:boards.greenhouse.io "intern" OR "internship" "India"',
+    'site:jobs.lever.co "intern" OR "internship" "India"',
+    'site:myworkdayjobs.com "intern" OR "internship" "India"',
+    'site:jobs.smartrecruiters.com "intern" OR "internship" "India"',
+    'site:jobs.ashbyhq.com "intern" OR "internship" "India"',
+
+    // Tier 2: Fresh Graduates
+    'site:boards.greenhouse.io ("new grad" OR "fresh graduate" OR "fresher" OR "recent graduate") "India"',
+    'site:jobs.lever.co ("new grad" OR "fresh graduate" OR "fresher") "India"',
+    'site:myworkdayjobs.com ("new grad" OR "fresh graduate" OR "fresher" OR "recent graduate") "India"',
+    'site:jobs.smartrecruiters.com ("fresher" OR "fresh graduate" OR "new grad") "India"',
+
+    // Tier 3: Graduate Trainee
+    'site:boards.greenhouse.io ("graduate trainee" OR "graduate engineer" OR "graduate program" OR "apprentice" OR "trainee") "India"',
+    'site:jobs.lever.co ("graduate trainee" OR "graduate engineer" OR "apprentice" OR "trainee") "India"',
+    'site:myworkdayjobs.com ("graduate trainee" OR "graduate engineer" OR "apprentice" OR "campus hire") "India"',
+
+    // Tier 4: Entry Level / Junior
+    'site:boards.greenhouse.io ("entry level" OR "entry-level" OR "junior" OR "associate engineer") "India"',
+    'site:jobs.lever.co ("entry level" OR "entry-level" OR "junior" OR "associate") "India"',
+    'site:myworkdayjobs.com ("entry level" OR "entry-level" OR "associate" OR "junior") "India"',
+    'site:jobs.smartrecruiters.com ("entry level" OR "junior" OR "associate" OR "trainee") "India"',
+
+    // Tier 5: SDE-1
+    'site:boards.greenhouse.io ("SDE 1" OR "SDE-1" OR "SDE1" OR "software engineer 1" OR "software engineer i") "India"',
+    'site:jobs.lever.co ("SDE 1" OR "SDE-1" OR "software engineer i" OR "software engineer 1") "India"',
+    'site:myworkdayjobs.com ("SDE 1" OR "SDE-1" OR "software engineer 1" OR "software engineer i") "India"',
+
+    // Tier 6: Campus
+    'site:boards.greenhouse.io ("campus hire" OR "campus hiring" OR "off campus" OR "off-campus") "India"',
+    'site:myworkdayjobs.com ("campus hire" OR "campus hiring" OR "off campus" OR "off-campus drive") "India"',
+    'site:jobs.lever.co ("campus" OR "off-campus") "India"',
+
+    // Tier 7: Early Career
+    'site:boards.greenhouse.io "early career" "India"',
+    'site:jobs.lever.co "early career" "India"',
+    'site:myworkdayjobs.com "early career" "India"',
+
+    // New Heavy Dork Queries for Non-ATS Domains
+    'site:internshala.com/internship/ ("remote" OR "india") ("software" OR "developer" OR "SDE")',
+    'site:wellfound.com/jobs ("intern" OR "fresher" OR "junior") "india"',
+    'site:boards.greenhouse.io ("intern" OR "internship" OR "fresher" OR "junior" OR "SDE 1") ("India" OR "Remote")',
+];
+
 export let TARGET_SITES: { name: string; urls: string[] }[] = [];
 
 try {
@@ -101,6 +167,12 @@ export const FRESHER_REGEXES = [
 // Phrases indicating it's NOT a fresher job (we skip if we see these AND we don't see fresher phrases)
 export const EXPERIENCED_REGEXES = [
     /\b(?:1\.5\+?\s*years?|(?:12|18|24)\+?\s*months?|(?:1\s*years?|1\s*year\s+of|[1-9]\d*)\+?\s*exp)\b/i
+];
+
+export const BAD_TITLE_REGEXES = [
+    /\b(senior|sr\.?|lead|manager|director|head|vp|vice president|principal|architect|staff)\b/i,
+    /^(login|sign in|welcome|job details|job details page|careers|opportunities|skip to content|careers at .+|jobs at .+|error|404|403|not found|access denied|page not found)$/i,
+    /\b(am -|old -)\b/i
 ];
 
 export const DORKER_ENABLED = process.env.DORKER_ENABLED !== 'false';

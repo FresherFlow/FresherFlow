@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { CDN_SECRET, CDN_URL } from '../config.js';
+import { CDN_SECRET, CDN_URL } from '../config/index.js';
 
 // Helper to sign the CDN URL
 export function signUrl(pathname: string): string {

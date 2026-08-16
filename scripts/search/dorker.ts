@@ -1,45 +1,26 @@
-import axios from 'axios';
-import * as cheerio from 'cheerio';
 import { parseJobUrl } from '@fresherflow/parser';
 import { AtsJob, PLUGIN_REGISTRY } from '@fresherflow/plugins';
-
-const DORK_QUERIES = [
-  'site:greenhouse.io OR site:jobs.lever.co "software" ("fresher" OR "graduate" OR "0-1 years") "india"',
-  'site:myworkdayjobs.com "software" ("fresher" OR "graduate") "india"',
-  'site:careers.smartrecruiters.com "software" ("fresher" OR "graduate") "india"',
-  'site:jobs.ashbyhq.com "software" ("fresher" OR "graduate") "india"',
-];
+import { HEAVY_DORK_QUERIES, DORKER_PAGES_PER_QUERY, executeDorkQuery } from '@fresherflow/pipeline';
 
 export async function executeDorkSearch(options: any): Promise<{ jobs: AtsJob[], totalFound: number }> {
   console.log(`\n🔍 Executing Wide Dorker Search...`);
   const jobs: AtsJob[] = [];
   const urlsToProcess = new Set<string>();
 
-  for (const query of DORK_QUERIES) {
+  for (const query of HEAVY_DORK_QUERIES) {
     console.log(`   └─ Dork Query: ${query}`);
     try {
-      const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-      const res = await axios.get(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
-        },
-        timeout: 10000
+      const rawLinks = await executeDorkQuery({
+          query,
+          pages: DORKER_PAGES_PER_QUERY || 1,
+          delayMs: 2000,
       });
-      const $ = cheerio.load(res.data);
-      
-      $('.result__snippet').each((_, el) => {
-        const parent = $(el).closest('.result');
-        let text = parent.find('.result__url').text().trim();
-        if (text) {
-          text = text.replace(/\s+/g, '');
-          if (!text.startsWith('http')) text = `https://${text}`;
-          urlsToProcess.add(text);
-        }
-      });
+      for (const link of rawLinks) {
+          urlsToProcess.add(link);
+      }
     } catch (err: any) {
        console.error(`   └─ ❌ Dorker failed for query: ${err.message}`);
     }
-    await new Promise(r => setTimeout(r, 2000));
   }
 
   console.log(`   └─ Found ${urlsToProcess.size} unique URLs to inspect.`);
