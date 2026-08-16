@@ -56,8 +56,7 @@ jobs:
           API_BASE_URL: ${{ secrets.API_BASE_URL }}
           INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
           ENABLE_API_UPLOAD: "true"
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             pnpm start --from-supabase

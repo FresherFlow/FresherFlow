@@ -271,8 +271,10 @@ export async function extractNativeAtsData(
                 };
 
                 let result = null;
-                if (page) {
+                try {
                     result = await plugin.fetchJobDetails(dummyJob, page);
+                } catch (err) {
+                    console.warn(`[Native] @fresherflow/plugins (${plugin.providerName}) fetchJobDetails failed:`, err);
                 }
                 if (result) {
                     if (typeof result === 'string') {

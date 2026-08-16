@@ -112,7 +112,7 @@ export async function discoverDorkerJobs(state: DiscoveryState) {
         try {
             while (pendingQueries.length > 0) {
                 if (state.isTimeUp()) {
-                    console.log(`\n[Timeout] ⏱️ Exceeded 55 minutes, halting dorker queries.`);
+                    console.log(`\n[Timeout] ⏱️ Exceeded 85 minutes, halting dorker queries.`);
                     break;
                 }
                 const item = pendingQueries.shift();

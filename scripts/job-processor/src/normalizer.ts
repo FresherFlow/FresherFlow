@@ -201,7 +201,15 @@ export function normalizeRawJson(raw: Record<string, unknown>): Record<string, u
         raw.experienceMax = isNaN(val) ? null : val;
     }
 
-    // 6. Ensure customSlug is empty string
+    // 6. Ensure allowedPassoutYears are integers
+    if (Array.isArray(raw.allowedPassoutYears)) {
+        raw.allowedPassoutYears = raw.allowedPassoutYears.map((yr: unknown) => {
+            const val = parseInt(String(yr), 10);
+            return isNaN(val) ? null : val;
+        }).filter((yr: unknown) => yr !== null);
+    }
+
+    // 7. Ensure customSlug is empty string
     raw.customSlug = "";
 
     return raw;

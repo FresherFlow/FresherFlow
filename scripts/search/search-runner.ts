@@ -2,6 +2,7 @@ import { DEFAULT_TARGETS, loadAtsDataTargets, SearchTarget } from './search-conf
 import { executeSearch, SearchOptions } from './search.js';
 import { executeDorkSearch } from './dorker.js';
 import { startRun, finishRun } from '../job-discovery/src/repositories/discoveryRuns.js';
+import { isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/domain';
 
 function parseRunnerArgs(args: string[]): SearchOptions & { all?: boolean; indiaOnly?: boolean; delay?: number; only?: string; dork?: boolean } {
   const options: SearchOptions & { all?: boolean; indiaOnly?: boolean; delay?: number; only?: string; dork?: boolean } = {};
@@ -124,9 +125,14 @@ async function runSweep() {
     if (args.dork) {
       try {
         const dorkResult = await executeDorkSearch(args);
+        const validDorkJobs = dorkResult.jobs.filter(job => {
+          if (!isLocationIndiaOrRemote(job.location || '', job.title)) return false;
+          const score = scoreJobDescription(job.title || '', job.description || '');
+          return score.verdict !== 'REJECT';
+        });
         totalRaw += dorkResult.totalFound;
-        totalFound += dorkResult.jobs.length;
-        allDiscoveredJobs.push(...dorkResult.jobs);
+        totalFound += validDorkJobs.length;
+        allDiscoveredJobs.push(...validDorkJobs);
       } catch (err: any) {
         console.error(`❌ Dorker Search Failed: ${err.message}`);
       }

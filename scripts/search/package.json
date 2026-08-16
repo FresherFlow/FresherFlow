@@ -17,10 +17,12 @@
     "@fresherflow/types": "workspace:*",
     "@fresherflow/utils": "workspace:*",
     "@supabase/supabase-js": "^2.112.0",
+    "pg": "^8.22.0",
     "playwright": "^1.62.1"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
+    "@types/pg": "^8.20.3",
     "tsx": "^4.23.5",
     "typescript": "^5.7.3"
   }

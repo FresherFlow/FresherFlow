@@ -1,6 +1,7 @@
 import { DiscoveryState } from './state.js';
 import { normalizeUrl } from '../utils/url.js';
-import { tryFetchNativeApi } from '../core/raw-fetcher.js';
+import { PLUGIN_REGISTRY, AtsJob } from '@fresherflow/plugins';
+import { parseJobUrl } from '@fresherflow/parser';
 import { isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/domain';
 import { isJobLive } from '../core/verifier.js';
 
@@ -23,7 +24,7 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
         try {
             while (true) {
                 if (state.isTimeUp()) {
-                    console.log(`\n[Timeout] ⏱️ Exceeded 55 minutes, gracefully stopping verifier daemon.`);
+                    console.log(`\n[Timeout] ⏱️ Exceeded 85 minutes, gracefully stopping verifier daemon.`);
                     break;
                 }
                 const candidate = state.candidateQueue.shift();
@@ -40,10 +41,42 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                 console.log(`  [Verifier] Checking: ${candidate.applyLink}`);
                 
                 // ── Bronze Layer Native API Fetch ─────────────────────────────────
-                const nativeData = await tryFetchNativeApi(candidate.applyLink);
+                let nativeData: { rawPayload: any; textForFiltering: string; locationsForFiltering: string[]; company: string } | null = null;
+                const parsed = parseJobUrl(candidate.applyLink);
+                if (parsed && parsed.adapter) {
+                    const adapterKey = parsed.adapter.toLowerCase().replace('company-', '');
+                    const adapter = PLUGIN_REGISTRY[parsed.adapter.toLowerCase()] || PLUGIN_REGISTRY[adapterKey];
+                    if (adapter && typeof adapter.fetchJobDetails === 'function') {
+                        try {
+                            const details = await adapter.fetchJobDetails({
+                                applyLink: candidate.applyLink,
+                                title: candidate.aggregatorTitle || '',
+                                company: candidate.company || parsed.company,
+                                source: candidate.source,
+                                sourceType: candidate.sourceType,
+                            } as AtsJob, undefined);
+                            
+                            if (details) {
+                                const fullText = typeof details === 'string' ? details : details.text;
+                                const locations = typeof details === 'string' ? [] : (details.locations || []);
+                                const title = typeof details === 'string' ? candidate.aggregatorTitle || 'Unknown API Job' : (details.title || candidate.aggregatorTitle || 'Unknown API Job');
+                                const companyName = typeof details === 'string' ? candidate.company : (details.company || candidate.company);
+                                
+                                nativeData = {
+                                    rawPayload: { title, html: typeof details === 'string' ? '' : details.html },
+                                    textForFiltering: fullText,
+                                    locationsForFiltering: locations,
+                                    company: companyName || 'Unknown Company'
+                                };
+                            }
+                        } catch (e: any) {
+                            console.log(`  -> ⚠️ Plugin API fetch failed for ${candidate.applyLink}: ${e.message}`);
+                        }
+                    }
+                }
                 
                 if (nativeData) {
-                    console.log(`  ⚡ FAST PATH (Native API): ${candidate.applyLink}`);
+                    console.log(`  ⚡ FAST PATH (Native API via Plugin): ${candidate.applyLink}`);
                     const isIndiaRemote = nativeData.locationsForFiltering.length === 0 || 
                                           nativeData.locationsForFiltering.some(l => isLocationIndiaOrRemote(l));
                     
@@ -87,7 +120,8 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                         aggregatorUrl: candidate.aggregatorUrl,
                         aggregatorTitle: candidate.aggregatorTitle,
                         company: nativeData.company,
-                        rawPayload: nativeData.rawPayload
+                        rawPayload: nativeData.rawPayload,
+                        rawHtml: nativeData.rawPayload.html || nativeData.textForFiltering
                     });
                     continue; // Skip Playwright completely!
                 }

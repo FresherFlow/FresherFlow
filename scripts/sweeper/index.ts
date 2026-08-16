@@ -224,7 +224,21 @@ async function run() {
         const CONCURRENCY = 8;
         let checked = 0;
         
-        const activeOpps = opportunities.filter((opp) => opp.applyLink || opp.sourceLink);
+        const urlToOpps = new Map<string, FeedOpportunity[]>();
+        const activeOpps: FeedOpportunity[] = [];
+
+        for (const opp of opportunities) {
+            const url = opp.sourceLink || opp.applyLink;
+            if (!url) continue;
+            
+            const normalizedUrl = url.trim().toLowerCase();
+            if (!urlToOpps.has(normalizedUrl)) {
+                urlToOpps.set(normalizedUrl, []);
+                activeOpps.push(opp);
+            }
+            urlToOpps.get(normalizedUrl)!.push(opp);
+        }
+        const totalUniqueUrls = activeOpps.length;
 
         const worker = async () => {
             const context = await browser.newContext({
@@ -258,20 +272,23 @@ async function run() {
                             const publishedDate = new Date(opp.publishedAt);
                             const ageHours = (Date.now() - publishedDate.getTime()) / (1000 * 60 * 60);
                             if (ageHours < 24) {
-                                console.log(`[${currentChecked}/${opportunities.length}] Skipping: ${opp.title} (Age: ${Math.round(ageHours)}h, < 24h)`);
+                                console.log(`[${currentChecked}/${totalUniqueUrls}] Skipping: ${opp.title} (Age: ${Math.round(ageHours)}h, < 24h)`);
                                 continue;
                             }
                         }
                         
-                        console.log(`[${currentChecked}/${opportunities.length}] Checking: ${opp.title} @ ${opp.company}`);
+                        console.log(`[${currentChecked}/${totalUniqueUrls}] Checking: ${opp.title} @ ${opp.company}`);
                         const checkResult = await checkJob(page, targetUrl);
+                        
+                        const normalizedUrl = targetUrl.trim().toLowerCase();
+                        const duplicates = urlToOpps.get(normalizedUrl) || [opp];
                         
                         if (checkResult.status === 'expired') {
                             console.log(`❌ EXPIRED: ${opp.title}`);
-                            expiredJobs.push(opp);
+                            expiredJobs.push(...duplicates);
                         } else if (checkResult.status === 'review') {
                             console.log(`⚠️ REVIEW REQUIRED: ${opp.title}`);
-                            reviewJobs.push(opp);
+                            reviewJobs.push(...duplicates);
                         } else {
                             console.log(`✅ LIVE: ${opp.title}`);
                         }
@@ -294,7 +311,17 @@ async function run() {
         // SECOND PASS
         if (reviewJobs.length > 0) {
             console.log(`\n\n--- Starting Second Pass for ${reviewJobs.length} Review Jobs ---\n`);
-            const jobsToReview = [...reviewJobs];
+            const uniqueReviewUrls = new Set<string>();
+            const jobsToReview: FeedOpportunity[] = [];
+            for (const j of reviewJobs) {
+                const url = j.sourceLink || j.applyLink;
+                if (!url) continue;
+                const normalized = url.trim().toLowerCase();
+                if (!uniqueReviewUrls.has(normalized)) {
+                    uniqueReviewUrls.add(normalized);
+                    jobsToReview.push(j);
+                }
+            }
             reviewJobs.length = 0; // clear, we will re-push if still failed
             
             let secondPassChecked = 0;
@@ -327,12 +354,15 @@ async function run() {
                             console.log(`[Second Pass ${currentChecked}] Checking: ${opp.title} @ ${opp.company}`);
                             const checkResult = await checkJob(page, targetUrl, true);
                             
+                            const normalizedUrl = targetUrl.trim().toLowerCase();
+                            const duplicates = urlToOpps.get(normalizedUrl) || [opp];
+                            
                             if (checkResult.status === 'expired') {
                                 console.log(`❌ EXPIRED: ${opp.title}`);
-                                expiredJobs.push(opp);
+                                expiredJobs.push(...duplicates);
                             } else if (checkResult.status === 'review') {
                                 console.log(`⚠️ STILL NEEDS REVIEW: ${opp.title}`);
-                                reviewJobs.push(opp);
+                                reviewJobs.push(...duplicates);
                             } else {
                                 console.log(`✅ LIVE: ${opp.title}`);
                             }

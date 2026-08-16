@@ -1,4 +1,4 @@
-import { supabase } from '../lib/db.js';
+import { pool } from '../lib/db.js';
 import { parseJobUrl } from '@fresherflow/parser';
 import { DiscoveredJobEntry, RunStats } from '../pipeline/state.js';
 
@@ -62,7 +62,7 @@ export async function resolveAndAttachCompanies(
     jobs: DiscoveredJobEntry[],
     stats: RunStats
 ): Promise<DiscoveredJobEntry[]> {
-    if (!process.env.SUPABASE_URL || jobs.length === 0) {
+    if (!process.env.DATABASE_URL || jobs.length === 0) {
         return jobs;
     }
 
@@ -108,57 +108,50 @@ export async function resolveAndAttachCompanies(
 
             // 2. Lookup in Supabase company_ats by board_token if available
             if (!companyId && boardId) {
-                const { data: atsData } = await supabase
-                    .from('company_ats')
-                    .select('company_id')
-                    .eq('provider', providerEnum)
-                    .eq('board_token', boardId)
-                    .maybeSingle();
+                const { rows: atsData } = await pool.query(
+                    'SELECT company_id FROM company_ats WHERE provider = $1 AND board_token = $2 LIMIT 1',
+                    [providerEnum, boardId]
+                );
 
-                if (atsData?.company_id) {
-                    companyId = atsData.company_id;
+                if (atsData.length > 0) {
+                    companyId = atsData[0].company_id;
                 }
             }
 
             // 3. Lookup in Supabase companies table by slug or name if not found in company_ats
             if (!companyId) {
-                const { data: companyData } = await supabase
-                    .from('companies')
-                    .select('id')
-                    .or(`slug.eq.${slug},name.ilike.${rawName}`)
-                    .maybeSingle();
+                const { rows: companyData } = await pool.query(
+                    'SELECT id FROM companies WHERE slug = $1 OR name ILIKE $2 LIMIT 1',
+                    [slug, rawName]
+                );
 
-                if (companyData?.id) {
-                    companyId = companyData.id;
+                if (companyData.length > 0) {
+                    companyId = companyData[0].id;
                 }
             }
 
             // 4. Create new company row in companies table if still not found
             if (!companyId) {
-                const { data: newCompany, error: createError } = await supabase
-                    .from('companies')
-                    .insert({
-                        name: rawName,
-                        slug: slug,
-                        verification_status: 'UNVERIFIED',
-                        active: true
-                    })
-                    .select('id')
-                    .single();
+                try {
+                    const { rows: newCompany } = await pool.query(
+                        `INSERT INTO companies (name, slug, verification_status, active) 
+                         VALUES ($1, $2, 'UNVERIFIED', true) RETURNING id`,
+                        [rawName, slug]
+                    );
 
-                if (newCompany?.id) {
-                    companyId = newCompany.id;
-                    isNew = true;
-                } else if (createError) {
+                    if (newCompany.length > 0) {
+                        companyId = newCompany[0].id;
+                        isNew = true;
+                    }
+                } catch (createError) {
                     // Fallback: If insert failed due to duplicate slug, re-fetch
-                    const { data: fallbackCompany } = await supabase
-                        .from('companies')
-                        .select('id')
-                        .eq('slug', slug)
-                        .maybeSingle();
+                    const { rows: fallbackCompany } = await pool.query(
+                        'SELECT id FROM companies WHERE slug = $1 LIMIT 1',
+                        [slug]
+                    );
 
-                    if (fallbackCompany?.id) {
-                        companyId = fallbackCompany.id;
+                    if (fallbackCompany.length > 0) {
+                        companyId = fallbackCompany[0].id;
                     }
                 }
             }
@@ -172,18 +165,15 @@ export async function resolveAndAttachCompanies(
 
                 // Upsert company_ats row
                 try {
-                    await supabase
-                        .from('company_ats')
-                        .upsert({
-                            company_id: companyId,
-                            provider: providerEnum,
-                            board_token: boardId || null,
-                            career_url: job.applyLink,
-                            enabled: true,
-                            last_sync: new Date().toISOString(),
-                            health: 'HEALTHY',
-                            failure_count: 0
-                        }, { onConflict: 'company_id,provider' });
+                    await pool.query(
+                        `INSERT INTO company_ats (company_id, provider, board_token, career_url, enabled, last_sync, health, failure_count)
+                         VALUES ($1, $2, $3, $4, true, NOW(), 'HEALTHY', 0)
+                         ON CONFLICT (company_id, provider) DO UPDATE SET
+                         board_token = EXCLUDED.board_token,
+                         career_url = EXCLUDED.career_url,
+                         last_sync = EXCLUDED.last_sync`,
+                         [companyId, providerEnum, boardId || null, job.applyLink]
+                    );
                 } catch {
                     // Ignore ATS mapping upsert non-critical errors
                 }

@@ -1,8 +1,8 @@
-import { supabase } from '../lib/db.js';
+import { pool } from '../lib/db.js';
 import { parseJobUrl } from '@fresherflow/parser';
 
 export async function upsertJobs(jobs: any[], runId: string | null) {
-  if (!process.env.SUPABASE_URL || jobs.length === 0) return;
+  if (!process.env.DATABASE_URL || jobs.length === 0) return;
 
   const mappedJobs = jobs.map(job => {
     // Determine source and external_id
@@ -101,17 +101,45 @@ export async function upsertJobs(jobs: any[], runId: string | null) {
       const withoutExt = Array.from(withoutExtMap.values());
 
       if (withExt.length > 0) {
-        const { error } = await supabase
-          .from('discovered_jobs')
-          .upsert(withExt, { onConflict: 'source, external_id' });
-        if (error) console.error('Error upserting jobs (with external_id):', error.message);
+        for (const row of withExt) {
+          try {
+            await pool.query(
+              `INSERT INTO discovered_jobs (
+                run_id, company_id, source, source_type, company, title, location, employment_type, apply_link, external_id, fresher_score, review_required, status, updated_at, last_seen_at, department, batch_year, degree, skills, location_city, location_country, description, experience_level, experience_years, is_remote, posted_at
+              ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26
+              ) ON CONFLICT (source, external_id) DO UPDATE SET
+                updated_at = EXCLUDED.updated_at,
+                last_seen_at = EXCLUDED.last_seen_at`,
+              [
+                row.run_id, row.company_id, row.source, row.source_type, row.company, row.title, row.location, row.employment_type, row.apply_link, row.external_id, row.fresher_score, row.review_required, row.status, row.updated_at, row.last_seen_at, row.department, row.batch_year, row.degree, row.skills, row.location_city, row.location_country, row.description, row.experience_level, row.experience_years, row.is_remote, row.posted_at
+              ]
+            );
+          } catch (error: any) {
+            console.error('Error upserting jobs (with external_id):', error.message);
+          }
+        }
       }
 
       if (withoutExt.length > 0) {
-        const { error } = await supabase
-          .from('discovered_jobs')
-          .upsert(withoutExt, { onConflict: 'source, apply_link' });
-        if (error) console.error('Error upserting jobs (without external_id):', error.message);
+        for (const row of withoutExt) {
+          try {
+            await pool.query(
+              `INSERT INTO discovered_jobs (
+                run_id, company_id, source, source_type, company, title, location, employment_type, apply_link, external_id, fresher_score, review_required, status, updated_at, last_seen_at, department, batch_year, degree, skills, location_city, location_country, description, experience_level, experience_years, is_remote, posted_at
+              ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26
+              ) ON CONFLICT (source, apply_link) DO UPDATE SET
+                updated_at = EXCLUDED.updated_at,
+                last_seen_at = EXCLUDED.last_seen_at`,
+              [
+                row.run_id, row.company_id, row.source, row.source_type, row.company, row.title, row.location, row.employment_type, row.apply_link, row.external_id, row.fresher_score, row.review_required, row.status, row.updated_at, row.last_seen_at, row.department, row.batch_year, row.degree, row.skills, row.location_city, row.location_country, row.description, row.experience_level, row.experience_years, row.is_remote, row.posted_at
+              ]
+            );
+          } catch (error: any) {
+            console.error('Error upserting jobs (without external_id):', error.message);
+          }
+        }
       }
 
     } catch (err) {

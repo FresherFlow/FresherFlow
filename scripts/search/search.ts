@@ -1,9 +1,10 @@
 import { PLUGIN_REGISTRY, AtsJob } from '@fresherflow/plugins';
-import { createClient } from '@supabase/supabase-js';
+import pg from 'pg';
+const { Pool } = pg;
 import { DEFAULT_TARGETS, findTargetByCompany, loadAtsDataTargets, SearchTarget } from './search-config.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { isLocationIndiaOrRemote, isPotentialFresherJob, isFresherJob } from '@fresherflow/domain';
+import { isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/domain';
 
 // Load environment variables from root .env if not loaded
 async function loadEnv() {
@@ -68,14 +69,17 @@ export function filterStaleJobs(jobs: AtsJob[], hoursOld: number = 336): AtsJob[
  * Upsert scraped jobs into Supabase discovered_jobs table
  */
 async function saveJobsToDb(jobs: AtsJob[], target: SearchTarget): Promise<void> {
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
-  if (!url || !key) {
-    console.warn('⚠️ SUPABASE_URL or SUPABASE_KEY missing. Skipping DB save.');
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    console.warn('⚠️ DATABASE_URL missing. Skipping DB save.');
     return;
   }
 
-  const supabase = createClient(url, key, { auth: { persistSession: false } });
+  const pool = new Pool({
+    connectionString,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+  });
+
   const rows = jobs.map(job => ({
     company: target.company,
     source: target.ats,
@@ -100,14 +104,26 @@ async function saveJobsToDb(jobs: AtsJob[], target: SearchTarget): Promise<void>
     last_seen_at: new Date().toISOString()
   }));
 
-  const { error } = await supabase
-    .from('discovered_jobs')
-    .upsert(rows, { onConflict: 'source, apply_link' });
-
-  if (error) {
-    console.error(`❌ DB Upsert Error for ${target.company}:`, error.message);
-  } else {
+  try {
+    for (const row of rows) {
+      await pool.query(
+        `INSERT INTO discovered_jobs (
+          company, source, source_type, title, location, employment_type, apply_link, external_id, description, posted_at, department, experience_level, experience_years, degree, skills, location_city, location_country, batch_year, is_remote, updated_at, last_seen_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21
+        ) ON CONFLICT (source, apply_link) DO UPDATE SET
+          updated_at = EXCLUDED.updated_at,
+          last_seen_at = EXCLUDED.last_seen_at`,
+        [
+          row.company, row.source, row.source_type, row.title, row.location, row.employment_type, row.apply_link, row.external_id, row.description, row.posted_at, row.department, row.experience_level, row.experience_years, row.degree, row.skills, row.location_city, row.location_country, row.batch_year, row.is_remote, row.updated_at, row.last_seen_at
+        ]
+      );
+    }
     console.log(`✅ Saved ${rows.length} jobs to database for ${target.company}`);
+  } catch (error: any) {
+    console.error(`❌ DB Upsert Error for ${target.company}:`, error.message);
+  } finally {
+    await pool.end();
   }
 }
 
@@ -149,21 +165,49 @@ export async function executeSearch(target: SearchTarget, options: SearchOptions
     const capped = freshJobs.slice(0, resultsWanted);
 
     // Filter for Indian / Remote and Potential Fresher roles across all job categories
-    const relevantJobs = capped.filter(job => {
+    const relevantJobs: AtsJob[] = [];
+    let intelligenceRejects = 0;
+    
+    for (const job of capped) {
       if (!isLocationIndiaOrRemote(job.location || '', job.title)) {
         if (options.dryRun) console.log(`       [Reject: Location] ${job.title} [Loc: ${job.location || 'No Loc'}]`);
-        return false;
+        continue;
       }
-      if (!isPotentialFresherJob(job.title || '')) {
-        if (options.dryRun) console.log(`       [Reject: Senior Title] ${job.title} [Loc: ${job.location || 'No Loc'}]`);
-        return false;
+      
+      // 1. Initial Intelligence check on Title (Fast Path)
+      let score = scoreJobDescription(job.title || '', job.description || '');
+      if (score.verdict === 'REJECT') {
+        if (options.dryRun) console.log(`       [Reject: Intelligence (Title)] ${job.title} [Rule: ${score.metadata.blockingRule || 'Low Score'}]`);
+        intelligenceRejects++;
+        continue;
       }
-      if (job.description && !isFresherJob(job.description)) {
-        if (options.dryRun) console.log(`       [Reject: Exp Requirement] ${job.title} [Loc: ${job.location || 'No Loc'}]`);
-        return false;
+
+      // 2. Deep Intelligence check on Full Description (Slow Path)
+      // This brings the job-discovery bot's "verifier" intelligence to the search bot.
+      if (typeof adapter.fetchJobDetails === 'function' && !job.description) {
+        try {
+          // Note: native ATS API adapters do not need a browser 'page'.
+          // Adapters that require a browser will safely catch the undefined page and return undefined.
+          const details = await adapter.fetchJobDetails(job, undefined);
+          if (details) {
+            const fullText = typeof details === 'string' ? details : details.text;
+            job.description = fullText;
+            
+            // Re-score with the full description text to catch "5+ years experience" etc.
+            score = scoreJobDescription(job.title || '', fullText);
+            if (score.verdict === 'REJECT') {
+              if (options.dryRun) console.log(`       [Reject: Intelligence (Deep)] ${job.title} [Rule: ${score.metadata.blockingRule || 'Low Score'}]`);
+              intelligenceRejects++;
+              continue;
+            }
+          }
+        } catch (e: any) {
+           // Silently fallback if deep fetch fails without Playwright
+        }
       }
-      return true;
-    });
+
+      relevantJobs.push(job);
+    }
 
     const filteredOutCount = capped.length - relevantJobs.length;
     if (filteredOutCount > 0) {

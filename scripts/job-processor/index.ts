@@ -191,12 +191,9 @@ async function run(): Promise<void> {
             const ids = rows.map(r => r.id);
             if (ids.length > 0) {
                 // Using dynamic import of supabase to bulk update
-                const { createClient } = await import('@supabase/supabase-js');
-                const sbUrl = process.env.SUPABASE_URL || process.env.SUPABASE_DISCOVERY_URL;
-                const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-                if (sbUrl && sbKey) {
-                    const sb = createClient(sbUrl, sbKey, { auth: { persistSession: false } });
-                    await sb.from('discovered_jobs').update({ status: 'PROCESSING' }).in('id', ids);
+                const { pool } = await import('./src/db-source.js');
+                if (pool) {
+                    await pool.query(`UPDATE discovered_jobs SET status = 'PROCESSING' WHERE id = ANY($1)`, [ids]);
                 }
             }
 

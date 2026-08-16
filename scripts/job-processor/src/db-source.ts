@@ -28,7 +28,7 @@ const connectionString =
   process.env.STAGING_DATABASE_URL ||
   process.env.DATABASE_URL;
 
-const pool = new Pool({
+export const pool = new Pool({
   connectionString,
   ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
 });
