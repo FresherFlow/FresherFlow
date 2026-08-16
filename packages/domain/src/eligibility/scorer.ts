@@ -173,7 +173,7 @@ export function evaluateExperience(sectionType: SectionType, text: string): { co
     }
 
     // Blocker / Strong Negative: 1+ years, 2+ years, 3+ years...
-    const plusExpRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:(?:(?:\b[1-9]\b|\b\d{2,}\b)\s*\+\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z',-]+\s+){0,5}(?:experience|building|working|developing|engineering|leading|managing))|(?:(?:experience|exp|requires?|requiring|minimum|min)[^a-z0-9]{1,4}(?:\b[1-9]\b|\b\d{2,}\b)\s*\+\s*(?:years?|yrs?|y\b)))/gi;
+    const plusExpRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:(?:(?:\b[1-9]\b|\b\d{2,}\b)\s*\+\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z',-]+\s+){0,5}(?:experience|building|working|developing|engineering|leading|managing|required|preferred|mandatory|minimum|min))|(?:(?:experience|exp|requires?|requiring|minimum|min)[^a-z0-9]{1,4}(?:\b[1-9]\b|\b\d{2,}\b)\s*\+\s*(?:years?|yrs?|y\b)))/gi;
     while ((match = plusExpRegex.exec(lowerText)) !== null) {
         if (sectionType === 'ABOUT_COMPANY' || sectionType === 'BENEFITS') continue;
         
@@ -198,7 +198,7 @@ export function evaluateExperience(sectionType: SectionType, text: string): { co
     }
 
     // Blocker / Strong Negative: Required Seniority (e.g., minimum 1 year)
-    const minExpRegex = /\b(?:minimum|min|at least|requires?|requiring)\s*(?:of\s+)?(?:\b[1-9]\b|\b\d{2,}\b)\s*(?:years?|yrs?|y\b)/gi;
+    const minExpRegex = /\b(?:(?:minimum|min|at least|requires?|requiring)\s*(?:of\s+)?(?:\b[1-9]\b|\b\d{2,}\b)\s*(?:years?|yrs?|y\b))|(?:(?:\b[1-9]\b|\b\d{2,}\b)\s*(?:years?|yrs?|y\b)\s*(?:minimum|min|at least|required|requiring|mandatory)\b)/gi;
     while ((match = minExpRegex.exec(lowerText)) !== null) {
         if (sectionType === 'ABOUT_COMPANY' || sectionType === 'BENEFITS') continue;
         

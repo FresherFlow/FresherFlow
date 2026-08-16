@@ -1,4 +1,4 @@
-import { State, City, Country } from 'country-state-city';
+import { State, City, Country } from '@fresherflow/constants';
 
 // Pre-compute sets of valid Indian cities and states (lowercase for case-insensitive matching)
 const INDIAN_STATES = new Set((State.getStatesOfCountry('IN') || []).map(s => s.name.toLowerCase()));
@@ -26,8 +26,12 @@ FOREIGN_COUNTRIES.push('us', 'usa', 'uk', 'dubai', 'uae', 'emea', 'americas', 'a
 const foreignCountriesPattern = FOREIGN_COUNTRIES.map(c => c.replace(/([.*+?^=!:${}()|[\]/\\-])/g, "\\$1")).join('|');
 const foreignMegaRegex = new RegExp(`\\b(${foreignCountriesPattern})\\b`, 'i');
 
-// Major foreign cities and states/regions that might bypass country checks
-const foreignCitiesRegex = /\b(london|berlin|paris|amsterdam|san francisco|seattle|boston|chicago|toronto|sydney|melbourne|dublin|kuala lumpur|taiwan|taipei|manila|bangkok|seoul|cape town|stockholm|tokyo|singapore|hong kong|beijing|shanghai|jakarta|osaka|madrid|rome|vienna|lisbon|helsinki|oslo|california|texas|new york|florida|sf|nyc|sao paulo|saopaulo|buenos aires|johannesburg|nairobi|cairo|vancouver|montreal|calgary|zurich|geneva|brussels|munich|nashville|nashvile|dallas|austin|atlanta|charlotte|denver|phoenix|miami|orlando|detroit|philadelphia|minneapolis|portland|washington)\b/i;
+// Use the package to get all foreign states for accurate location filtering
+const FOREIGN_STATES_SET = new Set(
+    (State.getAllStates() || [])
+        .filter(s => s.countryCode !== 'IN')
+        .map(s => s.name.toLowerCase())
+);
 
 export function isPotentialFresherJob(title: string): boolean {
     if (!title) return false;
@@ -71,7 +75,7 @@ export function isPotentialFresherJob(title: string): boolean {
 
 export function isLocationIndiaOrRemote(location: string, title?: string): boolean {
     const titleLower = (title || '').toLowerCase();
-    if (titleLower && (foreignMegaRegex.test(titleLower) || foreignCitiesRegex.test(titleLower))) {
+    if (titleLower && foreignMegaRegex.test(titleLower)) {
         if (!titleLower.includes('india') && !/\b(in|ind)\b/i.test(titleLower) && !titleLower.includes('remote india')) {
             return false;
         }
@@ -81,13 +85,38 @@ export function isLocationIndiaOrRemote(location: string, title?: string): boole
     if (!location || location.trim() === '') return true;
     const loc = location.toLowerCase();
 
-    if (foreignMegaRegex.test(loc) || foreignCitiesRegex.test(loc)) {
+    // 1. Strict Foreign Matching: Countries, specific cities, and ALL foreign states
+    if (foreignMegaRegex.test(loc)) {
         if (!loc.includes('india') && !/\bin\b/i.test(loc)) {
             return false;
         }
     }
 
+    // 2. Tokenize and check against foreign states
     const words = loc.split(/[^\w]+/);
+    
+    // Check for foreign states first (up to 3 words)
+    for (let i = 0; i < words.length; i++) {
+        if (!words[i]) continue;
+        
+        if (FOREIGN_STATES_SET.has(words[i]) && !INDIAN_CITIES.has(words[i]) && !INDIAN_STATES.has(words[i])) {
+            return false;
+        }
+        if (i < words.length - 1) {
+            const twoWords = words[i] + ' ' + words[i+1];
+            if (FOREIGN_STATES_SET.has(twoWords) && !INDIAN_CITIES.has(twoWords) && !INDIAN_STATES.has(twoWords)) {
+                return false;
+            }
+        }
+        if (i < words.length - 2) {
+            const threeWords = words[i] + ' ' + words[i+1] + ' ' + words[i+2];
+            if (FOREIGN_STATES_SET.has(threeWords) && !INDIAN_CITIES.has(threeWords) && !INDIAN_STATES.has(threeWords)) {
+                return false;
+            }
+        }
+    }
+
+    // 3. Check against Indian cities and states
     for (let i = 0; i < words.length; i++) {
         if (!words[i]) continue;
         
@@ -127,45 +156,3 @@ export function isLocationIndiaOrRemote(location: string, title?: string): boole
     return false;
 }
 
-/**
- * Strictly verify that a job title or department belongs to technology / engineering / data / product / IT.
- */
-export function isTechJob(title: string, department?: string): boolean {
-    const textLower = `${title} ${department || ''}`.toLowerCase();
-
-    const NON_TECH_KEYWORDS = [
-        'sales', 'account executive', 'business development', 'buyer', 'merchandiser', 'procurement',
-        'recruiter', 'recruiting', 'talent acquisition', 'human resources', 'hr generalist', 'hr specialist',
-        'accountant', 'accounting', 'tax', 'auditor', 'bookkeeper', 'counsel', 'attorney', 'paralegal', 'legal',
-        'facilities', 'facility', 'security guard', 'receptionist', 'executive assistant', 'administrative assistant',
-        'driver', 'warehouse', 'clerk', 'customer service', 'customer support', 'content associate',
-        'social media', 'copywriter', 'brand manager', 'pr manager', 'payroll', 'claims', 'underwriter',
-        'risk management', 'editorial', 'medical', 'nursing', 'clinical', 'supply chain', 'logistics'
-    ];
-
-    for (const kw of NON_TECH_KEYWORDS) {
-        const regex = new RegExp(`\\b${kw}\\b`, 'i');
-        if (regex.test(textLower)) {
-            return false;
-        }
-    }
-
-    const TECH_KEYWORDS = [
-        'software', 'engineer', 'engineering', 'developer', 'programmer', 'data', 'analytics', 'analyst',
-        'science', 'scientist', 'machine learning', 'ai', 'ml', 'qa', 'test', 'testing', 'sdet', 'devops',
-        'cloud', 'infrastructure', 'security', 'cyber', 'network', 'systems', 'it', 'information technology',
-        'product', 'designer', 'ui', 'ux', 'frontend', 'backend', 'fullstack', 'full-stack', 'mobile',
-        'ios', 'android', 'web', 'embedded', 'firmware', 'hardware', 'technical', 'tech', 'platform',
-        'automation', 'site reliability', 'sre', 'database', 'dba', 'computer', 'application', 'apps',
-        'intern', 'internship', 'trainee', 'apprentice', 'graduate'
-    ];
-
-    for (const kw of TECH_KEYWORDS) {
-        const regex = new RegExp(`\\b${kw}\\b`, 'i');
-        if (regex.test(textLower)) {
-            return true;
-        }
-    }
-
-    return false;
-}

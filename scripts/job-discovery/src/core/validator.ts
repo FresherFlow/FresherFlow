@@ -1,4 +1,4 @@
-import { City } from 'country-state-city';
+import { City } from '@fresherflow/constants';
 import { EnrichedJobPayload } from './enricher-schema.js';
 import { EducationLevel, SalaryPeriod } from '@fresherflow/types';
 

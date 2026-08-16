@@ -10,6 +10,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@fresherflow/constants": "workspace:^",
     "@fresherflow/types": "workspace:*",
     "axios": "^1.7.9",
     "cheerio": "^1.2.0",

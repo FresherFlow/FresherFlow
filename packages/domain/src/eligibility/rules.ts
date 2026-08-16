@@ -7,7 +7,7 @@ import {
     normalizeSpecializationName,
     normalizeAcademicToken
 } from './academic-normalization.js';
-import { normalizeSkillList } from '@fresherflow/constants';
+import { normalizeSkillList, getStateForCity } from '@fresherflow/constants';
 
 export interface EligibilityRule {
     name: string;
@@ -355,9 +355,18 @@ export const stateResidencyRule: EligibilityRule = {
 
         return locations.some(loc => {
             const locNormalized = loc.trim().toLowerCase();
-            return locNormalized === homeStateNormalized || 
-                   locNormalized.includes(homeStateNormalized) || 
-                   homeStateNormalized.includes(locNormalized);
+            if (locNormalized === homeStateNormalized || 
+                locNormalized.includes(homeStateNormalized) || 
+                homeStateNormalized.includes(locNormalized)) {
+                return true;
+            }
+
+            const resolvedState = getStateForCity(locNormalized);
+            if (resolvedState && resolvedState.toLowerCase() === homeStateNormalized) {
+                return true;
+            }
+
+            return false;
         });
     },
     getReason: (opp, profile) => {

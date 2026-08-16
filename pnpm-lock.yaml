@@ -11,9 +11,6 @@ importers:
 
   .:
     dependencies:
-      country-state-city:
-        specifier: ^3.2.1
-        version: 3.2.1
       expo:
         specifier: ~57.0.9
         version: 57.0.10(@babel/core@7.25.2)(@expo/dom-webview@57.0.1)(react-dom@19.2.8(react@19.2.8))(react-native-web@0.21.2(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-native-worklets@0.11.3(@babel/core@7.25.2)(@react-native/metro-config@0.86.2(@babel/core@7.25.2))(react-native@0.86.2(@babel/core@7.25.2)(@react-native/jest-preset@0.86.2(@babel/core@7.25.2)(react@19.2.8))(@react-native/metro-config@0.86.2(@babel/core@7.25.2))(@types/react@19.2.18)(react@19.2.8))(react@19.2.8))(react-native@0.86.2(@babel/core@7.25.2)(@react-native/jest-preset@0.86.2(@babel/core@7.25.2)(react@19.2.8))(@react-native/metro-config@0.86.2(@babel/core@7.25.2))(@types/react@19.2.18)(react@19.2.8))(react@19.2.8)(typescript@5.7.3)
@@ -358,9 +355,6 @@ importers:
       cors:
         specifier: ^2.8.6
         version: 2.8.6
-      country-state-city:
-        specifier: ^3.2.1
-        version: 3.2.1
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
@@ -1126,6 +1120,9 @@ importers:
       '@fresherflow/types':
         specifier: ^1.0.0
         version: link:../types
+      country-state-city:
+        specifier: ^3.2.1
+        version: 3.2.1
     devDependencies:
       eslint:
         specifier: ^9.14.0
@@ -1180,7 +1177,7 @@ importers:
   packages/domain:
     dependencies:
       '@fresherflow/constants':
-        specifier: ^1.0.0
+        specifier: workspace:^
         version: link:../constants
       '@fresherflow/logger':
         specifier: ^1.0.0
@@ -1191,9 +1188,6 @@ importers:
       '@fresherflow/utils':
         specifier: ^1.0.0
         version: link:../utils
-      country-state-city:
-        specifier: ^3.2.1
-        version: 3.2.1
     devDependencies:
       '@types/node':
         specifier: ^22.10.2
@@ -1273,7 +1267,7 @@ importers:
   packages/parser:
     dependencies:
       '@fresherflow/constants':
-        specifier: ^1.0.0
+        specifier: workspace:^
         version: link:../constants
       '@fresherflow/domain':
         specifier: ^1.0.0
@@ -1290,9 +1284,6 @@ importers:
       compromise:
         specifier: ^14.16.0
         version: 14.16.0
-      country-state-city:
-        specifier: ^3.2.1
-        version: 3.2.1
       natural:
         specifier: ^8.1.1
         version: 8.1.1(@opentelemetry/api@1.9.1)(socks@2.8.9)
@@ -1324,6 +1315,9 @@ importers:
 
   packages/plugins:
     dependencies:
+      '@fresherflow/constants':
+        specifier: workspace:^
+        version: link:../constants
       '@fresherflow/types':
         specifier: workspace:*
         version: link:../types
@@ -1584,9 +1578,6 @@ importers:
       compromise:
         specifier: ^14.16.0
         version: 14.16.0
-      country-state-city:
-        specifier: ^3.2.1
-        version: 3.2.1
       natural:
         specifier: ^8.1.1
         version: 8.1.1(@opentelemetry/api@1.9.1)(socks@2.8.9)
@@ -1612,6 +1603,9 @@ importers:
 
   scripts/job-discovery:
     dependencies:
+      '@fresherflow/constants':
+        specifier: workspace:^
+        version: link:../../packages/constants
       '@fresherflow/parser':
         specifier: workspace:*
         version: link:../../packages/parser
@@ -1624,9 +1618,6 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.112.0
         version: 2.112.0(@opentelemetry/api@1.9.1)
-      country-state-city:
-        specifier: ^3.2.1
-        version: 3.2.1
       playwright:
         specifier: ^1.62.1
         version: 1.62.1
@@ -17202,7 +17193,7 @@ snapshots:
     dependencies:
       nanoid: 3.3.17
 
-  '@redis/bloom@5.12.1(@redis/client@5.12.1)':
+  '@redis/bloom@5.12.1(@redis/client@5.12.1(@opentelemetry/api@1.9.1))':
     dependencies:
       '@redis/client': 5.12.1(@opentelemetry/api@1.9.1)
 
@@ -17212,15 +17203,15 @@ snapshots:
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
 
-  '@redis/json@5.12.1(@redis/client@5.12.1)':
+  '@redis/json@5.12.1(@redis/client@5.12.1(@opentelemetry/api@1.9.1))':
     dependencies:
       '@redis/client': 5.12.1(@opentelemetry/api@1.9.1)
 
-  '@redis/search@5.12.1(@redis/client@5.12.1)':
+  '@redis/search@5.12.1(@redis/client@5.12.1(@opentelemetry/api@1.9.1))':
     dependencies:
       '@redis/client': 5.12.1(@opentelemetry/api@1.9.1)
 
-  '@redis/time-series@5.12.1(@redis/client@5.12.1)':
+  '@redis/time-series@5.12.1(@redis/client@5.12.1(@opentelemetry/api@1.9.1))':
     dependencies:
       '@redis/client': 5.12.1(@opentelemetry/api@1.9.1)
 
@@ -24823,11 +24814,11 @@ snapshots:
 
   redis@5.12.1(@opentelemetry/api@1.9.1):
     dependencies:
-      '@redis/bloom': 5.12.1(@redis/client@5.12.1)
+      '@redis/bloom': 5.12.1(@redis/client@5.12.1(@opentelemetry/api@1.9.1))
       '@redis/client': 5.12.1(@opentelemetry/api@1.9.1)
-      '@redis/json': 5.12.1(@redis/client@5.12.1)
-      '@redis/search': 5.12.1(@redis/client@5.12.1)
-      '@redis/time-series': 5.12.1(@redis/client@5.12.1)
+      '@redis/json': 5.12.1(@redis/client@5.12.1(@opentelemetry/api@1.9.1))
+      '@redis/search': 5.12.1(@redis/client@5.12.1(@opentelemetry/api@1.9.1))
+      '@redis/time-series': 5.12.1(@redis/client@5.12.1(@opentelemetry/api@1.9.1))
     transitivePeerDependencies:
       - '@node-rs/xxhash'
       - '@opentelemetry/api'

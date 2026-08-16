@@ -81,7 +81,6 @@
     "ios": "expo run:ios"
   },
   "dependencies": {
-    "country-state-city": "^3.2.1",
     "expo": "~57.0.9",
     "react": "19.2.8",
     "react-native": "0.86.2",

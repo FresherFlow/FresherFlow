@@ -5,33 +5,14 @@
  * Derived structures are dynamically built at load time to prevent duplication.
  */
 
-export const CITIES_METADATA_FALLBACK: Record<string, string[]> = {
-  "Karnataka": ["Bengaluru", "Mysore", "Mangalore", "Hubli", "Belgaum"],
-  "Maharashtra": ["Mumbai", "Pune", "Nagpur", "Nashik", "Aurangabad", "Thane", "Kolhapur", "Solapur", "Malegaon", "Nanded"],
-  "Delhi NCR": ["Delhi", "Noida", "Gurugram", "Faridabad", "Ghaziabad"],
-  "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai", "Salem", "Tiruchirappalli", "Tirunelveli", "Tiruppur"],
-  "Telangana": ["Hyderabad", "Warangal"],
-  "West Bengal": ["Kolkata", "Durgapur", "Burdwan"],
-  "Gujarat": ["Ahmedabad", "Surat", "Vadodara"],
-  "Uttar Pradesh": ["Lucknow", "Agra", "Aligarh", "Bareilly", "Gorakhpur", "Jhansi", "Kanpur", "Mathura", "Meerut", "Moradabad", "Muzaffarnagar", "Varanasi"],
-  "Punjab": ["Chandigarh", "Amritsar", "Jalandhar"],
-  "Haryana": ["Panipat", "Yamunanagar"],
-  "Kerala": ["Kochi", "Calicut", "Thiruvananthapuram"],
-  "Madhya Pradesh": ["Indore", "Bhopal", "Gwalior", "Ujjain"],
-  "Andhra Pradesh": ["Visakhapatnam", "Kurnool", "Vijayawada", "Chirala"],
-  "Rajasthan": ["Jaipur", "Jodhpur", "Udaipur", "Bikaner", "Ajmer", "Pali"],
-  "Goa": ["Goa"],
-  "Assam": ["Guwahati"],
-  "Bihar": ["Patna", "Gaya"],
-  "Chhattisgarh": ["Raipur", "Bhilai"],
-  "Uttarakhand": ["Dehradun", "Haridwar"],
-  "Jharkhand": ["Jamshedpur", "Dhanbad"],
-  "Jammu & Kashmir": ["Srinagar"],
-  "Odisha": ["Bhubaneswar", "Cuttack"]
-};
+import { State, City, Country } from 'country-state-city';
+export { State, City, Country };
+
+const indianStatesData = State.getStatesOfCountry('IN');
+const indianCitiesData = City.getCitiesOfCountry('IN') || [];
 
 // 1. Dynamically derived list of states
-export const INDIAN_STATES: string[] = Object.keys(CITIES_METADATA_FALLBACK);
+export const INDIAN_STATES: string[] = indianStatesData.map(s => s.name);
 
 // 2. Dynamically derived set of lowercase states for fast matching
 export const STATE_ALIASES: Set<string> = new Set(
@@ -39,16 +20,22 @@ export const STATE_ALIASES: Set<string> = new Set(
 );
 
 // 3. Dynamically derived flat list of all cities sorted alphabetically
-export const INDIAN_CITIES: string[] = Object.values(CITIES_METADATA_FALLBACK)
-  .flat()
-  .sort();
+export const INDIAN_CITIES: string[] = indianCitiesData.map(c => c.name).sort();
 
 // 4. Dynamically derived mapping of lowercase city name -> State name
 export const CITY_TO_STATE: Record<string, string> = {};
+export const CITIES_METADATA_FALLBACK: Record<string, string[]> = {};
 
-for (const [state, cities] of Object.entries(CITIES_METADATA_FALLBACK)) {
-  for (const city of cities) {
-    CITY_TO_STATE[city.toLowerCase()] = state;
+const stateCodeToName: Record<string, string> = {};
+for (const state of indianStatesData) {
+  stateCodeToName[state.isoCode] = state.name;
+  CITIES_METADATA_FALLBACK[state.name] = [];
+}
+for (const city of indianCitiesData) {
+  const stateName = stateCodeToName[city.stateCode];
+  if (stateName) {
+    CITY_TO_STATE[city.name.toLowerCase()] = stateName;
+    CITIES_METADATA_FALLBACK[stateName].push(city.name);
   }
 }
 

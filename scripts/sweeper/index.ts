@@ -1,7 +1,7 @@
 import { chromium, Page } from 'playwright';
 
 // Shared utilities — canonical source lives in job-discovery/src
-import { signUrl } from '../job-discovery/src/utils/url.js';
+import { signUrl, normalizeUrl } from '../job-discovery/src/utils/url.js';
 import { EXPIRED_REGEXES, loadEnv } from '../job-discovery/src/config.js';
 import { sendTelegramMessage } from '@fresherflow/utils';
 
@@ -231,7 +231,7 @@ async function run() {
             const url = opp.sourceLink || opp.applyLink;
             if (!url) continue;
             
-            const normalizedUrl = url.trim().toLowerCase();
+            const normalizedUrl = normalizeUrl(url);
             if (!urlToOpps.has(normalizedUrl)) {
                 urlToOpps.set(normalizedUrl, []);
                 activeOpps.push(opp);
@@ -278,9 +278,24 @@ async function run() {
                         }
                         
                         console.log(`[${currentChecked}/${totalUniqueUrls}] Checking: ${opp.title} @ ${opp.company}`);
-                        const checkResult = await checkJob(page, targetUrl);
                         
-                        const normalizedUrl = targetUrl.trim().toLowerCase();
+                        let checkResult: SweeperCheckResult = { status: 'review' };
+                        try {
+                            checkResult = await Promise.race([
+                                checkJob(page, targetUrl),
+                                new Promise<SweeperCheckResult>((_, reject) => setTimeout(() => reject(new Error('HARD_TIMEOUT')), 45000))
+                            ]);
+                        } catch (err: any) {
+                            if (err.message === 'HARD_TIMEOUT') {
+                                console.log(`  -> ⚠️ Hard timeout (stuck for 45s) for ${targetUrl}. Marking for review.`);
+                                // If the page is completely frozen, we should ideally recreate it.
+                                // However, Playwright pages usually recover from timeouts if navigation is aborted.
+                            } else {
+                                console.log(`  -> ⚠️ Unexpected error: ${err.message}`);
+                            }
+                        }
+                        
+                        const normalizedUrl = normalizeUrl(targetUrl);
                         const duplicates = urlToOpps.get(normalizedUrl) || [opp];
                         
                         if (checkResult.status === 'expired') {
@@ -316,7 +331,7 @@ async function run() {
             for (const j of reviewJobs) {
                 const url = j.sourceLink || j.applyLink;
                 if (!url) continue;
-                const normalized = url.trim().toLowerCase();
+                const normalized = normalizeUrl(url);
                 if (!uniqueReviewUrls.has(normalized)) {
                     uniqueReviewUrls.add(normalized);
                     jobsToReview.push(j);
@@ -352,9 +367,21 @@ async function run() {
                             if (!targetUrl) continue;
 
                             console.log(`[Second Pass ${currentChecked}] Checking: ${opp.title} @ ${opp.company}`);
-                            const checkResult = await checkJob(page, targetUrl, true);
+                            let checkResult: SweeperCheckResult = { status: 'review' };
+                            try {
+                                checkResult = await Promise.race([
+                                    checkJob(page, targetUrl, true),
+                                    new Promise<SweeperCheckResult>((_, reject) => setTimeout(() => reject(new Error('HARD_TIMEOUT')), 60000))
+                                ]);
+                            } catch (err: any) {
+                                if (err.message === 'HARD_TIMEOUT') {
+                                    console.log(`  -> ⚠️ Hard timeout (stuck for 60s) for ${targetUrl}. Marking for review.`);
+                                } else {
+                                    console.log(`  -> ⚠️ Unexpected error: ${err.message}`);
+                                }
+                            }
                             
-                            const normalizedUrl = targetUrl.trim().toLowerCase();
+                            const normalizedUrl = normalizeUrl(targetUrl);
                             const duplicates = urlToOpps.get(normalizedUrl) || [opp];
                             
                             if (checkResult.status === 'expired') {

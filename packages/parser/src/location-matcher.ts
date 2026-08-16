@@ -1,4 +1,4 @@
-import { State, City } from 'country-state-city';
+import { State, City } from '@fresherflow/constants';
 import { StructuredLocation } from '@fresherflow/types';
 import { CITY_TO_STATE, isStateName } from '@fresherflow/constants';
 

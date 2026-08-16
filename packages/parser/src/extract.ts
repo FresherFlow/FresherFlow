@@ -5,7 +5,7 @@
 import { OpportunityType, WorkMode } from '@fresherflow/types';
 import nlp from 'compromise';
 import natural from 'natural';
-import { City } from 'country-state-city';
+import { City } from '@fresherflow/constants';
 import {
     COMMON_SKILLS, COMMON_CITIES, KNOWN_COMPANIES, TITLE_KEYWORDS,
     STOP_WORDS, GENERIC_TITLES,

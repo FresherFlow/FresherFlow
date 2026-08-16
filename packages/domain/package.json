@@ -22,11 +22,10 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@fresherflow/constants": "^1.0.0",
+    "@fresherflow/constants": "workspace:^",
     "@fresherflow/logger": "^1.0.0",
     "@fresherflow/types": "^1.0.0",
-    "@fresherflow/utils": "^1.0.0",
-    "country-state-city": "^3.2.1"
+    "@fresherflow/utils": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

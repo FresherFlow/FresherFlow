@@ -230,23 +230,38 @@ export async function fetchSmartRecruitersDetails(applyLink: string): Promise<an
     }
 }
 
-export async function fetchWorkdayDetails(applyLink: string, page: any): Promise<any> {
+export async function fetchWorkdayDetails(applyLink: string, page?: any): Promise<any> {
     try {
-        await page.goto(applyLink, { waitUntil: 'domcontentloaded', timeout: 45000 });
-        await page.waitForTimeout(3000);
+        const urlObj = new URL(applyLink);
+        const parts = urlObj.pathname.split('/').filter(Boolean);
+        if (parts.length < 2) return undefined;
 
-        const title = await page.locator('[data-automation-id="jobPostingHeader"]').innerText().catch(() => '');
-        const company = await page.locator('[data-automation-id="company-name"]').innerText().catch(() => '');
-        const locationEl = await page.locator('[data-automation-id="locations"]').allInnerTexts().catch(() => [] as string[]);
-        const html = await page.locator('[data-automation-id="jobPostingDescription"]').innerHTML().catch(() => '');
+        // E.g., motorolasolutions.wd5.myworkdayjobs.com
+        const companyDomain = urlObj.hostname.split('.')[0];
+        const site = parts[0]; 
+        
+        // Remove the site part to get the external path, e.g., /job/Illinois-Remote-Work/Field-Engineer_R67664
+        const externalPath = '/' + parts.slice(1).join('/');
+        
+        const apiUrl = `https://${urlObj.hostname}/wday/cxs/${companyDomain}/${site}${externalPath}`;
 
-        if (!title && !html) return undefined;
+        const data = await fetchJson<any>(apiUrl);
+        if (!data || !data.jobPostingInfo) return undefined;
+        
+        const info = data.jobPostingInfo;
+        const title = info.title || '';
+        const company = data.hiringOrganization?.name || '';
+        const locations = [];
+        if (info.location) locations.push(info.location);
+        if (info.additionalLocations) locations.push(...info.additionalLocations);
+        
+        const html = info.jobDescription || '';
 
         return {
             title: title.trim(),
             html,
             text: stripHtml(html),
-            locations: locationEl.map((l: string) => l.trim()).filter(Boolean),
+            locations: locations.map((l: string) => l.trim()).filter(Boolean),
             company: company.trim()
         };
     } catch (e: any) {
@@ -255,7 +270,8 @@ export async function fetchWorkdayDetails(applyLink: string, page: any): Promise
     }
 }
 
-export async function fetchOracleDetails(applyLink: string, page: any): Promise<any> {
+export async function fetchOracleDetails(applyLink: string, page?: any): Promise<any> {
+    if (!page) return undefined;
     try {
         await page.goto(applyLink, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await page.waitForTimeout(4000);
@@ -297,7 +313,8 @@ export async function fetchOracleDetails(applyLink: string, page: any): Promise<
     }
 }
 
-export async function fetchICimsDetails(applyLink: string, page: any): Promise<any> {
+export async function fetchICimsDetails(applyLink: string, page?: any): Promise<any> {
+    if (!page) return undefined;
     try {
         await page.goto(applyLink, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await page.waitForTimeout(2000);
@@ -321,7 +338,8 @@ export async function fetchICimsDetails(applyLink: string, page: any): Promise<a
     }
 }
 
-export async function fetchSuccessFactorsDetails(applyLink: string, page: any): Promise<any> {
+export async function fetchSuccessFactorsDetails(applyLink: string, page?: any): Promise<any> {
+    if (!page) return undefined;
     try {
         await page.goto(applyLink, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await page.waitForTimeout(3000);
@@ -345,7 +363,8 @@ export async function fetchSuccessFactorsDetails(applyLink: string, page: any): 
     }
 }
 
-export async function fetchPhenomDetails(applyLink: string, page: any): Promise<any> {
+export async function fetchPhenomDetails(applyLink: string, page?: any): Promise<any> {
+    if (!page) return undefined;
     try {
         await page.goto(applyLink, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await page.waitForTimeout(3000);
@@ -369,7 +388,8 @@ export async function fetchPhenomDetails(applyLink: string, page: any): Promise<
     }
 }
 
-export async function fetchDarwinboxDetails(applyLink: string, page: any): Promise<any> {
+export async function fetchDarwinboxDetails(applyLink: string, page?: any): Promise<any> {
+    if (!page) return undefined;
     try {
         await page.goto(applyLink, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await page.waitForTimeout(2000);

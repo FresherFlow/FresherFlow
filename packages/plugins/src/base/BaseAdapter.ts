@@ -375,6 +375,13 @@ export function toAtsJob(
         companyAddresses: job.companyAddresses || undefined,
         bannerPhotoUrl: job.bannerPhotoUrl || undefined,
         location: locStr || undefined,
+        parsedLocation: job.location && typeof job.location === 'object' ? {
+            raw: job.location.raw || locStr || '',
+            country: job.location.country,
+            city: job.location.city,
+            region: job.location.state || job.location.region,
+            remote: job.isRemote ?? false
+        } : undefined,
         workFromHomeType: job.workFromHomeType || (job.isRemote ? 'Remote' : undefined),
         isRemote: job.isRemote ?? undefined,
         description: job.description || undefined,

@@ -5,7 +5,6 @@ import { DEFAULT_TARGETS, findTargetByCompany, loadAtsDataTargets, SearchTarget 
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/domain';
-
 // Load environment variables from root .env if not loaded
 async function loadEnv() {
   const envPath = path.resolve(process.cwd(), '../../.env');
@@ -169,8 +168,17 @@ export async function executeSearch(target: SearchTarget, options: SearchOptions
     let intelligenceRejects = 0;
     
     for (const job of capped) {
+      // Fast fail if parsedLocation indicates non-India foreign country
+      if (job.parsedLocation?.country && !job.parsedLocation.country.toLowerCase().includes('india') && job.parsedLocation.country.toLowerCase() !== 'in') {
+         // It's explicitly foreign, but we still allow if it's explicitly Remote
+         if (!job.isRemote && !job.workFromHomeType && !/remote|wfh|anywhere/i.test(job.location || '')) {
+             if (options.dryRun) console.log(`       [Reject: Location (Parsed Foreign)] ${job.title} [Country: ${job.parsedLocation.country}]`);
+             continue;
+         }
+      }
+
       if (!isLocationIndiaOrRemote(job.location || '', job.title)) {
-        if (options.dryRun) console.log(`       [Reject: Location] ${job.title} [Loc: ${job.location || 'No Loc'}]`);
+        if (options.dryRun) console.log(`       [Reject: Location (String Match)] ${job.title} [Loc: ${job.location || 'No Loc'}]`);
         continue;
       }
       
@@ -271,5 +279,23 @@ Example:
   if (args.dryRun && result.jobs.length > 0) {
     console.log('\n--- Sample Job (Dry Run) ---');
     console.log(JSON.stringify(result.jobs[0], null, 2));
+  }
+
+  // Write to GitHub Actions Step Summary if available
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    const summary = `
+### 🔍 Search Engine: ${target.company}
+- **ATS Platform**: \`${target.ats}\`
+- **Total Jobs Found**: ${result.totalFound}
+- **Relevant Fresher Jobs**: ${result.jobs.length}
+- **Stale / Filtered Out**: ${result.staleCount}
+
+${result.jobs.length > 0 ? `#### Top Relevant Jobs\n${result.jobs.slice(0, 5).map(j => `- **${j.title}** _(${j.location || 'No Loc'})_`).join('\n')}` : ''}
+`;
+    try {
+      await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, summary);
+    } catch (err: any) {
+      console.error('Failed to write GITHUB_STEP_SUMMARY:', err.message);
+    }
   }
 }
