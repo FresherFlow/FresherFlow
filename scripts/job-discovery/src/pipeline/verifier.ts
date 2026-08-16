@@ -157,10 +157,21 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                     }
 
                     let jobTitle = await page.title().catch(() => "");
-                    jobTitle = jobTitle.replace(/( - Workday| - Lever| - Greenhouse| Careers| - Jobs| \| .*)$/i, '').trim();
+                    jobTitle = jobTitle.replace(/( - Workday| - Lever| - Greenhouse| Careers| - Jobs| - Job Detail.*| - Careers Marketplace.*| - Harman.*| - Siemens.*| - \d+ | \| .*)$/i, '').trim();
+                    // Clean up trailing dashes from stripping
+                    jobTitle = jobTitle.replace(/( -)+$/, '').trim();
 
-                    if (!jobTitle || jobTitle.length < 4 || /^(login|sign in|welcome|job details|careers|opportunities|skip to content|careers at .+|jobs at .+)$/i.test(jobTitle)) {
+                    if (!jobTitle || jobTitle.length < 4 || /^(login|sign in|welcome|job details|job details page|careers|opportunities|skip to content|careers at .+|jobs at .+)$/i.test(jobTitle)) {
                         jobTitle = candidate.aggregatorTitle || "Job Title Unknown";
+                    }
+
+                    if (jobTitle.toLowerCase().includes("unknown")) {
+                        console.log(`  -> ❌ Skipping job: Unknown Job Title`);
+                        const normalizedApplyLink = normalizeUrl(actualApplyLink);
+                        state.visited["__discovered_apply_links__"].push(normalizedApplyLink);
+                        if (state.visited["__discovered_apply_links__"].length > 50000) state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
+                        state.rejectedReasons[normalizedApplyLink] = `Unknown Job Title`;
+                        continue;
                     }
 
                     if (checkResult.atsText) {

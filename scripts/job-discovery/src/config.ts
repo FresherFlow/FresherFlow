@@ -87,8 +87,9 @@ export const EXPIRED_REGEXES = [
     /application period has ended/i,
     /applications are no longer being accepted/i,
     /the url you have provided is invalid/i,
-    /an error has occurred\s*page not found/i,
-    /we are sorry this job post no longer exists/i
+    /an error has occurred[\s\S]*page not found/i,
+    /we are sorry this job post no longer exists/i,
+    /you do not have access to this page/i
 ];
 
 // Phrases indicating it's a fresher job

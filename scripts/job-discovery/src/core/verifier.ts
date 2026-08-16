@@ -40,34 +40,11 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
 
         let isReview = false;
 
-        const finalUrl = page.url();
-        const finalUrlLower = finalUrl.toLowerCase();
-        if (finalUrlLower.includes('not_found') || finalUrlLower.includes('jobnotfound') || finalUrlLower.includes('job-not-found') || finalUrlLower.includes('/jobnotfound') || finalUrlLower.includes('/job-not-found') || finalUrlLower.includes('/expired') || finalUrlLower.includes('error=true')) {
-            console.log(`  -> URL indicates job not found / redirect to portal: ${finalUrl}. Marking as expired.`);
-            return { live: false, status: 'expired', atsText: '', rejectReason: `URL pattern indicates job not found (${finalUrl})` };
-        }
 
-        // Generic redirect check: if it redirected to a parent/careers list path of the original URL, it's expired
-        try {
-            const origUrlObj = new URL(url);
-            const finalUrlObj = new URL(finalUrl);
-            
-            // Only flag if we are on the same domain (e.g. company portal)
-            if (origUrlObj.hostname === finalUrlObj.hostname) {
-                const cleanPath = (p: string) => p.replace(/\/$/, '').replace(/^\/(en-us|en-gb|en)\b/i, '').toLowerCase();
-                const cOrig = cleanPath(origUrlObj.pathname);
-                const cFinal = cleanPath(finalUrlObj.pathname);
-                
-                if (cOrig !== cFinal && cOrig.startsWith(cFinal) && cFinal.length < cOrig.length) {
-                    console.log(`  -> Redirect to parent page detected: ${cOrig} -> ${cFinal}. Marking as expired.`);
-                    return { live: false, status: 'expired', atsText: '', rejectReason: `Redirected to parent portal path (${finalUrl})` };
-                }
-            }
-        } catch {}
 
         const pageTitle = await page.title().catch(() => "");
         const lowerTitle = pageTitle.toLowerCase().trim();
-        if (lowerTitle.includes('403') || lowerTitle.includes('forbidden') || lowerTitle.includes('access denied') || lowerTitle.includes('checking your browser') || lowerTitle.includes('attention required')) {
+        if (lowerTitle.includes('403') || lowerTitle.includes('forbidden') || lowerTitle.includes('access denied') || lowerTitle.includes('checking your browser') || lowerTitle.includes('attention required') || lowerTitle.includes('privacy error')) {
             console.log(`  -> Access blocked (Forbidden/Cloudflare/403 page title: "${pageTitle}").`);
             return { live: false, status: 'expired', atsText: '', rejectReason: `Blocked page title: "${pageTitle}"` };
         }
@@ -93,6 +70,31 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
         
         // Wait for network idle to allow cross-origin iframes (like ICIMS on custom domains) to finish loading
         await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+
+        const finalUrl = page.url();
+        const finalUrlLower = finalUrl.toLowerCase();
+        if (finalUrlLower.includes('not_found') || finalUrlLower.includes('jobnotfound') || finalUrlLower.includes('job-not-found') || finalUrlLower.includes('/jobnotfound') || finalUrlLower.includes('/job-not-found') || finalUrlLower.includes('/expired') || finalUrlLower.includes('error=true') || finalUrlLower.endsWith('/error') || finalUrlLower.includes('/error-page/')) {
+            console.log(`  -> URL indicates job not found / redirect to portal: ${finalUrl}. Marking as expired.`);
+            return { live: false, status: 'expired', atsText: '', rejectReason: `URL pattern indicates job not found (${finalUrl})` };
+        }
+
+        // Generic redirect check: if it redirected to a parent/careers list path of the original URL, it's expired
+        try {
+            const origUrlObj = new URL(url);
+            const finalUrlObj = new URL(finalUrl);
+            
+            // Only flag if we are on the same domain (e.g. company portal)
+            if (origUrlObj.hostname === finalUrlObj.hostname) {
+                const cleanPath = (p: string) => p.replace(/\/$/, '').replace(/^\/(en-us|en-gb|en)\b/i, '').toLowerCase();
+                const cOrig = cleanPath(origUrlObj.pathname);
+                const cFinal = cleanPath(finalUrlObj.pathname);
+                
+                if (cOrig !== cFinal && cOrig.startsWith(cFinal) && cFinal.length < cOrig.length) {
+                    console.log(`  -> Redirect to parent page detected: ${cOrig} -> ${cFinal}. Marking as expired.`);
+                    return { live: false, status: 'expired', atsText: '', rejectReason: `Redirected to parent portal path (${finalUrl})` };
+                }
+            }
+        } catch {}
 
         // Target main content containers first to avoid false positives from sidebars/footers
         let mainText = "";

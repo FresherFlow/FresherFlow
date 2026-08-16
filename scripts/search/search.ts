@@ -6,7 +6,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/domain';
 // Load environment variables from root .env if not loaded
-async function loadEnv() {
+export async function loadEnv() {
   const envPath = path.resolve(process.cwd(), '../../.env');
   try {
     const content = await fs.readFile(envPath, 'utf8');
@@ -54,7 +54,7 @@ function parseArgs(args: string[]): SearchOptions {
 /**
  * Filter jobs older than hoursOld (if date is present)
  */
-export function filterStaleJobs(jobs: AtsJob[], hoursOld: number = 336): AtsJob[] {
+export function filterStaleJobs(jobs: AtsJob[], hoursOld: number = 72): AtsJob[] {
   const cutoff = Date.now() - hoursOld * 60 * 60 * 1000;
   return jobs.filter(job => {
     if (!job.postedAt) return true; // keep if date is unknown
@@ -67,7 +67,7 @@ export function filterStaleJobs(jobs: AtsJob[], hoursOld: number = 336): AtsJob[
 /**
  * Upsert scraped jobs into Supabase discovered_jobs table
  */
-async function saveJobsToDb(jobs: AtsJob[], target: SearchTarget): Promise<void> {
+export async function saveJobsToDb(jobs: AtsJob[], target: SearchTarget): Promise<void> {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
     console.warn('⚠️ DATABASE_URL missing. Skipping DB save.');
@@ -145,7 +145,7 @@ export async function executeSearch(target: SearchTarget, options: SearchOptions
   }
 
   const resultsWanted = options.resultsWanted ?? target.resultsWanted ?? 50;
-  const hoursOld = options.hoursOld ?? target.hoursOld ?? 336;
+  const hoursOld = options.hoursOld ?? target.hoursOld ?? 72;
 
   console.log(`\n🔍 Searching ${target.company.toUpperCase()} (${target.ats}) [slug=${target.slug}, max=${resultsWanted}, hoursOld=${hoursOld}]...`);
 

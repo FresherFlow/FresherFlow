@@ -1,5 +1,5 @@
 import { DEFAULT_TARGETS, loadAtsDataTargets, SearchTarget } from './search-config.js';
-import { executeSearch, SearchOptions } from './search.js';
+import { executeSearch, SearchOptions, loadEnv, saveJobsToDb } from './search.js';
 import { executeDorkSearch } from './dorker.js';
 import { startRun, finishRun } from '../job-discovery/src/repositories/discoveryRuns.js';
 import { isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/domain';
@@ -25,6 +25,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 async function runSweep() {
+  await loadEnv();
   const startTime = Date.now();
   const runId = await startRun();
   
@@ -133,6 +134,9 @@ async function runSweep() {
         totalRaw += dorkResult.totalFound;
         totalFound += validDorkJobs.length;
         allDiscoveredJobs.push(...validDorkJobs);
+        if (validDorkJobs.length > 0 && !args.dryRun) {
+          await saveJobsToDb(validDorkJobs, { company: 'Dorker', ats: 'Dorker', slug: 'dorker' } as any);
+        }
       } catch (err: any) {
         console.error(`❌ Dorker Search Failed: ${err.message}`);
       }

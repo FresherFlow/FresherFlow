@@ -16,27 +16,31 @@ export interface SearchTarget {
  */
 export const DEFAULT_TARGETS: SearchTarget[] = [
   // India Tech / Startups (Verified Slugs)
-  { company: 'razorpay', ats: 'greenhouse', slug: 'razorpaysoftwareprivatelimited', resultsWanted: 50, hoursOld: 336, active: true },
-  { company: 'cred', ats: 'lever', slug: 'cred', resultsWanted: 50, hoursOld: 336, active: true },
-  { company: 'urbancompany', ats: 'lever', slug: 'urbancompany', resultsWanted: 50, hoursOld: 336, active: true },
-  { company: 'slice', ats: 'lever', slug: 'slice', resultsWanted: 50, hoursOld: 336, active: true },
-  { company: 'canonical', ats: 'greenhouse', slug: 'canonical', resultsWanted: 50, hoursOld: 336, active: true },
-  { company: 'figma', ats: 'greenhouse', slug: 'figma', resultsWanted: 50, hoursOld: 336, active: true },
-  { company: 'coinbase', ats: 'greenhouse', slug: 'coinbase', resultsWanted: 50, hoursOld: 336, active: true },
-  { company: 'airbnb', ats: 'greenhouse', slug: 'airbnb', resultsWanted: 50, hoursOld: 336, active: true },
-  { company: 'hotstar', ats: 'lever', slug: 'hotstar', resultsWanted: 50, hoursOld: 336, active: true },
-  { company: 'zeta', ats: 'lever', slug: 'zeta', resultsWanted: 50, hoursOld: 336, active: true },
+  { company: 'razorpay', ats: 'greenhouse', slug: 'razorpaysoftwareprivatelimited', resultsWanted: 50, hoursOld: 72, active: true },
+  { company: 'cred', ats: 'lever', slug: 'cred', resultsWanted: 50, hoursOld: 72, active: true },
+  { company: 'urbancompany', ats: 'lever', slug: 'urbancompany', resultsWanted: 50, hoursOld: 72, active: true },
+  { company: 'slice', ats: 'lever', slug: 'slice', resultsWanted: 50, hoursOld: 72, active: true },
+  { company: 'canonical', ats: 'greenhouse', slug: 'canonical', resultsWanted: 50, hoursOld: 72, active: true },
+  { company: 'figma', ats: 'greenhouse', slug: 'figma', resultsWanted: 50, hoursOld: 72, active: true },
+  { company: 'coinbase', ats: 'greenhouse', slug: 'coinbase', resultsWanted: 50, hoursOld: 72, active: true },
+  { company: 'airbnb', ats: 'greenhouse', slug: 'airbnb', resultsWanted: 50, hoursOld: 72, active: true },
+  { company: 'hotstar', ats: 'lever', slug: 'hotstar', resultsWanted: 50, hoursOld: 72, active: true },
+  { company: 'zeta', ats: 'lever', slug: 'zeta', resultsWanted: 50, hoursOld: 72, active: true },
 
   // Global Tech Leaders hiring in India (Company scrapers)
-  { company: 'google', ats: 'company-google', slug: 'google', resultsWanted: 50, hoursOld: 336, active: true },
-  { company: 'microsoft', ats: 'company-microsoft', slug: 'microsoft', resultsWanted: 50, hoursOld: 336, active: true },
-  { company: 'amazon', ats: 'company-amazon', slug: 'amazon', resultsWanted: 50, hoursOld: 336, active: true },
-  { company: 'apple', ats: 'company-apple', slug: 'apple', resultsWanted: 50, hoursOld: 336, active: true },
-  { company: 'meta', ats: 'company-meta', slug: 'meta', resultsWanted: 50, hoursOld: 336, active: true },
-  { company: 'uber', ats: 'company-uber', slug: 'uber', resultsWanted: 50, hoursOld: 336, active: true },
-  { company: 'stripe', ats: 'company-stripe', slug: 'stripe', resultsWanted: 50, hoursOld: 336, active: true },
-  { company: 'ibm', ats: 'company-ibm', slug: 'ibm', resultsWanted: 50, hoursOld: 336, active: true },
-  { company: 'nvidia', ats: 'company-nvidia', slug: 'nvidia', resultsWanted: 50, hoursOld: 336, active: true }
+  { company: 'google', ats: 'company-google', slug: 'google', resultsWanted: 50, hoursOld: 72, active: true },
+  { company: 'microsoft', ats: 'company-microsoft', slug: 'microsoft', resultsWanted: 50, hoursOld: 72, active: true },
+  { company: 'amazon', ats: 'company-amazon', slug: 'amazon', resultsWanted: 50, hoursOld: 72, active: true },
+  { company: 'apple', ats: 'company-apple', slug: 'apple', resultsWanted: 50, hoursOld: 72, active: true },
+  { company: 'meta', ats: 'company-meta', slug: 'meta', resultsWanted: 50, hoursOld: 72, active: true },
+  { company: 'uber', ats: 'company-uber', slug: 'uber', resultsWanted: 50, hoursOld: 72, active: true },
+  { company: 'stripe', ats: 'company-stripe', slug: 'stripe', resultsWanted: 50, hoursOld: 72, active: true },
+  { company: 'ibm', ats: 'company-ibm', slug: 'ibm', resultsWanted: 50, hoursOld: 72, active: true },
+  { company: 'nvidia', ats: 'company-nvidia', slug: 'nvidia', resultsWanted: 50, hoursOld: 72, active: true },
+
+  // Aggregator Boards (Direct Search)
+  { company: 'internshala', ats: 'internshala', slug: 'software fresher', resultsWanted: 100, hoursOld: 72, active: true },
+  { company: 'naukri', ats: 'naukri', slug: 'software engineer fresher', resultsWanted: 100, hoursOld: 72, active: true }
 ];
 
 const ATS_PROVIDERS = [
@@ -50,7 +54,7 @@ function processAtsData(atsName: string, data: any, targets: SearchTarget[]) {
     for (const [slug, companyName] of Object.entries(data)) {
       if (slug.startsWith('//') || slug.startsWith('_comment') || slug.startsWith('---') || slug.startsWith('===')) continue;
       if (!targets.some(t => t.company.toLowerCase() === String(companyName).toLowerCase())) {
-        targets.push({ company: String(companyName).toLowerCase(), ats: atsName, slug, resultsWanted: 50, hoursOld: 336, active: true });
+        targets.push({ company: String(companyName).toLowerCase(), ats: atsName, slug, resultsWanted: 50, hoursOld: 72, active: true });
       }
     }
   } else if (Array.isArray(data)) {
@@ -60,7 +64,7 @@ function processAtsData(atsName: string, data: any, targets: SearchTarget[]) {
         companyName = slugEntry.split(':')[0];
       }
       if (!targets.some(t => t.company.toLowerCase() === companyName.toLowerCase())) {
-        targets.push({ company: companyName.toLowerCase(), ats: atsName, slug: slugEntry, resultsWanted: 50, hoursOld: 336, active: true });
+        targets.push({ company: companyName.toLowerCase(), ats: atsName, slug: slugEntry, resultsWanted: 50, hoursOld: 72, active: true });
       }
     }
   }
