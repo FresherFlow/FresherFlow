@@ -18,6 +18,8 @@ interface PageTagLinksProps {
     skills?: (string | TagLink)[];
     locations?: (string | TagLink)[];
     companies?: CompanyLink[];
+    validSkills?: Set<string> | string[];
+    validLocations?: Set<string> | string[];
     /** Max items shown per group. Default: 14 */
     maxItems?: number;
 }
@@ -29,8 +31,25 @@ function resolveTagLink(item: string | TagLink, prefix: string): TagLink {
     return item;
 }
 
-export function PageTagLinks({ skills = [], locations = [], companies = [], maxItems = 14 }: PageTagLinksProps) {
-    const hasAny = skills.length > 0 || locations.length > 0 || companies.length > 0;
+export function PageTagLinks({ skills = [], locations = [], companies = [], validSkills, validLocations, maxItems = 14 }: PageTagLinksProps) {
+    const validSkillsSet = validSkills ? (validSkills instanceof Set ? validSkills : new Set(validSkills)) : null;
+    const validLocationsSet = validLocations ? (validLocations instanceof Set ? validLocations : new Set(validLocations)) : null;
+
+    const filteredSkills = validSkillsSet
+        ? skills.filter(item => {
+            const label = typeof item === 'string' ? item : item.label;
+            return validSkillsSet.has(label.toLowerCase().trim()) || validSkillsSet.has(slugify(label));
+        })
+        : skills;
+
+    const filteredLocations = validLocationsSet
+        ? locations.filter(item => {
+            const label = typeof item === 'string' ? item : item.label;
+            return validLocationsSet.has(label.toLowerCase().trim()) || validLocationsSet.has(slugify(label));
+        })
+        : locations;
+
+    const hasAny = filteredSkills.length > 0 || filteredLocations.length > 0 || companies.length > 0;
     if (!hasAny) return null;
 
     return (
@@ -62,11 +81,11 @@ export function PageTagLinks({ skills = [], locations = [], companies = [], maxI
                     </div>
                 )}
 
-                {skills.length > 0 && (
+                {filteredSkills.length > 0 && (
                     <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs font-semibold text-muted-foreground shrink-0 w-24">Key Skills:</span>
                         <div className="flex flex-wrap gap-1.5 flex-1">
-                            {skills.slice(0, maxItems).map((item) => {
+                            {filteredSkills.slice(0, maxItems).map((item) => {
                                 const { label, url } = resolveTagLink(item, 'skills');
                                 return (
                                     <Link key={url} href={url}>
@@ -80,12 +99,12 @@ export function PageTagLinks({ skills = [], locations = [], companies = [], maxI
                     </div>
                 )}
 
-                {locations.length > 0 && (
+                {filteredLocations.length > 0 && (
                     <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs font-semibold text-muted-foreground shrink-0 w-24">Locations:</span>
                         <div className="flex flex-wrap gap-1.5 flex-1">
-                            {locations.slice(0, maxItems).map((item) => {
-                                const { label, url } = resolveTagLink(item, 'location');
+                            {filteredLocations.slice(0, maxItems).map((item) => {
+                                const { label, url } = resolveTagLink(item, 'locations');
                                 return (
                                     <Link key={url} href={url}>
                                         <Badge variant="outline" className="hover:border-primary/40 hover:text-primary transition-colors cursor-pointer capitalize">

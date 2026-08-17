@@ -55,13 +55,13 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
             <Navbar />
 
             <main
+                suppressHydrationWarning
                 className={cn(
                     "relative w-full overflow-x-hidden flex-1 flex flex-col",
                     "pt-[calc(3.75rem+env(safe-area-inset-top))]",
                     "md:pt-14",
                     !isSidebarRoute && "md:pt-[4.75rem]",
                     isSidebarRoute ? "pb-0" : ((mounted && isAuthenticated) ? "pb-20 md:pb-8" : "pb-4 md:pb-8"),
-                    "min-h-screen",
                     isSidebarRoute && "md:pl-[var(--sidebar-w,12rem)] transition-[padding-left] duration-[600ms] ease-[cubic-bezier(0.7,0,0,1)]"
                 )}
             >

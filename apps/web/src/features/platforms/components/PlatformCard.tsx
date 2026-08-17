@@ -64,7 +64,8 @@ export function PlatformCard({ platform }: PlatformCardProps) {
                     aria-label={`Visit ${platform.name}`}
                     className={cn(
                         'inline-flex items-center gap-1 px-3 h-7 rounded-lg text-[11px] font-semibold shrink-0',
-                        'bg-primary text-primary-foreground hover:bg-primary/90 transition-colors'
+                        'bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200',
+                        'md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100'
                     )}
                 >
                     Visit

@@ -61,14 +61,14 @@ export function MiniFooter({ className }: MiniFooterProps) {
     ];
 
     const socialLinks = [
-        { href: 'https://t.me/fresherflowin', label: 'Telegram', Icon: TelegramBrandIcon, colorClass: 'bg-[#229ED9] text-white lg:bg-[#229ED9]/10 lg:text-[#229ED9] border-[#229ED9]/20 hover:bg-[#229ED9] hover:text-white' },
-        { href: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D', label: 'WhatsApp', Icon: WhatsAppBrandIcon, colorClass: 'bg-[#25D366] text-white lg:bg-[#25D366]/10 lg:text-[#25D366] border-[#25D366]/20 hover:bg-[#25D366] hover:text-white' },
-        { href: 'https://www.linkedin.com/company/fresherflow-in', label: 'LinkedIn', Icon: LinkedInBrandIcon, colorClass: 'bg-[#0A66C2] text-white lg:bg-[#0A66C2]/10 lg:text-[#0A66C2] border-[#0A66C2]/20 hover:bg-[#0A66C2] hover:text-white' },
-        { href: 'https://x.com/Fresherflow', label: 'X', Icon: XBrandIcon, colorClass: 'bg-foreground text-background lg:bg-foreground/10 lg:text-foreground border-foreground/20 hover:bg-foreground hover:text-background' },
-        { href: 'https://discord.gg/CcPAnWSHD', label: 'Discord', Icon: DiscordBrandIcon, colorClass: 'bg-[#5865F2] text-white lg:bg-[#5865F2]/10 lg:text-[#5865F2] border-[#5865F2]/20 hover:bg-[#5865F2] hover:text-white' },
-        { href: 'https://instagram.com/fresherflow', label: 'Instagram', Icon: InstagramBrandIcon, colorClass: 'bg-[#E1306C] text-white lg:bg-[#E1306C]/10 lg:text-[#E1306C] border-[#E1306C]/20 hover:bg-[#E1306C] hover:text-white' },
-        { href: 'https://www.facebook.com/FresherFlow.in', label: 'Facebook', Icon: FacebookBrandIcon, colorClass: 'bg-[#1877F2] text-white lg:bg-[#1877F2]/10 lg:text-[#1877F2] border-[#1877F2]/20 hover:bg-[#1877F2] hover:text-white' },
-        { href: 'https://github.com/FresherFlow/FresherFlow', label: 'GitHub', Icon: GithubBrandIcon, colorClass: 'bg-foreground text-background lg:bg-foreground/10 lg:text-foreground border-foreground/20 hover:bg-foreground hover:text-background' },
+        { href: 'https://t.me/fresherflowin', label: 'Telegram', Icon: TelegramBrandIcon, colorClass: 'bg-[#229ED9] text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D', label: 'WhatsApp', Icon: WhatsAppBrandIcon, colorClass: 'bg-[#25D366] text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://www.linkedin.com/company/fresherflow-in', label: 'LinkedIn', Icon: LinkedInBrandIcon, colorClass: 'bg-[#0A66C2] text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://x.com/Fresherflow', label: 'X', Icon: XBrandIcon, colorClass: 'bg-black dark:bg-white text-white dark:text-black border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://discord.gg/CcPAnWSHD', label: 'Discord', Icon: DiscordBrandIcon, colorClass: 'bg-[#5865F2] text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://instagram.com/fresherflow', label: 'Instagram', Icon: InstagramBrandIcon, colorClass: 'bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://www.facebook.com/FresherFlow.in', label: 'Facebook', Icon: FacebookBrandIcon, colorClass: 'bg-[#1877F2] text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://github.com/FresherFlow/FresherFlow', label: 'GitHub', Icon: GithubBrandIcon, colorClass: 'bg-black dark:bg-white text-white dark:text-black border-transparent hover:opacity-90 shadow-sm' },
     ];
 
     return (

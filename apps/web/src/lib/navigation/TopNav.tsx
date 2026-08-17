@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useState, useContext } from 'react';
 import { cn } from '@/lib/utils/utils';
 import { AuthContext } from '@/lib/auth/AuthContext';
@@ -10,7 +10,6 @@ import { AlertsDropdown } from '@/features/notifications/components/AlertsDropdo
 
 export default function TopNav() {
     const pathname = usePathname();
-    const searchParams = useSearchParams();
     const authContext = useContext(AuthContext);
     const user = authContext?.user || null;
     const logout = authContext?.logout || (async () => { });
@@ -18,8 +17,6 @@ export default function TopNav() {
     const [isAuthOpen, setIsAuthOpen] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-    const typeParamRaw = searchParams.get('type') || '';
-    const typeParam = typeParamRaw.toLowerCase();
     const isOpportunitiesRoute = pathname === '/' || pathname.startsWith('/jobs');
     const isWalkinsMode = isOpportunitiesRoute && pathname.includes('/walk-ins');
     const isJobsMode = isOpportunitiesRoute && !isWalkinsMode;

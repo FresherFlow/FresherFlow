@@ -6,6 +6,7 @@ import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import ChevronDownIcon from '@heroicons/react/24/outline/ChevronDownIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
+import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
 import { SkillPill } from '@/ui/SkillPill';
 
 export interface FilterBarFilters {
@@ -19,6 +20,7 @@ export interface FilterBarFilters {
     workMode: string[] | null;
     skills: string[];
     source: string[];
+    company: string[];
 }
 
 const GOVT_SECTORS = ['Defense', 'Railways', 'Banking', 'Teaching', 'Police', 'SSC / UPSC', 'PSU'];
@@ -37,10 +39,11 @@ interface FilterDropdownBarProps {
         skills: Record<string, number>;
         sources: Record<string, number>;
         years: Record<string, number>;
+        companies?: Record<string, number>;
     };
 }
 
-type OpenPanel = 'location' | 'year' | 'type' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | 'source' | null;
+type OpenPanel = 'location' | 'year' | 'company' | 'type' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | 'source' | null;
 
 type DropdownOption =
     | { kind: 'type'; value: string | null; label: string }
@@ -53,7 +56,8 @@ type DropdownOption =
     | { kind: 'course'; value: string }
     | { kind: 'source'; value: string; count: number }
     | { kind: 'yearAny' }
-    | { kind: 'year'; year: number; count: number };
+    | { kind: 'year'; year: number; count: number }
+    | { kind: 'company'; company: string; count: number };
 
 function useClickOutside(ref: React.RefObject<HTMLElement | null>, handler: () => void) {
     useEffect(() => {
@@ -70,9 +74,9 @@ function useClickOutside(ref: React.RefObject<HTMLElement | null>, handler: () =
     }, [ref, handler]);
 }
 
-const chipBase = 'h-9 px-3.5 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors transition-transform duration-150 ease-out active:scale-[0.97] whitespace-nowrap select-none cursor-pointer outline-none motion-reduce:transform-none motion-reduce:transition-none';
+const chipBase = 'h-9 px-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors transition-transform duration-150 ease-out active:scale-[0.97] whitespace-nowrap select-none cursor-pointer outline-none motion-reduce:transform-none motion-reduce:transition-none';
 const chipDefault = 'bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent transition-colors duration-100';
-const chipActive = 'chip-active border font-semibold';
+const chipActive = 'bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent transition-colors duration-100';
 
 const TYPE_OPTIONS = [
     { label: 'All types', value: null },
@@ -85,14 +89,15 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
     const [open, setOpen] = useState<OpenPanel>(null);
     const [locSearch, setLocSearch] = useState('');
     const [skillSearch, setSkillSearch] = useState('');
+    const [companySearch, setCompanySearch] = useState('');
     const [activeIndex, setActiveIndex] = useState(0);
     const barRef = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-    useClickOutside(barRef, () => { setOpen(null); setLocSearch(''); setSkillSearch(''); });
+    useClickOutside(barRef, () => { setOpen(null); setLocSearch(''); setSkillSearch(''); setCompanySearch(''); });
 
     useEffect(() => {
-        const onScroll = () => { setOpen(null); setLocSearch(''); setSkillSearch(''); };
+        const onScroll = () => { setOpen(null); setLocSearch(''); setSkillSearch(''); setCompanySearch(''); };
         window.addEventListener('scroll', onScroll, { passive: true });
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
@@ -101,6 +106,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
         setOpen(prev => (prev === panel ? null : panel));
         if (panel !== 'location') setLocSearch('');
         if (panel !== 'skills') setSkillSearch('');
+        if (panel !== 'company') setCompanySearch('');
     };
 
     const isGovt = pageType === 'GOVERNMENT';
@@ -138,6 +144,17 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
             .map(([year, count]) => ({ year: Number(year), count }));
     }, [aggregates?.years]);
 
+    const sortedCompanies = useMemo(() => {
+        return Object.entries(aggregates?.companies || {})
+            .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+            .map(([company, count]) => ({ company, count }));
+    }, [aggregates?.companies]);
+
+    const compQuery = companySearch.trim().toLowerCase();
+    const filteredCompanies = useMemo(() => {
+        return compQuery ? sortedCompanies.filter(c => c.company.toLowerCase().includes(compQuery)) : sortedCompanies;
+    }, [compQuery, sortedCompanies]);
+
     // Flatten options for the currently open dropdown
     const options = useMemo<DropdownOption[]>(() => {
         if (!open) return [];
@@ -172,10 +189,12 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                     { kind: 'yearAny' as const },
                     ...sortedYears.map(({ year, count }) => ({ kind: 'year' as const, year, count })),
                 ];
+            case 'company':
+                return filteredCompanies.map(({ company, count }) => ({ kind: 'company' as const, company, count }));
             default:
                 return [];
         }
-    }, [open, isGovt, filteredLocations, filteredSkills, sortedSources, sortedYears]);
+    }, [open, isGovt, filteredLocations, filteredSkills, sortedSources, sortedYears, filteredCompanies]);
 
     const handleSelectOption = useCallback((option: DropdownOption) => {
         if (!option) return;
@@ -243,13 +262,22 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                 setFilters({ ...filters, year: option.year });
                 setOpen(null);
                 break;
+            case 'company': {
+                const comp = option.company;
+                const isSelected = filters.company?.includes(comp);
+                const newCompanies = isSelected
+                    ? (filters.company || []).filter(c => c !== comp)
+                    : [...(filters.company || []), comp];
+                setFilters({ ...filters, company: newCompanies });
+                break;
+            }
         }
     }, [filters, onTypeChange, setFilters]);
 
     // Reset activeIndex when open panel or search query changes
     useEffect(() => {
         setActiveIndex(0);
-    }, [open, locSearch, skillSearch]);
+    }, [open, locSearch, skillSearch, companySearch]);
 
     // Keyboard navigation listener
     useEffect(() => {
@@ -272,6 +300,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                 setOpen(null);
                 setLocSearch('');
                 setSkillSearch('');
+                setCompanySearch('');
             }
         };
 
@@ -289,7 +318,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
     }, [activeIndex, open]);
 
     return (
-        <div ref={barRef} className="hidden lg:flex items-center gap-2 flex-wrap">
+        <div ref={barRef} className="hidden lg:flex items-center gap-1 flex-wrap">
 
             {/* Type dropdown */}
             {onTypeChange && (
@@ -300,9 +329,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                         aria-haspopup="listbox"
                         className={cn(chipBase, selectedType ? chipActive : chipDefault)}
                     >
-                        <BriefcaseIcon className="w-4 h-4" />
                         {selectedType === 'JOB' ? 'Jobs' : selectedType === 'INTERNSHIP' ? 'Internships' : selectedType === 'WALKIN' ? 'Walk-ins' : 'Type'}
-                        <ChevronDownIcon className={cn('w-3.5 h-3.5 transition-transform', open === 'type' && 'rotate-180')} />
                     </button>
                     {open === 'type' && (
                         <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-1.5 w-48 z-[100] overscroll-contain">
@@ -334,14 +361,12 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                     aria-haspopup="listbox"
                     className={cn(chipBase, (filters.location || (filters.workMode && filters.workMode.length > 0)) ? chipActive : chipDefault)}
                 >
-                    <MapPinIcon className="w-4 h-4" />
                     Location
                     {((filters.workMode?.length || 0) + (filters.location ? 1 : 0)) > 0 && (
-                        <span className="bg-primary/20 text-primary rounded-full px-1.5 py-0.5 text-xs font-bold leading-none shrink-0 ml-0.5">
+                        <span className="bg-muted text-foreground rounded-md px-1.5 text-sm font-medium shrink-0 flex items-center justify-center h-5 min-w-[20px]">
                             {((filters.workMode?.length || 0) + (filters.location ? 1 : 0))}
                         </span>
                     )}
-                    <ChevronDownIcon className={cn('w-3.5 h-3.5 transition-transform shrink-0', open === 'location' && 'rotate-180')} />
                 </button>
 
                 {open === 'location' && (() => {
@@ -381,7 +406,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                                         idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                                     )}
                                                 >
-                                                    <input type="checkbox" tabIndex={-1} checked={isSelected} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
+                                                    <input type="checkbox" tabIndex={-1} checked={!!isSelected} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
                                                     <span>{mode === 'REMOTE' ? 'Remote' : mode === 'HYBRID' ? 'Hybrid' : 'On-site'}</span>
                                                 </button>
                                             );
@@ -431,7 +456,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                                         idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                                     )}
                                                 >
-                                                    <input type="checkbox" tabIndex={-1} checked={isSelected} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
+                                                    <input type="checkbox" tabIndex={-1} checked={!!isSelected} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
                                                     <span>{loc} ({count})</span>
                                                 </button>
                                             );
@@ -457,10 +482,8 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             aria-expanded={open === 'sector'}
                             className={cn(chipBase, filters.sector ? chipActive : chipDefault)}
                         >
-                            <BriefcaseIcon className="w-4 h-4" />
                             Sector
-                            {filters.sector && <span className="w-1.5 h-1.5 rounded-full bg-primary ml-0.5" />}
-                            <ChevronDownIcon className={cn('w-3.5 h-3.5 transition-transform', open === 'sector' && 'rotate-180')} />
+                            {filters.sector && <span className="bg-muted text-foreground rounded-md px-1.5 text-sm font-medium shrink-0 flex items-center justify-center h-5 min-w-[20px]">1</span>}
                         </button>
                         {open === 'sector' && (
                             <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-52 z-[100]">
@@ -489,10 +512,8 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             aria-expanded={open === 'qualification'}
                             className={cn(chipBase, filters.qualification ? chipActive : chipDefault)}
                         >
-                            <AcademicCapIcon className="w-4 h-4" />
                             Qualification
-                            {filters.qualification && <span className="w-1.5 h-1.5 rounded-full bg-primary ml-0.5" />}
-                            <ChevronDownIcon className={cn('w-3.5 h-3.5 transition-transform', open === 'qualification' && 'rotate-180')} />
+                            {filters.qualification && <span className="bg-muted text-foreground rounded-md px-1.5 text-sm font-medium shrink-0 flex items-center justify-center h-5 min-w-[20px]">1</span>}
                         </button>
                         {open === 'qualification' && (
                             <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-52 z-[100]">
@@ -527,14 +548,12 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             aria-expanded={open === 'skills'}
                             className={cn(chipBase, filters.skills && filters.skills.length > 0 ? chipActive : chipDefault)}
                         >
-                            <AcademicCapIcon className="w-4 h-4" />
                             Skills
                             {filters.skills && filters.skills.length > 0 && (
-                                <span className="bg-primary/20 text-primary rounded-full px-1.5 py-0.5 text-xs font-bold leading-none shrink-0 ml-0.5">
+                                <span className="bg-muted text-foreground rounded-md px-1.5 text-sm font-medium shrink-0 flex items-center justify-center h-5 min-w-[20px]">
                                     {filters.skills.length}
                                 </span>
                             )}
-                            <ChevronDownIcon className={cn('w-3.5 h-3.5 transition-transform', open === 'skills' && 'rotate-180')} />
                         </button>
                         {open === 'skills' && (
                             <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-72 min-w-[18rem] z-[100] flex flex-col gap-1 max-h-80">
@@ -564,7 +583,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                                     idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                                 )}
                                             >
-                                                <input type="checkbox" tabIndex={-1} checked={isSelected} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
+                                                <input type="checkbox" tabIndex={-1} checked={!!isSelected} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
                                                 <SkillPill skill={skill} className="bg-transparent border-none p-0 h-auto text-inherit shadow-none" />
                                                 <span className="text-muted-foreground text-sm ml-1">({count})</span>
                                             </button>
@@ -585,10 +604,8 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             aria-expanded={open === 'course'}
                             className={cn(chipBase, filters.course ? chipActive : chipDefault)}
                         >
-                            <AcademicCapIcon className="w-4 h-4" />
                             Course
-                            {filters.course && <span className="w-1.5 h-1.5 rounded-full bg-primary ml-0.5" />}
-                            <ChevronDownIcon className={cn('w-3.5 h-3.5 transition-transform', open === 'course' && 'rotate-180')} />
+                            {filters.course && <span className="bg-muted text-foreground rounded-md px-1.5 text-sm font-medium shrink-0 flex items-center justify-center h-5 min-w-[20px]">1</span>}
                         </button>
                         {open === 'course' && (
                             <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-52 z-[100]">
@@ -617,14 +634,12 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             aria-expanded={open === 'source'}
                             className={cn(chipBase, filters.source && filters.source.length > 0 ? chipActive : chipDefault)}
                         >
-                            <BriefcaseIcon className="w-4 h-4" />
                             Source
                             {filters.source && filters.source.length > 0 && (
-                                <span className="bg-primary/20 text-primary rounded-full px-1.5 py-0.5 text-xs font-bold leading-none shrink-0 ml-0.5">
+                                <span className="bg-muted text-foreground rounded-md px-1.5 text-sm font-medium shrink-0 flex items-center justify-center h-5 min-w-[20px]">
                                     {filters.source.length}
                                 </span>
                             )}
-                            <ChevronDownIcon className={cn('w-3.5 h-3.5 transition-transform', open === 'source' && 'rotate-180')} />
                         </button>
                         {open === 'source' && (
                             <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-52 z-[100] max-h-60 overflow-y-auto">
@@ -642,7 +657,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                                 idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                             )}
                                         >
-                                            <input type="checkbox" tabIndex={-1} checked={isSelected} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
+                                            <input type="checkbox" tabIndex={-1} checked={!!isSelected} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
                                             <span>{opt} ({count})</span>
                                         </button>
                                     );
@@ -658,10 +673,8 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             aria-haspopup="listbox"
                             className={cn(chipBase, filters.year !== null ? chipActive : chipDefault)}
                         >
-                            <AcademicCapIcon className="w-4 h-4" />
-                            Passout Year
-                            {filters.year !== null && <span className="w-1.5 h-1.5 rounded-full bg-primary ml-0.5" />}
-                            <ChevronDownIcon className={cn('w-3.5 h-3.5 transition-transform', open === 'year' && 'rotate-180')} />
+                            Batch
+                            {filters.year !== null && <span className="bg-muted text-foreground rounded-md px-1.5 text-sm font-medium shrink-0 flex items-center justify-center h-5 min-w-[20px]">1</span>}
                         </button>
 
                         {open === 'year' && (() => {
@@ -709,6 +722,65 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                 </div>
                             );
                         })()}
+                    </div>
+
+                    {/* Company dropdown */}
+                    <div className="relative">
+                        <button
+                            onClick={() => toggle('company')}
+                            aria-expanded={open === 'company'}
+                            aria-haspopup="listbox"
+                            className={cn(chipBase, filters.company && filters.company.length > 0 ? chipActive : chipDefault)}
+                        >
+                            Company
+                            {filters.company && filters.company.length > 0 && (
+                                <span className="bg-muted text-foreground rounded-md px-1.5 text-sm font-medium shrink-0 flex items-center justify-center h-5 min-w-[20px]">
+                                    {filters.company.length}
+                                </span>
+                            )}
+                        </button>
+                        {open === 'company' && (
+                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-72 min-w-[18rem] z-[100] flex flex-col gap-1 max-h-80">
+                                <div className="px-1 pb-1 pt-0.5 shrink-0">
+                                    <input
+                                        type="text"
+                                        value={companySearch}
+                                        onChange={e => setCompanySearch(e.target.value)}
+                                        placeholder="Search companies..."
+                                        className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                        onClick={e => e.stopPropagation()}
+                                        autoFocus
+                                    />
+                                </div>
+                                <div className="overflow-y-auto flex-1 overscroll-contain space-y-0.5">
+                                    {filteredCompanies.map(({ company, count }, idx) => {
+                                        const isSelected = filters.company?.includes(company);
+                                        return (
+                                            <button
+                                                key={company}
+                                                tabIndex={-1}
+                                                ref={el => { itemRefs.current[idx] = el; }}
+                                                onClick={() => handleSelectOption(options[idx])}
+                                                onMouseEnter={() => setActiveIndex(idx)}
+                                                className={cn(
+                                                    'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                                    idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                                )}
+                                            >
+                                                <input type="checkbox" tabIndex={-1} checked={!!isSelected} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
+                                                <span className="truncate flex-1 text-foreground">{company}</span>
+                                                <span className="text-muted-foreground text-sm shrink-0">({count})</span>
+                                            </button>
+                                        );
+                                    })}
+                                    {filteredCompanies.length === 0 && (
+                                        <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                                            No companies found
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </>
             )}

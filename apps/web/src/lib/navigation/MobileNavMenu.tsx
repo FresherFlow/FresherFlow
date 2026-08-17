@@ -1,4 +1,5 @@
 'use client';
+import React from 'react';
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
@@ -70,7 +71,7 @@ interface MobileNavMenuProps {
     onClose: () => void;
 }
 
-export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onClose }: MobileNavMenuProps) {
+function MobileNavMenuInner({ user, unreadCount, pendingSyncCount, onClose }: MobileNavMenuProps) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const { logout } = useAuth();
@@ -116,7 +117,9 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
 
     const isAppHost = typeof window !== 'undefined' && (window.location.hostname.startsWith('app.') || window.location.hostname === 'localhost' || window.location.hostname.startsWith('127.'));
     const homeHref = isAppHost ? '/dashboard' : '/';
-    navItems = navItems.map(item => item.name === 'Home' ? { ...item, href: homeHref } : item);
+    navItems = navItems
+        .filter(item => !(item.requiresAuth && !user))
+        .map(item => item.name === 'Home' ? { ...item, href: homeHref } : item);
 
     const renderMenuItem = (item: any) => {
         let isActive = false;
@@ -216,7 +219,20 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
                                 </span>
                             </Link>
                         )}
-                        {navItems.map(renderMenuItem)}
+                        {navItems.map((item, idx) => (
+                            <React.Fragment key={item.name || idx}>
+                                {navContext === 'jobs' && (item.name === 'Skills' || item.name === 'Government') && (
+                                    <div className="h-px bg-border/40 my-2 mx-1.5" />
+                                )}
+                                {navContext === 'government' && item.name === 'Private Jobs' && (
+                                    <div className="h-px bg-border/40 my-2 mx-1.5" />
+                                )}
+                                {item.isSettingsDivider && navContext === 'moderator' && (
+                                    <div className="h-px bg-border/40 my-2 mx-1.5" />
+                                )}
+                                {renderMenuItem(item)}
+                            </React.Fragment>
+                        ))}
                     </div>
 
                     {!isAdmin && (
@@ -288,5 +304,13 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
                     </div>
                 </nav>
         </div>
+    );
+}
+
+export default function MobileNavMenu(props: MobileNavMenuProps) {
+    return (
+        <React.Suspense fallback={null}>
+            <MobileNavMenuInner {...props} />
+        </React.Suspense>
     );
 }

@@ -54,7 +54,7 @@ export function formatJobFeedTitle(filters: TitleFilters): string {
 
     // 3. Skill or Course or Search
     if (filters.search) {
-        parts.push(`"${toTitleCase(filters.search)}"`);
+        parts.push(toTitleCase(filters.search));
     } else if (filters.skills && filters.skills.length > 0) {
         parts.push(toTitleCase(filters.skills[0]));
     } else if (filters.course) {

@@ -51,3 +51,9 @@ export function normalizeSkill(skill: string | null | undefined): string {
     if (!skill) return '';
     return normalizeSkillName(String(skill));
 }
+
+export function formatSkillTitleCase(skill: string): string {
+    return skill.replace(/\w\S*/g, (txt) => {
+        return txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase();
+    });
+}

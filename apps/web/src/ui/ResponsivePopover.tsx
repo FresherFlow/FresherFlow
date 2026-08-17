@@ -74,7 +74,6 @@ export function ResponsivePopover({
               {content}
             </div>
           </Drawer.Content>
-          <Drawer.Overlay />
         </Drawer.Portal>
       </Drawer.Root>
     );

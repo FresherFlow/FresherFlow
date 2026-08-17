@@ -66,10 +66,7 @@ export function PlatformsPageView({ resources, lastUpdated, title, description, 
                     {title || 'Internship Platforms'}
                 </h1>
                 <p className="text-muted-foreground text-xs md:text-sm leading-relaxed line-clamp-2 md:line-clamp-3">
-                    {description || 'Curated platforms, repositories and tools to find internships and prepare for applications — from job boards and GitHub lists to coding practice and research programs.'}
-                </p>
-                <p className="text-[10px] md:text-xs font-semibold text-muted-foreground pt-1">
-                    {resources.length} resources · {lastUpdated ? `Last updated ${lastUpdated}` : 'Updated regularly'}
+                    {description || 'A comprehensive list of platforms, repositories and tools to find internships and prepare for applications — from job boards and GitHub lists to coding practice and research programs.'}
                 </p>
             </div>
 
@@ -116,13 +113,7 @@ export function PlatformsPageView({ resources, lastUpdated, title, description, 
                         onClick={() => setCategory(cat.key)}
                         className={cn(chipBase, category === cat.key ? chipActive : chipDefault)}
                     >
-                        {cat.label}
-                        <span className={cn(
-                            'text-[10px] font-bold rounded-full px-1.5 py-0.5 leading-none',
-                            category === cat.key ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'
-                        )}>
-                            {counts[cat.key] || 0}
-                        </span>
+                        {cat.label} {counts[cat.key] || 0}
                     </button>
                 ))}
             </div>

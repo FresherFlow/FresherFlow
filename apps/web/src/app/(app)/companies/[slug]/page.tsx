@@ -1,18 +1,20 @@
 import type { Metadata } from 'next';
 import { permanentRedirect, notFound } from 'next/navigation';
 import { logRouteResult } from '@/lib/observability';
-import JobCard from '@/features/opportunities/components/JobCard';
-
-import Link from 'next/link';
+import { Suspense } from 'react';
+import CategoryPage from '@/features/opportunities/components/CategoryPage';
+import { FeedPageSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
 import CompanyLogo from '@/ui/CompanyLogo';
-import { Card } from '@/ui/Card';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
+import { toOpportunityCardDTO } from '@fresherflow/types';
 import { getCompanyDescription } from '@/features/companies/utils/companyContent';
 import { fetchCompanyShard, fetchCompaniesMetadata, fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { CompanySlugger } from '@/features/companies/utils/companySlugger';
 import CompanyFollowButton from '@/features/companies/components/CompanyFollowButton';
-import { PageTagLinks } from '@/features/companies/components/PageTagLinks';
+import { PageTagLinks } from '@/ui/PageTagLinks';
+import { getValidDirectoryLinks } from '@/features/opportunities/utils/detailUtils';
+import { VALID_LOCATIONS } from '@/features/opportunities/utils/locationUtils';
 
 export const revalidate = false;
 export const dynamicParams = false;
@@ -147,7 +149,12 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         permanentRedirect(`/companies/${shouldRedirectTo}`);
     }
 
-    let feed = await fetchCompanyShard(targetSlug, undefined, true);
+    const [bootstrapFeed, companyShard] = await Promise.all([
+        fetchBootstrapFeed(false, undefined, true),
+        fetchCompanyShard(targetSlug, undefined, true)
+    ]);
+
+    let feed = companyShard;
     let companyJobs = feed?.opportunities || [];
 
     if (companyJobs.length === 0 && targetSlug !== properSlug) {
@@ -168,97 +175,82 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     const stats = { locations: allLocations, skills: allSkills };
     const companyDescriptionHtml = getCompanyDescription(targetSlug, companyName, stats);
 
-    if (companyJobs.length === 0) {
-        logRouteResult('/companies/[slug]', '200');
-        return (
-            <div className="bg-background pb-10 font-sans">
-                <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
-                    <div className="flex items-center justify-between gap-4 pb-2.5">
-                        <div className="flex items-center gap-3.5 min-w-0">
-                            <CompanyLogo
-                                companyName={companyName}
-                                className="w-10 h-10 md:w-12 md:h-12 rounded-xl shrink-0 border border-border/40 bg-background p-0.5 object-contain"
-                            />
-                            <h1 className="text-xl md:text-2xl font-extrabold text-foreground tracking-tight leading-tight truncate">
-                                {companyName}
-                            </h1>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                            <CompanyFollowButton companySlug={targetSlug} companyName={companyName} />
-                        </div>
-                    </div>
+    // Validate skills and locations against existing directory paths
+    const validDirectoryLinks = bootstrapFeed?.opportunities
+        ? getValidDirectoryLinks(bootstrapFeed.opportunities)
+        : { validSkills: new Set<string>(), validLocations: new Set<string>() };
 
-                    <Card className="text-center space-y-3 py-12 p-6">
-                        <p className="text-sm text-muted-foreground">No active job listings for {companyName} right now.</p>
-                        <Link href="/jobs" className="inline-block text-sm font-semibold text-primary hover:underline">
-                            Browse all opportunities →
-                        </Link>
-                    </Card>
+    const validLocationsMapKeys = new Set(Object.keys(VALID_LOCATIONS));
+    const mergedValidLocations = new Set([...validDirectoryLinks.validLocations, ...validLocationsMapKeys]);
 
-                    <Card className="p-6 md:p-8 space-y-3 shadow-none bg-muted/20 border-border/40 mt-8">
-                        <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">About {companyName}</h2>
-                        <div className="text-sm text-muted-foreground leading-relaxed space-y-3 company-description-prose" dangerouslySetInnerHTML={{ __html: companyDescriptionHtml }} />
-                    </Card>
-                </main>
+    const validatedSkills = allSkills.filter(s => {
+        const lower = s.trim().toLowerCase();
+        return validDirectoryLinks.validSkills.has(lower) || validDirectoryLinks.validSkills.has(slugify(s));
+    });
+
+    const validatedLocations = allLocations.filter(l => {
+        const lower = l.trim().toLowerCase();
+        return mergedValidLocations.has(lower) || mergedValidLocations.has(slugify(l));
+    });
+
+    const bottomContent = (
+        <div className="space-y-8">
+            {/* Company Profile Card */}
+            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 p-5 rounded-2xl bg-card border border-border/50 shadow-xs">
+                <CompanyLogo
+                    companyName={companyName}
+                    companyWebsite={firstJob?.companyWebsite}
+                    companyLogoUrl={firstJob?.companyLogoUrl}
+                    applyLink={firstJob?.applyLink}
+                    isGovernment={firstJob?.type === 'GOVERNMENT' || Boolean(firstJob?.governmentJobDetails)}
+                    className="w-16 h-16 rounded-xl shrink-0 border border-border/40 bg-background p-1 object-contain"
+                />
+                <div className="flex-1 text-center sm:text-left space-y-1.5 min-w-0">
+                    <h2 className="text-xl font-bold tracking-tight text-foreground">{companyName}</h2>
+                    <p className="text-xs text-muted-foreground font-medium">
+                        {companyJobs.length} active fresher {companyJobs.length === 1 ? 'opening' : 'openings'}
+                    </p>
+                </div>
+                <div className="shrink-0 pt-1">
+                    <CompanyFollowButton companySlug={targetSlug} companyName={companyName} />
+                </div>
             </div>
-        );
-    }
+
+            {/* Related Topics & Directories */}
+            {(validatedSkills.length > 0 || validatedLocations.length > 0) && (
+                <PageTagLinks
+                    skills={validatedSkills}
+                    locations={validatedLocations}
+                />
+            )}
+
+            {/* About Company */}
+            <div className="space-y-4">
+                <h2 className="text-xl font-bold tracking-tight text-foreground">About {companyName}</h2>
+                <div
+                    className="text-sm text-muted-foreground leading-relaxed space-y-4 company-description-prose max-w-4xl"
+                    dangerouslySetInnerHTML={{ __html: companyDescriptionHtml }}
+                />
+            </div>
+        </div>
+    );
 
     logRouteResult('/companies/[slug]', '200');
 
     return (
-        <div className="bg-background pb-10 font-sans">
-            <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 space-y-6">
-
-                {/* Clean Transparent Header: Company Logo, Company Name, Follow button */}
-                <div className="flex items-center justify-between gap-4 pb-2.5">
-                    <div className="flex items-center gap-3.5 min-w-0">
-                        <CompanyLogo
-                            companyName={companyName}
-                            companyWebsite={firstJob.companyWebsite}
-                            companyLogoUrl={firstJob.companyLogoUrl}
-                            applyLink={firstJob.applyLink}
-                            isGovernment={firstJob.type === 'GOVERNMENT' || Boolean(firstJob.governmentJobDetails)}
-                            className="w-10 h-10 md:w-12 md:h-12 rounded-xl shrink-0 border border-border/40 bg-background p-0.5 object-contain"
-                        />
-                        <h1 className="text-xl md:text-2xl font-extrabold text-foreground tracking-tight leading-tight truncate">
-                            {companyName}
-                        </h1>
-                    </div>
-
-                    <div className="flex items-center gap-3 shrink-0">
-                        <CompanyFollowButton companySlug={targetSlug} companyName={companyName} />
-                    </div>
-                </div>
-
-                {/* Job Cards */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-                    {companyJobs.map((job) => (
-                        <JobCard
-                            key={job.id}
-                            job={{
-                                ...job,
-                                company: companyName,
-                                normalizedRole: job.title,
-                                salary: (job.salaryMin !== undefined && job.salaryMax !== undefined)
-                                    ? { min: job.salaryMin, max: job.salaryMax }
-                                    : undefined,
-                            }}
-                            jobId={job.id}
-                            isApplied={(job.actions || []).some((a: { actionType: string }) => a.actionType === 'APPLIED')}
-                        />
-                    ))}
-                </div>
-
-                <PageTagLinks skills={allSkills} locations={allLocations} />
-
-                <Card className="p-6 md:p-8 space-y-3 shadow-none bg-muted/20 border-border/40 mt-8">
-                    <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">About {companyName}</h2>
-                    <div className="text-sm text-muted-foreground leading-relaxed space-y-3 company-description-prose" dangerouslySetInnerHTML={{ __html: companyDescriptionHtml }} />
-                </Card>
-
-            </main>
-        </div>
+        <Suspense fallback={<FeedPageSkeleton />}>
+            <CategoryPage
+                type={null}
+                initialData={{
+                    opportunities: companyJobs.map(toOpportunityCardDTO) as any,
+                    total: companyJobs.length,
+                    cachedAt: (feed as any)?.generatedAt ? new Date((feed as any).generatedAt).getTime() : Date.now(),
+                }}
+                initialFilters={{ company: [companyName] }}
+                customTitle={`${companyName} Jobs`}
+                bottomContent={bottomContent}
+            />
+        </Suspense>
     );
 }
 

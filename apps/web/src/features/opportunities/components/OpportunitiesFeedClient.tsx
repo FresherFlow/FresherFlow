@@ -128,6 +128,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         workMode: null,
         skills: [],
         source: [],
+        company: [],
     });
 
     // Mobile draft state (kept separate so apply is atomic)
@@ -141,6 +142,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
     const [draftQualification, setDraftQualification] = useState<string | null>(null);
     const [draftCourse, setDraftCourse] = useState<string | null>(null);
     const [draftSource, setDraftSource] = useState<string[]>([]);
+    const [draftCompany, setDraftCompany] = useState<string[]>([]);
 
     const mobileActiveCount =
         (filters.location ? 1 : 0) +
@@ -150,7 +152,8 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         (filters.qualification ? 1 : 0) +
         (filters.course ? 1 : 0) +
         (filters.year ? 1 : 0) +
-        (filters.source && filters.source.length > 0 ? 1 : 0);
+        (filters.source && filters.source.length > 0 ? 1 : 0) +
+        (filters.company && filters.company.length > 0 ? 1 : 0);
 
     const {
         filteredOpps,
@@ -171,6 +174,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         course: filters.course,
         selectedYear: filters.year,
         source: filters.source,
+        company: filters.company,
         initialData,
     });
 
@@ -179,6 +183,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         const skills: Record<string, number> = {};
         const sources: Record<string, number> = {};
         const years: Record<string, number> = {};
+        const companies: Record<string, number> = {};
 
         opportunities.forEach(opp => {
             (opp.locations || []).forEach(loc => {
@@ -192,6 +197,10 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
             const atsName = getAtsName(opp.applyLink || (opp as any).sourceLink || opp.companyWebsite);
             if (atsName) {
                 sources[atsName] = (sources[atsName] || 0) + 1;
+            }
+            const comp = opp.company?.trim();
+            if (comp) {
+                companies[comp] = (companies[comp] || 0) + 1;
             }
             let passoutYears = [...((opp as any).allowedPassoutYears || [])];
             if (passoutYears.length === 0 && opp.passoutYearMin && opp.passoutYearMax) {
@@ -216,13 +225,13 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
             if (count >= 1) filteredLocations[loc] = count;
         }
 
-        return { locations: filteredLocations, skills, sources, years };
+        return { locations: filteredLocations, skills, sources, years, companies };
     }, [opportunities]);
 
     // Reset visible count when filters change
     useEffect(() => {
         setVisibleCount(PAGE_SIZE);
-    }, [search, selectedType, filters.location, filters.sector, filters.qualification, filters.course, filters.year, filters.closingSoon, filters.saved, filters.source]);
+    }, [search, selectedType, filters.location, filters.sector, filters.qualification, filters.course, filters.year, filters.closingSoon, filters.saved, filters.source, filters.company]);
 
     // Push filtered count to TopHeaderBar
     useEffect(() => {
@@ -281,6 +290,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         setDraftQualification(filters.qualification);
         setDraftCourse(filters.course);
         setDraftSource(filters.source);
+        setDraftCompany(filters.company);
         setIsMobileFilterOpen(true);
     };
 
@@ -297,6 +307,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
             workMode: null,
             skills: [],
             source: draftSource,
+            company: draftCompany,
         });
         setIsMobileFilterOpen(false);
     };
@@ -430,6 +441,8 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                     setDraftCourse={setDraftCourse}
                     draftSource={draftSource}
                     setDraftSource={setDraftSource}
+                    draftCompany={draftCompany}
+                    setDraftCompany={setDraftCompany}
                     isLoggedIn={!!user}
                     aggregates={filterAggregates}
                     onApply={applyMobileFilters}
@@ -443,6 +456,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                         setDraftQualification(null);
                         setDraftCourse(null);
                         setDraftSource([]);
+                        setDraftCompany([]);
                     }}
                 />
 
@@ -470,7 +484,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                                     onClearFilters={() => {
                                         setSearch('');
                                         updateType(null);
-                                        setFilters({ location: null, sector: null, qualification: null, course: null, year: null, closingSoon: false, saved: false, workMode: null, skills: [], source: [] });
+                                        setFilters({ location: null, sector: null, qualification: null, course: null, year: null, closingSoon: false, saved: false, workMode: null, skills: [], source: [], company: [] });
                                     }}
                                 />
                                 {(visibleCount < filteredOpps.length || isLoadingMore) && (

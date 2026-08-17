@@ -6,29 +6,27 @@ events.defaultMaxListeners = 30;
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
-// Clean up Next.js proxy spam in development
-if (!IS_PRODUCTION) {
-  const originalConsoleError = console.error;
-  console.error = (...args) => {
-    if (typeof args[0] === 'string' && args[0].includes('Failed to proxy')) {
-      // Just completely silence it, or log a tiny 1-liner without spamming
-      return;
-    }
-    
-    // Catch AggregateErrors where ECONNREFUSED is buried inside
-    if (args[0] instanceof Error) {
-      const err = args[0] as any;
-      if (err.code === 'ECONNREFUSED') return;
-      if (err.name === 'AggregateError' && err.errors && Array.isArray(err.errors)) {
-        if (err.errors.some((e: any) => e.code === 'ECONNREFUSED' || e.message?.includes('ECONNREFUSED'))) {
-          return;
-        }
+const originalConsoleError = console.error;
+console.error = (...args: any[]) => {
+  for (const arg of args) {
+    if (arg && typeof arg === 'object' && arg.cause) {
+      if (arg.cause.code === 'ENOTFOUND' || arg.cause.message?.includes('ENOTFOUND')) {
+        return;
       }
     }
-    
-    originalConsoleError(...args);
-  };
-}
+  }
+  originalConsoleError(...args);
+};
+
+const originalConsoleLog = console.log;
+console.log = (...args: any[]) => {
+  for (const arg of args) {
+    if (typeof arg === 'string' && arg.includes('/_next/image') && arg.includes('500')) {
+      return;
+    }
+  }
+  originalConsoleLog(...args);
+};
 function resolveHost(value: string | undefined, fallback: string): string {
   const raw = (value || '').trim();
   if (!raw) return fallback;

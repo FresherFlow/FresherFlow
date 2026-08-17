@@ -35,6 +35,7 @@ export const SIDEBAR_ROUTES = [
     '/referral',
     '/choose-username',
     '/resources',
+    '/platforms',
 ];
 
 export const FEED_ROUTES = [
@@ -52,6 +53,7 @@ export const FEED_ROUTES = [
     '/saved',
     '/tracker',
     '/resources',
+    '/platforms',
 ];
 
 export function isSidebarPage(pathname: string): boolean {

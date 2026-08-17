@@ -3,6 +3,8 @@
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/ui/Badge';
+import { Input } from '@/ui/Input';
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 export interface DirectoryEntity {
   name: string;
@@ -58,52 +60,64 @@ export function DirectoryClient({ title, description, data, urlPrefix, entityTyp
   return (
     <div className="space-y-10">
       {/* Header & Search */}
-      <div className="space-y-6">
+      <div className="space-y-6 text-center pt-8 pb-4">
         <div className="space-y-2">
-          <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground">
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">
             {title}
           </h1>
-          <p className="text-base text-muted-foreground font-medium max-w-2xl">
+          <p className="text-base text-muted-foreground font-medium max-w-2xl mx-auto pt-1">
             {description}
+            <span className="text-sm text-muted-foreground font-medium ml-2">{data.length} listed</span>
           </p>
-          <div className="flex flex-wrap gap-2 pt-2">
-            <Badge variant="default" className="text-xs font-semibold px-3 py-1">
-              {data.length} listed
-            </Badge>
-          </div>
         </div>
 
-        <div className="relative max-w-md">
-          <input
+        <div className="relative max-w-md mx-auto">
+          <MagnifyingGlassIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none z-10" />
+          <Input
             type="text"
             placeholder={`Search ${title.toLowerCase()}...`}
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full h-12 px-4 rounded-xl border border-border bg-card/50 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+            className="pl-10 pr-4 h-11"
           />
         </div>
+
+        {/* Top-Aligned A-Z Navigation */}
+        {letters.length > 0 && (
+          <div className="flex flex-wrap justify-center gap-1.5 pt-4">
+            {letters.map(letter => (
+              <a
+                key={letter}
+                href={`#letter-${letter}`}
+                className="w-8 h-8 flex items-center justify-center rounded-md text-xs font-bold border border-border bg-card hover:bg-muted hover:text-foreground transition-colors"
+              >
+                {letter}
+              </a>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Featured Grid */}
       {!isSearching && featured.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-foreground">Featured</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
             {featured.map(item => (
               <Link
                 key={item.slug}
                 href={`${urlPrefix}${item.slug}`}
-                className="group flex flex-col p-4 rounded-2xl bg-card border border-border/70 hover:border-primary/40 hover:-translate-y-0.5 transition-all shadow-sm"
+                className="group flex flex-col p-4 bg-muted/30 hover:bg-muted/50 border border-border/60 shadow-sm rounded-xl transition-colors"
               >
-                {entityType === 'skill' && (
-                  <div className="mb-2">
-                    <SkillIcon skill={item.name} className="w-6 h-6 shrink-0" />
-                  </div>
-                )}
-                <span className="text-base font-bold text-foreground capitalize group-hover:text-primary transition-colors line-clamp-1">
-                  {item.name}
-                </span>
-                <span className="text-sm font-medium text-muted-foreground mt-1">
+                <div className="flex items-center gap-2 mb-1">
+                  {entityType === 'skill' && (
+                    <SkillIcon skill={item.name} className="w-5 h-5 shrink-0" />
+                  )}
+                  <span className="text-base font-bold text-foreground capitalize group-hover:text-primary transition-colors">
+                    {item.name}
+                  </span>
+                </div>
+                <span className="text-sm font-medium text-muted-foreground">
                   {item.count} {item.count === 1 ? 'Job' : 'Jobs'}
                 </span>
               </Link>
@@ -112,22 +126,6 @@ export function DirectoryClient({ title, description, data, urlPrefix, entityTyp
         </div>
       )}
 
-      {/* Sticky Jump Nav */}
-      {letters.length > 0 && (
-        <div className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border/40 py-3 -mx-4 px-4 md:mx-0 md:px-0">
-          <div className="flex flex-wrap gap-1.5">
-            {letters.map(letter => (
-              <a
-                key={letter}
-                href={`#letter-${letter}`}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-xs font-bold bg-card/50 text-foreground hover:text-primary transition-colors shadow-sm border border-border/40 hover:border-primary/60 hover:bg-primary/5"
-              >
-                {letter}
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* A-Z List */}
       {(letters.length > 0 || search || data.length === 0) && (
@@ -139,27 +137,28 @@ export function DirectoryClient({ title, description, data, urlPrefix, entityTyp
           )}
           
           {letters.map(letter => (
-            <div key={letter} id={`letter-${letter}`} className="scroll-mt-32 space-y-6">
-              <div className="flex items-center gap-4">
-                <span className="text-4xl font-extrabold text-foreground tracking-tighter">{letter}</span>
-                <div className="flex-1 h-px bg-border/40" />
+            <div key={letter} id={`letter-${letter}`} className="scroll-mt-32 space-y-4">
+              <div className="flex items-center gap-4 border-b border-border/40 pb-2">
+                <h2 className="text-3xl font-extrabold text-foreground">{letter}</h2>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-4">
                 {groups[letter].map(item => (
                   <Link
                     key={item.slug}
                     href={`${urlPrefix}${item.slug}`}
-                    className="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border/50 hover:border-primary/60 hover:bg-primary/5 transition-all shadow-sm"
+                    className="group flex flex-col p-4 bg-muted/30 hover:bg-muted/50 border border-border/60 shadow-sm rounded-xl transition-colors"
                   >
-                    <span className="flex items-center gap-1.5 text-sm font-medium text-foreground capitalize group-hover:text-primary transition-colors">
+                    <div className="flex items-center gap-2 mb-1">
                       {entityType === 'skill' && (
-                          <SkillIcon skill={item.name} className="w-4 h-4 shrink-0" />
+                        <SkillIcon skill={item.name} className="w-5 h-5 shrink-0" />
                       )}
-                      {item.name}
+                      <span className="text-base font-bold text-foreground capitalize group-hover:text-primary transition-colors">
+                        {item.name}
+                      </span>
+                    </div>
+                    <span className="text-sm font-medium text-muted-foreground">
+                      {item.count} {item.count === 1 ? 'Job' : 'Jobs'}
                     </span>
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                      {item.count}
-                    </Badge>
                   </Link>
                 ))}
               </div>

@@ -19,7 +19,7 @@ export function ProfileGate({ children }: { children: React.ReactNode }) {
     if (!mounted || isLoading) {
         return (
             <div className="relative w-full h-screen flex flex-col items-center justify-center">
-                <LoadingScreen message="Loading..." fullScreen={true} className="z-[40] bg-background/95 backdrop-blur-xl" />
+                <LoadingScreen message="Loading..." fullScreen={false} className="z-[40] bg-background/95 backdrop-blur-xl" />
             </div>
         );
     }
@@ -57,7 +57,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     if (!mounted || isLoading) {
         return (
             <div className="relative w-full h-screen flex flex-col items-center justify-center">
-                <LoadingScreen message="Loading..." fullScreen={true} className="z-[40] bg-background/95 backdrop-blur-xl" />
+                <LoadingScreen message="Loading..." fullScreen={false} className="z-[40] bg-background/95 backdrop-blur-xl" />
             </div>
         );
     }

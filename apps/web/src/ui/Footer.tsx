@@ -69,13 +69,13 @@ export function Footer({ className }: FooterProps) {
     ];
 
     const socialLinks = [
-        { href: 'https://t.me/fresherflowin', label: 'Telegram', Icon: TelegramBrandIcon, colorClass: 'text-[#229ED9] bg-[#229ED9]/10 border-[#229ED9]/20 hover:bg-[#229ED9] hover:text-white' },
-        { href: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D', label: 'WhatsApp', Icon: WhatsAppBrandIcon, colorClass: 'text-[#25D366] bg-[#25D366]/10 border-[#25D366]/20 hover:bg-[#25D366] hover:text-white' },
-        { href: 'https://www.linkedin.com/company/fresherflow-in', label: 'LinkedIn', Icon: LinkedInBrandIcon, colorClass: 'text-[#0A66C2] bg-[#0A66C2]/10 border-[#0A66C2]/20 hover:bg-[#0A66C2] hover:text-white' },
-        { href: 'https://x.com/Fresherflow', label: 'X', Icon: XBrandIcon, colorClass: 'text-foreground bg-foreground/10 border-foreground/20 hover:bg-foreground hover:text-background' },
-        { href: 'https://discord.gg/CcPAnWSHD', label: 'Discord', Icon: DiscordBrandIcon, colorClass: 'text-[#5865F2] bg-[#5865F2]/10 border-[#5865F2]/20 hover:bg-[#5865F2] hover:text-white' },
-        { href: 'https://instagram.com/fresherflow', label: 'Instagram', Icon: InstagramBrandIcon, colorClass: 'text-[#E1306C] bg-[#E1306C]/10 border-[#E1306C]/20 hover:bg-[#E1306C] hover:text-white' },
-        { href: 'https://www.facebook.com/FresherFlow.in', label: 'Facebook', Icon: FacebookBrandIcon, colorClass: 'text-[#1877F2] bg-[#1877F2]/10 border-[#1877F2]/20 hover:bg-[#1877F2] hover:text-white' },
+        { href: 'https://t.me/fresherflowin', label: 'Telegram', Icon: TelegramBrandIcon, colorClass: 'bg-[#229ED9] text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D', label: 'WhatsApp', Icon: WhatsAppBrandIcon, colorClass: 'bg-[#25D366] text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://www.linkedin.com/company/fresherflow-in', label: 'LinkedIn', Icon: LinkedInBrandIcon, colorClass: 'bg-[#0A66C2] text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://x.com/Fresherflow', label: 'X', Icon: XBrandIcon, colorClass: 'bg-black dark:bg-white text-white dark:text-black border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://discord.gg/CcPAnWSHD', label: 'Discord', Icon: DiscordBrandIcon, colorClass: 'bg-[#5865F2] text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://instagram.com/fresherflow', label: 'Instagram', Icon: InstagramBrandIcon, colorClass: 'bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://www.facebook.com/FresherFlow.in', label: 'Facebook', Icon: FacebookBrandIcon, colorClass: 'bg-[#1877F2] text-white border-transparent hover:opacity-90 shadow-sm' },
     ];
 
     return (
@@ -177,7 +177,7 @@ export function Footer({ className }: FooterProps) {
                         </p>
                         
                         {/* Social Icons */}
-                        <div className="flex flex-wrap items-center justify-center md:justify-end gap-1.5 sm:gap-2">
+                        <div className="flex flex-wrap items-center justify-center md:justify-end gap-1.5 sm:gap-2 md:pr-14">
                             {socialLinks.map(({ href, label, Icon, colorClass }) => (
                                 <a
                                     key={label}

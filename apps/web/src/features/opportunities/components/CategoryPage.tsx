@@ -11,17 +11,19 @@ interface CategoryPageProps {
     initialData?: { opportunities: Opportunity[]; total: number; cachedAt?: number } | null;
     initialFilters?: Partial<import('@/features/opportunities/components/FilterDropdownBar').FilterBarFilters>;
     canonicalRedirect?: boolean;
+    customTitle?: string;
+    bottomContent?: React.ReactNode;
 }
 
-function CategoryPageContainer({ type, initialData, initialFilters, canonicalRedirect }: CategoryPageProps) {
-    const state = useCategoryPageState({ type, initialData, initialFilters, canonicalRedirect });
+function CategoryPageContainer({ type, initialData, initialFilters, canonicalRedirect, customTitle, bottomContent }: CategoryPageProps) {
+    const state = useCategoryPageState({ type, initialData, initialFilters, canonicalRedirect, customTitle, bottomContent });
     return <CategoryPageView {...state} />;
 }
 
-export default function CategoryPage({ type, initialData, initialFilters, canonicalRedirect }: CategoryPageProps) {
+export default function CategoryPage({ type, initialData, initialFilters, canonicalRedirect, customTitle, bottomContent }: CategoryPageProps) {
     return (
         <Suspense fallback={<FeedPageSkeleton isGovt={type === OpportunityType.GOVERNMENT} />}>
-            <CategoryPageContainer type={type} initialData={initialData} initialFilters={initialFilters} canonicalRedirect={canonicalRedirect} />
+            <CategoryPageContainer type={type} initialData={initialData} initialFilters={initialFilters} canonicalRedirect={canonicalRedirect} customTitle={customTitle} bottomContent={bottomContent} />
         </Suspense>
     );
 }

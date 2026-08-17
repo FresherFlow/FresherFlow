@@ -37,7 +37,7 @@ export const metadata: Metadata = {
 };
 
 export default async function JobsPage() {
-    const bootstrapData = await fetchBootstrapFeed(false, undefined, true);
+    const bootstrapData = await fetchBootstrapFeed(false);
     const initialData = bootstrapData ? {
         opportunities: bootstrapData.opportunities.map(toOpportunityCardDTO) as any,
         total: bootstrapData.count,

@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { Suspense } from 'react';
 import type { Opportunity } from '@fresherflow/types';
 import ArrowRightIcon from '@heroicons/react/24/outline/ArrowRightIcon';
 import JobCard from '@/features/opportunities/components/JobCard';
@@ -40,32 +41,34 @@ export function RecentOpportunities({ opportunities }: RecentOpportunitiesProps)
                     </Link>
                 </div>
 
-                <motion.div 
-                    initial="hidden"
-                    whileInView="visible"
-                    viewport={{ once: true, margin: "-50px" }}
-                    variants={{
-                        hidden: { opacity: 0 },
-                        visible: { opacity: 1, transition: { staggerChildren: 0.08 } }
-                    }}
-                    className="grid grid-cols-1 md:grid-cols-2 gap-3.5"
-                >
-                    {recent.map((opportunity) => (
-                        <motion.div 
-                            key={opportunity.id} 
-                            variants={{
-                                hidden: { opacity: 0, y: 16 },
-                                visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
-                            }}
-                        >
-                            <JobCard
-                                job={opportunity}
-                                jobId={opportunity.id}
-                                variant="compact"
-                            />
-                        </motion.div>
-                    ))}
-                </motion.div>
+                <Suspense fallback={null}>
+                    <motion.div 
+                        initial="hidden"
+                        whileInView="visible"
+                        viewport={{ once: true, margin: "-50px" }}
+                        variants={{
+                            hidden: { opacity: 0 },
+                            visible: { opacity: 1, transition: { staggerChildren: 0.08 } }
+                        }}
+                        className="grid grid-cols-1 md:grid-cols-2 gap-3.5"
+                    >
+                        {recent.map((opportunity) => (
+                            <motion.div 
+                                key={opportunity.id} 
+                                variants={{
+                                    hidden: { opacity: 0, y: 16 },
+                                    visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+                                }}
+                            >
+                                <JobCard
+                                    job={opportunity}
+                                    jobId={opportunity.id}
+                                    variant="compact"
+                                />
+                            </motion.div>
+                        ))}
+                    </motion.div>
+                </Suspense>
             </div>
         </section>
     );

@@ -43,7 +43,7 @@ export default async function SkillsIndexPage() {
         .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
     return (
-        <div className="min-h-screen bg-background pb-20 font-sans">
+        <div className="bg-background font-sans">
             <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
                 <HeaderPortal>
                     <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Skills' }]} />

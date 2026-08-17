@@ -22,7 +22,7 @@ const CORP_COURSES = ['B.Tech/B.E.', 'M.C.A.', 'MBA', 'B.Sc/B.Com/B.A', 'Diploma
 
 // Removed hardcoded years and skills
 
-type OpenSection = 'type' | 'location' | 'year' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | 'source' | null;
+type OpenSection = 'type' | 'location' | 'year' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | 'source' | 'company' | null;
 
 interface MobileFilterDrawerProps {
     isOpen: boolean;
@@ -49,6 +49,8 @@ interface MobileFilterDrawerProps {
     setDraftSkills?: (val: string[]) => void;
     draftSource?: string[];
     setDraftSource?: (val: string[]) => void;
+    draftCompany?: string[];
+    setDraftCompany?: (val: string[]) => void;
     isLoggedIn: boolean;
     pageType?: string;
     aggregates?: {
@@ -56,6 +58,7 @@ interface MobileFilterDrawerProps {
         skills: Record<string, number>;
         sources: Record<string, number>;
         years: Record<string, number>;
+        companies?: Record<string, number>;
     };
     onApply: () => void;
     onClear: () => void;
@@ -137,6 +140,8 @@ export function MobileFilterDrawer({
     setDraftSkills,
     draftSource,
     setDraftSource,
+    draftCompany,
+    setDraftCompany,
     pageType,
     aggregates,
     onApply,
@@ -144,6 +149,7 @@ export function MobileFilterDrawer({
 }: MobileFilterDrawerProps) {
     const [openSection, setOpenSection] = useState<OpenSection>(setDraftType ? 'type' : 'location');
     const [locSearch, setLocSearch] = useState('');
+    const [companySearch, setCompanySearch] = useState('');
 
     useEffect(() => {
         if (!isOpen) return;
@@ -165,7 +171,8 @@ export function MobileFilterDrawer({
         draftSector,
         draftQualification,
         draftCourse,
-        draftSource,
+        draftSource && draftSource.length > 0 ? 'source' : null,
+        draftCompany && draftCompany.length > 0 ? 'company' : null,
         draftClosingSoon ? 'closing' : null,
         draftShowOnlySaved ? 'saved' : null,
     ].filter(Boolean).length;
@@ -187,6 +194,12 @@ export function MobileFilterDrawer({
     const sortedYears = Object.entries(aggregates?.years || {})
         .sort((a, b) => Number(b[0]) - Number(a[0]))
         .map(([year, count]) => ({ year: Number(year), count }));
+
+    const sortedCompanies = Object.entries(aggregates?.companies || {})
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .map(([company, count]) => ({ company, count }));
+    const compQuery = companySearch.trim().toLowerCase();
+    const filteredCompanies = compQuery ? sortedCompanies.filter(c => c.company.toLowerCase().includes(compQuery)) : sortedCompanies;
 
     return (
         <Drawer.Root open={isOpen} onOpenChange={(open) => !open && onClose()} modal={false}>
@@ -377,6 +390,45 @@ export function MobileFilterDrawer({
                                     ))}
                                 </div>
                             </Section>
+                            {setDraftCompany && (
+                            <Section
+                                title="Company"
+                                isOpen={openSection === 'company'}
+                                onToggle={() => setOpenSection(openSection === 'company' ? null : 'company')}
+                            >
+                                <div className="space-y-3">
+                                    <input
+                                        type="text"
+                                        value={companySearch}
+                                        onChange={e => setCompanySearch(e.target.value)}
+                                        placeholder="Search companies..."
+                                        className="w-full h-9 px-3 rounded-xl border border-border bg-card text-xs text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                    />
+                                    <div className="max-h-52 overflow-y-auto overscroll-contain pr-1 flex flex-wrap gap-2">
+                                        {filteredCompanies.map(({ company, count }) => {
+                                            const isSelected = draftCompany?.includes(company);
+                                            return (
+                                                <Pill
+                                                    key={company}
+                                                    active={isSelected || false}
+                                                    onClick={() => {
+                                                        const next = isSelected
+                                                            ? (draftCompany || []).filter(c => c !== company)
+                                                            : [...(draftCompany || []), company];
+                                                        setDraftCompany(next);
+                                                    }}
+                                                >
+                                                    {company} ({count})
+                                                </Pill>
+                                            );
+                                        })}
+                                        {filteredCompanies.length === 0 && (
+                                            <p className="text-xs text-muted-foreground py-2">No companies found</p>
+                                        )}
+                                    </div>
+                                </div>
+                            </Section>
+                            )}
                             {setDraftWorkMode && (
                             <Section
                                 title="Work Mode"

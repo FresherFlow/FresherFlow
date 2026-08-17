@@ -44,9 +44,10 @@ export const DEFAULT_NAV_ITEMS = [
     { name: 'Government', href: '/govt', icon: BuildingLibraryIcon, hasSubmenu: true },
     { name: 'Companies', href: '/companies', icon: BuildingOfficeIcon },
     { name: 'Resources', href: '/resources', icon: BookOpenIcon },
-    { name: 'Saved', href: '/saved', icon: BookmarkIcon },
-    { name: 'Tracker', href: '/tracker', icon: ChartBarIcon },
-    { name: 'Account', href: '/account', icon: UserCircleIcon, hasSubmenu: true },
+    { name: 'Platforms', href: '/platforms', icon: GlobeAltIcon },
+    { name: 'Saved', href: '/saved', icon: BookmarkIcon, requiresAuth: true },
+    { name: 'Tracker', href: '/tracker', icon: ChartBarIcon, requiresAuth: true },
+    { name: 'Account', href: '/account', icon: UserCircleIcon, hasSubmenu: true, requiresAuth: true },
 ];
 
 export const JOBS_NAV_ITEMS = [
@@ -55,8 +56,8 @@ export const JOBS_NAV_ITEMS = [
     { name: 'Remote', href: '/jobs?mode=remote', icon: ComputerDesktopIcon },
     { name: 'Walk-ins', href: '/jobs?type=walkin', icon: MapIcon },
     { name: 'Closing Soon', href: '/jobs?sort=expiring', icon: BellAlertIcon },
-    { name: 'Latest', href: '/jobs?sort=latest', icon: ClockIcon },
-    { name: 'Trending', href: '/jobs?sort=trending', icon: ArrowTrendingUpIcon },
+    // { name: 'Latest', href: '/jobs?sort=latest', icon: ClockIcon },
+    // { name: 'Trending', href: '/jobs?sort=trending', icon: ArrowTrendingUpIcon },
     { name: 'Skills', href: '/skills', icon: CodeBracketIcon },
     { name: 'Roles', href: '/roles', icon: IdentificationIcon },
     { name: 'Location', href: '/locations', icon: MapPinIcon },
@@ -82,14 +83,14 @@ export const GOVT_NAV_ITEMS = [
 ];
 
 export const ACCOUNT_NAV_ITEMS = [
-    { name: 'Account', href: '/account', icon: UserCircleIcon },
-    { name: 'Profile', href: '/profile', icon: UserIcon },
-    { name: 'Tracker', href: '/tracker', icon: ChartBarIcon },
-    { name: 'Saved', href: '/saved', icon: BookmarkIcon },
-    { name: 'Following', href: '/followed-companies', icon: Building },
-    { name: 'Referrals', href: '/referral', icon: UserPlusIcon },
-    { name: 'Contributions', href: '/contribute', icon: PlusCircleIcon },
-    { name: 'Settings', href: '/settings', icon: Cog6ToothIcon },
+    { name: 'Account', href: '/account', icon: UserCircleIcon, requiresAuth: true },
+    { name: 'Profile', href: '/profile', icon: UserIcon, requiresAuth: true },
+    { name: 'Tracker', href: '/tracker', icon: ChartBarIcon, requiresAuth: true },
+    { name: 'Saved', href: '/saved', icon: BookmarkIcon, requiresAuth: true },
+    { name: 'Following', href: '/followed-companies', icon: Building, requiresAuth: true },
+    { name: 'Referrals', href: '/referral', icon: UserPlusIcon, requiresAuth: true },
+    { name: 'Contributions', href: '/contribute', icon: PlusCircleIcon, requiresAuth: true },
+    { name: 'Settings', href: '/settings', icon: Cog6ToothIcon, requiresAuth: true },
 ];
 
 export function getNavContext(pathname: string): 'default' | 'account' | 'government' | 'jobs' | 'moderator' {
@@ -115,7 +116,8 @@ export function getNavContext(pathname: string): 'default' | 'account' | 'govern
         pathname.startsWith('/skills') ||
         pathname.startsWith('/roles') ||
         pathname.startsWith('/locations') ||
-        pathname.startsWith('/batch')
+        pathname.startsWith('/batch') ||
+        pathname.startsWith('/platforms')
     ) {
         return 'jobs';
     }

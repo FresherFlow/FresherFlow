@@ -20,9 +20,11 @@ export interface UseCategoryPageStateProps {
     initialData?: { opportunities: Opportunity[]; total: number; cachedAt?: number } | null;
     initialFilters?: Partial<FilterBarFilters>;
     canonicalRedirect?: boolean;
+    customTitle?: string;
+    bottomContent?: React.ReactNode;
 }
 
-export function useCategoryPageState({ type: propType, initialData, initialFilters, canonicalRedirect }: UseCategoryPageStateProps) {
+export function useCategoryPageState({ type: propType, initialData, initialFilters, canonicalRedirect, customTitle, bottomContent }: UseCategoryPageStateProps) {
     const { user } = useAuth();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -94,6 +96,7 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
         workMode: searchParams?.getAll('mode').length ? searchParams.getAll('mode').map(m => m.toUpperCase()) : (initialFilters?.workMode || null), 
         skills: searchParams?.get('skills') ? searchParams.get('skills')!.split(',') : (initialFilters?.skills || []),
         source: searchParams?.get('source') ? searchParams.get('source')!.split(',') : (initialFilters?.source || []),
+        company: searchParams?.get('company') ? searchParams.get('company')!.split(',').filter(Boolean) : (initialFilters?.company || []),
     });
     const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
     const [draftLoc, setDraftLoc] = useState<string | null>(null);
@@ -106,6 +109,7 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
     const [draftWorkMode, setDraftWorkMode] = useState<string[] | null>(null);
     const [draftSkills, setDraftSkills] = useState<string[]>([]);
     const [draftSource, setDraftSource] = useState<string[]>([]);
+    const [draftCompany, setDraftCompany] = useState<string[]>([]);
     const [mounted, setMounted] = useState(false);
     const [visibleCount, setVisibleCount] = useState(20);
     const replaceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -136,6 +140,7 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
             workMode: sp?.getAll('mode').length ? sp.getAll('mode').map(m => m.toUpperCase()) : (initialFilters?.workMode || null),
             skills: sp?.get('skills') ? sp.get('skills')!.split(',') : (initialFilters?.skills || []),
             source: sp?.get('source') ? sp.get('source')!.split(',') : (initialFilters?.source || []),
+            company: sp?.get('company') ? sp.get('company')!.split(',').filter(Boolean) : (initialFilters?.company || []),
         });
      
     }, [searchParams]);
@@ -143,11 +148,11 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
     // Reset pagination when search or filters change
     useEffect(() => {
         setVisibleCount(20);
-    }, [search, type, filters.location, filters.sector, filters.qualification, filters.course, filters.year, filters.closingSoon, filters.saved, filters.workMode, filters.skills, filters.source]);
+    }, [search, type, filters.location, filters.sector, filters.qualification, filters.course, filters.year, filters.closingSoon, filters.saved, filters.workMode, filters.skills, filters.source, filters.company]);
 
     const mobileActiveCount =
         (filters.location ? 1 : 0) + (filters.closingSoon ? 1 : 0) + (filters.saved ? 1 : 0) +
-        (filters.sector ? 1 : 0) + (filters.qualification ? 1 : 0) + (filters.course ? 1 : 0) + (filters.year ? 1 : 0) + (filters.workMode ? 1 : 0) + (filters.skills && filters.skills.length > 0 ? 1 : 0) + (filters.source && filters.source.length > 0 ? 1 : 0);
+        (filters.sector ? 1 : 0) + (filters.qualification ? 1 : 0) + (filters.course ? 1 : 0) + (filters.year ? 1 : 0) + (filters.workMode ? 1 : 0) + (filters.skills && filters.skills.length > 0 ? 1 : 0) + (filters.source && filters.source.length > 0 ? 1 : 0) + (filters.company && filters.company.length > 0 ? 1 : 0);
 
     useEffect(() => {
         if (!mounted) return;
@@ -214,6 +219,12 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
             updateParam('source', null);
         }
 
+        if (filters.company && filters.company.length > 0) {
+            updateParam('company', filters.company.join(','));
+        } else {
+            updateParam('company', null);
+        }
+
         if (changed) {
             if (replaceTimerRef.current) clearTimeout(replaceTimerRef.current);
             replaceTimerRef.current = setTimeout(() => {
@@ -225,13 +236,14 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
         return () => {
             if (replaceTimerRef.current) clearTimeout(replaceTimerRef.current);
         };
-    }, [search, govtCategory, filters.location, filters.year, filters.closingSoon, filters.saved, filters.sector, filters.qualification, filters.course, filters.skills, filters.source, filters.workMode, mounted]);
+    }, [search, govtCategory, filters.location, filters.year, filters.closingSoon, filters.saved, filters.sector, filters.qualification, filters.course, filters.skills, filters.source, filters.company, filters.workMode, mounted]);
 
 
     const { opportunities, filteredOpps, isLoading, error, profileIncomplete, toggleSave, reload } = useOpportunitiesFeed({
         type,
         mode,
         source,
+        company: filters.company,
         sort,
         selectedLoc: filters.location,
         showOnlySaved: filters.saved,
@@ -383,17 +395,18 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
         setDraftQualification(filters.qualification); setDraftCourse(filters.course);
         setDraftWorkMode(filters.workMode); setDraftSkills(filters.skills || []);
         setDraftSource(filters.source || []);
+        setDraftCompany(filters.company || []);
         setIsMobileFilterOpen(true);
     };
 
     const applyMobileFilters = () => {
-        setFilters({ location: draftLoc, year: draftYear, closingSoon: draftClosingSoon, saved: draftShowOnlySaved, sector: draftSector, qualification: draftQualification, course: draftCourse, workMode: draftWorkMode, skills: draftSkills, source: draftSource });
+        setFilters({ location: draftLoc, year: draftYear, closingSoon: draftClosingSoon, saved: draftShowOnlySaved, sector: draftSector, qualification: draftQualification, course: draftCourse, workMode: draftWorkMode, skills: draftSkills, source: draftSource, company: draftCompany });
         setIsMobileFilterOpen(false);
     };
 
     const clearAll = () => {
         setSearch('');
-        setFilters({ location: null, year: null, closingSoon: false, saved: false, sector: null, qualification: null, course: null, workMode: null, skills: [], source: [] });
+        setFilters({ location: null, year: null, closingSoon: false, saved: false, sector: null, qualification: null, course: null, workMode: null, skills: [], source: [], company: [] });
     };
 
     return {
@@ -436,6 +449,7 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
         draftWorkMode, setDraftWorkMode,
         draftSkills, setDraftSkills,
         draftSource, setDraftSource,
+        draftCompany, setDraftCompany,
         mobileActiveCount,
         openMobileFilters,
         applyMobileFilters,
@@ -448,6 +462,8 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
         isJobApplied,
         toggleSave,
         reload,
+        customTitle,
+        bottomContent,
     };
 }
 

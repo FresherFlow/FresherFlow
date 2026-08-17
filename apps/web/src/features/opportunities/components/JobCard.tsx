@@ -400,7 +400,7 @@ export default function JobCard({
                                     router.push(getOpportunityPathFromItem(job));
                                 }
                             }}>
-                                <h2 className="text-[15px] font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug">
+                                <h2 className="text-[15px] font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-2 sm:line-clamp-1 leading-snug">
                                     {job.normalizedRole || job.title}
                                 </h2>
                             </div>
@@ -418,7 +418,7 @@ export default function JobCard({
                         <div className="flex items-center gap-2 shrink-0 relative z-20 pointer-events-auto">
                             {getPostedLabel() && (
                                 <span className={cn(
-                                    "text-xs font-medium text-muted-foreground",
+                                    "text-xs font-medium text-muted-foreground hidden sm:inline-flex",
                                     isFreshlyPosted() && "text-primary"
                                 )}>
                                     {getPostedLabel()}
@@ -435,6 +435,16 @@ export default function JobCard({
                                     </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-44 z-50">
+                                    <DropdownMenuItem onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (shareUrl) {
+                                            navigator.clipboard.writeText(shareUrl);
+                                            toast.success('Link copied to clipboard');
+                                        }
+                                    }} className="cursor-pointer text-xs sm:hidden">
+                                        <LinkIcon className="w-3.5 h-3.5 mr-2 text-foreground/70" />
+                                        <span>Copy Link</span>
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem onClick={handleSaveClick} className="cursor-pointer text-xs">
                                         {isJobSaved ? <BookmarkSolidIcon className="w-3.5 h-3.5 mr-2 text-primary" /> : <BookmarkIcon className="w-3.5 h-3.5 mr-2" />}
                                         <span>{isJobSaved ? 'Remove Bookmark' : 'Save Job'}</span>
@@ -550,17 +560,23 @@ export default function JobCard({
 
                         {/* Actions (Bookmark + Apply) */}
                         <div className="flex items-center gap-2 shrink-0 relative z-20 pointer-events-auto h-8">
+                            {/* Mobile-only posted date in place of the hidden icons */}
+                            {getPostedLabel() && (
+                                <span className="sm:hidden text-[11px] font-medium text-muted-foreground mr-1">
+                                    {getPostedLabel()?.replace('Posted ', '')}
+                                </span>
+                            )}
                             <CopyButton
                                 variant="ghost"
                                 value={shareUrl}
                                 icon={LinkIcon}
                                 iconClassName="w-4 h-4"
-                                className="h-8 w-8 !p-0 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-[transform,background-color,color] duration-100 ease-out active:scale-[0.95]"
+                                className="hidden sm:flex h-8 w-8 !p-0 rounded-lg items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-[transform,background-color,color] duration-100 ease-out active:scale-[0.95]"
                             />
                             <button
                                 type="button"
                                 onClick={handleSaveClick}
-                                className="h-8 w-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-[transform,background-color,color] duration-100 ease-out active:scale-[0.95] motion-reduce:transform-none"
+                                className="hidden sm:flex h-8 w-8 rounded-lg items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-[transform,background-color,color] duration-100 ease-out active:scale-[0.95] motion-reduce:transform-none"
                                 aria-label="Save Job"
                             >
                                 {isJobSaved ? <BookmarkSolidIcon className="w-4 h-4 text-primary" /> : <BookmarkIcon className="w-4 h-4" />}

@@ -22,8 +22,6 @@ interface CompanyLogoProps {
 }
 
 export default function CompanyLogo({ companyName, companyWebsite, companyLogoUrl, applyLink, className, priority = false, isGovernment }: CompanyLogoProps) {
-    const [attemptIndex, setAttemptIndex] = useState(0);
-    const [imgError, setImgError] = useState(false);
 
     const normalizedName = (companyName || '').toLowerCase().trim();
     const isTcsBrand = normalizedName.includes('tata consultancy services') || normalizedName.includes(' tcs') || normalizedName === 'tcs';
@@ -41,8 +39,20 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
         const urls: string[] = [];
 
         // 1. Explicit Logo URL (highest priority)
-        if (companyLogoUrl) {
-            urls.push(companyLogoUrl);
+        let explicitUrl = companyLogoUrl;
+        if (explicitUrl && explicitUrl.includes('logo.clearbit.com')) {
+            try {
+                const parsed = new URL(explicitUrl);
+                const domain = parsed.pathname.slice(1); // gets 'apple.com'
+                if (domain) {
+                    explicitUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+                }
+            } catch (e) {
+                explicitUrl = null;
+            }
+        }
+        if (explicitUrl) {
+            urls.push(explicitUrl);
         }
 
         if (isGovDetected && !companyLogoUrl) {
@@ -82,9 +92,7 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
         ].filter((d): d is string => !!d)));
 
         domainsToTry.forEach(d => {
-            // 1. Clearbit (High quality logos, returns 404 if not found which naturally triggers onError)
-            urls.push(`https://logo.clearbit.com/${d}`);
-            // 2. Google Favicon (Good backup, returns 16px globe if not found which we manually reject)
+            // 1. Google Favicon (Good backup, returns 16px globe if not found which we manually reject)
             urls.push(`https://www.google.com/s2/favicons?domain=${d}&sz=128`);
         });
 
@@ -93,14 +101,25 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
 
     // Use cached URL if available for instant load
     const cacheKey = candidates.join('|');
-    const [currentSrc, setCurrentSrc] = useState<string | null>(() => logoCache.get(cacheKey) || candidates[0] || null);
+    const [attemptIndex, setAttemptIndex] = useState(0);
+    const [imgError, setImgError] = useState(() => logoCache.get(cacheKey) === 'error');
+    const [currentSrc, setCurrentSrc] = useState<string | null>(() => {
+        const cached = logoCache.get(cacheKey);
+        return cached === 'error' ? null : (cached || candidates[0] || null);
+    });
 
     // Sync state when candidates change (prop change)
     const [prevCacheKey, setPrevCacheKey] = useState(cacheKey);
     if (cacheKey !== prevCacheKey) {
         setPrevCacheKey(cacheKey);
         const cached = logoCache.get(cacheKey);
-        if (cached) {
+        if (cached === 'error') {
+            setAttemptIndex(candidates.length);
+            setImgError(true);
+            setCurrentSrc(null);
+        } else if (cached) {
+            setAttemptIndex(0);
+            setImgError(false);
             setCurrentSrc(cached);
         } else {
             setAttemptIndex(0);
@@ -115,6 +134,7 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
             setAttemptIndex(nextIndex);
             setCurrentSrc(candidates[nextIndex]);
         } else {
+            logoCache.set(cacheKey, 'error');
             setImgError(true);
         }
     };
@@ -180,8 +200,8 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
                 onLoad={handleLoad}
                 priority={priority}
                 loading={priority ? undefined : 'lazy'}
-                unoptimized
                 referrerPolicy="no-referrer"
+                unoptimized={true}
             />
         </div>
     );

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Moon, Sun, Monitor } from "lucide-react"
+import { Moon, Sun, Monitor, Check } from "lucide-react"
 import { useTheme } from "next-themes"
 
 import { ResponsivePopover } from "./ResponsivePopover"
@@ -45,15 +45,18 @@ export function ThemeSwitcher({ className = '', children }: { className?: string
         <div className="flex flex-col w-full gap-1 p-1 sm:p-0">
           <button onClick={() => handleThemeChange("light")} className="flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm font-medium transition-colors hover:bg-muted text-foreground w-full text-left outline-none">
             <Sun className="h-4 w-4 opacity-70" />
-            <span>Light</span>
+            <span className="flex-1">Light</span>
+            {theme === 'light' && <Check className="h-4 w-4" />}
           </button>
           <button onClick={() => handleThemeChange("dark")} className="flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm font-medium transition-colors hover:bg-muted text-foreground w-full text-left outline-none">
             <Moon className="h-4 w-4 opacity-70" />
-            <span>Dark</span>
+            <span className="flex-1">Dark</span>
+            {theme === 'dark' && <Check className="h-4 w-4" />}
           </button>
           <button onClick={() => handleThemeChange("system")} className="flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm font-medium transition-colors hover:bg-muted text-foreground w-full text-left outline-none">
             <Monitor className="h-4 w-4 opacity-70" />
-            <span>System</span>
+            <span className="flex-1">System</span>
+            {theme === 'system' && <Check className="h-4 w-4" />}
           </button>
         </div>
       }

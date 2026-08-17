@@ -71,6 +71,7 @@ interface UseOpportunitiesFeedOptions {
     type?: string | null;
     mode?: string[] | string | null;
     source?: string[];
+    company?: string[] | null;
     sort?: string | null;
     selectedLoc?: string | null;
     selectedYear?: number | null;
@@ -99,6 +100,7 @@ export function useOpportunitiesFeed({
     type,
     mode,
     source,
+    company,
     sort,
     selectedLoc,
     selectedYear,
@@ -409,7 +411,11 @@ export function useOpportunitiesFeed({
                 ((opp as any).roles || []).some((or: string) => or.toLowerCase() === r.toLowerCase())
             );
 
-            return matchesSearch && matchesLoc && matchesClosingSoon && matchesSector && matchesQualification && matchesCourse && matchesYear && matchesSkills && matchesRoles;
+            const matchesCompany = !company || company.length === 0 || company.some((c: string) =>
+                (opp.company || '').toLowerCase() === c.toLowerCase()
+            );
+
+            return matchesSearch && matchesLoc && matchesClosingSoon && matchesSector && matchesQualification && matchesCourse && matchesYear && matchesSkills && matchesRoles && matchesCompany;
         });
 
         const enriched = filtered.map((opp) => {
@@ -492,7 +498,7 @@ export function useOpportunitiesFeed({
 
             return timeB - timeA;
         });
-    }, [opportunities, selectedLoc, selectedYear, closingSoon, sector, qualification, course, skills, roles, profile, normalizedSearch, type, mode, source, sort, showOnlySaved, savedJobsMap, isMounted]);
+    }, [opportunities, selectedLoc, selectedYear, closingSoon, sector, qualification, course, skills, roles, company, profile, normalizedSearch, type, mode, source, sort, showOnlySaved, savedJobsMap, isMounted]);
 
     const toggleSave = async (opportunityId: string) => {
         if (!user) {

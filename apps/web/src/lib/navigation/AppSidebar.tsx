@@ -25,6 +25,7 @@ const SidebarIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 
 import { DEFAULT_NAV_ITEMS, JOBS_NAV_ITEMS, GOVT_NAV_ITEMS, ACCOUNT_NAV_ITEMS } from './navConfig';
+import { useAuth } from '@/lib/auth/AuthContext';
 
 interface SidebarContentProps {
     pathname: string;
@@ -42,6 +43,7 @@ interface SidebarContentProps {
 export function SidebarContent({ pathname, searchParams, collapsed, onToggleCollapse, hostname, customNavItems, customHeaderTitle, showThemeToggle, forceSubContext, customHomeHref }: SidebarContentProps) {
     const isAppHost = hostname?.startsWith('app.') || hostname === 'localhost' || hostname?.startsWith('127.');
     const { theme, toggleTheme } = useTheme();
+    const { user } = useAuth();
     const homeHref = customHomeHref || (isAppHost ? '/dashboard' : '/');
     const logoHref = homeHref;
 
@@ -94,7 +96,8 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
         pathname.startsWith('/skills') ||
         pathname.startsWith('/roles') ||
         pathname.startsWith('/locations') ||
-        pathname.startsWith('/batch')
+        pathname.startsWith('/batch') ||
+        pathname.startsWith('/platforms')
     ) {
         context = 'jobs';
     } else if (isShared) {
@@ -107,9 +110,18 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
         setPrevContext(context);
     }
 
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => {
+        setMounted(true);
+    }, []);
+
+    const isAuthed = mounted ? Boolean(user) : true;
+
     const headerTitle = customHeaderTitle || (context === 'account' ? 'Account' : context === 'government' ? 'Government' : 'Jobs');
     const baseNavItems = customNavItems || (context === 'account' ? ACCOUNT_NAV_ITEMS : context === 'government' ? GOVT_NAV_ITEMS : context === 'jobs' ? JOBS_NAV_ITEMS : DEFAULT_NAV_ITEMS);
-    const navItems = baseNavItems.map(item => item.name === 'Home' ? { ...item, href: homeHref } : item);
+    const navItems = baseNavItems
+        .filter(item => !(item.requiresAuth && !isAuthed))
+        .map(item => item.name === 'Home' ? { ...item, href: homeHref } : item);
 
     const variants = {
         enter: {
@@ -336,7 +348,7 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
     );
 }
 
-export function AppSidebar() {
+function AppSidebarInner() {
     const rawPathname = usePathname();
     const pathname = rawPathname || '';
     const searchParams = useSearchParams();
@@ -386,11 +398,17 @@ export function AppSidebar() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, []);
 
-
-
     return (
         <aside className="hidden md:flex fixed top-0 left-0 bottom-0 z-50 w-[var(--sidebar-w,12rem)] transition-[width] duration-[600ms] ease-[cubic-bezier(0.7,0,0,1)] overflow-hidden">
             <SidebarContent pathname={pathname} searchParams={searchParams} collapsed={visuallyCollapsed} onToggleCollapse={handleToggleCollapse} hostname={hostname} />
         </aside>
+    );
+}
+
+export function AppSidebar() {
+    return (
+        <React.Suspense fallback={<aside className="hidden md:flex fixed top-0 left-0 bottom-0 z-50 w-[var(--sidebar-w,12rem)] transition-[width] duration-[600ms] ease-[cubic-bezier(0.7,0,0,1)] overflow-hidden" />}>
+            <AppSidebarInner />
+        </React.Suspense>
     );
 }

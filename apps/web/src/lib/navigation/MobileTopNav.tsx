@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { LogoImage } from './LogoImage';
 import { usePathname } from 'next/navigation';
 import { useContext, useEffect, useState } from 'react';
-import dynamic from 'next/dynamic';
 import { AuthContext } from '@/lib/auth/AuthContext';
 import { cn } from '@/lib/utils/utils';
 import Bars3Icon from '@heroicons/react/24/outline/Bars3Icon';
@@ -13,12 +12,7 @@ import { AlertsDropdown } from '@/features/notifications/components/AlertsDropdo
 import { useOfflineActionQueue } from '@/lib/api/offline/useOfflineActionQueue';
 
 import { getNavRoutes } from './routeConfig';
-import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/ui/Sheet';
-
-
-
-
-const MobileNavMenu = dynamic(() => import('./MobileNavMenu'), { ssr: false });
+import MobileNavMenu from './MobileNavMenu';
 
 function getMobileTitle(pathname: string): string {
     const navRoutes = getNavRoutes();
@@ -63,6 +57,15 @@ export function MobileTopNav() {
         const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenuOpen(false); };
         document.addEventListener('keydown', onEsc);
         return () => document.removeEventListener('keydown', onEsc);
+    }, [menuOpen]);
+
+    useEffect(() => {
+        if (menuOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => { document.body.style.overflow = ''; };
     }, [menuOpen]);
 
     return (
@@ -131,18 +134,26 @@ export function MobileTopNav() {
                 </div>
             </header>
  
-            <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-                <SheetContent side="left" className="p-0 border-none w-[70%] max-w-[280px] sm:max-w-[280px] [&>button]:hidden">
-                    <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
-                    <SheetDescription className="sr-only">Main navigation drawer</SheetDescription>
-                    <MobileNavMenu 
-                        user={user || null} 
-                        unreadCount={unreadCount} 
-                        pendingSyncCount={pendingSyncCount} 
-                        onClose={() => setMenuOpen(false)} 
+            {menuOpen && (
+                <div className="fixed inset-0 z-[100] md:hidden">
+                    {/* Backdrop */}
+                    <div 
+                        className="fixed inset-0 bg-black/60 animate-in fade-in duration-200"
+                        onClick={() => setMenuOpen(false)}
+                        aria-hidden="true"
                     />
-                </SheetContent>
-            </Sheet>
+                    
+                    {/* Sidebar Drawer */}
+                    <div className="fixed inset-y-0 left-0 w-[80%] max-w-[300px] bg-background shadow-2xl animate-in slide-in-from-left duration-300 ease-out">
+                        <MobileNavMenu 
+                            user={user || null} 
+                            unreadCount={unreadCount} 
+                            pendingSyncCount={pendingSyncCount} 
+                            onClose={() => setMenuOpen(false)} 
+                        />
+                    </div>
+                </div>
+            )}
         </>
     );
 }

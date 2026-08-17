@@ -5,8 +5,7 @@
  * 'dark' class on <html> synchronously, preventing flash and ensuring
  * dark:hidden / hidden:dark:block logo swap works on first paint.
  */
-export function ThemeScript() {
-    const scriptContent = `
+export const themeScriptContent = `
         (function() {
             try {
                 let theme = localStorage.getItem('theme');
@@ -27,6 +26,3 @@ export function ThemeScript() {
             } catch (e) {}
         })();
     `;
-
-    return <script dangerouslySetInnerHTML={{ __html: scriptContent }} suppressHydrationWarning />;
-}

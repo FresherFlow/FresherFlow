@@ -1,5 +1,5 @@
 import { cn } from '@repo/ui/utils/cn';
-import { useMemo, useEffect, useState, useCallback } from 'react';
+import { useMemo, useEffect, useState, useCallback, Suspense, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useFeedHeader } from '@/lib/context/FeedHeaderContext';
 import Link from 'next/link';
@@ -19,18 +19,20 @@ import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
+import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
 import UserGroupIcon from '@heroicons/react/24/outline/UserGroupIcon';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import HomeIcon from '@heroicons/react/24/outline/HomeIcon';
 import BuildingOfficeIcon from '@heroicons/react/24/outline/BuildingOfficeIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
+import ChevronUpIcon from '@heroicons/react/24/solid/ChevronUpIcon';
 import { Breadcrumb } from '@/ui/Breadcrumb';
 import { SkillPill } from '@/ui/SkillPill';
 import { Button } from '@/ui/Button';
 import { Hint } from '@/ui/Tooltip';
 import { Input } from '@/ui/Input';
-import { SkeletonJobCard } from '@/features/opportunities/components/OpportunitySkeletons';
+import { SkeletonJobCard, OpportunityDetailSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
 import { useIntersectionObserver } from '@/lib/hooks/useIntersectionObserver';
 import { EmptyState } from '@/ui/EmptyState';
 import { FilterDropdownBar } from '@/features/opportunities/components/FilterDropdownBar';
@@ -118,8 +120,10 @@ export function CategoryPageView({
     isMobileFilterOpen, setIsMobileFilterOpen, draftLoc, setDraftLoc, draftYear, setDraftYear,
     draftClosingSoon, setDraftClosingSoon, draftShowOnlySaved, setDraftShowOnlySaved,
     draftSector, setDraftSector, draftQualification, setDraftQualification, draftCourse, setDraftCourse,
+    draftWorkMode, setDraftWorkMode, draftSkills, setDraftSkills, draftSource, setDraftSource, draftCompany, setDraftCompany,
     mobileActiveCount, openMobileFilters, applyMobileFilters, clearAll,
-    visibleCount, setVisibleCount, isJobSaved, isJobApplied, toggleSave, reload
+    visibleCount, setVisibleCount, isJobSaved, isJobApplied, toggleSave, reload,
+    customTitle, bottomContent
 }: CategoryPageState) {
     const router = useRouter();
     const config = (type ? CATEGORY_CONFIG[type] : undefined) ?? { title: 'Jobs', subtitle: '', icon: BriefcaseIcon };
@@ -127,12 +131,18 @@ export function CategoryPageView({
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const { setCount } = useFeedHeader();
     const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const [showScrollTop, setShowScrollTop] = useState(false);
 
+    const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        setShowScrollTop(e.currentTarget.scrollTop > 400);
+    };
     const filterAggregates = useMemo(() => {
         const locations: Record<string, number> = {};
         const skills: Record<string, number> = {};
         const sources: Record<string, number> = {};
         const years: Record<string, number> = {};
+        const companies: Record<string, number> = {};
 
         opportunities.forEach(opp => {
             (opp.locations || []).forEach(loc => {
@@ -146,6 +156,10 @@ export function CategoryPageView({
             const atsName = getAtsName(opp.applyLink || (opp as any).sourceLink || opp.companyWebsite);
             if (atsName) {
                 sources[atsName] = (sources[atsName] || 0) + 1;
+            }
+            const comp = opp.company?.trim();
+            if (comp) {
+                companies[comp] = (companies[comp] || 0) + 1;
             }
             let passoutYears = [...((opp as any).allowedPassoutYears || [])];
             if (passoutYears.length === 0 && opp.passoutYearMin && opp.passoutYearMax) {
@@ -170,7 +184,7 @@ export function CategoryPageView({
             if (count >= 1) filteredLocations[loc] = count;
         }
 
-        return { locations: filteredLocations, skills, sources, years };
+        return { locations: filteredLocations, skills, sources, years, companies };
     }, [opportunities]);
 
     // Reset scroll when type changes
@@ -216,7 +230,7 @@ export function CategoryPageView({
             });
     }, [filteredOpps, type]);
 
-    const dynamicTitle = formatJobFeedTitle({
+    const dynamicTitle = customTitle || formatJobFeedTitle({
         type: type,
         workMode: filters.workMode,
         location: filters.location,
@@ -356,8 +370,8 @@ export function CategoryPageView({
                     {/* Title row: Title+Count LEFT | Filters RIGHT */}
                     <div className={cn("flex items-center justify-between gap-3 pb-2.5", selectedOpp && "hidden lg:flex")}>
                         {/* Left: Title + Count */}
-                        <div className="flex items-baseline gap-2.5 min-w-0">
-                            <h1 className="text-xl md:text-2xl font-extrabold text-foreground tracking-tight leading-tight truncate">
+                        <div className="flex items-baseline gap-1.5 min-w-0">
+                            <h1 className="text-lg md:text-xl font-bold text-foreground tracking-tight leading-tight truncate">
                                 {dynamicTitle}
                             </h1>
                             <span className="text-sm font-medium text-muted-foreground shrink-0 whitespace-nowrap">
@@ -412,87 +426,94 @@ export function CategoryPageView({
             )}
 
             {/* Active Chips */}
-            {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0) || (filters.source && filters.source.length > 0)) ? (
+            {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0) || (filters.source && filters.source.length > 0) || (filters.company && filters.company.length > 0)) ? (
                 <div className={cn("flex flex-wrap items-center gap-1.5 pb-2", selectedOpp && "hidden lg:flex")}>
                     {search && (
-                        <button onClick={() => setSearch('')} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
-                            <MagnifyingGlassIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-xs font-semibold ">{search}</span>
-                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
+                        <button onClick={() => setSearch('')} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                            <MagnifyingGlassIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span>{search}</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
                     )}
                     {filters.workMode?.map(m => (
-                        <button key={m} onClick={() => setFilters({...filters, workMode: filters.workMode!.filter(x => x !== m).length > 0 ? filters.workMode!.filter(x => x !== m) : null})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
-                            <HomeIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-xs font-semibold ">{m === 'REMOTE' ? 'Remote' : m === 'HYBRID' ? 'Hybrid' : 'On-site'}</span>
-                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
+                        <button key={m} onClick={() => setFilters({...filters, workMode: filters.workMode!.filter(x => x !== m).length > 0 ? filters.workMode!.filter(x => x !== m) : null})} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                            <HomeIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span>{m === 'REMOTE' ? 'Remote' : m === 'HYBRID' ? 'Hybrid' : 'On-site'}</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
                     ))}
                     {filters.location && (
-                        <button onClick={() => setFilters({...filters, location: null})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
-                            <MapPinIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-xs font-semibold ">{filters.location}</span>
-                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
+                        <button onClick={() => setFilters({...filters, location: null})} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                            <MapPinIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span>{filters.location}</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
                     )}
                     {filters.sector && (
-                        <button onClick={() => setFilters({...filters, sector: null})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
-                            <BuildingOfficeIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-xs font-semibold ">{filters.sector}</span>
-                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
+                        <button onClick={() => setFilters({...filters, sector: null})} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                            <BuildingOfficeIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span>{filters.sector}</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
                     )}
                     {filters.skills?.map(s => (
-                        <button key={s} onClick={() => setFilters({...filters, skills: filters.skills!.filter(x => x !== s)})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
-                            <SkillPill skill={s} className="bg-transparent border-none p-0 h-auto text-inherit shadow-none text-xs font-semibold" />
-                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
+                        <button key={s} onClick={() => setFilters({...filters, skills: filters.skills!.filter(x => x !== s)})} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                            <SkillPill skill={s} className="bg-transparent border-none p-0 h-auto text-inherit shadow-none font-medium" />
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
                     ))}
                     {filters.source?.map(src => (
-                        <button key={src} onClick={() => setFilters({...filters, source: filters.source!.filter(x => x !== src)})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
-                            <BriefcaseIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-xs font-semibold ">{src}</span>
-                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
+                        <button key={src} onClick={() => setFilters({...filters, source: filters.source!.filter(x => x !== src)})} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                            <BriefcaseIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span>{src}</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
+                        </button>
+                    ))}
+                    {filters.company?.map(c => (
+                        <button key={c} onClick={() => setFilters({...filters, company: filters.company!.filter(x => x !== c)})} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                            <BuildingOfficeIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span>{c}</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
                     ))}
                     {filters.course && (
-                        <button onClick={() => setFilters({...filters, course: null})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
-                            <AcademicCapIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-xs font-semibold ">{filters.course}</span>
-                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
+                        <button onClick={() => setFilters({...filters, course: null})} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                            <AcademicCapIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span>{filters.course}</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
                     )}
                     {filters.qualification && (
-                        <button onClick={() => setFilters({...filters, qualification: null})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
-                            <AcademicCapIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-xs font-semibold ">{filters.qualification}</span>
-                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
+                        <button onClick={() => setFilters({...filters, qualification: null})} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                            <AcademicCapIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span>{filters.qualification}</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
                     )}
                     {filters.year && (
-                        <button onClick={() => setFilters({...filters, year: null})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
-                            <AcademicCapIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-xs font-semibold ">Class of {filters.year}</span>
-                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
+                        <button onClick={() => setFilters({...filters, year: null})} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                            <CalendarIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span>{filters.year} Batch</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
                     )}
                     {filters.closingSoon && (
-                        <button onClick={() => setFilters({...filters, closingSoon: false})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
-                            <ClockIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-xs font-semibold ">Closing Soon</span>
-                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
+                        <button onClick={() => setFilters({...filters, closingSoon: false})} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                            <ClockIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span>Closing Soon</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
                     )}
                     {filters.saved && (
-                        <button onClick={() => setFilters({...filters, saved: false})} className="chip-active border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-2 shadow-2xs active:scale-[0.97] transition-colors duration-100 cursor-pointer outline-none shrink-0">
-                            <BookmarkIcon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                            <span className="text-xs font-semibold ">Saved Only</span>
-                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground ml-0.5 shrink-0 transition-colors" />
+                        <button onClick={() => setFilters({...filters, saved: false})} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                            <BookmarkIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span>Saved Only</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
                     )}
                     <button
                         onClick={clearAll}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-[transform,background-color] duration-100 ease-out active:scale-[0.97] motion-reduce:transform-none ml-1 rounded-xl hover:bg-muted"
+                        className="bg-transparent text-muted-foreground hover:text-foreground border border-transparent hover:bg-muted/50 rounded-xl px-2 py-1 text-sm font-medium flex items-center gap-1 cursor-pointer transition-colors shrink-0"
                     >
                         <XMarkIcon className="w-3.5 h-3.5" />
                         clear all
@@ -502,28 +523,38 @@ export function CategoryPageView({
             </div>{/* end sticky header */}
 
             {/* Scrollable content */}
-            <div className="flex-1 overflow-y-auto px-3 md:px-6 pb-2 space-y-2">
+            <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-3 md:px-6 pb-2 space-y-2">
             {/* Mobile filter drawer */}
-            <MobileFilterDrawer
-                isOpen={isMobileFilterOpen}
-                onClose={() => setIsMobileFilterOpen(false)}
-                draftLoc={draftLoc} setDraftLoc={setDraftLoc}
-                draftYear={draftYear} setDraftYear={setDraftYear}
-                draftClosingSoon={draftClosingSoon} setDraftClosingSoon={setDraftClosingSoon}
-                draftShowOnlySaved={draftShowOnlySaved} setDraftShowOnlySaved={setDraftShowOnlySaved}
-                draftSector={draftSector} setDraftSector={setDraftSector}
-                draftQualification={draftQualification} setDraftQualification={setDraftQualification}
-                draftCourse={draftCourse} setDraftCourse={setDraftCourse}
-                isLoggedIn={!!user}
-                pageType={type ?? undefined}
-                aggregates={filterAggregates}
-                onApply={applyMobileFilters}
-                onClear={() => {
-                    setDraftLoc(null); setDraftYear(null); setDraftClosingSoon(false);
-                    setDraftShowOnlySaved(false); setDraftSector(null);
-                    setDraftQualification(null); setDraftCourse(null);
-                }}
-            />
+            <Suspense fallback={null}>
+                <MobileFilterDrawer
+                    isOpen={isMobileFilterOpen}
+                    onClose={() => setIsMobileFilterOpen(false)}
+                    draftLoc={draftLoc} setDraftLoc={setDraftLoc}
+                    draftYear={draftYear} setDraftYear={setDraftYear}
+                    draftClosingSoon={draftClosingSoon} setDraftClosingSoon={setDraftClosingSoon}
+                    draftShowOnlySaved={draftShowOnlySaved} setDraftShowOnlySaved={setDraftShowOnlySaved}
+                    draftSector={draftSector} setDraftSector={setDraftSector}
+                    draftQualification={draftQualification} setDraftQualification={setDraftQualification}
+                    draftCourse={draftCourse} setDraftCourse={setDraftCourse}
+                    draftWorkMode={draftWorkMode as any} setDraftWorkMode={setDraftWorkMode as any}
+                    draftSkills={draftSkills} setDraftSkills={setDraftSkills}
+                    draftSource={draftSource} setDraftSource={setDraftSource}
+                    draftCompany={draftCompany} setDraftCompany={setDraftCompany}
+                    isLoggedIn={!!user}
+                    pageType={type ?? undefined}
+                    aggregates={filterAggregates}
+                    onApply={applyMobileFilters}
+                    onClear={() => {
+                        setDraftLoc(null); setDraftYear(null); setDraftClosingSoon(false);
+                        setDraftShowOnlySaved(false); setDraftSector(null);
+                        setDraftQualification(null); setDraftCourse(null);
+                        if (setDraftWorkMode) setDraftWorkMode(null);
+                        if (setDraftSkills) setDraftSkills([]);
+                        if (setDraftSource) setDraftSource([]);
+                        if (setDraftCompany) setDraftCompany([]);
+                    }}
+                />
+            </Suspense>
 
             {/* Content area */}
             {profileIncomplete ? (
@@ -662,6 +693,12 @@ export function CategoryPageView({
                             />
                         )}
                         
+                        {bottomContent && (
+                            <div className="pt-8 pb-4 border-t border-border/40 mt-8 space-y-8">
+                                {bottomContent}
+                            </div>
+                        )}
+                        
                         {/* Essential spacer so the last card never sticks to the bottom of the screen */}
                         <div className="h-24 md:h-32 shrink-0" />
                     </div>
@@ -671,11 +708,13 @@ export function CategoryPageView({
                         <div className="hidden lg:flex flex-col sticky top-24 h-[calc(100vh-8rem)] bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm mt-3.5 [:root[data-show-detail='false']_&]:!hidden">
                             {selectedOpp ? (
                                 <div className="flex-1 overflow-y-auto custom-scrollbar">
-                                    <OpportunityDetailPane
-                                        oppId={selectedOpp.slug || selectedOpp.id}
-                                        initialData={selectedOpp}
-                                        onClose={handleCloseOpportunityPane}
-                                    />
+                                    <Suspense fallback={<OpportunityDetailSkeleton />}>
+                                        <OpportunityDetailPane
+                                            oppId={selectedOpp.slug || selectedOpp.id}
+                                            initialData={selectedOpp}
+                                            onClose={handleCloseOpportunityPane}
+                                        />
+                                    </Suspense>
                                 </div>
                             ) : visibleOpps.length > 0 ? (
                                 <div className="flex-1 p-8 animate-pulse flex flex-col gap-4">
@@ -700,17 +739,29 @@ export function CategoryPageView({
                         <div id="mobile-detail-modal" className={cn("lg:hidden fixed inset-0 z-[120] flex flex-col bg-background animate-in slide-in-from-bottom duration-300")}>
                             <div className="pt-[env(safe-area-inset-top)] bg-card shrink-0" />
                             <div className="flex-1 flex flex-col min-h-0">
-                                <OpportunityDetailPane
-                                    oppId={selectedOpp.slug || selectedOpp.id}
-                                    initialData={selectedOpp}
-                                    onClose={handleCloseOpportunityPane}
-                                    isMobile={true}
-                                />
+                                <Suspense fallback={<OpportunityDetailSkeleton />}>
+                                    <OpportunityDetailPane
+                                        oppId={selectedOpp.slug || selectedOpp.id}
+                                        initialData={selectedOpp}
+                                        onClose={handleCloseOpportunityPane}
+                                        isMobile={true}
+                                    />
+                                </Suspense>
                             </div>
                         </div>
                     )}
                 </div>
             )}
+
+                {!showDetail && showScrollTop && (
+                    <button
+                        onClick={() => scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+                        aria-label="Scroll to top"
+                        className="fixed bottom-[5.5rem] md:bottom-8 right-4 md:right-8 z-[70] flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-all duration-200 animate-in fade-in slide-in-from-bottom-2"
+                    >
+                        <ChevronUpIcon className="w-5 h-5" />
+                    </button>
+                )}
 
             </div>{/* end scrollable content */}
         </div>

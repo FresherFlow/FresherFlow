@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils/utils';
 import { Icon, loadIcons } from '@iconify/react';
+import { formatSkillTitleCase } from '@fresherflow/utils';
 
 const ALIAS_MAP: Record<string, string> = {
   'c++': 'cplusplus',
@@ -25,8 +26,11 @@ function normalizeSkill(skill: string) {
   return lower.replace(/[^a-z0-9]/g, '');
 }
 
+import { HashtagIcon } from '@heroicons/react/24/outline';
+
 export function useSkillIcon(skill: string) {
   const [iconName, setIconName] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -43,23 +47,32 @@ export function useSkillIcon(skill: string) {
       for (const name of icons) {
         if (loadedNames.includes(name)) {
           setIconName(name);
+          setIsLoaded(true);
           return;
         }
       }
+      
+      setIsLoaded(true);
     });
     
     return () => { isMounted = false; };
   }, [skill]);
 
-  return iconName;
+  return { iconName, isLoaded };
 }
 
 export function SkillIcon({ skill, className }: { skill: string; className?: string }) {
-  const iconName = useSkillIcon(skill);
-  if (!iconName) {
+  const { iconName, isLoaded } = useSkillIcon(skill);
+  
+  if (!isLoaded) {
     // Return a placeholder of the same size to avoid layout shift while loading
     return <div className={cn("inline-block", className)} aria-hidden="true" />;
   }
+
+  if (!iconName) {
+    return <HashtagIcon className={cn("text-muted-foreground", className)} aria-hidden="true" />;
+  }
+  
   return <Icon icon={iconName} className={className} />;
 }
 
@@ -70,7 +83,7 @@ interface SkillPillProps {
 }
 
 export function SkillPill({ skill, className, size = 'sm' }: SkillPillProps) {
-  const iconName = useSkillIcon(skill);
+  const { iconName } = useSkillIcon(skill);
 
   if (iconName) {
     return (
@@ -90,7 +103,7 @@ export function SkillPill({ skill, className, size = 'sm' }: SkillPillProps) {
             iconName.startsWith('simple-icons:') ? 'text-current' : ''
           )}
         />
-        {skill}
+        {formatSkillTitleCase(skill)}
       </span>
     );
   }
@@ -104,7 +117,7 @@ export function SkillPill({ skill, className, size = 'sm' }: SkillPillProps) {
         className
       )}
     >
-      {skill}
+      {formatSkillTitleCase(skill)}
     </span>
   );
 }

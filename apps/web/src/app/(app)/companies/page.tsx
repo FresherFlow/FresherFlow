@@ -92,7 +92,7 @@ export default async function CompaniesIndexPage() {
     const totalJobs = opportunities.length;
 
     return (
-        <div className="min-h-screen bg-background pb-20">
+        <div className="bg-background">
             <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 space-y-6">
                 <HeaderPortal>
                     <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Companies' }]} />

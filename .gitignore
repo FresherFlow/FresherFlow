@@ -112,5 +112,4 @@ scripts/pipeline-client/
 
 plans
 
-
-*.json
+# Data dumps and logs 

@@ -44,7 +44,7 @@ export const BlurImage = memo((props: ImageProps) => {
       onError={(e) => {
         props.onError?.(e);
       }}
-      unoptimized
+      unoptimized={props.unoptimized}
     />
   );
 });
