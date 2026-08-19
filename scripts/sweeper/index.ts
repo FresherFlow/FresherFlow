@@ -506,26 +506,10 @@ async function run() {
             if (expiredProcessed.length > 0) msg += `• Processed (Pending): ${expiredProcessed.length}\n`;
             if (expiredDiscovered.length > 0) msg += `• Discovered (New): ${expiredDiscovered.length}\n`;
             msg += `\n`;
-
-            const displayJobs = expiredJobs.slice(0, 15);
-            for (const job of displayJobs) {
-                const badge = job.type === 'discovered' ? '[Disc]' : job.type === 'processed' ? '[Proc]' : '[Prod]';
-                msg += `- <b>${badge} ${escapeHtml(job.company)}</b>: ${escapeHtml(job.title)}\n  Apply Link: ${job.sourceLink || job.applyLink || 'None'}\n`;
-            }
-            if (expiredJobs.length > 15) {
-                msg += `...and ${expiredJobs.length - 15} more!\n\n`;
-            }
         }
         
         if (reviewJobs.length > 0) {
             msg += `⚠️ <b>Found ${reviewJobs.length} Review Required Jobs (Generic Titles/Redirects)</b> ⚠️\n\n`;
-            const displayReview = reviewJobs.slice(0, 10);
-            for (const job of displayReview) {
-                msg += `- <b>${escapeHtml(job.company)}</b>: ${escapeHtml(job.title)}\n  Apply Link: ${job.sourceLink || job.applyLink || 'None'}\n`;
-            }
-            if (reviewJobs.length > 10) {
-                msg += `...and ${reviewJobs.length - 10} more!\n\n`;
-            }
             msg += `Please review these manually from the Admin Dashboard.`;
         }
         

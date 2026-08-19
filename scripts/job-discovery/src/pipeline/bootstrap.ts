@@ -1,10 +1,12 @@
 import { chromium } from 'playwright';
-import { DiscoveryState, createInitialState } from './state.js';
-import { loadVisited, loadRejectedReasons } from '../utils/storage.js';
+import { DiscoveryState, createInitialState } from '@fresherflow/pipeline';
+import { loadVisited, loadRejectedReasons } from '@fresherflow/pipeline';
 import { CDN_SECRET } from '@fresherflow/pipeline';
 import { signUrl, normalizeUrl } from '@fresherflow/pipeline';
 
+
 export async function bootstrapState(): Promise<DiscoveryState> {
+    
     const state = createInitialState();
     
     console.log("Fetching CDN feed...");

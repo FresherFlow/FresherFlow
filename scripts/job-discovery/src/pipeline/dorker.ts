@@ -1,4 +1,4 @@
-import { DiscoveryState } from './state.js';
+import { DiscoveryState } from '@fresherflow/pipeline';
 import { DORKER_ENABLED, DORKER_PAGES_PER_QUERY, HEAVY_DORK_QUERIES, ATS_HOSTNAMES, executeDorkQuery } from '@fresherflow/pipeline';
 import { normalizeUrl, sanitizeAtsUrl } from '@fresherflow/pipeline';
 import { extractAtsBoard } from '@fresherflow/pipeline';

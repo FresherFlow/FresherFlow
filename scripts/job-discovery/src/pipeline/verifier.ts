@@ -1,4 +1,4 @@
-import { DiscoveryState } from './state.js';
+import { DiscoveryState } from '@fresherflow/pipeline';
 import { normalizeUrl } from '@fresherflow/pipeline';
 import { PLUGIN_REGISTRY, AtsJob } from '@fresherflow/plugins';
 import { parseJobUrl } from '@fresherflow/parser';

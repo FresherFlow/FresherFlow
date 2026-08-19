@@ -1,7 +1,7 @@
 import { DEFAULT_TARGETS, loadAtsDataTargets, SearchTarget } from './search-config.js';
 import { executeSearch, SearchOptions, loadEnv, saveJobsToDb } from './search.js';
 import { executeDorkSearch } from './dorker.js';
-import { startRun, finishRun } from '../job-discovery/src/repositories/discoveryRuns.js';
+import { startRun, finishRun } from '@fresherflow/pipeline';
 import { isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/domain';
 
 function parseRunnerArgs(args: string[]): SearchOptions & { all?: boolean; indiaOnly?: boolean; delay?: number; only?: string; dork?: boolean } {

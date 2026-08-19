@@ -25,7 +25,7 @@ export function isValidApplyLink(urlStr: string, currentDomain: string): boolean
         if (targetHost === baseHost) {
             // Allow redirector paths for sites like freshersnow.com
             const pathLower = u.pathname.toLowerCase();
-            if (pathLower.includes('/go/') || pathLower.includes('/out/') || pathLower.includes('apply') || pathLower.includes('job') || pathLower.includes('link') || pathLower.includes('here') || pathLower.includes('register') || pathLower.includes('submit')) {
+            if (pathLower.includes('/go/') || pathLower.includes('/out/') || pathLower.includes('/apply') || pathLower.includes('/redirect') || pathLower.includes('/visit') || pathLower.includes('register') || pathLower.includes('submit')) {
                 return true; // It's a redirector, allow it immediately
             } else {
                 return false;

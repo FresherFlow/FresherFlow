@@ -95,12 +95,16 @@ export async function loadAtsDataTargets(): Promise<SearchTarget[]> {
     }
   }
 
-  const atsDir = path.resolve(process.cwd(), '../../docs/data/ats');
+  const atsDirs = [
+    path.resolve(process.cwd(), '../../docs/data/ats'),
+    path.resolve(process.cwd(), '../../scratch/sources/ats'),
+  ];
 
+  for (const atsDir of atsDirs) {
   try {
     const files = await fs.readdir(atsDir);
     for (const file of files) {
-      if (!file.endsWith('.json') || file === 'b.txt') continue;
+      if (!file.endsWith('.json') || file === 'b.txt' || file === 'companies.json' || file.includes('-from-') || file === 'known-bad-slugs.json' || file === 'removed.json' || file === 'registry.csv') continue;
       const atsName = file.replace('.json', '');
       const filePath = path.join(atsDir, file);
       try {
@@ -112,8 +116,9 @@ export async function loadAtsDataTargets(): Promise<SearchTarget[]> {
       }
     }
   } catch {
-    // docs/data/ats not accessible, fallback to DEFAULT_TARGETS
+    // directory not accessible, continue
   }
+  } // end for atsDir
 
   return targets;
 }

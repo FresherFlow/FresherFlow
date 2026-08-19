@@ -5,7 +5,7 @@ import { discoverDorkerJobs } from './src/pipeline/dorker.js';
 import { verifyCandidates } from './src/pipeline/verifier.js';
 import { persistLocalData, uploadToDataLake } from './src/pipeline/storage.js';
 import { sendNotifications, writeGitHubSummary } from './src/pipeline/notifier.js';
-import { startRun, finishRun } from './src/repositories/discoveryRuns.js';
+import { startRun, finishRun } from '@fresherflow/pipeline';
 
 await loadEnv();
 

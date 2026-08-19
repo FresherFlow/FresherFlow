@@ -1,6 +1,6 @@
 import pg from 'pg';
 const { Pool } = pg;
-import { loadEnv } from '@fresherflow/pipeline';
+import { loadEnv } from '../config/index.js';
 
 await loadEnv();
 
@@ -10,7 +10,7 @@ const connectionString =
   process.env.DATABASE_URL;
 
 if (!connectionString) {
-  console.warn('⚠️ WARNING: DATABASE_URL is missing from environment variables.');
+  console.warn('WARNING: DATABASE_URL is missing from environment variables.');
 }
 
 export const pool = new Pool({

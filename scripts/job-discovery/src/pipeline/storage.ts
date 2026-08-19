@@ -1,15 +1,15 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { DiscoveryState } from './state.js';
+import { DiscoveryState } from '@fresherflow/pipeline';
 import { CDN_URL } from '@fresherflow/pipeline';
 import { uploadJsonToR2, listR2Objects } from '@fresherflow/utils/r2';
-import { saveVisited, saveRejectedReasons } from '../utils/storage.js';
+import { saveVisited, saveRejectedReasons } from '@fresherflow/pipeline';
 import { parseJobUrl } from '@fresherflow/parser';
 
 import { withConcurrency } from '@fresherflow/pipeline';
-import { upsertJobs } from '../repositories/discoveredJobs.js';
-import { resolveAndAttachCompanies } from '../repositories/companies.js';
+import { upsertJobs } from '@fresherflow/pipeline';
+import { resolveAndAttachCompanies } from '@fresherflow/pipeline';
 import { enrichJobPayload } from '@fresherflow/pipeline';
 
 export async function persistLocalData(state: DiscoveryState) {

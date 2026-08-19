@@ -1,15 +1,22 @@
-import { pool } from '../lib/db.js';
+import { pool } from '../pool.js';
+
 
 export async function startRun(): Promise<string | null> {
-  if (!process.env.DATABASE_URL) return null;
+  const hasDb = Boolean(
+    process.env.INGESTION_DATABASE_URL ||
+    process.env.STAGING_DATABASE_URL ||
+    process.env.DATABASE_URL
+  );
+  if (!hasDb) return null;
 
   try {
+    
     const { rows } = await pool.query(
       `INSERT INTO discovery_runs (status) VALUES ('IN_PROGRESS') RETURNING id`
     );
     return rows[0].id;
   } catch (err) {
-    console.error('Exception starting discovery run:', err);
+    console.error('Exception starting discovery run:', (err as Error).message);
     return null;
   }
 }
@@ -27,7 +34,12 @@ export async function finishRun(
     metadata?: Record<string, any>;
   }
 ) {
-  if (!runId || !process.env.DATABASE_URL) return;
+  const hasDb = Boolean(
+    process.env.INGESTION_DATABASE_URL ||
+    process.env.STAGING_DATABASE_URL ||
+    process.env.DATABASE_URL
+  );
+  if (!runId || !hasDb) return;
 
   try {
     await pool.query(
@@ -48,6 +60,6 @@ export async function finishRun(
       ]
     );
   } catch (err) {
-    console.error('Exception finishing discovery run:', err);
+    console.error('Exception finishing discovery run:', (err as Error).message);
   }
 }

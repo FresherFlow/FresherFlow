@@ -174,7 +174,7 @@ async function run(): Promise<void> {
         !['--chunk', '--limit', '--batch-size', '--batch-delay'].includes(args[idx - 1])
     );
 
-    const { fetchUnprocessedFromSupabase, markDiscoveredJobStatus } = await import('./src/db-source.js');
+    const { fetchUnprocessedFromSupabase, markDiscoveredJobStatus } = await import('@fresherflow/pipeline');
     const { isJobLive } = await import('./src/liveness.js');
 
     let jobs: any[] = [];
@@ -191,7 +191,7 @@ async function run(): Promise<void> {
             const ids = rows.map(r => r.id);
             if (ids.length > 0) {
                 // Using dynamic import of supabase to bulk update
-                const { pool } = await import('./src/db-source.js');
+                const { pool } = await import('@fresherflow/pipeline');
                 if (pool) {
                     await pool.query(`UPDATE discovered_jobs SET status = 'PROCESSING' WHERE id = ANY($1)`, [ids]);
                 }

@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { DiscoveryState } from './state.js';
+import { DiscoveryState } from '@fresherflow/pipeline';
 import { ATS_CDN_BASE, ATS_PROVIDERS, TARGET_SITES } from '@fresherflow/pipeline';
 import { normalizeUrl, sanitizeAtsUrl } from '@fresherflow/pipeline';
 import { isLocationIndiaOrRemote, scoreJobDescription, hasFresherKeyword, isActualJob, isFresherJob, isSeniorJob } from '@fresherflow/domain';
@@ -169,7 +169,15 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                 for (const url of site.urls) {
                     console.log(`  -> Loading start page: ${url}`);
                     try {
-                        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+                        for (let attempt = 1; attempt <= 3; attempt++) {
+                            try {
+                                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+                                break;
+                            } catch (gotoErr) {
+                                if (attempt === 3) throw gotoErr;
+                                await page.waitForTimeout(2000);
+                            }
+                        }
                         const allLinks = await page.$$eval('a', anchors => anchors.map(a => ({ text: a.innerText.trim(), href: a.href })));
                         const filtered = allLinks
                             .filter(l => {
@@ -230,7 +238,15 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                     await page.goto('about:blank').catch(() => {});
                     
                     try {
-                        await page.goto(jobLink, { waitUntil: 'domcontentloaded', timeout: 45000 });
+                        for (let attempt = 1; attempt <= 3; attempt++) {
+                            try {
+                                await page.goto(jobLink, { waitUntil: 'domcontentloaded', timeout: 45000 });
+                                break;
+                            } catch (gotoErr) {
+                                if (attempt === 3) throw gotoErr;
+                                await page.waitForTimeout(2000);
+                            }
+                        }
                     } catch (gotoErr) {
                         console.log(`  -> Failed to load aggregator post: ${(gotoErr as Error).message}`);
                         continue; // Skip processing this job link completely!

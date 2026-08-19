@@ -10,7 +10,7 @@ const service = new OracleService();
 
 export class OracleAdapter implements AtsAdapter {
   providerName = 'Oracle';
-  async fetchJobs(companyId: string, companyName: string): Promise<AtsJob[]> {
+  async fetchJobs(companyId: string, companyName: string, options?: { companyUrl?: string }): Promise<AtsJob[]> {
     // Support compound format: "tenant-region:SITE_NUMBER" e.g. "jpmc:CX_1001"
     // If no colon, treat whole thing as the slug with default siteNumber
     let slug = companyId;
@@ -20,7 +20,7 @@ export class OracleAdapter implements AtsAdapter {
       slug = companyId.slice(0, colonIdx);
       siteNumber = companyId.slice(colonIdx + 1);
     }
-    const res = await service.scrape({ companySlug: slug, searchTerm: companyName, siteNumber });
+    const res = await service.scrape({ companyUrl: options?.companyUrl, companySlug: slug, searchTerm: companyName, siteNumber });
     return (res?.jobs || []).map(j => toAtsJob(j, 'oracle', companyName, 'ATS'));
   }
   async fetchJobDetails(job: AtsJob, page?: any): Promise<any> {

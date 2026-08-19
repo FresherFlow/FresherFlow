@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises';
-import { DiscoveryState } from './state.js';
+import { DiscoveryState, DiscoveredJobEntry } from '@fresherflow/pipeline';
 import { sendTelegramMessage } from '@fresherflow/utils';
 
 export async function sendNotifications(state: DiscoveryState) {
@@ -43,22 +43,105 @@ export async function sendNotifications(state: DiscoveryState) {
     tgMsg += `\n\n`;
 
     tgMsg += `🌐 Aggregator: ${aggJobs.length}\n`;
-    if (aggJobs.length > 0) {
-        tgMsg += aggLines + aggOverflow;
-    } else {
-        tgMsg += `  (none)`;
-    }
 
     tgMsg += `\n\n✅ Uploaded to Supabase`;
 
     console.log("Sending Telegram message:\n" + tgMsg);
     await sendTelegramMessage(tgMsg);
 
+    // Post aggregator jobs to social media (X, LinkedIn, Telegram)
+    await postAggregatorsToSocial(aggJobs);
+
     const apiBaseUrl = (process.env.API_BASE_URL || '').trim().replace(/\/$/, '');
     if (apiBaseUrl) {
         console.log(`Waking up Render API server: ${apiBaseUrl}/api/health`);
         await fetch(`${apiBaseUrl}/api/health`).catch(() => {});
     }
+}
+
+// ─── Social Media Posting ───────────────────────────────────────────────────
+
+const WORKER_URL = (process.env.WORKER_URL || '').trim().replace(/\/$/, '');
+const WORKER_SECRET = process.env.WORKER_SECRET || '';
+const SOCIAL_PLATFORMS = ['x', 'linkedin', 'telegram'] as const;
+const STAGGER_MS = 10 * 60 * 1000; // 10 minutes between posts
+
+function formatXCaption(job: DiscoveredJobEntry): string {
+    const title = job.title.length > 60 ? job.title.slice(0, 57) + '...' : job.title;
+    const caption = `${title}\n${job.applyLink}\n\n#FresherJobs`;
+    // X limit is 280 chars. If over, shorten further.
+    if (caption.length > 280) {
+        const shortTitle = job.title.length > 40 ? job.title.slice(0, 37) + '...' : job.title;
+        return `${shortTitle}\n${job.applyLink}`;
+    }
+    return caption;
+}
+
+function formatLinkedInCaption(job: DiscoveredJobEntry): string {
+    return `${job.title}\n${job.applyLink}\n\n#Freshers #Hiring #EntryLevel`;
+}
+
+function formatTelegramCaption(job: DiscoveredJobEntry): string {
+    const source = job.source ? ` (${job.source})` : '';
+    return `${job.title}${source}\n${job.applyLink}`;
+}
+
+function formatCaption(job: DiscoveredJobEntry, platform: string): string {
+    switch (platform) {
+        case 'x': return formatXCaption(job);
+        case 'linkedin': return formatLinkedInCaption(job);
+        case 'telegram': return formatTelegramCaption(job);
+        default: return formatLinkedInCaption(job);
+    }
+}
+
+async function schedulePost(platform: string, text: string, scheduledAt: number): Promise<void> {
+    if (!WORKER_URL || !WORKER_SECRET) {
+        console.warn(`[social] WORKER_URL or WORKER_SECRET not set, skipping ${platform} post`);
+        return;
+    }
+    try {
+        const res = await fetch(`${WORKER_URL}/social/schedule`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-worker-secret': WORKER_SECRET,
+            },
+            body: JSON.stringify({ platform, text, scheduledAt }),
+        });
+        const data = await res.json() as { ok?: boolean; error?: string; jobId?: string };
+        if (!res.ok || !data.ok) {
+            console.warn(`[social] Failed to schedule ${platform}: ${data.error || res.statusText}`);
+        } else {
+            console.log(`[social] Scheduled ${platform} post at ${new Date(scheduledAt).toISOString()} (job: ${data.jobId})`);
+        }
+    } catch (err) {
+        console.warn(`[social] Error scheduling ${platform}: ${(err as Error).message}`);
+    }
+}
+
+async function postAggregatorsToSocial(aggJobs: DiscoveredJobEntry[]): Promise<void> {
+    if (aggJobs.length === 0) return;
+    if (!WORKER_URL || !WORKER_SECRET) {
+        console.warn('[social] WORKER_URL or WORKER_SECRET not set, skipping social posts');
+        return;
+    }
+
+    console.log(`[social] Posting ${aggJobs.length} aggregator jobs to ${SOCIAL_PLATFORMS.join(', ')}`);
+
+    const now = Date.now();
+    let postIndex = 0;
+
+    for (const job of aggJobs) {
+        for (const platform of SOCIAL_PLATFORMS) {
+            const text = formatCaption(job, platform);
+            const scheduledAt = now + (postIndex * STAGGER_MS);
+            await schedulePost(platform, text, scheduledAt);
+        }
+        postIndex++;
+    }
+
+    console.log(`[social] All ${aggJobs.length} aggregator jobs scheduled across ${SOCIAL_PLATFORMS.length} platforms`);
 }
 
 export async function writeGitHubSummary(state: DiscoveryState) {

@@ -1,6 +1,6 @@
-import { pool } from '../lib/db.js';
+import { pool } from '../pool.js';
 import { parseJobUrl } from '@fresherflow/parser';
-import { DiscoveredJobEntry, RunStats } from '../pipeline/state.js';
+import { DiscoveredJobEntry, RunStats } from '../../core/state.js';
 
 function toAtsProviderEnum(source: string): string {
     const s = (source || '').toUpperCase().trim();
@@ -62,7 +62,12 @@ export async function resolveAndAttachCompanies(
     jobs: DiscoveredJobEntry[],
     stats: RunStats
 ): Promise<DiscoveredJobEntry[]> {
-    if (!process.env.DATABASE_URL || jobs.length === 0) {
+    const hasDb = Boolean(
+        process.env.INGESTION_DATABASE_URL ||
+        process.env.STAGING_DATABASE_URL ||
+        process.env.DATABASE_URL
+    );
+    if (!hasDb || jobs.length === 0) {
         return jobs;
     }
 
