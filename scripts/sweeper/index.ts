@@ -219,7 +219,10 @@ async function run() {
 
     const expiredJobs: FeedOpportunity[] = [];
     const reviewJobs: FeedOpportunity[] = [];
-    const browser = await chromium.launch({ headless: true });
+    const browser = await chromium.launch({ 
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+    });
     
     try {
         // Limit to 8 concurrent pages/contexts to run in parallel safely

@@ -14,7 +14,7 @@ async function run() {
     const runId = await startRun();
     const state = await bootstrapState();
 
-    const TIMEOUT_MS = 85 * 60 * 1000; // 85 minutes (to safely exit before 90m GH Action limit)
+    const TIMEOUT_MS = 80 * 60 * 1000; // 80 minutes (to safely exit before 90m GH Action limit)
     state.isTimeUp = () => (Date.now() - startTime) > TIMEOUT_MS;
 
     let runStatus: 'COMPLETED' | 'FAILED' = 'COMPLETED';

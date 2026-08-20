@@ -25,7 +25,7 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
         try {
             while (true) {
                 if (state.isTimeUp()) {
-                    console.log(`\n[Timeout] ⏱️ Exceeded 85 minutes, gracefully stopping verifier daemon.`);
+                    console.log(`\n[Timeout] ⏱️ Exceeded 80 minutes, gracefully stopping verifier daemon.`);
                     break;
                 }
                 const candidate = state.candidateQueue.shift();

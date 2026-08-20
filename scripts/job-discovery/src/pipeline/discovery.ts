@@ -60,7 +60,7 @@ export async function discoverAtsJobs(state: DiscoveryState) {
             job.company = companySlugMap.get(job.company.toLowerCase())!;
         }
         if (state.isTimeUp()) {
-            console.log(`\n[Timeout] ⏱️ Exceeded 85 minutes, halting ATS job processing.`);
+            console.log(`\n[Timeout] ⏱️ Exceeded 80 minutes, halting ATS job processing.`);
             break;
         }
 
@@ -151,7 +151,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
 
         while (activeSites.length > 0) {
             if (state.isTimeUp()) {
-                console.log(`\n[Timeout] ⏱️ Exceeded 85 minutes, halting aggregator scraping.`);
+                console.log(`\n[Timeout] ⏱️ Exceeded 80 minutes, halting aggregator scraping.`);
                 break;
             }
 
@@ -224,7 +224,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
 
                 for (const jobLink of unvisitedLinks.slice(0, 20)) {
                     if (state.isTimeUp()) {
-                        console.log(`\n[Timeout] ⏱️ Exceeded 85 minutes, halting aggregator post processing.`);
+                        console.log(`\n[Timeout] ⏱️ Exceeded 80 minutes, halting aggregator post processing.`);
                         break;
                     }
 

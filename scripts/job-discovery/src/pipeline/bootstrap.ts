@@ -37,7 +37,10 @@ export async function bootstrapState(): Promise<DiscoveryState> {
         state.visited["__discovered_apply_links__"] = [];
     }
 
-    state.browser = await chromium.launch({ headless: true });
+    state.browser = await chromium.launch({ 
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+    });
 
     return state;
 }
