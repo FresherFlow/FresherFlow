@@ -22,7 +22,7 @@ import {
 
 import { database } from '@/lib/api/firebase';
 import { ref, onValue, remove } from 'firebase/database';
-import { useFirebaseAdmin } from '@/lib/hooks/useFirebaseAdmin';
+import { useFirebaseAdmin } from '@/features/admin/hooks/useFirebaseAdmin';
 
 
 interface UserProfile {

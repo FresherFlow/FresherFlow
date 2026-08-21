@@ -1,20 +1,37 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
 import LoadingScreen from '@/ui/LoadingScreen';
 
 /**
- * Profile Gate - non-blocking wrapper for pages that can render before profile completion.
+ * AuthGate - Redirects to /login if user is not authenticated.
+ *
+ * Used on every authenticated route (dashboard, settings, alerts, etc.).
+ * If the user has no session, they are redirected to /login?redirect=<current-path>.
  */
-export function ProfileGate({ children }: { children: React.ReactNode }) {
-    const { isLoading } = useAuth();
-    const [mounted, setMounted] = React.useState(false);
-    
-    React.useEffect(() => {
+export function AuthGate({ children }: { children: React.ReactNode }) {
+    const { user, isLoading } = useAuth();
+    const router = useRouter();
+    const pathname = usePathname();
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
         setMounted(true);
     }, []);
+
+    useEffect(() => {
+        if (mounted && !isLoading && !user) {
+            if (typeof window !== 'undefined') {
+                localStorage.removeItem('ff_cached_session_v1');
+            }
+            const redirectUrl = pathname && pathname !== '/'
+                ? `/login?redirect=${encodeURIComponent(pathname)}`
+                : '/login';
+            router.push(redirectUrl);
+        }
+    }, [user, isLoading, pathname, router, mounted]);
 
     if (!mounted || isLoading) {
         return (
@@ -24,19 +41,26 @@ export function ProfileGate({ children }: { children: React.ReactNode }) {
         );
     }
 
+    if (!user) {
+        return <div className="opacity-0 pointer-events-none">{children}</div>; // Will redirect
+    }
+
     return <>{children}</>;
 }
 
 /**
- * Auth Gate - Redirects to login if not authenticated, and redirects to choose-username if username is not claimed yet
+ * UsernameGate - Redirects to /choose-username if the authenticated user has not claimed a username.
+ *
+ * Wraps AuthGate internally. Use this on routes that require a completed profile
+ * (dashboard, settings, alerts, etc.). Do NOT use on /choose-username itself.
  */
-export function AuthGate({ children }: { children: React.ReactNode }) {
+export function UsernameGate({ children }: { children: React.ReactNode }) {
     const { user, isLoading, skipUsernameSetup } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
-    const [mounted, setMounted] = React.useState(false);
+    const [mounted, setMounted] = useState(false);
 
-    React.useEffect(() => {
+    useEffect(() => {
         setMounted(true);
     }, []);
 
@@ -46,10 +70,15 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 if (typeof window !== 'undefined') {
                     localStorage.removeItem('ff_cached_session_v1');
                 }
-                const redirectUrl = pathname && pathname !== '/' ? `/login?redirect=${encodeURIComponent(pathname)}` : '/login';
+                const redirectUrl = pathname && pathname !== '/'
+                    ? `/login?redirect=${encodeURIComponent(pathname)}`
+                    : '/login';
                 router.push(redirectUrl);
             } else if (!user.username && !skipUsernameSetup && pathname !== '/choose-username') {
-                router.push('/choose-username');
+                const redirectParam = pathname && pathname !== '/'
+                    ? `?redirect=${encodeURIComponent(pathname)}`
+                    : '';
+                router.push(`/choose-username${redirectParam}`);
             }
         }
     }, [user, isLoading, skipUsernameSetup, pathname, router, mounted]);
@@ -68,3 +97,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
     return <>{children}</>;
 }
+
+/**
+ * @deprecated Use AuthGate or UsernameGate instead.
+ * This re-export preserves backward compatibility during migration.
+ */
+export const ProfileGate = UsernameGate;

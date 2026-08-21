@@ -15,8 +15,8 @@ import CompanyLogo from '@/ui/CompanyLogo';
 import Link from 'next/link';
 import { getOpportunityPathFromItem } from '@/features/opportunities/domain/opportunityPath';
 import { getOpportunityDisplaySalary, getGroupedLocations } from '@/features/opportunities/domain/opportunityDisplay';
-import { DescriptionSection } from '@/app/(app)/jobs/[slug]/components/DescriptionSection';
-import { WalkInDetailsCard } from '@/app/(app)/jobs/[slug]/components/WalkInDetailsCard';
+import { DescriptionSection } from '@/app/(public)/jobs/[slug]/components/DescriptionSection';
+import { WalkInDetailsCard } from '@/app/(public)/jobs/[slug]/components/WalkInDetailsCard';
 
 interface AdminOpportunityPreviewModalProps {
     show: boolean;

@@ -9,8 +9,8 @@ import { parseOpportunityLocation } from '@/features/opportunities/domain/opport
 import { getOpportunityPathFromItem } from '@/features/opportunities/domain/opportunityPath';
 import { buildLoginFromDetailHref, getDetailShareUrl } from '@/features/opportunities/domain/opportunityDetailHelpers';
 import { getRelatedOpportunities } from '@/features/opportunities/utils/detailUtils';
-import { useFirebaseTracker } from '@/lib/hooks/useFirebaseTracker';
-import { useFirebaseSaved } from '@/lib/hooks/useFirebaseSaved';
+import { useFirebaseTracker } from '@/features/dashboard/hooks/useFirebaseTracker';
+import { useFirebaseSaved } from '@/features/dashboard/hooks/useFirebaseSaved';
 import { readFeedCache, saveOpportunityToCache } from '@/lib/api/offline/opportunitiesFeedCache';
 import { promptLoginToast } from '@/lib/utils/toastUtils';
 

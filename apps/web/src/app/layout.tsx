@@ -12,8 +12,7 @@ import { InstallPromptProvider } from "@/lib/providers/InstallPromptContext";
 import { themeScriptContent } from '@/lib/components/ThemeScript';
 // import OfflineNotification from "@/ui/OfflineNotification";
 import dynamic from "next/dynamic";
-import { Inter } from "next/font/google";
-import Script from "next/script";
+import { Inter, Geist } from "next/font/google";
 
 const InstallAppBanner = dynamic(() => import("@/ui/InstallAppBanner"));
 
@@ -27,10 +26,13 @@ import { PageTransitionWrapper } from '@/lib/components/PageTransitionWrapper';
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@next/third-parties/google";
-import { HeadInjections } from '@/lib/components/HeadInjections';
+import { getHeadInjectionScripts } from '@/lib/components/HeadInjections';
 import { SITE_URL } from "@/lib/utils/runtimeConfig";
+import { cn } from "@/lib/utils/utils";
 import { AuthFormDataProvider } from '@/lib/auth/AuthFormDataContext';
 import { ErrorBoundary } from '@/lib/components/ErrorBoundary';
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const SITE_ORIGIN = SITE_URL;
 const METADATA_BASE = SITE_ORIGIN ? new URL(SITE_ORIGIN) : undefined;
@@ -94,13 +96,13 @@ export default async function RootLayout({
   const enableVercelAnalytics = process.env.NEXT_PUBLIC_ENABLE_VERCEL_ANALYTICS === 'true';
   const enableSpeedInsights = process.env.NEXT_PUBLIC_ENABLE_SPEED_INSIGHTS === 'true';
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
       <head>
         <meta charSet="utf-8" />
         <meta name="color-scheme" content="light dark" />
         <meta name="theme-color" content="#e2eaf2" id="theme-color-meta" />
-        <Script id="theme-script" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeScriptContent }} />
-        <HeadInjections />
+        <script id="theme-script" dangerouslySetInnerHTML={{ __html: themeScriptContent }} />
+        <script dangerouslySetInnerHTML={{ __html: getHeadInjectionScripts() }} />
         <link rel="manifest" href="/manifest.webmanifest" id="ff-manifest-link" />
         <link rel="preload" as="image" href="/logo-optimized.png?v=3" />
         <script
@@ -136,9 +138,8 @@ export default async function RootLayout({
         {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
         {enableVercelAnalytics ? <Analytics /> : null}
         {enableSpeedInsights ? <SpeedInsights /> : null}
-        <Script
+        <script
           id="release-pointer-capture-patch"
-          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               if (typeof window !== 'undefined' && Element.prototype.releasePointerCapture) {

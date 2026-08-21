@@ -33,7 +33,7 @@ import { Button } from '@/ui/Button';
 import { Hint } from '@/ui/Tooltip';
 import { Input } from '@/ui/Input';
 import { SkeletonJobCard, OpportunityDetailSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
-import { useIntersectionObserver } from '@/lib/hooks/useIntersectionObserver';
+import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { EmptyState } from '@/ui/EmptyState';
 import { FilterDropdownBar } from '@/features/opportunities/components/FilterDropdownBar';
 import {
@@ -123,7 +123,7 @@ export function CategoryPageView({
     draftWorkMode, setDraftWorkMode, draftSkills, setDraftSkills, draftSource, setDraftSource, draftCompany, setDraftCompany,
     mobileActiveCount, openMobileFilters, applyMobileFilters, clearAll,
     visibleCount, setVisibleCount, isJobSaved, isJobApplied, toggleSave, reload,
-    customTitle, bottomContent
+    customTitle, topContent, bottomContent
 }: CategoryPageState) {
     const router = useRouter();
     const config = (type ? CATEGORY_CONFIG[type] : undefined) ?? { title: 'Jobs', subtitle: '', icon: BriefcaseIcon };
@@ -555,6 +555,12 @@ export function CategoryPageView({
                     }}
                 />
             </Suspense>
+
+            {topContent && (
+                <div className="w-full mb-2">
+                    {topContent}
+                </div>
+            )}
 
             {/* Content area */}
             {profileIncomplete ? (

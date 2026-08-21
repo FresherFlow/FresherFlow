@@ -3,7 +3,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { adminApi } from '@/lib/api/admin';
 import type { Opportunity } from '@fresherflow/types';
 import toast from 'react-hot-toast';
-import { useDebounce } from '@/lib/hooks/useDebounce';
+import { useDebounce } from '@/hooks/useDebounce';
 import {
     typeParamToEnum,
     enumToTypeParam,

@@ -1,4 +1,8 @@
 @import "tailwindcss";
+@plugin "tailwindcss-animate";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
 
 @theme {
   --color-primary: hsl(var(--primary));
@@ -18,16 +22,16 @@
   --color-accent-foreground: hsl(var(--accent-foreground));
   --color-destructive: hsl(var(--destructive));
   --color-destructive-foreground: hsl(var(--destructive-foreground));
-  
+
   --color-success: hsl(var(--success));
   --color-error: hsl(var(--error));
   --color-warning: hsl(var(--warning));
-  
+
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
-  
+
   --spacing-18: 4.5rem;
   --spacing-22: 5.5rem;
-  
+
   --radius-xl: var(--radius);
   --radius-2xl: calc(var(--radius) + 4px);
   --radius-3xl: calc(var(--radius) + 8px);
@@ -41,7 +45,7 @@
 
 @layer base {
   * {
-    @apply focus-visible:outline-none focus-visible:ring-0;
+    @apply focus-visible:outline-none focus-visible:ring-0 border-border outline-ring/50;
   }
 
   :root {
@@ -89,7 +93,7 @@
     --error: 0 85% 55%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 98%;
-    
+
     /* Typography Scale - Mobile First */
     --fs-h1: 28px;
     --fs-h2: 22px;
@@ -97,7 +101,7 @@
     --fs-body: 16px;
     --fs-small: 13px;
     --fs-button: 13px;
-    
+
     /* Spacing System */
     --space-1: 4px;
     --space-2: 8px;
@@ -136,10 +140,10 @@
     /* Crisp borders equivalent to 12% white */
     --border: 195 10% 14%;
     --input: 195 10% 14%;
-    
+
     /* Muted backgrounds equivalent to 10% white (lighter than card for hovers) */
     --muted: 195 10% 12%;
-    
+
     /* Muted text opacity equivalent */
     --muted-foreground: 200 15% 75%;
 
@@ -184,7 +188,6 @@
     background-color: hsl(195 10% 14%) !important;
   }
 
-
   /* Desktop Typography Scale */
   @media (min-width: 1024px) {
     :root {
@@ -203,6 +206,7 @@
     overflow-y: auto;
     /* PWA fix: fills status-bar/safe-area so Android won't draw a divider line */
     background-color: #e2eaf2;
+    @apply font-sans;
   }
 
   /* PWA fix: dark mode status-bar background */
@@ -245,6 +249,7 @@
     font-family: var(--font-sans);
     font-size: var(--fs-body);
     line-height: 1.6;
+    @apply bg-background text-foreground;
   }
 
   button:not(:disabled),
@@ -272,14 +277,14 @@
     letter-spacing: -0.02em;
     color: hsl(var(--foreground));
   }
-  
+
   h2, .h2 {
     font-size: var(--fs-h2);
     font-weight: 700;
     line-height: 1.3;
     color: hsl(var(--foreground));
   }
-  
+
   h3, .h3 {
     font-size: var(--fs-h3);
     font-weight: 600;
@@ -338,16 +343,16 @@
     gap: 0.5rem;
     forced-color-adjust: none;
   }
-  
+
   .premium-button:hover, .btn-primary:hover {
     background-color: hsl(var(--primary) / 0.92);
     box-shadow: 0 12px 24px -18px hsl(var(--primary) / 0.7);
   }
-  
+
   .premium-button:active, .btn-primary:active {
     transform: scale(0.98);
   }
-  
+
   .premium-button:disabled, .btn-primary:disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -370,7 +375,7 @@
     justify-content: center;
     gap: 0.5rem;
   }
-  
+
   /* Secondary CTA (Sign In) - Muted Outline */
   .btn-secondary-cta {
     @apply h-10 px-6 bg-transparent border-[1.5px] rounded-md transition-all cursor-pointer flex items-center justify-center gap-2;
@@ -378,7 +383,7 @@
     border-color: hsl(var(--border));
     font-weight: 500;
   }
-  
+
   .btn-secondary-cta:hover {
     color: hsl(var(--foreground));
     border-color: hsl(var(--muted-foreground));
@@ -390,22 +395,22 @@
     color: hsl(var(--foreground));
     background-color: hsl(var(--muted) / 0.5);
   }
-  
+
   /* Global Icon Standards */
   svg.icon {
     color: hsl(var(--icon));
   }
-  
+
   /* Ensure Heroicons in common containers follow the rule */
   .premium-card svg, 
   .feature-icon svg {
     color: hsl(var(--icon));
   }
-  
+
   .premium-button:active, .btn-primary:active {
     transform: scale(0.98);
   }
-  
+
   .premium-button-outline:disabled, .btn-outline:disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -425,7 +430,7 @@
     transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
     outline: none;
   }
-  
+
   .premium-input::placeholder {
     color: hsl(var(--muted-foreground));
     opacity: 0.6;
@@ -503,16 +508,16 @@
     font-weight: 500;
     border-radius: 0.5rem;
   }
-  
+
   .premium-input:hover {
     border-color: hsl(var(--primary) / 0.5);
   }
-  
+
   .premium-input:focus, select.premium-input:focus {
     border-color: hsl(var(--accent));
     box-shadow: 0 0 0 4px hsl(var(--accent) / 0.18);
   }
-  
+
   /* Select Dropdown */
   select.premium-input {
     cursor: pointer !important;
@@ -525,7 +530,7 @@
     background-repeat: no-repeat !important;
     background-size: 1.25em 1.25em !important;
   }
-  
+
   select.premium-input option {
     background-color: hsl(var(--card));
     color: hsl(var(--foreground));
@@ -540,7 +545,7 @@
     box-shadow: 0 12px 24px -20px hsl(220 15% 20% / 0.18);
     transition: all 200ms ease;
   }
-  
+
   .premium-card:hover, .card:hover {
     box-shadow: 0 14px 28px -22px hsl(220 15% 20% / 0.22);
   }
@@ -580,19 +585,19 @@
     border: 1px solid transparent;
     forced-color-adjust: none;
   }
-  
+
   .badge-primary {
     background-color: hsl(var(--accent) / 0.08);
     color: hsl(var(--accent));
     border-color: hsl(var(--accent) / 0.18);
   }
-  
+
   .badge-success {
     background-color: hsl(var(--success) / 0.08);
     color: hsl(var(--success));
     border-color: hsl(var(--success) / 0.18);
   }
-  
+
   .badge-warning {
     background-color: hsl(var(--warning) / 0.08);
     color: hsl(var(--warning));
@@ -619,7 +624,7 @@
   .tap-highlight-none {
     -webkit-tap-highlight-color: transparent;
   }
-  
+
   .text-balance {
     text-wrap: balance;
   }
@@ -724,3 +729,5 @@ html {
 .company-description-prose em {
   font-style: italic;
 }
+
+

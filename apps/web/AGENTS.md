@@ -20,11 +20,31 @@ Read `DESIGN_SYSTEM.md` before UI changes.
 | Path | Owns |
 |---|---|
 | `src/app/` | Routes, layouts, loading, error, metadata |
-| `src/features/` | Domain UI and feature logic |
+| `src/features/` | Domain UI, feature hooks, and feature logic |
 | `src/ui/` | Shared presentational components |
-| `src/hooks/` | Client hooks over typed API calls |
-| `src/lib/` | Server helpers, API wrappers, formatting, cache helpers |
+| `src/hooks/` | Generic utility hooks (framework-agnostic) |
+| `src/lib/` | Server helpers, API wrappers, auth, navigation, providers |
 | `src/app/(admin)/` | Admin web routes |
+| `src/app/(auth)/` | Login, signup, logout, onboarding (choose-username) |
+| `src/app/(user)/` | Authenticated user pages (dashboard, profile, settings) |
+| `src/app/(public)/` | Public SEO pages (jobs, companies, batch, deadlines) |
+
+### File organization rules
+
+Every file must have a clear purpose you can explain in one sentence.
+
+- **Route components** live in `src/app/<route>/page.tsx`
+- **Route-specific components** live in `src/app/<route>/components/` (e.g., `(auth)/components/AuthHeader.tsx`)
+- **Feature components** live in `src/features/<domain>/components/`
+- **Feature hooks** live in `src/features/<domain>/hooks/` (e.g., `features/dashboard/hooks/useSavedJobs.ts`)
+- **Generic utility hooks** live in `src/hooks/` (e.g., `useDebounce.ts`, `useClickOutside.ts`)
+- **Shared UI** lives in `src/ui/`
+- **API wrappers** live in `src/lib/api/`
+- **Auth context** lives in `src/lib/auth/`
+- **Providers** live in `src/lib/providers/`
+
+Do not place components at route group root — use `components/` subfolder.
+Do not mix Firebase-specific hooks with generic utilities.
 
 Do not call Prisma from this app. Do not import from `apps/api`. Use `packages/api-client`, local server helpers, and CDN helpers.
 
@@ -117,11 +137,17 @@ Client code may read only `NEXT_PUBLIC_*`. Server code may read server-only env 
 |---|---|
 | `src/app/layout.tsx` | Root layout, providers, metadata defaults |
 | `src/app/globals.css` | Design tokens and global CSS |
+| `src/app/(auth)/components/AuthHeader.tsx` | Auth page header |
+| `src/app/(user)/components/AccountShell.tsx` | User account layout shell |
+| `src/app/(user)/layout.tsx` | User account layout (wraps with NavigationWrapper + AccountShell) |
 | `src/proxy.ts` | Request proxying and route protection |
+| `src/lib/components/ProfileGate.tsx` | AuthGate and UsernameGate components |
+| `src/lib/auth/AuthContext.tsx` | Auth provider, session management, Firebase sync |
 | `src/lib/api/server-client.ts` | Server API client and cache policy |
 | `src/lib/api/cdnFeed.ts` | CDN bootstrap feed access |
 | `src/lib/api/client.ts` | Client API exports |
 | `src/features/opportunities/` | Feed, filters, cards, detail UI |
+| `src/features/dashboard/hooks/` | Dashboard-specific Firebase hooks |
 | `src/ui/CompanyLogo.tsx` | Logo rendering and fallback |
 
 ## Standard workflow
@@ -137,10 +163,22 @@ Client code may read only `NEXT_PUBLIC_*`. Server code may read server-only env 
 
 ### Add a client hook
 
-1. Create `src/hooks/useName.ts`
-2. Wrap a typed API client function
-3. Return consistent `data`, `loading`, and `error` state
-4. Keep retries and cache invalidation scoped
+1. **Generic utility** → `src/hooks/useName.ts` (framework-agnostic, reusable)
+2. **Feature-specific** → `src/features/<domain>/hooks/useName.ts` (uses Firebase, domain types)
+3. Wrap a typed API client function
+4. Return consistent `data`, `loading`, and `error` state
+5. Keep retries and cache invalidation scoped
+
+## Auth gates
+
+| Component | Purpose | Use when |
+|---|---|---|
+| `AuthGate` | Redirects to `/login` if not authenticated | Any route requiring login |
+| `UsernameGate` | Redirects to `/login` or `/choose-username` | Routes needing completed profile |
+
+Import from `@/lib/components/ProfileGate`.
+Do NOT use `ProfileGate` (deprecated alias for `UsernameGate`).
+Do NOT nest gate components — use one gate per page.
 
 ## Security rules
 

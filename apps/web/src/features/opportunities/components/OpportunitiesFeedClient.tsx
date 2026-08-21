@@ -18,7 +18,7 @@ import dynamic from 'next/dynamic';
 import { getOpportunityPathFromItem } from '@/features/opportunities/domain/opportunityPath';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 import { FilterDropdownBar, type FilterBarFilters } from '@/features/opportunities/components/FilterDropdownBar';
-import { useIntersectionObserver } from '@/lib/hooks/useIntersectionObserver';
+import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { Opportunity } from '@fresherflow/types';
 import { Breadcrumb } from '@/ui/Breadcrumb';
 import { useFeedHeader } from '@/lib/context/FeedHeaderContext';

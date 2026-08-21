@@ -14,7 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { database } from '@/lib/api/firebase';
 import { ref, onValue } from 'firebase/database';
-import { useFirebaseAdmin } from '@/lib/hooks/useFirebaseAdmin';
+import { useFirebaseAdmin } from '@/features/admin/hooks/useFirebaseAdmin';
 import { adminApi } from '@/lib/api/admin';
 import { CDN_URL } from '@/lib/utils/runtimeConfig';
 import { Button } from '@/ui/Button';

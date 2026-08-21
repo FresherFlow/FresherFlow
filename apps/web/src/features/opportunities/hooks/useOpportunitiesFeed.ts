@@ -3,13 +3,13 @@ import { useRouter } from 'next/navigation';
 import { Opportunity, EducationLevel } from '@fresherflow/types';
 // WEB PIVOT: keep API imports disabled while public web runs from CDN/static JSON.
 // import { opportunitiesApi, savedApi } from '@/lib/api/client';
-import { useDebounce } from '@/lib/hooks/useDebounce';
+import { useDebounce } from '@/hooks/useDebounce';
 import { useAuth } from '@/lib/auth/AuthContext';
 import toast from 'react-hot-toast';
 import { readFeedCache } from '@/lib/api/offline/opportunitiesFeedCache';
 import { calculateOpportunityMatch, isNotEligible } from '@/features/opportunities/domain/matchScore';
 
-import { useFirebaseSaved } from '@/lib/hooks/useFirebaseSaved';
+import { useFirebaseSaved } from '@/features/dashboard/hooks/useFirebaseSaved';
 import { promptLoginToast } from '@/lib/utils/toastUtils';
 
 

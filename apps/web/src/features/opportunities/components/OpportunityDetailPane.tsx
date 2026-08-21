@@ -26,14 +26,14 @@ import { Hint } from '@/ui/Tooltip';
 import { CopyButton } from '@/ui/CopyButton';
 
 // Subcomponents from detail page
-import { WalkInDetailsCard } from '@/app/(app)/jobs/[slug]/components/WalkInDetailsCard';
-import { ComplexityCard } from '@/app/(app)/jobs/[slug]/components/ComplexityCard';
-import { DetailRequirements } from '@/app/(app)/jobs/[slug]/components/DetailRequirements';
-import { DetailTimeline } from '@/app/(app)/jobs/[slug]/components/DetailTimeline';
-import { DetailCampusDriveInfo } from '@/app/(app)/jobs/[slug]/components/DetailCampusDriveInfo';
-import { ExpiredWarning } from '@/app/(app)/jobs/[slug]/components/ExpiredWarning';
-import { DescriptionSection } from '@/app/(app)/jobs/[slug]/components/DescriptionSection';
-import { GovernmentJobDetailView } from '@/app/(app)/jobs/[slug]/components/GovernmentJobDetailView';
+import { WalkInDetailsCard } from '@/app/(public)/jobs/[slug]/components/WalkInDetailsCard';
+import { ComplexityCard } from '@/app/(public)/jobs/[slug]/components/ComplexityCard';
+import { DetailRequirements } from '@/app/(public)/jobs/[slug]/components/DetailRequirements';
+import { DetailTimeline } from '@/app/(public)/jobs/[slug]/components/DetailTimeline';
+import { DetailCampusDriveInfo } from '@/app/(public)/jobs/[slug]/components/DetailCampusDriveInfo';
+import { ExpiredWarning } from '@/app/(public)/jobs/[slug]/components/ExpiredWarning';
+import { DescriptionSection } from '@/app/(public)/jobs/[slug]/components/DescriptionSection';
+import { GovernmentJobDetailView } from '@/app/(public)/jobs/[slug]/components/GovernmentJobDetailView';
 
 // Hooks
 import { useOpportunityDetail } from '@/features/opportunities/hooks/useOpportunityDetail';

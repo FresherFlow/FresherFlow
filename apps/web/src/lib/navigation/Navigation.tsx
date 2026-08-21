@@ -33,7 +33,6 @@ export const SIDEBAR_ROUTES = [
     '/followed-companies',
     '/contribute',
     '/referral',
-    '/choose-username',
     '/resources',
     '/platforms',
 ];

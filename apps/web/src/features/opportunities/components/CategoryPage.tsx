@@ -12,18 +12,19 @@ interface CategoryPageProps {
     initialFilters?: Partial<import('@/features/opportunities/components/FilterDropdownBar').FilterBarFilters>;
     canonicalRedirect?: boolean;
     customTitle?: string;
+    topContent?: React.ReactNode;
     bottomContent?: React.ReactNode;
 }
 
-function CategoryPageContainer({ type, initialData, initialFilters, canonicalRedirect, customTitle, bottomContent }: CategoryPageProps) {
-    const state = useCategoryPageState({ type, initialData, initialFilters, canonicalRedirect, customTitle, bottomContent });
+function CategoryPageContainer({ type, initialData, initialFilters, canonicalRedirect, customTitle, topContent, bottomContent }: CategoryPageProps) {
+    const state = useCategoryPageState({ type, initialData, initialFilters, canonicalRedirect, customTitle, topContent, bottomContent });
     return <CategoryPageView {...state} />;
 }
 
-export default function CategoryPage({ type, initialData, initialFilters, canonicalRedirect, customTitle, bottomContent }: CategoryPageProps) {
+export default function CategoryPage({ type, initialData, initialFilters, canonicalRedirect, customTitle, topContent, bottomContent }: CategoryPageProps) {
     return (
         <Suspense fallback={<FeedPageSkeleton isGovt={type === OpportunityType.GOVERNMENT} />}>
-            <CategoryPageContainer type={type} initialData={initialData} initialFilters={initialFilters} canonicalRedirect={canonicalRedirect} customTitle={customTitle} bottomContent={bottomContent} />
+            <CategoryPageContainer type={type} initialData={initialData} initialFilters={initialFilters} canonicalRedirect={canonicalRedirect} customTitle={customTitle} topContent={topContent} bottomContent={bottomContent} />
         </Suspense>
     );
 }

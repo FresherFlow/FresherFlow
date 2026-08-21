@@ -21,10 +21,11 @@ export interface UseCategoryPageStateProps {
     initialFilters?: Partial<FilterBarFilters>;
     canonicalRedirect?: boolean;
     customTitle?: string;
+    topContent?: React.ReactNode;
     bottomContent?: React.ReactNode;
 }
 
-export function useCategoryPageState({ type: propType, initialData, initialFilters, canonicalRedirect, customTitle, bottomContent }: UseCategoryPageStateProps) {
+export function useCategoryPageState({ type: propType, initialData, initialFilters, canonicalRedirect, customTitle, topContent, bottomContent }: UseCategoryPageStateProps) {
     const { user } = useAuth();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -463,6 +464,7 @@ export function useCategoryPageState({ type: propType, initialData, initialFilte
         toggleSave,
         reload,
         customTitle,
+        topContent,
         bottomContent,
     };
 }

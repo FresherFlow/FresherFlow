@@ -9,7 +9,7 @@ import { PageTagLinks } from '@/ui/PageTagLinks';
 import CompanyLogo from '@/ui/CompanyLogo';
 import { EmptyState } from '@/ui/EmptyState';
 import { OpportunityDetailPane } from './OpportunityDetailPane';
-import { useIntersectionObserver } from '@/lib/hooks/useIntersectionObserver';
+import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { SkillIcon } from '@/ui/SkillPill';
 
 export interface HubLink {
