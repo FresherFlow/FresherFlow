@@ -38,7 +38,7 @@ export const CDN_SECRET = (process.env.CDN_SIGNATURE_SECRET || '').trim().replac
 export const TELEGRAM_BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN || '').trim().replace(/^["']|["']$/g, '').replace(/^bot/i, '');
 export const TELEGRAM_CHAT_ID = (process.env.TELEGRAM_CHAT_ID || '').trim().replace(/^["']|["']$/g, '');
 export const CDN_URL = (process.env.NEXT_PUBLIC_CDN_URL || process.env.CDN_URL || '').trim().replace(/\/$/, '');
-export const ATS_CDN_BASE = CDN_URL ? `${CDN_URL}/ats` : '';
+export const ATS_CDN_BASE = CDN_URL ? `${CDN_URL}/api/ats/india` : '';
 export const ATS_PROVIDERS = [
     // Phase 1
     'greenhouse', 'lever', 'workday', 'smartrecruiters', 'myworkdayjobs', 'ashby', 'ashbyhq',

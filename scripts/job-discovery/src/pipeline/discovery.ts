@@ -87,13 +87,20 @@ export async function discoverAtsJobs(state: DiscoveryState) {
         state.knownLinks.add(normalizedLink);
 
         if (job.description && job.descriptionSource === 'API') {
+            const scoreResult = scoreJobDescription(job.title, job.description);
+            if (scoreResult.verdict === 'REJECT') continue;
+            
+            // If it's a MEDIUM score, it requires review UNLESS the title is explicitly a fresher title.
+            // If it's ACCEPT, it does NOT require review.
+            const needsReview = scoreResult.verdict === 'MEDIUM' && !hasFresherKeyword(job.title);
+
             state.newJobsFound.push({
                 title: job.title,
                 applyLink: job.applyLink,
                 source: job.source,
                 sourceType: 'ATS',
                 discoveredAt: new Date().toISOString(),
-                reviewRequired: false,
+                reviewRequired: needsReview,
                 atsText: job.description,
                 company: job.company
             });

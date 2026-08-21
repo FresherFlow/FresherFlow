@@ -163,10 +163,21 @@ async function runProvider(
         const jobs = await adapter.fetchJobs(companyId, companyName);
         totalRaw += jobs.length;
 
-        const fresherJobs = jobs.filter((j: AtsJob) =>
-            isPotentialFresherJob(j.title) &&
-            isLocationIndiaOrRemote(j.location || '', j.title)
-        );
+        const fresherJobs = jobs.filter((j: AtsJob) => {
+            if (name === 'Workday' && j.postedAt) {
+                const postedDate = new Date(j.postedAt);
+                const now = new Date();
+                const diffHours = (now.getTime() - postedDate.getTime()) / (1000 * 60 * 60);
+                // Workday dates are YYYY-MM-DD. A diff > 48 hours means it's definitely older than yesterday.
+                // To approximate "recent/last 6 hours" without dropping jobs from just before midnight,
+                // we reject jobs older than 24-48 hours. Let's use 48 hours to be safe against timezone drift.
+                if (diffHours > 48) {
+                    return false;
+                }
+            }
+            return isPotentialFresherJob(j.title) &&
+                   isLocationIndiaOrRemote(j.location || '', j.title);
+        });
         totalPassedFilter += fresherJobs.length;
 
         const finalJobs: AtsJob[] = [];

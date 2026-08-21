@@ -68,22 +68,21 @@ const STAGGER_MS = 10 * 60 * 1000; // 10 minutes between posts
 
 function formatXCaption(job: DiscoveredJobEntry): string {
     const title = job.title.length > 60 ? job.title.slice(0, 57) + '...' : job.title;
-    const caption = `${title}\n${job.applyLink}\n\n#FresherJobs`;
+    const caption = `New Job Opening\n\nRole: ${title}\nApply: ${job.applyLink}\n\n#FresherJobs #Hiring`;
     // X limit is 280 chars. If over, shorten further.
     if (caption.length > 280) {
         const shortTitle = job.title.length > 40 ? job.title.slice(0, 37) + '...' : job.title;
-        return `${shortTitle}\n${job.applyLink}`;
+        return `New Job Opening\n\nRole: ${shortTitle}\nApply: ${job.applyLink}\n\n#FresherJobs`;
     }
     return caption;
 }
 
 function formatLinkedInCaption(job: DiscoveredJobEntry): string {
-    return `${job.title}\n${job.applyLink}\n\n#Freshers #Hiring #EntryLevel`;
+    return `New Job Opening\n\nRole: ${job.title}\nApply Here: ${job.applyLink}\n\n#Freshers #Hiring #EntryLevel #Jobs`;
 }
 
 function formatTelegramCaption(job: DiscoveredJobEntry): string {
-    const source = job.source ? ` (${job.source})` : '';
-    return `${job.title}${source}\n${job.applyLink}`;
+    return `New Job Opening\n\nRole: ${job.title}\nApply Here: ${job.applyLink}\n\n#Freshers #Hiring #EntryLevel`;
 }
 
 function formatCaption(job: DiscoveredJobEntry, platform: string): string {
@@ -109,8 +108,20 @@ async function schedulePost(platform: string, text: string, scheduledAt: number)
             },
             body: JSON.stringify({ platform, text, scheduledAt }),
         });
-        const data = await res.json() as { ok?: boolean; error?: string; jobId?: string };
-        if (!res.ok || !data.ok) {
+        
+        let data: any = {};
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            data = await res.json();
+        } else {
+            const raw = await res.text();
+            if (!res.ok) {
+                console.warn(`[social] Failed to schedule ${platform}: HTTP ${res.status} ${res.statusText}`);
+                return;
+            }
+        }
+
+        if (!res.ok || data.ok === false) {
             console.warn(`[social] Failed to schedule ${platform}: ${data.error || res.statusText}`);
         } else {
             console.log(`[social] Scheduled ${platform} post at ${new Date(scheduledAt).toISOString()} (job: ${data.jobId})`);
@@ -129,7 +140,8 @@ async function postAggregatorsToSocial(aggJobs: DiscoveredJobEntry[]): Promise<v
 
     console.log(`[social] Posting ${aggJobs.length} aggregator jobs to ${SOCIAL_PLATFORMS.join(', ')}`);
 
-    const now = Date.now();
+    // Add a 2-minute buffer to ensure the first post is strictly in the future for the worker API
+    const now = Date.now() + 2 * 60 * 1000;
     let postIndex = 0;
 
     for (const job of aggJobs) {
