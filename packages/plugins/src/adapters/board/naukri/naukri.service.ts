@@ -1,4 +1,4 @@
-
+import * as cheerio from 'cheerio';
 import {
   IScraper, ScraperInputDto, JobResponseDto, JobPostDto,
   LocationDto, CompensationDto, Country, DescriptionFormat, Site,
@@ -7,14 +7,13 @@ import {
 import {
   createHttpClient, NaukriException, markdownConverter, extractEmails, randomSleep,
 } from '../../../common/index.js';
-import { NAUKRI_HEADERS } from './naukri.constants';
+import { NAUKRI_HEADERS } from './naukri.constants.js';
 
 export class NaukriService implements IScraper {
-  
   private readonly baseUrl = 'https://www.naukri.com/jobapi/v3/search';
   private readonly jobsPerPage = 20;
-  private readonly delay = 3;
-  private readonly bandDelay = 4;
+  private readonly delay = 2;
+  private readonly bandDelay = 3;
 
   async scrape(input: ScraperInputDto): Promise<JobResponseDto> {
     const client = createHttpClient({
@@ -29,10 +28,10 @@ export class NaukriService implements IScraper {
     const seenIds = new Set<string>();
     let page = Math.floor((input.offset ?? 0) / this.jobsPerPage) + 1;
 
-    while (jobList.length < resultsWanted && page <= 50) {
-      console.log(`Fetching Naukri jobs, page ${page}`);
+    try {
+      while (jobList.length < resultsWanted && page <= 50) {
+        console.log(`Fetching Naukri jobs, page ${page}`);
 
-      try {
         const searchTerm = input.searchTerm ?? '';
         const params: Record<string, any> = {
           noOfResults: this.jobsPerPage,
@@ -52,7 +51,7 @@ export class NaukriService implements IScraper {
         const response = await client.get(this.baseUrl, { params });
 
         if (response.status < 200 || response.status >= 400) {
-          console.error(`Naukri API status ${response.status}`);
+          console.warn(`Naukri API status ${response.status}, falling back to public HTML`);
           break;
         }
 
@@ -75,13 +74,77 @@ export class NaukriService implements IScraper {
 
         page++;
         await randomSleep(this.delay * 1000, (this.delay + this.bandDelay) * 1000);
-      } catch (err: any) {
-        console.error(`Naukri scrape error: ${err.message}`);
-        break;
       }
+    } catch (err: any) {
+      console.warn(`Naukri API error: ${err.message}, attempting HTML scraping fallback...`);
+    }
+
+    // If API returned nothing or was blocked (406/403), fallback to public search HTML
+    if (jobList.length === 0 && input.searchTerm) {
+      const htmlJobs = await this.scrapePublicHtml(input.searchTerm, resultsWanted);
+      jobList.push(...htmlJobs);
     }
 
     return new JobResponseDto(jobList.slice(0, resultsWanted));
+  }
+
+  private async scrapePublicHtml(keyword: string, limit: number): Promise<JobPostDto[]> {
+    const jobs: JobPostDto[] = [];
+    const encodedSlug = keyword.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-');
+    const searchUrl = `https://www.naukri.com/${encodedSlug}-jobs-in-india?experience=0&sort=1`;
+
+    try {
+      const headers = {
+        'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'accept-language': 'en-US,en;q=0.9',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      };
+
+      const resp = await fetch(searchUrl, { headers, signal: AbortSignal.timeout(15000) });
+      if (!resp.ok) return [];
+
+      const html = await resp.text();
+      const $ = cheerio.load(html);
+
+      $('article.jobTuple, div.srp-jobtuple, div.cust-job-tuple').each((_, el) => {
+        if (jobs.length >= limit) return false;
+        const card = $(el);
+        const title = card.find('a.title, a.job-title').text().trim();
+        const jobHref = card.find('a.title, a.job-title').attr('href') || '';
+        const company = card.find('a.comp-name, a.company-name, .comp-name').text().trim();
+        const locationStr = card.find('.locWdth, .loc-wrap, .loc').text().trim();
+        const exp = card.find('.expwdth, .exp-wrap').text().trim();
+        const desc = card.find('.job-desc, .job-description').text().trim();
+
+        if (title && jobHref) {
+          const jobUrl = jobHref.startsWith('http') ? jobHref : `https://www.naukri.com${jobHref}`;
+          jobs.push(new JobPostDto({
+            id: `nk-${Math.abs(this.hashCode(jobUrl))}`,
+            title,
+            companyName: company || undefined,
+            location: new LocationDto({ city: locationStr || undefined, country: Country.INDIA }),
+            jobUrl,
+            description: `${desc}\nExperience: ${exp}`,
+            datePosted: new Date().toISOString().split('T')[0],
+            isRemote: /remote|wfh/i.test(locationStr || ''),
+            site: Site.NAUKRI,
+          }));
+        }
+      });
+    } catch (err: any) {
+      console.warn(`Naukri HTML scraping fallback error: ${err.message}`);
+    }
+
+    return jobs;
+  }
+
+  private hashCode(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash << 5) - hash + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return hash;
   }
 
   private processJob(job: any, jobId: string, input: ScraperInputDto): JobPostDto | null {

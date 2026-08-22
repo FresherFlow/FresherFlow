@@ -190,15 +190,30 @@ export class HasJobService implements IScraper {
     // Generate ID from URL
     const jobId = this.extractIdFromUrl(entry.link);
 
+    // Extract company
+    let companyName: string | undefined;
+    if (entry.content) {
+      const match = entry.content.match(/<strong><a[^>]*>([^<]+)<\/a><\/strong>/i);
+      if (match) companyName = match[1].trim();
+    }
+    if (!companyName && entry.link) {
+      try {
+        const parsed = new URL(entry.link);
+        const parts = parsed.pathname.split('/').filter(Boolean);
+        if (parts.length >= 2) companyName = parts[0];
+      } catch {}
+    }
+
     return new JobPostDto({
       id: `hasjob-${jobId}`,
       title: entry.title,
+      companyName: companyName || 'Startup',
       jobUrl: entry.link,
       location,
       description,
       compensation: undefined,
       datePosted,
-      isRemote: false,
+      isRemote: (entry.location || '').toLowerCase().includes('remote') || (entry.title || '').toLowerCase().includes('remote'),
       emails: extractEmails(description ?? null),
       site: Site.HASJOB,
     });

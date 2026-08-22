@@ -40,7 +40,11 @@ export function evaluateTitle(title: string): { contributions: ScoreContribution
     }
 
     // Strict fresher titles (second preference)
-    const strictTitles = ["associate software engineer", "graduate trainee", "junior", "entry level", "fresher", "graduate software engineer", "associate", "graduate"];
+    const strictTitles = [
+        "associate software engineer", "associate software developer", "associate engineer",
+        "associate developer", "associate consultant", "associate analyst", "tech associate",
+        "graduate trainee", "junior", "entry level", "fresher", "graduate software engineer", "graduate"
+    ];
     let matchedStrict = false;
     if (!matchedFirstPreference) {
         for (const t of strictTitles) {
@@ -95,8 +99,8 @@ export function evaluateTitle(title: string): { contributions: ScoreContribution
         }
     }
 
-    // Senior titles in blockers
-    const seniorTitles = ['senior', 'sr.', 'lead', 'manager', 'director', 'principal', 'head', 'vp', 'president', 'chief', 'architect', 'partner', 'expert'];
+    // Senior / Non-tech titles in blockers
+    const seniorTitles = ['senior', 'sr.', 'lead', 'manager', 'director', 'principal', 'head', 'vp', 'president', 'chief', 'architect', 'partner', 'expert', 'counsel', 'attorney', 'physician', 'nurse'];
     for (const st of seniorTitles) {
         const stRegex = new RegExp(`\\b${st}\\b`, 'i');
         if (stRegex.test(lowerTitle)) {

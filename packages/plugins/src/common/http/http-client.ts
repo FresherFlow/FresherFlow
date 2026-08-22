@@ -36,7 +36,7 @@ export class HttpClient {
 
   constructor(options: HttpClientOptions = {}) {
     this.proxies = options.proxies ?? [];
-    this.maxRetries = options.retries ?? 3;
+    this.maxRetries = options.retries ?? 1;
     this.retryDelay = options.retryDelay ?? 1000;
     this.retryBackoff = options.retryBackoff ?? 'linear';
     this.retryMaxDelay = options.retryMaxDelay ?? 30000;
@@ -128,24 +128,16 @@ export class HttpClient {
       } catch (error: any) {
         lastError = error;
         const status = error.response?.status;
-        if (status && [500, 502, 503, 504, 429].includes(status) && attempt < this.maxRetries) {
-          // For 429, respect Retry-After header with aggressive backoff
-          let delay: number;
-          if (status === 429) {
-            const retryAfter = error.response?.headers?.['retry-after'];
-            const rawServerDelay = retryAfter ? parseInt(retryAfter, 10) * 1000 : 0;
-            // Cap server delay at 30s — Retry-After can be a Unix timestamp or huge value
-            const serverDelay = Math.min(rawServerDelay, 30000);
-            delay = Math.max(
-              serverDelay,
-              Math.min(this.retryMaxDelay, 2000 * Math.pow(2, attempt))
-            );
-          } else {
-            delay = this.retryBackoff === 'exponential'
-              ? Math.min(this.retryMaxDelay, this.retryDelay * Math.pow(2, attempt))
-              : Math.min(this.retryMaxDelay, this.retryDelay * (attempt + 1));
-          }
 
+        // On 429 Too Many Requests, do not stall the pipeline with 30s multi-retries; fail-fast to next target
+        if (status === 429) {
+          this.logger.warn(`Request rate-limited (429), skipping retry to maintain pipeline speed.`);
+          throw error;
+        }
+
+        // On 5xx server errors, perform at most quick retry with small delay (capped at 2s)
+        if (status && [500, 502, 503, 504].includes(status) && attempt < this.maxRetries) {
+          const delay = Math.min(2000, this.retryDelay * (attempt + 1));
           this.logger.warn(`Request failed with ${status}, retrying (${attempt + 1}/${this.maxRetries}) in ${delay}ms...`);
           await this.sleep(delay);
           continue;
