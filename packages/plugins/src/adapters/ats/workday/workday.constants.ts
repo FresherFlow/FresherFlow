@@ -10,7 +10,7 @@
 export const WORKDAY_PAGE_SIZE = 20;
 
 /** Maximum number of public CXS detail requests in flight at once. */
-export const WORKDAY_DETAIL_CONCURRENCY = 5;
+export const WORKDAY_DETAIL_CONCURRENCY = 2;
 
 /** Default headers for Workday API requests */
 export const WORKDAY_HEADERS: Record<string, string> = {
@@ -30,18 +30,39 @@ export function parseWorkdaySlug(slug: string): {
   wdNumber: string;
   site: string;
 } {
-  if (slug.startsWith('http')) {
+  let urlStr = slug;
+  if (slug.includes('.myworkdayjobs.com') && !slug.startsWith('http')) {
+    urlStr = 'https://' + slug;
+  }
+  
+  if (urlStr.startsWith('http')) {
     try {
-      const url = new URL(slug);
+      const url = new URL(urlStr);
       const hostParts = url.hostname.split('.');
       const company = hostParts[0];
       const wdNumber = hostParts[1] ? hostParts[1].replace('wd', '') : '5';
       const pathParts = url.pathname.split('/').filter(Boolean);
-      const site = pathParts[0] ?? 'External';
+      let site = 'External';
+      if (pathParts.includes('wday') && pathParts.includes('cxs')) {
+          const cxsIdx = pathParts.indexOf('cxs');
+          site = pathParts[cxsIdx + 2] || pathParts[0] || 'External';
+      } else {
+          site = pathParts[0] ?? 'External';
+      }
       return { company, wdNumber, site };
     } catch {
       // Fallback below
     }
+  }
+
+  // Support abbott/abbottcareers fallback
+  if (slug.includes('/') && !slug.includes(':')) {
+     const parts = slug.split('/');
+     return {
+       company: parts[0],
+       wdNumber: '5',
+       site: parts[1] || 'External'
+     };
   }
 
   const parts = slug.split(':');

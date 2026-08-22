@@ -11,37 +11,10 @@ export interface SearchTarget {
 }
 
 /**
- * India-first target registry + global tech hiring in India.
- * Verified company slugs from docs/data/ats/*.json
+ * All targets are loaded dynamically from CDN or local verified files.
+ * No hardcoded company slugs — they go stale.
  */
-export const DEFAULT_TARGETS: SearchTarget[] = [
-  // India Tech / Startups (Verified Slugs)
-  { company: 'razorpay', ats: 'greenhouse', slug: 'razorpaysoftwareprivatelimited', resultsWanted: 50, hoursOld: 72, active: true },
-  { company: 'cred', ats: 'lever', slug: 'cred', resultsWanted: 50, hoursOld: 72, active: true },
-  { company: 'urbancompany', ats: 'lever', slug: 'urbancompany', resultsWanted: 50, hoursOld: 72, active: true },
-  { company: 'slice', ats: 'lever', slug: 'slice', resultsWanted: 50, hoursOld: 72, active: true },
-  { company: 'canonical', ats: 'greenhouse', slug: 'canonical', resultsWanted: 50, hoursOld: 72, active: true },
-  { company: 'figma', ats: 'greenhouse', slug: 'figma', resultsWanted: 50, hoursOld: 72, active: true },
-  { company: 'coinbase', ats: 'greenhouse', slug: 'coinbase', resultsWanted: 50, hoursOld: 72, active: true },
-  { company: 'airbnb', ats: 'greenhouse', slug: 'airbnb', resultsWanted: 50, hoursOld: 72, active: true },
-  { company: 'hotstar', ats: 'lever', slug: 'hotstar', resultsWanted: 50, hoursOld: 72, active: true },
-  { company: 'zeta', ats: 'lever', slug: 'zeta', resultsWanted: 50, hoursOld: 72, active: true },
-
-  // Global Tech Leaders hiring in India (Company scrapers)
-  { company: 'google', ats: 'company-google', slug: 'google', resultsWanted: 50, hoursOld: 72, active: true },
-  { company: 'microsoft', ats: 'company-microsoft', slug: 'microsoft', resultsWanted: 50, hoursOld: 72, active: true },
-  { company: 'amazon', ats: 'company-amazon', slug: 'amazon', resultsWanted: 50, hoursOld: 72, active: true },
-  { company: 'apple', ats: 'company-apple', slug: 'apple', resultsWanted: 50, hoursOld: 72, active: true },
-  { company: 'meta', ats: 'company-meta', slug: 'meta', resultsWanted: 50, hoursOld: 72, active: true },
-  { company: 'uber', ats: 'company-uber', slug: 'uber', resultsWanted: 50, hoursOld: 72, active: true },
-  { company: 'stripe', ats: 'company-stripe', slug: 'stripe', resultsWanted: 50, hoursOld: 72, active: true },
-  { company: 'ibm', ats: 'company-ibm', slug: 'ibm', resultsWanted: 50, hoursOld: 72, active: true },
-  { company: 'nvidia', ats: 'company-nvidia', slug: 'nvidia', resultsWanted: 50, hoursOld: 72, active: true },
-
-  // Aggregator Boards (Direct Search)
-  { company: 'internshala', ats: 'internshala', slug: 'software fresher', resultsWanted: 100, hoursOld: 72, active: true },
-  { company: 'naukri', ats: 'naukri', slug: 'software engineer fresher', resultsWanted: 100, hoursOld: 72, active: true }
-];
+export const DEFAULT_TARGETS: SearchTarget[] = [];
 
 const ATS_PROVIDERS = [
     'greenhouse', 'lever', 'workday', 'smartrecruiters', 'myworkdayjobs', 'ashby', 'ashbyhq',
@@ -54,7 +27,7 @@ function processAtsData(atsName: string, data: any, targets: SearchTarget[]) {
     for (const [slug, companyName] of Object.entries(data)) {
       if (slug.startsWith('//') || slug.startsWith('_comment') || slug.startsWith('---') || slug.startsWith('===')) continue;
       if (!targets.some(t => t.company.toLowerCase() === String(companyName).toLowerCase())) {
-        targets.push({ company: String(companyName).toLowerCase(), ats: atsName, slug, resultsWanted: 50, hoursOld: 72, active: true });
+        targets.push({ company: String(companyName).toLowerCase(), ats: atsName, slug, resultsWanted: 50, hoursOld: 10, active: true });
       }
     }
   } else if (Array.isArray(data)) {
@@ -64,7 +37,7 @@ function processAtsData(atsName: string, data: any, targets: SearchTarget[]) {
         companyName = slugEntry.split(':')[0];
       }
       if (!targets.some(t => t.company.toLowerCase() === companyName.toLowerCase())) {
-        targets.push({ company: companyName.toLowerCase(), ats: atsName, slug: slugEntry, resultsWanted: 50, hoursOld: 72, active: true });
+        targets.push({ company: companyName.toLowerCase(), ats: atsName, slug: slugEntry, resultsWanted: 50, hoursOld: 10, active: true });
       }
     }
   }
@@ -78,10 +51,10 @@ export async function loadAtsDataTargets(): Promise<SearchTarget[]> {
   const CDN_URL = (process.env.NEXT_PUBLIC_CDN_URL || process.env.CDN_URL || '').trim().replace(/\/$/, '');
   
   if (CDN_URL) {
-    console.log(`Fetching ATS targets from CDN (${CDN_URL}/ats)...`);
+    console.log(`Fetching ATS targets from CDN (${CDN_URL}/api/ats/india)...`);
     for (const atsName of ATS_PROVIDERS) {
       try {
-        const res = await fetch(`${CDN_URL}/ats/${atsName}.json`);
+        const res = await fetch(`${CDN_URL}/api/ats/india/${atsName}.json`);
         if (res.ok) {
           const data = await res.json();
           processAtsData(atsName, data, targets);
@@ -90,8 +63,9 @@ export async function loadAtsDataTargets(): Promise<SearchTarget[]> {
          // silently continue to next
       }
     }
-    if (targets.length > DEFAULT_TARGETS.length) {
-      return targets; // Successfully loaded from CDN
+    if (targets.length > 0) {
+      console.log(`Loaded ${targets.length} targets from CDN`);
+      return targets;
     }
   }
 

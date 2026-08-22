@@ -24,6 +24,17 @@ export const ICIMS_HEADERS: Record<string, string> = {
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129 Safari/537.36',
 };
 
+export function parseIcimsSlug(company: string): string {
+  // Strip protocol prefix (handles double-https:// from CDN data)
+  let s = company.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+  // If it contains .icims.com, extract just the subdomain
+  if (s.includes('.icims.com')) {
+    s = s.split('.icims.com')[0];
+  }
+  // Strip any remaining path segments
+  return s.split('/')[0];
+}
+
 /**
  * Build the iCIMS search page URL (used for Playwright fallback).
  */
@@ -33,7 +44,8 @@ export function buildIcimsSearchUrl(
   location?: string,
   page?: number,
 ): string {
-  const base = `https://${company}.icims.com/jobs/search`;
+  const slug = parseIcimsSlug(company);
+  const base = `https://${slug}.icims.com/jobs/search`;
   const params = new URLSearchParams();
   params.set('ss', '1');
   if (keyword) params.set('searchKeyword', keyword);
@@ -48,11 +60,12 @@ export function buildIcimsSearchUrl(
  * Build the iCIMS gateway JSON endpoint URL (tried first before Playwright).
  */
 export function buildIcimsGatewayUrl(company: string, offset: number): string {
+  const slug = parseIcimsSlug(company);
   const params = new URLSearchParams();
   params.set('pr', String(offset));
   params.set('schemaId', '');
   params.set('o', String(offset));
   params.set('mode', 'job');
   params.set('iis', 'Internet');
-  return `https://${company}.icims.com/jobs/search?${params.toString()}`;
+  return `https://${slug}.icims.com/jobs/search?${params.toString()}`;
 }

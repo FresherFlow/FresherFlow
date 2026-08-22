@@ -224,9 +224,10 @@ export class EightfoldService implements IScraper {
 
   /** Resolve the tenant host from an explicit URL or the slug subdomain. */
   private resolveHost(companySlug: string | undefined, companyUrl: string | undefined): string {
-    if (companyUrl) {
+    const targetUrl = companyUrl || (companySlug?.startsWith('http') ? companySlug : undefined);
+    if (targetUrl) {
       try {
-        const u = new URL(companyUrl);
+        const u = new URL(targetUrl);
         return `${u.protocol}//${u.host}`;
       } catch {
         // Fall through to slug-based host if the URL is malformed.
@@ -237,7 +238,11 @@ export class EightfoldService implements IScraper {
 
   /** The `domain` query param Eightfold expects — derived from the host or slug. */
   private resolveDomain(host: string, companySlug: string | undefined): string {
-    if (companySlug) return `${companySlug}.com`;
+    let slug = companySlug;
+    if (slug?.startsWith('http')) {
+       try { slug = new URL(slug).hostname.split('.')[0]; } catch {}
+    }
+    if (slug) return `${slug}.com`;
     try {
       return new URL(host).host;
     } catch {
@@ -246,10 +251,12 @@ export class EightfoldService implements IScraper {
   }
 
   private deriveCompanyName(companySlug: string | undefined, host: string): string {
-    const base = companySlug ?? new URL(host).host.split('.')[0];
-    return base
-      .replace(/[-_]+/g, ' ')
-      .replace(/\b\w/g, (c) => c.toUpperCase());
+    let slug = companySlug;
+    if (slug?.startsWith('http')) {
+       try { slug = new URL(slug).hostname.split('.')[0]; } catch {}
+    }
+    const base = slug ?? new URL(host).host.split('.')[0];
+    return base ? base.charAt(0).toUpperCase() + base.slice(1) : 'Unknown';
   }
 
   /** Build an absolute job URL, resolving root-relative canonical paths. */

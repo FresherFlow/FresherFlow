@@ -1,4 +1,5 @@
 
+import https from 'https';
 import {
   IScraper,
   ScraperInputDto,
@@ -47,12 +48,24 @@ export class WorkdayService implements IScraper {
     const { company, wdNumber, site } = parseWorkdaySlug(companySlug);
     const apiUrl = buildWorkdayUrl(company, wdNumber, site);
 
+    // Use keepAlive + IPv4-only agent to avoid DNS flooding on CI runners.
+    // GitHub Actions runners have flaky IPv6 and connection pooling issues
+    // when hitting hundreds of *.myworkdayjobs.com subdomains simultaneously.
+    const workdayAgent = new https.Agent({
+      keepAlive: true,
+      family: 4, // Force IPv4 — avoids DNS EAI_AGAIN on CI
+      maxSockets: 5,
+      timeout: 30_000,
+    });
+
     const client = createHttpClient({
       proxies: input.proxies,
       caCert: input.caCert,
       timeout: input.requestTimeout,
     });
     client.setHeaders(WORKDAY_HEADERS);
+    // Inject the keepAlive agent into the underlying axios instance
+    client.getAxiosInstance().defaults.httpsAgent = workdayAgent;
 
     const resultsWanted = input.resultsWanted ?? 100;
     const listingsToEnrich: WorkdayJobListItem[] = [];
@@ -66,7 +79,7 @@ export class WorkdayService implements IScraper {
           appliedFacets: {},
           limit: WORKDAY_PAGE_SIZE,
           offset,
-          searchText: '',
+          searchText: input.searchTerm ?? '',
         };
 
         const response = await client.post(apiUrl, payload);

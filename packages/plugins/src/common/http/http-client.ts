@@ -129,9 +129,21 @@ export class HttpClient {
         lastError = error;
         const status = error.response?.status;
         if (status && [500, 502, 503, 504, 429].includes(status) && attempt < this.maxRetries) {
-          const delay = this.retryBackoff === 'exponential'
-            ? Math.min(this.retryMaxDelay, this.retryDelay * Math.pow(2, attempt))
-            : Math.min(this.retryMaxDelay, this.retryDelay * (attempt + 1));
+          // For 429, respect Retry-After header with aggressive backoff
+          let delay: number;
+          if (status === 429) {
+            const retryAfter = error.response?.headers?.['retry-after'];
+            const serverDelay = retryAfter ? parseInt(retryAfter, 10) * 1000 : 0;
+            // Exponential backoff: 2s, 4s, 8s, 16s — always at least server's Retry-After
+            delay = Math.max(
+              serverDelay,
+              Math.min(this.retryMaxDelay, 2000 * Math.pow(2, attempt))
+            );
+          } else {
+            delay = this.retryBackoff === 'exponential'
+              ? Math.min(this.retryMaxDelay, this.retryDelay * Math.pow(2, attempt))
+              : Math.min(this.retryMaxDelay, this.retryDelay * (attempt + 1));
+          }
 
           this.logger.warn(`Request failed with ${status}, retrying (${attempt + 1}/${this.maxRetries}) in ${delay}ms...`);
           await this.sleep(delay);

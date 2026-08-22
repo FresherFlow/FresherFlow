@@ -420,6 +420,9 @@ async function run(): Promise<void> {
                 const pluginSalary = extractedSal ? `${extractedSal.currency || 'INR'} ${extractedSal.minSalary || ''}${extractedSal.maxSalary ? '-' + extractedSal.maxSalary : ''} / ${extractedSal.interval || 'year'}` : '';
 
                 // 2b. Build job from native structured data + local pipeline.db enriched data + rules
+                // Track whether data came from native ATS API (skip LLM) or Playwright scrape (need LLM)
+                const isNativeAtsData = !!(nativeData?.title || atsContent.title);
+
                 const nativeJob: Record<string, unknown> = {
                     type: rules.type ?? 'JOB',
                     title: nativeData?.title || atsContent.title || job.title || '',
@@ -432,6 +435,7 @@ async function run(): Promise<void> {
                     locations: (nativeData?.locations && nativeData.locations.length > 0) ? nativeData.locations : dbLocations,
                     requiredSkills: (nativeData?.nativeSkills && nativeData.nativeSkills.length > 0) ? nativeData.nativeSkills : (Array.isArray(job.skills) ? job.skills : []),
                     workMode: nativeData?.workplaceType ?? dbWorkMode ?? rules.workMode ?? null,
+                    descriptionSource: isNativeAtsData ? 'API' : (atsContent.text ? 'HTML' : 'NONE'),
                     experienceMin: nativeData?.experienceMin ?? (typeof job.experienceYears === 'number' ? job.experienceYears : (rules.experienceMin ?? extractedExp?.minExperienceYears ?? 0)),
                     experienceMax: nativeData?.experienceMax ?? (typeof job.experienceYears === 'number' ? job.experienceYears + 2 : (rules.experienceMax ?? extractedExp?.maxExperienceYears ?? 0)),
                     employmentType: rules.employmentType || nativeData?.employmentType || job.employmentType || '',
@@ -473,18 +477,25 @@ async function run(): Promise<void> {
                 // Identify what's still missing after CDN matching (for logging)
                 const missingFields: string[] = [];
                 if (!(nativeJob.requiredSkills as string[]).length) missingFields.push('requiredSkills');
-                // allowedDegrees and allowedPassoutYears removed as they are deterministic now
-                if (!nativeJob.salaryRange) missingFields.push('salaryRange');
-                if (!nativeJob.incentives) missingFields.push('incentives');
-                if (!nativeJob.selectionProcess) missingFields.push('selectionProcess');
-
+                
+                // Only ask the LLM for salary/incentives if we are truly lacking data or it's a raw page scrape.
+                // If it's a native ATS JSON job, it's a massive waste of LLM quota to ask for optional fields.
+                if (nativeJob.descriptionSource !== 'API') {
+                    if (!nativeJob.salaryRange) missingFields.push('salaryRange');
+                    if (!nativeJob.incentives) missingFields.push('incentives');
+                    if (!nativeJob.selectionProcess) missingFields.push('selectionProcess');
+                }
 
                 console.log(`CDN match done. Missing ${missingFields.length} fields: [${missingFields.join(', ')}]`);
 
                 // ─────────────────────────────────────────────────────────
-                // STEP 3: LLM ENRICHMENT (Fallback for missing fields)
+                // STEP 3: LLM ENRICHMENT — ONLY for Playwright-scraped pages
+                // Native ATS JSON already has everything the API provides.
+                // LLM guessing salary/incentives for API data is waste of quota.
                 // ─────────────────────────────────────────────────────────
-                if (missingFields.length > 0 && ai) {
+                if (isNativeAtsData) {
+                    // Skip LLM entirely for native ATS jobs — data is already complete from the plugin
+                } else if (missingFields.length > 0 && ai) {
                     console.log(`Calling LLM enrichment for fields: ${missingFields.join(', ')}`);
                     try {
                         const enrichment = await enrichMissingFields(ai, textForLlm, missingFields as EnrichableField[]);

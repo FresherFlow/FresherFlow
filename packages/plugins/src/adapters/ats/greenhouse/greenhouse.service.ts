@@ -155,8 +155,8 @@ export class GreenhouseService implements IScraper {
    * Turn a raw Greenhouse `content`/`notes` string into a description.
    *
    * The public job-board API returns `content` as HTML-*entity-encoded* HTML
-   * (e.g. `&lt;div&gt;&lt;p&gt;`), so the shared `htmlToPlainText` — which
-   * decodes entities only after stripping tags — would leave literal `<div>` /
+   * (e.g. `&lt;div&gt;&lt;p&gt;`), so the shared `htmlToPlainText` ï¿½ which
+   * decodes entities only after stripping tags ï¿½ would leave literal `<div>` /
    * `<p>` markup in the output. We detect that case per-job and decode the
    * entity layer first, yielding the real HTML the shared helper expects. If
    * Greenhouse later returns real HTML, the same content passes through
@@ -212,7 +212,7 @@ export class GreenhouseService implements IScraper {
    * The field *name* is not standardized (`Salary` vs `Salary Range`), so the
    * reliable key is `value_type`: any `currency_range` entry carries a
    * `{unit, min_value, max_value}` shape that maps to `CompensationDto`
-   * (assumed yearly — Greenhouse currency ranges carry no period). The
+   * (assumed yearly ï¿½ Greenhouse currency ranges carry no period). The
    * `Employment Type` single-select maps to `employmentType`.
    */
   private extractMetadata(
@@ -359,7 +359,7 @@ export class GreenhouseService implements IScraper {
     if (job.status && job.status !== 'open') return null;
 
     // The Harvest API does not return description/content on the
-    // list endpoint — use notes if available (often HTML)
+    // list endpoint ï¿½ use notes if available (often HTML)
     const description = this.toDescription(job.notes, format);
 
     // Location: prefer office name, fall back to office location name

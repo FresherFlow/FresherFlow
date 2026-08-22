@@ -54,7 +54,7 @@ function parseArgs(args: string[]): SearchOptions {
 /**
  * Filter jobs older than hoursOld (if date is present)
  */
-export function filterStaleJobs(jobs: AtsJob[], hoursOld: number = 72): AtsJob[] {
+export function filterStaleJobs(jobs: AtsJob[], hoursOld: number = 10): AtsJob[] {
   const cutoff = Date.now() - hoursOld * 60 * 60 * 1000;
   return jobs.filter(job => {
     if (!job.postedAt) return true; // keep if date is unknown
@@ -145,7 +145,7 @@ export async function executeSearch(target: SearchTarget, options: SearchOptions
   }
 
   const resultsWanted = options.resultsWanted ?? target.resultsWanted ?? 50;
-  const hoursOld = options.hoursOld ?? target.hoursOld ?? 72;
+  const hoursOld = options.hoursOld ?? target.hoursOld ?? 10;
 
   console.log(`\n🔍 Searching ${target.company.toUpperCase()} (${target.ats}) [slug=${target.slug}, max=${resultsWanted}, hoursOld=${hoursOld}]...`);
 
@@ -299,3 +299,4 @@ ${result.jobs.length > 0 ? `#### Top Relevant Jobs\n${result.jobs.slice(0, 5).ma
     }
   }
 }
+

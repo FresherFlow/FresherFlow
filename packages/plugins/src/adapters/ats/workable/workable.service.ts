@@ -14,6 +14,7 @@ import {
   htmlToPlainText,
   markdownConverter,
   resolveCompensation,
+  BrowserPool,
 } from '../../../common/index.js';
 import {
   WORKABLE_API_URL,
@@ -87,6 +88,9 @@ export class WorkableService implements IScraper {
       // its public v2 detail (rich body + workplace) before mapping.
       const details = await this.fetchDetails(client, limited, companySlug);
 
+      // Count how many details we actually got (non-null)
+      const detailsFound = details.filter(d => d !== null).length;
+
       const jobPosts: JobPostDto[] = [];
       limited.forEach((job, index) => {
         try {
@@ -103,6 +107,16 @@ export class WorkableService implements IScraper {
           console.warn(`Error processing Workable job ${job.shortcode}: ${err.message}`);
         }
       });
+
+      // If we got jobs from v1 but zero detail enrichments, try browser fallback
+      // to scrape the careers page for descriptions and locations
+      if (jobPosts.length > 0 && detailsFound === 0) {
+        console.log(`Workable: ${companySlug} — v1 API returned ${jobPosts.length} jobs but 0 details, trying browser fallback`);
+        const browserPosts = await this.scrapeViaBrowser(companySlug, input);
+        if (browserPosts.jobs.length > 0) {
+          return browserPosts;
+        }
+      }
 
       return new JobResponseDto(jobPosts);
     } catch (err: any) {
@@ -320,20 +334,37 @@ export class WorkableService implements IScraper {
       null,
     );
 
+    let consecutive429s = 0;
+
     for (
       let index = 0;
       index < jobs.length;
       index += WORKABLE_DETAIL_CONCURRENCY
     ) {
+      // If we hit 3 consecutive batches of 429s, stop wasting time
+      if (consecutive429s >= 3) {
+        console.warn(`Workable: ${companySlug} — too many 429s, skipping remaining detail fetches`);
+        break;
+      }
+
       const batch = jobs.slice(index, index + WORKABLE_DETAIL_CONCURRENCY);
+      let batch429s = 0;
       const settled = await Promise.allSettled(
         batch.map((job) => this.fetchDetail(client, job, companySlug)),
       );
       settled.forEach((result, batchIndex) => {
         if (result.status === 'fulfilled') {
           details[index + batchIndex] = result.value;
+        } else if (result.status === 'rejected' && result.reason?.message?.includes('429')) {
+          batch429s++;
         }
       });
+
+      if (batch429s === batch.length) {
+        consecutive429s++;
+      } else {
+        consecutive429s = 0;
+      }
     }
 
     return details;
@@ -347,17 +378,29 @@ export class WorkableService implements IScraper {
     const shortcode = job.shortcode;
     if (!shortcode) return null;
 
-    try {
-      const response = await client.get<WorkableJobDetail>(
-        workableDetailUrl(companySlug, shortcode),
-      );
-      return response.data ?? null;
-    } catch (err: any) {
-      console.warn(
-        `Workable: detail fetch failed for ${companySlug}/${shortcode}: ${err.message}`,
-      );
-      return null;
+    const maxRetries = 3;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await client.get<WorkableJobDetail>(
+          workableDetailUrl(companySlug, shortcode),
+        );
+        return response.data ?? null;
+      } catch (err: any) {
+        const is429 = err.response?.status === 429 || err.message?.includes('429');
+        if (is429 && attempt < maxRetries) {
+          // Respect Retry-After header, else exponential backoff
+          const retryAfter = err.response?.headers?.['retry-after'];
+          const delay = retryAfter
+            ? Math.min(parseInt(retryAfter, 10) * 1000, 10000)
+            : Math.min(2000 * Math.pow(2, attempt), 10000);
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        }
+        // Non-429 error or exhausted retries — return null silently
+        return null;
+      }
     }
+    return null;
   }
 
   /**
@@ -382,19 +425,70 @@ export class WorkableService implements IScraper {
     if (format === DescriptionFormat.HTML) return html;
     if (format === DescriptionFormat.PLAIN) return htmlToPlainText(html);
     return markdownConverter(html) ?? html;
-  }
-
-  /** Map the Workable `workplace` enum to a workFromHomeType label. on_site ? none. */
+  }  /** Map the Workable `workplace` enum to a workFromHomeType label. on_site ? none. */
   private workFromHomeTypeFromWorkplace(
     workplace?: string | null,
   ): string | null {
     switch (workplace?.toLowerCase()) {
-      case 'hybrid':
-        return 'Hybrid';
-      case 'remote':
-        return 'Remote';
-      default:
-        return null;
+      case 'hybrid': return 'Hybrid';
+      case 'remote': return 'Remote';
+      default: return null;
+    }
+  }
+
+  /**
+   * Browser-based fallback: load the public careers page and scrape job data
+   * from the rendered DOM. Used when the v1 widget API returns jobs but all
+   * detail fetches fail (e.g., 429 rate limiting).
+   */
+  private async scrapeViaBrowser(
+    companySlug: string,
+    input: ScraperInputDto,
+  ): Promise<JobResponseDto> {
+    let page;
+    try {
+      page = await BrowserPool.getPage({ stealth: true });
+      const careersUrl = `https://apply.workable.com/${encodeURIComponent(companySlug)}/`;
+      const timeoutMs = Math.min((input.requestTimeout ?? 30) * 1000, 30000);
+
+      // Intercept v3 API responses that the SPA fires after loading
+      const v3Jobs: WorkableApiV3Job[] = [];
+      const jobPromise = new Promise<WorkableApiV3Job[]>((resolve) => {
+        const timer = setTimeout(() => resolve(v3Jobs), timeoutMs);
+        page!.on('response', async (resp: any) => {
+          try {
+            if (resp.url().includes(`/api/v3/accounts/${encodeURIComponent(companySlug)}/jobs`) && resp.status() === 200) {
+              const json = await resp.json();
+              v3Jobs.push(...(json.results ?? []));
+            }
+          } catch {}
+        });
+        // Cleanup timer if we resolve early
+        const origResolve = resolve;
+        (resolve as any) = (jobs: WorkableApiV3Job[]) => { clearTimeout(timer); origResolve(jobs); };
+      });
+
+      console.log(`Workable browser: loading ${careersUrl}`);
+      await page.goto(careersUrl, { waitUntil: 'networkidle', timeout: timeoutMs }).catch(() => {});
+      const v3Results = await jobPromise;
+
+      if (v3Results.length === 0) {
+        console.log(`Workable browser: 0 jobs from ${companySlug}`);
+        return new JobResponseDto([]);
+      }
+
+      console.log(`Workable browser: found ${v3Results.length} jobs for ${companySlug}`);
+      const resultsWanted = input.resultsWanted ?? 100;
+      const posts = v3Results
+        .slice(0, resultsWanted)
+        .map((j) => this.processApiJob(j, companySlug))
+        .filter((p): p is JobPostDto => p !== null);
+      return new JobResponseDto(posts);
+    } catch (err: any) {
+      console.error(`Workable browser fallback failed for ${companySlug}: ${err.message}`);
+      return new JobResponseDto([]);
+    } finally {
+      if (page) { await page.close().catch(() => {}); }
     }
   }
 }

@@ -172,7 +172,7 @@ export function cleanAndResolveLocations(rawLocations: string[]): { locations: s
                     if (raw.toLowerCase() === 'india' || raw.toLowerCase() === 'in') {
                         addLocation('Pan India', { name: 'Pan India', country: 'IN', type: 'country' });
                     } else {
-                        addLocation(raw, { name: raw, type: 'city' });
+                        addLocation(raw, { name: raw, country: 'IN', type: 'city' });
                     }
                 }
             }

@@ -1,126 +1,16 @@
 import {
     AtsJob,
-    AtsAdapter,
     sleep,
-    GreenhouseAdapter,
-    LeverAdapter,
-    WorkdayAdapter,
-    AshbyAdapter,
-    SmartRecruitersAdapter,
-    OracleAdapter,
-    ICimsAdapter,
-    SuccessFactorsAdapter,
-    RecruiteeAdapter,
-    WorkableAdapter,
-    DarwinboxAdapter,
-    KekaAdapter,
-    FreshteamAdapter,
-    ZohoRecruitAdapter,
-    GreythrAdapter,
-    HROneAdapter,
-    PeoplestrongAdapter,
-    TurboHireAdapter,
-    OorwinAdapter,
-    ZimyoAdapter,
-    ZwayamAdapter,
-    ISmartRecruitAdapter,
-    BambooHRAdapter,
-    BreezyHRAdapter,
-    PersonioAdapter,
-    JobviteAdapter,
-    TaleoAdapter,
-    PyjamaHRAdapter,
-    CeipalAdapter,
-    RecruitCrmAdapter,
-    RecruiterflowAdapter,
-    SnaphuntAdapter,
-    MercorAdapter,
-    EightfoldAdapter,
-    PhenomAdapter,
-    BullhornAdapter,
-    InternshalaAdapter,
-    HasjobAdapter,
-    IndeedAdapter,
-    LinkedinAdapter,
-    GlassdoorAdapter,
-    BaytAdapter,
-    WellfoundAdapter,
-    HackerNewsAdapter,
-    RemoteOkAdapter,
-    WeWorkRemotelyAdapter,
-
-    GoogleAdapter,
-    AmazonAdapter,
-    MicrosoftAdapter,
-    IbmAdapter,
-    AppleAdapter,
-    UberAdapter,
-    StripeAdapter,
-    MetaAdapter,
+    SCRAPER_REGISTRY,
+    ScraperInputDto,
+    toAtsJob,
 } from '@fresherflow/plugins';
 
 import { isPotentialFresherJob, isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/domain';
-// RunStats import removed
 import { normalizeUrl } from '../utils/url.js';
 
 export interface AtsRegistry {
     [key: string]: Record<string, string> | undefined;
-    greenhouse?: Record<string, string>;
-    lever?: Record<string, string>;
-    workday?: Record<string, string>;
-    ashby?: Record<string, string>;
-    ashbyhq?: Record<string, string>;
-    smartrecruiters?: Record<string, string>;
-    oracle?: Record<string, string>;
-    icims?: Record<string, string>;
-    successfactors?: Record<string, string>;
-    recruitee?: Record<string, string>;
-    workable?: Record<string, string>;
-    darwinbox?: Record<string, string>;
-    keka?: Record<string, string>;
-    freshteam?: Record<string, string>;
-    zohorecruit?: Record<string, string>;
-    greythr?: Record<string, string>;
-    peoplestrong?: Record<string, string>;
-    hrone?: Record<string, string>;
-    turbohire?: Record<string, string>;
-    oorwin?: Record<string, string>;
-    zimyo?: Record<string, string>;
-    zwayam?: Record<string, string>;
-    ismartrecruit?: Record<string, string>;
-    bamboohr?: Record<string, string>;
-    breezyhr?: Record<string, string>;
-    personio?: Record<string, string>;
-    jobvite?: Record<string, string>;
-    taleo?: Record<string, string>;
-    pyjamahr?: Record<string, string>;
-    ceipal?: Record<string, string>;
-    recruitcrm?: Record<string, string>;
-    recruiterflow?: Record<string, string>;
-    snaphunt?: Record<string, string>;
-    mercor?: Record<string, string>;
-    eightfold?: Record<string, string>;
-    phenom?: Record<string, string>;
-    bullhorn?: Record<string, string>;
-    internshala?: Record<string, string>;
-    hasjob?: Record<string, string>;
-    indeed?: Record<string, string>;
-    linkedin?: Record<string, string>;
-    glassdoor?: Record<string, string>;
-    bayt?: Record<string, string>;
-    wellfound?: Record<string, string>;
-    hackernews?: Record<string, string>;
-    remoteok?: Record<string, string>;
-    weworkremotely?: Record<string, string>;
-    google?: Record<string, string>;
-    amazon?: Record<string, string>;
-    microsoft?: Record<string, string>;
-    ibm?: Record<string, string>;
-    tiktok?: Record<string, string>;
-    apple?: Record<string, string>;
-    uber?: Record<string, string>;
-    stripe?: Record<string, string>;
-    meta?: Record<string, string>;
 }
 
 export async function withConcurrency<T>(
@@ -141,87 +31,127 @@ export async function withConcurrency<T>(
     return results;
 }
 
+/**
+ * Run a single ATS provider across its registered companies.
+ * Uses IScraper.scrape() with ScraperInputDto — same as ever-jobs.
+ */
 async function runProvider(
     name: string,
-    adapter: AtsAdapter,
-    data: Record<string, string>,
-    delay: number,
-    companyConcurrency: number,
+    slug: string,
+    companies: Record<string, string>,
     stats: any,
     knownLinks: Set<string>,
     visitedSet: Set<string>
 ): Promise<AtsJob[]> {
-    const companies = Object.entries(data);
-    if (companies.length === 0) return [];
+    const entries = Object.entries(companies);
+    if (entries.length === 0) return [];
 
-    console.log(`\nStarting ${name} adapter (${companies.length} companies)...`);
+    console.log(`\nStarting ${name} adapter (${entries.length} companies)...`);
+
+    const scraper = SCRAPER_REGISTRY[slug];
+    if (!scraper) {
+        console.warn(`  -> ${name}: no scraper in SCRAPER_REGISTRY for key "${slug}", skipping`);
+        return [];
+    }
 
     const allJobs: AtsJob[] = [];
     let totalRaw = 0, totalPassedFilter = 0, totalPassedScorer = 0;
 
-    const tasks = companies.map(([companyId, companyName]) => async (): Promise<AtsJob> => {
-        const jobs = await adapter.fetchJobs(companyId, companyName);
-        totalRaw += jobs.length;
+    // Build tasks - one per company
+    const tasks = entries.map(([companyId, companyName]) => async (): Promise<AtsJob[]> => {
+        try {
+            const proxies = process.env.PROXY_LIST ? process.env.PROXY_LIST.split(',').map(p => p.trim()).filter(Boolean) : undefined;                // ScraperInputDto - same pattern as ever-jobs JobsService
+                const input = new ScraperInputDto({
+                    companySlug: companyId,
+                    searchTerm: 'fresher intern "entry level" "new grad" apprentice junior associate trainee campus graduate "early career" SDE',
+                    location: 'India',
+                    resultsWanted: 50,
+                    descriptionFormat: 'PLAIN' as any,
+                    proxies,
+                });
 
-        const fresherJobs = jobs.filter((j: AtsJob) => {
-            if (name === 'Workday' && j.postedAt) {
-                const postedDate = new Date(j.postedAt);
-                const now = new Date();
-                const diffHours = (now.getTime() - postedDate.getTime()) / (1000 * 60 * 60);
-                // Workday dates are YYYY-MM-DD. A diff > 48 hours means it's definitely older than yesterday.
-                // To approximate "recent/last 6 hours" without dropping jobs from just before midnight,
-                // we reject jobs older than 24-48 hours. Let's use 48 hours to be safe against timezone drift.
-                if (diffHours > 48) {
-                    return false;
+            const response = await scraper.scrape(input);
+            const jobs = response?.jobs ?? [];
+            totalRaw += jobs.length;
+
+            // Convert JobPostDto[] → AtsJob[] using shared converter
+            const atsJobs = jobs.map(j => toAtsJob(j, slug, companyName, 'ATS'));
+
+            // Filter: fresher + India/remote + experience check
+            const fresherJobs = atsJobs.filter((j: AtsJob) => {
+                if (!isPotentialFresherJob(j.title)) return false;
+                if (!isLocationIndiaOrRemote(j.location || '', j.title)) return false;
+                // Skip jobs with experience > 2 years (fresher gate matches processor Zod schema)
+                if (j.experienceYears !== undefined && j.experienceYears !== null && j.experienceYears > 2) return false;
+                if (j.experienceRange) {
+                    const match = j.experienceRange.match(/(\d+)/);
+                    if (match && parseInt(match[1], 10) > 2) return false;
+                }
+                return true;
+            });
+            totalPassedFilter += fresherJobs.length;
+
+            // Dedup against known links
+            const validJobs = fresherJobs.filter(job => {
+                const normalizedLink = normalizeUrl(job.applyLink);
+                return !knownLinks.has(normalizedLink) && !visitedSet.has(normalizedLink);
+            });
+
+            // Score — but only if descriptions are per-job (not company-level duplicates)
+            let rejectedCount = 0;
+            let boilerplateSkipped = 0;
+            const finalJobs: AtsJob[] = [];
+            
+            // Detect company-level boilerplate descriptions:
+            // If 80%+ of jobs share the same description text, it's a company overview,
+            // not per-job content — skip scoring to avoid false rejections.
+            const descTexts = validJobs.map(j => (j.description || '').trim());
+            const descLengths = descTexts.map(t => t.length).filter(l => l > 0);
+            let descriptionsReliable = true;
+            if (descLengths.length >= 3) {
+                const descBuckets = new Map<string, number>();
+                for (const t of descTexts) {
+                    if (!t) continue;
+                    // Normalize: collapse whitespace, take first 500 chars for comparison
+                    const key = t.substring(0, 500).replace(/\s+/g, ' ').trim();
+                    descBuckets.set(key, (descBuckets.get(key) || 0) + 1);
+                }
+                const maxCount = Math.max(...descBuckets.values());
+                const totalWithDesc = descTexts.filter(t => t.length > 0).length;
+                // If one description variant covers 80%+ of jobs, treat as boilerplate
+                if (maxCount >= Math.ceil(totalWithDesc * 0.8)) {
+                    descriptionsReliable = false;
+                    console.log(`  -> ${companyName}: ${maxCount}/${totalWithDesc} jobs share same description (boilerplate) — skipping scorer`);
                 }
             }
-            return isPotentialFresherJob(j.title) &&
-                   isLocationIndiaOrRemote(j.location || '', j.title);
-        });
-        totalPassedFilter += fresherJobs.length;
-
-        const finalJobs: AtsJob[] = [];
-        let rejectedCount = 0;
-
-        for (const job of fresherJobs) {
-            const normalizedLink = normalizeUrl(job.applyLink);
-            if (knownLinks.has(normalizedLink) || visitedSet.has(normalizedLink)) {
-                continue;
-            }
-
-            if (!job.description && adapter.fetchJobDetails) {
-                try {
-                    const desc = await adapter.fetchJobDetails(job);
-                    if (desc) {
-                        job.description = typeof desc === 'string' ? desc : desc.text;
-                        job.descriptionSource = 'API';
+            
+            for (const job of validJobs) {
+                if (job.description && descriptionsReliable) {
+                    const scoreResult = scoreJobDescription(job.title, job.description);
+                    if (scoreResult.verdict === 'REJECT') {
+                        rejectedCount++;
+                        continue;
                     }
-                } catch {
-                    // ignore details fetch failure
+                } else if (!descriptionsReliable && job.description) {
+                    boilerplateSkipped++;
                 }
-                await sleep(delay);
+                finalJobs.push(job);
             }
+            totalPassedScorer += finalJobs.length;
 
-            if (job.description) {
-                const scoreResult = scoreJobDescription(job.title, job.description);
-                if (scoreResult.verdict === 'REJECT') {
-                    rejectedCount++;
-                    continue;
-                }
-            }
-
-            finalJobs.push(job);
+            const boilerplateMsg = boilerplateSkipped > 0 ? `, ${boilerplateSkipped} boilerplate skipped` : '';
+            console.log(`  -> ${companyName}: ${jobs.length} total, ${fresherJobs.length} passed filter, ${finalJobs.length} passed scorer (${rejectedCount} rejected${boilerplateMsg})`);
+            return finalJobs;
+        } catch (err: any) {
+            console.warn(`  -> ${companyName}: error - ${err.message}`);
+            return [];
         }
-        totalPassedScorer += finalJobs.length;
-
-        console.log(`  -> ${companyName}: ${jobs.length} total, ${fresherJobs.length} passed filter, ${finalJobs.length} passed scorer (${rejectedCount} rejected)`);
-        allJobs.push(...finalJobs);
-        await sleep(delay);
-
-        return null as unknown as AtsJob;
     });
 
-    await withConcurrency(tasks, companyConcurrency);
+    // Run with concurrency — lower for providers with many companies to avoid DNS flooding
+    const providerConcurrency = entries.length > 200 ? 2 : 5;
+    const results = await withConcurrency(tasks, providerConcurrency);
+    for (const r of results) allJobs.push(...r);
 
     stats.ats_raw[name] = totalRaw;
     stats.ats_passed_filter[name] = totalPassedFilter;
@@ -230,6 +160,11 @@ async function runProvider(
     return allJobs;
 }
 
+/**
+ * Main discovery entry point.
+ * Uses SCRAPER_REGISTRY from @fresherflow/plugins — no hardcoded adapter list.
+ * Loads company slugs from CDN registry and runs all providers in parallel.
+ */
 export async function runAtsDiscovery(
     registry: AtsRegistry,
     stats: any,
@@ -237,85 +172,28 @@ export async function runAtsDiscovery(
     visitedApplyLinks: string[]
 ): Promise<AtsJob[]> {
     console.log(`\n--- Starting ATS Direct Discovery (parallel) ---`);
+    console.log(`  SCRAPER_REGISTRY has ${Object.keys(SCRAPER_REGISTRY).length} scrapers`);
+    console.log(`  Registry has ${Object.keys(registry).length} providers with data`);
     const visitedSet = new Set(visitedApplyLinks);
 
-    const adapters: Array<{
-        name: string;
-        adapter: AtsAdapter;
-        data?: Record<string, string>;
-        delay: number;
-        companyConcurrency: number;
-    }> = [
-        { name: 'Greenhouse',      adapter: new GreenhouseAdapter(),      data: registry.greenhouse,                        delay: 800,  companyConcurrency: 4 },
-        { name: 'Lever',           adapter: new LeverAdapter(),           data: registry.lever,                             delay: 800,  companyConcurrency: 4 },
-        { name: 'Workday',         adapter: new WorkdayAdapter(),         data: registry.workday,                           delay: 2000, companyConcurrency: 5 },
-        { name: 'Ashby',           adapter: new AshbyAdapter(),           data: registry.ashby ?? registry.ashbyhq,         delay: 800,  companyConcurrency: 4 },
-        { name: 'SmartRecruiters', adapter: new SmartRecruitersAdapter(), data: registry.smartrecruiters,                   delay: 800,  companyConcurrency: 4 },
-        { name: 'Oracle',          adapter: new OracleAdapter(),          data: registry.oracle,                            delay: 1000, companyConcurrency: 4 },
-        { name: 'iCIMS',           adapter: new ICimsAdapter(),           data: registry.icims,                             delay: 1000, companyConcurrency: 4 },
-        { name: 'SuccessFactors',  adapter: new SuccessFactorsAdapter(),  data: registry.successfactors,                    delay: 1500, companyConcurrency: 4 },
-        { name: 'Recruitee',       adapter: new RecruiteeAdapter(),       data: registry.recruitee,                         delay: 800,  companyConcurrency: 4 },
-        { name: 'Workable',        adapter: new WorkableAdapter(),        data: registry.workable,                          delay: 1000, companyConcurrency: 3 },
-        { name: 'Darwinbox',       adapter: new DarwinboxAdapter(),       data: registry.darwinbox,                         delay: 800,  companyConcurrency: 4 },
-        { name: 'Keka',            adapter: new KekaAdapter(),            data: registry.keka,                              delay: 800,  companyConcurrency: 4 },
-        { name: 'Freshteam',       adapter: new FreshteamAdapter(),       data: registry.freshteam,                         delay: 800,  companyConcurrency: 4 },
-        { name: 'ZohoRecruit',     adapter: new ZohoRecruitAdapter(),     data: registry.zohorecruit,                       delay: 800,  companyConcurrency: 4 },
-        { name: 'GreytHR',         adapter: new GreythrAdapter(),         data: registry.greythr,                           delay: 800,  companyConcurrency: 4 },
-        { name: 'HROne',           adapter: new HROneAdapter(),           data: registry.hrone,                             delay: 800,  companyConcurrency: 4 },
-        { name: 'PeopleStrong',    adapter: new PeoplestrongAdapter(),    data: registry.peoplestrong,                      delay: 1000, companyConcurrency: 4 },
-        { name: 'TurboHire',       adapter: new TurboHireAdapter(),       data: registry.turbohire,                         delay: 800,  companyConcurrency: 4 },
-        { name: 'Oorwin',          adapter: new OorwinAdapter(),          data: registry.oorwin,                            delay: 800,  companyConcurrency: 4 },
-        { name: 'Zimyo',           adapter: new ZimyoAdapter(),           data: registry.zimyo,                             delay: 800,  companyConcurrency: 4 },
-        { name: 'Zwayam',          adapter: new ZwayamAdapter(),          data: registry.zwayam,                            delay: 800,  companyConcurrency: 4 },
-        { name: 'iSmartRecruit',   adapter: new ISmartRecruitAdapter(),   data: registry.ismartrecruit,                     delay: 800,  companyConcurrency: 4 },
-        { name: 'BambooHR',        adapter: new BambooHRAdapter(),        data: registry.bamboohr,                          delay: 800,  companyConcurrency: 4 },
-        { name: 'BreezyHR',        adapter: new BreezyHRAdapter(),        data: registry.breezyhr,                          delay: 800,  companyConcurrency: 4 },
-        { name: 'Personio',        adapter: new PersonioAdapter(),        data: registry.personio,                          delay: 800,  companyConcurrency: 4 },
-        { name: 'Jobvite',         adapter: new JobviteAdapter(),         data: registry.jobvite,                           delay: 800,  companyConcurrency: 4 },
-        { name: 'Taleo',           adapter: new TaleoAdapter(),           data: registry.taleo,                             delay: 1000, companyConcurrency: 4 },
-        { name: 'PyjamaHR',        adapter: new PyjamaHRAdapter(),        data: registry.pyjamahr,                          delay: 800,  companyConcurrency: 4 },
-        { name: 'Ceipal',          adapter: new CeipalAdapter(),          data: registry.ceipal,                            delay: 800,  companyConcurrency: 4 },
-        { name: 'RecruitCRM',      adapter: new RecruitCrmAdapter(),      data: registry.recruitcrm,                        delay: 800,  companyConcurrency: 4 },
-        { name: 'Recruiterflow',   adapter: new RecruiterflowAdapter(),   data: registry.recruiterflow,                     delay: 800,  companyConcurrency: 4 },
-        { name: 'Snaphunt',        adapter: new SnaphuntAdapter(),        data: registry.snaphunt,                          delay: 800,  companyConcurrency: 4 },
-        { name: 'Mercor',          adapter: new MercorAdapter(),          data: registry.mercor,                            delay: 800,  companyConcurrency: 4 },
-        { name: 'Eightfold',       adapter: new EightfoldAdapter(),       data: registry.eightfold,                         delay: 800,  companyConcurrency: 4 },
-        { name: 'Phenom',          adapter: new PhenomAdapter(),          data: registry.phenom,                            delay: 800,  companyConcurrency: 4 },
-        { name: 'Internshala',     adapter: new InternshalaAdapter(),     data: registry.internshala,                       delay: 800,  companyConcurrency: 4 },
-        { name: 'Hasjob',          adapter: new HasjobAdapter(),          data: registry.hasjob,                            delay: 800,  companyConcurrency: 4 },
-        { name: 'Indeed',          adapter: new IndeedAdapter(),          data: registry.indeed,                            delay: 800,  companyConcurrency: 4 },
-        { name: 'LinkedIn',        adapter: new LinkedinAdapter(),        data: registry.linkedin,                          delay: 800,  companyConcurrency: 4 },
-        { name: 'Glassdoor',       adapter: new GlassdoorAdapter(),       data: registry.glassdoor,                         delay: 800,  companyConcurrency: 4 },
-        { name: 'Bayt',            adapter: new BaytAdapter(),            data: registry.bayt,                              delay: 800,  companyConcurrency: 4 },
-        { name: 'Google',          adapter: new GoogleAdapter(),          data: registry.google,                            delay: 800,  companyConcurrency: 4 },
-        { name: 'Amazon',          adapter: new AmazonAdapter(),          data: registry.amazon,                            delay: 800,  companyConcurrency: 4 },
-        { name: 'Microsoft',       adapter: new MicrosoftAdapter(),       data: registry.microsoft,                         delay: 800,  companyConcurrency: 4 },
-        { name: 'IBM',             adapter: new IbmAdapter(),             data: registry.ibm,                               delay: 800,  companyConcurrency: 4 },        { name: 'Bullhorn',        adapter: new BullhornAdapter(),        data: registry.bullhorn,                          delay: 800,  companyConcurrency: 4 },
-        { name: 'Wellfound',       adapter: new WellfoundAdapter(),       data: registry.wellfound,                         delay: 800,  companyConcurrency: 4 },
-        { name: 'HackerNews',      adapter: new HackerNewsAdapter(),      data: registry.hackernews,                        delay: 800,  companyConcurrency: 4 },
-        { name: 'RemoteOk',        adapter: new RemoteOkAdapter(),        data: registry.remoteok,                          delay: 800,  companyConcurrency: 4 },
-        { name: 'WeWorkRemotely',  adapter: new WeWorkRemotelyAdapter(),  data: registry.weworkremotely,                    delay: 800,  companyConcurrency: 4 },
-        { name: 'Apple',           adapter: new AppleAdapter(),           data: registry.apple,                             delay: 800,  companyConcurrency: 4 },
-        { name: 'Uber',            adapter: new UberAdapter(),            data: registry.uber,                              delay: 800,  companyConcurrency: 4 },
-        { name: 'Stripe',          adapter: new StripeAdapter(),          data: registry.stripe,                            delay: 800,  companyConcurrency: 4 },
-        { name: 'Meta',            adapter: new MetaAdapter(),            data: registry.meta,                              delay: 800,  companyConcurrency: 4 },
-    ];
-
-
+    // Filter to only providers that have data in the registry AND a scraper registered
     const providerFilter = process.env.ATS_PROVIDER?.toLowerCase().trim();
-    const activeAdapters = adapters.filter(a => {
-        if (!a.data || Object.keys(a.data).length === 0) return false;
-        if (providerFilter && a.name.toLowerCase() !== providerFilter) return false;
-        return true;
+    const activeProviders = Object.entries(registry).filter(([key, data]) => {
+        if (!data || Object.keys(data).length === 0) return false;
+        if (providerFilter && key.toLowerCase() !== providerFilter) return false;
+        return SCRAPER_REGISTRY[key] !== undefined;
     });
 
     if (providerFilter) {
         console.log(`--- Running SINGLE provider: ${providerFilter} ---`);
     }
 
+    console.log(`  Running ${activeProviders.length} providers in parallel...`);
+
+    // Run all providers concurrently — same as ever-jobs Promise.allSettled
     const providerResults = await Promise.all(
-        activeAdapters.map(({ name, adapter, data, delay, companyConcurrency }) =>
-            runProvider(name, adapter, data!, delay, companyConcurrency, stats, knownLinks, visitedSet)
+        activeProviders.map(([key, data]) =>
+            runProvider(key, key, data!, stats, knownLinks, visitedSet)
         )
     );
 
@@ -323,3 +201,4 @@ export async function runAtsDiscovery(
     console.log(`\n--- ATS Discovery Finished. Total potential roles: ${allJobs.length} ---`);
     return allJobs;
 }
+

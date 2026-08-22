@@ -341,6 +341,10 @@ export function toAtsJob(
         locStr = job.location;
     } else if (job.location && typeof job.location.displayLocation === 'function') {
         locStr = job.location.displayLocation();
+        // displayLocation() returns '' when LocationDto only has 'raw' set (common with parseLocationList)
+        if (!locStr && job.location.raw) {
+            locStr = job.location.raw;
+        }
     } else if (job.location) {
         locStr = [job.location.city, job.location.state, job.location.country].filter(Boolean).join(', ');
         if (!locStr && job.location.raw) {

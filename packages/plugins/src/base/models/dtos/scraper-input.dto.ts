@@ -49,6 +49,12 @@ export class ScraperInputDto {
     this.linkedinFetchDescription = false;
     this.requestTimeout = 60;
     this.maxConcurrentCompanies = 5;
+    // Sensible retry/rate defaults — every scraper inherits these
+    this.retries = 4;
+    this.retryBackoff = 'exponential';
+    this.retryMaxDelay = 30_000;
+    this.rateDelayMin = 0.1;
+    this.rateDelayMax = 0.3;
     Object.assign(this, partial);
   }
 }

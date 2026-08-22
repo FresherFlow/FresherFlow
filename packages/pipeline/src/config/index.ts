@@ -45,7 +45,9 @@ export const ATS_PROVIDERS = [
     'oracle', 'icims', 'successfactors',
     // Phase 2 & 3
     'bamboohr', 'recruitee', 'jobvite', 'teamtailor', 'eightfold', 'darwinbox',
-    'zohorecruit', 'freshteam', 'keka', 'workable'
+    'zohorecruit', 'freshteam', 'keka', 'workable',
+    // Newly verified Indian ATS targets
+    'avature', 'breezy', 'breezyhr', 'bullhorn', 'mercor', 'personio', 'phenom', 'pinpoint'
 ];
 
 export const ATS_HOSTNAMES = [

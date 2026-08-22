@@ -50,6 +50,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           WORKER_URL: ${{ secrets.WORKER_URL }}
           WORKER_SECRET: ${{ secrets.WORKER_SECRET }}
+          PROXY_LIST: ${{ secrets.PROXY_LIST }}
         run: pnpm start
 
       - name: Upload Discovered Jobs Artifact
