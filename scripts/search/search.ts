@@ -1,4 +1,4 @@
-import { PLUGIN_REGISTRY, AtsJob } from '@fresherflow/plugins';
+import { PLUGIN_REGISTRY, SCRAPER_REGISTRY, ScraperInputDto, AtsJob, toAtsJob } from '@fresherflow/plugins';
 import pg from 'pg';
 const { Pool } = pg;
 import { DEFAULT_TARGETS, findTargetByCompany, loadAtsDataTargets, SearchTarget } from './search-config.js';
@@ -137,10 +137,13 @@ export interface SearchResult {
  */
 export async function executeSearch(target: SearchTarget, options: SearchOptions = {}): Promise<SearchResult> {
   const adapterKey = target.ats.toLowerCase().replace('company-', '');
+  
+  // Use SCRAPER_REGISTRY (new IScraper interface) instead of PLUGIN_REGISTRY (old adapter)
+  const scraper = SCRAPER_REGISTRY[target.ats.toLowerCase()] || SCRAPER_REGISTRY[adapterKey];
   const adapter = PLUGIN_REGISTRY[target.ats.toLowerCase()] || PLUGIN_REGISTRY[adapterKey];
   
-  if (!adapter) {
-    console.error(`❌ No plugin adapter found for ATS: '${target.ats}' (${target.company})`);
+  if (!scraper && !adapter) {
+    console.error(`❌ No scraper found for ATS: '${target.ats}' (${target.company})`);
     return { jobs: [], staleCount: 0, totalFound: 0 };
   }
 
@@ -150,8 +153,21 @@ export async function executeSearch(target: SearchTarget, options: SearchOptions
   console.log(`\n🔍 Searching ${target.company.toUpperCase()} (${target.ats}) [slug=${target.slug}, max=${resultsWanted}, hoursOld=${hoursOld}]...`);
 
   try {
-    const rawJobs = await adapter.fetchJobs(target.slug, target.company);
-    console.log(`   └─ Found ${rawJobs.length} total jobs from adapter.`);
+    let rawJobs: AtsJob[] = [];
+    if (scraper) {
+      const input = new ScraperInputDto({
+        companySlug: target.slug,
+        searchTerm: target.searchTerm,
+        resultsWanted,
+        descriptionFormat: 'PLAIN' as any,
+      });
+      const resp = await scraper.scrape(input);
+      const jobs = resp?.jobs ?? [];
+      rawJobs = jobs.map(j => toAtsJob(j, target.ats, target.company, 'ATS'));
+    } else if (adapter) {
+      rawJobs = await adapter.fetchJobs(target.slug, target.company);
+    }
+    console.log(`   └─ Found ${rawJobs.length} total jobs.`);
 
     // 1. Filter stale postings first
     const freshJobs = filterStaleJobs(rawJobs, hoursOld);

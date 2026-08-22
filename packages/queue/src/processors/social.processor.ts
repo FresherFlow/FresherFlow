@@ -119,6 +119,32 @@ export async function postToBuffer(channelId: string | undefined, text: string):
     throw new Error('Buffer Channel ID is not configured.');
   }
 
+  const urlMatch = text.match(/(https?:\/\/[^\s]+|fresherflow\.in[^\s]+)/);
+  let extractedUrl: string | undefined;
+  if (urlMatch) {
+    extractedUrl = urlMatch[0];
+    if (!extractedUrl.startsWith('http')) {
+      extractedUrl = `https://${extractedUrl}`;
+    }
+  }
+
+  const input: Record<string, unknown> = {
+    channelId,
+    text,
+    schedulingType: 'automatic',
+    mode: 'shareNow',
+  };
+
+  if (extractedUrl && channelId === process.env.BUFFER_LINKEDIN_CHANNEL_ID) {
+    input.metadata = {
+      linkedin: {
+        linkAttachment: {
+          url: extractedUrl
+        }
+      }
+    };
+  }
+
   const response = await axios.post('https://api.buffer.com', {
     query: `
       mutation CreatePost($input: CreatePostInput!) {
@@ -135,12 +161,7 @@ export async function postToBuffer(channelId: string | undefined, text: string):
       }
     `,
     variables: {
-      input: {
-        channelId,
-        text,
-        schedulingType: 'automatic',
-        mode: 'shareNow',
-      },
+      input,
     },
   }, {
     headers: {

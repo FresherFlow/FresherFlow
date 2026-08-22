@@ -133,8 +133,9 @@ export class HttpClient {
           let delay: number;
           if (status === 429) {
             const retryAfter = error.response?.headers?.['retry-after'];
-            const serverDelay = retryAfter ? parseInt(retryAfter, 10) * 1000 : 0;
-            // Exponential backoff: 2s, 4s, 8s, 16s — always at least server's Retry-After
+            const rawServerDelay = retryAfter ? parseInt(retryAfter, 10) * 1000 : 0;
+            // Cap server delay at 30s — Retry-After can be a Unix timestamp or huge value
+            const serverDelay = Math.min(rawServerDelay, 30000);
             delay = Math.max(
               serverDelay,
               Math.min(this.retryMaxDelay, 2000 * Math.pow(2, attempt))

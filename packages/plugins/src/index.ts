@@ -249,7 +249,7 @@ import { FreshteamService } from './adapters/ats/freshteam/index.js';
 import { GreenhouseService } from './adapters/ats/greenhouse/index.js';
 import { GreytHrService } from './adapters/ats/greythr/index.js';
 import { HrOneService } from './adapters/ats/hrone/index.js';
-import { IcimsService } from './adapters/ats/icims/index.js';
+// import { IcimsService } from './adapters/ats/icims/index.js'; // Excluded — uses Playwright
 import { ISmartRecruitService } from './adapters/ats/ismartrecruit/index.js';
 import { JobviteService } from './adapters/ats/jobvite/index.js';
 import { KekaService } from './adapters/ats/keka/index.js';
@@ -303,7 +303,7 @@ export const ATS_SCRAPER_REGISTRY: Record<string, IScraper> = {
   greenhouse: new GreenhouseService(),
   greythr: new GreytHrService(),
   hrone: new HrOneService(),
-  icims: new IcimsService(),
+  // icims: new IcimsService(),  // Uses Playwright — hangs in CI without a display; excluded from pipeline
   ismartrecruit: new ISmartRecruitService(),
   jobvite: new JobviteService(),
   keka: new KekaService(),

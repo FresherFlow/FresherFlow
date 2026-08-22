@@ -23,7 +23,11 @@ export async function withConcurrency<T>(
     async function worker() {
         while (queue.length > 0) {
             const task = queue.shift()!;
-            results.push(await task());
+            try {
+                results.push(await task());
+            } catch (err: any) {
+                console.warn(`Worker task crashed: ${err.message}`);
+            }
         }
     }
 
@@ -190,14 +194,21 @@ export async function runAtsDiscovery(
 
     console.log(`  Running ${activeProviders.length} providers in parallel...`);
 
-    // Run all providers concurrently — same as ever-jobs Promise.allSettled
-    const providerResults = await Promise.all(
+    // Run all providers concurrently — use allSettled so one provider crash doesn't kill the run
+    const providerSettled = await Promise.allSettled(
         activeProviders.map(([key, data]) =>
             runProvider(key, key, data!, stats, knownLinks, visitedSet)
         )
     );
 
-    const allJobs = providerResults.flat();
+    const allJobs: AtsJob[] = [];
+    for (const result of providerSettled) {
+        if (result.status === 'fulfilled') {
+            allJobs.push(...result.value);
+        } else {
+            console.error(`Provider crashed: ${result.reason?.message ?? result.reason}`);
+        }
+    }
     console.log(`\n--- ATS Discovery Finished. Total potential roles: ${allJobs.length} ---`);
     return allJobs;
 }

@@ -165,7 +165,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
             const site = activeSites.shift();
             if (!site) continue;
             
-            const page = await context.newPage();
+            let page = await context.newPage();
             try {
                 console.log(`\n--- Scraping ${site.name} ---`);
                 if (!state.visited[site.name]) state.visited[site.name] = [];
@@ -176,15 +176,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                 for (const url of site.urls) {
                     console.log(`  -> Loading start page: ${url}`);
                     try {
-                        for (let attempt = 1; attempt <= 3; attempt++) {
-                            try {
-                                await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
-                                break;
-                            } catch (gotoErr) {
-                                if (attempt === 3) throw gotoErr;
-                                await page.waitForTimeout(2000);
-                            }
-                        }
+                        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
                         const allLinks = await page.$$eval('a', anchors => anchors.map(a => ({ text: a.innerText.trim(), href: a.href })));
                         const filtered = allLinks
                             .filter(l => {
@@ -241,22 +233,15 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                     if (state.visited[site.name].length > 50000) {
                         state.visited[site.name] = state.visited[site.name].slice(-50000);
                     }
-                    // CLEAR page state before navigating to prevent cross-contamination if goto times out
-                    await page.goto('about:blank').catch(() => {});
+                    // Close and recreate page to avoid stale browser state from previous timeout
+                    await page.close().catch(() => {});
+                    page = await context.newPage();
                     
                     try {
-                        for (let attempt = 1; attempt <= 3; attempt++) {
-                            try {
-                                await page.goto(jobLink, { waitUntil: 'domcontentloaded', timeout: 45000 });
-                                break;
-                            } catch (gotoErr) {
-                                if (attempt === 3) throw gotoErr;
-                                await page.waitForTimeout(2000);
-                            }
-                        }
+                        await page.goto(jobLink, { waitUntil: 'domcontentloaded', timeout: 20000 });
                     } catch (gotoErr) {
                         console.log(`  -> Failed to load aggregator post: ${(gotoErr as Error).message}`);
-                        continue; // Skip processing this job link completely!
+                        continue;
                     }
 
                     await page.waitForSelector('article, .post-body, .entry-content, main, #main-content, .post, .job-description', { timeout: 10000 }).catch(() => {});

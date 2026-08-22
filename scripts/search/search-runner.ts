@@ -4,8 +4,8 @@ import { executeDorkSearch } from './dorker.js';
 import { startRun, finishRun } from '@fresherflow/pipeline';
 import { isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/domain';
 
-function parseRunnerArgs(args: string[]): SearchOptions & { all?: boolean; indiaOnly?: boolean; delay?: number; only?: string; dork?: boolean } {
-  const options: SearchOptions & { all?: boolean; indiaOnly?: boolean; delay?: number; only?: string; dork?: boolean } = {};
+function parseRunnerArgs(args: string[]): SearchOptions & { all?: boolean; indiaOnly?: boolean; delay?: number; only?: string; dork?: boolean; roles?: boolean } {
+  const options: SearchOptions & { all?: boolean; indiaOnly?: boolean; delay?: number; only?: string; dork?: boolean; roles?: boolean } = {};
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '--all') options.all = true;
@@ -16,6 +16,7 @@ function parseRunnerArgs(args: string[]): SearchOptions & { all?: boolean; india
     else if (arg === '--only' && args[i + 1]) options.only = args[++i].toLowerCase();
     else if (arg === '--dry-run') options.dryRun = true;
     else if (arg === '--dork') options.dork = true;
+    else if (arg === '--roles') options.roles = true;
   }
   return options;
 }
@@ -30,7 +31,7 @@ async function runSweep() {
   const runId = await startRun();
   
   const args = parseRunnerArgs(process.argv.slice(2));
-  const delay = args.delay ?? 3000;
+  const delay = args.delay ?? 500; // 500ms between chunks — rate limiting handled by ScraperInputDto
 
   let targets: SearchTarget[] = await loadAtsDataTargets();
   if (args.all === false) {
@@ -69,7 +70,7 @@ async function runSweep() {
   let successfulCompanies = 0;
   let failedCompanies = 0;
 
-  const CONCURRENCY_LIMIT = args.delay ? 1 : 5; // Default to 5 if no delay specified
+  const CONCURRENCY_LIMIT = 10; // 10 concurrent — rate limiting handled by ScraperInputDto
   const TIMEOUT_MS = 60000; // 1 minute per target
 
   const executeWithTimeout = async (target: SearchTarget) => {
@@ -88,8 +89,15 @@ async function runSweep() {
   const allDiscoveredJobs: any[] = [];
   
   try {
+    const SWEEP_TIMEOUT_MS = 55 * 60 * 1000; // 55 minutes
+
     // Process in chunks (poor man's p-limit)
     for (let i = 0; i < targets.length; i += CONCURRENCY_LIMIT) {
+      if (Date.now() - startTime > SWEEP_TIMEOUT_MS) {
+        console.log(`\n[Timeout] ⏱️ Exceeded 55 minutes, halting sweep to save results.`);
+        break;
+      }
+
       const chunk = targets.slice(i, i + CONCURRENCY_LIMIT);
       
       const results = await Promise.allSettled(chunk.map(async (target) => {
@@ -142,9 +150,78 @@ async function runSweep() {
       }
     }
 
-    // Write all aggregated jobs to JSON
+    // Role-based search: fetch roles from CDN, search each as a searchTerm
+    if (args.roles) {
+      try {
+        console.log(`\n=== Phase 3: Role-Based Search ===`);
+        const rolesUrl = `${process.env.NEXT_PUBLIC_CDN_URL || process.env.CDN_URL}/api/meta/roles.json`;
+        const roles: string[] = await (await fetch(rolesUrl)).json();
+        console.log(`   Loaded ${roles.length} roles from CDN`);
+
+        // For each role, search across all companies — reuse executeSearch
+        const ROLE_CONCURRENCY = 5;
+        let roleJobsFound = 0;
+        for (let i = 0; i < roles.length; i += ROLE_CONCURRENCY) {
+          if (Date.now() - startTime > SWEEP_TIMEOUT_MS) break;
+          const batch = roles.slice(i, i + ROLE_CONCURRENCY);
+
+          // Each role searches across top companies in parallel
+          const roleResults = await Promise.allSettled(batch.map(async (role) => {
+            const jobs: any[] = [];
+            for (const target of targets.slice(0, 50)) {
+              const roleTarget: SearchTarget = { ...target, searchTerm: role, resultsWanted: 5 };
+              const res = await executeSearch(roleTarget, args);
+              jobs.push(...res.jobs);
+            }
+            return jobs;
+          }));
+
+          for (const r of roleResults) {
+            if (r.status === 'fulfilled') {
+              roleJobsFound += r.value.length;
+              allDiscoveredJobs.push(...r.value);
+            }
+          }
+          console.log(`   Roles ${Math.min(i + ROLE_CONCURRENCY, roles.length)}/${roles.length}: ${roleJobsFound} jobs`);
+        }
+        console.log(`   ✅ Role search: ${roleJobsFound} jobs`);
+      } catch (err: any) {
+        console.error(`❌ Role Search Failed: ${err.message}`);
+      }
+    }
+
+    // Verify job URLs are still live before saving
+    console.log(`\n🔍 Verifying ${allDiscoveredJobs.length} job URLs...`);
+    const VERIFICATION_CONCURRENCY = 10;
+    let verified = 0, dead = 0;
+    const verifiedJobs: typeof allDiscoveredJobs = [];
+    
+    for (let i = 0; i < allDiscoveredJobs.length; i += VERIFICATION_CONCURRENCY) {
+      const batch = allDiscoveredJobs.slice(i, i + VERIFICATION_CONCURRENCY);
+      const checks = await Promise.allSettled(batch.map(async (job) => {
+        try {
+          const resp = await fetch(job.applyLink, {
+            method: 'HEAD',
+            redirect: 'follow',
+            signal: AbortSignal.timeout(10000),
+          });
+          if (resp.ok || resp.status === 403) {
+            // 403 = Cloudflare block but page exists
+            verified++;
+            verifiedJobs.push(job);
+          } else {
+            dead++;
+          }
+        } catch {
+          dead++;
+        }
+      }));
+    }
+    console.log(`   ✅ ${verified} live, ❌ ${dead} dead`);
+
+    // Write verified jobs to JSON
     const fs = await import('fs/promises');
-    await fs.writeFile('discovered_jobs.json', JSON.stringify(allDiscoveredJobs, null, 2));
+    await fs.writeFile('discovered_jobs.json', JSON.stringify(verifiedJobs, null, 2));
 
     console.log(`\n======================================================`);
     console.log(`📊 SWEEP SUMMARY`);
@@ -153,7 +230,7 @@ async function runSweep() {
     console.log(`   ├─ Failed:                    ${failedCompanies}`);
     console.log(`   ├─ Total Raw Jobs Fetched:    ${totalRaw}`);
     console.log(`   ├─ Total Stale Jobs Filtered: ${totalStale}`);
-    console.log(`   └─ Total Fresh Jobs Saved:    ${totalFound} (saved to discovered_jobs.json)`);
+    console.log(`   └─ Total Verified Jobs:       ${verified} live, ${dead} dead (saved to discovered_jobs.json)`);
     console.log(`======================================================\n`);
 
     try {

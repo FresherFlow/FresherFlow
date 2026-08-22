@@ -78,7 +78,7 @@ function formatXCaption(job: DiscoveredJobEntry): string {
 }
 
 function formatLinkedInCaption(job: DiscoveredJobEntry): string {
-    return `New Job Opening\n\nRole: ${job.title}\nApply Here: ${job.applyLink}\n\n#Freshers #Hiring #EntryLevel #Jobs`;
+    return `New Job Opening\n\nRole: ${job.title}\n\nApply: ${job.applyLink}\n\n#Freshers #Hiring #EntryLevel #Jobs`;
 }
 
 function formatTelegramCaption(job: DiscoveredJobEntry): string {

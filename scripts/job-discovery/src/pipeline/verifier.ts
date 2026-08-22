@@ -7,7 +7,7 @@ import { isJobLive } from '@fresherflow/pipeline';
 import { BAD_TITLE_REGEXES } from '@fresherflow/pipeline';
 
 export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning: () => boolean) {
-    const VERIFIER_CONCURRENCY = 4;
+    const VERIFIER_CONCURRENCY = 10;
     console.log(`\n=== Starting Verifier Daemon (${VERIFIER_CONCURRENCY} workers) ===\n`);
 
 
@@ -20,7 +20,7 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
             userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
             viewport: { width: 1280, height: 720 }
         });
-        const page = await context.newPage();
+        let page = await context.newPage();
 
         try {
             while (true) {
@@ -136,6 +136,9 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                 }
 
                 // ── Fallback to Playwright (Non-API) ──────────────────────────────
+                // Close and recreate page to avoid stale browser state from previous timeout
+                await page.close().catch(() => {});
+                page = await context.newPage();
                 let checkResult = await isJobLive(page, candidate.applyLink);
                 if (candidate.isTestBypass) {
                     checkResult = { live: true, status: 'live', finalUrl: candidate.applyLink, atsText: checkResult.atsText || '' };

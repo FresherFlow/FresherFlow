@@ -25,14 +25,12 @@ async function run() {
         // Start the verifier daemon in parallel
         const verifierPromise = verifyCandidates(state, () => isDiscoveryRunning);
 
-        // 1. Discovery (ATS API) & 1.5 Discovery (ATS Dorker)
+        // Run all three discovery phases concurrently — dorker doesn't block aggregators
         await Promise.all([
             discoverAtsJobs(state),
-            discoverDorkerJobs(state)
+            discoverDorkerJobs(state),
+            discoverAggregatorJobs(state),
         ]);
-
-        // 2. Discovery (Aggregators Phase)
-        await discoverAggregatorJobs(state);
 
         // Signal that discovery is complete
         isDiscoveryRunning = false;

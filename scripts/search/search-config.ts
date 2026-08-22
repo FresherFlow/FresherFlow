@@ -8,6 +8,7 @@ export interface SearchTarget {
   resultsWanted?: number;
   hoursOld?: number;
   active?: boolean;
+  searchTerm?: string;
 }
 
 /**
