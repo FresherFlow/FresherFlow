@@ -4,7 +4,7 @@ import { collectBoardSearches } from './src/collectors/boards.js';
 import { collectGitHubHiring } from './src/collectors/github.js';
 import { collectDorkSearches } from './src/collectors/dorker.js';
 import { filterAndVerifyJobs } from './src/pipeline/verifier.js';
-import { saveDiscoveredJobsArtifact, writeGitHubStepSummary, startRun, finishRun } from './src/pipeline/storage.js';
+import { saveDiscoveredJobsArtifact, persistDiscoveredJobsToDb, writeGitHubStepSummary, startRun, finishRun } from './src/pipeline/storage.js';
 import { loadEnv, loadRolesFromCdn, CORE_SEARCH_KEYWORDS } from './src/config.js';
 
 interface RunnerOptions {
@@ -96,8 +96,9 @@ async function runSearchEngine() {
       verifiedSourceCounts[src] = (verifiedSourceCounts[src] || 0) + 1;
     }
 
-    // Output Artifact
+    // Output Artifact & Persist to Database (Supabase discovered_jobs)
     await saveDiscoveredJobsArtifact(verifiedJobs, 'discovered_jobs.json');
+    await persistDiscoveredJobsToDb(verifiedJobs, runId);
 
     const durationSec = Math.round((Date.now() - startTime) / 1000);
 

@@ -137,6 +137,19 @@ model DiscoveredJob {
   salarySource        String?              @map("salary_source")
   fresherScore        Int?                 @map("fresher_score")
   reviewRequired      Boolean?             @map("review_required")
+  
+  // Walk-in Map Specific Fields
+  venueAddress        String?              @map("venue_address")
+  clusterName         String?              @map("cluster_name")
+  latitude            Float?
+  longitude           Float?
+  walkinDate          String?              @map("walkin_date")
+  walkinTime          String?              @map("walkin_time")
+  reportingTime       String?              @map("reporting_time")
+  contactPerson       String?              @map("contact_person")
+  contactPhone        String?              @map("contact_phone")
+  requiredDocs        String?              @map("required_docs") // JSON array
+
   status              String?              @default("DISCOVERED")
   createdAt           DateTime?            @default(now()) @map("created_at")
   updatedAt           DateTime?            @default(now()) @map("updated_at")

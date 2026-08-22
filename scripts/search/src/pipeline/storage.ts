@@ -1,10 +1,20 @@
 import fs from 'node:fs/promises';
 import { AtsJob } from '@fresherflow/plugins';
-import { startRun, finishRun } from '@fresherflow/pipeline';
+import { startRun, finishRun, upsertJobs } from '@fresherflow/pipeline';
 
 export async function saveDiscoveredJobsArtifact(jobs: AtsJob[], filename = 'discovered_jobs.json') {
   await fs.writeFile(filename, JSON.stringify(jobs, null, 2), 'utf8');
   console.log(`[Storage] Saved ${jobs.length} jobs to ${filename}`);
+}
+
+export async function persistDiscoveredJobsToDb(jobs: AtsJob[], runId: string | null) {
+  try {
+    if (jobs.length === 0) return;
+    await upsertJobs(jobs, runId);
+    console.log(`[Storage] Successfully persisted ${jobs.length} jobs to database (discovered_jobs)`);
+  } catch (err: any) {
+    console.warn(`[Storage] Database persistence note: ${err.message}`);
+  }
 }
 
 export async function writeGitHubStepSummary(data: {
@@ -47,9 +57,14 @@ export async function writeGitHubStepSummary(data: {
   lines.push(`| # | Role Title | Company | Location | Source | Apply Link |`);
   lines.push(`|---|---|---|---|---|---|`);
 
+  const escapeCell = (text: string) => (text || '').replace(/\|/g, '&#124;').replace(/[\r\n]+/g, ' ').trim();
+
   data.verifiedJobs.forEach((job, idx) => {
-    const loc = job.location || 'India / Remote';
-    lines.push(`| ${idx + 1} | **${job.title}** | ${job.company} | ${loc} | \`${job.source}\` | [Apply URL](${job.applyLink}) |`);
+    const title = escapeCell(job.title);
+    const comp = escapeCell(job.company);
+    const loc = escapeCell(job.location || 'India / Remote');
+    const src = escapeCell(job.source);
+    lines.push(`| ${idx + 1} | **${title}** | ${comp} | ${loc} | \`${src}\` | [Apply URL](${job.applyLink}) |`);
   });
 
   lines.push(``);
@@ -62,4 +77,4 @@ export async function writeGitHubStepSummary(data: {
   }
 }
 
-export { startRun, finishRun };
+export { startRun, finishRun, upsertJobs };
