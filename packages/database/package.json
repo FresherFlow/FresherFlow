@@ -13,10 +13,11 @@
     "lint": "eslint src"
   },
   "dependencies": {
-    "@fresherflow/config": "^1.0.0",
-    "@fresherflow/logger": "^1.0.0",
+    "@fresherflow/utils": "^1.0.0",
+    "@fresherflow/utils": "^1.0.0",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
+    "ioredis": "^6.0.0",
     "pg": "^8.22.0"
   },
   "devDependencies": {

@@ -1,7 +1,7 @@
 import { Prisma, OpportunityEventType, OpportunityStatus as DbOpportunityStatus, GovernmentLevel, VacancyNature, GovernmentApplicationStatus } from '@fresherflow/database';
 import { OpportunityStatus, OpportunityType, EducationLevel } from '@fresherflow/types';
 import { extractDegreesFromQualifications, deriveGovtLocations } from '@fresherflow/constants';
-import { normalizeEducationBuckets } from '@fresherflow/domain';
+import { normalizeEducationBuckets } from '@fresherflow/utils';
 import { AdminOpportunityRequest } from '../../../types/admin';
 
 // ── Type normalisation ────────────────────────────────────────────────────────
@@ -305,7 +305,7 @@ export function toCsvValue(value: unknown): string {
 // ── Alert helpers ─────────────────────────────────────────────────────────────
 
 import { sendNewJobAlerts } from '../../../infrastructure/services/notification.service';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 export function queueNewJobAlerts(opportunityId: string) {
     sendNewJobAlerts(opportunityId).catch((error) => {

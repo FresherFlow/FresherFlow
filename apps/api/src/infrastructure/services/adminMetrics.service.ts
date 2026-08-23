@@ -2,7 +2,7 @@ import prisma from '../database/prisma';
 import { RawOpportunityStatus } from '@fresherflow/database';
 import { getObservabilityMetrics } from '../../middleware/observability';
 
-import redis from '@fresherflow/redis';
+import { redis } from '@fresherflow/database';
 
 export type MetricsWindow = '24h' | '7d' | '14d' | '30d';
 

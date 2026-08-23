@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from './errorHandler';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import crypto from 'crypto';
 
 /**

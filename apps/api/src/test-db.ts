@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 const prisma = new PrismaClient();
 

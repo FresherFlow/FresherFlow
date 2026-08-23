@@ -33,7 +33,7 @@ import {
 } from '@fresherflow/plugins';
 
 import { extractNativeAtsData } from '@fresherflow/pipeline';
-import { applyRuleEngine } from '@fresherflow/domain';
+import { applyRuleEngine } from '@fresherflow/utils';
 
 import {
     enrichMissingFields,
@@ -562,7 +562,7 @@ async function run(): Promise<void> {
                 }
 
                 // Domain scorer gate
-                const { scoreJobDescription } = await import('@fresherflow/domain');
+                const { scoreJobDescription } = await import('@fresherflow/utils');
                 const scoreResult = scoreJobDescription(extracted.title || '', extracted.description || '');
                 if (scoreResult.verdict === 'REJECT') {
                     console.log(`[FILTER] Domain Scorer rejected: ${scoreResult.metadata.blockingRule || 'Low Score'}`);

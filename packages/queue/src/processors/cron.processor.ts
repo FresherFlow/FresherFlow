@@ -1,5 +1,5 @@
 import { Job } from 'bullmq';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import type { CronJobData } from '../index';
 
 const TASK_ENDPOINTS: Record<CronJobData['task'], string> = {

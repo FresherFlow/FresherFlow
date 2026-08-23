@@ -1,4 +1,4 @@
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 let appInstance: any = null;
 let authInstance: any = null;

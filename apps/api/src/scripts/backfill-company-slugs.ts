@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { MetadataService } from '../infrastructure/services/metadata.service';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 async function run() {
     logger.info("Starting backfill script for company slugs...");

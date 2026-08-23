@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { prisma } from '@fresherflow/database';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 const router = Router();
 

@@ -1,5 +1,5 @@
 import stagingPrisma from '../../src/lib/stagingPrisma';
-import { IngestionDedupe } from '@fresherflow/domain';
+import { IngestionDedupe } from '@fresherflow/utils';
 
 const APPLY = process.argv.includes('--apply');
 

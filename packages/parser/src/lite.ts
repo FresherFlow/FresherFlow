@@ -11,7 +11,7 @@ import {
 import { 
     normalizeSalary as domainNormalizeSalary, 
     normalizeExpiry as domainNormalizeExpiry 
-} from '@fresherflow/domain';
+} from '@fresherflow/utils';
 
 export function parseJobTextLite(rawText: string): ParsedJob {
     let text = rawText;

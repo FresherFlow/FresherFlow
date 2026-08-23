@@ -12,8 +12,8 @@ import cookieParser from 'cookie-parser';
 import * as Sentry from '@sentry/node';
 import { requestIdMiddleware } from './middleware/requestId';
 import { errorHandler } from './middleware/errorHandler';
-import { env } from '@fresherflow/config';
-import { logger, setupCleanLogging } from '@fresherflow/logger';
+import { env } from '@fresherflow/utils';
+import { logger, setupCleanLogging } from '@fresherflow/utils';
 import { ensureDomainHost } from './middleware/ensureDomain';
 import { getAdminHost, getRootDomainHost } from './utils/runtimeConfig';
 // redis not used here

@@ -1,5 +1,5 @@
 import { OpportunityType as SharedOpportunityType, RawOpportunity } from '@fresherflow/types';
-import { generateOpportunitySlug, calculateTrendingScore } from '@fresherflow/domain';
+import { generateOpportunitySlug, calculateTrendingScore } from '@fresherflow/utils';
 import { generateOpportunityFingerprint } from '@fresherflow/utils';
 import prisma, { OpportunityType, OpportunityStatus } from '@fresherflow/database';
 

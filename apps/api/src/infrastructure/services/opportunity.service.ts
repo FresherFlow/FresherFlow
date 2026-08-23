@@ -1,9 +1,7 @@
 import prisma, { Prisma, OpportunityStatus as DbOpportunityStatus, EducationLevel as DbEducationLevel, WorkMode as DbWorkMode } from '../../lib/prisma';
 import { OpportunityStatus, OpportunityType, Opportunity, Profile } from '@fresherflow/types';
-import { calculateOpportunityMatch } from '@fresherflow/domain';
-import { generateSlug, generateCompanyLogoUrl } from '@fresherflow/utils';
-import { searchOpportunitiesQuery, SearchResult, SearchOptions } from '@fresherflow/search';
-import { discoveryEmitter } from '../events/DiscoveryEmitter';
+import { calculateOpportunityMatch, generateSlug, generateCompanyLogoUrl } from '@fresherflow/utils';
+import { searchOpportunitiesQuery, SearchResult, SearchOptions } from '../../application/opportunity/search';
 
 /**
  * Opportunity Service - Business Logic Layer

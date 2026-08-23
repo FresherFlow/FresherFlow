@@ -32,9 +32,9 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@fresherflow/constants": "workspace:^",
-    "@fresherflow/domain": "^1.0.0",
-    "@fresherflow/types": "^1.0.0",
+    "@fresherflow/constants": "workspace:*",
+    "@fresherflow/types": "workspace:*",
+    "@fresherflow/utils": "workspace:*",
     "@types/turndown": "^5.0.6",
     "axios": "^1.19.0",
     "compromise": "^14.16.0",

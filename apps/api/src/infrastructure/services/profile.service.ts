@@ -1,14 +1,14 @@
 import prisma from '../database/prisma';
 import { Prisma, EducationLevel, OpportunityType, WorkMode, Availability, ProfileVisibility } from '@prisma/client';
 import { Profile, Gender, ReservationCategory } from '@fresherflow/types';
-import { calculateCompletion, normalizeProfileEducation, normalizeSkills } from '@fresherflow/domain';
+import { calculateCompletion, normalizeProfileEducation, normalizeSkills } from '@fresherflow/utils';
 import { areOpportunityUrlsEquivalent, getOpportunityUrlAliases, normalizeOpportunityUrl } from '@fresherflow/utils';
 import { AppError } from '../../middleware/errorHandler';
 import TelegramService from './telegram.service';
 import { StaticFeedService } from './staticFeed.service';
 import { FirebaseDbService } from './firebaseDb.service';
 import { StorageService } from './storage.service';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 export interface ProfileUpdateData {
     fullName?: string;

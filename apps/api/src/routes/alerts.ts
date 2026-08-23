@@ -6,7 +6,7 @@ import { requireAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { validate } from '../middleware/validate';
 import { alertPreferencesSchema, pushSubscriptionSchema } from '../utils/validation';
-import { checkEligibility } from '@fresherflow/domain';
+import { checkEligibility } from '@fresherflow/utils';
 
 const router: Router = express.Router();
 const UNREAD_COUNT_CACHE_TTL_MS = 30 * 1000;

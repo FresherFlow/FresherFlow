@@ -1,4 +1,6 @@
 import { AtsJob, BOARD_SCRAPER_REGISTRY, ScraperInputDto, toAtsJob } from '@fresherflow/plugins';
+import { isSeniorJob } from '@fresherflow/utils';
+import { parseJobUrl } from '@fresherflow/parser';
 
 export async function collectBoardSearches(keywords: string[], options: {
   resultsPerKeyword?: number;
@@ -58,7 +60,40 @@ export async function collectBoardSearches(keywords: string[], options: {
         ]);
 
         if (linkedinRes?.jobs) {
-          keywordJobs.push(...linkedinRes.jobs.map((j) => toAtsJob(j, 'LinkedIn', j.companyName || 'LinkedIn', 'AGGREGATOR')));
+          for (const j of linkedinRes.jobs) {
+            const rawJob = toAtsJob(j, 'LinkedIn', j.companyName || 'LinkedIn', 'AGGREGATOR');
+            const title = rawJob.title || '';
+            const desc = rawJob.description || '';
+
+            // Step 1: Quick experience & senior rejection check using domain rules
+            if (isSeniorJob(`${title} ${desc}`)) continue;
+
+            // Check if there is an outside apply URL in the job description or metadata
+            let resolvedApplyLink = rawJob.applyLink;
+            if (desc) {
+              const urlMatches = desc.match(/https?:\/\/[^\s\)\"\'\<\>]+/g) || [];
+              for (const u of urlMatches) {
+                const parsed = parseJobUrl(u);
+                if (parsed && parsed.adapter) {
+                  resolvedApplyLink = u;
+                  break;
+                }
+                try {
+                  const urlObj = new URL(u);
+                  const host = urlObj.hostname.toLowerCase();
+                  if (!host.includes('linkedin.com') && !host.includes('t.me') && !host.includes('whatsapp.com') && !host.includes('google.com')) {
+                    if (host.includes('careers') || host.includes('jobs') || u.includes('form')) {
+                      resolvedApplyLink = u;
+                      break;
+                    }
+                  }
+                } catch {}
+              }
+            }
+
+            rawJob.applyLink = resolvedApplyLink;
+            keywordJobs.push(rawJob);
+          }
         }
 
         if (internshalaRes?.jobs) {

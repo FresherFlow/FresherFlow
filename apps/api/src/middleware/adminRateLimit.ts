@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { redis } from '@fresherflow/redis';
+import { redis } from '@fresherflow/database';
 import { AppError } from './errorHandler';
 
 // In-memory store for rate limiting (per admin, per hour)

@@ -1,8 +1,8 @@
 import { Queue, ConnectionOptions, Job } from 'bullmq';
 import type { RedisOptions } from 'ioredis';
-import { redis } from '@fresherflow/redis';
-import { env } from '@fresherflow/config';
-import { logger } from '@fresherflow/logger';
+import { redis } from '@fresherflow/database';
+import { env } from '@fresherflow/utils';
+import { logger } from '@fresherflow/utils';
 import { processEmailJob } from './processors/email.processor';
 import { processCronJob } from './processors/cron.processor';
 import { processPushJob } from './processors/push.processor';

@@ -599,16 +599,24 @@ model WalkInDetails {
   opportunityId String @unique
 
   dates             DateTime[] // Multiple walk-in dates
-  dateRange         String?    // New: "2nd Feb - 6th Feb"
-  timeRange         String?    // New: "11:00 AM - 1:00 PM"
+  dateRange         String?    // e.g. "24th Aug - 28th Aug"
+  timeRange         String?    // e.g. "9:30 AM - 1:00 PM"
   venueAddress      String     @db.Text
-  venueLink         String?    // New: Google Maps URL
+  venueLink         String?    // Google Maps directions URL
+  latitude          Float?     // Exact Latitude for map rendering
+  longitude         Float?     // Exact Longitude for map rendering
+  clusterName       String?    // e.g. "HITEC City / Mindspace"
+  city              String?    // e.g. "Hyderabad"
   reportingTime     String
   requiredDocuments String[]
   contactPerson     String?
   contactPhone      String?
 
   opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([city])
+  @@index([clusterName])
+  @@index([latitude, longitude])
 }
 
 model GovernmentJobDetails {

@@ -1,5 +1,5 @@
 import { socialQueue, SocialJobData } from '../index';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 export async function enqueueSocialPost(data: SocialJobData) {
     try {

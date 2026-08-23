@@ -3,7 +3,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { PlusIcon, XMarkIcon, PencilSquareIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { Profile } from '@fresherflow/types';
-import { TOP_TECH_HUBS } from '@fresherflow/domain';
+import { TOP_TECH_HUBS } from '@fresherflow/utils';
 import { Input } from '@/ui/Input';
 import { Button } from '@/ui/Button';
 

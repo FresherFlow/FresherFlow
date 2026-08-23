@@ -5,7 +5,7 @@ import prisma from '../../infrastructure/database/prisma';
 import { requireInternalApiKey } from '../../middleware/auth';
 import { invalidatePublicOpportunityCache } from '../../infrastructure/services/publicOpportunityCache.service';
 import { adminCache } from '../../infrastructure/cache/adminCache';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 const router = Router();
 

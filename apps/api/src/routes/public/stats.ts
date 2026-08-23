@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import fs from 'fs';
 import path from 'path';
 import prisma from '../../infrastructure/database/prisma';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 const router = Router();
 

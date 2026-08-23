@@ -32,7 +32,7 @@
   "dependencies": {
     "@fresherflow/api-client": "^1.0.0",
     "@fresherflow/constants": "^1.0.0",
-    "@fresherflow/domain": "^1.0.0",
+    "@fresherflow/utils": "^1.0.0",
     "@fresherflow/types": "^1.0.0",
     "@fresherflow/utils": "^1.0.0",
     "@gorhom/bottom-sheet": "^5.2.14",
@@ -84,7 +84,7 @@
     "react-hook-form": "^7.84.0",
     "react-native": "0.86.2",
     "react-native-gesture-handler": "~3.1.0",
-    "react-native-mmkv": "file:..\\..\\packages\\react-native-mmkv",
+    "react-native-mmkv": "^3.2.0",
     "react-native-pager-view": "8.0.4",
     "react-native-reanimated": "~4.5.3",
     "react-native-safe-area-context": "~5.8.1",

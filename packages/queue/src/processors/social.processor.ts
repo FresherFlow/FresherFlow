@@ -1,6 +1,6 @@
 import { Job } from 'bullmq';
 import { prisma } from '@fresherflow/database';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import { SocialPlatform, SocialPostStatus } from '@prisma/client';
 import axios from 'axios';
 

@@ -2,11 +2,20 @@ import type { Metadata } from 'next';
 import { fetchCompaniesMetadata, fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { slugify } from '@fresherflow/utils/slugify';
 import { CompanySlugger } from '@/features/companies/utils/companySlugger';
-import { detectAtsProvider } from '@fresherflow/utils';
+import { parseJobUrl } from '@fresherflow/parser';
 import { Breadcrumb } from '@/ui/Breadcrumb';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 import { HeaderPortal } from '@/lib/components/HeaderPortal';
 import CompaniesDirectoryClient, { CompanyDirectoryItem } from '@/features/companies/components/CompaniesDirectoryClient';
+
+function detectAtsProvider(links: (string | null | undefined)[]): string | undefined {
+    for (const link of links) {
+        if (!link) continue;
+        const parsed = parseJobUrl(link);
+        if (parsed?.adapter) return parsed.adapter;
+    }
+    return undefined;
+}
 
 export const revalidate = false;
 

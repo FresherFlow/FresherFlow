@@ -8,9 +8,9 @@ import {
     getQueue,
 } from '@fresherflow/queue';
 import http from 'http';
-import { env } from '@fresherflow/config';
-import { logger, setupCleanLogging } from '@fresherflow/logger';
-import { redis } from '@fresherflow/redis';
+import { env } from '@fresherflow/utils';
+import { logger, setupCleanLogging } from '@fresherflow/utils';
+import { redis } from '@fresherflow/database';
 import { handleSend, handlePlatforms, handleSchedule, handleCancelSchedule, isAuthorized } from './social.handler';
 
 setupCleanLogging();

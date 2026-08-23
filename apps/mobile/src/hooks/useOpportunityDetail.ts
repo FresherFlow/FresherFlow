@@ -14,7 +14,7 @@ import { markJobAsSeen, isJobOpened, markJobAsOpened } from '@/utils/cache/seenJ
 import { getLocalProfile } from '@/utils/cache/localProfile';
 import { generateCdnSignature } from '@/utils/cdnSignature';
 import { BOOTSTRAP_FEED_URL, EXPIRED_FEED_URL } from '@/config/api';
-import { calculateOpportunityMatch } from '@fresherflow/domain';
+import { calculateOpportunityMatch } from '@fresherflow/utils';
 import { MOBILE_SITE_URL } from '@/utils/runtime';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';

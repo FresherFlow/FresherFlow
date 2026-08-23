@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { UrlParser } from '@fresherflow/parser';
 import { normalizeOpportunityUrl } from '@fresherflow/utils';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 const router = Router();
 

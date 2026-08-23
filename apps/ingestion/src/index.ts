@@ -10,7 +10,7 @@ import dataRouter from './routes/data.js';
 import searchRouter from './routes/search.js';
 import { Worker } from 'bullmq';
 import { getQueueConnection, getQueue, QUEUE_NAMES } from '@fresherflow/queue';
-import { redis } from '@fresherflow/redis';
+import { redis } from '@fresherflow/database';
 import { runTarget, RunTarget } from './lib/runner.js';
 import { loadDefaultTargets } from './lib/targets.js';
 import { applyPluginPolicies } from './lib/plugin-policy.js';

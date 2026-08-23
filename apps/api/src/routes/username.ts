@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../infrastructure/database/prisma';
 import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
-import { claimUsernameSchema } from '@fresherflow/schemas';
+import { claimUsernameSchema } from '@fresherflow/types';
 import { AppError } from '../middleware/errorHandler';
 import { StaticFeedService } from '../infrastructure/services/staticFeed.service';
 

@@ -14,7 +14,7 @@
   "dependencies": {
     "@fresherflow/api-client": "^1.0.0",
     "@fresherflow/constants": "^1.0.0",
-    "@fresherflow/schemas": "^1.0.0",
+    "@fresherflow/types": "^1.0.0",
     "@fresherflow/types": "^1.0.0",
     "@fresherflow/utils": "^1.0.0",
     "@gorhom/bottom-sheet": "^5.2.14",
@@ -56,7 +56,7 @@
     "react-native": "0.86.2",
     "react-native-gesture-handler": "~3.1.0",
     "react-native-gifted-charts": "^1.4.77",
-    "react-native-mmkv": "file:..\\..\\packages\\react-native-mmkv",
+    "react-native-mmkv": "^3.2.0",
     "react-native-passkey": "^3.6.1",
     "react-native-reanimated": "~4.5.3",
     "react-native-safe-area-context": "~5.8.1",

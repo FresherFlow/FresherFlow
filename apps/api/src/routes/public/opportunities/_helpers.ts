@@ -1,6 +1,6 @@
 import { Request } from 'express';
 import { OpportunityType } from '@fresherflow/types';
-import { verifyAccessToken } from '@fresherflow/auth';
+import { verifyAccessToken } from '@fresherflow/utils';
 import { createRateLimiter } from '../../../middleware/rateLimit';
 
 export type PublicSiteMode = 'private' | 'govt';

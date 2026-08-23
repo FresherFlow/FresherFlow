@@ -8,9 +8,9 @@ import { runAlertsCycle } from '../../infrastructure/services/alerts.service';
 import { getAdminMetricsV2, MetricsWindow } from '../../infrastructure/services/adminMetrics.service';
 import { getAdminDeliveryControls, updateAdminDeliveryControls } from '../../infrastructure/services/adminDeliveryControl.service';
 import { StaticFeedService } from '../../infrastructure/services/staticFeed.service';
-import { redis } from '@fresherflow/redis';
+import { redis } from '@fresherflow/database';
 import { enqueueCacheRevalidation } from '@fresherflow/queue';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 const router = Router();
 

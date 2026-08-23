@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import { StaticFeedService } from '../services/staticFeed.service';
 
 /**

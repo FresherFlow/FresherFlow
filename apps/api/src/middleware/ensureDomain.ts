@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 /**
  * Strictly restricts sensitive production resources (such as /api/admin/*) to allowed origins and trusted client identities.

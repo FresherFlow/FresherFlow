@@ -50,7 +50,7 @@ export const COMMON_SKILLS = [
     'vpn', 'networking', 'customer support', 'voice process', 'technical support',
     'service-now', 'o365', 'outlook', 'windows os', 'remedy',
 ];
-import { INDIAN_CITIES } from '@fresherflow/domain';
+import { INDIAN_CITIES } from '@fresherflow/utils';
 
 export const COMMON_CITIES = INDIAN_CITIES;
 

@@ -1,6 +1,6 @@
-import { redis } from '@fresherflow/redis';
-import { logger } from '@fresherflow/logger';
-import { env } from '@fresherflow/config';
+import { redis } from '@fresherflow/database';
+import { logger } from '@fresherflow/utils';
+import { env } from '@fresherflow/utils';
 
 export class FeedCacheService {
     private static TTL_SECONDS = 60; // 60 seconds

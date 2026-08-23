@@ -39,7 +39,7 @@
     "html-to-text": "^9.0.5",
     "playwright": "^1.62.1",
     "zod": "^4.4.3",
-    "@fresherflow/domain": "workspace:*"
+    "@fresherflow/utils": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",

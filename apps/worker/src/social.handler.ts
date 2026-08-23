@@ -1,5 +1,5 @@
 import { IncomingMessage, ServerResponse } from "node:http";
-import { logger } from "@fresherflow/logger";
+import { logger } from "@fresherflow/utils";
 import { getQueue, QUEUE_NAMES } from "@fresherflow/queue";
 
 // ─── Config ───────────────────────────────────────────────────────────────────

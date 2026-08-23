@@ -1,7 +1,7 @@
 import prisma from '../../infrastructure/database/prisma';
 import { OpportunityStatus, Opportunity } from '@fresherflow/types';
 import { handleOpportunityPublished } from '../../infrastructure/services/publish.service';
-import { calculateNewTrustScore, determineTrustLevel } from '@fresherflow/domain';
+import { calculateNewTrustScore, determineTrustLevel } from '@fresherflow/utils';
 
 /**
  * Use Case: Publish Opportunity (DRAFT → ACTIVE)

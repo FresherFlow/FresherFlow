@@ -1,8 +1,8 @@
 import express, { Response, NextFunction } from 'express';
-import { verifyAccessToken, verifyAdminToken } from '@fresherflow/auth';
+import { verifyAccessToken, verifyAdminToken } from '@fresherflow/utils';
 import { AppError } from './errorHandler';
 import prisma from '../infrastructure/database/prisma';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import crypto from 'crypto';
 
 declare global {

@@ -1,5 +1,5 @@
 import type { Opportunity } from '@fresherflow/types';
-import { getStateForCity, isStateName } from '@fresherflow/domain';
+import { getStateForCity, isStateName } from '@fresherflow/utils';
 
 const HIDDEN_SALARY_PATTERNS = [
     /not\s*disclosed/i,

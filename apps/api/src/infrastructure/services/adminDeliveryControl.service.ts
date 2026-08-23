@@ -1,5 +1,5 @@
 import prisma from '../database/prisma';
-import { env } from '@fresherflow/config';
+import { env } from '@fresherflow/utils';
 
 export interface AdminDeliveryControls {
     socialAutoPostingEnabled: boolean;

@@ -1,7 +1,7 @@
 import { Opportunity } from '@fresherflow/types';
 import { sendNewJobAlerts } from './notification.service';
 import { invalidatePublicOpportunityCache } from './publicOpportunityCache.service';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import { MetadataService } from './metadata.service';
 import { generateAndUploadOgImage } from './ogImage.service';
 import { slugify } from '@fresherflow/utils';

@@ -11,14 +11,12 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@fresherflow/config": "^1.0.0",
+    "@fresherflow/utils": "^1.0.0",
     "@fresherflow/database": "^1.0.0",
-    "@fresherflow/domain": "^1.0.0",
-    "@fresherflow/logger": "^1.0.0",
+    "@fresherflow/utils": "^1.0.0",
+    "@fresherflow/utils": "^1.0.0",
     "@fresherflow/parser": "^1.0.0",
-    "@fresherflow/redis": "^1.0.0",
-    "@fresherflow/schemas": "^1.0.0",
-    "@fresherflow/search": "^1.0.0",
+    "@fresherflow/types": "^1.0.0",
     "@fresherflow/types": "^1.0.0",
     "@fresherflow/utils": "^1.0.0",
     "@types/web-push": "^3.6.4",

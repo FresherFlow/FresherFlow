@@ -4,7 +4,7 @@ const { Pool } = pg;
 import { DEFAULT_TARGETS, findTargetByCompany, loadAtsDataTargets, SearchTarget } from './search-config.js';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/domain';
+import { isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/utils';
 import { loadEnv } from '@fresherflow/pipeline';
 
 export interface SearchOptions {

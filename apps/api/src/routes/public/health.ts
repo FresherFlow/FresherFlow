@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit';
 import fs from 'fs';
 import path from 'path';
 import prisma from '../../infrastructure/database/prisma';
-import { redis } from '@fresherflow/redis';
+import { redis } from '@fresherflow/database';
 
 const router = express.Router();
 

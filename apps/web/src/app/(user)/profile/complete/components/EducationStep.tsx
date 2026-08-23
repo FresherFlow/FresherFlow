@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '@repo/ui/utils/cn';
-import { EDUCATION_LEVELS, DIPLOMA_DEGREES, UG_DEGREES, PG_DEGREES, getSpecializations } from '@fresherflow/domain';
+import { EDUCATION_LEVELS, DIPLOMA_DEGREES, UG_DEGREES, PG_DEGREES, getSpecializations } from '@fresherflow/utils';
 
 import { Input } from '@/ui/Input';
 import { NativeSelect as Select } from "@/ui/NativeSelect";

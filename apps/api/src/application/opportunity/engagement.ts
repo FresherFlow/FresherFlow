@@ -1,5 +1,5 @@
 import prisma from '../../infrastructure/database/prisma';
-import { calculateTrendingScore } from '@fresherflow/domain';
+import { calculateTrendingScore } from '@fresherflow/utils';
 
 /**
  * Updates engagement counters and recalculates the trending score for an opportunity.

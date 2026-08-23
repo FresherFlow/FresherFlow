@@ -1,5 +1,5 @@
 import { prisma, Prisma } from '@fresherflow/database';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 type MergeSavedOpportunity = {
     id: string;

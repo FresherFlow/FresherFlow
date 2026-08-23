@@ -1,7 +1,7 @@
 import prisma from '../../infrastructure/database/prisma';
 import axios from 'axios';
 import { enqueueTelegramBroadcast } from '@fresherflow/queue';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 import { getCanonicalShareOrigin, getPublicSiteUrl, getAppSiteUrl, getRootDomainHost } from '../../utils/runtimeConfig';
 

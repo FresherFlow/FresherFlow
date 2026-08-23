@@ -10,14 +10,11 @@
     "paths": {
       "@fresherflow/parser/metadata": ["../../packages/parser/src/metadata.ts"],
       "@fresherflow/parser": ["../../packages/parser/src/index.ts"],
-      "@fresherflow/types": ["../../packages/types/index.ts"],
+      "@fresherflow/types": ["../../packages/types/src/index.ts"],
       "@fresherflow/constants": ["../../packages/constants/index.ts"],
-      "@fresherflow/domain": ["../../packages/domain/src/index.ts"],
       "@fresherflow/utils": ["../../packages/utils/src/index.ts"],
       "@fresherflow/utils/*": ["../../packages/utils/src/*"],
-      "@fresherflow/database": ["../../packages/database/src/index.ts"],
-      "@fresherflow/logger": ["../../packages/logger/src/index.ts"],
-      "@fresherflow/config": ["../../packages/config/src/index.ts"]
+      "@fresherflow/database": ["../../packages/database/src/index.ts"]
     }
   },
   "exclude": ["scratch"]

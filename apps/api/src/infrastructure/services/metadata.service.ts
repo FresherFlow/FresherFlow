@@ -1,5 +1,5 @@
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import { getCompanySlug } from '@fresherflow/utils';
 import { normalizeSkillName } from '@fresherflow/constants';
 

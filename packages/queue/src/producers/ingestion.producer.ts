@@ -1,5 +1,5 @@
 import { ingestionQueue } from '../index';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 export async function enqueueIngestionPayload(payload: Record<string, unknown>) {
     try {

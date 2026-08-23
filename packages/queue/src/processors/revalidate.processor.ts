@@ -1,5 +1,5 @@
 import { Job } from 'bullmq';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import type { CacheRevalidateJobData } from '../index';
 
 async function fetchRevalidate(paths: string[]): Promise<void> {

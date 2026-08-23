@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useFeedStore } from '@/store/useFeedStore';
 import { useAppPreferencesStore } from '@/store/useAppPreferencesStore';
 import { getLocalProfile } from '@/utils/cache/localProfile';
-import { calculateOpportunityMatch } from '@fresherflow/domain';
+import { calculateOpportunityMatch } from '@fresherflow/utils';
 import Fuse from 'fuse.js';
 
 export const useFeed = (initialFeedType: string | null = null) => {

@@ -1,5 +1,5 @@
 import { S3Client, ListObjectsV2Command, ListObjectsV2CommandOutput, DeleteObjectCommand } from '@aws-sdk/client-s3';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import dotenv from 'dotenv';
 import path from 'path';
 

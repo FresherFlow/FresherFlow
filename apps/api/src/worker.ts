@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import { eventService } from './infrastructure/services/event.service';
 
 logger.info('Starting FresherFlow background worker', {

@@ -9,7 +9,7 @@ describe('config env parsing', () => {
         expect(() =>
             execFileSync(
                 process.execPath,
-                ['-e', "require('@fresherflow/auth')"],
+                ['-e', "require('@fresherflow/utils')"],
                 {
                     cwd,
                     env: {
@@ -32,7 +32,7 @@ describe('config env parsing', () => {
                 process.execPath,
                 [
                     '-e',
-                    "const { env } = require('@fresherflow/config'); process.stdout.write(env.APP_MODE);",
+                    "const { env } = require('@fresherflow/utils'); process.stdout.write(env.APP_MODE);",
                 ],
                 {
                     cwd,

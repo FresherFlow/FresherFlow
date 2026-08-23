@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { requireAdmin } from '../../middleware/auth';
 import prisma from '../../infrastructure/database/prisma';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import { getFirebaseApp } from '../../lib/firebase';
 import { getMessaging } from 'firebase-admin/messaging';
 

@@ -1,4 +1,4 @@
-import { calculateOpportunityMatch as sharedCalculateOpportunityMatch } from '@fresherflow/domain';
+import { calculateOpportunityMatch as sharedCalculateOpportunityMatch } from '@fresherflow/utils';
 import type { Opportunity, Profile } from '@fresherflow/types';
 
 export type MatchResult = {

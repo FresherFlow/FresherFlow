@@ -3,7 +3,7 @@ import { body, validationResult } from 'express-validator';
 import prisma from '../infrastructure/database/prisma';
 import { ResourceItemType } from '@fresherflow/types';
 import { requireAuth } from '../middleware/auth';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import { isSafeUrlForFetch } from '@fresherflow/utils';
 
 const router = Router();

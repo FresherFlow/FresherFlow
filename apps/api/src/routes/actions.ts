@@ -5,8 +5,8 @@ import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { userActionSchema } from '../utils/validation';
 import { AppError } from '../middleware/errorHandler';
-import { checkEligibility } from '@fresherflow/domain';
-import { logger } from '@fresherflow/logger';
+import { checkEligibility } from '@fresherflow/utils';
+import { logger } from '@fresherflow/utils';
 
 
 const router: Router = express.Router();

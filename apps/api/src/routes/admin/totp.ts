@@ -5,7 +5,7 @@ import { generateSecret, generateURI, verify } from 'otplib';
 import QRCode from 'qrcode';
 import { requireAdmin } from '../../middleware/auth';
 import { AppError } from '../../middleware/errorHandler';
-import logger from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 // Extend Request type to include adminId (added by requireAdmin middleware)
 declare global {

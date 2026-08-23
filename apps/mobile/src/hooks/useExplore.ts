@@ -13,7 +13,7 @@ import { useSectorStore } from '@/store/useSectorStore';
 import { useSaved } from '@repo/frontend-core';
 import { getRecentSearchKeywords, saveRecentSearchKeyword } from '@/utils/userBehavior';
 import { getLocalProfile } from '@/utils/cache/localProfile';
-import { calculateOpportunityMatch } from '@fresherflow/domain';
+import { calculateOpportunityMatch } from '@fresherflow/utils';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFeedStore } from '@/store/useFeedStore';
 

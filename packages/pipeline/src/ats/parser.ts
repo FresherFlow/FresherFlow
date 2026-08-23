@@ -4,9 +4,11 @@ import {
     SCRAPER_REGISTRY,
     ScraperInputDto,
     toAtsJob,
+    COMPANY_PROVIDER_SET,
+    PLUGIN_REGISTRY
 } from '@fresherflow/plugins';
 
-import { isPotentialFresherJob, isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/domain';
+import { isPotentialFresherJob, isLocationIndiaOrRemote, scoreJobDescription, isSeniorJob } from '@fresherflow/utils';
 import { normalizeUrl } from '../utils/url.js';
 
 export interface AtsRegistry {
@@ -194,5 +196,51 @@ export async function runAtsDiscovery(
     }
     console.log(`\n--- ATS Discovery Finished. Total roles found: ${allJobs.length} ---`);
     return allJobs;
+}
+
+/**
+ * Runs direct company scrapers for top tech employers (Google, Amazon, Microsoft, IBM, Apple, Uber, Stripe, Meta, Nvidia).
+ */
+export async function runDirectCompanyDiscovery(
+    knownLinks: Set<string>,
+    visitedApplyLinks: string[]
+): Promise<AtsJob[]> {
+    console.log(`\n--- Starting Direct Company Scrapers (Google, Amazon, Microsoft, IBM, Apple, Uber, Stripe, Meta, Nvidia) ---`);
+    const visitedSet = new Set(visitedApplyLinks);
+    const companyKeys = Array.from(COMPANY_PROVIDER_SET);
+
+    const tasks = companyKeys.map((key) => async () => {
+        try {
+            console.log(`  -> Scraping ${key}...`);
+            const adapter = PLUGIN_REGISTRY[key];
+            if (!adapter) return [];
+
+            const jobs = await adapter.fetchJobs(key, key.toUpperCase());
+            const fresherJobs = jobs.filter(job => {
+                if (!job.title || job.title === 'Unknown Title') return false;
+                if (!isLocationIndiaOrRemote(job.location || '', job.title)) return false;
+                if (isSeniorJob(`${job.title} ${job.description || ''}`)) return false;
+                return true;
+            });
+
+            const finalJobs = fresherJobs.filter(job => {
+                const norm = normalizeUrl(job.applyLink);
+                return !knownLinks.has(norm) && !visitedSet.has(norm);
+            });
+
+            console.log(`     ✅ ${key}: Scraped ${jobs.length} jobs, ${finalJobs.length} eligible fresher jobs`);
+            return finalJobs;
+        } catch (e: any) {
+            console.warn(`     ⚠️ ${key} scrape notice: ${e.message}`);
+            return [];
+        }
+    });
+
+    const results = await withConcurrency(tasks, 4);
+    const allCompanyJobs: AtsJob[] = [];
+    for (const r of results) allCompanyJobs.push(...r);
+
+    console.log(`\n--- Direct Company Scrapers Finished. Total roles: ${allCompanyJobs.length} ---`);
+    return allCompanyJobs;
 }
 

@@ -1,6 +1,6 @@
 import { getStatusLabel } from '@/features/admin/opportunities/listUtils';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
-import { getOpportunityPath } from '@fresherflow/domain';
+import { getOpportunityPath } from '@fresherflow/utils';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 
 export const getStatusBadgeClass = (opp: Opportunity & { expiredAt?: string | Date | null; deletedAt?: string | Date | null }) => {

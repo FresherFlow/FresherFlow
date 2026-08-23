@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { AppError } from '../../../middleware/errorHandler';
 import { searchOpportunities } from '../../../application/opportunity';
 import prisma from '../../../infrastructure/database/prisma';
-import { filterAndRankOpportunitiesForUser } from '@fresherflow/domain';
+import { filterAndRankOpportunitiesForUser } from '@fresherflow/utils';
 import { Opportunity, Profile } from '@fresherflow/types';
 import {
     isLikelyBotTraffic, publicFeedLimiter, publicFeedBotLimiter,

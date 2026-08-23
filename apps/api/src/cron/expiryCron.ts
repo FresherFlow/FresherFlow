@@ -1,6 +1,6 @@
 import { prisma } from '@fresherflow/database';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import TelegramService from '../infrastructure/services/telegram.service';
 import { StaticFeedService } from '../infrastructure/services/staticFeed.service';
 

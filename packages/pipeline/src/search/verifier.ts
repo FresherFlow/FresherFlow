@@ -1,5 +1,5 @@
 import { AtsJob } from '@fresherflow/plugins';
-import { isLocationIndiaOrRemote, scoreJobDescription, isSeniorJob } from '@fresherflow/domain';
+import { isLocationIndiaOrRemote, scoreJobDescription, isSeniorJob } from '@fresherflow/utils';
 
 export interface VerificationResult {
   verifiedJobs: AtsJob[];

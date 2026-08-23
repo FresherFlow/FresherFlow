@@ -1,6 +1,6 @@
 import { getFirebaseApp } from '../../lib/firebase';
 import { getDatabase } from 'firebase-admin/database';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 export interface FirebaseOnboardingRecord {
     username?: string | null;

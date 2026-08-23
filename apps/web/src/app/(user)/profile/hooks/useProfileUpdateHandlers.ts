@@ -2,7 +2,7 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { profileApi } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { validateEducationData } from '@fresherflow/domain';
+import { validateEducationData } from '@fresherflow/utils';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function useProfileUpdateHandlers(form: any, _refreshUser?: () => Promise<void>) {  

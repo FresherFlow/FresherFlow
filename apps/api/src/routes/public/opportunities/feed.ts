@@ -1,12 +1,12 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { Prisma, OpportunityStatus as DbOpportunityStatus, OpportunityType as DbOpportunityType } from '@fresherflow/database';
 import { OpportunityStatus, OpportunityType, Profile, Opportunity } from '@fresherflow/types';
-import { env } from '@fresherflow/config';
-import { logger } from '@fresherflow/logger';
-import { redis } from '@fresherflow/redis';
+import { env } from '@fresherflow/utils';
+import { logger } from '@fresherflow/utils';
+import { redis } from '@fresherflow/database';
 import prisma from '../../../infrastructure/database/prisma';
 import { AppError } from '../../../middleware/errorHandler';
-import { rankOpportunitiesForUser } from '@fresherflow/domain';
+import { rankOpportunitiesForUser } from '@fresherflow/utils';
 import {
     isLikelyBotTraffic, publicFeedLimiter, publicFeedBotLimiter,
     GUEST_FEED_LIMIT, MAX_FEED_LIMIT, MAX_FEED_PAGE, GUEST_FEED_CACHE_TTL_SECONDS,

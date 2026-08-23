@@ -2,7 +2,7 @@ import { Opportunity, Profile } from '@fresherflow/types';
 import axios from 'axios';
 import { BOOTSTRAP_FEED_URL, FEED_VERSION_URL, GOVERNMENT_FEED_URL } from '@/config/api';
 import { generateCdnSignature, generateVersionedCdnSignature } from '@/utils/cdnSignature';
-import { calculateOpportunityMatch } from '@fresherflow/domain';
+import { calculateOpportunityMatch } from '@fresherflow/utils';
 import { saveFeedCache } from '@/utils/cache/offlineCache';
 import { getString, setString, storage } from '@/utils/storage';
 import { BRAND_DOMAINS, getRootDomain } from '@fresherflow/utils';

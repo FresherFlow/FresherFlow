@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { getFirebaseAuth } from '../lib/firebase';
 import { AppError } from './errorHandler';
 import { DecodedIdToken } from 'firebase-admin/auth';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 declare global {
     // eslint-disable-next-line @typescript-eslint/no-namespace

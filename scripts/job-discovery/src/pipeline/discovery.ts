@@ -3,15 +3,22 @@ import path from 'path';
 import { DiscoveryState } from '@fresherflow/pipeline';
 import { ATS_CDN_BASE, ATS_PROVIDERS, TARGET_SITES } from '@fresherflow/pipeline';
 import { normalizeUrl, sanitizeAtsUrl } from '@fresherflow/pipeline';
-import { isLocationIndiaOrRemote, scoreJobDescription, hasFresherKeyword, isActualJob, isFresherJob, isSeniorJob } from '@fresherflow/domain';
+import { isLocationIndiaOrRemote, scoreJobDescription, hasFresherKeyword, isActualJob, isFresherJob, isSeniorJob } from '@fresherflow/utils';
 import { logDecision } from '@fresherflow/pipeline';
 import { findActualApplyLink } from '@fresherflow/pipeline';
 import { extractAtsBoard } from '@fresherflow/pipeline';
-import { runAtsDiscovery } from '@fresherflow/pipeline';
+import { runAtsDiscovery, runDirectCompanyDiscovery } from '@fresherflow/pipeline';
 
 export async function discoverAtsJobs(state: DiscoveryState) {
-    console.log(`\n=== Phase 0: Scraping ATS APIs ===\n`);
+    console.log(`\n=== Phase 0: Direct Company & ATS Discovery ===\n`);
     
+    // 1. Direct Company Scrapers (Google, Amazon, Microsoft, IBM, Apple, Uber, Stripe, Meta, Nvidia)
+    const companyJobs = await runDirectCompanyDiscovery(
+        state.knownLinks,
+        state.visited["__discovered_apply_links__"]
+    );
+
+    // 2. ATS Provider APIs (Greenhouse, Lever, Ashby, etc.)
     try {
         if (ATS_CDN_BASE) {
             console.log(`Fetching ATS Boards from CDN (${ATS_CDN_BASE})...`);
@@ -42,6 +49,7 @@ export async function discoverAtsJobs(state: DiscoveryState) {
         state.visited["__discovered_apply_links__"]
     );
 
+    const allDiscoveredJobs = [...companyJobs, ...atsJobs];
     let atsQueued = 0, atsRejected = 0;
 
     let companiesList: any[] = [];
@@ -55,7 +63,7 @@ export async function discoverAtsJobs(state: DiscoveryState) {
     }
     const companySlugMap = new Map(companiesList.map(c => [c.slug, c.name]));
 
-    for (const job of atsJobs) {
+    for (const job of allDiscoveredJobs) {
         if (job.company && companySlugMap.has(job.company.toLowerCase())) {
             job.company = companySlugMap.get(job.company.toLowerCase())!;
         }

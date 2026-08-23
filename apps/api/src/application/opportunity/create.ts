@@ -1,8 +1,8 @@
 import prisma, { Prisma, OpportunityStatus as DbOpportunityStatus, OpportunityType as DbOpportunityType } from '../../infrastructure/database/prisma';
 import { Opportunity, OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { generateSlug, generateCompanyLogoUrl } from '@fresherflow/utils';
-import { OpportunityEvent } from '@fresherflow/domain';
-import { logger } from '@fresherflow/logger';
+import { OpportunityEvent } from '@fresherflow/utils';
+import { logger } from '@fresherflow/utils';
 
 /**
  * Use Case: Create Opportunity

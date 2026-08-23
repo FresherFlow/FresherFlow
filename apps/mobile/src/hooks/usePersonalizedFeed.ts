@@ -3,7 +3,7 @@ import { Opportunity, Profile } from '@fresherflow/types';
 import { 
     checkEligibility,
     EligibilityResult
-} from '@fresherflow/domain';
+} from '@fresherflow/utils';
 
 /**
  * Local Matching Engine Hook

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/firebase/admin';
 import prisma from '@fresherflow/database';
-import { generateAccessToken, generateRefreshToken } from '@fresherflow/auth';
+import { generateAccessToken, generateRefreshToken } from '@fresherflow/utils';
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
 

@@ -6,7 +6,7 @@ import {
     isPotentialFresherJob,
     isSeniorJob,
     isFresherJob
-} from '@fresherflow/domain';
+} from '@fresherflow/utils';
 
 export function isIndiaOrRemote(location?: string, title?: string): boolean {
     return isLocationIndiaOrRemote(location || '', title || '');

@@ -3,7 +3,7 @@ import { runExpiryCycle } from '../cron/expiryCron';
 import { runLinkVerification } from '../infrastructure/services/verificationBot';
 import { runAlertsCycle } from '../infrastructure/services/alerts.service';
 import { StaticFeedService } from '../infrastructure/services/staticFeed.service';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 const router = Router();
 

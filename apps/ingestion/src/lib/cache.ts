@@ -1,4 +1,4 @@
-import { redis } from '@fresherflow/redis';
+import { redis } from '@fresherflow/database';
 import type { RunTarget } from './runner.js';
 
 export async function checkCache(target: RunTarget): Promise<any | null> {

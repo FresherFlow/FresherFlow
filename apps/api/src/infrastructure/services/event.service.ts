@@ -1,8 +1,8 @@
 import { PlatformEventType, Prisma } from '@fresherflow/database';
 import prisma from '../database/prisma';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import { Redis } from 'ioredis';
-import { env } from '@fresherflow/config';
+import { env } from '@fresherflow/utils';
 
 // Buffered Event System
 // Decouples tracking hits from DB writes using Redis

@@ -1,5 +1,5 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import fs from 'fs';
 import path from 'path';
 import { getPublicSiteUrl } from '../../utils/runtimeConfig';

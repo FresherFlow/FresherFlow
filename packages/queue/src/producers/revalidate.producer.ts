@@ -1,5 +1,5 @@
 import { cacheRevalidateQueue } from '../index';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 export async function enqueueCacheRevalidation(paths: string[]): Promise<void> {
     if (!paths || paths.length === 0) return;

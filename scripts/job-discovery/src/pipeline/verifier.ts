@@ -2,7 +2,7 @@ import { DiscoveryState } from '@fresherflow/pipeline';
 import { normalizeUrl } from '@fresherflow/pipeline';
 import { PLUGIN_REGISTRY, AtsJob } from '@fresherflow/plugins';
 import { parseJobUrl } from '@fresherflow/parser';
-import { isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/domain';
+import { isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/utils';
 import { isJobLive } from '@fresherflow/pipeline';
 import { BAD_TITLE_REGEXES } from '@fresherflow/pipeline';
 

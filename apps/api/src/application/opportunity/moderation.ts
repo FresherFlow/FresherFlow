@@ -1,5 +1,5 @@
 import prisma from '../../infrastructure/database/prisma';
-import { determineTrustLevel, calculateNewTrustScore } from '@fresherflow/domain';
+import { determineTrustLevel, calculateNewTrustScore } from '@fresherflow/utils';
 import { OpportunityStatus } from '@fresherflow/types';
 
 /**

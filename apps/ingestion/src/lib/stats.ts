@@ -1,5 +1,5 @@
 import { loadDefaultTargets } from './targets.js';
-import { redis } from '@fresherflow/redis';
+import { redis } from '@fresherflow/database';
 import { pool } from './db.js';
 
 const START_TIME = Date.now();

@@ -1,9 +1,9 @@
 import prisma from '../../infrastructure/database/prisma';
 import { LinkHealth } from '@fresherflow/database';
 import { OpportunityStatus, Opportunity } from '@fresherflow/types';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import TelegramService from './telegram.service';
-import { calculateTrendingScore } from '@fresherflow/domain';
+import { calculateTrendingScore } from '@fresherflow/utils';
 
 // ── Bot Configuration ─────────────────────────────────────────────────────────
 const MAX_HARD_FAILURES = 5;

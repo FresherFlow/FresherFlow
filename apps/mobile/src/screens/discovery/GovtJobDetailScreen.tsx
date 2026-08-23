@@ -65,7 +65,7 @@ import { renderFormattedDescription } from '@/system/components/DescriptionParse
 import { markJobAsSeen } from '@/utils/cache/seenJobs';
 import { formatSalary } from '@/utils/formatters';
 import { openExternalURL } from '@/utils/browser';
-import { calculateOpportunityMatch } from '@fresherflow/domain';
+import { calculateOpportunityMatch } from '@fresherflow/utils';
 
 import { useNotifications } from '@repo/frontend-core';
 import { useToast } from '@/contexts/ToastContext';

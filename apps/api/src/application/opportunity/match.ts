@@ -8,7 +8,7 @@ import {
     checkEligibility, 
     rankOpportunitiesForUser, 
     RankedOpportunity 
-} from '@fresherflow/domain';
+} from '@fresherflow/utils';
 
 /**
  * Use Case: Match Opportunities for a specific user

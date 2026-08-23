@@ -4,7 +4,7 @@ import { OpportunityEventType } from '@fresherflow/database';
 import { OpportunityStatus, Profile, Opportunity } from '@fresherflow/types';
 import { requireAuth } from '../middleware/auth';
 
-import { filterAndRankOpportunitiesForUser } from '@fresherflow/domain';
+import { filterAndRankOpportunitiesForUser } from '@fresherflow/utils';
 
 const router = Router();
 

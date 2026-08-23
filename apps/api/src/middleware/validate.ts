@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { z, ZodError } from 'zod';
 import { AppError } from './errorHandler';
 
-export function validate(schema: z.ZodSchema) {
+export function validate(schema: { parseAsync: (data: unknown) => Promise<unknown> }) {
     return async (req: Request, res: Response, next: NextFunction) => {
         try {
             await schema.parseAsync(req.body);

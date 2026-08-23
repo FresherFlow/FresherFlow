@@ -15,11 +15,10 @@ import type {
     GenerateAuthenticationOptionsOpts,
     AuthenticatorTransportFuture,
 } from '@simplewebauthn/server';
-import { generateAdminToken, verifyAdminToken } from '@fresherflow/auth';
+import { generateAdminToken, verifyAdminToken, logger } from '@fresherflow/utils';
 import { AppError } from '../../middleware/errorHandler';
 import { requireAdmin } from '../../middleware/auth';
 import rateLimit from 'express-rate-limit';
-import logger from '@fresherflow/logger';
 import { getAdminSiteUrl, getCookieDomain } from '../../utils/runtimeConfig';
 
 const router: Router = express.Router();

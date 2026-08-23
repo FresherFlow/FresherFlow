@@ -1,6 +1,6 @@
 import { AtsJob, htmlToPlainText, markdownConverter, extractSalary, extractExperience as pluginExtractExperience } from '@fresherflow/plugins';
 import { extractWorkMode, extractExperience } from '@fresherflow/parser';
-import { scoreJobDescription } from '@fresherflow/domain';
+import { scoreJobDescription } from '@fresherflow/utils';
 import { pool } from './db.js';
 import { normalizeRawJson, postProcessNormalize, jobSchema } from '@fresherflow/pipeline';
 import { analyze } from '@fresherflow/utils/analytics/index';

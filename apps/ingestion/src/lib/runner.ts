@@ -4,7 +4,7 @@ import { submitJobsToApi } from './api.js';
 import { recordRun } from './stats.js';
 import { withRetry } from './retry.js';
 import { checkCache, setCache } from './cache.js';
-import { redis } from '@fresherflow/redis';
+import { redis } from '@fresherflow/database';
 
 export interface RunTarget {
   ats: string;

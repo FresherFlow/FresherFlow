@@ -1,5 +1,5 @@
 import prisma from '../../infrastructure/database/prisma';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import { enqueuePushNotification } from '@fresherflow/queue';
 import { getPublicSiteUrl } from '../../utils/runtimeConfig';
 

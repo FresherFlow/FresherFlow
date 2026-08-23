@@ -1,5 +1,5 @@
-import { logger } from '@fresherflow/logger';
-import { env } from '@fresherflow/config';
+import { logger } from '@fresherflow/utils';
+import { env } from '@fresherflow/utils';
 import { enqueueEmail } from '@fresherflow/queue';
 
 /**

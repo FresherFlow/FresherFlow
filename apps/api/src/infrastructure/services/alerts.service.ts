@@ -3,8 +3,8 @@ import { OpportunityStatus, Opportunity, Profile } from '@fresherflow/types';
 import {
     filterAndRankOpportunitiesForUser,
     getTimezoneParts, buildOpportunityUrl, getClosingSoonHours, formatExpiresText
-} from '@fresherflow/domain';
-import { logger } from '@fresherflow/logger';
+} from '@fresherflow/utils';
+import { logger } from '@fresherflow/utils';
 import { EmailService } from './email.service';
 import { getAdminDeliveryControls } from './adminDeliveryControl.service';
 

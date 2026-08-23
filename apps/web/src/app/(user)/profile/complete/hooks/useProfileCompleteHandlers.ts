@@ -3,7 +3,7 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { profileApi } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { validateEducationData } from '@fresherflow/domain';
+import { validateEducationData } from '@fresherflow/utils';
 
 export interface ProfileCompleteForm {
     fullName: string;

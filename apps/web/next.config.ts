@@ -94,9 +94,9 @@ const nextConfig: NextConfig = {
 
   transpilePackages: [
     "@fresherflow/types", 
-    "@fresherflow/schemas", 
+    "@fresherflow/types", 
     "@fresherflow/constants", 
-    "@fresherflow/domain", 
+    "@fresherflow/utils", 
     "@fresherflow/utils",
     "@fresherflow/api-client",
     "@fresherflow/plugins",
@@ -133,7 +133,7 @@ const nextConfig: NextConfig = {
     optimizePackageImports: [
       "@fresherflow/api-client",
       "@repo/ui",
-      "@fresherflow/domain",
+      "@fresherflow/utils",
       "@fresherflow/types",
       "@fresherflow/utils",
       "@fresherflow/constants",

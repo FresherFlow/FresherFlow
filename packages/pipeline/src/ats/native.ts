@@ -10,6 +10,7 @@
 
 import { Page } from 'playwright';
 
+import { parseJobUrl } from '@fresherflow/parser';
 import { CANONICAL_CITIES_MAP } from '@fresherflow/parser/metadata';
 import { PLUGIN_REGISTRY } from '@fresherflow/plugins';
 
@@ -239,38 +240,24 @@ export async function extractNativeAtsData(
             }
         }
 
-        // 2. Identify which ATS registry key this job belongs to
+        // 2. Identify which ATS registry key this job belongs to using parseJobUrl or direct registry match
         let providerKey = '';
         if (source) {
             providerKey = source.toLowerCase().replace(/^ats_/, '');
         }
 
         if (!providerKey) {
-            if (host === 'lever.co' || host.endsWith('.lever.co')) providerKey = 'lever';
-            else if (host === 'greenhouse.io' || host.endsWith('.greenhouse.io')) providerKey = 'greenhouse';
-            else if (host === 'ashbyhq.com' || host.endsWith('.ashbyhq.com')) providerKey = 'ashby';
-            else if (host === 'smartrecruiters.com' || host.endsWith('.smartrecruiters.com')) providerKey = 'smartrecruiters';
-            else if (host === 'myworkdayjobs.com' || host.endsWith('.myworkdayjobs.com')) providerKey = 'workday';
-            else if (host === 'oraclecloud.com' || host.endsWith('.oraclecloud.com')) providerKey = 'oracle';
-            else if (host === 'icims.com' || host.endsWith('.icims.com')) providerKey = 'icims';
-            else if (host.match(/successfactors\.[a-z]+$/) || host === 'sapsf.com' || host.endsWith('.sapsf.com')) providerKey = 'successfactors';
-            else if (host === 'darwinbox.in' || host.endsWith('.darwinbox.in')) providerKey = 'darwinbox';
-            else if (host === 'linkedin.com' || host.endsWith('.linkedin.com')) providerKey = 'linkedin';
-            else if (host === 'naukri.com' || host.endsWith('.naukri.com')) providerKey = 'naukri';
-            else if (host === 'internshala.com' || host.endsWith('.internshala.com')) providerKey = 'internshala';
-            else if (host === 'wellfound.com' || host.endsWith('.wellfound.com')) providerKey = 'wellfound';
-            else if (host === 'indeed.com' || host.endsWith('.indeed.com')) providerKey = 'indeed';
-            else if (host === 'glassdoor.com' || host.endsWith('.glassdoor.com')) providerKey = 'glassdoor';
-            else if (host === 'keka.com' || host.endsWith('.keka.com')) providerKey = 'keka';
-            else if (host === 'freshteam.com' || host.endsWith('.freshteam.com')) providerKey = 'freshteam';
-            else if (host === 'zohorecruit.com' || host.endsWith('.zohorecruit.com') || host.endsWith('.zohorecruit.in')) providerKey = 'zohorecruit';
-            else if (host === 'bamboohr.com' || host.endsWith('.bamboohr.com')) providerKey = 'bamboohr';
-            else if (host === 'workable.com' || host.endsWith('.workable.com')) providerKey = 'workable';
-            else if (host === 'recruitee.com' || host.endsWith('.recruitee.com')) providerKey = 'recruitee';
-            else if (host === 'peoplestrong.com' || host.endsWith('.peoplestrong.com')) providerKey = 'peoplestrong';
-            else if (host === 'greythr.com' || host.endsWith('.greythr.com')) providerKey = 'greythr';
-            else if (host === 'turbohire.co' || host.endsWith('.turbohire.co')) providerKey = 'turbohire';
-            else if (host === 'pyjamahr.com' || host.endsWith('.pyjamahr.com')) providerKey = 'pyjamahr';
+            const parsed = parseJobUrl(url);
+            if (parsed && parsed.adapter) {
+                providerKey = parsed.adapter.toLowerCase().replace(/^company-/, '');
+            } else {
+                const hostName = host.replace(/\.[a-z]+$/, '').toLowerCase();
+                if (PLUGIN_REGISTRY[hostName]) providerKey = hostName;
+                else if (host.includes('linkedin')) providerKey = 'linkedin';
+                else if (host.includes('naukri')) providerKey = 'naukri';
+                else if (host.includes('internshala')) providerKey = 'internshala';
+                else if (host.includes('wellfound')) providerKey = 'wellfound';
+            }
         }
 
         // 3. Dispatch to @fresherflow/plugins Registry
@@ -318,6 +305,29 @@ export async function extractNativeAtsData(
                             }
                         }
 
+                        let outsideApply = (result as any).applyLink;
+                        if (!outsideApply && (result.html || result.text)) {
+                            const combined = `${result.html || ''} ${result.text || ''}`;
+                            const urlMatches = combined.match(/https?:\/\/[^\s\)\"\'\<\>]+/g) || [];
+                            for (const u of urlMatches) {
+                                const parsedU = parseJobUrl(u);
+                                if (parsedU && parsedU.adapter) {
+                                    outsideApply = u;
+                                    break;
+                                }
+                                try {
+                                    const parsed = new URL(u);
+                                    const h = parsed.hostname.toLowerCase();
+                                    if (!h.includes('linkedin.com') && !h.includes('t.me') && !h.includes('whatsapp.com') && !h.includes('google.com')) {
+                                        if (h.includes('careers') || h.includes('jobs') || u.includes('form')) {
+                                            outsideApply = u;
+                                            break;
+                                        }
+                                    }
+                                } catch {}
+                            }
+                        }
+
                         return {
                             ...EMPTY,
                             title: result.title || '',
@@ -327,7 +337,7 @@ export async function extractNativeAtsData(
                             company: result.company || '',
                             experienceLevel: (result as any).experienceLevel || '',
                             experienceMin: expMin,
-                            applyLink: (result as any).applyLink || undefined
+                            applyLink: outsideApply || undefined
                         };
                     }
                 }

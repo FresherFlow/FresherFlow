@@ -1,5 +1,5 @@
-import { redis } from '@fresherflow/redis';
-import { logger } from '@fresherflow/logger';
+import { redis } from '@fresherflow/database';
+import { logger } from '@fresherflow/utils';
 
 async function deleteByPattern(pattern: string) {
     let cursor = '0';

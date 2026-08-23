@@ -1,11 +1,11 @@
 /**
  * Normalization functions — convert raw strings into typed, structured values.
- * Now delegates to @fresherflow/domain to ensure consistency.
+ * Now delegates to @fresherflow/utils to ensure consistency.
  */
 import { 
     normalizeSalary as domainNormalizeSalary, 
     normalizeExpiry as domainNormalizeExpiry 
-} from '@fresherflow/domain';
+} from '@fresherflow/utils';
 import { NormalizedSalary } from './types.js';
 import { SalaryPeriod } from '@fresherflow/types';
 

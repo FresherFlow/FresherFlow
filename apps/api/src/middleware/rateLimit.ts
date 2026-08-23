@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { redis } from '@fresherflow/redis';
+import { redis } from '@fresherflow/database';
 import { AppError } from './errorHandler';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 
 // In-memory fallback store
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();

@@ -1,7 +1,7 @@
 import { Job } from 'bullmq';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import { Resend } from 'resend';
-import { env } from '@fresherflow/config';
+import { env } from '@fresherflow/utils';
 import { EmailJobData } from '../index';
 
 const getResendClient = () => env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;

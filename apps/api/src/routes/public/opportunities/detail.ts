@@ -1,10 +1,10 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { env } from '@fresherflow/config';
+import { env } from '@fresherflow/utils';
 import { Opportunity, Profile } from '@fresherflow/types';
-import { redis } from '@fresherflow/redis';
+import { redis } from '@fresherflow/database';
 import prisma from '../../../infrastructure/database/prisma';
 import { AppError } from '../../../middleware/errorHandler';
-import { checkEligibility, calculateOpportunityMatch } from '@fresherflow/domain';
+import { checkEligibility, calculateOpportunityMatch } from '@fresherflow/utils';
 import {
     isLikelyBotTraffic, publicDetailLimiter, publicDetailBotLimiter,
     tryResolveUserIdFromCookie, buildPublicOpportunitySelect, isSupportedDetailId,

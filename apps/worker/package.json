@@ -10,12 +10,12 @@
     "lint": "eslint \"src/**/*.ts\""
   },
   "dependencies": {
-    "@fresherflow/config": "^1.0.0",
+    "@fresherflow/utils": "^1.0.0",
     "@fresherflow/constants": "^1.0.0",
-    "@fresherflow/logger": "^1.0.0",
+    "@fresherflow/utils": "^1.0.0",
     "@fresherflow/queue": "^1.0.0",
-    "@fresherflow/redis": "^1.0.0",
-    "@fresherflow/schemas": "^1.0.0",
+    "@fresherflow/database": "^1.0.0",
+    "@fresherflow/types": "^1.0.0",
     "@fresherflow/types": "^1.0.0",
     "@fresherflow/utils": "^1.0.0",
     "bullmq": "^6.0.6",

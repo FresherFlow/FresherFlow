@@ -19,7 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Opportunity, Profile } from '@fresherflow/types';
 import { getLocalProfile } from './localProfile';
 import { getLocalAlertPrefs } from './localAlerts';
-import { calculateOpportunityMatch } from '@fresherflow/domain';
+import { calculateOpportunityMatch } from '@fresherflow/utils';
 import { getSeenIds } from './seenJobs';
 import { getJSON, setJSON, getString, setString } from '../storage';
 import { useAuthStore } from '@/store/useAuthStore';

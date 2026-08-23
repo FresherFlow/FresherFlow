@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
-import { COMMON_SKILLS, INDIAN_CITIES, TOP_TECH_HUBS, normalizeSkillName } from '@fresherflow/domain';
+import { COMMON_SKILLS, INDIAN_CITIES, TOP_TECH_HUBS, normalizeSkillName } from '@fresherflow/utils';
 
 type ProfileLike = {
   educationLevel?: string | null;

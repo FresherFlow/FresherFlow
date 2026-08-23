@@ -15,11 +15,11 @@
       "@fresherflow/parser": ["../../packages/parser/src/index.ts"],
       "@fresherflow/types": ["../../packages/types/index.ts"],
       "@fresherflow/constants": ["../../packages/constants/src/index.ts"],
-      "@fresherflow/domain": ["../../packages/domain/src/index.ts"],
+      "@fresherflow/utils": ["../../packages/domain/src/index.ts"],
       "@fresherflow/utils": ["../../packages/utils/src/index.ts"],
       "@fresherflow/utils/*": ["../../packages/utils/src/*"],
       "@fresherflow/plugins": ["../../packages/plugins/src/index.ts"],
-      "@fresherflow/redis": ["../../packages/redis/src/index.ts"],
+      "@fresherflow/database": ["../../packages/redis/src/index.ts"],
       "@fresherflow/queue": ["../../packages/queue/src/index.ts"]
     }
   },

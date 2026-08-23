@@ -1,5 +1,5 @@
 import { Job } from 'bullmq';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import webpush from 'web-push';
 import axios from 'axios';
 import type { PushJobData } from '../index';

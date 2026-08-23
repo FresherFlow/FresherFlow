@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import prisma from '@fresherflow/database';
-import { verifyAccessToken } from '@fresherflow/auth';
+import { verifyAccessToken } from '@fresherflow/utils';
 
 export const dynamic = 'force-dynamic';
 

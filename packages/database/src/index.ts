@@ -3,6 +3,7 @@ import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 export * from '@prisma/client';
+export * from './redis.js';
 
 const prismaClientSingleton = () => {
     const shouldLog = process.env.LOG_DATABASE_QUERIES === 'true';
