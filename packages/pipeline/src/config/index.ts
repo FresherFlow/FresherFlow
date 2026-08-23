@@ -7,27 +7,36 @@ async function fileExists(filePath: string): Promise<boolean> {
 }
 
 export async function loadEnv() {
-    let envPath = path.join(process.cwd(), '.env');
-    if (!(await fileExists(envPath))) {
-        envPath = path.join(process.cwd(), '../../.env');
-    }
-    if (await fileExists(envPath)) {
-        try {
-            const envContent = await fs.readFile(envPath, 'utf8');
-            for (const line of envContent.split('\n')) {
-                const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
-                if (match) {
-                    const key = match[1];
-                    let value = (match[2] || '').trim();
-                    if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
-                    if (value.startsWith("'") && value.endsWith("'")) value = value.slice(1, -1);
-                    if (process.env[key] === undefined) {
-                        process.env[key] = value;
+    const candidatePaths = [
+        path.join(process.cwd(), '.env'),
+        path.join(process.cwd(), '../../.env'),
+        path.join(process.cwd(), '../.env'),
+        path.join(process.cwd(), 'apps/ingestion/.env'),
+        path.join(process.cwd(), '../apps/ingestion/.env'),
+        path.join(process.cwd(), '../../apps/ingestion/.env'),
+        path.join(process.cwd(), 'scripts/job-discovery/.env'),
+        path.join(process.cwd(), 'scripts/search/.env'),
+    ];
+
+    for (const envPath of candidatePaths) {
+        if (await fileExists(envPath)) {
+            try {
+                const envContent = await fs.readFile(envPath, 'utf8');
+                for (const line of envContent.split('\n')) {
+                    const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+                    if (match) {
+                        const key = match[1];
+                        let value = (match[2] || '').trim();
+                        if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
+                        if (value.startsWith("'") && value.endsWith("'")) value = value.slice(1, -1);
+                        if (process.env[key] === undefined && value !== '') {
+                            process.env[key] = value;
+                        }
                     }
                 }
+            } catch {
+                // Ignore env load errors on systems where file is missing
             }
-        } catch {
-            // Ignore env load errors on systems where file is missing
         }
     }
 }

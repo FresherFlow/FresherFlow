@@ -5,25 +5,7 @@ import { DEFAULT_TARGETS, findTargetByCompany, loadAtsDataTargets, SearchTarget 
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/domain';
-// Load environment variables from root .env if not loaded
-export async function loadEnv() {
-  const envPath = path.resolve(process.cwd(), '../../.env');
-  try {
-    const content = await fs.readFile(envPath, 'utf8');
-    for (const line of content.split('\n')) {
-      const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
-      if (match) {
-        const key = match[1];
-        let val = (match[2] || '').trim();
-        if (val.startsWith('"') && val.endsWith('"')) val = val.slice(1, -1);
-        if (val.startsWith("'") && val.endsWith("'")) val = val.slice(1, -1);
-        if (process.env[key] === undefined) process.env[key] = val;
-      }
-    }
-  } catch {
-    // ignore
-  }
-}
+import { loadEnv } from '@fresherflow/pipeline';
 
 export interface SearchOptions {
   company?: string;
@@ -148,7 +130,8 @@ export async function executeSearch(target: SearchTarget, options: SearchOptions
   }
 
   const resultsWanted = options.resultsWanted ?? target.resultsWanted ?? 50;
-  const hoursOld = options.hoursOld ?? target.hoursOld ?? 10;
+  const envHours = process.env.HOURS_OLD ? parseInt(process.env.HOURS_OLD, 10) : undefined;
+  const hoursOld = options.hoursOld ?? (!isNaN(envHours!) ? envHours : (target.hoursOld ?? 72));
 
   console.log(`\n🔍 Searching ${target.company.toUpperCase()} (${target.ats}) [slug=${target.slug}, max=${resultsWanted}, hoursOld=${hoursOld}]...`);
 

@@ -188,35 +188,51 @@ ${providerLines}
 
     // ── GitHub Actions step summary ───────────────────────────────────────────
     if (process.env.GITHUB_STEP_SUMMARY) {
-        let summary = `## Job Discovery Bot Results\n\n`;
-        summary += `Discovered **${state.newJobsFound.length}** new jobs → uploaded to **Supabase**.\n\n`;
+        let summary = `# 🔍 Job Discovery Bot Summary\n\n`;
+        summary += `| Metric | Value |\n`;
+        summary += `|---|---|\n`;
+        summary += `| **Total Discovered** | **${state.newJobsFound.length}** |\n`;
+        summary += `| **🏢 Direct ATS Jobs** | ${atsJobs.length} |\n`;
+        summary += `| **🌐 Aggregator Jobs** | ${aggJobs.length} |\n`;
+        summary += `| **✅ Confirmed (Direct)** | ${confirmedTotal} |\n`;
+        summary += `| **⚠️ Flagged for Review** | ${reviewTotal} |\n\n`;
 
         // ATS count breakdown table
-        summary += `### ATS Direct (${atsJobs.length})\n`;
-        summary += `| Provider | Jobs Found |\n|---|---|\n`;
-        for (const [p, n] of Object.entries(atsPerProvider).sort((a, b) => b[1] - a[1])) {
-            summary += `| ${p} | ${n} |\n`;
+        if (Object.keys(atsPerProvider).length > 0) {
+            summary += `## 📊 ATS Source Breakdown\n\n`;
+            summary += `| ATS Provider | Jobs Found |\n|---|---|\n`;
+            for (const [p, n] of Object.entries(atsPerProvider).sort((a, b) => b[1] - a[1])) {
+                summary += `| **${p}** | ${n} |\n`;
+            }
+            summary += `\n`;
         }
-        summary += `\n`;
 
         // Full ATS job links
         if (atsJobs.length > 0) {
-            atsJobs.forEach(j => {
-                const reviewMark = j.reviewRequired ? ' (⚠️ Review)' : '';
-                summary += `- 🏢 **${j.title}** via ${j.source}${reviewMark}: ${j.applyLink}\n`;
+            summary += `## 🏢 Direct ATS Jobs (${atsJobs.length})\n\n`;
+            summary += `| # | Role Title | Company | Provider | Review | Apply Link |\n`;
+            summary += `|---|---|---|---|---|---|\n`;
+            atsJobs.forEach((j, idx) => {
+                const title = (j.title || 'Job').replace(/\|/g, '&#124;');
+                const company = (j.company || 'Company').replace(/\|/g, '&#124;');
+                const reviewMark = j.reviewRequired ? '⚠️ Review' : '✅ Verified';
+                summary += `| ${idx + 1} | ${title} | ${company} | ${j.source} | ${reviewMark} | [Apply Link](${j.applyLink}) |\n`;
             });
             summary += `\n`;
         }
 
         // Aggregator list with links
-        summary += `### Aggregator (${aggJobs.length})\n`;
         if (aggJobs.length > 0) {
-            aggJobs.forEach(j => {
-                const reviewMark = j.reviewRequired ? ' (⚠️ Review)' : '';
-                summary += `- 🌐 **${j.title}** via ${j.source}${reviewMark}: ${j.applyLink}\n`;
+            summary += `## 🌐 Aggregator Jobs (${aggJobs.length})\n\n`;
+            summary += `| # | Role Title | Company | Source | Review | Apply Link |\n`;
+            summary += `|---|---|---|---|---|---|\n`;
+            aggJobs.forEach((j, idx) => {
+                const title = (j.title || 'Job').replace(/\|/g, '&#124;');
+                const company = (j.company || 'Company').replace(/\|/g, '&#124;');
+                const reviewMark = j.reviewRequired ? '⚠️ Review' : '✅ Verified';
+                summary += `| ${idx + 1} | ${title} | ${company} | ${j.source} | ${reviewMark} | [Apply Link](${j.applyLink}) |\n`;
             });
-        } else {
-            summary += `No aggregator jobs this run.\n`;
+            summary += `\n`;
         }
 
         await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, summary);

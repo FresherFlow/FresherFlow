@@ -47,9 +47,11 @@ async function runProvider(
     knownLinks: Set<string>,
     visitedSet: Set<string>
 ): Promise<AtsJob[]> {
-    const entries = Object.entries(companies);
-    if (entries.length === 0) return [];
+    const allEntries = Object.entries(companies);
+    if (allEntries.length === 0) return [];
 
+    // Cap companies per provider per discovery run to 100 to prevent multi-hour crawls
+    const entries = allEntries.slice(0, 100);
     console.log(`\nStarting ${name} adapter (${entries.length} companies)...`);
 
     const scraper = SCRAPER_REGISTRY[slug];
@@ -60,21 +62,27 @@ async function runProvider(
 
     const allJobs: AtsJob[] = [];
     let totalRaw = 0, totalPassedFilter = 0, totalPassedScorer = 0;
+    let consecutive429 = 0;
+    let circuitBroken = false;
 
     // Build tasks - one per company
     const tasks = entries.map(([companyId, companyName]) => async (): Promise<AtsJob[]> => {
+        if (circuitBroken) return [];
         try {
-            const proxies = process.env.PROXY_LIST ? process.env.PROXY_LIST.split(',').map(p => p.trim()).filter(Boolean) : undefined;                // ScraperInputDto - same pattern as ever-jobs JobsService
-                const input = new ScraperInputDto({
-                    companySlug: companyId,
-                    searchTerm: 'fresher intern "entry level" "new grad" apprentice junior associate trainee campus graduate "early career" SDE',
-                    location: 'India',
-                    resultsWanted: 50,
-                    descriptionFormat: 'PLAIN' as any,
-                    proxies,
-                });
+            const proxies = process.env.PROXY_LIST ? process.env.PROXY_LIST.split(',').map(p => p.trim()).filter(Boolean) : undefined;
+            const input = new ScraperInputDto({
+                companySlug: companyId,
+                searchTerm: 'fresher intern "entry level" "new grad" apprentice junior associate trainee campus graduate "early career" SDE',
+                location: 'India',
+                resultsWanted: 50,
+                requestTimeout: 4, // 4-second timeout per company
+                descriptionFormat: 'PLAIN' as any,
+                proxies,
+            });
 
             const response = await scraper.scrape(input);
+            consecutive429 = 0; // Reset on success
+
             const jobs = response?.jobs ?? [];
             totalRaw += jobs.length;
 
@@ -85,7 +93,6 @@ async function runProvider(
             const fresherJobs = atsJobs.filter((j: AtsJob) => {
                 if (!isPotentialFresherJob(j.title)) return false;
                 if (!isLocationIndiaOrRemote(j.location || '', j.title)) return false;
-                // Skip jobs with experience > 2 years (fresher gate matches processor Zod schema)
                 if (j.experienceYears !== undefined && j.experienceYears !== null && j.experienceYears > 2) return false;
                 if (j.experienceRange) {
                     const match = j.experienceRange.match(/(\d+)/);
@@ -101,60 +108,39 @@ async function runProvider(
                 return !knownLinks.has(normalizedLink) && !visitedSet.has(normalizedLink);
             });
 
-            // Score — but only if descriptions are per-job (not company-level duplicates)
-            let rejectedCount = 0;
-            let boilerplateSkipped = 0;
             const finalJobs: AtsJob[] = [];
-            
-            // Detect company-level boilerplate descriptions:
-            // If 80%+ of jobs share the same description text, it's a company overview,
-            // not per-job content — skip scoring to avoid false rejections.
-            const descTexts = validJobs.map(j => (j.description || '').trim());
-            const descLengths = descTexts.map(t => t.length).filter(l => l > 0);
-            let descriptionsReliable = true;
-            if (descLengths.length >= 3) {
-                const descBuckets = new Map<string, number>();
-                for (const t of descTexts) {
-                    if (!t) continue;
-                    // Normalize: collapse whitespace, take first 500 chars for comparison
-                    const key = t.substring(0, 500).replace(/\s+/g, ' ').trim();
-                    descBuckets.set(key, (descBuckets.get(key) || 0) + 1);
-                }
-                const maxCount = Math.max(...descBuckets.values());
-                const totalWithDesc = descTexts.filter(t => t.length > 0).length;
-                // If one description variant covers 80%+ of jobs, treat as boilerplate
-                if (maxCount >= Math.ceil(totalWithDesc * 0.8)) {
-                    descriptionsReliable = false;
-                    console.log(`  -> ${companyName}: ${maxCount}/${totalWithDesc} jobs share same description (boilerplate) — skipping scorer`);
-                }
-            }
-            
+            let rejectedCount = 0;
             for (const job of validJobs) {
-                if (job.description && descriptionsReliable) {
+                if (job.description) {
                     const scoreResult = scoreJobDescription(job.title, job.description);
                     if (scoreResult.verdict === 'REJECT') {
                         rejectedCount++;
                         continue;
                     }
-                } else if (!descriptionsReliable && job.description) {
-                    boilerplateSkipped++;
                 }
                 finalJobs.push(job);
             }
             totalPassedScorer += finalJobs.length;
 
-            const boilerplateMsg = boilerplateSkipped > 0 ? `, ${boilerplateSkipped} boilerplate skipped` : '';
-            console.log(`  -> ${companyName}: ${jobs.length} total, ${fresherJobs.length} passed filter, ${finalJobs.length} passed scorer (${rejectedCount} rejected${boilerplateMsg})`);
+            if (finalJobs.length > 0) {
+                console.log(`  -> ${companyName}: ${jobs.length} total, ${fresherJobs.length} fresher, ${finalJobs.length} passed scorer`);
+            }
             return finalJobs;
         } catch (err: any) {
-            console.warn(`  -> ${companyName}: error - ${err.message}`);
+            const isRateLimit = err.message?.includes('429') || err.message?.includes('rate-limit') || err.message?.includes('Too Many Requests');
+            if (isRateLimit) {
+                consecutive429++;
+                if (consecutive429 >= 3) {
+                    circuitBroken = true;
+                    console.log(`  -> ⚠️ ${name} rate-limit circuit breaker triggered (3 consecutive 429s). Moving to next provider.`);
+                }
+            }
             return [];
         }
     });
 
-    // Run with concurrency — lower for providers with many companies to avoid DNS flooding
-    const providerConcurrency = entries.length > 200 ? 2 : 5;
-    const results = await withConcurrency(tasks, providerConcurrency);
+    // Run with high concurrency (8) to finish rapidly
+    const results = await withConcurrency(tasks, 8);
     for (const r of results) allJobs.push(...r);
 
     stats.ats_raw[name] = totalRaw;
@@ -166,8 +152,7 @@ async function runProvider(
 
 /**
  * Main discovery entry point.
- * Uses SCRAPER_REGISTRY from @fresherflow/plugins — no hardcoded adapter list.
- * Loads company slugs from CDN registry and runs all providers in parallel.
+ * Loads company slugs from CDN registry and runs all providers with a 60s timeout per provider.
  */
 export async function runAtsDiscovery(
     registry: AtsRegistry,
@@ -175,12 +160,9 @@ export async function runAtsDiscovery(
     knownLinks: Set<string>,
     visitedApplyLinks: string[]
 ): Promise<AtsJob[]> {
-    console.log(`\n--- Starting ATS Direct Discovery (parallel) ---`);
-    console.log(`  SCRAPER_REGISTRY has ${Object.keys(SCRAPER_REGISTRY).length} scrapers`);
-    console.log(`  Registry has ${Object.keys(registry).length} providers with data`);
+    console.log(`\n--- Starting ATS Direct Discovery (parallel, 60s timeout per provider) ---`);
     const visitedSet = new Set(visitedApplyLinks);
 
-    // Filter to only providers that have data in the registry AND a scraper registered
     const providerFilter = process.env.ATS_PROVIDER?.toLowerCase().trim();
     const activeProviders = Object.entries(registry).filter(([key, data]) => {
         if (!data || Object.keys(data).length === 0) return false;
@@ -188,28 +170,29 @@ export async function runAtsDiscovery(
         return SCRAPER_REGISTRY[key] !== undefined;
     });
 
-    if (providerFilter) {
-        console.log(`--- Running SINGLE provider: ${providerFilter} ---`);
-    }
-
     console.log(`  Running ${activeProviders.length} providers in parallel...`);
 
-    // Run all providers concurrently — use allSettled so one provider crash doesn't kill the run
+    // Run all providers concurrently with a 60-second timeout per provider
     const providerSettled = await Promise.allSettled(
-        activeProviders.map(([key, data]) =>
-            runProvider(key, key, data!, stats, knownLinks, visitedSet)
-        )
+        activeProviders.map(([key, data]) => {
+            const providerTask = runProvider(key, key, data!, stats, knownLinks, visitedSet);
+            const timeoutTask = new Promise<AtsJob[]>((resolve) =>
+                setTimeout(() => {
+                    console.log(`  ⏱️ Provider ${key} reached 60s timeout, moving on.`);
+                    resolve([]);
+                }, 60000)
+            );
+            return Promise.race([providerTask, timeoutTask]);
+        })
     );
 
     const allJobs: AtsJob[] = [];
     for (const result of providerSettled) {
         if (result.status === 'fulfilled') {
             allJobs.push(...result.value);
-        } else {
-            console.error(`Provider crashed: ${result.reason?.message ?? result.reason}`);
         }
     }
-    console.log(`\n--- ATS Discovery Finished. Total potential roles: ${allJobs.length} ---`);
+    console.log(`\n--- ATS Discovery Finished. Total roles found: ${allJobs.length} ---`);
     return allJobs;
 }
 

@@ -7,6 +7,7 @@
     "start": "tsx search-runner.ts",
     "search": "tsx search.ts",
     "run-all": "tsx search-runner.ts",
+    "walkin": "tsx walkin-runner.ts",
     "sync-ats": "tsx import-everjobs-companies.ts",
     "typecheck": "tsc --noEmit"
   },

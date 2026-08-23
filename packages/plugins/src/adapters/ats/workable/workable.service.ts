@@ -108,19 +108,10 @@ export class WorkableService implements IScraper {
         }
       });
 
-      // If we got jobs from v1 but zero detail enrichments, try browser fallback
-      // to scrape the careers page for descriptions and locations
-      if (jobPosts.length > 0 && detailsFound === 0) {
-        console.log(`Workable: ${companySlug} — v1 API returned ${jobPosts.length} jobs but 0 details, trying browser fallback`);
-        const browserPosts = await this.scrapeViaBrowser(companySlug, input);
-        if (browserPosts.jobs.length > 0) {
-          return browserPosts;
-        }
-      }
-
+      // Return API jobs directly (full scraping is done downstream in job-processor)
       return new JobResponseDto(jobPosts);
     } catch (err: any) {
-      console.error(`Workable scrape error for ${companySlug}: ${err.message}`);
+      console.warn(`Workable scrape error for ${companySlug}: ${err.message}`);
       return new JobResponseDto([]);
     }
   }

@@ -57,6 +57,7 @@ jobs:
           INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
           ENABLE_API_UPLOAD: "true"
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          INGESTION_DATABASE_URL: ${{ secrets.INGESTION_DATABASE_URL || secrets.DATABASE_URL }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             pnpm start --from-supabase

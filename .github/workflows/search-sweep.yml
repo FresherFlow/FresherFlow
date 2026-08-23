@@ -34,14 +34,25 @@ jobs:
       - name: Build Workspace Packages
         run: pnpm build --filter "@fresherflow/constants" --filter "@fresherflow/types" --filter "@fresherflow/utils" --filter "@fresherflow/parser" --filter "@fresherflow/domain" --filter "@fresherflow/plugins" --filter "@fresherflow/pipeline"
 
+      - name: Restore Seen Jobs Cache
+        uses: actions/cache@v4
+        with:
+          path: scripts/search/.cache
+          key: search-seen-cache-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            search-seen-cache-${{ runner.os }}-
+            search-seen-cache-
+
       - name: Run Job Scraper Sweep
         working-directory: scripts/search
         env:
           CDN_SIGNATURE_SECRET: ${{ secrets.CDN_SIGNATURE_SECRET }}
           NEXT_PUBLIC_CDN_URL: ${{ secrets.NEXT_PUBLIC_CDN_URL }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          INGESTION_DATABASE_URL: ${{ secrets.INGESTION_DATABASE_URL || secrets.DATABASE_URL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          HOURS_OLD: ${{ vars.HOURS_OLD || '72' }}
         run: pnpm start --dork
 
       - name: Upload Discovered Jobs Artifact

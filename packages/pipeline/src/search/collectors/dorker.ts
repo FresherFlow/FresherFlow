@@ -1,6 +1,7 @@
 import { chromium, Browser } from 'playwright';
 import { AtsJob } from '@fresherflow/plugins';
-import { executeDorkQuery, HEAVY_DORK_QUERIES } from '@fresherflow/pipeline';
+import { executeDorkQuery } from '../../core/dork-executor.js';
+import { HEAVY_DORK_QUERIES } from '../../config/index.js';
 import { parseJobUrl } from '@fresherflow/parser';
 import { PLUGIN_REGISTRY } from '@fresherflow/plugins';
 

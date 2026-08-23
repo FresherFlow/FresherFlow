@@ -525,26 +525,47 @@ async function run() {
     // Write summary for GitHub Actions
     if (process.env.GITHUB_STEP_SUMMARY) {
         const fs = await import('fs/promises');
-        
 
-        let summary = `## Job Sweeper Results\n\nChecked ${opportunities.length} jobs. Found ${expiredJobs.length} expired jobs and ${reviewJobs.length} review required jobs.\n\n`;
+        let summary = `# 🧹 Job Sweeper Bot Results\n\n`;
+        summary += `| Metric | Value |\n`;
+        summary += `|---|---|\n`;
+        summary += `| **Total Active Opportunities Checked** | **${opportunities.length}** |\n`;
+        summary += `| **✅ Active & Live Jobs** | ${opportunities.length - expiredJobs.length - reviewJobs.length} |\n`;
+        summary += `| **❌ Expired Jobs Pruned** | ${expiredJobs.length} |\n`;
+        summary += `| **⚠️ Flagged for Review** | ${reviewJobs.length} |\n\n`;
+
         if (expiredJobs.length > 0) {
-            summary += `### Expired Jobs\n`;
-            expiredJobs.forEach(j => {
-                summary += `- **${j.company}**: ${j.title} (Apply Link: ${j.sourceLink || j.applyLink || 'None'})\n`;
+            summary += `## ❌ Expired / Inactive Jobs (${expiredJobs.length})\n\n`;
+            summary += `| # | Role Title | Company | Status | Original Apply Link |\n`;
+            summary += `|---|---|---|---|---|\n`;
+            expiredJobs.forEach((j, idx) => {
+                const title = (j.title || 'Job').replace(/\|/g, '&#124;');
+                const company = (j.company || 'Company').replace(/\|/g, '&#124;');
+                const link = j.sourceLink || j.applyLink || '';
+                const linkMd = link ? `[Apply Link](${link})` : 'N/A';
+                summary += `| ${idx + 1} | ${title} | ${company} | ❌ Marked Expired | ${linkMd} |\n`;
             });
             summary += `\n`;
         }
+
         if (reviewJobs.length > 0) {
-            summary += `### Review Required Jobs (Generic Titles/Redirects)\n`;
-            reviewJobs.forEach(j => {
-                summary += `- **${j.company}**: ${j.title} (Apply Link: ${j.applyLink || j.sourceLink || 'None'})\n`;
+            summary += `## ⚠️ Review Required Jobs (${reviewJobs.length})\n\n`;
+            summary += `| # | Role Title | Company | Flag Reason | Apply Link |\n`;
+            summary += `|---|---|---|---|---|\n`;
+            reviewJobs.forEach((j, idx) => {
+                const title = (j.title || 'Job').replace(/\|/g, '&#124;');
+                const company = (j.company || 'Company').replace(/\|/g, '&#124;');
+                const link = j.applyLink || j.sourceLink || '';
+                const linkMd = link ? `[Apply Link](${link})` : 'N/A';
+                summary += `| ${idx + 1} | ${title} | ${company} | Needs Review | ${linkMd} |\n`;
             });
             summary += `\n`;
         }
+
         if (expiredJobs.length === 0 && reviewJobs.length === 0) {
-            summary += `All jobs are active and live.`;
+            summary += `> ✅ **All verified opportunities are currently live and healthy.**\n`;
         }
+
         await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, summary);
     }
 }

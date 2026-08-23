@@ -113,3 +113,8 @@ export * from './eligibility/text-filters.js';
 export * from './eligibility/ats-filters.js';
 export * from './eligibility/scoring-types.js';
 
+// Walk-in Map & Tech Cluster Geocoding
+export * from './opportunity/walkin-clusters.js';
+export * from './opportunity/walkin-extractor.js';
+
+

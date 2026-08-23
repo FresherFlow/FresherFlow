@@ -1,11 +1,22 @@
 import { AtsJob } from '@fresherflow/plugins';
-import { collectPublicFeeds } from './src/collectors/feeds.js';
-import { collectBoardSearches } from './src/collectors/boards.js';
-import { collectGitHubHiring } from './src/collectors/github.js';
-import { collectDorkSearches } from './src/collectors/dorker.js';
-import { filterAndVerifyJobs } from './src/pipeline/verifier.js';
-import { saveDiscoveredJobsArtifact, writeGitHubStepSummary, startRun, finishRun } from './src/pipeline/storage.js';
-import { loadEnv, loadRolesFromCdn, CORE_SEARCH_KEYWORDS } from './src/config.js';
+import {
+  collectPublicFeeds,
+  collectBoardSearches,
+  collectGitHubHiring,
+  collectDorkSearches,
+  collectHyderabadWalkinDrives,
+  filterAndVerifyJobs,
+  saveDiscoveredJobsArtifact,
+  persistDiscoveredJobsToDb,
+  writeGitHubStepSummary,
+  startRun,
+  finishRun,
+  loadSeenUrlsCache,
+  saveSeenUrlsCache,
+  loadEnv,
+  loadRolesFromCdn,
+  CORE_SEARCH_KEYWORDS,
+} from '@fresherflow/pipeline';
 
 interface RunnerOptions {
   hoursOld?: number;
@@ -32,7 +43,8 @@ async function runSearchEngine() {
   await loadEnv();
   const startTime = Date.now();
   const options = parseRunnerArgs(process.argv.slice(2));
-  const hoursOld = options.hoursOld ?? 24;
+  const envHours = process.env.HOURS_OLD ? parseInt(process.env.HOURS_OLD, 10) : undefined;
+  const hoursOld: number = options.hoursOld ?? (!isNaN(envHours!) ? envHours! : 72);
   const limit = options.resultsWanted ?? 15;
 
   console.log(`\n======================================================`);
@@ -48,26 +60,28 @@ async function runSearchEngine() {
   try {
     const { sendTelegramMessage } = await import('@fresherflow/utils');
     await sendTelegramMessage(
-      `🚀 <b>External Search Bot Started</b>\n\nChannels: Feeds + Boards + GitHub + ${options.dork ? 'Dorks' : 'Fast Mode'}`
+      `🚀 <b>External Search Bot Started</b>\n\nChannels: Feeds + Boards + GitHub + Walkins + ${options.dork ? 'Dorks' : 'Fast Mode'}`
     );
   } catch {
     // Non-blocking
   }
 
+  const seenUrlsCache = await loadSeenUrlsCache();
   const rawCandidates: AtsJob[] = [];
   const rawSourceCounts: Record<string, number> = {};
 
   try {
     const keywords = options.roles ? await loadRolesFromCdn() : CORE_SEARCH_KEYWORDS;
 
-    // Run Feeds, Boards, and GitHub concurrently
-    const [feedJobs, boardJobs, githubJobs] = await Promise.all([
+    // Run Feeds, Boards, GitHub, and Walk-ins concurrently
+    const [feedJobs, boardJobs, githubJobs, walkinJobs] = await Promise.all([
       collectPublicFeeds({ resultsWanted: limit, hoursOld }),
       collectBoardSearches(keywords, { resultsPerKeyword: limit, hoursOld }),
       collectGitHubHiring({ resultsWanted: limit }),
+      collectHyderabadWalkinDrives({ resultsWanted: 10, hoursOld }),
     ]);
 
-    rawCandidates.push(...feedJobs, ...boardJobs, ...githubJobs);
+    rawCandidates.push(...feedJobs, ...boardJobs, ...githubJobs, ...walkinJobs);
 
     // Track raw source counts
     for (const job of rawCandidates) {
@@ -86,8 +100,17 @@ async function runSearchEngine() {
     console.log(`📊 COLLECTED RAW CANDIDATES: ${rawCandidates.length}`);
     console.log(`======================================================`);
 
-    // Verify and Filter
-    const { verifiedJobs, stats } = await filterAndVerifyJobs(rawCandidates, { hoursOld });
+    // Verify and Filter using Seen URLs Cache
+    const { verifiedJobs, stats } = await filterAndVerifyJobs(rawCandidates, {
+      hoursOld,
+      cachedSeenUrls: seenUrlsCache,
+    });
+
+    // Update seen URLs cache with newly discovered candidate URLs
+    for (const candidate of rawCandidates) {
+      if (candidate.applyLink) seenUrlsCache.add(candidate.applyLink);
+    }
+    await saveSeenUrlsCache(seenUrlsCache);
 
     // Calculate verified count per source
     const verifiedSourceCounts: Record<string, number> = {};
@@ -96,14 +119,16 @@ async function runSearchEngine() {
       verifiedSourceCounts[src] = (verifiedSourceCounts[src] || 0) + 1;
     }
 
-    // Output Artifact
+    // Output Artifact & Persist to Database (Supabase discovered_jobs)
     await saveDiscoveredJobsArtifact(verifiedJobs, 'discovered_jobs.json');
+    await persistDiscoveredJobsToDb(verifiedJobs, runId);
 
     const durationSec = Math.round((Date.now() - startTime) / 1000);
 
     // Write GitHub Action step summary if running in CI
     await writeGitHubStepSummary({
       rawCount: stats.totalRaw,
+      duplicateCount: stats.duplicateFiltered,
       sourceCounts: rawSourceCounts,
       staleCount: stats.staleFiltered,
       locCount: stats.locationFiltered,

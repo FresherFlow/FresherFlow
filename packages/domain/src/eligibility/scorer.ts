@@ -43,7 +43,8 @@ export function evaluateTitle(title: string): { contributions: ScoreContribution
     const strictTitles = [
         "associate software engineer", "associate software developer", "associate engineer",
         "associate developer", "associate consultant", "associate analyst", "tech associate",
-        "graduate trainee", "junior", "entry level", "fresher", "graduate software engineer", "graduate"
+        "graduate trainee", "junior", "entry level", "fresher", "graduate software engineer", "graduate",
+        "walk-in", "walkin", "walk in"
     ];
     let matchedStrict = false;
     if (!matchedFirstPreference) {
@@ -81,8 +82,8 @@ export function evaluateTitle(title: string): { contributions: ScoreContribution
         }
     }
 
-    // Blocker: aggregator drive / mass hiring titles
-    const aggregatorDriveTitles = ['mega drive', 'off campus drive', 'off-campus drive', 'mass hiring', 'pool campus', 'bulk hiring', 'walkin drive', 'walk-in drive'];
+    // Blocker: aggregator spam / fake mass hiring titles
+    const aggregatorDriveTitles = ['mega drive', 'off campus drive', 'off-campus drive', 'mass hiring', 'pool campus', 'bulk hiring'];
     for (const dt of aggregatorDriveTitles) {
         if (lowerTitle.includes(dt)) {
             signals.push({

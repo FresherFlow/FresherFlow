@@ -63,10 +63,10 @@ export async function resolveAndAttachCompanies(
     stats: RunStats
 ): Promise<DiscoveredJobEntry[]> {
     const hasDb = Boolean(
-        process.env.INGESTION_DATABASE_URL ||
-        process.env.STAGING_DATABASE_URL ||
-        process.env.DATABASE_URL
+        process.env.DATABASE_URL ||
+        process.env.INGESTION_DATABASE_URL
     );
+
     if (!hasDb || jobs.length === 0) {
         return jobs;
     }
@@ -114,7 +114,7 @@ export async function resolveAndAttachCompanies(
             // 2. Lookup in Supabase company_ats by board_token if available
             if (!companyId && boardId) {
                 const { rows: atsData } = await pool.query(
-                    'SELECT company_id FROM company_ats WHERE provider = $1 AND board_token = $2 LIMIT 1',
+                    'SELECT company_id FROM public.company_ats WHERE provider = $1 AND board_token = $2 LIMIT 1',
                     [providerEnum, boardId]
                 );
 
@@ -126,7 +126,7 @@ export async function resolveAndAttachCompanies(
             // 3. Lookup in Supabase companies table by slug or name if not found in company_ats
             if (!companyId) {
                 const { rows: companyData } = await pool.query(
-                    'SELECT id FROM companies WHERE slug = $1 OR name ILIKE $2 LIMIT 1',
+                    'SELECT id FROM public.companies WHERE slug = $1 OR name ILIKE $2 LIMIT 1',
                     [slug, rawName]
                 );
 
@@ -139,7 +139,7 @@ export async function resolveAndAttachCompanies(
             if (!companyId) {
                 try {
                     const { rows: newCompany } = await pool.query(
-                        `INSERT INTO companies (name, slug, verification_status, active) 
+                        `INSERT INTO public.companies (name, slug, verification_status, active) 
                          VALUES ($1, $2, 'UNVERIFIED', true) RETURNING id`,
                         [rawName, slug]
                     );
@@ -151,7 +151,7 @@ export async function resolveAndAttachCompanies(
                 } catch (createError) {
                     // Fallback: If insert failed due to duplicate slug, re-fetch
                     const { rows: fallbackCompany } = await pool.query(
-                        'SELECT id FROM companies WHERE slug = $1 LIMIT 1',
+                        'SELECT id FROM public.companies WHERE slug = $1 LIMIT 1',
                         [slug]
                     );
 
@@ -171,16 +171,33 @@ export async function resolveAndAttachCompanies(
                 // Upsert company_ats row
                 try {
                     await pool.query(
-                        `INSERT INTO company_ats (company_id, provider, board_token, career_url, enabled, last_sync, health, failure_count)
+                        `INSERT INTO public.company_ats (company_id, provider, board_token, career_url, enabled, last_sync, health, failure_count)
                          VALUES ($1, $2, $3, $4, true, NOW(), 'HEALTHY', 0)
                          ON CONFLICT (company_id, provider) DO UPDATE SET
                          board_token = EXCLUDED.board_token,
                          career_url = EXCLUDED.career_url,
-                         last_sync = EXCLUDED.last_sync`,
+                         last_sync = EXCLUDED.last_sync,
+                         health = 'HEALTHY'`,
                          [companyId, providerEnum, boardId || null, job.applyLink]
                     );
                 } catch {
                     // Ignore ATS mapping upsert non-critical errors
+                }
+
+                // Upsert company_statistics row
+                try {
+                    await pool.query(
+                        `INSERT INTO public.company_statistics (company_id, total_jobs, avg_jobs_per_month, last_hiring_date, freshers_score, updated_at)
+                         VALUES ($1, 1, 1.0, NOW(), $2, NOW())
+                         ON CONFLICT (company_id) DO UPDATE SET
+                         total_jobs = public.company_statistics.total_jobs + 1,
+                         last_hiring_date = NOW(),
+                         freshers_score = COALESCE(EXCLUDED.freshers_score, public.company_statistics.freshers_score),
+                         updated_at = NOW()`,
+                         [companyId, (job as any).fresherScore || (job as any).fresher_score || 80]
+                    );
+                } catch {
+                    // Ignore statistics upsert non-critical errors
                 }
 
                 // Attach company_id to job

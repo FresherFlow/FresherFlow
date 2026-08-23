@@ -26,7 +26,7 @@ export async function applyStealth(page: Page): Promise<void> {
 }
 
 // Extract page text, html, and title using Playwright
-export async function extractAtsContent(page: Page, url: string): Promise<{ title: string; text: string; html: string }> {
+export async function extractAtsContent(page: Page, url: string): Promise<{ title: string; text: string; html: string; externalApplyUrl?: string | null }> {
     try {
         console.log(`Loading job page: ${url}`);
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
@@ -36,15 +36,38 @@ export async function extractAtsContent(page: Page, url: string): Promise<{ titl
         const bodyText = await page.locator('body').innerText().catch(() => "");
         const bodyHtml = await page.locator('body').innerHTML().catch(() => "");
         const rawTitle = await page.title().catch(() => "");
+
+        // Extract direct offsite/external application URL if available (e.g. LinkedIn "Apply on company website")
+        let externalApplyUrl: string | null = null;
+        try {
+            const candidateLocators = [
+                'a[data-tracking-control-name*="apply"]',
+                'a.apply-button',
+                'a[href*="/jobs/view/externalApply"]',
+                'a[aria-label*="Apply"]',
+                'a.topcard__link',
+                'a.jobs-apply-button',
+            ];
+            for (const sel of candidateLocators) {
+                const href = await page.locator(sel).first().getAttribute('href').catch(() => null);
+                if (href && !href.includes('linkedin.com/signup') && !href.includes('linkedin.com/login') && (href.startsWith('http://') || href.startsWith('https://'))) {
+                    externalApplyUrl = href;
+                    break;
+                }
+            }
+        } catch {
+            // Ignore
+        }
         
         return {
             title: cleanAtsTitle(rawTitle),
             text: bodyText.trim(),
-            html: bodyHtml.trim()
+            html: bodyHtml.trim(),
+            externalApplyUrl
         };
     } catch (err) {
         console.error(`Failed to load/extract ATS content for ${url}:`, (err as Error).message);
-        return { title: "", text: "", html: "" };
+        return { title: "", text: "", html: "", externalApplyUrl: null };
     }
 }
 

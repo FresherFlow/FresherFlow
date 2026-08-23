@@ -193,7 +193,7 @@ async function run(): Promise<void> {
                 // Using dynamic import of supabase to bulk update
                 const { pool } = await import('@fresherflow/pipeline');
                 if (pool) {
-                    await pool.query(`UPDATE discovered_jobs SET status = 'PROCESSING' WHERE id = ANY($1)`, [ids]);
+                    await pool.query(`UPDATE public.discovered_jobs SET status = 'PROCESSING' WHERE id = ANY($1)`, [ids]);
                 }
             }
 
@@ -312,7 +312,7 @@ async function run(): Promise<void> {
                     continue;
                 }
 
-                let atsContent = { title: '', text: '', html: '' };
+                let atsContent: { title: string; text: string; html: string; externalApplyUrl?: string | null } = { title: '', text: '', html: '', externalApplyUrl: null };
                 let nativeData = null;
 
                 if ((job.atsText && job.atsText.length > 50) || (job.description && job.description.length > 50)) {
@@ -430,8 +430,8 @@ async function run(): Promise<void> {
                     companyId: job.companyId || job.company_id || null,
                     companyWebsite: job.companyUrl || job.companyWebsite || '',
                     companyLogoUrl: job.companyLogo || job.companyLogoUrl || '',
-                    applyLink: nativeData?.applyLink || job.applyLink,
-                    sourceLink: job.sourceLink || job.source_url || job.aggregatorUrl || job.jobUrlDirect || nativeData?.applyLink || job.applyLink,
+                    applyLink: nativeData?.applyLink || atsContent.externalApplyUrl || job.applyLink,
+                    sourceLink: job.sourceLink || job.source_url || job.aggregatorUrl || job.jobUrlDirect || job.applyLink,
                     locations: (nativeData?.locations && nativeData.locations.length > 0) ? nativeData.locations : dbLocations,
                     requiredSkills: (nativeData?.nativeSkills && nativeData.nativeSkills.length > 0) ? nativeData.nativeSkills : (Array.isArray(job.skills) ? job.skills : []),
                     workMode: nativeData?.workplaceType ?? dbWorkMode ?? rules.workMode ?? null,
@@ -630,18 +630,35 @@ async function run(): Promise<void> {
 
     // GitHub Actions summary
     if (process.env.GITHUB_STEP_SUMMARY) {
-        let summary = `## Job Processing Results\n\n`;
-        summary += `Processed **${jobs.length}** jobs.\n`;
-        summary += `- **Successes:** ${successList.length}\n`;
-        summary += `- **Failures:** ${failureList.length}\n\n`;
+        let summary = `# ⚙️ Job Processing Bot Results\n\n`;
+        summary += `| Metric | Value |\n`;
+        summary += `|---|---|\n`;
+        summary += `| **Total Input Candidates** | **${jobs.length}** |\n`;
+        summary += `| **✅ Successfully Processed & Saved** | **${successList.length}** |\n`;
+        summary += `| **❌ Processing Failures** | ${failureList.length} |\n\n`;
+
         if (successList.length > 0) {
-            summary += `### Successfully Processed\n`;
-            successList.forEach(s => { summary += `- **${s.title}** @ ${s.company} (${s.url})\n`; });
+            summary += `## 🎯 Successfully Processed Jobs (${successList.length})\n\n`;
+            summary += `| # | Role Title | Company | Status | Apply Link |\n`;
+            summary += `|---|---|---|---|---|\n`;
+            successList.forEach((s, idx) => {
+                const title = (s.title || 'Job Opportunity').replace(/\|/g, '&#124;');
+                const company = (s.company || 'Company').replace(/\|/g, '&#124;');
+                summary += `| ${idx + 1} | ${title} | ${company} | ✅ Saved to DB | [Apply Link](${s.url}) |\n`;
+            });
+            summary += `\n`;
         }
+
         if (failureList.length > 0) {
-            summary += `### Failed\n`;
-            failureList.forEach(f => { summary += `- ${f.url} (*${f.reason}*)\n`; });
+            summary += `## ⚠️ Failures (${failureList.length})\n\n`;
+            summary += `| # | URL | Failure Reason |\n`;
+            summary += `|---|---|---|\n`;
+            failureList.forEach((f, idx) => {
+                summary += `| ${idx + 1} | [Job URL](${f.url}) | \`${f.reason}\` |\n`;
+            });
+            summary += `\n`;
         }
+
         await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, summary);
     }
 

@@ -97,7 +97,7 @@ export class NaukriService implements IScraper {
       const headers = {
         'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'accept-language': 'en-US,en;q=0.9',
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
       };
 
       const resp = await fetch(searchUrl, { headers, signal: AbortSignal.timeout(15000) });
@@ -106,15 +106,47 @@ export class NaukriService implements IScraper {
       const html = await resp.text();
       const $ = cheerio.load(html);
 
-      $('article.jobTuple, div.srp-jobtuple, div.cust-job-tuple').each((_, el) => {
+      // 1. Check for JSON-LD structured data
+      $('script[type="application/ld+json"]').each((_, el) => {
+        try {
+          const raw = $(el).html();
+          if (!raw) return;
+          const data = JSON.parse(raw);
+          if (data['@type'] === 'ItemList' && Array.isArray(data.itemListElement)) {
+            for (const item of data.itemListElement) {
+              if (jobs.length >= limit) break;
+              const jobItem = item.item || item;
+              if (jobItem.title && (jobItem.url || jobItem['@id'])) {
+                const jobUrl = jobItem.url || jobItem['@id'];
+                jobs.push(new JobPostDto({
+                  id: `nk-${Math.abs(this.hashCode(jobUrl))}`,
+                  title: jobItem.title,
+                  companyName: jobItem.hiringOrganization?.name || undefined,
+                  location: new LocationDto({ city: jobItem.jobLocation?.address?.addressLocality || 'India', country: Country.INDIA }),
+                  jobUrl,
+                  description: jobItem.description || `${jobItem.title} opportunity in India`,
+                  datePosted: jobItem.datePosted || new Date().toISOString().split('T')[0],
+                  isRemote: false,
+                  site: Site.NAUKRI,
+                }));
+              }
+            }
+          }
+        } catch {
+          // Continue
+        }
+      });
+
+      // 2. Regular DOM cards fallback
+      $('article.jobTuple, div.srp-jobtuple, div.cust-job-tuple, div[data-job-id], .jobTuple').each((_, el) => {
         if (jobs.length >= limit) return false;
         const card = $(el);
         const title = card.find('a.title, a.job-title').text().trim();
-        const jobHref = card.find('a.title, a.job-title').attr('href') || '';
+        const jobHref = card.find('a.title, a.job-title').attr('href') || card.attr('data-url') || '';
         const company = card.find('a.comp-name, a.company-name, .comp-name').text().trim();
-        const locationStr = card.find('.locWdth, .loc-wrap, .loc').text().trim();
-        const exp = card.find('.expwdth, .exp-wrap').text().trim();
-        const desc = card.find('.job-desc, .job-description').text().trim();
+        const locationStr = card.find('.locWdth, .loc-wrap, .loc, .location').text().trim();
+        const exp = card.find('.expwdth, .exp-wrap, .exp').text().trim();
+        const desc = card.find('.job-desc, .job-description, .job-desc-ni').text().trim();
 
         if (title && jobHref) {
           const jobUrl = jobHref.startsWith('http') ? jobHref : `https://www.naukri.com${jobHref}`;

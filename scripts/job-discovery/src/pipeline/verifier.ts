@@ -7,7 +7,7 @@ import { isJobLive } from '@fresherflow/pipeline';
 import { BAD_TITLE_REGEXES } from '@fresherflow/pipeline';
 
 export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning: () => boolean) {
-    const VERIFIER_CONCURRENCY = 10;
+    const VERIFIER_CONCURRENCY = 3;
     console.log(`\n=== Starting Verifier Daemon (${VERIFIER_CONCURRENCY} workers) ===\n`);
 
 
