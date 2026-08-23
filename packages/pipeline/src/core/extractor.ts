@@ -34,15 +34,24 @@ export function isValidApplyLink(urlStr: string, currentDomain: string): boolean
         if (u.protocol.includes('mailto')) return false;
         if (targetHost.startsWith('courses.')) return false;
         if (u.pathname.toLowerCase().includes('.pdf')) return false;
+
+        // Allow direct LinkedIn job postings (/jobs/view/...), but reject general profiles/channels
+        if (targetHost === 'linkedin.com' || targetHost.endsWith('.linkedin.com')) {
+            return u.pathname.includes('/jobs/view/');
+        }
         
         const blacklistedDomains = [
-            'facebook.com', 'twitter.com', 'x.com', 'linkedin.com', 'whatsapp.com', 
+            'facebook.com', 'twitter.com', 'x.com', 'whatsapp.com', 
             'telegram.org', 't.me', 'telegram.me', 'telegram.dog', 'youtube.com', 'youtu.be', 
             'instagram.com', 'foundit.in', 'naukri.com', 'cloudflare.com', 
             'play.google.com', 'plus.google.com', 'accounts.google.com', 'apps.apple.com',
             'pinterest.com', 'reddit.com', 'github.com/MukeshCheekatla',
             'openinapp.co', 'openinapp.link', 'linktr.ee', 'bio.link', 'bit.ly', 'tinyurl.com',
+            'instamojo.com', 'razorpay.me', 'cosmofeed.com', 'topmate.io', 'gumroad.com',
+            'maps.google.com', 'maps.app.goo.gl', 'goo.gl/maps', 'easylatexresume.com',
+
             'freshershunt.in', 'jobsaddafreshers.com', 'internshipss.com', 'placementdrive.in',
+            'sarkariresultbuzz.com',
             'freshersvoice.com', 'freshersnow.com', 'offcampusjobs4u.com', 'freshhiring.com', 
             'recruitnxt.com', 'fresheropenings.com', 'job4freshers.co.in', 'frontlinesmedia.in',
             'govtjobmart.in', 'findmyjobss.com', 'dailypharmajobs.in', 'ashokworld.in',
@@ -77,23 +86,8 @@ export function isValidApplyLink(urlStr: string, currentDomain: string): boolean
 // Find actual ATS link
 export async function findActualApplyLink(page: Page, context: BrowserContext, currentDomain: string): Promise<string | null> {
     try {
-        // Define common selectors for the main article/post content
-        const contentSelectors = [
-            '.post-body', '.entry-content', 'article', 'main', '#main-content', 
-            '#content', '.post-content', '.entry-body', '.post', '.job-description'
-        ];
-        
-        let rootLocator = page.locator('body');
-        for (const selector of contentSelectors) {
-            const locator = page.locator(selector);
-            if (await locator.count() > 0) {
-                rootLocator = locator;
-                break;
-            }
-        }
-
-        // 1. Try to find links containing explicit apply/register/click here/submit text
-        const applyButtons = await rootLocator.locator('a, button', { hasText: /(apply|register|click here|submit)/i }).elementHandles();
+        // Search for explicit apply/register/click here/submit text across the page
+        const applyButtons = await page.locator('a, button', { hasText: /(apply|register|click here|submit|official link|careers link|form)/i }).elementHandles();
         console.log(`[DEBUG] Found ${applyButtons.length} explicit apply buttons.`);
         for (const btn of applyButtons) {
             const href = await btn.getAttribute('href');
@@ -119,7 +113,7 @@ export async function findActualApplyLink(page: Page, context: BrowserContext, c
         }
 
         // 2. Fall back to collecting all external links and checking for known ATS hosts
-        const links = await rootLocator.locator('a').evaluateAll(anchors => 
+        const links = await page.locator('a').evaluateAll(anchors => 
             anchors.map(a => (a as HTMLAnchorElement).href)
         );
         const externalLinks = links.map(unwrapRedirectors).filter(l => isValidApplyLink(l, currentDomain));

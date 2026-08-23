@@ -4,7 +4,7 @@ export async function collectBoardSearches(keywords: string[], options: {
   resultsPerKeyword?: number;
   hoursOld?: number;
 } = {}): Promise<AtsJob[]> {
-  console.log(`\n=== Phase 2: Job Board Search Collectors (LinkedIn, Internshala, Naukri, HasJob) ===`);
+  console.log(`\n=== Phase 2: Job Board Search Collectors (LinkedIn, Internshala, HasJob) ===`);
   const allJobs: AtsJob[] = [];
   const limitPerKeyword = options.resultsPerKeyword ?? 10;
 
@@ -31,8 +31,8 @@ export async function collectBoardSearches(keywords: string[], options: {
       batch.map(async (keyword) => {
         const keywordJobs: AtsJob[] = [];
 
-        // Run LinkedIn, Internshala, Naukri concurrently for this keyword
-        const [linkedinRes, internshalaRes, naukriRes] = await Promise.all([
+        // Run LinkedIn and Internshala concurrently for this keyword
+        const [linkedinRes, internshalaRes] = await Promise.all([
           // 1. LinkedIn
           BOARD_SCRAPER_REGISTRY['linkedin']
             ?.scrape(
@@ -55,17 +55,6 @@ export async function collectBoardSearches(keywords: string[], options: {
               })
             )
             .catch(() => null),
-
-          // 3. Naukri
-          BOARD_SCRAPER_REGISTRY['naukri']
-            ?.scrape(
-              new ScraperInputDto({
-                searchTerm: keyword,
-                location: 'India',
-                resultsWanted: limitPerKeyword,
-              })
-            )
-            .catch(() => null),
         ]);
 
         if (linkedinRes?.jobs) {
@@ -76,14 +65,11 @@ export async function collectBoardSearches(keywords: string[], options: {
           keywordJobs.push(...internshalaRes.jobs.map((j) => toAtsJob(j, 'Internshala', j.companyName || 'Internshala', 'AGGREGATOR')));
         }
 
-        if (naukriRes?.jobs) {
-          keywordJobs.push(...naukriRes.jobs.map((j) => toAtsJob(j, 'Naukri', j.companyName || 'Naukri', 'AGGREGATOR')));
-        }
-
         console.log(`  └─ Board search for "${keyword}": found ${keywordJobs.length} jobs`);
         return keywordJobs;
       })
     );
+
 
     for (const r of batchResults) {
       if (r.status === 'fulfilled') {

@@ -60,7 +60,7 @@ export async function upsertProcessedJob(
     try {
       const companySlug = String(rawCompanyId).toLowerCase().trim().replace(/[^a-z0-9-]+/g, '-');
       await pool.query(
-        `INSERT INTO public.companies (id, name, slug, website, logo, updated_at)
+        `INSERT INTO companies (id, name, slug, website, logo, updated_at)
          VALUES ($1, $2, $3, $4, $5, NOW())
          ON CONFLICT (id) DO UPDATE SET updated_at = NOW()`,
         [rawCompanyId, job.company || rawCompanyId, companySlug, website || null, logoUrl || null]
@@ -77,7 +77,7 @@ export async function upsertProcessedJob(
   if (customSlug) {
     try {
       const { rows: existingSlug } = await pool.query(
-        `SELECT id FROM public.processed_jobs WHERE custom_slug = $1 AND apply_link != $2 LIMIT 1`,
+        `SELECT id FROM processed_jobs WHERE custom_slug = $1 AND apply_link != $2 LIMIT 1`,
         [customSlug, finalApplyLink]
       );
       if (existingSlug && existingSlug.length > 0) {
@@ -135,13 +135,13 @@ export async function upsertProcessedJob(
 
   try {
     const { rows: existing } = await pool.query(
-      `SELECT id FROM public.processed_jobs WHERE apply_link = $1 LIMIT 1`,
+      `SELECT id FROM processed_jobs WHERE apply_link = $1 LIMIT 1`,
       [finalApplyLink]
     );
 
     if (existing && existing.length > 0) {
       await pool.query(
-        `UPDATE public.processed_jobs SET
+        `UPDATE processed_jobs SET
             type = $1,
             title = $2,
             company = $3,
@@ -210,7 +210,7 @@ export async function upsertProcessedJob(
       );
     } else {
       await pool.query(
-        `INSERT INTO public.processed_jobs (
+        `INSERT INTO processed_jobs (
             discovered_job_id,
             type,
             title,
@@ -292,10 +292,10 @@ export async function upsertProcessedJob(
     if (payload.company_id) {
       try {
         await pool.query(
-          `INSERT INTO public.company_statistics (company_id, total_jobs, avg_jobs_per_month, last_hiring_date, freshers_score, updated_at)
+          `INSERT INTO company_statistics (company_id, total_jobs, avg_jobs_per_month, last_hiring_date, freshers_score, updated_at)
            VALUES ($1, 1, 1.0, NOW(), 85, NOW())
            ON CONFLICT (company_id) DO UPDATE SET
-           total_jobs = public.company_statistics.total_jobs + 1,
+           total_jobs = company_statistics.total_jobs + 1,
            last_hiring_date = NOW(),
            updated_at = NOW()`,
           [payload.company_id]

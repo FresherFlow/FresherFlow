@@ -1,12 +1,8 @@
-import fs from 'node:fs/promises';
+import fs from 'node:fs';
 import path from 'node:path';
 
 // --- LOAD ENV ---
-async function fileExists(filePath: string): Promise<boolean> {
-    try { await fs.access(filePath); return true; } catch { return false; }
-}
-
-export async function loadEnv() {
+export function loadEnvSync() {
     const candidatePaths = [
         path.join(process.cwd(), '.env'),
         path.join(process.cwd(), '../../.env'),
@@ -19,9 +15,9 @@ export async function loadEnv() {
     ];
 
     for (const envPath of candidatePaths) {
-        if (await fileExists(envPath)) {
+        if (fs.existsSync(envPath)) {
             try {
-                const envContent = await fs.readFile(envPath, 'utf8');
+                const envContent = fs.readFileSync(envPath, 'utf8');
                 for (const line of envContent.split('\n')) {
                     const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
                     if (match) {
@@ -40,13 +36,14 @@ export async function loadEnv() {
         }
     }
 }
-await loadEnv();
+loadEnvSync();
+export const loadEnv = loadEnvSync;
 
 // --- CONFIGURATION ---
 export const CDN_SECRET = (process.env.CDN_SIGNATURE_SECRET || '').trim().replace(/^["']|["']$/g, '');
 export const TELEGRAM_BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN || '').trim().replace(/^["']|["']$/g, '').replace(/^bot/i, '');
 export const TELEGRAM_CHAT_ID = (process.env.TELEGRAM_CHAT_ID || '').trim().replace(/^["']|["']$/g, '');
-export const CDN_URL = (process.env.NEXT_PUBLIC_CDN_URL || process.env.CDN_URL || '').trim().replace(/\/$/, '');
+export const CDN_URL = (process.env.NEXT_PUBLIC_CDN_URL || process.env.CDN_URL || 'https://cdn.fresherflow.in').trim().replace(/\/$/, '');
 export const ATS_CDN_BASE = CDN_URL ? `${CDN_URL}/api/ats/india` : '';
 export const ATS_PROVIDERS = [
     // Phase 1
@@ -125,17 +122,33 @@ export const HEAVY_DORK_QUERIES = [
     'site:boards.greenhouse.io ("intern" OR "internship" OR "fresher" OR "junior" OR "SDE 1") ("India" OR "Remote")',
 ];
 
-export let TARGET_SITES: { name: string; urls: string[] }[] = [];
-
-try {
-    const res = await fetch(`${CDN_URL}/aggregators.json`);
-    if (res.ok) {
-        TARGET_SITES = await res.json();
-    } else {
-        console.error('Failed to fetch TARGET_SITES from CDN:', res.statusText);
+export function loadTargetSitesSync(): { name: string; urls: string[] }[] {
+    const candidateLocalPaths = [
+        path.join(process.cwd(), 'docs/data/aggregators.json'),
+        path.join(process.cwd(), '../../docs/data/aggregators.json'),
+        path.join(process.cwd(), '../docs/data/aggregators.json'),
+    ];
+    for (const p of candidateLocalPaths) {
+        if (fs.existsSync(p)) {
+            try {
+                return JSON.parse(fs.readFileSync(p, 'utf8'));
+            } catch {}
+        }
     }
-} catch (error) {
-    console.error('Error fetching TARGET_SITES from CDN:', error instanceof Error ? error.message : String(error));
+    return [];
+}
+
+export let TARGET_SITES: { name: string; urls: string[] }[] = loadTargetSitesSync();
+
+export async function fetchTargetSitesFromCdn(): Promise<{ name: string; urls: string[] }[]> {
+    try {
+        const res = await fetch(`${CDN_URL}/aggregators.json`);
+        if (res.ok) {
+            TARGET_SITES = await res.json();
+            return TARGET_SITES;
+        }
+    } catch {}
+    return TARGET_SITES;
 }
 
 export const VISITED_FILE = path.join(process.cwd(), 'visited_urls.json');

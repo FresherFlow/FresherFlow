@@ -255,6 +255,22 @@ export async function extractNativeAtsData(
             else if (host === 'icims.com' || host.endsWith('.icims.com')) providerKey = 'icims';
             else if (host.match(/successfactors\.[a-z]+$/) || host === 'sapsf.com' || host.endsWith('.sapsf.com')) providerKey = 'successfactors';
             else if (host === 'darwinbox.in' || host.endsWith('.darwinbox.in')) providerKey = 'darwinbox';
+            else if (host === 'linkedin.com' || host.endsWith('.linkedin.com')) providerKey = 'linkedin';
+            else if (host === 'naukri.com' || host.endsWith('.naukri.com')) providerKey = 'naukri';
+            else if (host === 'internshala.com' || host.endsWith('.internshala.com')) providerKey = 'internshala';
+            else if (host === 'wellfound.com' || host.endsWith('.wellfound.com')) providerKey = 'wellfound';
+            else if (host === 'indeed.com' || host.endsWith('.indeed.com')) providerKey = 'indeed';
+            else if (host === 'glassdoor.com' || host.endsWith('.glassdoor.com')) providerKey = 'glassdoor';
+            else if (host === 'keka.com' || host.endsWith('.keka.com')) providerKey = 'keka';
+            else if (host === 'freshteam.com' || host.endsWith('.freshteam.com')) providerKey = 'freshteam';
+            else if (host === 'zohorecruit.com' || host.endsWith('.zohorecruit.com') || host.endsWith('.zohorecruit.in')) providerKey = 'zohorecruit';
+            else if (host === 'bamboohr.com' || host.endsWith('.bamboohr.com')) providerKey = 'bamboohr';
+            else if (host === 'workable.com' || host.endsWith('.workable.com')) providerKey = 'workable';
+            else if (host === 'recruitee.com' || host.endsWith('.recruitee.com')) providerKey = 'recruitee';
+            else if (host === 'peoplestrong.com' || host.endsWith('.peoplestrong.com')) providerKey = 'peoplestrong';
+            else if (host === 'greythr.com' || host.endsWith('.greythr.com')) providerKey = 'greythr';
+            else if (host === 'turbohire.co' || host.endsWith('.turbohire.co')) providerKey = 'turbohire';
+            else if (host === 'pyjamahr.com' || host.endsWith('.pyjamahr.com')) providerKey = 'pyjamahr';
         }
 
         // 3. Dispatch to @fresherflow/plugins Registry
@@ -310,7 +326,8 @@ export async function extractNativeAtsData(
                             locations: normalizeLocations(result.locations || []),
                             company: result.company || '',
                             experienceLevel: (result as any).experienceLevel || '',
-                            experienceMin: expMin
+                            experienceMin: expMin,
+                            applyLink: (result as any).applyLink || undefined
                         };
                     }
                 }

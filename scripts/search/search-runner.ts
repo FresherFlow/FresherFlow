@@ -3,8 +3,10 @@ import {
   collectPublicFeeds,
   collectBoardSearches,
   collectGitHubHiring,
+  collectDirectCompanyPortals,
   collectDorkSearches,
   collectHyderabadWalkinDrives,
+
   filterAndVerifyJobs,
   saveDiscoveredJobsArtifact,
   persistDiscoveredJobsToDb,
@@ -73,15 +75,17 @@ async function runSearchEngine() {
   try {
     const keywords = options.roles ? await loadRolesFromCdn() : CORE_SEARCH_KEYWORDS;
 
-    // Run Feeds, Boards, GitHub, and Walk-ins concurrently
-    const [feedJobs, boardJobs, githubJobs, walkinJobs] = await Promise.all([
+    // Run Feeds, Boards, Direct Enterprise Portals, GitHub, and Walk-ins concurrently
+    const [feedJobs, boardJobs, companyJobs, githubJobs, walkinJobs] = await Promise.all([
       collectPublicFeeds({ resultsWanted: limit, hoursOld }),
       collectBoardSearches(keywords, { resultsPerKeyword: limit, hoursOld }),
+      collectDirectCompanyPortals({ resultsWanted: limit, hoursOld }),
       collectGitHubHiring({ resultsWanted: limit }),
       collectHyderabadWalkinDrives({ resultsWanted: 10, hoursOld }),
     ]);
 
-    rawCandidates.push(...feedJobs, ...boardJobs, ...githubJobs, ...walkinJobs);
+    rawCandidates.push(...feedJobs, ...boardJobs, ...companyJobs, ...githubJobs, ...walkinJobs);
+
 
     // Track raw source counts
     for (const job of rawCandidates) {

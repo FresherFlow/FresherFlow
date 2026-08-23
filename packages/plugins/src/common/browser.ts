@@ -18,10 +18,31 @@ export function cleanAtsTitle(rawTitle: string): string {
     return title.trim();
 }
 
-// Apply stealth settings to page
+// Apply stealth settings and block heavy static assets
 export async function applyStealth(page: Page): Promise<void> {
     await page.addInitScript(() => {
         Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+    });
+
+    // Block images, fonts, stylesheets, media, analytics to speed up page loads by 10x
+    await page.route('**/*', (route) => {
+        const req = route.request();
+        const resourceType = req.resourceType();
+        const url = req.url().toLowerCase();
+
+        if (
+            ['image', 'media', 'font'].includes(resourceType) ||
+            url.includes('google-analytics') ||
+            url.includes('googletagmanager') ||
+            url.includes('facebook.net') ||
+            url.includes('doubleclick') ||
+            url.includes('hotjar') ||
+            url.includes('sentry.io')
+        ) {
+            route.abort();
+        } else {
+            route.continue();
+        }
     });
 }
 
@@ -29,8 +50,8 @@ export async function applyStealth(page: Page): Promise<void> {
 export async function extractAtsContent(page: Page, url: string): Promise<{ title: string; text: string; html: string; externalApplyUrl?: string | null }> {
     try {
         console.log(`Loading job page: ${url}`);
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
-        await page.waitForTimeout(10000); // Let content settle / SPA render
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
+        await page.waitForTimeout(1500); // Let content settle / SPA render
 
         // Extract body text, html, and title
         const bodyText = await page.locator('body').innerText().catch(() => "");

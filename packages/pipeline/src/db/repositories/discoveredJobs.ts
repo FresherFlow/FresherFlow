@@ -93,7 +93,7 @@ export async function upsertJobs(jobs: any[], runId: string | null) {
         for (const row of withExt) {
           try {
             await pool.query(
-              `INSERT INTO public.discovered_jobs (
+              `INSERT INTO discovered_jobs (
                 run_id, company_id, source, source_type, company, title, location, employment_type, apply_link, external_id, fresher_score, review_required, status, updated_at, last_seen_at, department, batch_year, degree, skills, location_city, location_country, description, experience_level, experience_years, is_remote, posted_at,
                 venue_address, cluster_name, latitude, longitude, walkin_date, walkin_time, reporting_time, contact_person, contact_phone, required_docs
               ) VALUES (
@@ -102,13 +102,13 @@ export async function upsertJobs(jobs: any[], runId: string | null) {
               ) ON CONFLICT (source, external_id) DO UPDATE SET
                 updated_at = EXCLUDED.updated_at,
                 last_seen_at = EXCLUDED.last_seen_at,
-                venue_address = COALESCE(EXCLUDED.venue_address, public.discovered_jobs.venue_address),
-                cluster_name = COALESCE(EXCLUDED.cluster_name, public.discovered_jobs.cluster_name),
-                latitude = COALESCE(EXCLUDED.latitude, public.discovered_jobs.latitude),
-                longitude = COALESCE(EXCLUDED.longitude, public.discovered_jobs.longitude),
-                walkin_date = COALESCE(EXCLUDED.walkin_date, public.discovered_jobs.walkin_date),
-                walkin_time = COALESCE(EXCLUDED.walkin_time, public.discovered_jobs.walkin_time),
-                reporting_time = COALESCE(EXCLUDED.reporting_time, public.discovered_jobs.reporting_time)`,
+                venue_address = COALESCE(EXCLUDED.venue_address, discovered_jobs.venue_address),
+                cluster_name = COALESCE(EXCLUDED.cluster_name, discovered_jobs.cluster_name),
+                latitude = COALESCE(EXCLUDED.latitude, discovered_jobs.latitude),
+                longitude = COALESCE(EXCLUDED.longitude, discovered_jobs.longitude),
+                walkin_date = COALESCE(EXCLUDED.walkin_date, discovered_jobs.walkin_date),
+                walkin_time = COALESCE(EXCLUDED.walkin_time, discovered_jobs.walkin_time),
+                reporting_time = COALESCE(EXCLUDED.reporting_time, discovered_jobs.reporting_time)`,
               [
                 row.run_id, row.company_id, row.source, row.source_type, row.company, row.title, row.location, row.employment_type, row.apply_link, row.external_id, row.fresher_score, row.review_required, row.status, row.updated_at, row.last_seen_at, row.department, row.batch_year, row.degree, row.skills, row.location_city, row.location_country, row.description, row.experience_level, row.experience_years, row.is_remote, row.posted_at,
                 row.venue_address, row.cluster_name, row.latitude, row.longitude, row.walkin_date, row.walkin_time, row.reporting_time, row.contact_person, row.contact_phone, row.required_docs
@@ -124,7 +124,7 @@ export async function upsertJobs(jobs: any[], runId: string | null) {
         for (const row of withoutExt) {
           try {
             await pool.query(
-              `INSERT INTO public.discovered_jobs (
+              `INSERT INTO discovered_jobs (
                 run_id, company_id, source, source_type, company, title, location, employment_type, apply_link, external_id, fresher_score, review_required, status, updated_at, last_seen_at, department, batch_year, degree, skills, location_city, location_country, description, experience_level, experience_years, is_remote, posted_at,
                 venue_address, cluster_name, latitude, longitude, walkin_date, walkin_time, reporting_time, contact_person, contact_phone, required_docs
               ) VALUES (
@@ -133,13 +133,13 @@ export async function upsertJobs(jobs: any[], runId: string | null) {
               ) ON CONFLICT (source, apply_link) DO UPDATE SET
                 updated_at = EXCLUDED.updated_at,
                 last_seen_at = EXCLUDED.last_seen_at,
-                venue_address = COALESCE(EXCLUDED.venue_address, public.discovered_jobs.venue_address),
-                cluster_name = COALESCE(EXCLUDED.cluster_name, public.discovered_jobs.cluster_name),
-                latitude = COALESCE(EXCLUDED.latitude, public.discovered_jobs.latitude),
-                longitude = COALESCE(EXCLUDED.longitude, public.discovered_jobs.longitude),
-                walkin_date = COALESCE(EXCLUDED.walkin_date, public.discovered_jobs.walkin_date),
-                walkin_time = COALESCE(EXCLUDED.walkin_time, public.discovered_jobs.walkin_time),
-                reporting_time = COALESCE(EXCLUDED.reporting_time, public.discovered_jobs.reporting_time)`,
+                venue_address = COALESCE(EXCLUDED.venue_address, discovered_jobs.venue_address),
+                cluster_name = COALESCE(EXCLUDED.cluster_name, discovered_jobs.cluster_name),
+                latitude = COALESCE(EXCLUDED.latitude, discovered_jobs.latitude),
+                longitude = COALESCE(EXCLUDED.longitude, discovered_jobs.longitude),
+                walkin_date = COALESCE(EXCLUDED.walkin_date, discovered_jobs.walkin_date),
+                walkin_time = COALESCE(EXCLUDED.walkin_time, discovered_jobs.walkin_time),
+                reporting_time = COALESCE(EXCLUDED.reporting_time, discovered_jobs.reporting_time)`,
               [
                 row.run_id, row.company_id, row.source, row.source_type, row.company, row.title, row.location, row.employment_type, row.apply_link, row.external_id, row.fresher_score, row.review_required, row.status, row.updated_at, row.last_seen_at, row.department, row.batch_year, row.degree, row.skills, row.location_city, row.location_country, row.description, row.experience_level, row.experience_years, row.is_remote, row.posted_at,
                 row.venue_address, row.cluster_name, row.latitude, row.longitude, row.walkin_date, row.walkin_time, row.reporting_time, row.contact_person, row.contact_phone, row.required_docs
@@ -180,7 +180,7 @@ export interface DiscoveredJobRow {
 
 export async function fetchUnprocessedFromSupabase(limit = 100): Promise<DiscoveredJobRow[]> {
     const { rows } = await pool.query<DiscoveredJobRow>(
-        `SELECT id, apply_link, source, source_type as source_url, company, title, ats_text, location, status FROM public.discovered_jobs WHERE status = 'DISCOVERED' ORDER BY created_at DESC LIMIT $1`,
+        `SELECT id, apply_link, source, source_type as source_url, company, title, ats_text, location, status FROM discovered_jobs WHERE status = 'DISCOVERED' ORDER BY created_at DESC LIMIT $1`,
         [limit]
     );
     return rows;
@@ -192,7 +192,7 @@ export async function markDiscoveredJobStatus(
 ): Promise<void> {
     try {
         await pool.query(
-            `UPDATE public.discovered_jobs SET status = $1, updated_at = NOW() WHERE id = $2`,
+            `UPDATE discovered_jobs SET status = $1, updated_at = NOW() WHERE id = $2`,
             [status, id]
         );
     } catch (error) {
