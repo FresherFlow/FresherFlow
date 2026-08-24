@@ -15,7 +15,7 @@ import {
     SalaryPeriod,
     OrganizationType,
     OrgRole
-} from './index.js';
+} from './index';
 
 // ========================================
 // AUTH SCHEMAS
