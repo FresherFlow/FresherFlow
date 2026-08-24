@@ -6,9 +6,9 @@
   "scripts": {
     "prune:api": "turbo prune fresherflow-api --docker",
     "dev": "nodemon --exec \"tsx\" src/index.ts",
-    "dev:worker": "nodemon --exec \"tsx\" src/worker.ts",
-    "build": "pnpm run build:deps && tsc && node ../../scripts/copy-parser-runtime.mjs",
-    "build:deps": "pnpm --filter @fresherflow/types build && pnpm --filter @fresherflow/constants build && pnpm --filter @fresherflow/utils build && pnpm --filter @fresherflow/utils build && pnpm --filter @fresherflow/utils build && pnpm --filter @fresherflow/types build && pnpm --filter @fresherflow/database build && pnpm --filter @fresherflow/utils build && pnpm --filter @fresherflow/parser build",
+     "dev:worker": "nodemon --exec \"tsx\" src/worker.ts",
+    "build": "pnpm run build:deps && tsc",
+    "build:deps": "pnpm --filter @fresherflow/types build && pnpm --filter @fresherflow/constants build && pnpm --filter @fresherflow/utils build && pnpm --filter @fresherflow/database build && pnpm --filter @fresherflow/parser build",
     "start": "node dist/index.js",
     "start:worker": "node dist/worker.js",
     "db:push": "prisma db push --schema=../../packages/database/prisma/schema.prisma",

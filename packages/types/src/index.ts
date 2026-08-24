@@ -555,10 +555,17 @@ export interface WalkInDetails {
     timeRange?: string;
     venueAddress: string;
     venueLink?: string;
+    latitude?: number;
+    longitude?: number;
+    techCluster?: string;
+    selectionProcess?: string;
+    expiryDate?: Date | string;
     reportingTime: string;
     requiredDocuments: string[];
     contactPerson?: string;
     contactPhone?: string;
+    landmark?: string;
+    transitInfo?: string;
 }
 
 export interface UserAction {

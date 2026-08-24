@@ -122,23 +122,7 @@ export const HEAVY_DORK_QUERIES = [
     'site:boards.greenhouse.io ("intern" OR "internship" OR "fresher" OR "junior" OR "SDE 1") ("India" OR "Remote")',
 ];
 
-export function loadTargetSitesSync(): { name: string; urls: string[] }[] {
-    const candidateLocalPaths = [
-        path.join(process.cwd(), 'docs/data/aggregators.json'),
-        path.join(process.cwd(), '../../docs/data/aggregators.json'),
-        path.join(process.cwd(), '../docs/data/aggregators.json'),
-    ];
-    for (const p of candidateLocalPaths) {
-        if (fs.existsSync(p)) {
-            try {
-                return JSON.parse(fs.readFileSync(p, 'utf8'));
-            } catch {}
-        }
-    }
-    return [];
-}
-
-export let TARGET_SITES: { name: string; urls: string[] }[] = loadTargetSitesSync();
+export let TARGET_SITES: { name: string; urls: string[] }[] = [];
 
 export async function fetchTargetSitesFromCdn(): Promise<{ name: string; urls: string[] }[]> {
     try {
@@ -179,7 +163,12 @@ export const EXPIRED_REGEXES = [
     /the url you have provided is invalid/i,
     /an error has occurred[\s\S]*page not found/i,
     /we are sorry this job post no longer exists/i,
-    /you do not have access to this page/i
+    /you do not have access to this page/i,
+    /job id provided may not be valid/i,
+    /job posting has been removed/i,
+    /unable to load the page/i,
+    /join linkedin.*to view this job/i,
+    /sign in to view this job/i
 ];
 
 // Phrases indicating it's a fresher job

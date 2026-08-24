@@ -22,7 +22,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && node ../../scripts/fix-esm-imports.mjs dist",
+    "build": "tsc -p tsconfig.build.json",
     "dev": "tsc -w",
     "lint": "eslint .",
     "test": "vitest run"

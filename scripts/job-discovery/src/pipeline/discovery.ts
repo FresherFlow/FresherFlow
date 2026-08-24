@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { DiscoveryState } from '@fresherflow/pipeline';
-import { ATS_CDN_BASE, ATS_PROVIDERS, TARGET_SITES } from '@fresherflow/pipeline';
+import { ATS_CDN_BASE, ATS_PROVIDERS, TARGET_SITES, fetchTargetSitesFromCdn } from '@fresherflow/pipeline';
 import { normalizeUrl, sanitizeAtsUrl } from '@fresherflow/pipeline';
 import { isLocationIndiaOrRemote, scoreJobDescription, hasFresherKeyword, isActualJob, isFresherJob, isSeniorJob } from '@fresherflow/utils';
 import { logDecision } from '@fresherflow/pipeline';
@@ -141,7 +141,10 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
     const SCRAPER_CONCURRENCY = 4;
     console.log(`\n=== Phase 2: Scraping aggregators (${SCRAPER_CONCURRENCY} workers) ===\n`);
 
-    const activeSites = TARGET_SITES;
+    let activeSites = [...TARGET_SITES];
+    if (activeSites.length === 0) {
+        activeSites = [...await fetchTargetSitesFromCdn()];
+    }
     if (activeSites.length === 0) {
         console.warn(`Failed to fetch aggregators.json from CDN. Skipping aggregators.`);
         return;

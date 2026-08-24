@@ -69,6 +69,8 @@ const envSchema = z.object({
         (val) => parseBooleanEnv(val, true),
         z.boolean().default(true)
     ),
+    ENABLE_WORKER_QUEUE_HEALTH: z.preprocess((val) => parseBooleanEnv(val, true), z.boolean().default(true)),
+    ENABLE_WORKER_DEEP_HEALTH: z.preprocess((val) => parseBooleanEnv(val, false), z.boolean().default(false)),
 });
 
 export type Env = z.infer<typeof envSchema>;

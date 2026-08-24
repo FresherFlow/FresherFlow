@@ -1,79 +1,115 @@
-import winston from 'winston';
-import chalk from 'chalk';
-
-const sanitizeMeta = (meta: Record<string, unknown>) => {
-    if (!meta.error || typeof meta.error !== 'object') return meta;
-
-    const err = meta.error as Error;
-    return {
-        ...meta,
-        error: {
-            name: err.name,
-            message: err.message,
-            stack: err.stack
-        }
-    };
-};
+export interface Logger {
+    info(message: string, ...meta: unknown[]): void;
+    warn(message: string, ...meta: unknown[]): void;
+    error(message: string, ...meta: unknown[]): void;
+    debug(message: string, ...meta: unknown[]): void;
+}
 
 const isBrowser = typeof window !== 'undefined' || typeof self !== 'undefined';
 
-export const createLogger = (serviceName: string) => {
+const sanitizeMeta = (meta: unknown): unknown => {
+    if (!meta || typeof meta !== 'object') return meta;
+    if (meta instanceof Error) {
+        return {
+            name: meta.name,
+            message: meta.message,
+            stack: meta.stack
+        };
+    }
+    const rec = meta as Record<string, unknown>;
+    if (rec.error && typeof rec.error === 'object') {
+        const err = rec.error as Error;
+        return {
+            ...rec,
+            error: {
+                name: err.name,
+                message: err.message,
+                stack: err.stack
+            }
+        };
+    }
+    return meta;
+};
+
+// ANSI Color codes for zero-dependency terminal formatting in Node.js
+const ANSI = {
+    reset: '\x1b[0m',
+    bold: '\x1b[1m',
+    dim: '\x1b[2m',
+    blue: '\x1b[34m',
+    yellow: '\x1b[33m',
+    red: '\x1b[31m',
+    cyan: '\x1b[36m',
+    magenta: '\x1b[35m',
+    gray: '\x1b[90m',
+    white: '\x1b[37m'
+};
+
+export const createLogger = (serviceName: string): Logger => {
     if (isBrowser) {
         return {
-            info: (msg: string, meta?: unknown) => console.log(`[${serviceName}] INFO:`, msg, meta || ''),
-            warn: (msg: string, meta?: unknown) => console.warn(`[${serviceName}] WARN:`, msg, meta || ''),
-            error: (msg: string, meta?: unknown) => console.error(`[${serviceName}] ERROR:`, msg, meta || ''),
-            debug: (msg: string, meta?: unknown) => console.debug(`[${serviceName}] DEBUG:`, msg, meta || ''),
-        } as unknown as winston.Logger;
+            info: (msg: string, ...meta: unknown[]) => console.info(`[${serviceName}]`, msg, ...meta),
+            warn: (msg: string, ...meta: unknown[]) => console.warn(`[${serviceName}]`, msg, ...meta),
+            error: (msg: string, ...meta: unknown[]) => console.error(`[${serviceName}]`, msg, ...meta),
+            debug: (msg: string, ...meta: unknown[]) => console.debug(`[${serviceName}]`, msg, ...meta),
+        };
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const consoleFormat = winston.format.printf(({ level, message, timestamp, requestId, service, ...meta }: any) => {
-        const time = chalk.gray(new Date(timestamp as string).toLocaleTimeString());
-        const reqId = requestId && typeof requestId === 'string' ? chalk.gray(`[${requestId.substring(0, 8)}]`) : '';
-        const svc = service ? chalk.magenta(`[${service}]`) : '';
+    const isProduction = process.env.NODE_ENV === 'production';
 
-        const levelStyles: Record<string, (value: string) => string> = {
-            info: chalk.blue,
-            warn: chalk.yellow,
-            error: chalk.red,
-            debug: chalk.cyan
-        };
+    const log = (level: 'info' | 'warn' | 'error' | 'debug', message: string, meta: unknown[]) => {
+        const timestamp = new Date().toISOString();
+        const cleanMeta = meta.map(sanitizeMeta);
 
-        const renderLevel = (levelStyles[level] || chalk.white)(level.toUpperCase().padEnd(5));
-        const metaEntries = Object.keys(meta).length > 0 ? chalk.dim(JSON.stringify(sanitizeMeta(meta as Record<string, unknown>))) : '';
-
-        const baseLog = `${time} ${svc} ${renderLevel} ${chalk.white(String(message))} ${reqId} ${metaEntries}`.trim();
-
-        if (level === 'error') {
-            return `\n${chalk.red('╔════════════════════ ERROR ════════════════════')}\n${baseLog}\n${chalk.red('╚══════════════════════════════════════════════')}\n`;
+        if (isProduction) {
+            const entry: Record<string, unknown> = {
+                timestamp,
+                level,
+                service: serviceName,
+                message,
+            };
+            if (cleanMeta.length === 1 && typeof cleanMeta[0] === 'object' && cleanMeta[0] !== null) {
+                Object.assign(entry, cleanMeta[0]);
+            } else if (cleanMeta.length > 0) {
+                entry.meta = cleanMeta;
+            }
+            const out = JSON.stringify(entry);
+            if (level === 'error') {
+                process.stderr.write(out + '\n');
+            } else {
+                process.stdout.write(out + '\n');
+            }
+            return;
         }
 
-        return baseLog;
-    });
+        // Development Terminal Output
+        const timeStr = `${ANSI.gray}${new Date().toLocaleTimeString()}${ANSI.reset}`;
+        const svcStr = `${ANSI.magenta}[${serviceName}]${ANSI.reset}`;
+        
+        let levelStr = `${ANSI.blue}INFO ${ANSI.reset}`;
+        if (level === 'warn') levelStr = `${ANSI.yellow}WARN ${ANSI.reset}`;
+        else if (level === 'error') levelStr = `${ANSI.red}ERROR${ANSI.reset}`;
+        else if (level === 'debug') levelStr = `${ANSI.cyan}DEBUG${ANSI.reset}`;
 
-    const isProduction = process.env.NODE_ENV === 'production';
-    const isServerless = process.env.VERCEL === '1' || process.env.AWS_LAMBDA_FUNCTION_NAME !== undefined;
+        const metaStr = cleanMeta.length > 0 
+            ? ` ${ANSI.dim}${cleanMeta.map(m => typeof m === 'object' ? JSON.stringify(m) : String(m)).join(' ')}${ANSI.reset}` 
+            : '';
 
-    const transports: winston.transport[] = [
-        new winston.transports.Console({
-            format: (isProduction || isServerless)
-                ? winston.format.combine(
-                    winston.format.timestamp(),
-                    winston.format.json()
-                )
-                : winston.format.combine(
-                    winston.format.timestamp(),
-                    consoleFormat
-                )
-        })
-    ];
+        const line = `${timeStr} ${svcStr} ${levelStr} ${ANSI.white}${message}${ANSI.reset}${metaStr}`;
 
-    return winston.createLogger({
-        level: process.env.LOG_LEVEL || (isProduction ? 'info' : 'debug'),
-        defaultMeta: { service: serviceName },
-        transports
-    });
+        if (level === 'error') {
+            process.stderr.write(`\n${ANSI.red}╔════════════════════ ERROR ════════════════════${ANSI.reset}\n${line}\n${ANSI.red}╚══════════════════════════════════════════════${ANSI.reset}\n\n`);
+        } else {
+            process.stdout.write(line + '\n');
+        }
+    };
+
+    return {
+        info: (msg: string, ...meta: unknown[]) => log('info', msg, meta),
+        warn: (msg: string, ...meta: unknown[]) => log('warn', msg, meta),
+        error: (msg: string, ...meta: unknown[]) => log('error', msg, meta),
+        debug: (msg: string, ...meta: unknown[]) => log('debug', msg, meta),
+    };
 };
 
 export const logger = createLogger('fresherflow-app');

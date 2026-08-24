@@ -25,7 +25,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc && node ../../scripts/fix-esm-imports.mjs dist",
+    "build": "tsc ",
     "dev": "tsc -w",
     "lint": "eslint .",
     "test": "vitest run",

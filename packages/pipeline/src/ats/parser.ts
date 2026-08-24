@@ -49,11 +49,9 @@ async function runProvider(
     knownLinks: Set<string>,
     visitedSet: Set<string>
 ): Promise<AtsJob[]> {
-    const allEntries = Object.entries(companies);
-    if (allEntries.length === 0) return [];
+    const entries = Object.entries(companies);
+    if (entries.length === 0) return [];
 
-    // Cap companies per provider per discovery run to 100 to prevent multi-hour crawls
-    const entries = allEntries.slice(0, 100);
     console.log(`\nStarting ${name} adapter (${entries.length} companies)...`);
 
     const scraper = SCRAPER_REGISTRY[slug];
@@ -77,7 +75,7 @@ async function runProvider(
                 searchTerm: 'fresher intern "entry level" "new grad" apprentice junior associate trainee campus graduate "early career" SDE',
                 location: 'India',
                 resultsWanted: 50,
-                requestTimeout: 4, // 4-second timeout per company
+                requestTimeout: 3, // 3-second fast timeout per company
                 descriptionFormat: 'PLAIN' as any,
                 proxies,
             });
@@ -91,8 +89,10 @@ async function runProvider(
             // Convert JobPostDto[] → AtsJob[] using shared converter
             const atsJobs = jobs.map(j => toAtsJob(j, slug, companyName, 'ATS'));
 
-            // Filter: fresher + India/remote + experience check
+            // Title-first fast filter: fresher + India/remote + not senior
             const fresherJobs = atsJobs.filter((j: AtsJob) => {
+                if (!j.title || j.title === 'Unknown Title') return false;
+                if (isSeniorJob(`${j.title} ${j.description || ''}`)) return false;
                 if (!isPotentialFresherJob(j.title)) return false;
                 if (!isLocationIndiaOrRemote(j.location || '', j.title)) return false;
                 if (j.experienceYears !== undefined && j.experienceYears !== null && j.experienceYears > 2) return false;
@@ -111,14 +111,10 @@ async function runProvider(
             });
 
             const finalJobs: AtsJob[] = [];
-            let rejectedCount = 0;
             for (const job of validJobs) {
                 if (job.description) {
                     const scoreResult = scoreJobDescription(job.title, job.description);
-                    if (scoreResult.verdict === 'REJECT') {
-                        rejectedCount++;
-                        continue;
-                    }
+                    if (scoreResult.verdict === 'REJECT') continue;
                 }
                 finalJobs.push(job);
             }
@@ -141,8 +137,8 @@ async function runProvider(
         }
     });
 
-    // Run with high concurrency (8) to finish rapidly
-    const results = await withConcurrency(tasks, 8);
+    // Run with high concurrency (20) to process hundreds of companies rapidly
+    const results = await withConcurrency(tasks, 20);
     for (const r of results) allJobs.push(...r);
 
     stats.ats_raw[name] = totalRaw;
@@ -154,7 +150,7 @@ async function runProvider(
 
 /**
  * Main discovery entry point.
- * Loads company slugs from CDN registry and runs all providers with a 60s timeout per provider.
+ * Loads company slugs from CDN registry and runs all providers with a 300s timeout per provider.
  */
 export async function runAtsDiscovery(
     registry: AtsRegistry,
@@ -162,7 +158,7 @@ export async function runAtsDiscovery(
     knownLinks: Set<string>,
     visitedApplyLinks: string[]
 ): Promise<AtsJob[]> {
-    console.log(`\n--- Starting ATS Direct Discovery (parallel, 60s timeout per provider) ---`);
+    console.log(`\n--- Starting ATS Direct Discovery (parallel, 300s max per provider) ---`);
     const visitedSet = new Set(visitedApplyLinks);
 
     const providerFilter = process.env.ATS_PROVIDER?.toLowerCase().trim();
@@ -174,15 +170,15 @@ export async function runAtsDiscovery(
 
     console.log(`  Running ${activeProviders.length} providers in parallel...`);
 
-    // Run all providers concurrently with a 60-second timeout per provider
+    // Run all providers concurrently with a 300-second timeout per provider
     const providerSettled = await Promise.allSettled(
         activeProviders.map(([key, data]) => {
             const providerTask = runProvider(key, key, data!, stats, knownLinks, visitedSet);
             const timeoutTask = new Promise<AtsJob[]>((resolve) =>
                 setTimeout(() => {
-                    console.log(`  ⏱️ Provider ${key} reached 60s timeout, moving on.`);
+                    console.log(`  ⏱️ Provider ${key} reached 300s timeout, moving on.`);
                     resolve([]);
-                }, 60000)
+                }, 300000)
             );
             return Promise.race([providerTask, timeoutTask]);
         })
