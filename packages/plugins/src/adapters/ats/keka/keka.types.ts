@@ -60,6 +60,17 @@ export interface KekaApiJob {
   postedDate?: string | null;
   createdDate?: string | null;
   publishedDate?: string | null;
+  publishedOn?: string | null;
+  publishedSinceDays?: number | null;
+
+  /** Additional embedjobs active API fields */
+  excerpt?: string | null;
+  experience?: string | null;
+  jobNumber?: string | null;
+  salaryRange?: { minimum?: number | null; maximum?: number | null; currency?: string | null; salaryPeriod?: number | null } | null;
+  salaryRangeFormat?: string | null;
+  skillNames?: string[] | null;
+  jobLocations?: Array<{ city?: string | null; state?: string | null; country?: string | null; locationName?: string | null; name?: string | null } | string> | null;
 
   /** Absolute / relative public detail-page URL, when the feed advertises one. */
   jobDetailUrl?: string | null;

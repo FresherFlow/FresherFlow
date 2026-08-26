@@ -412,3 +412,89 @@ export async function fetchDarwinboxDetails(applyLink: string, page?: any): Prom
         return undefined;
     }
 }
+
+export async function fetchKekaDetails(applyLink: string): Promise<any> {
+    try {
+        const urlObj = new URL(applyLink);
+        const host = urlObj.hostname.toLowerCase();
+        const parts = urlObj.pathname.split('/').filter(Boolean);
+        const jobId = parts[parts.length - 1];
+
+        // 1. Fetch detail HTML page and extract JSON-LD
+        const res = await fetch(applyLink, {
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/json'
+            },
+            signal: AbortSignal.timeout(12000)
+        });
+
+        if (res.ok) {
+            const html = await res.text();
+            const jsonLdMatch = html.match(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/i);
+            if (jsonLdMatch && jsonLdMatch[1]) {
+                try {
+                    const parsed = JSON.parse(jsonLdMatch[1]);
+                    if (parsed.title) {
+                        const locations: string[] = [];
+                        const loc = parsed.jobLocation?.address;
+                        if (loc?.addressLocality) locations.push(loc.addressLocality);
+                        if (loc?.addressRegion) locations.push(loc.addressRegion);
+
+                        return {
+                            title: parsed.title,
+                            html: parsed.description || '',
+                            text: stripHtml(parsed.description || ''),
+                            locations,
+                            company: parsed.hiringOrganization?.name || host.split('.')[0]
+                        };
+                    }
+                } catch {}
+            }
+        }
+
+        // 2. If no JSON-LD on detail page, try active embedjobs API by extracting identifier from landing page
+        const tenant = host.split('.')[0];
+        const landingRes = await fetch(`https://${host}/careers`, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
+            signal: AbortSignal.timeout(12000)
+        });
+        if (landingRes.ok) {
+            const landingHtml = await landingRes.text();
+            const idMatch = landingHtml.match(/\/ats\/documents\/([0-9a-f-]+)\/careerportal/i) ||
+                            landingHtml.match(/\/careers\/api\/embedjobs\/(?:js\/)?([0-9a-f-]+)/i);
+            if (idMatch && idMatch[1]) {
+                const identifier = idMatch[1].toLowerCase();
+                const embedRes = await fetch(`https://${host}/careers/api/embedjobs/default/active/${identifier}`, {
+                    headers: { 'Accept': 'application/json' },
+                    signal: AbortSignal.timeout(12000)
+                });
+                if (embedRes.ok) {
+                    const jobs = await embedRes.json();
+                    if (Array.isArray(jobs)) {
+                        const target = jobs.find((j: any) => String(j.id) === String(jobId) || String(j.jobId) === String(jobId));
+                        if (target) {
+                            const locations: string[] = [];
+                            if (Array.isArray(target.jobLocations)) {
+                                for (const l of target.jobLocations) {
+                                    if (typeof l === 'object' && l.city) locations.push(l.city);
+                                    else if (typeof l === 'string') locations.push(l);
+                                }
+                            }
+                            return {
+                                title: target.title,
+                                html: target.description || target.excerpt || '',
+                                text: stripHtml(target.description || target.excerpt || ''),
+                                locations,
+                                company: tenant
+                            };
+                        }
+                    }
+                }
+            }
+        }
+    } catch (e: any) {
+        console.warn(`[Keka] details fetch failed: ${e.message}`);
+    }
+    return undefined;
+}

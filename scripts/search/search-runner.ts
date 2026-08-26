@@ -105,7 +105,7 @@ async function runSearchEngine() {
     console.log(`======================================================`);
 
     // Verify and Filter using Seen URLs Cache
-    const { verifiedJobs, stats } = await filterAndVerifyJobs(rawCandidates, {
+    const { verifiedJobs, stats, sourceStats } = await filterAndVerifyJobs(rawCandidates, {
       hoursOld,
       cachedSeenUrls: seenUrlsCache,
     });
@@ -134,6 +134,7 @@ async function runSearchEngine() {
       rawCount: stats.totalRaw,
       duplicateCount: stats.duplicateFiltered,
       sourceCounts: rawSourceCounts,
+      sourceStats,
       staleCount: stats.staleFiltered,
       locCount: stats.locationFiltered,
       scoreCount: stats.scoreFiltered,

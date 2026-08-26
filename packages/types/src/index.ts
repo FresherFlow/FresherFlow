@@ -178,6 +178,28 @@ export enum RawOpportunityStatus {
     FAILED = 'FAILED'
 }
 
+export enum OrganizationType {
+    COMPANY = 'COMPANY',
+    ENGINEERING_COLLEGE = 'ENGINEERING_COLLEGE',
+    TRAINING_INSTITUTE = 'TRAINING_INSTITUTE',
+    BOOTCAMP = 'BOOTCAMP',
+    NGO = 'NGO',
+    PLACEMENT_CELL = 'PLACEMENT_CELL'
+}
+
+export enum OrgRole {
+    OWNER = 'OWNER',
+    ADMIN = 'ADMIN',
+    RECRUITER = 'RECRUITER',
+    VIEWER = 'VIEWER'
+}
+
+export enum MembershipStatus {
+    PENDING = 'PENDING',
+    APPROVED = 'APPROVED',
+    REJECTED = 'REJECTED'
+}
+
 // ========================================
 // CORE ENTITY TYPES
 // ========================================
@@ -998,10 +1020,81 @@ export interface HiringHistory {
     id: string;
     companyId: string;
     role: string;
-    batch?: string | null;
-    openedAt: string | Date;
-    closedAt?: string | Date | null;
-    location?: string | null;
+    startDate?: string;
+    endDate?: string;
+    description?: string;
+    isCurrentRole?: boolean;
+}
+
+// ============================================================================
+// ORGANIZATION TYPES
+// ============================================================================
+
+export interface Organization {
+    id: string;
+    name: string;
+    slug: string;
+    type: OrganizationType;
+    logo?: string | null;
+    website?: string | null;
+    description?: string | null;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+    createdByUserId: string;
+    members?: OrganizationMember[];
+}
+
+export interface OrganizationMember {
+    id: string;
+    organizationId: string;
+    userId: string;
+    role: OrgRole;
+    title?: string | null;
+    joinedAt: Date | string;
+    user?: User;
+}
+
+// ============================================================================
+// WORKSPACE/PROJECT TYPES
+// ============================================================================
+
+export interface Project {
+    id: string;
+    name: string;
+    description?: string | null;
+    userId: string;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+}
+
+// ============================================================================
+// CANDIDATE & RECRUITER TYPES
+// ============================================================================
+
+export enum CandidateInterestStatus {
+    PENDING = 'PENDING',
+    ACCEPTED = 'ACCEPTED',
+    DECLINED = 'DECLINED',
+    EXPIRED = 'EXPIRED',
+    INTERVIEW_SCHEDULED = 'INTERVIEW_SCHEDULED',
+    OFFER_SENT = 'OFFER_SENT',
+    JOINED = 'JOINED',
+    REJECTED = 'REJECTED'
+}
+
+export interface CandidateInterest {
+    id: string;
+    organizationId: string;
+    recruiterId: string;
+    candidateId: string;
+    opportunityId?: string | null;
+    message?: string | null;
+    status: CandidateInterestStatus;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+    organization?: Organization;
+    recruiter?: User;
+    candidate?: User;
 }
 
 export interface SavedCandidate {
@@ -1009,7 +1102,9 @@ export interface SavedCandidate {
     recruiterId: string;
     candidateId: string;
     collectionName?: string | null;
-    savedAt: string | Date;
+    savedAt: Date | string;
+    recruiter?: User;
+    candidate?: User;
 }
 
 export interface ProfileView {
@@ -1018,47 +1113,6 @@ export interface ProfileView {
     organizationId?: string | null;
     recruiterId: string;
     viewedAt: string | Date;
-}
-
-// ============================================================================
-// ORGANIZATION & RECRUITER TYPES
-// ============================================================================
-
-export enum OrganizationType {
-    COMPANY = 'COMPANY',
-    ENGINEERING_COLLEGE = 'ENGINEERING_COLLEGE',
-    TRAINING_INSTITUTE = 'TRAINING_INSTITUTE',
-    BOOTCAMP = 'BOOTCAMP',
-    NGO = 'NGO',
-    PLACEMENT_CELL = 'PLACEMENT_CELL'
-}
-
-export enum OrgRole {
-    OWNER = 'OWNER',
-    ADMIN = 'ADMIN',
-    RECRUITER = 'RECRUITER',
-    VIEWER = 'VIEWER'
-}
-
-export enum MembershipStatus {
-    PENDING = 'PENDING',
-    APPROVED = 'APPROVED',
-    REJECTED = 'REJECTED'
-}
-
-export interface Organization {
-    id: string;
-    name: string;
-    slug: string;
-    type: OrganizationType;
-    website?: string | null;
-    emailDomain?: string | null;
-    logo?: string | null;
-    verified: boolean;
-    verifiedAt?: string | Date | null;
-    active: boolean;
-    createdAt: string | Date;
-    updatedAt: string | Date;
 }
 
 export interface OrganizationMembership {
@@ -1083,52 +1137,24 @@ export interface OrganizationInvite {
     createdAt: string | Date;
 }
 
-// ============================================================================
-// CANDIDATE PORTFOLIO & RECRUITER ATS TYPES
-// ============================================================================
-
-export interface Project {
-    id: string;
-    userId: string;
-    title: string;
-    description?: string | null;
-    githubUrl?: string | null;
-    liveUrl?: string | null;
-    skills: string[];
-    order: number;
-    createdAt: string | Date;
-}
-
-export enum CandidateInterestStatus {
-    PENDING = 'PENDING',
-    ACCEPTED = 'ACCEPTED',
-    DECLINED = 'DECLINED',
-    EXPIRED = 'EXPIRED',
-    INTERVIEW_SCHEDULED = 'INTERVIEW_SCHEDULED',
-    OFFER_SENT = 'OFFER_SENT',
-    JOINED = 'JOINED',
-    REJECTED = 'REJECTED'
-}
-
-export interface CandidateInterest {
-    id: string;
-    organizationId: string;
-    recruiterId: string;
-    candidateId: string;
-    opportunityId?: string | null;
-    message?: string | null;
-    status: CandidateInterestStatus;
-    createdAt: string | Date;
-    updatedAt: string | Date;
-}
-
 export interface CompanyTargetResponse {
-  id: string; company: string; ats: string; slug: string;
-  active: boolean; priority: number;
-  lastRunAt?: string; lastJobCount?: number; createdAt: string;
+    id: string;
+    company: string;
+    ats: string;
+    slug: string;
+    active: boolean;
+    priority: number;
+    lastRunAt?: string;
+    lastJobCount?: number;
+    createdAt: string;
 }
+
 export interface CreateCompanyTargetPayload {
-  company: string; ats: string; slug: string; active?: boolean; priority?: number;
+    company: string;
+    ats: string;
+    slug: string;
+    active?: boolean;
+    priority?: number;
 }
 
 export interface OpportunityCardDTO {
@@ -1211,4 +1237,9 @@ export function toOpportunityCardDTO(opp: Opportunity): OpportunityCardDTO {
     };
 }
 
-export * from './schemas.js';
+// ============================================================================
+// VALIDATION SCHEMAS
+// ============================================================================
+
+export * from './schemas';
+

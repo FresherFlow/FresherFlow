@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import { BOARD_SCRAPER_REGISTRY, ScraperInputDto, AtsJob } from '@fresherflow/plugins';
 import { parseWalkInDetails, matchHyderabadCluster, ParsedWalkInDetails, MatchedClusterResult, isSeniorJob } from '@fresherflow/utils';
+import { unwrapRedirectors, isValidApplyLink } from '../../core/extractor.js';
 
 export interface WalkInJobOpportunity extends AtsJob {
   city: string;
@@ -164,11 +165,15 @@ export async function collectHyderabadWalkinDrives(options: {
                 const cluster = matchHyderabadCluster(`${details.venueAddress} ${bodyText} ${post.title}`);
 
                 let applyLink = post.url;
+                const postHost = new URL(post.url).hostname;
                 post$('a').each((_, a) => {
-                  const t = post$(a).text().toLowerCase();
                   const h = post$(a).attr('href');
-                  if (h && (t.includes('apply') || t.includes('official') || t.includes('link')) && h.startsWith('http') && !h.includes(new URL(post.url).hostname)) {
-                    applyLink = h;
+                  if (h && (h.startsWith('http') || h.startsWith('//'))) {
+                    const unwrapped = unwrapRedirectors(h.startsWith('//') ? `https:${h}` : h);
+                    if (isValidApplyLink(unwrapped, postHost)) {
+                      applyLink = unwrapped;
+                      return false; // Break on first valid real apply link
+                    }
                   }
                 });
 
@@ -268,13 +273,18 @@ export async function collectHyderabadWalkinDrives(options: {
 
             const cluster = matchHyderabadCluster(`${details.venueAddress} ${text}`);
 
-            // Extract any links inside message
-            const links: string[] = [];
+            // Extract real apply links inside message using extractor rules
+            let applyLink = tmeUrl;
             $(wrap).find('a').each((_, a) => {
               const h = $(a).attr('href');
-              if (h && h.startsWith('http') && !h.includes('t.me')) links.push(h);
+              if (h && (h.startsWith('http') || h.startsWith('//'))) {
+                const unwrapped = unwrapRedirectors(h.startsWith('//') ? `https:${h}` : h);
+                if (isValidApplyLink(unwrapped, 't.me')) {
+                  applyLink = unwrapped;
+                  return false;
+                }
+              }
             });
-            const applyLink = links[0] || tmeUrl;
 
             const companyMatch = text.match(/(?:Company|Hiring|Drive|Walk-in|Walkin)\s*:\s*([^\n\r,]+)/i) ||
                                  firstLine.match(/^([^|–—\-]+?)(?:\s+(?:Walk\s*in|Recruitment|Drive))/i);

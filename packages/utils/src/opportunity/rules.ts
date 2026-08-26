@@ -113,7 +113,10 @@ export function applyRuleEngine(input: RuleEngineInput): RuleEngineOutput {
     const descText = `${input.description || ''} ${input.location || ''} ${input.employmentType || ''}`;
 
     // 1. Job Type
-    if (INTERNSHIP_PATTERNS.some(p => p.test(input.title))) {
+    if (/\bwalk[\s-]*in\b|\bwalkin\b/i.test(input.title)) {
+        output.type = 'WALKIN';
+        output.workMode = 'ONSITE';
+    } else if (INTERNSHIP_PATTERNS.some(p => p.test(input.title))) {
         output.type = 'INTERNSHIP';
     } else {
         output.type = 'JOB';

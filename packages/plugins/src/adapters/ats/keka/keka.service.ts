@@ -90,7 +90,7 @@ export class KekaService implements IScraper {
       console.log(`Fetching Keka published jobs from: ${host}`);
 
       // The published-jobs feed enumerates every open role for the tenant.
-      const rawJobs = await this.fetchJobs(client, host);
+      const rawJobs = await this.fetchJobs(client, host, tenant);
       if (rawJobs.length === 0) {
         console.log(`Keka tenant "${tenant}" has no open roles`);
         return new JobResponseDto([]);
@@ -127,15 +127,44 @@ export class KekaService implements IScraper {
   }
 
   /**
-   * Fetch and parse the tenant published-jobs feed. The feed has fronted the same
-   * job set under a handful of paths across tenant versions; we probe them in
-   * order and use the first that yields roles. An unknown sub-domain (HTTP 4xx)
-   * or a missing feed degrades to an empty list.
+   * Fetch and parse the tenant published-jobs feed.
+   * Probes the live Keka candidate embedjobs active JSON API first, then falls back to legacy paths.
    */
   private async fetchJobs(
     client: ReturnType<typeof createHttpClient>,
     host: string,
+    portal: string = 'default',
   ): Promise<KekaApiJob[]> {
+    // 1. Primary Keka Strategy: Fetch careers landing page and extract the portal identifier
+    try {
+      const portalPath = portal && portal !== 'default' ? `/careers/${portal}` : '/careers';
+      const landingUrl = `${host}${portalPath}`;
+      const landingRes = await client.get<string>(landingUrl, { responseType: 'text' });
+      const html = typeof landingRes.data === 'string' ? landingRes.data : '';
+
+      const idMatch = html.match(/\/ats\/documents\/([0-9a-f-]+)\/careerportal/i) ||
+                      html.match(/\/careers\/api\/embedjobs\/(?:js\/)?([0-9a-f-]+)/i);
+      if (idMatch && idMatch[1]) {
+        const identifier = idMatch[1].toLowerCase();
+        const embedUrls = [
+          `${host}/careers/api/embedjobs/${portal}/active/${identifier}`,
+          `${host}/careers/api/embedjobs/default/active/${identifier}`,
+        ];
+        for (const embedUrl of embedUrls) {
+          try {
+            const res = await client.get<unknown>(embedUrl, { responseType: 'json' });
+            const jobs = this.extractJobsArray(res.data);
+            if (jobs.length > 0) return jobs;
+          } catch {
+            // continue
+          }
+        }
+      }
+    } catch (err: any) {
+      console.warn(`Keka landing probe failed for ${host}: ${err.message}`);
+    }
+
+    // 2. Fallback: probe legacy and alternative API paths
     for (const path of KEKA_JOBS_API_PATHS) {
       const url = `${host}${path}`;
       try {
@@ -187,7 +216,24 @@ export class KekaService implements IScraper {
     if (!title) return null;
 
     const url = this.resolveDetailUrl(raw, host, jobId);
-    const descriptionHtml = this.cleanText(raw.jobDescription) ?? this.cleanText(raw.description);
+    const descriptionHtml = this.cleanText(raw.jobDescription) ?? this.cleanText(raw.description) ?? this.cleanText(raw.excerpt);
+
+    // Parse jobLocations array if present
+    let city = this.cleanText(raw.city) ?? this.cleanText(raw.location);
+    let state = this.cleanText(raw.state) ?? this.cleanText(raw.region);
+    let country = this.cleanText(raw.country);
+
+    const jobLocs = raw.jobLocations;
+    if (Array.isArray(jobLocs) && jobLocs.length > 0) {
+      const firstLoc = jobLocs[0] as any;
+      if (typeof firstLoc === 'object' && firstLoc !== null) {
+        city = city ?? this.cleanText(firstLoc.city || firstLoc.locationName || firstLoc.name);
+        state = state ?? this.cleanText(firstLoc.state || firstLoc.stateName || firstLoc.region);
+        country = country ?? this.cleanText(firstLoc.country || firstLoc.countryName);
+      } else if (typeof firstLoc === 'string') {
+        city = city ?? this.cleanText(firstLoc);
+      }
+    }
 
     return {
       jobId,
@@ -197,14 +243,15 @@ export class KekaService implements IScraper {
       companyName: null,
       descriptionHtml: descriptionHtml ?? null,
       description: null,
-      city: this.cleanText(raw.city) ?? this.cleanText(raw.location),
-      state: this.cleanText(raw.state) ?? this.cleanText(raw.region),
-      country: this.cleanText(raw.country),
+      city,
+      state,
+      country,
       department: this.cleanText(raw.department) ?? this.cleanText(raw.departmentName),
       employmentType: this.normaliseEmploymentType(
         this.cleanText(raw.employmentType) ?? this.cleanText(raw.jobType),
       ),
       datePosted:
+        this.parseDate(raw.publishedOn) ??
         this.parseDate(raw.postedDate) ??
         this.parseDate(raw.publishedDate) ??
         this.parseDate(raw.createdDate),

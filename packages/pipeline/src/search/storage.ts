@@ -51,6 +51,7 @@ export async function writeGitHubStepSummary(data: {
   rawCount: number;
   duplicateCount?: number;
   sourceCounts: Record<string, number>;
+  sourceStats?: Record<string, { raw: number; cached: number; duplicate: number; filtered: number; dead: number; live: number }>;
   staleCount: number;
   locCount: number;
   scoreCount: number;
@@ -75,13 +76,19 @@ export async function writeGitHubStepSummary(data: {
     `| **Non-Fresher / Senior Filtered** | ${data.scoreCount} |`,
     `| **✅ Verified Live Jobs** | **${data.verifiedJobs.length}** |`,
     ``,
-    `## 📊 Channel Breakdown`,
-    `| Channel / Source | Raw Candidates Fetched |`,
-    `|---|---|`,
+    `## 📊 Channel & Source Funnel Breakdown`,
+    `| Channel / Source | Raw Fetched | Already Visited (Cached) | Filtered (Loc/Senior/Stale) | Dead / Blocked | Survived (Live) |`,
+    `|---|---|---|---|---|---|`,
   ];
 
-  for (const [src, count] of Object.entries(data.sourceCounts)) {
-    lines.push(`| ${src} | ${count} |`);
+  if (data.sourceStats && Object.keys(data.sourceStats).length > 0) {
+    for (const [src, s] of Object.entries(data.sourceStats)) {
+      lines.push(`| **${src}** | ${s.raw} | ${s.cached} | ${s.filtered} | ${s.dead} | **${s.live}** |`);
+    }
+  } else {
+    for (const [src, count] of Object.entries(data.sourceCounts)) {
+      lines.push(`| **${src}** | ${count} | - | - | - | - |`);
+    }
   }
 
   lines.push(``);

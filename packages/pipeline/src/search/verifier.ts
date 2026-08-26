@@ -1,6 +1,15 @@
 import { AtsJob } from '@fresherflow/plugins';
 import { isLocationIndiaOrRemote, scoreJobDescription, isSeniorJob } from '@fresherflow/utils';
 
+export interface SourceFunnelStats {
+  raw: number;
+  cached: number;
+  duplicate: number;
+  filtered: number;
+  dead: number;
+  live: number;
+}
+
 export interface VerificationResult {
   verifiedJobs: AtsJob[];
   stats: {
@@ -13,6 +22,7 @@ export interface VerificationResult {
     live: number;
     dead: number;
   };
+  sourceStats: Record<string, SourceFunnelStats>;
 }
 
 /**
@@ -41,21 +51,35 @@ export async function filterAndVerifyJobs(
     dead: 0,
   };
 
+  const sourceStats: Record<string, SourceFunnelStats> = {};
+
+  const getSourceStats = (src: string) => {
+    if (!sourceStats[src]) {
+      sourceStats[src] = { raw: 0, cached: 0, duplicate: 0, filtered: 0, dead: 0, live: 0 };
+    }
+    return sourceStats[src];
+  };
+
   const filteredCandidates: AtsJob[] = [];
   const seenUrls = new Set<string>();
 
   for (const job of rawJobs) {
     if (!job.applyLink) continue;
+    const src = job.source || 'Unknown';
+    const sStat = getSourceStats(src);
+    sStat.raw++;
 
     // 0. Previous Cache Check (Avoid repeating jobs from previous runs)
     if (options.cachedSeenUrls && options.cachedSeenUrls.has(job.applyLink)) {
       stats.previouslySeenFiltered++;
+      sStat.cached++;
       continue;
     }
 
     // 1. Duplicate check across keyword queries
     if (seenUrls.has(job.applyLink)) {
       stats.duplicateFiltered++;
+      sStat.duplicate++;
       continue;
     }
     seenUrls.add(job.applyLink);
@@ -65,6 +89,7 @@ export async function filterAndVerifyJobs(
       const timestamp = new Date(job.postedAt).getTime();
       if (!isNaN(timestamp) && timestamp < cutoff) {
         stats.staleFiltered++;
+        sStat.filtered++;
         continue;
       }
     }
@@ -72,6 +97,7 @@ export async function filterAndVerifyJobs(
     // 3. Location check
     if (!isLocationIndiaOrRemote(job.location || '', job.title)) {
       stats.locationFiltered++;
+      sStat.filtered++;
       continue;
     }
 
@@ -79,6 +105,7 @@ export async function filterAndVerifyJobs(
     const titleAndDesc = `${job.title || ''} ${job.description || ''}`;
     if (isSeniorJob(titleAndDesc)) {
       stats.scoreFiltered++;
+      sStat.filtered++;
       continue;
     }
 
@@ -87,6 +114,7 @@ export async function filterAndVerifyJobs(
       const score = scoreJobDescription(job.title || '', job.description);
       if (score.verdict === 'REJECT') {
         stats.scoreFiltered++;
+        sStat.filtered++;
         continue;
       }
     }
@@ -119,21 +147,28 @@ export async function filterAndVerifyJobs(
             signal: AbortSignal.timeout(8000),
             headers: {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+              'Accept-Language': 'en-US,en;q=0.9',
             },
           });
 
-          // If HEAD fails or is not allowed (e.g. 405 Method Not Allowed), retry with GET
-          if (resp.status === 405 || resp.status === 403) {
+          // If HEAD is blocked or method not allowed, fallback to GET
+          if (resp.status === 405 || resp.status === 403 || resp.status === 503 || resp.status === 429) {
             const getResp = await fetch(candidate.applyLink, {
               method: 'GET',
               redirect: 'follow',
               signal: AbortSignal.timeout(8000),
               headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
               },
             });
-            if (getResp.ok || getResp.status === 403) return candidate; // 403 may just mean bot blocked HEAD, URL exists
-          } else if (resp.ok) {
+            // 200, or anti-bot challenge (403/503/429) on known job sites means the URL endpoint exists
+            if (getResp.ok || getResp.status === 403 || getResp.status === 503 || getResp.status === 429) {
+              return candidate;
+            }
+          } else if (resp.ok || resp.status === 403 || resp.status === 503 || resp.status === 429) {
             return candidate;
           }
         } catch {
@@ -144,15 +179,22 @@ export async function filterAndVerifyJobs(
       })
     );
 
-    for (const res of results) {
+    for (let j = 0; j < chunk.length; j++) {
+      const candidate = chunk[j];
+      const res = results[j];
+      const src = candidate.source || 'Unknown';
+      const sStat = getSourceStats(src);
+
       if (res) {
         verifiedJobs.push(res);
         stats.live++;
+        sStat.live++;
       } else {
         stats.dead++;
+        sStat.dead++;
       }
     }
   }
 
-  return { verifiedJobs, stats };
+  return { verifiedJobs, stats, sourceStats };
 }

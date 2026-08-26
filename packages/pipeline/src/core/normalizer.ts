@@ -720,7 +720,11 @@ export function postProcessNormalize(job: ExtractedJob, _fullText: string): Extr
     job.requiredSkills = Array.from(finalSkillsSet).slice(0, 25);
 
     // --- 5. Strip walk-in fields from non-WALKIN types ---
-    if (job.type !== 'WALKIN') {
+    const isWalkInJob = job.type === OpportunityType.WALKIN || /\bwalk[\s-]*in\b|\bwalkin\b/i.test(job.title || '') || !!job.walkInDetails || !!job.venueAddress;
+    if (isWalkInJob) {
+        job.type = OpportunityType.WALKIN;
+        job.workMode = WorkMode.ONSITE;
+    } else {
         const walkinFields = ['venueAddress', 'venueLink', 'dateRange', 'timeRange',
             'requiredDocuments', 'contactPerson', 'contactPhone',
             'startDate', 'endDate', 'startTime', 'endTime'] as const;

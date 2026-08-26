@@ -52,7 +52,17 @@ async function runProvider(
     const entries = Object.entries(companies);
     if (entries.length === 0) return [];
 
-    console.log(`\nStarting ${name} adapter (${entries.length} companies)...`);
+    const partitionCount = parseInt(process.env.ATS_PARTITION_COUNT || '4', 10);
+    const partitionIndex = process.env.ATS_PARTITION_INDEX !== undefined
+        ? parseInt(process.env.ATS_PARTITION_INDEX, 10)
+        : Math.floor(new Date().getUTCHours() / (24 / partitionCount)) % partitionCount;
+
+    const shouldPartition = process.env.ATS_PARTITION_ENABLED === 'true' || process.env.CI === 'true';
+    const targetEntries = shouldPartition
+        ? entries.filter((_, idx) => (idx % partitionCount) === partitionIndex)
+        : entries;
+
+    console.log(`\nStarting ${name} adapter (${targetEntries.length}/${entries.length} companies${shouldPartition ? ` [partition ${partitionIndex + 1}/${partitionCount}]` : ''})...`);
 
     const scraper = SCRAPER_REGISTRY[slug];
     if (!scraper) {
@@ -66,13 +76,12 @@ async function runProvider(
     let circuitBroken = false;
 
     // Build tasks - one per company
-    const tasks = entries.map(([companyId, companyName]) => async (): Promise<AtsJob[]> => {
+    const tasks = targetEntries.map(([companyId, companyName]) => async (): Promise<AtsJob[]> => {
         if (circuitBroken) return [];
         try {
             const proxies = process.env.PROXY_LIST ? process.env.PROXY_LIST.split(',').map(p => p.trim()).filter(Boolean) : undefined;
             const input = new ScraperInputDto({
                 companySlug: companyId,
-                searchTerm: 'fresher intern "entry level" "new grad" apprentice junior associate trainee campus graduate "early career" SDE',
                 location: 'India',
                 resultsWanted: 50,
                 requestTimeout: 3, // 3-second fast timeout per company
