@@ -15,7 +15,7 @@ import {
     SalaryPeriod,
     OrganizationType,
     OrgRole
-} from './index';
+} from './enums.js';
 
 // ========================================
 // AUTH SCHEMAS

@@ -14,7 +14,14 @@
       "@fresherflow/constants": ["../../packages/constants/index.ts"],
       "@fresherflow/utils": ["../../packages/utils/src/index.ts"],
       "@fresherflow/utils/*": ["../../packages/utils/src/*"],
-      "@fresherflow/database": ["../../packages/database/src/index.ts"]
     }
-  }
+  },
+  "include": ["src/**/*", "index.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test_pipeline_run.ts",
+    "src/pipeline/filter_strict_interns.ts",
+    "src/pipeline/run_greenhouse_official.ts"
+  ]
 }

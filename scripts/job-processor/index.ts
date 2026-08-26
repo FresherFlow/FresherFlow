@@ -423,30 +423,87 @@ async function run(): Promise<void> {
                 // Track whether data came from native ATS API (skip LLM) or Playwright scrape (need LLM)
                 const isNativeAtsData = !!(nativeData?.title || atsContent.title);
 
+                const isWalkIn = rules.type === 'WALKIN' ||
+                                 job.type === 'WALKIN' ||
+                                 job.sourceType === 'AGGREGATOR' ||
+                                 !!job.walkInDetails ||
+                                 !!job.venueAddress ||
+                                 /walk[\s-]*in/i.test(job.title || '') ||
+                                 /walk[\s-]*in/i.test(nativeData?.title || atsContent.title || '') ||
+                                 (job.source || '').toLowerCase().includes('walkin');
+
+                let jobCompany = nativeData?.company || job.company || '';
+                if (!jobCompany || /^(corporate\s*walk\s*in|freshers?|ar\s*voice\s*freshers?|job\s*opportunity|walk\s*in)$/i.test(jobCompany)) {
+                    const rawTitle = nativeData?.title || atsContent.title || job.title || '';
+                    const compMatch = rawTitle.match(/^([^|–—\-]+?)(?:\s+(?:Walk\s*in|Walkin|Recruitment|Off\s*Campus|Hiring|Drive|for\s+Freshers))/i) ||
+                                      rawTitle.match(/(?:at|for|by)\s+([^|–—\-]+)/i);
+                    if (compMatch && compMatch[1].trim().length > 1) {
+                        const cleaned = compMatch[1].trim().replace(/^(New|Latest|Direct)\s+/i, '');
+                        if (!/^(walk\s*in|freshers?)$/i.test(cleaned)) {
+                            jobCompany = cleaned;
+                        }
+                    }
+                }
+
+                const walkInDetails = isWalkIn ? (job.walkInDetails || {
+                    venueAddress: job.venueAddress || 'Hyderabad',
+                    dateRange: job.walkinDate || job.dateRange || 'Active Walk-in',
+                    timeRange: job.walkinTime || job.timeRange || '10:00 AM - 1:00 PM',
+                    reportingTime: job.reportingTime || '9:30 AM',
+                    contactPerson: job.contactPerson || '',
+                    contactPhone: job.contactPhone || '',
+                    requiredDocuments: job.requiredDocs ? (typeof job.requiredDocs === 'string' ? JSON.parse(job.requiredDocs) : job.requiredDocs) : [
+                        'Updated Resume (2 Copies)',
+                        'Government Photo ID (Aadhaar / PAN / Passport)',
+                        'Passport Size Photographs (2)',
+                        'Academic Marksheets / Degree Certificates'
+                    ]
+                }) : null;
+
+                const walkInCity = job.city || job.locationCity || (walkInDetails?.venueAddress ? (walkInDetails.venueAddress.match(/\b(Hyderabad|Bengaluru|Bangalore|Chennai|Pune|Mumbai|Delhi|Noida|Gurugram|Gurgaon|Jaipur|Kolkata|Ahmedabad|Kochi|Coimbatore)\b/i)?.[1] || 'Hyderabad') : 'Hyderabad');
+                const initialLocations = isWalkIn ? [walkInCity] : ((nativeData?.locations && nativeData.locations.length > 0) ? nativeData.locations : dbLocations);
+                const initialWorkMode = isWalkIn ? 'ONSITE' : (nativeData?.workplaceType ?? dbWorkMode ?? rules.workMode ?? null);
+                const initialType = isWalkIn ? 'WALKIN' : (rules.type ?? 'JOB');
+
+                let expMin = nativeData?.experienceMin ?? (typeof job.experienceYears === 'number' ? job.experienceYears : (rules.experienceMin ?? extractedExp?.minExperienceYears ?? 0));
+                let expMax = nativeData?.experienceMax ?? (typeof job.experienceYears === 'number' ? job.experienceYears + 2 : (rules.experienceMax ?? extractedExp?.maxExperienceYears ?? (isWalkIn ? 1 : 0)));
+                if (isWalkIn) {
+                    expMin = Math.min(1, expMin || 0);
+                    expMax = Math.min(2, Math.max(expMin, expMax || 1));
+                }
+
                 const nativeJob: Record<string, unknown> = {
-                    type: rules.type ?? 'JOB',
+                    type: initialType,
                     title: nativeData?.title || atsContent.title || job.title || '',
-                    company: nativeData?.company || job.company || '',
+                    company: jobCompany,
                     companyId: job.companyId || job.company_id || null,
                     companyWebsite: job.companyUrl || job.companyWebsite || '',
                     companyLogoUrl: job.companyLogo || job.companyLogoUrl || '',
                     applyLink: nativeData?.applyLink || atsContent.externalApplyUrl || job.applyLink,
                     sourceLink: job.sourceLink || job.source_url || job.aggregatorUrl || job.jobUrlDirect || job.applyLink,
-                    locations: (nativeData?.locations && nativeData.locations.length > 0) ? nativeData.locations : dbLocations,
+                    locations: initialLocations,
                     requiredSkills: (nativeData?.nativeSkills && nativeData.nativeSkills.length > 0) ? nativeData.nativeSkills : (Array.isArray(job.skills) ? job.skills : []),
-                    workMode: nativeData?.workplaceType ?? dbWorkMode ?? rules.workMode ?? null,
+                    workMode: initialWorkMode,
                     descriptionSource: isNativeAtsData ? 'API' : (atsContent.text ? 'HTML' : 'NONE'),
-                    experienceMin: nativeData?.experienceMin ?? (typeof job.experienceYears === 'number' ? job.experienceYears : (rules.experienceMin ?? extractedExp?.minExperienceYears ?? 0)),
-                    experienceMax: nativeData?.experienceMax ?? (typeof job.experienceYears === 'number' ? job.experienceYears + 2 : (rules.experienceMax ?? extractedExp?.maxExperienceYears ?? 0)),
-                    employmentType: rules.employmentType || nativeData?.employmentType || job.employmentType || '',
+                    experienceMin: expMin,
+                    experienceMax: expMax,
+                    employmentType: rules.employmentType || nativeData?.employmentType || job.employmentType || (isWalkIn ? 'Full Time' : ''),
                     salaryRange: nativeData?.salaryRange || dbSalary || pluginSalary || '',
                     allowedPassoutYears: rules.inferredBatches ?? (job.batchYear ? [parseInt(job.batchYear, 10)].filter(n => !isNaN(n)) : []),
                     allowedDegrees: nativeData?.allowedDegrees ?? (job.degree ? [job.degree] : []),
                     allowedCourses: nativeData?.allowedCourses ?? [],
                     incentives: nativeData?.incentives ?? '',
-                    selectionProcess: nativeData?.selectionProcess ?? '',
+                    selectionProcess: nativeData?.selectionProcess ?? (isWalkIn ? 'Direct In-person Interview & Technical Discussion' : ''),
                     jobFunction: job.jobFunction || job.department || null,
                     description: nativeData?.text || atsContent.text || job.atsText || textForLlm,
+                    walkInDetails: walkInDetails,
+                    venueAddress: walkInDetails?.venueAddress || job.venueAddress || '',
+                    dateRange: walkInDetails?.dateRange || job.walkinDate || '',
+                    timeRange: walkInDetails?.timeRange || job.walkinTime || '',
+                    reportingTime: walkInDetails?.reportingTime || job.reportingTime || '',
+                    contactPerson: walkInDetails?.contactPerson || job.contactPerson || '',
+                    contactPhone: walkInDetails?.contactPhone || job.contactPhone || '',
+                    requiredDocuments: walkInDetails?.requiredDocuments || [],
                 };
 
                 // 2c. CDN matcher: fill remaining fields using CDN JSON data
@@ -463,15 +520,17 @@ async function run(): Promise<void> {
                     nativeJob.allowedPassoutYears = cdnMatch.allowedPassoutYears;
                 if (!nativeJob.salaryRange && cdnMatch.salaryRange)
                     nativeJob.salaryRange = cdnMatch.salaryRange;
-                if (!nativeJob.workMode && cdnMatch.workMode)
-                    nativeJob.workMode = cdnMatch.workMode;
-                if ((nativeJob.experienceMin === undefined || nativeJob.experienceMin === 0) && cdnMatch.experienceMin !== undefined)
-                    nativeJob.experienceMin = cdnMatch.experienceMin;
-                if ((nativeJob.experienceMax === undefined || nativeJob.experienceMax === 0) && cdnMatch.experienceMax !== undefined)
-                    nativeJob.experienceMax = cdnMatch.experienceMax;
-                // Overwrite native locations with the fully cleaned CDN locations
-                if (cdnMatch.locations.length > 0) {
-                    nativeJob.locations = cdnMatch.locations;
+                if (!isWalkIn) {
+                    if (!nativeJob.workMode && cdnMatch.workMode)
+                        nativeJob.workMode = cdnMatch.workMode;
+                    if ((nativeJob.experienceMin === undefined || nativeJob.experienceMin === 0) && cdnMatch.experienceMin !== undefined)
+                        nativeJob.experienceMin = cdnMatch.experienceMin;
+                    if ((nativeJob.experienceMax === undefined || nativeJob.experienceMax === 0) && cdnMatch.experienceMax !== undefined)
+                        nativeJob.experienceMax = cdnMatch.experienceMax;
+                    // Overwrite native locations with the fully cleaned CDN locations for non-walkin jobs
+                    if (cdnMatch.locations.length > 0) {
+                        nativeJob.locations = cdnMatch.locations;
+                    }
                 }
 
                 // Identify what's still missing after CDN matching (for logging)
