@@ -8,7 +8,7 @@ import {
     generateRefreshToken,
     verifyRefreshToken,
     hashRefreshToken
-} from '@fresherflow/auth';
+} from '@fresherflow/utils';
 import { validate } from '../middleware/validate';
 import { sendOtpSchema, verifyOtpSchema, googleAuthSchema } from '../utils/validation';
 import { AppError } from '../middleware/errorHandler';
@@ -18,7 +18,7 @@ import { EmailService } from '../infrastructure/services/email.service';
 import { eventService } from '../infrastructure/services/event.service';
 import { createRateLimiter } from '../middleware/rateLimit';
 import { getCookieDomain } from '../utils/runtimeConfig';
-import { calculateCompletion } from '@fresherflow/domain';
+import { calculateCompletion } from '@fresherflow/utils';
 import { Profile } from '@fresherflow/types';
 import { verifyFirebaseToken } from '../middleware/firebaseAuth';
 import { getFirebaseAuth } from '../lib/firebase';
@@ -225,7 +225,14 @@ router.post('/handshake', verifyFirebaseToken, async (req: Request, res: Respons
         });
 
         res.json({
-            user: { id: user.id, email: user.email || null, fullName: user.fullName || null, username: (user as User).username || null },
+            user: { 
+                id: user.id, 
+                email: user.email || null, 
+                fullName: user.fullName || null, 
+                username: (user as User).username || null,
+                role: (user as User).role,
+                memberships: (user as any).organizationMemberships || []
+            },
             profile: (user as User).profile || null,
             ...tokens,
         });
@@ -391,7 +398,14 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
     try {
         const user = await prisma.user.findUnique({
             where: { id: req.userId },
-            include: { profile: true }
+            include: { 
+                profile: true,
+                organizationMemberships: {
+                    include: {
+                        organization: true
+                    }
+                }
+            }
         });
 
         if (!user) return next(new AppError('User not found', 404));
@@ -402,7 +416,14 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
         );
 
         res.json({
-            user: { id: user.id, email: user.email, fullName: user.fullName, username: user.username || null },
+            user: { 
+                id: user.id, 
+                email: user.email, 
+                fullName: user.fullName, 
+                username: user.username || null,
+                role: user.role,
+                memberships: user.organizationMemberships
+            },
             profile
         });
     } catch (error) {

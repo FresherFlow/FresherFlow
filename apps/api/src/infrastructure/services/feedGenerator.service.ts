@@ -1,7 +1,7 @@
 import prisma from '../database/prisma';
 import { Prisma } from '@prisma/client';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import { StorageService } from './storage.service';
 
 export class FeedGeneratorService {
@@ -232,6 +232,34 @@ export class FeedGeneratorService {
         });
     }
 
+    public static async generateWalkinFeed() {
+        return this.withDbRetry(async () => {
+            const opportunities = await prisma.opportunity.findMany({
+                where: {
+                    status: OpportunityStatus.PUBLISHED,
+                    deletedAt: null,
+                    OR: [
+                        { type: OpportunityType.WALKIN },
+                        { walkInDetails: { isNot: null } }
+                    ],
+                    AND: [
+                        {
+                            OR: [
+                                { expiresAt: null },
+                                { expiresAt: { gt: new Date() } }
+                            ]
+                        }
+                    ]
+                },
+                orderBy: { postedAt: 'desc' },
+                select: this.getFeedSelectFields(),
+            });
+
+            const mappedOpportunities = this.mapFeedOpportunities(opportunities as unknown as Record<string, unknown>[]);
+            return { opportunities: mappedOpportunities, timestamp: Date.now(), generatedAt: new Date().toISOString(), count: opportunities.length };
+        });
+    }
+
     public static async generateExpiredFeed() {
         return this.withDbRetry(async () => {
             const opportunities = await prisma.opportunity.findMany({
@@ -355,6 +383,8 @@ export class FeedGeneratorService {
 
             const sitemaps = [
                 'sitemap-jobs.xml',
+                'sitemap-walkins.xml',
+                'sitemap-govt.xml',
                 'sitemap-companies.xml',
                 'sitemap-skills.xml',
                 'sitemap-roles.xml',

@@ -2,7 +2,7 @@ import path from 'path';
 import prisma from '../database/prisma';
 import { OpportunityStatus } from '@fresherflow/types';
 import { INDIAN_CITIES } from '@fresherflow/constants';
-import { logger } from '@fresherflow/logger';
+import { logger } from '@fresherflow/utils';
 import { getPublicSiteUrl } from '../../utils/runtimeConfig';
 import { StorageService } from './storage.service';
 import { FeedGeneratorService } from './feedGenerator.service';
@@ -35,6 +35,7 @@ export class StaticFeedService {
 
     private static get PUBLIC_ROOT() { return StorageService.getPublicRoot(); }
     private static get BOOTSTRAP_PATH() { return path.join(this.PUBLIC_ROOT, 'bootstrap-feed.min.json'); }
+    private static get FEED_INDEX_PATH() { return path.join(this.PUBLIC_ROOT, 'feed-index.json'); }
     private static get FEED_DIR() { return path.join(this.PUBLIC_ROOT, 'feed'); }
     private static get COMPANIES_DIR() { return path.join(this.PUBLIC_ROOT, 'companies'); }
     private static get CATEGORIES_DIR() { return path.join(this.PUBLIC_ROOT, 'categories'); }
@@ -45,13 +46,19 @@ export class StaticFeedService {
     private static get LINKS_PATH() { return path.join(this.PUBLIC_ROOT, 'links.min.json'); }
     private static get RESOURCES_PATH() { return path.join(this.PUBLIC_ROOT, 'resources-feed.json'); }
     private static get GOVERNMENT_PATH() { return path.join(this.PUBLIC_ROOT, 'government-feed.json'); }
+    private static get WALKINS_PATH() { return path.join(this.PUBLIC_ROOT, 'walkins-feed.json'); }
     private static get SYLLABUS_PATH() { return path.join(this.PUBLIC_ROOT, 'syllabus.json'); }
     private static get GENERATED_HUBS_PATH() { return path.join(this.PUBLIC_ROOT, 'generated-hubs.json'); }
+    private static get JOBS_DIR() { return path.join(this.PUBLIC_ROOT, 'jobs'); }
     public static get EXPIRED_FEED_PATH() { return path.join(this.PUBLIC_ROOT, 'expired-feed.min.json'); }
 
     // Retain delegates for backwards compatibility
     static async generateBootstrapFeed() {
         return FeedGeneratorService.generateBootstrapFeed();
+    }
+
+    static async generateWalkinFeed() {
+        return FeedGeneratorService.generateWalkinFeed();
     }
 
     static async generateGovernmentFeed() {
@@ -163,7 +170,43 @@ export class StaticFeedService {
                 StorageService.writeLocalFile(this.BOOTSTRAP_PATH, bootstrapBody);
                 await StorageService.uploadToR2('bootstrap-feed.min.json', bootstrapBody, 'application/json');
 
-
+                // 4b. Lightweight feed index — card-rendering fields only.
+                // ~700 bytes/job vs ~2.5KB/job in the full bootstrap.
+                // Web /jobs pages fetch this instead of the full feed.
+                // Mobile and detail pages continue using the full bootstrap.
+                const indexFields = [
+                    'id', 'slug', 'type', 'status', 'title', 'company', 'companyWebsite', 'companyLogoUrl',
+                    'locations', 'workMode', 'salaryMin', 'salaryMax', 'salaryRange', 'salaryPeriod',
+                    'stipend', 'incentives', 'employmentType', 'jobFunction',
+                    'requiredSkills', 'tags',
+                    'allowedDegrees', 'allowedCourses', 'allowedSpecializations',
+                    'allowedPassoutYears', 'passoutYearMin', 'passoutYearMax',
+                    'experienceMin', 'experienceMax',
+                    'postedAt', 'publishedAt', 'expiresAt', 'updatedAt',
+                    'applyLink', 'sourceLink',
+                    'walkInDetails', 'governmentJobDetails',
+                    'isReferral', 'referredByUsername'
+                ];
+                const indexOpps = activeMapped.map(opp => {
+                    const light: Record<string, unknown> = {};
+                    for (const key of indexFields) {
+                        const val = opp[key];
+                        if (val !== undefined && val !== null) {
+                            if (Array.isArray(val) && val.length === 0) continue;
+                            light[key] = val;
+                        }
+                    }
+                    return light;
+                });
+                const feedIndex = {
+                    opportunities: indexOpps,
+                    timestamp: Date.now(),
+                    generatedAt: now.toISOString(),
+                    count: indexOpps.length
+                };
+                const indexBody = JSON.stringify(feedIndex);
+                StorageService.writeLocalFile(this.FEED_INDEX_PATH, indexBody);
+                await StorageService.uploadToR2('feed-index.json', indexBody, 'application/json');
             }
 
             // 5. Generate & Upload Government Feed
@@ -178,6 +221,21 @@ export class StaticFeedService {
                 const governmentBody = JSON.stringify(government);
                 StorageService.writeLocalFile(this.GOVERNMENT_PATH, governmentBody);
                 await StorageService.uploadToR2('government-feed.json', governmentBody, 'application/json');
+            }
+
+            // 5b. Generate & Upload Walk-ins Feed (including Hyderabad Tech Cluster Map Feed)
+            if (target === 'all' || target === 'walkin' || target === 'bootstrap') {
+                const walkinMapped = activeMapped.filter(opp => opp.type === 'WALKIN' || Boolean(opp.walkInDetails));
+                const walkins = {
+                    opportunities: walkinMapped,
+                    timestamp: Date.now(),
+                    generatedAt: now.toISOString(),
+                    count: walkinMapped.length
+                };
+                const walkinsBody = JSON.stringify(walkins);
+                StorageService.writeLocalFile(this.WALKINS_PATH, walkinsBody);
+                await StorageService.uploadToR2('walkins-feed.json', walkinsBody, 'application/json');
+                await StorageService.uploadToR2('feeds/walkins.json', walkinsBody, 'application/json');
             }
 
             // 6. Generate & Upload Expired Feed (Past 45 Days)
@@ -265,51 +323,133 @@ export class StaticFeedService {
                     '/contact',
                     '/privacy',
                     '/terms',
-                    
                     '/app'
                 ];
 
-                // Dynamically collect skills, locations, batches, and roles
-                const skillsCounts = new Map<string, number>();
-                const locationsCounts = new Map<string, number>();
-                const rolesCounts = new Map<string, number>();
-                const batchesCounts = new Map<number, number>();
+                // 1. Companies (Active opportunities only, count >= 1 - matches web companies/[slug])
+                const activeCompaniesCounts = new Map<string, number>();
+                activeMapped.forEach((opp) => {
+                    if (opp.company && typeof opp.company === 'string') {
+                        activeCompaniesCounts.set(opp.company, (activeCompaniesCounts.get(opp.company) || 0) + 1);
+                    }
+                });
+                const validCompanies = Array.from(activeCompaniesCounts.entries())
+                    .filter(([_, count]) => count >= 1)
+                    .map(([c]) => c);
 
-                sitemapOpps.forEach(opp => {
+                // 2. Skills (Active opportunities only, count >= 5 - matches web SKILL_MIN_JOBS = 5 & dynamicParams = false)
+                const activeSkillsCounts = new Map<string, number>();
+                activeMapped.forEach(opp => {
                     ((opp.requiredSkills as string[]) || []).forEach(s => {
                         if (s) {
                             const slug = FeedGeneratorService.slugify(s);
-                            skillsCounts.set(slug, (skillsCounts.get(slug) || 0) + 1);
-                        }
-                    });
-                    ((opp.locations as string[]) || []).forEach(l => {
-                        if (l && l.toLowerCase() !== 'india' && l.toLowerCase() !== 'pan india') {
-                            const slug = FeedGeneratorService.slugify(l);
-                            locationsCounts.set(slug, (locationsCounts.get(slug) || 0) + 1);
-                        }
-                    });
-                    if (opp.jobFunction) {
-                        const slug = FeedGeneratorService.slugify(opp.jobFunction as string);
-                        rolesCounts.set(slug, (rolesCounts.get(slug) || 0) + 1);
-                    }
-                    ((opp.allowedPassoutYears as number[]) || []).forEach(y => {
-                        if (y) {
-                            batchesCounts.set(y, (batchesCounts.get(y) || 0) + 1);
+                            if (slug) {
+                                activeSkillsCounts.set(slug, (activeSkillsCounts.get(slug) || 0) + 1);
+                            }
                         }
                     });
                 });
+                const validSkills = Array.from(activeSkillsCounts.entries())
+                    .filter(([_, count]) => count >= 5)
+                    .map(([s]) => s);
 
-                // Guarantee pre-defined items bypass filter
-                ['software-engineer', 'data-analyst', 'business-analyst', 'frontend-developer', 'test-engineer'].forEach(r => rolesCounts.set(r, 999));
-                ['remote', 'delhi-ncr', ...INDIAN_CITIES.map(c => FeedGeneratorService.slugify(c))].forEach(l => locationsCounts.set(l, 999));
-                ['java', 'python', 'react', 'javascript', 'sql', 'aws', 'testing', 'node-js', 'c-plus-plus', 'data-structures', 'html-css'].forEach(s => skillsCounts.set(s, 999));
-                [2024, 2025, 2026, 2027].forEach(y => batchesCounts.set(y, 999));
+                // 3. Roles (Active opportunities only, matches web ROLE_OVERRIDES & ROLE_MIN_JOBS = 5)
+                const ROLE_OVERRIDES: Record<string, { label: string; keywords: string[] }> = {
+                    'software-engineer': {
+                        label: 'Software Engineer',
+                        keywords: ['software engineer', 'software developer', 'sde', 'full stack', 'backend developer', 'frontend developer', 'programmer', 'developer'],
+                    },
+                    'data-analyst': {
+                        label: 'Data Analyst',
+                        keywords: ['data analyst', 'bi analyst', 'data analytics', 'data scientist', 'ml engineer'],
+                    },
+                    'business-analyst': {
+                        label: 'Business Analyst',
+                        keywords: ['business analyst', 'product analyst', 'consultant', 'ba '],
+                    },
+                    'frontend-developer': {
+                        label: 'Frontend Developer',
+                        keywords: ['frontend developer', 'frontend engineer', 'ui developer', 'web developer'],
+                    },
+                    'test-engineer': {
+                        label: 'Test Engineer',
+                        keywords: ['test engineer', 'qa', 'quality assurance', 'sdet', 'automation engineer', 'tester'],
+                    },
+                };
 
-                const validCompanies = Array.from(companiesCounts.entries()).filter(([_, count]) => count >= 1).map(([c]) => c);
-                const validSkills = Array.from(skillsCounts.entries()).filter(([_, count]) => count >= 5).map(([s]) => s);
-                const validRoles = Array.from(rolesCounts.entries()).filter(([_, count]) => count >= 5).map(([r]) => r);
-                const validLocations = Array.from(locationsCounts.entries()).filter(([_, count]) => count >= 5).map(([l]) => l);
-                const validBatches = Array.from(batchesCounts.entries()).filter(([_, count]) => count >= 5).map(([b]) => b);
+                const activeRolesCounts = new Map<string, number>();
+                for (const opp of activeMapped) {
+                    const titleLower = ((opp.title as string) || '').toLowerCase();
+                    const jfSlug = opp.jobFunction ? FeedGeneratorService.slugify(opp.jobFunction as string) : null;
+
+                    for (const [slug, roleInfo] of Object.entries(ROLE_OVERRIDES)) {
+                        if (jfSlug === slug || roleInfo.keywords.some(kw => titleLower.includes(kw))) {
+                            activeRolesCounts.set(slug, (activeRolesCounts.get(slug) || 0) + 1);
+                        }
+                    }
+                    if (jfSlug && !ROLE_OVERRIDES[jfSlug]) {
+                        activeRolesCounts.set(jfSlug, (activeRolesCounts.get(jfSlug) || 0) + 1);
+                    }
+                }
+                const validRoles = Array.from(new Set([
+                    ...Object.keys(ROLE_OVERRIDES).filter(r => (activeRolesCounts.get(r) || 0) > 0),
+                    ...Array.from(activeRolesCounts.entries()).filter(([_, count]) => count >= 5).map(([r]) => r)
+                ]));
+
+                // 4. Locations (Active opportunities only, canonical location mapping & LOCATION_MIN_JOBS = 3)
+                const VALID_LOCATIONS_MAP: Record<string, string[]> = {
+                    'bangalore': ['bangalore', 'bengaluru'],
+                    'hyderabad': ['hyderabad'],
+                    'pune': ['pune'],
+                    'chennai': ['chennai'],
+                    'mumbai': ['mumbai'],
+                    'delhi-ncr': ['delhi', 'noida', 'gurugram', 'ncr', 'gurgaon'],
+                    'remote': ['remote', 'work from home', 'wfh', 'telecommute']
+                };
+                const BLOCKED_LOCATIONS = new Set([
+                    'pan india', 'india', 'remote', 'work from home', 'wfh',
+                    'multiple locations', 'various locations', 'anywhere', 'worldwide',
+                    'across india', 'all india', 'multiple cities',
+                ]);
+                const getCanonicalLoc = (loc: string): string | null => {
+                    const lower = loc.toLowerCase().trim();
+                    for (const [canonicalSlug, aliases] of Object.entries(VALID_LOCATIONS_MAP)) {
+                        if (aliases.some(alias => lower.includes(alias))) return canonicalSlug;
+                    }
+                    return null;
+                };
+
+                const activeLocationsCounts = new Map<string, number>();
+                for (const opp of activeMapped) {
+                    if (opp.workMode === 'REMOTE') {
+                        activeLocationsCounts.set('remote', (activeLocationsCounts.get('remote') || 0) + 1);
+                    }
+                    for (const loc of ((opp.locations as string[]) || [])) {
+                        if (!loc) continue;
+                        const key = loc.trim();
+                        const lLower = key.toLowerCase();
+                        if (BLOCKED_LOCATIONS.has(lLower) || key.includes(',') || key.includes('(') || key.length > 40 || key.length < 2) continue;
+                        const rawSlug = FeedGeneratorService.slugify(key);
+                        const canonical = getCanonicalLoc(rawSlug) || rawSlug;
+                        activeLocationsCounts.set(canonical, (activeLocationsCounts.get(canonical) || 0) + 1);
+                    }
+                }
+                const validLocations = Array.from(activeLocationsCounts.entries())
+                    .filter(([_, count]) => count >= 3)
+                    .map(([l]) => l);
+
+                // 5. Batches (Active opportunities only, count >= 3 & valid years)
+                const activeBatchesCounts = new Map<number, number>();
+                activeMapped.forEach(opp => {
+                    ((opp.allowedPassoutYears as number[]) || []).forEach(y => {
+                        if (typeof y === 'number' && y >= 2015 && y <= 2035) {
+                            activeBatchesCounts.set(y, (activeBatchesCounts.get(y) || 0) + 1);
+                        }
+                    });
+                });
+                const validBatches = Array.from(activeBatchesCounts.entries())
+                    .filter(([_, count]) => count >= 3)
+                    .map(([b]) => b);
 
                 // 1. sitemap-jobs.xml
                 let jobsXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
@@ -354,9 +494,37 @@ export class StaticFeedService {
                 validBatches.forEach(b => batchesXml += `  <url><loc>${baseUrl}/batch/${b}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
                 batchesXml += '</urlset>';
 
-                // 7. sitemap-index.xml
+                // 7. sitemap-walkins.xml
+                let walkinsXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+                walkinsXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+                walkinsXml += `  <url><loc>${baseUrl}/jobs/walk-ins</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`;
+                const walkinOpps = activeMapped.filter(opp => opp.type === 'WALKIN');
+                walkinOpps.forEach(opp => {
+                    const slugOrId = (opp.slug || opp.id) as string;
+                    const rawDate = (opp.updatedAt || opp.postedAt) as string | Date | undefined;
+                    const dateStr = rawDate ? new Date(rawDate).toISOString().split('T')[0] : staticDate;
+                    walkinsXml += `  <url><loc>${baseUrl}/jobs/${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>daily</changefreq></url>\n`;
+                });
+                walkinsXml += '</urlset>';
+
+                // 8. sitemap-govt.xml
+                let govtXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+                govtXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+                govtXml += `  <url><loc>${baseUrl}/govt</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`;
+                const govtOpps = sitemapOpps.filter(opp => opp.type === 'GOVERNMENT' || Boolean(opp.governmentJobDetails));
+                govtOpps.forEach(opp => {
+                    const slugOrId = (opp.slug || opp.id) as string;
+                    const rawDate = (opp.updatedAt || opp.postedAt) as string | Date | undefined;
+                    const dateStr = rawDate ? new Date(rawDate).toISOString().split('T')[0] : staticDate;
+                    govtXml += `  <url><loc>${baseUrl}/govt/${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>weekly</changefreq></url>\n`;
+                });
+                govtXml += '</urlset>';
+
+                // 9. sitemap-index.xml
                 const sitemaps = [
                     'sitemap-jobs.xml',
+                    'sitemap-walkins.xml',
+                    'sitemap-govt.xml',
                     'sitemap-companies.xml',
                     'sitemap-skills.xml',
                     'sitemap-roles.xml',
@@ -374,6 +542,8 @@ export class StaticFeedService {
                 StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'sitemap-index.xml'), indexXml);
                 StorageService.writeLocalFile(this.SITEMAP_PATH, indexXml); // Write to sitemap.xml as index sitemap
                 StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'sitemap-jobs.xml'), jobsXml);
+                StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'sitemap-walkins.xml'), walkinsXml);
+                StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'sitemap-govt.xml'), govtXml);
                 StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'sitemap-companies.xml'), companiesXml);
                 StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'sitemap-skills.xml'), skillsXml);
                 StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'sitemap-roles.xml'), rolesXml);
@@ -384,6 +554,8 @@ export class StaticFeedService {
                 await StorageService.uploadToR2('sitemap-index.xml', indexXml, 'application/xml');
                 await StorageService.uploadToR2('sitemap.xml', indexXml, 'application/xml');
                 await StorageService.uploadToR2('sitemap-jobs.xml', jobsXml, 'application/xml');
+                await StorageService.uploadToR2('sitemap-walkins.xml', walkinsXml, 'application/xml');
+                await StorageService.uploadToR2('sitemap-govt.xml', govtXml, 'application/xml');
                 await StorageService.uploadToR2('sitemap-companies.xml', companiesXml, 'application/xml');
                 await StorageService.uploadToR2('sitemap-skills.xml', skillsXml, 'application/xml');
                 await StorageService.uploadToR2('sitemap-roles.xml', rolesXml, 'application/xml');
@@ -393,7 +565,7 @@ export class StaticFeedService {
                 const sitemapData = {
                     companies: validCompanies.map(name => ({
                         name,
-                        slug: FeedGeneratorService.slugify(name)
+                        slug: FeedGeneratorService.getCompanySlug(name)
                     })),
                     opportunities: sitemapOpps.map(opp => ({
                         id: opp.id,
@@ -568,6 +740,20 @@ export class StaticFeedService {
                 }
             }
 
+            // 15. Generate & Upload Individual Job Shards (api/jobs/{id}.json)
+            if (target === 'all' || target === 'bootstrap' || target === 'jobs') {
+                StorageService.ensureDirectoryExists(this.JOBS_DIR);
+                for (const opp of allMapped) {
+                    const jobBody = JSON.stringify(opp);
+                    const id = (opp as { id?: string }).id;
+                    if (id) {
+                        StorageService.writeLocalFile(path.join(this.JOBS_DIR, `${id}.json`), jobBody);
+                        await StorageService.uploadToR2(`api/jobs/${id}.json`, jobBody, 'application/json');
+                        await StorageService.uploadToR2(`jobs/${id}.json`, jobBody, 'application/json');
+                    }
+                }
+            }
+
             logger.info('Static shards regenerated successfully', {
                 target,
                 companies: companyShardsCount,
@@ -576,6 +762,26 @@ export class StaticFeedService {
             });
         } catch (error) {
             logger.error('Failed to regenerate static shards', error);
+        }
+    }
+
+    /**
+     * Upload an individual job JSON directly to R2 (atomic update on publish/edit)
+     */
+    static async uploadSingleJob(opportunity: Record<string, unknown>): Promise<void> {
+        try {
+            const mapped = FeedGeneratorService.mapFeedOpportunities([opportunity])[0];
+            const jobBody = JSON.stringify(mapped);
+            const id = (opportunity as { id?: string }).id;
+
+            StorageService.ensureDirectoryExists(this.JOBS_DIR);
+            if (id) {
+                StorageService.writeLocalFile(path.join(this.JOBS_DIR, `${id}.json`), jobBody);
+                await StorageService.uploadToR2(`api/jobs/${id}.json`, jobBody, 'application/json');
+                await StorageService.uploadToR2(`jobs/${id}.json`, jobBody, 'application/json');
+            }
+        } catch (error) {
+            logger.error('[StaticFeedService] Failed to upload single job JSON to R2', error);
         }
     }
 }

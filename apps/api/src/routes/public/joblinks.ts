@@ -48,6 +48,21 @@ router.post('/submit-job-link', submitLimiter, async (req: Request, res: Respons
             }
         });
 
+        // Also sync to discovered_jobs for automated bot processing
+        try {
+            await prisma.$executeRawUnsafe(
+                `INSERT INTO public.discovered_jobs (url, title, company, source, status, created_at, updated_at)
+                 VALUES ($1, $2, $3, $4, 'PENDING', NOW(), NOW())
+                 ON CONFLICT (url) DO NOTHING;`,
+                url,
+                'Community Opportunity',
+                'Community / Recruiter',
+                `community:${source}`
+            );
+        } catch {
+            // Non-fatal if discovered_jobs table is handled separately
+        }
+
         // Notify Admin instantly via Telegram
         void TelegramService.notifyJobSubmission(url, source);
 
@@ -56,5 +71,6 @@ router.post('/submit-job-link', submitLimiter, async (req: Request, res: Respons
         next(e);
     }
 });
+
 
 export default router;

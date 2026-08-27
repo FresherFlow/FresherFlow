@@ -80,7 +80,7 @@ export class AuthService {
                 ...(firebaseUid ? { firebase_uid: firebaseUid } : {}),
                 profile: { create: { completionPercentage: 0 } },
             },
-            include: { profile: true },
+            include: { profile: true, organizationMemberships: { include: { organization: true } } },
         });
 
         const isNewUser = !existingUser;
@@ -141,7 +141,7 @@ export class AuthService {
                 ...(firebaseUid ? { firebase_uid: firebaseUid } : {}),
                 profile: { create: { completionPercentage: 0 } },
             },
-            include: { profile: true },
+            include: { profile: true, organizationMemberships: { include: { organization: true } } },
         });
 
         const isNewUser = !existingUser;
@@ -162,7 +162,7 @@ export class AuthService {
         // 1. Check for existing user by firebase_uid
         const existingByFirebase = await prisma.user.findUnique({
             where: { firebase_uid: uid },
-            include: { profile: true }
+            include: { profile: true, organizationMemberships: { include: { organization: true } } }
         });
 
         if (existingByFirebase) {
@@ -175,7 +175,7 @@ export class AuthService {
                         fullName: (name || existingByFirebase.fullName || normalizedEmail.split('@')[0]) as string,
                         isAnonymous: false,
                     },
-                    include: { profile: true }
+                    include: { profile: true, organizationMemberships: { include: { organization: true } } }
                 });
                 return { user: promotedUser as unknown as User, isNewUser: false };
             }
@@ -187,7 +187,7 @@ export class AuthService {
         if (normalizedEmail) {
             const existingByEmail = await prisma.user.findUnique({
                 where: { email: normalizedEmail },
-                include: { profile: true }
+                include: { profile: true, organizationMemberships: { include: { organization: true } } }
             });
 
             if (existingByEmail) {
@@ -196,7 +196,7 @@ export class AuthService {
                     data: {
                         firebase_uid: uid,
                     },
-                    include: { profile: true }
+                    include: { profile: true, organizationMemberships: { include: { organization: true } } }
                 });
 
                 return { user: linkedUser as unknown as User, isNewUser: false };
@@ -214,7 +214,7 @@ export class AuthService {
                 referralCode,
                 profile: { create: { completionPercentage: 0 } },
             },
-            include: { profile: true }
+            include: { profile: true, organizationMemberships: { include: { organization: true } } }
         });
 
         const isNewUser = true;
