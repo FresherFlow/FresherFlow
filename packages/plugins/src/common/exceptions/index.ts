@@ -1,1 +1,1 @@
-export * from './scraper-exceptions';
+export * from './scraper-exceptions.js';

@@ -17,14 +17,14 @@ import {
   parseLocationList,
   resolveCompensation,
 } from '../../../common/index.js';
-import { GREENHOUSE_API_URL, GREENHOUSE_HARVEST_API_URL, GREENHOUSE_HEADERS } from './greenhouse.constants';
+import { GREENHOUSE_API_URL, GREENHOUSE_HARVEST_API_URL, GREENHOUSE_HEADERS } from './greenhouse.constants.js';
 import {
   GreenhouseJob,
   GreenhouseResponse,
   GreenhouseHarvestJob,
   GreenhouseHarvestOffice,
   GreenhouseMetadataItem,
-} from './greenhouse.types';
+} from './greenhouse.types.js';
 
 /** Block-level HTML tag names used to detect whether `content` is real or
  *  entity-encoded HTML. */

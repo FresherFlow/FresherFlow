@@ -1,4 +1,4 @@
-import { CompensationInterval } from '../enums/compensation-interval.enum';
+import { CompensationInterval } from '../enums/compensation-interval.enum.js';
 
 export class CompensationDto {
   interval?: CompensationInterval | null;

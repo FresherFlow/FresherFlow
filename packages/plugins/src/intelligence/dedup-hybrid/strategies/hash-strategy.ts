@@ -1,4 +1,4 @@
-import { ClusterPartition, IDedupStrategy, PreparedJob } from '../types';
+import { ClusterPartition, IDedupStrategy, PreparedJob } from '../types.js';
 
 /**
  * Stage 1 — exact-canonical-id bucketing.

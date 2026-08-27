@@ -23,13 +23,13 @@ import {
   PYJAMAHR_DEFAULT_RESULTS,
   PYJAMAHR_MAX_PAGES,
   PYJAMAHR_HEADERS,
-} from './pyjamahr.constants';
+} from './pyjamahr.constants.js';
 import {
   PyjamaHrJob,
   PyjamaHrJobDetail,
   PyjamaHrJobListItem,
   PyjamaHrJobsListResponse,
-} from './pyjamahr.types';
+} from './pyjamahr.types.js';
 
 /**
  * PyjamaHR ATS careers scraper — generic, multi-tenant.

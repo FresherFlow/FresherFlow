@@ -1,5 +1,5 @@
-import { FieldWithProvenance } from './field-with-provenance.interface';
-import { SourceObservation } from './source-observation.interface';
+import { FieldWithProvenance } from './field-with-provenance.interface.js';
+import { SourceObservation } from './source-observation.interface.js';
 
 /**
  * A deduplicated, source-merged job posting.

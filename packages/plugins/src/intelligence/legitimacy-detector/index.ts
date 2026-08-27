@@ -1,2 +1,2 @@
 
-export { LegitimacyDetectorService } from './legitimacy-detector.service';
+export { LegitimacyDetectorService } from './legitimacy-detector.service.js';

@@ -22,8 +22,8 @@ import {
   DARWINBOX_HOST_SUFFIXES,
   DARWINBOX_DEFAULT_RESULTS,
   DARWINBOX_HEADERS,
-} from './darwinbox.constants';
-import { DarwinboxApiResponse, DarwinboxJob, DarwinboxJobListData } from './darwinbox.types';
+} from './darwinbox.constants.js';
+import { DarwinboxApiResponse, DarwinboxJob, DarwinboxJobListData } from './darwinbox.types.js';
 
 /**
  * Darwinbox ATS careers scraper — generic, multi-tenant.

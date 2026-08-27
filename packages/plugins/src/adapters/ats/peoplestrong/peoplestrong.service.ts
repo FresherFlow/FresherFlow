@@ -29,13 +29,13 @@ import {
   PEOPLESTRONG_JSON_LD_REGEX,
   PEOPLESTRONG_REMOTE_REGEX,
   peopleStrongCareerOrigin,
-} from './peoplestrong.constants';
+} from './peoplestrong.constants.js';
 import {
   PeopleStrongJob,
   PeopleStrongJobItem,
   PeopleStrongBoardResponse,
   PeopleStrongJsonLd,
-} from './peoplestrong.types';
+} from './peoplestrong.types.js';
 
 /**
  * PeopleStrong ATS candidate-portal scraper — generic, multi-tenant.

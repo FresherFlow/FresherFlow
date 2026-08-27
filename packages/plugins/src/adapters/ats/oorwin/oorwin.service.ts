@@ -29,13 +29,13 @@ import {
   OORWIN_DEFAULT_SORT,
   OORWIN_LIST_TYPE_PUBLIC,
   OORWIN_HEADERS,
-} from './oorwin.constants';
+} from './oorwin.constants.js';
 import {
   OorwinJobListItem,
   OorwinJobListResponse,
   OorwinJobDetail,
   OorwinJobViewResponse,
-} from './oorwin.types';
+} from './oorwin.types.js';
 
 /**
  * Oorwin career portal scraper — generic, multi-tenant.

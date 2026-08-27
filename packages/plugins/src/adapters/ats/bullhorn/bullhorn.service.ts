@@ -19,8 +19,8 @@ import {
 import {
   BULLHORN_DEFAULT_FIELDS,
   BULLHORN_HEADERS,
-} from './bullhorn.constants';
-import { BullhornJobOrder, BullhornSearchResponse } from './bullhorn.types';
+} from './bullhorn.constants.js';
+import { BullhornJobOrder, BullhornSearchResponse } from './bullhorn.types.js';
 
 export class BullhornService implements IScraper {
   
@@ -131,7 +131,7 @@ export class BullhornService implements IScraper {
     const title = order.title;
     if (!title) return null;
 
-    // Description — publicDescription is HTML
+    // Description ï¿½ publicDescription is HTML
     let description: string | null = null;
     if (order.publicDescription) {
       if (format === DescriptionFormat.HTML) {
@@ -164,12 +164,12 @@ export class BullhornService implements IScraper {
     const department =
       categories.length > 0 ? categories[0].name : null;
 
-    // Date posted — dateAdded is epoch milliseconds
+    // Date posted ï¿½ dateAdded is epoch milliseconds
     const datePosted = order.dateAdded
       ? new Date(order.dateAdded).toISOString().split('T')[0]
       : null;
 
-    // Job URL — Bullhorn does not expose a public careers page URL;
+    // Job URL ï¿½ Bullhorn does not expose a public careers page URL;
     // construct a reference URL using the REST API pattern
     const jobUrl = `https://public-rest${cls}.bullhornstaffing.com/rest-services/${corpToken}/entity/JobOrder/${order.id}`;
 

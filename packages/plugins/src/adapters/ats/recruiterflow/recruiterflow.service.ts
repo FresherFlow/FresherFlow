@@ -14,8 +14,8 @@ import {
   markdownConverter,
   extractEmails,
 } from '../../../common/index.js';
-import { RECRUITERFLOW_BASE_URL, RECRUITERFLOW_HEADERS } from './recruiterflow.constants';
-import { RecruiterflowJob, RecruiterflowApiResponse } from './recruiterflow.types';
+import { RECRUITERFLOW_BASE_URL, RECRUITERFLOW_HEADERS } from './recruiterflow.constants.js';
+import { RecruiterflowJob, RecruiterflowApiResponse } from './recruiterflow.types.js';
 
 export class RecruiterflowService implements IScraper {
   

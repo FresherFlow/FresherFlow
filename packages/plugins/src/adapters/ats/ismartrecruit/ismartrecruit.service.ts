@@ -14,8 +14,8 @@ import {
   markdownConverter,
   extractEmails,
 } from '../../../common/index.js';
-import { ISMARTRECRUIT_BASE_URL, ISMARTRECRUIT_HEADERS } from './ismartrecruit.constants';
-import { ISmartRecruitJob } from './ismartrecruit.types';
+import { ISMARTRECRUIT_BASE_URL, ISMARTRECRUIT_HEADERS } from './ismartrecruit.constants.js';
+import { ISmartRecruitJob } from './ismartrecruit.types.js';
 
 export class ISmartRecruitService implements IScraper {
   

@@ -1,5 +1,5 @@
 import type { Browser, Page, LaunchOptions, BrowserContextOptions } from 'playwright';
-import { STEALTH_INIT_SCRIPT, USER_AGENT_POOL, VIEWPORT_POOL } from './stealth-scripts';
+import { STEALTH_INIT_SCRIPT, USER_AGENT_POOL, VIEWPORT_POOL } from './stealth-scripts.js';
 
 /** Options passed to `BrowserPool.getPage()`. */
 export interface BrowserPageOptions {

@@ -1,6 +1,6 @@
-import { MinHasher, lshBandKeys, signatureSimilarity } from '../minhash';
-import { ClusterPartition, IDedupStrategy, PreparedJob } from '../types';
-import { UnionFind } from '../union-find';
+import { MinHasher, lshBandKeys, signatureSimilarity } from '../minhash.js';
+import { ClusterPartition, IDedupStrategy, PreparedJob } from '../types.js';
+import { UnionFind } from '../union-find.js';
 
 /**
  * Tuning knobs for {@link MinHashStrategy}.

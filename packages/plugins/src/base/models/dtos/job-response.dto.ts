@@ -1,4 +1,4 @@
-import { JobPostDto } from './job-post.dto';
+import { JobPostDto } from './job-post.dto.js';
 
 export class JobResponseDto {
   jobs: JobPostDto[];

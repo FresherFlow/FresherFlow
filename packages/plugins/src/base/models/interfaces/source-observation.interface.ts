@@ -1,4 +1,4 @@
-import { Site } from '../enums/site.enum';
+import { Site } from '../enums/site.enum.js';
 
 /**
  * A single per-source sighting of a logical job posting.

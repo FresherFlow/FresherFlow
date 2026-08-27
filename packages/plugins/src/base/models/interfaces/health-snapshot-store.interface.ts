@@ -1,5 +1,5 @@
-import { Site } from '../enums/site.enum';
-import { SourceHealth } from './circuit-breaker.interface';
+import { Site } from '../enums/site.enum.js';
+import { SourceHealth } from './circuit-breaker.interface.js';
 
 /**
  * Spec 005 / T09 / FR-8 — `IHealthSnapshotStore`.

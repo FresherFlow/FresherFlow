@@ -17,8 +17,8 @@ import {
   markdownConverter,
   extractEmails,
 } from '../../../common/index.js';
-import { WWR_RSS_URL, WWR_HEADERS } from './weworkremotely.constants';
-import { WwrRssItem } from './weworkremotely.types';
+import { WWR_RSS_URL, WWR_HEADERS } from './weworkremotely.constants.js';
+import { WwrRssItem } from './weworkremotely.types.js';
 
 export class WeWorkRemotelyService implements IScraper {
   

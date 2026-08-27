@@ -20,8 +20,8 @@ import {
   ZOHORECRUIT_JOBS_INPUT_ID,
   ZOHORECRUIT_JOB_URL_TEMPLATE,
   ZOHORECRUIT_HEADERS,
-} from './zohorecruit.constants';
-import { ZohoRecruitJobOpening } from './zohorecruit.types';
+} from './zohorecruit.constants.js';
+import { ZohoRecruitJobOpening } from './zohorecruit.types.js';
 
 /**
  * Zoho Recruit career-site scraper — generic, multi-tenant.

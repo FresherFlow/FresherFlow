@@ -23,8 +23,8 @@ import {
   BREEZYHR_DETAIL_CONCURRENCY,
   breezyDetailUrl,
   breezyListUrl,
-} from './breezyhr.constants';
-import { BreezyJob, BreezyLocation } from './breezyhr.types';
+} from './breezyhr.constants.js';
+import { BreezyJob, BreezyLocation } from './breezyhr.types.js';
 
 export class BreezyHRService implements IScraper {
   

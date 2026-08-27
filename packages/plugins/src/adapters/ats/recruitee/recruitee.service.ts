@@ -16,8 +16,8 @@ import {
   markdownConverter,
   extractEmails,
 } from '../../../common/index.js';
-import { RECRUITEE_HEADERS, RECRUITEE_OFFICIAL_API_BASE } from './recruitee.constants';
-import { RecruiteeOffer, RecruiteeResponse } from './recruitee.types';
+import { RECRUITEE_HEADERS, RECRUITEE_OFFICIAL_API_BASE } from './recruitee.constants.js';
+import { RecruiteeOffer, RecruiteeResponse } from './recruitee.types.js';
 
 export class RecruiteeService implements IScraper {
   

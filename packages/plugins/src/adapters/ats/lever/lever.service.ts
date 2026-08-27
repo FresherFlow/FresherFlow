@@ -19,8 +19,8 @@ import {
   randomSleep,
   resolveCompensation,
 } from '../../../common/index.js';
-import { LEVER_API_URL, LEVER_HEADERS, LEVER_DELAY_MS } from './lever.constants';
-import { LeverJob } from './lever.types';
+import { LEVER_API_URL, LEVER_HEADERS, LEVER_DELAY_MS } from './lever.constants.js';
+import { LeverJob } from './lever.types.js';
 
 export class LeverService implements IScraper {
   
@@ -42,7 +42,7 @@ export class LeverService implements IScraper {
         return apiResult;
       } catch (err: any) {
         console.warn(
-          `Lever authenticated API failed for ${companySlug}: ${err.message} — falling back to public scraping`,
+          `Lever authenticated API failed for ${companySlug}: ${err.message} ï¿½ falling back to public scraping`,
         );
       }
     }

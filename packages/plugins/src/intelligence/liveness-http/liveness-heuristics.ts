@@ -1,5 +1,5 @@
 import { htmlToPlainText } from '../../base/BaseAdapter.js';
-import { DEFAULT_MIN_CONTENT_LENGTH } from './liveness-http.constants';
+import { DEFAULT_MIN_CONTENT_LENGTH } from './liveness-http.constants.js';
 
 export type LivenessResult = 'active' | 'expired' | 'uncertain';
 export type LivenessCode = string;

@@ -218,14 +218,15 @@ export async function extractNativeAtsData(
         const urlObj = new URL(url);
         const host = urlObj.hostname.toLowerCase();
 
-        // 1. Special case: Greenhouse gh_jid fallback
-        const ghJid = urlObj.searchParams.get('gh_jid');
-        if (ghJid && companySlug) {
+        // 1. Direct Greenhouse URL extraction
+        const ghMatch = url.match(/greenhouse\.io\/(?:embed\/job_board\/)?([^\/\?#]+)\/jobs\/(\d+)/i);
+        if (ghMatch) {
+            const [, board, jobId] = ghMatch;
             const result = await fetchJson<any>(
-                `https://boards-api.greenhouse.io/v1/boards/${companySlug}/jobs/${ghJid}?content=true`
+                `https://boards-api.greenhouse.io/v1/boards/${board}/jobs/${jobId}?content=true`
             );
             if (result && result.title) {
-                console.log(`[Native] Greenhouse via gh_jid+slug (${companySlug}/${ghJid}) success`);
+                console.log(`[Native] Greenhouse direct API (${board}/${jobId}) success`);
                 const rawLocations: string[] = [];
                 if (result.location?.name) rawLocations.push(result.location.name);
                 for (const off of (result.offices || [])) if (off.name) rawLocations.push(off.name);
@@ -236,6 +237,50 @@ export async function extractNativeAtsData(
                     text: result.content ? result.content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '',
                     locations: rawLocations,
                     department: result.departments?.[0]?.name || '',
+                };
+            }
+        }
+
+        // 1c. Direct Lever URL extraction
+        const leverMatch = url.match(/jobs\.lever\.co\/([^\/\?#]+)\/([a-f0-9\-]+)/i);
+        if (leverMatch) {
+            const [, company, jobId] = leverMatch;
+            const result = await fetchJson<any>(`https://api.lever.co/v0/postings/${company}/${jobId}`);
+            if (result && result.text) {
+                console.log(`[Native] Lever direct API (${company}/${jobId}) success`);
+                const desc = [
+                    result.descriptionPlain,
+                    ...(result.lists || []).map((l: any) => `\n**${l.text}**\n${l.content}`)
+                ].join('\n\n');
+                return {
+                    ...EMPTY,
+                    title: result.text,
+                    html: result.description || '',
+                    text: desc,
+                    locations: [result.categories?.location || ''].filter(Boolean),
+                    department: result.categories?.department || '',
+                    employmentType: result.categories?.commitment || '',
+                    workplaceType: result.workplaceType === 'remote' ? 'REMOTE' : result.workplaceType === 'hybrid' ? 'HYBRID' : 'ONSITE'
+                };
+            }
+        }
+
+        // 1d. Direct Ashby URL extraction
+        const ashbyMatch = url.match(/jobs\.ashbyhq\.com\/([^\/\?#]+)\/([a-f0-9\-]+)/i);
+        if (ashbyMatch) {
+            const [, company, jobId] = ashbyMatch;
+            const result = await fetchJson<any>(`https://api.ashbyhq.com/posting-api/job-board/${company}/job/${jobId}`);
+            if (result && result.title) {
+                console.log(`[Native] Ashby direct API (${company}/${jobId}) success`);
+                return {
+                    ...EMPTY,
+                    title: result.title,
+                    html: result.descriptionHtml || '',
+                    text: result.descriptionPlain || '',
+                    locations: [result.locationName || ''].filter(Boolean),
+                    department: result.departmentName || '',
+                    employmentType: result.employmentType || '',
+                    workplaceType: result.isRemote ? 'REMOTE' : 'ONSITE'
                 };
             }
         }

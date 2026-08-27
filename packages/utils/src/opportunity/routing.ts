@@ -26,7 +26,7 @@ function getTypePrefix(type?: string): string {
     const t = type.toUpperCase();
     if (t === 'JOB') return '/jobs';
     if (t === 'INTERNSHIP') return '/jobs/internships';
-    if (t === 'WALKIN') return '/jobs/walk-ins';
+    if (t === 'WALKIN') return '/jobs/walkins';
     return '/jobs';
 }
 

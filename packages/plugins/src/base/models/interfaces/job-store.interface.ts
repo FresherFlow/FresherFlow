@@ -1,6 +1,6 @@
-import { CanonicalJob } from './canonical-job.interface';
-import { SourceObservation } from './source-observation.interface';
-import { JobStorePage, JobStoreQuery } from './job-store-query.interface';
+import { CanonicalJob } from './canonical-job.interface.js';
+import { SourceObservation } from './source-observation.interface.js';
+import { JobStorePage, JobStoreQuery } from './job-store-query.interface.js';
 
 /**
  * Persistent-store plugin contract for canonical jobs (Spec 004 / FR-1).

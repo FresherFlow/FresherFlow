@@ -3,8 +3,8 @@ import {
   IScraper, ScraperInputDto, JobResponseDto, JobPostDto, Site, LocationDto,
 } from '../../../base/models/index.js';
 import { createHttpClient, stripHtmlTags } from '../../../common/index.js';
-import { IBM_CAREERS_URL, IBM_JOB_BASE_URL } from './ibm.constants';
-import { IbmJob } from './ibm.types';
+import { IBM_CAREERS_URL, IBM_JOB_BASE_URL } from './ibm.constants.js';
+import { IbmJob } from './ibm.types.js';
 
 export class IbmService implements IScraper {
   

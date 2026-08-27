@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Site } from '../enums/site.enum';
+import { Site } from '../enums/site.enum.js';
 
 /**
  * Zod boundary schema for {@link FieldWithProvenance}.

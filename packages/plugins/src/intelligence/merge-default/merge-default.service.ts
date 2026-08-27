@@ -1,5 +1,5 @@
-import { FieldWithProvenance, MergeCategory, MergeDefaultOptions } from './types';
-import { SITE_CATEGORY_DEFAULTS } from './site-category-defaults';
+import { FieldWithProvenance, MergeCategory, MergeDefaultOptions } from './types.js';
+import { SITE_CATEGORY_DEFAULTS } from './site-category-defaults.js';
 
 export const DEFAULT_CATEGORY_PRIORITY: ReadonlyArray<MergeCategory> = [
   'ats',

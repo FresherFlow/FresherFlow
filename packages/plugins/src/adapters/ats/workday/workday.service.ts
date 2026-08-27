@@ -28,12 +28,12 @@ import {
   buildWorkdayUrl,
   buildWorkdayDetailUrl,
   parseWorkdayPostedOn,
-} from './workday.constants';
+} from './workday.constants.js';
 import {
   WorkdayJobDetail,
   WorkdayJobListItem,
   WorkdaySearchResponse,
-} from './workday.types';
+} from './workday.types.js';
 
 export class WorkdayService implements IScraper {
   

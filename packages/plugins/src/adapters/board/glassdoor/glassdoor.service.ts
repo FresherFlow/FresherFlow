@@ -7,8 +7,8 @@ import {
   createHttpClient, GlassdoorException, markdownConverter, plainConverter,
   extractEmails, randomSleep,
 } from '../../../common/index.js';
-import { GLASSDOOR_HEADERS, FALLBACK_CSRF_TOKEN, GD_JOB_SEARCH_QUERY } from './glassdoor.constants';
-import { parseCompensation, getCursorForPage, parseLocation } from './glassdoor.utils';
+import { GLASSDOOR_HEADERS, FALLBACK_CSRF_TOKEN, GD_JOB_SEARCH_QUERY } from './glassdoor.constants.js';
+import { parseCompensation, getCursorForPage, parseLocation } from './glassdoor.utils.js';
 
 export class GlassdoorService implements IScraper {
   

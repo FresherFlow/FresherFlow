@@ -11,8 +11,7 @@ export {
   toAtsJob
 } from './base/BaseAdapter.js';
 export type { IScraper } from './base/models/index.js';
-export { ScraperInputDto, JobResponseDto, JobPostDto } from './base/models/index.js';
-export { Site } from './base/models/index.js';
+export { ScraperInputDto, JobResponseDto, JobPostDto, JobType, Site } from './base/models/index.js';
 
 import type { AtsAdapter as IAtsAdapter } from './base/BaseAdapter.js';
 import type { IScraper } from './base/models/index.js';

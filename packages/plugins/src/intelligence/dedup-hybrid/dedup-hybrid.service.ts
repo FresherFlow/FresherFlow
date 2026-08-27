@@ -1,13 +1,13 @@
 import { AtsJob } from '../../base/BaseAdapter.js';
 
-import { HashStrategy } from './strategies/hash-strategy';
-import { MinHashStrategy } from './strategies/minhash-strategy';
+import { HashStrategy } from './strategies/hash-strategy.js';
+import { MinHashStrategy } from './strategies/minhash-strategy.js';
 import { 
   IDedupEngine, DedupResult, DedupInputError, CanonicalJob, 
   SourceObservation, FieldWithProvenance, DedupMetrics,
   ClusterPartition, DedupHybridOptions, IDedupStrategy, PreparedJob 
-} from './types';
-import { UnionFind } from './union-find';
+} from './types.js';
+import { UnionFind } from './union-find.js';
 
 function canonicalKey(input: {title: string, company: string, location: string}): string {
   return `${input.title.toLowerCase()}|${input.company.toLowerCase()}|${input.location.toLowerCase()}`;

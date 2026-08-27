@@ -1,5 +1,5 @@
 
-import { MergeCategory } from './types';
+import { MergeCategory } from './types.js';
 
 /**
  * Default Site → {@link MergeCategory} lookup used by

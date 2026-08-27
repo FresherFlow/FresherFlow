@@ -1,5 +1,5 @@
-import { ScraperInputDto } from '../dtos/scraper-input.dto';
-import { JobResponseDto } from '../dtos/job-response.dto';
+import { ScraperInputDto } from '../dtos/scraper-input.dto.js';
+import { JobResponseDto } from '../dtos/job-response.dto.js';
 
 /**
  * Interface that every source scraper service must implement.

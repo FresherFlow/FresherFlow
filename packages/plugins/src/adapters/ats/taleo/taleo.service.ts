@@ -20,12 +20,12 @@ import {
   TALEO_DELAY_MAX,
   parseTaleoSlug,
   buildTaleoSearchUrl,
-} from './taleo.constants';
+} from './taleo.constants.js';
 import {
   TaleoJobListItem,
   TaleoSearchPayload,
   TaleoSearchResponse,
-} from './taleo.types';
+} from './taleo.types.js';
 
 export class TaleoService implements IScraper {
   

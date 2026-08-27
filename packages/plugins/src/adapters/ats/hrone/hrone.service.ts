@@ -31,8 +31,8 @@ import {
   HRONE_REMOTE_REGEX,
   hroneCareerOrigin,
   hroneApiOrigin,
-} from './hrone.constants';
-import { HrOneJob, HrOneJobItem, HrOneJobsResponse } from './hrone.types';
+} from './hrone.constants.js';
+import { HrOneJob, HrOneJobItem, HrOneJobsResponse } from './hrone.types.js';
 
 /**
  * HROne (hrone.cloud) ATS careers scraper — generic, multi-tenant.

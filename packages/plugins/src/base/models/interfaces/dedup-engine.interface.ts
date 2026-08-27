@@ -1,5 +1,5 @@
-import { JobPostDto } from '../dtos/job-post.dto';
-import { CanonicalJob } from './canonical-job.interface';
+import { JobPostDto } from '../dtos/job-post.dto.js';
+import { CanonicalJob } from './canonical-job.interface.js';
 
 /**
  * Dedup-engine plugin contract (Spec 003 / FR-1).

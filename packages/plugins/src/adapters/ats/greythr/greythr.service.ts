@@ -25,12 +25,12 @@ import {
   GREYTHR_PUBLISHED_JOBS_BODY,
   GREYTHR_REMOTE_REGEX,
   greythrCareerOrigin,
-} from './greythr.constants';
+} from './greythr.constants.js';
 import {
   GreytHrJob,
   GreytHrJobItem,
   GreytHrPublishedJobsResponse,
-} from './greythr.types';
+} from './greythr.types.js';
 
 /**
  * greytHR (greytHR Recruit) careers scraper — generic, multi-tenant.

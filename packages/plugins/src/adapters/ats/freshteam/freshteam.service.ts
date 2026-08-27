@@ -14,8 +14,8 @@ import {
   markdownConverter,
   extractEmails,
 } from '../../../common/index.js';
-import { FRESHTEAM_HEADERS } from './freshteam.constants';
-import { FreshteamJobPosting } from './freshteam.types';
+import { FRESHTEAM_HEADERS } from './freshteam.constants.js';
+import { FreshteamJobPosting } from './freshteam.types.js';
 
 export class FreshteamService implements IScraper {
   

@@ -20,12 +20,12 @@ import {
   ORACLE_MAX_PAGES,
   ORACLE_RECORDS_PER_PAGE,
   ORACLE_REST_PATH,
-} from './oracle.constants';
+} from './oracle.constants.js';
 import {
   OracleJobsResponse,
   OracleRequisition,
   OracleTenantContext,
-} from './oracle.types';
+} from './oracle.types.js';
 
 /**
  * Spec 013 / T03 — Oracle HCM Cloud REST + finder-string scraper.

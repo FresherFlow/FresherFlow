@@ -22,14 +22,14 @@ import {
   PERSONIO_HEADERS,
   PERSONIO_API_AUTH_URL,
   PERSONIO_API_POSITIONS_URL,
-} from './personio.constants';
+} from './personio.constants.js';
 import {
   PersonioPosition,
   PersonioDescription,
   PersonioApiAuthResponse,
   PersonioApiPositionsResponse,
   PersonioApiPosition,
-} from './personio.types';
+} from './personio.types.js';
 
 export class PersonioService implements IScraper {
   

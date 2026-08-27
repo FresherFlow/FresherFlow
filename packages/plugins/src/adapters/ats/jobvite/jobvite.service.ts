@@ -14,8 +14,8 @@ import {
   markdownConverter,
   extractEmails,
 } from '../../../common/index.js';
-import { JOBVITE_API_URL, JOBVITE_OFFICIAL_API_URL, JOBVITE_HEADERS } from './jobvite.constants';
-import { JobviteResponse, JobviteJob } from './jobvite.types';
+import { JOBVITE_API_URL, JOBVITE_OFFICIAL_API_URL, JOBVITE_HEADERS } from './jobvite.constants.js';
+import { JobviteResponse, JobviteJob } from './jobvite.types.js';
 
 export class JobviteService implements IScraper {
   

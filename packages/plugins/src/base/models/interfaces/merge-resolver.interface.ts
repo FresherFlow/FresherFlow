@@ -1,4 +1,4 @@
-import { FieldWithProvenance } from './field-with-provenance.interface';
+import { FieldWithProvenance } from './field-with-provenance.interface.js';
 
 /**
  * Field-level merge policy used by the dedup engine (Spec 003 / FR-4).

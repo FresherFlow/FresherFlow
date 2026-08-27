@@ -14,8 +14,8 @@ import {
   markdownConverter,
   extractEmails,
 } from '../../../common/index.js';
-import { HASJOB_FEED_URL, HASJOB_DEFAULT_RESULTS, HASJOB_HEADERS } from './hasjob.constants';
-import { HasJobAtomEntry } from './hasjob.types';
+import { HASJOB_FEED_URL, HASJOB_DEFAULT_RESULTS, HASJOB_HEADERS } from './hasjob.constants.js';
+import { HasJobAtomEntry } from './hasjob.types.js';
 
 export class HasJobService implements IScraper {
   

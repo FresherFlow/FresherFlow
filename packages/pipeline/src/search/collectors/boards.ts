@@ -1,4 +1,4 @@
-import { AtsJob, BOARD_SCRAPER_REGISTRY, ScraperInputDto, toAtsJob } from '@fresherflow/plugins';
+import { AtsJob, BOARD_SCRAPER_REGISTRY, JobType, ScraperInputDto, toAtsJob } from '@fresherflow/plugins';
 import { isSeniorJob } from '@fresherflow/utils';
 import { parseJobUrl } from '@fresherflow/parser';
 
@@ -33,8 +33,8 @@ export async function collectBoardSearches(keywords: string[], options: {
       batch.map(async (keyword) => {
         const keywordJobs: AtsJob[] = [];
 
-        // Run LinkedIn and Internshala concurrently for this keyword
-        const [linkedinRes, internshalaRes] = await Promise.all([
+        // Run LinkedIn and Internshala (fresher jobs + internships) concurrently for this keyword
+        const [linkedinRes, internshalaJobsRes, internshalaInternshipsRes] = await Promise.all([
           // 1. LinkedIn
           BOARD_SCRAPER_REGISTRY['linkedin']
             ?.scrape(
@@ -47,12 +47,25 @@ export async function collectBoardSearches(keywords: string[], options: {
             )
             .catch(() => null),
 
-          // 2. Internshala
+          // 2a. Internshala Fresher Jobs (/fresher-jobs)
           BOARD_SCRAPER_REGISTRY['internshala']
             ?.scrape(
               new ScraperInputDto({
                 searchTerm: keyword,
                 location: 'India',
+                jobType: JobType.FULL_TIME,
+                resultsWanted: limitPerKeyword,
+              })
+            )
+            .catch(() => null),
+
+          // 2b. Internshala Internships (/internships)
+          BOARD_SCRAPER_REGISTRY['internshala']
+            ?.scrape(
+              new ScraperInputDto({
+                searchTerm: keyword,
+                location: 'India',
+                jobType: JobType.INTERNSHIP,
                 resultsWanted: limitPerKeyword,
               })
             )
@@ -91,13 +104,27 @@ export async function collectBoardSearches(keywords: string[], options: {
               }
             }
 
+            // Only keep LinkedIn jobs that resolved to a real company ATS link.
+            // Jobs still pointing to linkedin.com have no real description accessible
+            // (behind login wall) and produce low-quality results.
+            try {
+              const applyHost = new URL(resolvedApplyLink || '').hostname.toLowerCase();
+              if (applyHost.includes('linkedin.com')) continue;
+            } catch {
+              // If the URL can't be parsed at all, skip it too
+              continue;
+            }
+
             rawJob.applyLink = resolvedApplyLink;
             keywordJobs.push(rawJob);
           }
         }
 
-        if (internshalaRes?.jobs) {
-          keywordJobs.push(...internshalaRes.jobs.map((j) => toAtsJob(j, 'Internshala', j.companyName || 'Internshala', 'AGGREGATOR')));
+        if (internshalaJobsRes?.jobs) {
+          keywordJobs.push(...internshalaJobsRes.jobs.map((j) => toAtsJob(j, 'Internshala', j.companyName || 'Internshala', 'AGGREGATOR')));
+        }
+        if (internshalaInternshipsRes?.jobs) {
+          keywordJobs.push(...internshalaInternshipsRes.jobs.map((j) => toAtsJob(j, 'Internshala', j.companyName || 'Internshala', 'AGGREGATOR')));
         }
 
         console.log(`  └─ Board search for "${keyword}": found ${keywordJobs.length} jobs`);

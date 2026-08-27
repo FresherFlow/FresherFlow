@@ -6,8 +6,8 @@ import { createHttpClient } from '../../../common/index.js';
 import { stripHtmlTags } from '../../../common/index.js';
 import {
   AMAZON_API_URL, AMAZON_HEADERS, AMAZON_PAGE_SIZE, AMAZON_REQUEST_DELAY_MS,
-} from './amazon.constants';
-import { AmazonSearchResponse, AmazonSearchHit } from './amazon.types';
+} from './amazon.constants.js';
+import { AmazonSearchResponse, AmazonSearchHit } from './amazon.types.js';
 
 export class AmazonService implements IScraper {
   

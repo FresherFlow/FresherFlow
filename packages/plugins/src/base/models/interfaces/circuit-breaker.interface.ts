@@ -1,4 +1,4 @@
-import { Site } from '../enums/site.enum';
+import { Site } from '../enums/site.enum.js';
 
 /**
  * Circuit-breaker state machine (Spec 005 / FR-1, FR-2).

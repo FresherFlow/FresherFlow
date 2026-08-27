@@ -20,8 +20,8 @@ import {
   PHENOM_HEADERS,
   PHENOM_PAGE_SIZE,
   PHENOM_REQUEST_DELAY_MS,
-} from './phenom.constants';
-import { PhenomJob, PhenomResponse } from './phenom.types';
+} from './phenom.constants.js';
+import { PhenomJob, PhenomResponse } from './phenom.types.js';
 
 export class PhenomService implements IScraper {
   

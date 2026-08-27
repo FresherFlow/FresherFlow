@@ -1,4 +1,4 @@
-import { Country, getCountryDisplayName } from '../enums/country.enum';
+import { Country, getCountryDisplayName } from '../enums/country.enum.js';
 
 export class LocationDto {
   country?: Country | string | null;

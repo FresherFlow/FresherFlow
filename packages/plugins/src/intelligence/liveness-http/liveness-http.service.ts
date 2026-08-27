@@ -31,14 +31,14 @@ import {
   classifyBody,
   classifyHttpStatus,
   hasExpiredUrlMarker,
-} from './liveness-heuristics';
+} from './liveness-heuristics.js';
 import {
   DEFAULT_BATCH_CONCURRENCY,
   DEFAULT_MIN_CONTENT_LENGTH,
   DEFAULT_TIMEOUT_MS,
   LIVENESS_ACCEPT_HEADER,
   LIVENESS_USER_AGENT,
-} from './liveness-http.constants';
+} from './liveness-http.constants.js';
 
 /**
  * HTTP-based job-posting liveness checker — Spec 721.

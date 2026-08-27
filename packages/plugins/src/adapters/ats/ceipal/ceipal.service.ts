@@ -26,13 +26,13 @@ import {
   CEIPAL_DEFAULT_RESULTS,
   CEIPAL_JOB_PAGE_TEMPLATE,
   CEIPAL_HEADERS,
-} from './ceipal.constants';
+} from './ceipal.constants.js';
 import {
   CeipalJobPosting,
   CeipalJobListResponse,
   CeipalJobDetail,
   CeipalJobDetailResponse,
-} from './ceipal.types';
+} from './ceipal.types.js';
 
 /**
  * Ceipal public career-portal scraper — generic, multi-tenant.

@@ -210,7 +210,7 @@ async function run(): Promise<void> {
                 isRemote: r.is_remote,
                 experienceYears: r.experience_years,
                 employmentType: r.employment_type,
-                skills: r.skills ? JSON.parse(r.skills) : [],
+                skills: r.skills ? (Array.isArray(r.skills) ? r.skills : typeof r.skills === 'string' && r.skills.startsWith('[') ? JSON.parse(r.skills) : [r.skills]) : [],
                 postedAt: r.posted_at,
                 batchYear: r.batch_year,
                 degree: r.degree,
@@ -315,54 +315,45 @@ async function run(): Promise<void> {
                 let atsContent: { title: string; text: string; html: string; externalApplyUrl?: string | null } = { title: '', text: '', html: '', externalApplyUrl: null };
                 let nativeData = null;
 
-                if ((job.atsText && job.atsText.length > 50) || (job.description && job.description.length > 50)) {
-                    // Pre-supplied text from discovery phase
+                // Priority 1: Native ATS JSON API (Greenhouse, Lever, Ashby, SmartRecruiters)
+                const companySlug = GREENHOUSE_COMPANY_TO_SLUG.get((job.company || '').toLowerCase().trim())
+                    ?? CANONICAL_COMPANIES.get((job.company || '').toLowerCase().trim())?.slug;
+                
+                nativeData = await extractNativeAtsData(job.applyLink, source, undefined, companySlug);
+
+                if (nativeData?.text === '{"error":"Job not found"}' || nativeData?.title === 'Job not found') {
+                    console.log(`[DEAD] Native ATS API returned not found — skipping`);
+                    failureList.push({ url: job.applyLink, reason: 'Native ATS API - Job not found' });
+                    await saveState(job.applyLink, 'REJECTED');
+                    if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
+                    continue;
+                }
+
+                if (nativeData && (nativeData.html.length > 200 || nativeData.text.length > 200)) {
+                    atsContent = { title: nativeData.title, text: nativeData.text, html: nativeData.html };
+                    console.log(`[Native ATS API] ${source || 'detected'}: ${atsContent.text.length} chars.`);
+                } else if ((job.atsText && job.atsText.length > 50) || (job.description && job.description.length > 50)) {
+                    // Priority 2: Pre-supplied ATS text from discovery
                     atsContent.text = job.atsText || job.description;
                     atsContent.title = job.title;
                     console.log(`Pre-supplied ATS text (${atsContent.text.length} chars). Skipping Playwright.`);
-                    
-                    // Try to get structured API data (Greenhouse/Lever etc) without browser
-                    const companySlug = GREENHOUSE_COMPANY_TO_SLUG.get((job.company || '').toLowerCase().trim())
-                        ?? CANONICAL_COMPANIES.get((job.company || '').toLowerCase().trim())?.slug;
-                    nativeData = await extractNativeAtsData(job.applyLink, source, undefined, companySlug);
-                    
-                    if (nativeData?.text === '{"error":"Job not found"}' || nativeData?.title === 'Job not found') {
-                        console.log(`[DEAD] Native ATS API returned not found — skipping`);
-                        failureList.push({ url: job.applyLink, reason: 'Native ATS API - Job not found' });
-                        await saveState(job.applyLink, 'REJECTED');
-                        if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
-                        continue;
-                    }
                 } else {
+                    // Priority 3: Playwright browser fallback
                     let page = null;
                     try {
                         page = await context.newPage();
                         await applyStealth(page);
 
-                        // Pass page handle so Playwright adapters can use it when JSON API fails.
-                        // Since all companies on the same ATS share the same HTML structure,
-                        // one adapter covers ALL companies on that platform.
-                        const companySlug = GREENHOUSE_COMPANY_TO_SLUG.get((job.company || '').toLowerCase().trim())
-                            ?? CANONICAL_COMPANIES.get((job.company || '').toLowerCase().trim())?.slug;
                         nativeData = await extractNativeAtsData(job.applyLink, source, page, companySlug);
-
-                        if (nativeData?.text === '{"error":"Job not found"}' || nativeData?.title === 'Job not found') {
-                            console.log(`[DEAD] Native ATS API returned not found — skipping`);
-                            failureList.push({ url: job.applyLink, reason: 'Native ATS API - Job not found' });
-                            await saveState(job.applyLink, 'REJECTED');
-                            if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
-                            continue;
-                        }
 
                         if (nativeData && (nativeData.html.length > 200 || nativeData.text.length > 200)) {
                             atsContent = { title: nativeData.title, text: nativeData.text, html: nativeData.html };
                             console.log(`[ATS Adapter] ${source || 'detected'}: ${atsContent.text.length} chars.`);
                         } else {
-                            // No specific adapter matched — fall back to generic Playwright
                             atsContent = await extractAtsContent(page, job.applyLink);
                             const blocked = isBotOrError(atsContent.text, atsContent.title);
                             if (blocked || atsContent.text.length < 600) {
-                                console.log(`Generic scrape thin/blocked (${atsContent.text.length} chars). No fallback available.`);
+                                console.log(`Generic scrape thin/blocked (${atsContent.text.length} chars).`);
                                 atsContent.title = job.aggregatorTitle || job.title;
                             } else {
                                 console.log(`Generic Playwright succeeded (${atsContent.text.length} chars).`);

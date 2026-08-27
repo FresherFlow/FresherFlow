@@ -23,8 +23,8 @@ import {
   parseSfSlug,
   buildSfODataUrl,
   buildSfCareerUrl,
-} from './successfactors.constants';
-import { SfJobPosting, SfODataResponse } from './successfactors.types';
+} from './successfactors.constants.js';
+import { SfJobPosting, SfODataResponse } from './successfactors.types.js';
 
 export class SuccessFactorsService implements IScraper {
   

@@ -6,8 +6,8 @@ import { createHttpClient } from '../../../common/index.js';
 import {
   MICROSOFT_SEARCH_ENDPOINT, MICROSOFT_HEADERS,
   MICROSOFT_PAGE_SIZE, MICROSOFT_REQUEST_DELAY_MS, MICROSOFT_BASE_URL,
-} from './microsoft.constants';
-import { EightfoldSearchResponse, EightfoldPosition } from './microsoft.types';
+} from './microsoft.constants.js';
+import { EightfoldSearchResponse, EightfoldPosition } from './microsoft.types.js';
 
 export class MicrosoftService implements IScraper {
   

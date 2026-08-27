@@ -26,8 +26,8 @@ import {
   RECRUITCRM_REQUEST_DELAY_MS,
   RECRUITCRM_DEFAULT_RESULTS,
   RECRUITCRM_HEADERS,
-} from './recruitcrm.constants';
-import { RecruitCrmJob, RecruitCrmJobsResponse } from './recruitcrm.types';
+} from './recruitcrm.constants.js';
+import { RecruitCrmJob, RecruitCrmJobsResponse } from './recruitcrm.types.js';
 
 /**
  * Recruit CRM public career-page scraper — generic, multi-tenant.

@@ -24,13 +24,13 @@ import {
   ASHBY_INCLUDE_COMPENSATION_QUERY,
   ASHBY_PUBLIC_MAX_RETRIES,
   ASHBY_RETRY_BACKOFF,
-} from './ashby.constants';
+} from './ashby.constants.js';
 import {
   AshbyJob,
   AshbyResponse,
   AshbyCompensationTier,
   AshbyFlatCompensationComponent,
-} from './ashby.types';
+} from './ashby.types.js';
 
 export class AshbyService implements IScraper {
   

@@ -1,4 +1,4 @@
-import { Site } from '../enums/site.enum';
+import { Site } from '../enums/site.enum.js';
 
 /**
  * A field value that carries the source it came from.

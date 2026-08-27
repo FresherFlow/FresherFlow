@@ -31,7 +31,7 @@ import {
   SNAPHUNT_REMOTE_REGEX,
   SNAPHUNT_DEFAULT_RESULTS,
   SNAPHUNT_HEADERS,
-} from './snaphunt.constants';
+} from './snaphunt.constants.js';
 import {
   SnaphuntJob,
   SnaphuntJobPosting,
@@ -39,7 +39,7 @@ import {
   SnaphuntPostalAddress,
   SnaphuntLocationRequirement,
   SnaphuntSitemapEntry,
-} from './snaphunt.types';
+} from './snaphunt.types.js';
 
 /**
  * Snaphunt ATS career-site scraper — generic, multi-tenant.

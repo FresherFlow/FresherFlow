@@ -1,4 +1,4 @@
-import { BRAND_DOMAINS } from './domains';
+import { BRAND_DOMAINS } from './domains.js';
 
 export function extractDomain(url?: string | null): string | null {
     if (!url) return null;

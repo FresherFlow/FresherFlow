@@ -25,13 +25,13 @@ import {
   TURBOHIRE_PAGE_SIZE,
   TURBOHIRE_MAX_PAGES,
   TURBOHIRE_HEADERS,
-} from './turbohire.constants';
+} from './turbohire.constants.js';
 import {
   TurboHireJob,
   TurboHireJobDetail,
   TurboHireJobListItem,
   TurboHireJobsListResponse,
-} from './turbohire.types';
+} from './turbohire.types.js';
 
 /**
  * TurboHire ATS careers scraper — generic, multi-tenant.

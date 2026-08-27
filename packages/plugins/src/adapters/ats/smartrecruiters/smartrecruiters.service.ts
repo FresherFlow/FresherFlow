@@ -19,8 +19,8 @@ import {
   SMARTRECRUITERS_API_URL,
   SMARTRECRUITERS_HEADERS,
   SMARTRECRUITERS_PAGE_SIZE,
-} from './smartrecruiters.constants';
-import { SmartRecruitersJob, SmartRecruitersResponse } from './smartrecruiters.types';
+} from './smartrecruiters.constants.js';
+import { SmartRecruitersJob, SmartRecruitersResponse } from './smartrecruiters.types.js';
 
 export class SmartRecruitersService implements IScraper {
   

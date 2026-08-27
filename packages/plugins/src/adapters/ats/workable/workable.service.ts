@@ -21,14 +21,14 @@ import {
   WORKABLE_DETAIL_CONCURRENCY,
   WORKABLE_HEADERS,
   workableDetailUrl,
-} from './workable.constants';
+} from './workable.constants.js';
 import {
   WorkableJob,
   WorkableJobDetail,
   WorkableResponse,
   WorkableApiV3Job,
   WorkableApiV3Response,
-} from './workable.types';
+} from './workable.types.js';
 
 export class WorkableService implements IScraper {
   

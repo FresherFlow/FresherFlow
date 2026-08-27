@@ -26,13 +26,13 @@ import {
   ZWAYAM_PAGE_SIZE,
   ZWAYAM_MAX_PAGES,
   ZWAYAM_HEADERS,
-} from './zwayam.constants';
+} from './zwayam.constants.js';
 import {
   ZwayamJob,
   ZwayamJobDetail,
   ZwayamJobListItem,
   ZwayamJobsListResponse,
-} from './zwayam.types';
+} from './zwayam.types.js';
 
 /**
  * A resolved Zwayam tenant: the company slug used as the API path key, plus the

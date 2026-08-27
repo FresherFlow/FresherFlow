@@ -1,6 +1,6 @@
-import { JobType } from '../enums/job-type.enum';
-import { LocationDto } from './location.dto';
-import { CompensationDto } from './compensation.dto';
+import { JobType } from '../enums/job-type.enum.js';
+import { LocationDto } from './location.dto.js';
+import { CompensationDto } from './compensation.dto.js';
 
 export class JobPostDto {
   id?: string | null;

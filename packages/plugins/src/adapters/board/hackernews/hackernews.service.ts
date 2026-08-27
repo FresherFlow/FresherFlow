@@ -13,8 +13,8 @@ import {
   markdownConverter,
   extractEmails,
 } from '../../../common/index.js';
-import { HN_JOB_STORIES_URL, HN_ITEM_URL } from './hackernews.constants';
-import { HackerNewsItem } from './hackernews.types';
+import { HN_JOB_STORIES_URL, HN_ITEM_URL } from './hackernews.constants.js';
+import { HackerNewsItem } from './hackernews.types.js';
 
 /** Maximum number of item IDs to fetch in a single batch. */
 const BATCH_SIZE = 15;

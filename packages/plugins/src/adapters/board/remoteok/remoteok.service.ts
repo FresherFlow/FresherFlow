@@ -11,8 +11,8 @@ import {
   CompensationInterval,
 } from '../../../base/models/index.js';
 import { createHttpClient, htmlToPlainText, markdownConverter, extractEmails } from '../../../common/index.js';
-import { REMOTEOK_API_URL, REMOTEOK_HEADERS } from './remoteok.constants';
-import { RemoteOkJob } from './remoteok.types';
+import { REMOTEOK_API_URL, REMOTEOK_HEADERS } from './remoteok.constants.js';
+import { RemoteOkJob } from './remoteok.types.js';
 
 export class RemoteOkService implements IScraper {
   

@@ -1,1 +1,1 @@
-export { BrowserPool } from './browser-pool';
+export { BrowserPool } from './browser-pool.js';

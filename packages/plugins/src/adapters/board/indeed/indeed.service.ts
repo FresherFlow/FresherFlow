@@ -19,8 +19,8 @@ import {
   extractEmails,
   randomSleep,
 } from '../../../common/index.js';
-import { INDEED_HEADERS, JOB_SEARCH_QUERY } from './indeed.constants';
-import { getJobType, getCompensation, isJobRemote } from './indeed.utils';
+import { INDEED_HEADERS, JOB_SEARCH_QUERY } from './indeed.constants.js';
+import { getJobType, getCompensation, isJobRemote } from './indeed.utils.js';
 
 export class IndeedService implements IScraper {
   

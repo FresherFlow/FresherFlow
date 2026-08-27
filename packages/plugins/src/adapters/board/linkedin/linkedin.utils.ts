@@ -1,6 +1,6 @@
 import * as cheerio from 'cheerio';
 import { JobType, getJobTypeFromString } from '../../../base/models/index.js';
-import { JOB_TYPE_CODES } from './linkedin.constants';
+import { JOB_TYPE_CODES } from './linkedin.constants.js';
 
 /**
  * Get LinkedIn job type filter code from a JobType enum.

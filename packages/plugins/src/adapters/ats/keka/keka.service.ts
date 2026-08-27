@@ -27,7 +27,7 @@ import {
   KEKA_REMOTE_REGEX,
   KEKA_DEFAULT_RESULTS,
   KEKA_HEADERS,
-} from './keka.constants';
+} from './keka.constants.js';
 import {
   KekaApiJob,
   KekaJob,
@@ -35,7 +35,7 @@ import {
   KekaJobLocation,
   KekaJobsApiResponse,
   KekaPostalAddress,
-} from './keka.types';
+} from './keka.types.js';
 
 /**
  * Keka ATS careers scraper — generic, multi-tenant.

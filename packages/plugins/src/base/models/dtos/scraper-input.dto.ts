@@ -1,7 +1,7 @@
-import { Site } from '../enums/site.enum';
-import { JobType } from '../enums/job-type.enum';
-import { DescriptionFormat } from '../enums/description-format.enum';
-import { Country } from '../enums/country.enum';
+import { Site } from '../enums/site.enum.js';
+import { JobType } from '../enums/job-type.enum.js';
+import { DescriptionFormat } from '../enums/description-format.enum.js';
+import { Country } from '../enums/country.enum.js';
 
 export class ScraperInputDto {
   siteType?: Site[];

@@ -7,8 +7,8 @@ import { stripHtmlTags } from '../../../common/index.js';
 import {
   APPLE_CSRF_ENDPOINT, APPLE_SEARCH_ENDPOINT, APPLE_HEADERS,
   APPLE_PAGE_SIZE, APPLE_REQUEST_DELAY_MS, APPLE_BASE_URL,
-} from './apple.constants';
-import { AppleSearchResponse, AppleJobResult } from './apple.types';
+} from './apple.constants.js';
+import { AppleSearchResponse, AppleJobResult } from './apple.types.js';
 
 export class AppleService implements IScraper {
   

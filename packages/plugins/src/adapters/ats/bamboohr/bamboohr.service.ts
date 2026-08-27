@@ -22,7 +22,7 @@ import {
   BAMBOOHR_HEADERS,
   bamboohrDetailUrl,
   bamboohrListUrl,
-} from './bamboohr.constants';
+} from './bamboohr.constants.js';
 import {
   BambooHRResponse,
   BambooHRJob,
@@ -30,7 +30,7 @@ import {
   BambooHRDetailResponse,
   BambooHRApiResponse,
   BambooHRApiJobOpening,
-} from './bamboohr.types';
+} from './bamboohr.types.js';
 
 export class BambooHRService implements IScraper {
   

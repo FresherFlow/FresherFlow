@@ -1,4 +1,4 @@
-import { slugify } from './slugify';
+import { slugify } from './slugify.js';
 
 /**
  * Generates a consistent fingerprint for an opportunity to detect duplicates

@@ -28,7 +28,7 @@ import {
   ZIMYO_REMOTE_WORKPLACE_TYPE,
   ZIMYO_REMOTE_REGEX,
   zimyoDetailUrl,
-} from './zimyo.constants';
+} from './zimyo.constants.js';
 import {
   ZimyoJob,
   ZimyoJobListItem,
@@ -37,7 +37,7 @@ import {
   ZimyoJobDetailResponse,
   ZimyoJobAllDetails,
   ZimyoOrgDetailResponse,
-} from './zimyo.types';
+} from './zimyo.types.js';
 
 /**
  * Zimyo ATS careers scraper — generic, multi-tenant.

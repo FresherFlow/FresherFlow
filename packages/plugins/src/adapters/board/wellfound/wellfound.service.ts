@@ -16,8 +16,8 @@ import {
   randomSleep,
   BrowserPool,
 } from '../../../common/index.js';
-import { WELLFOUND_JOBS_URL, WELLFOUND_DELAY_MIN, WELLFOUND_DELAY_MAX } from './wellfound.constants';
-import { WellfoundNextData, WellfoundListing } from './wellfound.types';
+import { WELLFOUND_JOBS_URL, WELLFOUND_DELAY_MIN, WELLFOUND_DELAY_MAX } from './wellfound.constants.js';
+import { WellfoundNextData, WellfoundListing } from './wellfound.types.js';
 
 export class WellfoundService implements IScraper {
   
@@ -50,7 +50,7 @@ export class WellfoundService implements IScraper {
 
       if (!nextDataJson) {
         // TODO: Try alternative extraction (Apollo state, direct DOM parsing)
-        console.warn('Wellfound: __NEXT_DATA__ not found — page structure may have changed');
+        console.warn('Wellfound: __NEXT_DATA__ not found ï¿½ page structure may have changed');
         return new JobResponseDto([]);
       }
 
@@ -68,7 +68,7 @@ export class WellfoundService implements IScraper {
 
       if (listings.length === 0) {
         console.warn(
-          'Wellfound: zero listings found in __NEXT_DATA__ — data structure may have changed',
+          'Wellfound: zero listings found in __NEXT_DATA__ ï¿½ data structure may have changed',
         );
       }
 

@@ -22,12 +22,12 @@ import {
   EIGHTFOLD_MAX_CONCURRENCY,
   EIGHTFOLD_REQUEST_DELAY_MS,
   EIGHTFOLD_HEADERS,
-} from './eightfold.constants';
+} from './eightfold.constants.js';
 import {
   EightfoldPosition,
   EightfoldJobsResponse,
   EightfoldLocationObject,
-} from './eightfold.types';
+} from './eightfold.types.js';
 
 /**
  * Eightfold AI ("PCSX" / SmartApply) careers scraper — generic, multi-tenant.

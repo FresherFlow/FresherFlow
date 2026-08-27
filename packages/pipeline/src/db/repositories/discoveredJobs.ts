@@ -180,7 +180,11 @@ export interface DiscoveredJobRow {
 
 export async function fetchUnprocessedFromSupabase(limit = 100): Promise<DiscoveredJobRow[]> {
     const { rows } = await pool.query<DiscoveredJobRow>(
-        `SELECT id, apply_link, source, source_type as source_url, company, title, ats_text, location, status FROM discovered_jobs WHERE status = 'DISCOVERED' ORDER BY created_at DESC LIMIT $1`,
+        `SELECT id, apply_link, source, source_url, company, title, description, location, location_city, is_remote, experience_years, employment_type, skills, posted_at, batch_year, degree, department, status 
+         FROM discovered_jobs 
+         WHERE status IN ('APPROVED', 'PENDING', 'DISCOVERED') 
+         ORDER BY created_at DESC 
+         LIMIT $1`,
         [limit]
     );
     return rows;

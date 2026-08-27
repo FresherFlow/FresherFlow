@@ -17,8 +17,8 @@ import {
   MERCOR_EXPLORE_PATH,
   MERCOR_HEADERS,
   MERCOR_PUBLIC_ORIGIN,
-} from './mercor.constants';
-import { MercorListing, MercorListingsResponse } from './mercor.types';
+} from './mercor.constants.js';
+import { MercorListing, MercorListingsResponse } from './mercor.types.js';
 
 /**
  * Spec 013 / T05 — Mercor catalogue-wide explore-page scraper.

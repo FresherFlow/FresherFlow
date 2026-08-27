@@ -21,8 +21,8 @@ import {
   extractEmails,
   randomSleep,
 } from '../../../common/index.js';
-import { LINKEDIN_HEADERS } from './linkedin.constants';
-import { jobTypeCode, parseJobType, parseJobLevel, parseCompanyIndustry, isJobRemote } from './linkedin.utils';
+import { LINKEDIN_HEADERS } from './linkedin.constants.js';
+import { jobTypeCode, parseJobType, parseJobLevel, parseCompanyIndustry, isJobRemote } from './linkedin.utils.js';
 
 export class LinkedInService implements IScraper {
   

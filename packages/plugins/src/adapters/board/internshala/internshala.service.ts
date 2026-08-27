@@ -2,7 +2,7 @@
 import * as cheerio from 'cheerio';
 import {
   IScraper, ScraperInputDto, JobResponseDto, JobPostDto,
-  LocationDto, DescriptionFormat, Site,
+  LocationDto, DescriptionFormat, Site, JobType,
 } from '../../../base/models/index.js';
 import {
   HttpClient, createHttpClient, markdownConverter, plainConverter, randomSleep, extractEmails,
@@ -10,7 +10,7 @@ import {
 
 /** Internshala base URLs and selectors */
 const INTERNSHALA_BASE = 'https://internshala.com';
-const INTERNSHALA_JOBS_URL = `${INTERNSHALA_BASE}/jobs`;
+const INTERNSHALA_JOBS_URL = `${INTERNSHALA_BASE}/fresher-jobs`;
 const INTERNSHALA_INTERNSHIPS_URL = `${INTERNSHALA_BASE}/internships`;
 
 const INTERNSHALA_HEADERS: Record<string, string> = {
@@ -40,7 +40,15 @@ export class InternshalaService implements IScraper {
     const searchTerm = input.searchTerm ?? '';
     let page = 1;
 
-    console.log(`Scraping Internshala for: "${searchTerm}"`);
+    // Browse mode: when no search term is provided, scrape the main listing
+    // pages (/fresher-jobs and /internships) which carry ~100 discrete postings
+    // per page — a far higher yield than keyword-scoped pages.
+    const browseMode = searchTerm.trim().length === 0;
+    console.log(`Scraping Internshala for: "${searchTerm || 'ALL (browse mode)'}"`);
+
+    // Deduplicate by job URL: listing pages can surface the same posting more
+    // than once (e.g. a "similar internships" block next to the main card).
+    const seenUrls = new Set<string>();
 
     try {
       while (jobList.length < resultsWanted) {
@@ -51,7 +59,7 @@ export class InternshalaService implements IScraper {
         const $ = cheerio.load(resp.data);
 
         // Find job/internship listing cards
-        const cards = $('.individual_internship, .individual_job, .internship_meta, .job-listing-card').toArray();
+        const cards = $('.individual_internship, .individual_job, .job-listing-card').toArray();
 
         if (cards.length === 0) {
           console.log(`No more results found on page ${page}`);
@@ -62,9 +70,10 @@ export class InternshalaService implements IScraper {
           if (jobList.length >= resultsWanted) break;
 
           const job = this.parseJobCard($, card, input.descriptionFormat);
-          if (job) {
-            jobList.push(job);
-          }
+          if (!job) continue;
+          if (seenUrls.has(job.jobUrl)) continue; // skip duplicate posting
+          seenUrls.add(job.jobUrl);
+          jobList.push(job);
         }
 
         page++;
@@ -75,7 +84,7 @@ export class InternshalaService implements IScraper {
     }
 
     // Listing cards never carry the real job description (only stipend/duration/
-    // apply-by snippets) � fetch each job's own detail page for the full body.
+    // apply-by snippets) � fetch each job's own detail page for the full body.
     for (const job of jobList) {
       try {
         const fullDescription = await this.fetchDescription(client, job.jobUrl, input.descriptionFormat);
@@ -112,13 +121,33 @@ export class InternshalaService implements IScraper {
   }
 
   private buildSearchUrl(searchTerm: string, input: ScraperInputDto, page: number): string {
-    // Internshala uses slug-based URLs
+    // Internshala URL patterns:
+    //   Browse (all):     /fresher-jobs  or  /internships   (paginated: /page-2)
+    //   Fresher jobs:     /fresher-jobs/<keyword>-fresher-job-in-<location>/page-N
+    //   Internships:      /internships/<keyword>-internship-in-<location>/page-N
+    const isInternship = input.jobType === JobType.INTERNSHIP || (input.jobType as any) === 'internship';
+    const baseUrl = isInternship ? INTERNSHALA_INTERNSHIPS_URL : INTERNSHALA_JOBS_URL;
+
     const slug = searchTerm.toLowerCase().replace(/\s+/g, '-');
-    const baseUrl = input.jobType === 'internship' ? INTERNSHALA_INTERNSHIPS_URL : INTERNSHALA_JOBS_URL;
 
-    let url = slug ? `${baseUrl}/${slug}` : baseUrl;
+    // Browse mode: no keyword, just the main listing page + pagination.
+    // Note: we deliberately do NOT append a location suffix here — the main
+    // listings are India-focused already, Internshala returns a 404 for some
+    // `-in-<location>` variants on the internship side, and the downstream
+    // verifier filters out any non-India/remote postings.
+    if (!slug) {
+      if (page > 1) {
+        return `${baseUrl}/page-${page}`;
+      }
+      return baseUrl;
+    }
 
-    // Add location filter
+    const typeSuffix = isInternship ? 'internship' : 'fresher-job';
+
+    // e.g. /fresher-jobs/software-developer-fresher-job  or  /internships/python-internship
+    let url = slug ? `${baseUrl}/${slug}-${typeSuffix}` : baseUrl;
+
+    // Add location: -in-india
     if (input.location) {
       const locationSlug = input.location.toLowerCase().replace(/\s+/g, '-');
       url += `-in-${locationSlug}`;

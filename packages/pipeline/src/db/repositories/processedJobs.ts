@@ -98,6 +98,30 @@ export async function upsertProcessedJob(
         .filter((y) => !isNaN(y) && y >= 2000 && y <= 2040)
     : [];
 
+  // 5. Normalize allowed_degrees strictly to enum buckets per docs/templates.md
+  const VALID_DEGREE_BUCKETS = new Set(['TENTH', 'INTER', 'DIPLOMA', 'DEGREE', 'PG']);
+  let allowedDegrees: string[] = [];
+  let allowedCourses: string[] = Array.isArray(job.allowedCourses) ? job.allowedCourses.map(String) : [];
+
+  if (Array.isArray(job.allowedDegrees)) {
+    for (const d of job.allowedDegrees) {
+      const upper = String(d).toUpperCase().trim();
+      if (VALID_DEGREE_BUCKETS.has(upper)) {
+        if (!allowedDegrees.includes(upper)) allowedDegrees.push(upper);
+      } else {
+        if (!allowedCourses.includes(String(d))) allowedCourses.push(String(d));
+        if (/m\.?tech|mca|m\.?sc|master|pg|mba/i.test(d)) {
+          if (!allowedDegrees.includes('PG')) allowedDegrees.push('PG');
+        } else if (/diploma/i.test(d)) {
+          if (!allowedDegrees.includes('DIPLOMA')) allowedDegrees.push('DIPLOMA');
+        } else {
+          if (!allowedDegrees.includes('DEGREE')) allowedDegrees.push('DEGREE');
+        }
+      }
+    }
+  }
+  if (allowedDegrees.length === 0) allowedDegrees = ['DEGREE'];
+
   const payload = {
     discovered_job_id: job.discoveredJobId || null,
     type: job.type || 'JOB',
@@ -107,8 +131,8 @@ export async function upsertProcessedJob(
     company_website: website || job.companyWebsite || null,
     company_logo_url: logoUrl || null,
     description,
-    allowed_degrees: Array.isArray(job.allowedDegrees) ? job.allowedDegrees.map(String) : [],
-    allowed_courses: Array.isArray(job.allowedCourses) ? job.allowedCourses.map(String) : [],
+    allowed_degrees: allowedDegrees,
+    allowed_courses: allowedCourses,
     allowed_specializations: Array.isArray(job.allowedSpecializations) ? job.allowedSpecializations.map(String) : [],
     allowed_passout_years: passoutYears,
     required_skills: Array.isArray(job.requiredSkills) ? job.requiredSkills.map(String) : [],

@@ -21,11 +21,11 @@ import {
   ICIMS_DELAY_MAX,
   buildIcimsSearchUrl,
   buildIcimsGatewayUrl,
-} from './icims.constants';
+} from './icims.constants.js';
 import {
   IcimsJobListItem,
   IcimsGatewayResponse,
-} from './icims.types';
+} from './icims.types.js';
 
 export class IcimsService implements IScraper {
   
@@ -125,7 +125,7 @@ export class IcimsService implements IScraper {
 
       if (jobs.length === 0) {
         // TODO: Validate selectors against live iCIMS rendered DOM
-        console.warn('iCIMS Playwright: zero jobs extracted — selectors may need updating');
+        console.warn('iCIMS Playwright: zero jobs extracted ï¿½ selectors may need updating');
       }
 
       console.log(`iCIMS Playwright: extracted ${jobs.length} jobs for ${company}`);
