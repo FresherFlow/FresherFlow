@@ -6,25 +6,70 @@ export async function collectBoardSearches(keywords: string[], options: {
   resultsPerKeyword?: number;
   hoursOld?: number;
 } = {}): Promise<AtsJob[]> {
-  console.log(`\n=== Phase 2: Job Board Search Collectors (LinkedIn, Internshala, HasJob) ===`);
+  console.log(`\n=== Phase 2: Job Board Search Collectors (Internshala, LinkedIn, HasJob, HackerNews, WeWorkRemotely) ===`);
   const allJobs: AtsJob[] = [];
   const limitPerKeyword = options.resultsPerKeyword ?? 10;
 
-  // Also collect general Indian startup tech roles from HasJob Atom feed once
-  try {
-    const hasJobRes = await BOARD_SCRAPER_REGISTRY['hasjob']?.scrape(
-      new ScraperInputDto({ resultsWanted: 20 })
-    );
-    if (hasJobRes?.jobs?.length) {
-      const hasJobs = hasJobRes.jobs.map((j) => toAtsJob(j, 'HasJob', j.companyName || 'Startup', 'AGGREGATOR'));
-      console.log(`  └─ [HasJob] Fetched ${hasJobs.length} fresh Indian startup roles`);
-      allJobs.push(...hasJobs);
-    }
-  } catch (err: any) {
-    console.warn(`  └─ [HasJob] Error: ${err.message}`);
+  // ── Broad, non-keyword-scoped board sources ─────────────────────────────
+  // Internshala is scraped from its MAIN listing pages (/fresher-jobs and
+  // /internships) which carry ~100 discrete postings each — a far higher and
+  // fresher yield than per-keyword pages. Results are bounded because each
+  // posting's full description is fetched for the downstream fresher/senior
+  // verifier, and detail fetches are slow.
+  const internshalaPerType = 15;
+
+  const [internshalaJobsRes, internshalaInternshipsRes, hasJobRes, hnRes, wwrRes] = await Promise.all([
+    BOARD_SCRAPER_REGISTRY['internshala']
+      ?.scrape(
+        new ScraperInputDto({
+          searchTerm: '', // browse: main /fresher-jobs listing
+          jobType: JobType.FULL_TIME,
+          resultsWanted: internshalaPerType,
+        })
+      )
+      .catch(() => null),
+    BOARD_SCRAPER_REGISTRY['internshala']
+      ?.scrape(
+        new ScraperInputDto({
+          searchTerm: '', // browse: main /internships listing
+          jobType: JobType.INTERNSHIP,
+          resultsWanted: internshalaPerType,
+        })
+      )
+      .catch(() => null),
+    BOARD_SCRAPER_REGISTRY['hasjob']
+      ?.scrape(new ScraperInputDto({ resultsWanted: 20 }))
+      .catch(() => null),
+    BOARD_SCRAPER_REGISTRY['hackernews']
+      ?.scrape(new ScraperInputDto({ searchTerm: 'engineer', resultsWanted: 20 }))
+      .catch(() => null),
+    BOARD_SCRAPER_REGISTRY['weworkremotely']
+      ?.scrape(new ScraperInputDto({ searchTerm: 'engineering', resultsWanted: 20 }))
+      .catch(() => null),
+  ]);
+
+  if (internshalaJobsRes?.jobs?.length) {
+    allJobs.push(...internshalaJobsRes.jobs.map((j) => toAtsJob(j, 'Internshala', j.companyName || 'Internshala', 'AGGREGATOR')));
+    console.log(`  └─ [Internshala] Fresher jobs: ${internshalaJobsRes.jobs.length}`);
+  }
+  if (internshalaInternshipsRes?.jobs?.length) {
+    allJobs.push(...internshalaInternshipsRes.jobs.map((j) => toAtsJob(j, 'Internshala', j.companyName || 'Internshala', 'AGGREGATOR')));
+    console.log(`  └─ [Internshala] Internships: ${internshalaInternshipsRes.jobs.length}`);
+  }
+  if (hasJobRes?.jobs?.length) {
+    allJobs.push(...hasJobRes.jobs.map((j) => toAtsJob(j, 'HasJob', j.companyName || 'Startup', 'AGGREGATOR')));
+    console.log(`  └─ [HasJob] Fetched ${hasJobRes.jobs.length} fresh Indian startup roles`);
+  }
+  if (hnRes?.jobs?.length) {
+    allJobs.push(...hnRes.jobs.map((j) => toAtsJob(j, 'HackerNews', j.companyName || 'Startup', 'AGGREGATOR')));
+    console.log(`  └─ [HackerNews] Fetched ${hnRes.jobs.length} startup roles`);
+  }
+  if (wwrRes?.jobs?.length) {
+    allJobs.push(...wwrRes.jobs.map((j) => toAtsJob(j, 'WeWorkRemotely', j.companyName || 'Company', 'AGGREGATOR')));
+    console.log(`  └─ [WeWorkRemotely] Fetched ${wwrRes.jobs.length} remote roles`);
   }
 
-  // Process keywords in parallel batches
+  // ── Keyword-scoped LinkedIn (resolves outside ATS apply links) ──────────
   const KEYWORD_CONCURRENCY = 3;
   for (let i = 0; i < keywords.length; i += KEYWORD_CONCURRENCY) {
     const batch = keywords.slice(i, i + KEYWORD_CONCURRENCY);
@@ -33,44 +78,16 @@ export async function collectBoardSearches(keywords: string[], options: {
       batch.map(async (keyword) => {
         const keywordJobs: AtsJob[] = [];
 
-        // Run LinkedIn and Internshala (fresher jobs + internships) concurrently for this keyword
-        const [linkedinRes, internshalaJobsRes, internshalaInternshipsRes] = await Promise.all([
-          // 1. LinkedIn
-          BOARD_SCRAPER_REGISTRY['linkedin']
-            ?.scrape(
-              new ScraperInputDto({
-                searchTerm: keyword,
-                location: 'India',
-                resultsWanted: limitPerKeyword,
-                hoursOld: options.hoursOld,
-              })
-            )
-            .catch(() => null),
-
-          // 2a. Internshala Fresher Jobs (/fresher-jobs)
-          BOARD_SCRAPER_REGISTRY['internshala']
-            ?.scrape(
-              new ScraperInputDto({
-                searchTerm: keyword,
-                location: 'India',
-                jobType: JobType.FULL_TIME,
-                resultsWanted: limitPerKeyword,
-              })
-            )
-            .catch(() => null),
-
-          // 2b. Internshala Internships (/internships)
-          BOARD_SCRAPER_REGISTRY['internshala']
-            ?.scrape(
-              new ScraperInputDto({
-                searchTerm: keyword,
-                location: 'India',
-                jobType: JobType.INTERNSHIP,
-                resultsWanted: limitPerKeyword,
-              })
-            )
-            .catch(() => null),
-        ]);
+        const linkedinRes = await BOARD_SCRAPER_REGISTRY['linkedin']
+          ?.scrape(
+            new ScraperInputDto({
+              searchTerm: keyword,
+              location: 'India',
+              resultsWanted: limitPerKeyword,
+              hoursOld: options.hoursOld,
+            })
+          )
+          .catch(() => null);
 
         if (linkedinRes?.jobs) {
           for (const j of linkedinRes.jobs) {
@@ -120,18 +137,10 @@ export async function collectBoardSearches(keywords: string[], options: {
           }
         }
 
-        if (internshalaJobsRes?.jobs) {
-          keywordJobs.push(...internshalaJobsRes.jobs.map((j) => toAtsJob(j, 'Internshala', j.companyName || 'Internshala', 'AGGREGATOR')));
-        }
-        if (internshalaInternshipsRes?.jobs) {
-          keywordJobs.push(...internshalaInternshipsRes.jobs.map((j) => toAtsJob(j, 'Internshala', j.companyName || 'Internshala', 'AGGREGATOR')));
-        }
-
         console.log(`  └─ Board search for "${keyword}": found ${keywordJobs.length} jobs`);
         return keywordJobs;
       })
     );
-
 
     for (const r of batchResults) {
       if (r.status === 'fulfilled') {

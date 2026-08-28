@@ -70,10 +70,16 @@ export function isFresherJob(text: string): boolean {
     return true; 
 }
 
-// Is this strictly a senior job (experience >= 3 years)?
+// Is this strictly a senior job (experience >= 2 years or senior title)?
 export function isSeniorJob(text: string): boolean {
     if (text.length > 10000) text = text.substring(0, 10000);
     const lowerText = text.toLowerCase().replace(/[\u2018\u2019]/g, "'");
+
+    // 0. Explicit Senior / Lead / Principal / Manager / Architect Titles
+    const SENIOR_TITLE_REGEX = /\b(senior|sr\.?|principal|lead|director|manager|head\s+of|architect|staff|vp|vice\s+president|chief|partner|specialist\s+2|engineer\s+(?:2|3|4|ii|iii|iv|v)|sde[- ]?(?:2|3|4|ii|iii|iv|v))\b/i;
+    if (SENIOR_TITLE_REGEX.test(lowerText)) {
+        return true;
+    }
     
     // Check for ranges like "2-5 years of experience", "10-13 years" (excluding ranges starting with 0 or 1)
     const expRangeRegex = /(?:[2-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z',-]+\s+){0,5}(?:experience|building|working|developing|engineering|leading|managing)/gi;

@@ -22,36 +22,42 @@ export function cleanAtsTitle(rawTitle: string): string {
 export async function applyStealth(page: Page): Promise<void> {
     await page.addInitScript(() => {
         Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-    });
+    }).catch(() => {});
 
-    // Block images, fonts, stylesheets, media, analytics to speed up page loads by 10x
-    await page.route('**/*', (route) => {
-        const req = route.request();
-        const resourceType = req.resourceType();
-        const url = req.url().toLowerCase();
+    // Block images, fonts, stylesheets, media, analytics to speed up page loads
+    await page.route('**/*', async (route) => {
+        try {
+            const req = route.request();
+            const resourceType = req.resourceType();
+            const url = req.url().toLowerCase();
 
-        if (
-            ['image', 'media', 'font'].includes(resourceType) ||
-            url.includes('google-analytics') ||
-            url.includes('googletagmanager') ||
-            url.includes('facebook.net') ||
-            url.includes('doubleclick') ||
-            url.includes('hotjar') ||
-            url.includes('sentry.io')
-        ) {
-            route.abort();
-        } else {
-            route.continue();
+            if (
+                ['image', 'media', 'font'].includes(resourceType) ||
+                url.includes('google-analytics') ||
+                url.includes('googletagmanager') ||
+                url.includes('facebook.net') ||
+                url.includes('doubleclick') ||
+                url.includes('hotjar') ||
+                url.includes('sentry.io')
+            ) {
+                await route.abort().catch(() => {});
+            } else {
+                await route.continue().catch(() => {});
+            }
+        } catch {
+            await route.continue().catch(() => {});
         }
-    });
+    }).catch(() => {});
 }
 
 // Extract page text, html, and title using Playwright
 export async function extractAtsContent(page: Page, url: string): Promise<{ title: string; text: string; html: string; externalApplyUrl?: string | null }> {
     try {
         console.log(`Loading job page: ${url}`);
-        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
-        await page.waitForTimeout(1500); // Let content settle / SPA render
+        await page.goto(url, { waitUntil: 'commit', timeout: 15000 }).catch(async () => {
+            await page.goto(url, { timeout: 15000 }).catch(() => {});
+        });
+        await page.waitForTimeout(2000); // Let content settle / SPA render
 
         // Extract body text, html, and title
         const bodyText = await page.locator('body').innerText().catch(() => "");

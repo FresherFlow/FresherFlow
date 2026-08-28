@@ -54,7 +54,7 @@ export async function invalidatePublicOpportunityCache(options?: {
         const tagPaths = tags.map(tag => {
             if (tag === 'hub-jobs') return '/jobs';
             if (tag === 'hub-internships') return '/jobs/internships';
-            if (tag === 'hub-walkins') return '/jobs/walk-ins';
+            if (tag === 'hub-walkins') return '/jobs/walkins';
             if (tag === 'hub-government') return '/govt';
             if (tag.startsWith('company-')) return `/companies/${tag.replace('company-', '')}`;
             if (tag.startsWith('location-')) return `/locations/${tag.replace('location-', '')}`;

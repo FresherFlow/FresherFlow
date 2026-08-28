@@ -4,6 +4,32 @@ import { AppError } from './errorHandler';
 import prisma from '../infrastructure/database/prisma';
 import { logger } from '@fresherflow/utils';
 import crypto from 'crypto';
+import { getCookieDomain } from '../utils/runtimeConfig';
+
+const COOKIE_DOMAIN = getCookieDomain();
+
+function clearCookieVariants(res: Response, name: string, httpOnly = true) {
+    const baseOptions = {
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax' as 'lax' | 'strict' | 'none',
+        httpOnly,
+    };
+
+    res.clearCookie(name, baseOptions);
+
+    if (COOKIE_DOMAIN) {
+        const normalizedDomain = COOKIE_DOMAIN.replace(/^\./, '');
+        res.clearCookie(name, { ...baseOptions, domain: COOKIE_DOMAIN });
+        res.clearCookie(name, { ...baseOptions, domain: normalizedDomain });
+    }
+}
+
+function clearAuthCookieVariants(res: Response) {
+    clearCookieVariants(res, 'accessToken');
+    clearCookieVariants(res, 'refreshToken');
+    clearCookieVariants(res, 'ff_logged_in', false);
+}
 
 declare global {
     // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -86,6 +112,7 @@ export async function requireAuth(req: express.Request, res: Response, next: Nex
         try {
             userId = verifyAccessToken(token);
         } catch {
+            clearAuthCookieVariants(res);
             return next(new AppError('Invalid or expired token', 401));
         }
 
@@ -104,6 +131,7 @@ export async function requireAuth(req: express.Request, res: Response, next: Nex
         return next();
     }
 
+    clearAuthCookieVariants(res);
     return next(new AppError('Authentication required', 401));
 }
 

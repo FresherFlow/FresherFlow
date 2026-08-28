@@ -14,7 +14,8 @@ async function run() {
     const runId = await startRun();
     const state = await bootstrapState();
 
-    const TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes max runtime (fast execution)
+    const timeoutMinutes = parseInt(process.env.DISCOVERY_TIMEOUT_MINUTES || '80', 10);
+    const TIMEOUT_MS = timeoutMinutes * 60 * 1000;
     state.isTimeUp = () => (Date.now() - startTime) > TIMEOUT_MS;
 
     let runStatus: 'COMPLETED' | 'FAILED' = 'COMPLETED';

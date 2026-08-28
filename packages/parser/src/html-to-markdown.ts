@@ -2,7 +2,29 @@ import TurndownService from 'turndown';
 
 const turndownService = new TurndownService({
     headingStyle: 'atx',
+    bulletListMarker: '-',
     codeBlockStyle: 'fenced'
+});
+
+// Custom heading rule: output **Heading** per docs/templates.md
+turndownService.addRule('bold-headings', {
+    filter: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
+    replacement: function (content: string) {
+        const cleanContent = content.replace(/^\*\*|\*\*$/g, '').trim();
+        if (!cleanContent) return '';
+        return `\n\n**${cleanContent}**\n\n`;
+    }
+});
+
+// Strip image elements completely
+turndownService.addRule('strip-images', {
+    filter: function (node: any) {
+        const tag = (node.tagName || '').toLowerCase();
+        return ['img', 'svg', 'picture'].includes(tag);
+    },
+    replacement: function () {
+        return '';
+    }
 });
 
 // Strip unwanted HTML elements before Turndown sees them
@@ -15,7 +37,7 @@ turndownService.addRule('strip-noise-elements', {
         const id = (el.getAttribute('id') || '').toLowerCase();
 
         // Strip by tag
-        if (['nav', 'header', 'footer', 'aside', 'script', 'style', 'noscript', 'form', 'iframe', 'svg', 'img'].includes(tag)) return true;
+        if (['nav', 'header', 'footer', 'aside', 'script', 'style', 'noscript', 'form', 'iframe', 'svg', 'img', 'hr'].includes(tag)) return true;
 
         // Strip by class/id patterns
         if (
@@ -105,8 +127,32 @@ export function cleanClickbait(markdown: string): string {
     // Strip window.ENV / JSON blobs injected into page text
     clean = clean.replace(/window\.ENV\s*=\s*\{[\s\S]*?\}/g, '');
 
+    // Strip equal opportunity and disability boilerplate
+    clean = clean.replace(/(?:Equal Opportunity Employer|We are an equal opportunity employer|EEO Statement|Accommodations are available|Diversity and Inclusion|Privacy Policy)[\s\S]*$/i, '');
+
+    // Convert any remaining #, ##, ### headers to **Heading**
+    clean = clean.replace(/^#{1,6}\s*(.+)$/gm, (match, heading) => {
+        const cleanH = heading.replace(/^\*\*|\*\*$/g, '').trim();
+        return `\n\n**${cleanH}**\n\n`;
+    });
+
+    // Convert === or --- underline headers to **Heading**
+    clean = clean.replace(/^([^\n]+)\n(=+|-{3,})$/gm, (match, heading) => {
+        const cleanH = heading.replace(/^\*\*|\*\*$/g, '').trim();
+        return `\n\n**${cleanH}**\n\n`;
+    });
+
+    // Strip standalone === or --- dividers
+    clean = clean.replace(/^(=+|-{3,})$/gm, '');
+
+    // Convert * or • bullets to - bullets
+    clean = clean.replace(/^[\s]*[\*•]\s+/gm, '- ');
+
+    // Strip any lingering markdown images
+    clean = clean.replace(/!\[.*?\]\(.*?\)/g, '');
+
     // Collapse excessive blank lines
-    clean = clean.replace(/\n{3,}/g, '\n\n');
+    clean = clean.replace(/\r/g, '').replace(/\n{3,}/g, '\n\n');
 
     return clean.trim();
 }
@@ -115,10 +161,11 @@ export function cleanClickbait(markdown: string): string {
  * Converts HTML to clean Markdown, stripping nav/footer/form noise first.
  */
 export default function parseHtmlToMarkdown(html: string): string {
+    if (!html) return '';
     // 1. Convert HTML to Markdown (Turndown strips noise elements via rules)
     const rawMarkdown = turndownService.turndown(html);
     
-    // 2. Clean up remaining text-level noise
+    // 2. Clean up remaining text-level noise and format to templates.md
     const cleanMarkdown = cleanClickbait(rawMarkdown);
     
     return cleanMarkdown;

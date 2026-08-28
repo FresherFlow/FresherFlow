@@ -316,7 +316,7 @@ export class StaticFeedService {
                     '',
                     '/jobs',
                     '/jobs/internships',
-                    '/jobs/walk-ins',
+                    '/jobs/walkins',
                     '/govt',
                     '/about',
                     '/blog',
@@ -497,7 +497,7 @@ export class StaticFeedService {
                 // 7. sitemap-walkins.xml
                 let walkinsXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 walkinsXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-                walkinsXml += `  <url><loc>${baseUrl}/jobs/walk-ins</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`;
+                walkinsXml += `  <url><loc>${baseUrl}/jobs/walkins</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`;
                 const walkinOpps = activeMapped.filter(opp => opp.type === 'WALKIN');
                 walkinOpps.forEach(opp => {
                     const slugOrId = (opp.slug || opp.id) as string;

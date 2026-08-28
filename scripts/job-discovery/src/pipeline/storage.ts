@@ -40,11 +40,10 @@ export async function persistLocalData(state: DiscoveryState) {
         };
     }));
 
-    // Save ATS jobs to discovered_jobs.json
-    const draftJobs = validJobs.filter(j => j.sourceType === 'ATS');
+    // Save ALL valid discovered jobs to discovered_jobs.json (handoff artifact for job-processor)
     const outputPath = path.join(process.cwd(), 'discovered_jobs.json');
-    await fs.writeFile(outputPath, JSON.stringify({ version: 1, source: 'job-discovery-bot', jobs: draftJobs }, null, 2), 'utf8');
-    console.log(`Saved ${draftJobs.length} ATS jobs to ${outputPath} for drafting`);
+    await fs.writeFile(outputPath, JSON.stringify({ version: 1, source: 'job-discovery-bot', jobs: validJobs }, null, 2), 'utf8');
+    console.log(`Saved ${validJobs.length} valid discovered jobs to ${outputPath} for job-processor`);
 
     // Save Aggregator jobs to discovered_aggregators.json
     const aggJobs = validJobs.filter(j => j.sourceType === 'AGGREGATOR');

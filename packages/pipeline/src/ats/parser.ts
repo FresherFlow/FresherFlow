@@ -53,9 +53,20 @@ async function runProvider(
     if (entries.length === 0) return [];
 
     const partitionCount = parseInt(process.env.ATS_PARTITION_COUNT || '4', 10);
-    const partitionIndex = process.env.ATS_PARTITION_INDEX !== undefined
-        ? parseInt(process.env.ATS_PARTITION_INDEX, 10)
-        : Math.floor(new Date().getUTCHours() / (24 / partitionCount)) % partitionCount;
+    let partitionIndex = 0;
+    if (process.env.ATS_PARTITION_INDEX !== undefined) {
+        partitionIndex = parseInt(process.env.ATS_PARTITION_INDEX, 10);
+    } else if (partitionCount === 4) {
+        // Scheduled crons are at: 04:30, 08:30, 12:30, 16:30 UTC
+        const hour = new Date().getUTCHours();
+        if (hour >= 2 && hour < 7) partitionIndex = 0;
+        else if (hour >= 7 && hour < 11) partitionIndex = 1;
+        else if (hour >= 11 && hour < 15) partitionIndex = 2;
+        else partitionIndex = 3;
+    } else {
+        const hour = new Date().getUTCHours();
+        partitionIndex = Math.floor((hour / 24) * partitionCount) % partitionCount;
+    }
 
     const shouldPartition = process.env.ATS_PARTITION_ENABLED === 'true' || process.env.CI === 'true';
     const targetEntries = shouldPartition

@@ -154,45 +154,8 @@ async function tryMergeAnonymousIdentity(_req: Request, _userId: string) {
 }
 
 // POST /api/auth/anonymous
-router.post('/anonymous', anonymousAuthLimiter, validate(z.object({
-    anonId: z.string().uuid('Invalid anonymous ID format')
-})), async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const { anonId } = req.body;
-
-        // 1. Check if user already exists
-        let user = await prisma.user.findUnique({
-            where: { anon_id: anonId },
-            include: { profile: true }
-        });
-
-        if (!user) {
-            // 2. Create new anonymous user with a default profile
-            user = await prisma.user.create({
-                data: {
-                    isAnonymous: true,
-                    anon_id: anonId,
-                    profile: {
-                        create: {
-                            completionPercentage: 0
-                        }
-                    }
-                },
-                include: { profile: true }
-            });
-        }
-
-        // 3. Set standard session cookies
-        const tokens = await setAuthCookies(user as unknown as User, res);
-
-        res.json({
-            user: { id: user.id, email: user.email || null, fullName: user.fullName || null, username: (user as User).username || null },
-            profile: (user as User).profile || null,
-            ...tokens
-        });
-    } catch (error) {
-        next(toAuthRouteError(error, 'Failed to register anonymous user', 500));
-    }
+router.post('/anonymous', (_req: Request, res: Response) => {
+    return res.status(404).json({ error: 'Not available' });
 });
 
 // ─── HANDSHAKE ────────────────────────────────────────────────────────────────
@@ -328,17 +291,26 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
     try {
         const headerRefreshToken = req.header('x-refresh-token') || req.header('x-refresh-token'.toLowerCase());
         const refreshToken = req.cookies.refreshToken || headerRefreshToken;
-        if (!refreshToken) return next(new AppError('No refresh token provided', 401));
+        if (!refreshToken) {
+            clearAuthCookieVariants(res);
+            return next(new AppError('No refresh token provided', 401));
+        }
 
         const userId = verifyRefreshToken(refreshToken);
-        if (!userId) return next(new AppError('Invalid refresh token', 401));
+        if (!userId) {
+            clearAuthCookieVariants(res);
+            return next(new AppError('Invalid refresh token', 401));
+        }
 
         const tokenHash = hashRefreshToken(refreshToken);
         const storedToken = await prisma.refreshToken.findFirst({
             where: { tokenHash, userId, revokedAt: null, expiresAt: { gt: new Date() } }
         });
 
-        if (!storedToken) return next(new AppError('Refresh token expired or revoked', 401));
+        if (!storedToken) {
+            clearAuthCookieVariants(res);
+            return next(new AppError('Refresh token expired or revoked', 401));
+        }
 
         // Revoke the old token
         await prisma.refreshToken.update({

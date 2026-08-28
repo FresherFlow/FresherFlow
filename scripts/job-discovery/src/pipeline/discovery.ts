@@ -27,19 +27,36 @@ export async function discoverAtsJobs(state: DiscoveryState) {
                     const res = await fetch(`${ATS_CDN_BASE}/${provider}.json`);
                     if (res.ok) {
                         state.atsRegistry[provider] = await res.json();
-                        console.log(`  -> Loaded ${provider}.json`);
+                        console.log(`  -> Loaded ${provider}.json from CDN`);
                     } else if (res.status !== 404) {
                         console.warn(`  -> Failed to fetch ${provider}.json: ${res.statusText}`);
                     }
                 } catch (err) {
-                    console.warn(`  -> Error fetching ${provider}.json: ${(err as Error).message}`);
+                    // Fall back to local file
                 }
             }));
-        } else {
-            console.log(`ATS_CDN_BASE not set, skipping CDN fetch.`);
+        }
+
+        // Fallback: check local ats-boards directory for any missing providers
+        const localAtsDir = path.resolve(process.cwd(), 'scripts/job-discovery/ats-boards');
+        const altLocalAtsDir = path.resolve(process.cwd(), 'ats-boards');
+        const targetDir = fs.existsSync(localAtsDir) ? localAtsDir : (fs.existsSync(altLocalAtsDir) ? altLocalAtsDir : null);
+
+        if (targetDir) {
+            for (const provider of ATS_PROVIDERS) {
+                if (!state.atsRegistry[provider]) {
+                    const filePath = path.join(targetDir, `${provider}.json`);
+                    if (fs.existsSync(filePath)) {
+                        try {
+                            state.atsRegistry[provider] = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+                            console.log(`  -> Loaded ${provider}.json from local ats-boards`);
+                        } catch {}
+                    }
+                }
+            }
         }
     } catch (err) {
-        console.error("Critical error fetching ATS registry from CDN:", err);
+        console.error("Error fetching ATS registry:", err);
     }
 
     const atsJobs = await runAtsDiscovery(
@@ -66,10 +83,6 @@ export async function discoverAtsJobs(state: DiscoveryState) {
     for (const job of allDiscoveredJobs) {
         if (job.company && companySlugMap.has(job.company.toLowerCase())) {
             job.company = companySlugMap.get(job.company.toLowerCase())!;
-        }
-        if (state.isTimeUp()) {
-            console.log(`\n[Timeout] ⏱️ Exceeded 80 minutes, halting ATS job processing.`);
-            break;
         }
 
         if (!job.title || job.title === 'Unknown Title') {

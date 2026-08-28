@@ -2,7 +2,7 @@
 import * as cheerio from 'cheerio';
 import {
   IScraper, ScraperInputDto, JobResponseDto, JobPostDto,
-  LocationDto, DescriptionFormat, Site, JobType,
+  LocationDto, DescriptionFormat, Site, JobType, CompensationDto, CompensationInterval,
 } from '../../../base/models/index.js';
 import {
   HttpClient, createHttpClient, markdownConverter, plainConverter, randomSleep, extractEmails,
@@ -85,12 +85,17 @@ export class InternshalaService implements IScraper {
 
     // Listing cards never carry the real job description (only stipend/duration/
     // apply-by snippets) � fetch each job's own detail page for the full body.
+    // Detail pages also carry the structured salary for fresher jobs (their
+    // listing cards omit it) — prefer the detail-page compensation.
     for (const job of jobList) {
       try {
-        const fullDescription = await this.fetchDescription(client, job.jobUrl, input.descriptionFormat);
-        if (fullDescription) {
-          job.description = job.description ? `${fullDescription}\n\n${job.description}` : fullDescription;
-          job.emails = extractEmails(job.description) ?? job.emails;
+        const detail = await this.fetchJobDetail(client, job.jobUrl, input.descriptionFormat);
+        if (detail) {
+          if (detail.description) {
+            job.description = job.description ? `${detail.description}\n\n${job.description}` : detail.description;
+            job.emails = extractEmails(job.description) ?? job.emails;
+          }
+          job.compensation = detail.compensation ?? job.compensation;
         }
       } catch (err: any) {
         console.warn(`Error fetching description for ${job.jobUrl}: ${err.message}`);
@@ -102,22 +107,29 @@ export class InternshalaService implements IScraper {
     return new JobResponseDto(jobList);
   }
 
-  private async fetchDescription(
+  private async fetchJobDetail(
     client: HttpClient,
     jobUrl: string,
     format?: DescriptionFormat,
-  ): Promise<string | null> {
+  ): Promise<{ description: string | null; compensation: CompensationDto | null }> {
     const resp = await client.get(jobUrl);
     const $ = cheerio.load(resp.data);
 
+    let description: string | null = null;
     const el = $('.internship_details .text-container, .detail_view').first();
-    if (!el.length) return null;
-
-    const html = el.html() ?? '';
-    if (format === DescriptionFormat.PLAIN) {
-      return plainConverter(html);
+    if (el.length) {
+      const html = el.html() ?? '';
+      if (format === DescriptionFormat.PLAIN) {
+        description = plainConverter(html);
+      } else {
+        description = markdownConverter(html);
+      }
     }
-    return markdownConverter(html);
+
+    return {
+      description,
+      compensation: this.parseDetailCompensation($),
+    };
   }
 
   private buildSearchUrl(searchTerm: string, input: ScraperInputDto, page: number): string {
@@ -250,8 +262,130 @@ export class InternshalaService implements IScraper {
       description,
       isRemote,
       emails,
+      workFromHomeType: isRemote ? 'Remote' : undefined,
+      compensation: this.parseCompensation(stipendText),
       site: Site.INTERNSHALA,
     });
+  }
+
+  /**
+   * Parse a structured compensation from a job detail page.
+   *
+   * Internship detail pages carry `<span class="stipend">₹ 8,000 - 12,000 /month</span>`;
+   * fresher-job detail pages carry structured salary text in the body, e.g.
+   * "Annual CTC: ₹ 5,00,000 - 12,00,000 /year", "Fixed pay: ₹ 4 LPA - 7 LPA".
+   * Better-marked text nodes are tried first, so incidental figures ("₹ 2 lakh
+   * worth of stock", ...) are only consulted when no explicit salary line exists.
+   */
+  private parseDetailCompensation($: cheerio.CheerioAPI): CompensationDto | null {
+    const stipendText = $('.internship_details .stipend, .detail_view .stipend').first().text().trim()
+      || $('.stipend').first().text().trim();
+    const fromStipend = this.parseCompensation(stipendText);
+    if (fromStipend) return fromStipend;
+
+    const candidates: string[] = [];
+    $('p, li, span').each((_, el) => {
+      const text = $(el).text().replace(/\s+/g, ' ').trim();
+      if (text && text.length <= 300 && /annual ctc|\bctc\b|fixed pay|\bsalary\b|stipend|\blpa\b|lakh|per annum|\/(?:year|annum|yr|pa|month|mo)\b/i.test(text)) {
+        candidates.push(text);
+      }
+    });
+
+    const strength = (t: string): number =>
+      (/annual ctc/i.test(t) ? 4 : 0)
+      + (/\bctc\b/i.test(t) ? 3 : 0)
+      + (/fixed pay/i.test(t) ? 3 : 0)
+      + (/\/(?:year|annum|month|mo|yr)\b/i.test(t) ? 3 : 0)
+      + (/\blpa\b/i.test(t) ? 2 : 0)
+      + (/stipend/i.test(t) ? 2 : 0)
+      + (/\bsalary\b/i.test(t) ? 1 : 0)
+      + (/\blakh\b/i.test(t) ? 1 : 0);
+    candidates.sort((a, b) => strength(b) - strength(a));
+
+    const bodyText = $('body').text().replace(/\s+/g, ' ').trim();
+    if (bodyText && /annual ctc|\bctc\b|fixed pay|\bsalary\b|stipend|\blpa\b|lakh|per annum|\/(?:year|annum|yr|pa|month|mo)\b/i.test(bodyText)) {
+      candidates.push(bodyText.slice(0, 300));
+    }
+
+    for (const candidate of candidates) {
+      const comp = this.parseCompensation(candidate);
+      if (comp) return comp;
+    }
+    return null;
+  }
+
+  /**
+   * Parse an Internshala compensation string into a structured, INR value.
+   *
+   * Internship cards/detail render monthly amounts ("₹ 10,000 - 15,000 /month");
+   * fresher-job cards render annual amounts ("₹ 3 LPA - ₹ 7 LPA"); fresher-job
+   * detail pages render a structured annual CTC ("₹ 5,00,000 - 12,00,000 /year").
+   */
+  private parseCompensation(textIn: string | null | undefined): CompensationDto | null {
+    let raw = (textIn ?? '').trim();
+    if (!raw) return null;
+
+    // Bound the input before running the value regexes (strict, no nested
+    // quantifiers blowup on untrusted long text).
+    if (raw.length > 300) raw = raw.slice(0, 300);
+
+    // Normalise the rupee symbol (U+20B9 / \u20b9), NBSP and whitespace.
+    const cleaned = raw
+      .replace(/[\u20b9₹]/g, ' ')
+      .replace(/\u00a0/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const parseNum = (s: string): number | null => {
+      const n = parseFloat(s.replace(/,/g, ''));
+      return Number.isFinite(n) ? n : null;
+    };
+
+    // Annual, exchange-agnostic rupee figure: "₹ 5,00,000 - 12,00,000 /year"
+    const annualRupees = /(\d[\d,.]*)\s*(?:-\s*(\d[\d,.]*))?\s*\/\s*(?:year|annum|yr|pa)/i.exec(cleaned);
+    if (annualRupees) {
+      const min = parseNum(annualRupees[1]);
+      const max = annualRupees[2] ? parseNum(annualRupees[2]) : min;
+      if (min === null) return null;
+      return new CompensationDto({
+        interval: CompensationInterval.YEARLY,
+        minAmount: min,
+        maxAmount: max ?? min,
+        currency: 'INR',
+      });
+    }
+
+    // Annual LPA: "X LPA", "X - Y LPA", "X LPA - Y LPA", "X LPA"
+    if (/\bLakhs?\b|\bLPA\b/i.test(cleaned)) {
+      const nums = [...cleaned.matchAll(/(\d[\d.]*)\s*(?:LPA|Lakhs?)\b/gi)]
+        .map((match) => parseFloat(match[1]))
+        .filter((n) => Number.isFinite(n));
+      const min = nums.length > 0 ? nums[0] * 100000 : null;
+      const max = nums.length > 1 ? nums[nums.length - 1] * 100000 : min;
+      if (min === null) return null;
+      return new CompensationDto({
+        interval: CompensationInterval.YEARLY,
+        minAmount: min,
+        maxAmount: max ?? min,
+        currency: 'INR',
+      });
+    }
+
+    // Monthly: "X - Y /month" or "X /month" (also bare "₹ 8,000 - 12,000")
+    const monthly = /(\d[\d,.]*)\s*(?:-\s*(\d[\d,.]*))?\s*\/?\s*(?:month|mo)?$/i.exec(cleaned);
+    if (monthly) {
+      const min = parseNum(monthly[1]);
+      const max = monthly[2] ? parseNum(monthly[2]) : min;
+      if (min === null) return null;
+      return new CompensationDto({
+        interval: CompensationInterval.MONTHLY,
+        minAmount: min,
+        maxAmount: max ?? min,
+        currency: 'INR',
+      });
+    }
+
+    return null;
   }
 
   private hashCode(str: string): number {

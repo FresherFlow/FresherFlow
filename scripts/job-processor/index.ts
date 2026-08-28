@@ -374,7 +374,7 @@ async function run(): Promise<void> {
                     console.error('Insufficient job description text obtained.');
                     failureList.push({ url: job.applyLink, reason: 'Insufficient page text extracted' });
                     await saveState(job.applyLink, 'FAILED');
-                    if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'FAILED');
+                    if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
                     continue;
                 }
 
@@ -543,8 +543,9 @@ async function run(): Promise<void> {
                 // Native ATS JSON already has everything the API provides.
                 // LLM guessing salary/incentives for API data is waste of quota.
                 // ─────────────────────────────────────────────────────────
-                if (isNativeAtsData) {
-                    // Skip LLM entirely for native ATS jobs — data is already complete from the plugin
+                if (isNativeAtsData || NO_LLM) {
+                    // Skip LLM entirely for native ATS jobs — data is already complete from the plugin.
+                    // Also skip all LLM calls in NO_LLM (--no-llm) mode.
                 } else if (missingFields.length > 0 && ai) {
                     console.log(`Calling LLM enrichment for fields: ${missingFields.join(', ')}`);
                     try {
@@ -570,7 +571,7 @@ async function run(): Promise<void> {
                 } catch (parseErr) {
                     console.warn('Zod validation failed:', (parseErr as Error).message);
                     failureList.push({ url: job.applyLink, reason: 'Zod validation failed' });
-                    if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'FAILED');
+                    if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
                     continue;
                 }
 
@@ -647,7 +648,7 @@ async function run(): Promise<void> {
                     } else {
                         failureList.push({ url: job.applyLink, reason: 'Supabase API insert rejected' });
                         await saveState(job.applyLink, 'FAILED');
-                        if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'FAILED');
+                        if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
                     }
                 } else {
                     console.log('Dry-run: skipping API upload.');
@@ -660,7 +661,7 @@ async function run(): Promise<void> {
                 console.error(`[CRITICAL] Error processing ${job.applyLink}:`, jobErr);
                 failureList.push({ url: job.applyLink, reason: `Crash: ${(jobErr as Error).message}` });
                 await saveState(job.applyLink, 'FAILED');
-                if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'FAILED');
+                if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
             }
 
             // Cooldown between batches

@@ -58,20 +58,16 @@ enum AtsHealthStatus {
 }
 
 enum DiscoveredJobStatus {
-  DISCOVERED
-  PROCESSING
+  PENDING
   PROCESSED
-  DUPLICATE
   REJECTED
-  FAILED
   EXPIRED
 }
 
 enum ProcessedJobStatus {
   PENDING_REVIEW
-  APPROVED
-  REJECTED
   PUBLISHED
+  REJECTED
   EXPIRED
 }
 

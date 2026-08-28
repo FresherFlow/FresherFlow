@@ -182,7 +182,7 @@ export async function fetchUnprocessedFromSupabase(limit = 100): Promise<Discove
     const { rows } = await pool.query<DiscoveredJobRow>(
         `SELECT id, apply_link, source, source_url, company, title, description, location, location_city, is_remote, experience_years, employment_type, skills, posted_at, batch_year, degree, department, status 
          FROM discovered_jobs 
-         WHERE status IN ('APPROVED', 'PENDING', 'DISCOVERED') 
+         WHERE status IN ('PENDING', 'APPROVED') 
          ORDER BY created_at DESC 
          LIMIT $1`,
         [limit]
@@ -192,7 +192,7 @@ export async function fetchUnprocessedFromSupabase(limit = 100): Promise<Discove
 
 export async function markDiscoveredJobStatus(
     id: string,
-    status: 'PROCESSING' | 'PROCESSED' | 'REJECTED' | 'FAILED'
+    status: 'PENDING' | 'PROCESSED' | 'REJECTED' | 'EXPIRED'
 ): Promise<void> {
     try {
         await pool.query(

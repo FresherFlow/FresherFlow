@@ -51,11 +51,7 @@ export const applicationDetailsSchema = z.object({
     platform: z.string().optional().default(''),
     estimatedMinutes: z.number().int().positive().optional(),
     requiredItems: z.array(z.string()).optional().default([])
-}).optional().nullable().default({
-    method: 'DIRECT',
-    platform: '',
-    requiredItems: []
-});
+}).optional().nullable().default(null);
 
 export const structuredLocationSchema = z.object({
     name: z.string(),
@@ -669,19 +665,10 @@ export function postProcessNormalize(job: ExtractedJob, _fullText: string): Extr
     job.allowedCourses = Array.from(new Set(courses));
     job.allowedSpecializations = Array.from(new Set(specializations));
 
-    // Allowed passout years: if empty, extract from full text first, otherwise infer from current year and job type
+    // Allowed passout years: only extract if explicitly present in text, otherwise leave empty array (do NOT hallucinate)
     if (!job.allowedPassoutYears || job.allowedPassoutYears.length === 0) {
         const extractedYears = extractPassoutYears(_fullText || '');
-        if (extractedYears.length > 0) {
-            job.allowedPassoutYears = extractedYears;
-        } else {
-            const currentYear = new Date().getFullYear();
-            if (job.type === 'INTERNSHIP') {
-                job.allowedPassoutYears = [currentYear, currentYear + 1, currentYear + 2];
-            } else {
-                job.allowedPassoutYears = [currentYear - 1, currentYear];
-            }
-        }
+        job.allowedPassoutYears = extractedYears;
     } else {
         job.allowedPassoutYears = Array.from(new Set(job.allowedPassoutYears.map(y => parseInt(String(y), 10)).filter(y => !isNaN(y))));
     }
@@ -698,6 +685,17 @@ export function postProcessNormalize(job: ExtractedJob, _fullText: string): Extr
         for (const skill of job.requiredSkills) {
             if (!skill) continue;
             const cleaned = skill.trim().toLowerCase();
+
+            // Filter out common false-positive single-word skills unless explicitly in text
+            if (cleaned === 'go' && !/\b(golang|go\s+language|go\s+developer|go\s+backend|go\s+programming)\b/i.test(_fullText || '')) {
+                continue;
+            }
+            if (cleaned === 'c' && !/\b(c\s+programming|c\s+language|c\/c\+\+)\b/i.test(_fullText || '')) {
+                continue;
+            }
+            if (cleaned === 'r' && !/\b(r\s+programming|r\s+language|r\s+analytics)\b/i.test(_fullText || '')) {
+                continue;
+            }
             
             const aliasMatch = SKILL_ALIAS_LOOKUP[cleaned];
             if (aliasMatch) {
@@ -712,12 +710,25 @@ export function postProcessNormalize(job: ExtractedJob, _fullText: string): Extr
                 continue;
             }
 
-            finalSkillsSet.add(skill.trim().toLowerCase());
+            finalSkillsSet.add(skill.trim());
         }
+    }
+
+    // Strip generic soft skills if specific technical skills exist
+    if (finalSkillsSet.size > 2) {
+        finalSkillsSet.delete('Problem Solving');
+        finalSkillsSet.delete('problem solving');
+        finalSkillsSet.delete('Communication Skills');
+        finalSkillsSet.delete('communication skills');
     }
 
     // Keep it clean: max 25 skills to avoid spamming tags on jobs
     job.requiredSkills = Array.from(finalSkillsSet).slice(0, 25);
+
+    // Direct apply rule: if direct external applyLink, applicationDetails must be null
+    if (job.applyLink && (!job.applicationDetails || job.applicationDetails.method === 'DIRECT')) {
+        job.applicationDetails = null;
+    }
 
     // --- 5. Strip walk-in fields from non-WALKIN types ---
     const isWalkInJob = job.type === OpportunityType.WALKIN || /\bwalk[\s-]*in\b|\bwalkin\b/i.test(job.title || '') || !!job.walkInDetails || !!job.venueAddress;

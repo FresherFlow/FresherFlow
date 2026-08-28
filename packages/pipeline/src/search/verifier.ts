@@ -1,5 +1,107 @@
 import { AtsJob } from '@fresherflow/plugins';
-import { isLocationIndiaOrRemote, scoreJobDescription, isSeniorJob } from '@fresherflow/utils';
+import { isLocationIndiaOrRemote, scoreJobDescription, isSeniorJob, hasFresherKeyword } from '@fresherflow/utils';
+
+export interface FresherScore {
+  score: number;
+  grade: 'high' | 'medium' | 'low';
+  reasons: string[];
+}
+
+const STRONG_FRESHER_TITLE = /\b(intern|internship|apprentice|trainee|fresher|graduate\s+trainee|new\s+grad|entry[- ]level|junior|campus|associate)\b/i;
+
+/**
+ * Deterministic, LLM-free 0-100 quality score reflecting how strong a fit a
+ * listing is as a fresher/internship opportunity. Uses only structured AtsJob
+ * fields and existing domain rules, so it is cheap, repeatable, and explainable.
+ */
+export function computeFresherScore(job: AtsJob): FresherScore {
+  const reasons: string[] = [];
+  let score = 0;
+
+  const title = (job.title || '').trim();
+  const desc = (job.description || '').trim();
+
+  // 1. Title affinity (up to 40)
+  if (STRONG_FRESHER_TITLE.test(title)) {
+    score += 40;
+    reasons.push('title-strong-fresher');
+  } else if (hasFresherKeyword(title)) {
+    score += 30;
+    reasons.push('title-fresher');
+  }
+
+  // 2. Description quality + affinity (up to 30)
+  if (desc.length > 100) {
+    score += 10;
+    reasons.push('has-description');
+    if (hasFresherKeyword(desc)) {
+      score += 20;
+      reasons.push('desc-fresher');
+    }
+  } else {
+    score -= 10;
+    reasons.push('missing-description');
+  }
+
+  // 3. Structured experience (up to 15)
+  const expYears = job.experienceYears;
+  if (typeof expYears === 'number' && expYears >= 0) {
+    if (expYears <= 1) {
+      score += 15;
+      reasons.push(`exp-${expYears}`);
+    } else if (expYears <= 2) {
+      score += 10;
+      reasons.push(`exp-${expYears}`);
+    } else if (expYears <= 3) {
+      score += 5;
+      reasons.push(`exp-${expYears}`);
+    } else {
+      score -= 30;
+      reasons.push('senior-exp');
+    }
+  }
+
+  // 4. Employment type (up to 10)
+  const et = (job.employmentType || '').toLowerCase();
+  if (et.includes('intern') || et.includes('full') || et.includes('entry')) {
+    score += 10;
+    reasons.push('good-employment-type');
+  } else if (et.includes('part') || et.includes('contract') || et.includes('temporary')) {
+    score += 5;
+    reasons.push('ok-employment-type');
+  }
+
+  // 5. Remote bonus
+  if (job.isRemote) {
+    score += 5;
+    reasons.push('remote');
+  }
+
+  // 6. Source quality of description (up to 5)
+  if (job.descriptionSource === 'API') {
+    score += 5;
+    reasons.push('api-description');
+  } else if (job.descriptionSource === 'HTML') {
+    score += 3;
+    reasons.push('html-description');
+  }
+
+  // 7. Compensation present
+  if (job.compensation?.minAmount || job.compensation?.maxAmount || job.salarySource) {
+    score += 5;
+    reasons.push('has-compensation');
+  }
+
+  // 8. Company attribution
+  if (job.company) {
+    score += 5;
+    reasons.push('has-company');
+  }
+
+  score = Math.max(0, Math.min(100, score));
+  const grade: FresherScore['grade'] = score >= 70 ? 'high' : score >= 40 ? 'medium' : 'low';
+  return { score, grade, reasons };
+}
 
 export interface SourceFunnelStats {
   raw: number;
@@ -186,6 +288,9 @@ export async function filterAndVerifyJobs(
       const sStat = getSourceStats(src);
 
       if (res) {
+        const scored = computeFresherScore(candidate);
+        (candidate as any).fresherScore = scored.score;
+        (candidate as any).fresherGrade = scored.grade;
         verifiedJobs.push(res);
         stats.live++;
         sStat.live++;
