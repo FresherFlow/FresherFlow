@@ -337,6 +337,11 @@ async function run(): Promise<void> {
                     atsContent.text = job.atsText || job.description;
                     atsContent.title = job.title;
                     console.log(`Pre-supplied ATS text (${atsContent.text.length} chars). Skipping Playwright.`);
+                } else if (job.title && job.company && ((job.skills && job.skills.length > 0) || (job.source || '').toLowerCase().includes('getro') || (job.source || '').toLowerCase().includes('consider') || (job.source || '').toLowerCase().includes('vc'))) {
+                    // Priority 2b: Direct structured discovery — Skip Playwright
+                    atsContent.text = job.description || job.title;
+                    atsContent.title = job.title;
+                    console.log(`[Structured Discovery] ${job.title} @ ${job.company}. Skipping Playwright.`);
                 } else {
                     // Priority 3: Playwright browser fallback
                     let page = null;
@@ -371,11 +376,15 @@ async function run(): Promise<void> {
                 const textForLlm = trimForLlm(rawText);
 
                 if (!textForLlm || textForLlm.length < 50) {
-                    console.error('Insufficient job description text obtained.');
-                    failureList.push({ url: job.applyLink, reason: 'Insufficient page text extracted' });
-                    await saveState(job.applyLink, 'FAILED');
-                    if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
-                    continue;
+                    if (job.title && job.company && job.applyLink) {
+                        console.log(`[Structured Discovery] Proceeding with direct metadata for ${job.title} @ ${job.company}`);
+                    } else {
+                        console.error('Insufficient job description text obtained.');
+                        failureList.push({ url: job.applyLink, reason: 'Insufficient page text extracted' });
+                        await saveState(job.applyLink, 'FAILED');
+                        if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
+                        continue;
+                    }
                 }
 
                 // ─────────────────────────────────────────────────────────
@@ -604,10 +613,12 @@ async function run(): Promise<void> {
                     }
                 }
 
-                // Fresher-only gate: skip non-fresher roles
-                if ((extracted.experienceMin ?? 0) >= 3) {
-                    console.log(`[FILTER] Non-fresher skipped: experienceMin=${extracted.experienceMin}`);
-                    failureList.push({ url: job.applyLink, reason: 'Non-fresher (experienceMin >= 3)' });
+                // Fresher-only gate: strictly 0-1 year experience
+                const minExp = extracted.experienceMin ?? 0;
+                const maxExp = extracted.experienceMax ?? minExp;
+                if (minExp > 1 || (minExp >= 1 && maxExp > 1) || maxExp > 2) {
+                    console.log(`[FILTER] Non-fresher skipped: experience=${minExp}-${maxExp} yr`);
+                    failureList.push({ url: job.applyLink, reason: `Non-fresher (experience=${minExp}-${maxExp} yr)` });
                     if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
                     continue;
                 }

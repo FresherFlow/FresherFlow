@@ -60,6 +60,11 @@ export class JobPostDto {
   // Site identifier (filled in during aggregation)
   site?: string | null;
 
+  // Modern VC & ATS Enrichment Fields
+  companyStage?: string | null;
+  tags?: string[] | null;
+  stipend?: string | null;
+
   // Corpus signals (Spec 740) — opt-in via ?liveness=true / ?legitimacy=true; absent by default.
   // Shapes mirror what the Hust frontend already consumes (forward-compatible).
   liveness?: {

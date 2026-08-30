@@ -99,12 +99,20 @@ export const walkInDetailsSchema = z.object({
     requiredDocuments: z.array(z.string()).default([]),
     contactPerson: z.string().optional(),
     contactPhone: z.string().optional(),
+    expiryDate: z.string().datetime().optional(),
+    landmark: z.string().optional(),
+    transitInfo: z.string().optional(),
+    selectionProcess: z.string().optional(),
 });
 
 export const createOpportunitySchema = z.object({
     title: z.string().min(3, 'Title must be at least 3 characters').max(150),
     company: z.string().min(2, 'Company name must be at least 2 characters').max(100),
     companyLogoUrl: z.string().url().optional().or(z.literal('')),
+    companyStage: z.string().optional(),
+    companySize: z.string().optional(),
+    companyIndustry: z.array(z.string()).optional().default([]),
+    companyTopics: z.array(z.string()).optional().default([]),
     type: z.nativeEnum(OpportunityType),
     workMode: z.nativeEnum(WorkMode).optional().default(WorkMode.ONSITE),
     locations: z.array(z.string()).min(1, 'At least one location is required'),

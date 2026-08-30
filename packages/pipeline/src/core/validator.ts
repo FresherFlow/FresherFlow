@@ -132,6 +132,28 @@ export function validateAndCleanPayload(payload: EnrichedJobPayload): EnrichedJo
         customSlug = generateIntelligentSlug(cleanCompany, cleanTitle, sanitizedLocations);
     }
 
+    // Role-aware academic defaults
+    const lowerFn = (payload.jobFunction || cleanTitle).toLowerCase();
+    let defaultCourses = ['B.Tech', 'B.E.', 'BCA', 'MCA', 'B.Sc'];
+    let defaultSpecs = ['Computer Science', 'Information Technology'];
+
+    if (/\b(hr|human resources|talent|recruitment|recruiter|people)\b/i.test(lowerFn)) {
+        defaultCourses = ['BBA', 'MBA', 'B.Com', 'B.A', 'B.Sc', 'Any Graduate'];
+        defaultSpecs = ['Human Resources', 'General', 'Business Administration'];
+    } else if (/\b(finance|accounting|accounts|payroll|tax|audit|controller)\b/i.test(lowerFn)) {
+        defaultCourses = ['B.Com', 'M.Com', 'BBA', 'MBA', 'Any Graduate'];
+        defaultSpecs = ['Finance', 'Accounting', 'Commerce'];
+    } else if (/\b(marketing|sales|growth|business development|bdr|sdr|affiliate)\b/i.test(lowerFn)) {
+        defaultCourses = ['BBA', 'MBA', 'B.Com', 'B.A', 'B.Sc', 'Any Graduate'];
+        defaultSpecs = ['Marketing', 'Digital Marketing', 'General', 'Business Administration'];
+    } else if (/\b(operations|support|customer|cst|helpdesk|admin)\b/i.test(lowerFn)) {
+        defaultCourses = ['BBA', 'MBA', 'B.Com', 'B.A', 'B.Sc', 'B.Tech', 'Any Graduate'];
+        defaultSpecs = ['General', 'Business Administration', 'Operations'];
+    } else if (/\b(design|ux|ui|creative|graphic|product design)\b/i.test(lowerFn)) {
+        defaultCourses = ['B.Des', 'M.Des', 'B.Tech', 'B.Sc', 'BCA', 'Any Graduate'];
+        defaultSpecs = ['UI/UX Design', 'Product Design', 'Computer Science'];
+    }
+
     const cleanedPayload: EnrichedJobPayload = {
         type: payload.type || 'JOB',
         title: cleanTitle,
@@ -139,8 +161,8 @@ export function validateAndCleanPayload(payload: EnrichedJobPayload): EnrichedJo
         companyWebsite: payload.companyWebsite || '',
         description: formatDescription(payload.description || ''),
         allowedDegrees: payload.allowedDegrees?.length ? payload.allowedDegrees : [EducationLevel.DEGREE],
-        allowedCourses: payload.allowedCourses || ['B.Tech', 'B.E', 'M.Tech', 'MCA'],
-        allowedSpecializations: payload.allowedSpecializations || [],
+        allowedCourses: payload.allowedCourses?.length ? payload.allowedCourses : defaultCourses,
+        allowedSpecializations: payload.allowedSpecializations?.length ? payload.allowedSpecializations : defaultSpecs,
         allowedPassoutYears: payload.allowedPassoutYears || [],
         requiredSkills: payload.requiredSkills || [],
         locations: sanitizedLocations,

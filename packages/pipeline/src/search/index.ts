@@ -7,4 +7,5 @@ export * from './collectors/github.js';
 export * from './collectors/walkin.js';
 export * from './collectors/companies.js';
 export * from './collectors/dorker.js';
+export * from './collectors/vc.js';
 

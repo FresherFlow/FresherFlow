@@ -1,16 +1,12 @@
 // ============================================================================
-// SUPABASE JOB DISCOVERY & COMPANY/ATS REGISTRY DATABASE SCHEMA (REFERENCE ONLY)
+// FRESHERFLOW JOBS PIPELINE DATABASE SCHEMA (DISCOVERY, REGISTRY, PROCESSOR)
 // ============================================================================
-// NOTE: This schema represents the external Supabase database used by the
-// Job Discovery Bot, ATS Registry, and Scrapers.
-// It is kept in this separate file for reference ONLY and is NOT part of the
-// main application PostgreSQL database (packages/database/prisma/schema.prisma).
-// DO NOT run `prisma db push` or `prisma migrate` against this file on the main DB.
+// NOTE: This schema represents the Jobs Database used by the Search Bot,
+// Job Discovery Pipeline, ATS Registry, and Job Processor.
 // ============================================================================
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:../pipeline.db"
+  provider = "postgresql"
 }
 
 generator client {
@@ -29,22 +25,17 @@ enum CompanyVerificationStatus {
   REJECTED
 }
 
-enum CompanySize {
-  SIZE_1_50
-  SIZE_51_200
-  SIZE_201_1000
-  SIZE_1000_PLUS
-}
-
 enum AtsProvider {
   GREENHOUSE
   LEVER
   WORKDAY
   ASHBY
   SMARTRECRUITERS
+  KEKA
+  DARWINBOX
+  BAMBOOHR
   ORACLE
   ICIMS
-  SUCCESSFACTORS
   RECRUITEE
   WORKABLE
   CUSTOM
@@ -58,6 +49,7 @@ enum AtsHealthStatus {
 }
 
 enum DiscoveredJobStatus {
+  DISCOVERED
   PENDING
   PROCESSED
   REJECTED
@@ -72,16 +64,25 @@ enum ProcessedJobStatus {
 }
 
 // ----------------------------------------------------------------------------
-// 1. SUPABASE JOB DISCOVERY PIPELINE TABLES
+// 1. JOB DISCOVERY PIPELINE TABLES
 // ----------------------------------------------------------------------------
 
 model DiscoveredJob {
   id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   runId               String?              @map("run_id") @db.Uuid
   companyId           String?              @map("company_id")
-  source              String
-  sourceType          String               @map("source_type")
+  
+  // Origin & Source
+  source              String               // e.g. "ConsiderVC (Nexus VP)", "GetroVC (Blume)"
+  sourceType          String               @map("source_type") // "AGGREGATOR", "DIRECT_ATS", "BOARD"
   site                String?
+  sourceUrl           String?              @map("source_url")
+  externalId          String?              @map("external_id")
+  atsId               String?              @map("ats_id")
+  boardToken          String?              @map("board_token")
+  descriptionSource   String?              @map("description_source")
+
+  // Company Information
   company             String
   companyUrl          String?              @map("company_url")
   companyUrlDirect    String?              @map("company_url_direct")
@@ -93,8 +94,12 @@ model DiscoveredJob {
   companyRating       Float?               @map("company_rating")
   companyReviewsCount Int?                 @map("company_reviews_count")
   companyAddresses    String?              @map("company_addresses")
+  companyStage        String?              @map("company_stage")
   bannerPhotoUrl      String?              @map("banner_photo_url")
+
+  // Role Details
   title               String
+  description         String?
   location            String?
   locationCountry     String?              @map("location_country")
   locationCity        String?              @map("location_city")
@@ -106,17 +111,15 @@ model DiscoveredJob {
   jobLevel            String?              @map("job_level")
   jobFunction         String?              @map("job_function")
   workFromHomeType    String?              @map("work_from_home_type")
+  department          String?
+  team                String?
+
+  // URLs
   applyLink           String               @map("apply_link")
   applyUrl            String?              @map("apply_url")
   jobUrlDirect        String?              @map("job_url_direct")
-  sourceUrl           String?              @map("source_url")
-  description         String?
-  externalId          String?              @map("external_id")
-  atsId               String?              @map("ats_id")
-  boardToken          String?              @map("board_token")
-  descriptionSource   String?              @map("description_source")
-  department          String?
-  team                String?
+
+  // Eligibility & Matching
   postedAt            DateTime?            @map("posted_at") @db.Timestamptz
   batchYear           String?              @map("batch_year")
   degree              String?
@@ -125,14 +128,17 @@ model DiscoveredJob {
   experienceYears     String?              @map("experience_years")
   vacancyCount        Int?                 @map("vacancy_count")
   skills              String?              // JSON array
+  tags                String[]             @default([])
   emails              String?              // JSON array
+  fresherScore        Int?                 @map("fresher_score")
+  reviewRequired      Boolean?             @map("review_required")
+
+  // Compensation
   salaryMin           Float?               @map("salary_min")
   salaryMax           Float?               @map("salary_max")
   salaryCurrency      String?              @map("salary_currency")
   salaryInterval      String?              @map("salary_interval")
   salarySource        String?              @map("salary_source")
-  fresherScore        Int?                 @map("fresher_score")
-  reviewRequired      Boolean?             @map("review_required")
   
   // Walk-in Map Specific Fields
   venueAddress        String?              @map("venue_address")
@@ -146,28 +152,35 @@ model DiscoveredJob {
   contactPhone        String?              @map("contact_phone")
   requiredDocs        String?              @map("required_docs") // JSON array
 
+  // Lifecycle
   status              String?              @default("DISCOVERED")
-  createdAt           DateTime?            @default(now()) @map("created_at")
-  updatedAt           DateTime?            @default(now()) @map("updated_at")
-  companyId           String?              @map("company_id")
-  companyRef          Company?             @relation(fields: [companyId], references: [id])
+  createdAt           DateTime?            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime?            @default(now()) @map("updated_at") @db.Timestamptz
+  lastSeenAt          DateTime?            @default(now()) @map("last_seen_at") @db.Timestamptz
+
+  // Relations
+  companyRef          Company?             @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  discoveryRun        DiscoveryRun?        @relation(fields: [runId], references: [id], onDelete: SetNull)
+  processedJobs       ProcessedJob[]
 
   @@unique([source, applyLink])
   @@map("discovered_jobs")
   @@index([source])
   @@index([status])
   @@index([company])
+  @@index([companyId])
   @@index([applyLink])
+  @@index([postedAt])
 }
 
 model DiscoveryRun {
-  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  startedAt      DateTime? @default(now()) @map("started_at") @db.Timestamptz
-  completedAt    DateTime? @map("completed_at") @db.Timestamptz
-  durationMs     BigInt?   @map("duration_ms")
-  totalFound     Int?      @map("total_found")
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  startedAt      DateTime?       @default(now()) @map("started_at") @db.Timestamptz
+  completedAt    DateTime?       @map("completed_at") @db.Timestamptz
+  durationMs     BigInt?         @map("duration_ms")
+  totalFound     Int?            @map("total_found")
   accepted       Int?
-  reviewRequired Int?      @map("review_required")
+  reviewRequired Int?            @map("review_required")
   duplicates     Int?
   failed         Int?
   status         String?
@@ -177,8 +190,9 @@ model DiscoveryRun {
 
   @@map("discovery_runs")
 }
+
 // ----------------------------------------------------------------------------
-// 2. COMPANY & ATS REGISTRY DOMAIN TABLES (SUPABASE)
+// 2. COMPANY & ATS REGISTRY DOMAIN TABLES
 // ----------------------------------------------------------------------------
 
 model Company {
@@ -189,19 +203,24 @@ model Company {
   careersUrl         String?                   @map("careers_url")
   logo               String?
   industry           String?
-  size               CompanySize?
+  industryTags       String[]                  @default([]) @map("industry_tags")
+  topics             String[]                  @default([])
+  stage              String?                   // Seed, Series A, Series B, Public, etc.
+  size               String?                   // Headcount / size bracket
   headquarters       String?
   verificationStatus CompanyVerificationStatus @default(UNVERIFIED) @map("verification_status")
   active             Boolean                   @default(true)
   createdAt          DateTime?                 @default(now()) @map("created_at") @db.Timestamptz
   updatedAt          DateTime?                 @updatedAt @map("updated_at") @db.Timestamptz
 
-  atsSources     CompanyATS[]
-  statistics     CompanyStatistics?
-  discoveredJobs DiscoveredJob[]
-  processedJobs  ProcessedJob[]
+  atsSources         CompanyATS[]
+  statistics         CompanyStatistics?
+  discoveredJobs     DiscoveredJob[]
+  processedJobs      ProcessedJob[]
 
   @@map("companies")
+  @@index([slug])
+  @@index([name])
 }
 
 model CompanyATS {
@@ -250,37 +269,42 @@ model ProcessedJob {
   id                     String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   discoveredJobId        String?            @map("discovered_job_id") @db.Uuid
   companyId              String?            @map("company_id")
-  type                   String             // 'JOB', 'INTERNSHIP', 'WALKIN', etc.
+  
+  // Core Identity
+  type                   String             // 'JOB', 'INTERNSHIP', 'WALKIN', 'GOVT'
   title                  String
   company                String
   companyWebsite         String?            @map("company_website")
   companyLogoUrl         String?            @map("company_logo_url")
+  companyStage           String?            @map("company_stage")
   description            String
   
-  // Arrays
-  allowedDegrees         String[]           @map("allowed_degrees")
-  allowedCourses         String[]           @map("allowed_courses")
-  allowedSpecializations String[]           @map("allowed_specializations")
-  allowedPassoutYears    String[]           @map("allowed_passout_years")
-  requiredSkills         String[]           @map("required_skills")
-  locations              String[]
+  // Eligibility Arrays (Clean structure)
+  allowedDegrees         String[]           @default([]) @map("allowed_degrees")
+  allowedCourses         String[]           @default([]) @map("allowed_courses")
+  allowedSpecializations String[]           @default([]) @map("allowed_specializations")
+  allowedPassoutYears    String[]           @default([]) @map("allowed_passout_years")
+  requiredSkills         String[]           @default([]) @map("required_skills")
+  tags                   String[]           @default([])
+  locations              String[]           @default([])
   
   // JSON structures
   structuredLocations    Json?              @map("structured_locations")
   applicationDetails     Json?              @map("application_details")
   walkInDetails          Json?              @map("walk_in_details")
   
-  // Metadata
+  // Metadata & Taxonomy
   workMode               String?            @map("work_mode")
   experienceMin          Int?               @default(0) @map("experience_min")
   experienceMax          Int?               @default(0) @map("experience_max")
   salaryRange            String?            @map("salary_range")
   salaryAmount           String?            @map("salary_amount")
   salaryPeriod           String?            @default("YEARLY") @map("salary_period")
+  stipend                String?
   employmentType         String?            @map("employment_type")
   jobFunction            String?            @map("job_function")
   
-  // Text blocks
+  // Hiring & Workflow
   incentives             String?
   selectionProcess       String?            @map("selection_process")
   notesHighlights        String?            @map("notes_highlights")
@@ -295,7 +319,7 @@ model ProcessedJob {
   createdAt              DateTime?          @default(now()) @map("created_at") @db.Timestamptz
   updatedAt              DateTime?          @default(now()) @map("updated_at") @db.Timestamptz
 
-  // Optional relations
+  // Relations
   discoveredJob          DiscoveredJob?     @relation(fields: [discoveredJobId], references: [id], onDelete: SetNull)
   companyRef             Company?           @relation(fields: [companyId], references: [id], onDelete: SetNull)
 
@@ -305,4 +329,3 @@ model ProcessedJob {
   @@index([companyId])
   @@index([applyLink])
 }
-

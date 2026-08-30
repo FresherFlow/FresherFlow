@@ -315,11 +315,15 @@ app.get('/robots.txt', (_req, res) => {
     res.type('text/plain').send('User-agent: *\nDisallow: /');
 });
 
-app.get('/bootstrap-feed.min.json', async (req, res) => {
+app.get(['/bootstrap-feed.min.json', '/feeds/bootstrap-feed.min.json'], async (req, res) => {
     try {
-        const filePath = path.join(process.cwd(), 'public', 'bootstrap-feed.min.json');
+        const filePath = path.join(process.cwd(), 'public', 'feeds', 'bootstrap-feed.min.json');
+        const legacyPath = path.join(process.cwd(), 'public', 'bootstrap-feed.min.json');
         if (fs.existsSync(filePath)) {
             return res.sendFile(filePath);
+        }
+        if (fs.existsSync(legacyPath)) {
+            return res.sendFile(legacyPath);
         }
 
         // Fallback if file not yet generated
@@ -334,8 +338,12 @@ app.get('/bootstrap-feed.min.json', async (req, res) => {
     }
 });
 
-app.get('/government-feed.json', async (_req, res) => {
+app.get(['/government-feed.json', '/feeds/government-feed.json'], async (_req, res) => {
     try {
+        const filePath = path.join(process.cwd(), 'public', 'feeds', 'government-feed.json');
+        if (fs.existsSync(filePath)) {
+            return res.sendFile(filePath);
+        }
         const results = await StaticFeedService.generateGovernmentFeed();
         res.json(results);
     } catch (error) {
@@ -379,18 +387,23 @@ app.get('/categories/:id.json', async (req, res) => {
     }
 });
 
-app.get(/^\/sitemap.*\.xml$/, async (req, res) => {
+app.get(/^\/(sitemaps\/)?sitemap.*\.xml$/, async (req, res) => {
     try {
-        const sitemapName = req.path.substring(1) || 'sitemap.xml';
+        const sitemapName = path.basename(req.path) || 'sitemap.xml';
         // Prevent path traversal with a strict filename check
         if (!/^sitemap[a-zA-Z0-9-_]*\.xml$/.test(sitemapName)) {
             res.status(400).send('Invalid sitemap name');
             return;
         }
 
-        const filePath = path.join(process.cwd(), 'public', path.basename(sitemapName));
+        const filePath = path.join(process.cwd(), 'public', 'sitemaps', path.basename(sitemapName));
+        const legacyPath = path.join(process.cwd(), 'public', path.basename(sitemapName));
         if (fs.existsSync(filePath)) {
             res.type('application/xml').send(fs.readFileSync(filePath, 'utf-8'));
+            return;
+        }
+        if (fs.existsSync(legacyPath)) {
+            res.type('application/xml').send(fs.readFileSync(legacyPath, 'utf-8'));
             return;
         }
 

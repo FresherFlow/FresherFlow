@@ -15,6 +15,8 @@ export enum Site {
   LEVER = 'lever',
   WORKABLE = 'workable',
   SMARTRECRUITERS = 'smartrecruiters',
+  GETRO = 'getro',
+  CONSIDER = 'consider',
   RIPPLING = 'rippling',
   WORKDAY = 'workday',
   AMAZON = 'amazon',

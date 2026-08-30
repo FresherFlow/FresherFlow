@@ -59,7 +59,9 @@ import { JobsoidAdapter } from './adapters/ats/jobsoid/index.js';
 import { ComeetAdapter } from './adapters/ats/comeet/index.js';
 import { HibobAdapter } from './adapters/ats/hibob/index.js';
 
-// Job Boards
+// Job Boards & VC Portals
+import { GetroAdapter } from './adapters/board/getro/index.js';
+import { ConsiderAdapter } from './adapters/board/consider/index.js';
 import { GlassdoorAdapter } from './adapters/board/glassdoor/index.js';
 import { HackerNewsAdapter } from './adapters/board/hackernews/index.js';
 import { HasjobAdapter } from './adapters/board/hasjob/index.js';
@@ -125,6 +127,8 @@ export {
   JobsoidAdapter,
   ComeetAdapter,
   HibobAdapter,
+  GetroAdapter,
+  ConsiderAdapter,
   GlassdoorAdapter,
   HackerNewsAdapter,
   HasjobAdapter,
@@ -189,6 +193,8 @@ export const PLUGIN_REGISTRY: Record<string, IAtsAdapter> = {
   'jobsoid': new JobsoidAdapter(),
   'comeet': new ComeetAdapter(),
   'hibob': new HibobAdapter(),
+  'getro': new GetroAdapter(),
+  'consider': new ConsiderAdapter(),
   'glassdoor': new GlassdoorAdapter(),
   'hackernews': new HackerNewsAdapter(),
   'hasjob': new HasjobAdapter(),
@@ -212,7 +218,7 @@ export const PLUGIN_REGISTRY: Record<string, IAtsAdapter> = {
 };
 
 export const BOARD_SET = new Set([
-  'glassdoor', 'hackernews', 'hasjob', 'indeed', 'internshala',
+  'getro', 'consider', 'glassdoor', 'hackernews', 'hasjob', 'indeed', 'internshala',
   'linkedin', 'naukri', 'remoteok', 'wellfound', 'weworkremotely', 'bayt'
 ]);
 
@@ -279,6 +285,8 @@ import { ZwayamService } from './adapters/ats/zwayam/index.js';
 // import { ComeetService } from './adapters/ats/comeet/index.js';
 // import { HibobService } from './adapters/ats/hibob/index.js';
 
+import { GetroService } from './adapters/board/getro/index.js';
+import { ConsiderService } from './adapters/board/consider/index.js';
 import { GlassdoorService } from './adapters/board/glassdoor/index.js';
 import { HackerNewsService } from './adapters/board/hackernews/index.js';
 import { HasJobService } from './adapters/board/hasjob/index.js';
@@ -335,6 +343,8 @@ export const ATS_SCRAPER_REGISTRY: Record<string, IScraper> = {
 };
 
 export const BOARD_SCRAPER_REGISTRY: Record<string, IScraper> = {
+  getro: new GetroService(),
+  consider: new ConsiderService(),
   glassdoor: new GlassdoorService(),
   hackernews: new HackerNewsService(),
   hasjob: new HasJobService(),

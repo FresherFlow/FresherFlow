@@ -34,23 +34,33 @@ export class StaticFeedService {
     }
 
     private static get PUBLIC_ROOT() { return StorageService.getPublicRoot(); }
-    private static get BOOTSTRAP_PATH() { return path.join(this.PUBLIC_ROOT, 'bootstrap-feed.min.json'); }
-    private static get FEED_INDEX_PATH() { return path.join(this.PUBLIC_ROOT, 'feed-index.json'); }
-    private static get FEED_DIR() { return path.join(this.PUBLIC_ROOT, 'feed'); }
+    private static get FEEDS_DIR() { return path.join(this.PUBLIC_ROOT, 'feeds'); }
+    private static get SITEMAPS_DIR() { return path.join(this.PUBLIC_ROOT, 'sitemaps'); }
+    private static get META_DIR() { return path.join(this.PUBLIC_ROOT, 'meta'); }
+    private static get JOBS_DIR() { return path.join(this.PUBLIC_ROOT, 'jobs'); }
     private static get COMPANIES_DIR() { return path.join(this.PUBLIC_ROOT, 'companies'); }
     private static get CATEGORIES_DIR() { return path.join(this.PUBLIC_ROOT, 'categories'); }
-    private static get STATS_PATH() { return path.join(this.PUBLIC_ROOT, 'stats.json'); }
-    private static get SITEMAP_PATH() { return path.join(this.PUBLIC_ROOT, 'sitemap.xml'); }
-    private static get USERNAMES_PATH() { return path.join(this.PUBLIC_ROOT, 'taken-usernames.min.json'); }
-    private static get SITEMAP_DATA_PATH() { return path.join(this.PUBLIC_ROOT, 'sitemap-data.json'); }
-    private static get LINKS_PATH() { return path.join(this.PUBLIC_ROOT, 'links.min.json'); }
-    private static get RESOURCES_PATH() { return path.join(this.PUBLIC_ROOT, 'resources-feed.json'); }
-    private static get GOVERNMENT_PATH() { return path.join(this.PUBLIC_ROOT, 'government-feed.json'); }
-    private static get WALKINS_PATH() { return path.join(this.PUBLIC_ROOT, 'walkins-feed.json'); }
-    private static get SYLLABUS_PATH() { return path.join(this.PUBLIC_ROOT, 'syllabus.json'); }
-    private static get GENERATED_HUBS_PATH() { return path.join(this.PUBLIC_ROOT, 'generated-hubs.json'); }
-    private static get JOBS_DIR() { return path.join(this.PUBLIC_ROOT, 'jobs'); }
-    public static get EXPIRED_FEED_PATH() { return path.join(this.PUBLIC_ROOT, 'expired-feed.min.json'); }
+
+    // Feeds
+    private static get BOOTSTRAP_PATH() { return path.join(this.FEEDS_DIR, 'bootstrap-feed.min.json'); }
+    private static get FEED_INDEX_PATH() { return path.join(this.FEEDS_DIR, 'feed-index.json'); }
+    private static get GOVERNMENT_PATH() { return path.join(this.FEEDS_DIR, 'government-feed.json'); }
+    private static get WALKINS_PATH() { return path.join(this.FEEDS_DIR, 'walkins-feed.json'); }
+    public static get EXPIRED_FEED_PATH() { return path.join(this.FEEDS_DIR, 'expired-feed.min.json'); }
+    private static get RESOURCES_PATH() { return path.join(this.FEEDS_DIR, 'resources-feed.json'); }
+    private static get LINKS_PATH() { return path.join(this.FEEDS_DIR, 'links.min.json'); }
+    private static get SYLLABUS_PATH() { return path.join(this.FEEDS_DIR, 'syllabus.json'); }
+
+    // Sitemaps
+    private static get SITEMAP_PATH() { return path.join(this.SITEMAPS_DIR, 'sitemap.xml'); }
+    private static get SITEMAP_INDEX_PATH() { return path.join(this.SITEMAPS_DIR, 'sitemap-index.xml'); }
+    private static get SITEMAP_DATA_PATH() { return path.join(this.SITEMAPS_DIR, 'sitemap-data.json'); }
+
+    // Metadata
+    private static get FEED_VERSION_PATH() { return path.join(this.META_DIR, 'feed-version.json'); }
+    private static get STATS_PATH() { return path.join(this.META_DIR, 'stats.json'); }
+    private static get USERNAMES_PATH() { return path.join(this.META_DIR, 'taken-usernames.min.json'); }
+    private static get GENERATED_HUBS_PATH() { return path.join(this.META_DIR, 'generated-hubs.json'); }
 
     // Retain delegates for backwards compatibility
     static async generateBootstrapFeed() {
@@ -108,14 +118,14 @@ export class StaticFeedService {
      */
     static async refreshUsernames() {
         try {
-            StorageService.ensureDirectoryExists(this.PUBLIC_ROOT);
+            StorageService.ensureDirectoryExists(this.META_DIR);
             const usernames = await FeedGeneratorService.generateTakenUsernames();
             const body = JSON.stringify(usernames);
             StorageService.writeLocalFile(this.USERNAMES_PATH, body);
             logger.info('[StaticFeedService] Occupied usernames list updated', { count: usernames.length });
 
             // Upload to Cloudflare R2
-            await StorageService.uploadToR2('taken-usernames.min.json', body, 'application/json');
+            await StorageService.uploadToR2('meta/taken-usernames.min.json', body, 'application/json');
         } catch (error) {
             logger.error('[StaticFeedService] Failed to regenerate occupied usernames', error);
         }
@@ -132,7 +142,7 @@ export class StaticFeedService {
             await FeedGeneratorService.loadCompanySlugMap();
 
             // 1. Ensure dirs
-            [this.PUBLIC_ROOT, this.COMPANIES_DIR].forEach(d => {
+            [this.PUBLIC_ROOT, this.FEEDS_DIR, this.SITEMAPS_DIR, this.META_DIR, this.JOBS_DIR, this.COMPANIES_DIR].forEach(d => {
                 StorageService.ensureDirectoryExists(d);
             });
 
@@ -168,7 +178,7 @@ export class StaticFeedService {
                 };
                 const bootstrapBody = JSON.stringify(bootstrap);
                 StorageService.writeLocalFile(this.BOOTSTRAP_PATH, bootstrapBody);
-                await StorageService.uploadToR2('bootstrap-feed.min.json', bootstrapBody, 'application/json');
+                await StorageService.uploadToR2('feeds/bootstrap-feed.min.json', bootstrapBody, 'application/json');
 
                 // 4b. Lightweight feed index — card-rendering fields only.
                 // ~700 bytes/job vs ~2.5KB/job in the full bootstrap.
@@ -176,6 +186,7 @@ export class StaticFeedService {
                 // Mobile and detail pages continue using the full bootstrap.
                 const indexFields = [
                     'id', 'slug', 'type', 'status', 'title', 'company', 'companyWebsite', 'companyLogoUrl',
+                    'companyStage', 'companySize', 'companyIndustry', 'companyTopics',
                     'locations', 'workMode', 'salaryMin', 'salaryMax', 'salaryRange', 'salaryPeriod',
                     'stipend', 'incentives', 'employmentType', 'jobFunction',
                     'requiredSkills', 'tags',
@@ -206,7 +217,7 @@ export class StaticFeedService {
                 };
                 const indexBody = JSON.stringify(feedIndex);
                 StorageService.writeLocalFile(this.FEED_INDEX_PATH, indexBody);
-                await StorageService.uploadToR2('feed-index.json', indexBody, 'application/json');
+                await StorageService.uploadToR2('feeds/feed-index.json', indexBody, 'application/json');
             }
 
             // 5. Generate & Upload Government Feed
@@ -220,7 +231,7 @@ export class StaticFeedService {
                 };
                 const governmentBody = JSON.stringify(government);
                 StorageService.writeLocalFile(this.GOVERNMENT_PATH, governmentBody);
-                await StorageService.uploadToR2('government-feed.json', governmentBody, 'application/json');
+                await StorageService.uploadToR2('feeds/government-feed.json', governmentBody, 'application/json');
             }
 
             // 5b. Generate & Upload Walk-ins Feed (including Hyderabad Tech Cluster Map Feed)
@@ -234,7 +245,7 @@ export class StaticFeedService {
                 };
                 const walkinsBody = JSON.stringify(walkins);
                 StorageService.writeLocalFile(this.WALKINS_PATH, walkinsBody);
-                await StorageService.uploadToR2('walkins-feed.json', walkinsBody, 'application/json');
+                await StorageService.uploadToR2('feeds/walkins-feed.json', walkinsBody, 'application/json');
                 await StorageService.uploadToR2('feeds/walkins.json', walkinsBody, 'application/json');
             }
 
@@ -254,19 +265,19 @@ export class StaticFeedService {
                 };
                 const expiredBody = JSON.stringify(expired);
                 StorageService.writeLocalFile(this.EXPIRED_FEED_PATH, expiredBody);
-                await StorageService.uploadToR2('expired-feed.min.json', expiredBody, 'application/json');
+                await StorageService.uploadToR2('feeds/expired-feed.min.json', expiredBody, 'application/json');
             }
 
             // 7. Sync syllabus.json from R2
             if (target === 'all' || target === 'govt') {
                 try {
-                    const syllabusBody = await StorageService.fetchFromR2('syllabus.json');
+                    const syllabusBody = await StorageService.fetchFromR2('feeds/syllabus.json') || await StorageService.fetchFromR2('syllabus.json');
                     if (syllabusBody) {
                         StorageService.writeLocalFile(this.SYLLABUS_PATH, syllabusBody);
                     } else {
                         const localSyllabus = StorageService.readLocalFile(this.SYLLABUS_PATH);
                         if (localSyllabus) {
-                            await StorageService.uploadToR2('syllabus.json', localSyllabus, 'application/json');
+                            await StorageService.uploadToR2('feeds/syllabus.json', localSyllabus, 'application/json');
                         }
                     }
                 } catch (err) {
@@ -277,8 +288,8 @@ export class StaticFeedService {
             // 8. Generate and upload dynamic feed-version.json cache buster
             const feedVersion = Date.now().toString();
             const versionBody = JSON.stringify({ version: feedVersion });
-            StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'feed-version.json'), versionBody);
-            await StorageService.uploadToR2('feed-version.json', versionBody, 'application/json');
+            StorageService.writeLocalFile(this.FEED_VERSION_PATH, versionBody);
+            await StorageService.uploadToR2('meta/feed-version.json', versionBody, 'application/json');
 
             // 9. Generate & Upload Stats
             if (target === 'all' || target === 'bootstrap') {
@@ -292,7 +303,7 @@ export class StaticFeedService {
                 };
                 const statsBody = JSON.stringify(stats);
                 StorageService.writeLocalFile(this.STATS_PATH, statsBody);
-                await StorageService.uploadToR2('stats.json', statsBody, 'application/json');
+                await StorageService.uploadToR2('meta/stats.json', statsBody, 'application/json');
             }
 
             // 10. Generate & Upload Sitemap XML and JSON Data
@@ -539,28 +550,28 @@ export class StaticFeedService {
                 indexXml += '</sitemapindex>';
 
                 // Write local files
-                StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'sitemap-index.xml'), indexXml);
+                StorageService.writeLocalFile(this.SITEMAP_INDEX_PATH, indexXml);
                 StorageService.writeLocalFile(this.SITEMAP_PATH, indexXml); // Write to sitemap.xml as index sitemap
-                StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'sitemap-jobs.xml'), jobsXml);
-                StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'sitemap-walkins.xml'), walkinsXml);
-                StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'sitemap-govt.xml'), govtXml);
-                StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'sitemap-companies.xml'), companiesXml);
-                StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'sitemap-skills.xml'), skillsXml);
-                StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'sitemap-roles.xml'), rolesXml);
-                StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'sitemap-locations.xml'), locationsXml);
-                StorageService.writeLocalFile(path.join(this.PUBLIC_ROOT, 'sitemap-batches.xml'), batchesXml);
+                StorageService.writeLocalFile(path.join(this.SITEMAPS_DIR, 'sitemap-jobs.xml'), jobsXml);
+                StorageService.writeLocalFile(path.join(this.SITEMAPS_DIR, 'sitemap-walkins.xml'), walkinsXml);
+                StorageService.writeLocalFile(path.join(this.SITEMAPS_DIR, 'sitemap-govt.xml'), govtXml);
+                StorageService.writeLocalFile(path.join(this.SITEMAPS_DIR, 'sitemap-companies.xml'), companiesXml);
+                StorageService.writeLocalFile(path.join(this.SITEMAPS_DIR, 'sitemap-skills.xml'), skillsXml);
+                StorageService.writeLocalFile(path.join(this.SITEMAPS_DIR, 'sitemap-roles.xml'), rolesXml);
+                StorageService.writeLocalFile(path.join(this.SITEMAPS_DIR, 'sitemap-locations.xml'), locationsXml);
+                StorageService.writeLocalFile(path.join(this.SITEMAPS_DIR, 'sitemap-batches.xml'), batchesXml);
 
                 // Upload to R2
-                await StorageService.uploadToR2('sitemap-index.xml', indexXml, 'application/xml');
-                await StorageService.uploadToR2('sitemap.xml', indexXml, 'application/xml');
-                await StorageService.uploadToR2('sitemap-jobs.xml', jobsXml, 'application/xml');
-                await StorageService.uploadToR2('sitemap-walkins.xml', walkinsXml, 'application/xml');
-                await StorageService.uploadToR2('sitemap-govt.xml', govtXml, 'application/xml');
-                await StorageService.uploadToR2('sitemap-companies.xml', companiesXml, 'application/xml');
-                await StorageService.uploadToR2('sitemap-skills.xml', skillsXml, 'application/xml');
-                await StorageService.uploadToR2('sitemap-roles.xml', rolesXml, 'application/xml');
-                await StorageService.uploadToR2('sitemap-locations.xml', locationsXml, 'application/xml');
-                await StorageService.uploadToR2('sitemap-batches.xml', batchesXml, 'application/xml');
+                await StorageService.uploadToR2('sitemaps/sitemap-index.xml', indexXml, 'application/xml');
+                await StorageService.uploadToR2('sitemaps/sitemap.xml', indexXml, 'application/xml');
+                await StorageService.uploadToR2('sitemaps/sitemap-jobs.xml', jobsXml, 'application/xml');
+                await StorageService.uploadToR2('sitemaps/sitemap-walkins.xml', walkinsXml, 'application/xml');
+                await StorageService.uploadToR2('sitemaps/sitemap-govt.xml', govtXml, 'application/xml');
+                await StorageService.uploadToR2('sitemaps/sitemap-companies.xml', companiesXml, 'application/xml');
+                await StorageService.uploadToR2('sitemaps/sitemap-skills.xml', skillsXml, 'application/xml');
+                await StorageService.uploadToR2('sitemaps/sitemap-roles.xml', rolesXml, 'application/xml');
+                await StorageService.uploadToR2('sitemaps/sitemap-locations.xml', locationsXml, 'application/xml');
+                await StorageService.uploadToR2('sitemaps/sitemap-batches.xml', batchesXml, 'application/xml');
 
                 const sitemapData = {
                     companies: validCompanies.map(name => ({
@@ -578,7 +589,7 @@ export class StaticFeedService {
                 };
                 const sitemapDataBody = JSON.stringify(sitemapData);
                 StorageService.writeLocalFile(this.SITEMAP_DATA_PATH, sitemapDataBody);
-                await StorageService.uploadToR2('sitemap-data.json', sitemapDataBody, 'application/json');
+                await StorageService.uploadToR2('sitemaps/sitemap-data.json', sitemapDataBody, 'application/json');
 
                 // Dynamic Hub static OG Image Generation with R2 cache check!
                 try {
@@ -592,7 +603,7 @@ export class StaticFeedService {
                     } = { companies: [], locations: [], skills: [], batches: [], roles: [] };
 
                     try {
-                        const localCache = StorageService.readLocalFile(this.GENERATED_HUBS_PATH) || await StorageService.fetchFromR2('generated-hubs.json');
+                        const localCache = StorageService.readLocalFile(this.GENERATED_HUBS_PATH) || await StorageService.fetchFromR2('meta/generated-hubs.json') || await StorageService.fetchFromR2('generated-hubs.json');
                         if (localCache) {
                             cache = JSON.parse(localCache);
                             if (!cache.companies) cache.companies = [];
@@ -666,7 +677,7 @@ export class StaticFeedService {
                     // Save updated cache
                     const cacheBody = JSON.stringify(cache);
                     StorageService.writeLocalFile(this.GENERATED_HUBS_PATH, cacheBody);
-                    await StorageService.uploadToR2('generated-hubs.json', cacheBody, 'application/json');
+                    await StorageService.uploadToR2('meta/generated-hubs.json', cacheBody, 'application/json');
                     logger.info('[StaticFeedService] Static OG cards generated and cache updated successfully!');
                 } catch (err) {
                     logger.error('[StaticFeedService] Failed in static OG generation pipeline', err);
@@ -680,7 +691,7 @@ export class StaticFeedService {
                 usernamesLength = usernames.length;
                 const usernamesBody = JSON.stringify(usernames);
                 StorageService.writeLocalFile(this.USERNAMES_PATH, usernamesBody);
-                await StorageService.uploadToR2('taken-usernames.min.json', usernamesBody, 'application/json');
+                await StorageService.uploadToR2('meta/taken-usernames.min.json', usernamesBody, 'application/json');
             }
 
             // 12. Generate & Upload Links Feed
@@ -700,7 +711,7 @@ export class StaticFeedService {
                 const linksFeed = { opportunities: linksOpps, timestamp: Date.now(), count: linksOpps.length };
                 const linksBody = JSON.stringify(linksFeed);
                 StorageService.writeLocalFile(this.LINKS_PATH, linksBody);
-                await StorageService.uploadToR2('links.min.json', linksBody, 'application/json');
+                await StorageService.uploadToR2('feeds/links.min.json', linksBody, 'application/json');
             }
 
             // 13. Generate & Upload Resources Feed
@@ -708,7 +719,7 @@ export class StaticFeedService {
                 const resourcesFeed = await FeedGeneratorService.generateResourcesFeed();
                 const resourcesBody = JSON.stringify(resourcesFeed);
                 StorageService.writeLocalFile(this.RESOURCES_PATH, resourcesBody);
-                await StorageService.uploadToR2('resources-feed.json', resourcesBody, 'application/json');
+                await StorageService.uploadToR2('feeds/resources-feed.json', resourcesBody, 'application/json');
             }
 
             // 14. Group & Upload Company Shards sequentially (garbage collect references)
@@ -740,7 +751,7 @@ export class StaticFeedService {
                 }
             }
 
-            // 15. Generate & Upload Individual Job Shards (api/jobs/{id}.json)
+            // 15. Generate & Save Individual Job Shards locally (throttled R2 upload only when target === 'jobs')
             if (target === 'all' || target === 'bootstrap' || target === 'jobs') {
                 StorageService.ensureDirectoryExists(this.JOBS_DIR);
                 for (const opp of allMapped) {
@@ -748,8 +759,23 @@ export class StaticFeedService {
                     const id = (opp as { id?: string }).id;
                     if (id) {
                         StorageService.writeLocalFile(path.join(this.JOBS_DIR, `${id}.json`), jobBody);
-                        await StorageService.uploadToR2(`api/jobs/${id}.json`, jobBody, 'application/json');
-                        await StorageService.uploadToR2(`jobs/${id}.json`, jobBody, 'application/json');
+                    }
+                }
+
+                // If explicit 'jobs' target requested, upload to R2 with small batches to stay within free tier RAM/network limits
+                if (target === 'jobs') {
+                    const BATCH_SIZE = 5;
+                    for (let i = 0; i < allMapped.length; i += BATCH_SIZE) {
+                        const chunk = allMapped.slice(i, i + BATCH_SIZE);
+                        await Promise.all(
+                            chunk.map(opp => {
+                                const id = (opp as { id?: string }).id;
+                                if (!id) return Promise.resolve();
+                                const jobBody = JSON.stringify(opp);
+                                return StorageService.uploadToR2(`jobs/${id}.json`, jobBody, 'application/json');
+                            })
+                        );
+                        await new Promise(resolve => setTimeout(resolve, 50));
                     }
                 }
             }
@@ -766,18 +792,18 @@ export class StaticFeedService {
     }
 
     /**
-     * Upload an individual job JSON directly to R2 (atomic update on publish/edit)
+     * Upload an individual job JSON directly to R2 (atomic update on publish/edit - 1 small upload)
      */
     static async uploadSingleJob(opportunity: Record<string, unknown>): Promise<void> {
         try {
             const mapped = FeedGeneratorService.mapFeedOpportunities([opportunity])[0];
+            if (!mapped) return;
             const jobBody = JSON.stringify(mapped);
             const id = (opportunity as { id?: string }).id;
 
             StorageService.ensureDirectoryExists(this.JOBS_DIR);
             if (id) {
                 StorageService.writeLocalFile(path.join(this.JOBS_DIR, `${id}.json`), jobBody);
-                await StorageService.uploadToR2(`api/jobs/${id}.json`, jobBody, 'application/json');
                 await StorageService.uploadToR2(`jobs/${id}.json`, jobBody, 'application/json');
             }
         } catch (error) {

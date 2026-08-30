@@ -130,6 +130,10 @@ export interface Opportunity {
     company: string;
     companyWebsite?: string;
     companyLogoUrl?: string | null;
+    companyStage?: string;
+    companySize?: string;
+    companyIndustry?: string[];
+    companyTopics?: string[];
     description: string;
 
     // Eligibility
@@ -1001,6 +1005,10 @@ export interface OpportunityCardDTO {
     company: string;
     companyWebsite?: string;
     companyLogoUrl?: string | null;
+    companyStage?: string;
+    companySize?: string;
+    companyIndustry?: string[];
+    companyTopics?: string[];
     locations: string[];
     workMode?: WorkMode;
     salaryMin?: number;
@@ -1056,6 +1064,10 @@ export function toOpportunityCardDTO(opp: Opportunity): OpportunityCardDTO {
         passoutYearMax: opp.passoutYearMax,
         allowedDegrees: opp.allowedDegrees || [],
         allowedCourses: opp.allowedCourses || [],
+        companyStage: opp.companyStage,
+        companySize: opp.companySize,
+        companyIndustry: opp.companyIndustry,
+        companyTopics: opp.companyTopics,
         normalizedRole: opp.normalizedRole,
         applyLink: opp.applyLink,
         linkHealth: opp.linkHealth,
@@ -1075,6 +1087,204 @@ export function toOpportunityCardDTO(opp: Opportunity): OpportunityCardDTO {
 // ============================================================================
 // VALIDATION SCHEMAS
 // ============================================================================
+
+// ============================================================================
+// GROUPED / NESTED DOMAIN TYPES (Getro-style clean API contract)
+// ============================================================================
+
+export interface GroupedWalkInDetails {
+    dates?: string[];
+    dateRange?: string;
+    timeRange?: string;
+    venueAddress?: string;
+    venueLink?: string;
+    latitude?: number;
+    longitude?: number;
+    clusterName?: string;
+    city?: string;
+    reportingTime?: string;
+    requiredDocuments?: string[];
+    contactPerson?: string;
+    contactPhone?: string;
+    expiryDate?: string;
+    landmark?: string;
+    transitInfo?: string;
+    selectionProcess?: string;
+}
+
+export interface GroupedGovernmentDetails {
+    department?: string;
+    organization?: string;
+    recruitingBody?: string;
+    governmentLevel?: GovernmentLevel;
+    jobCategory?: string[];
+    examName?: string;
+    postName?: string;
+    vacancyCount?: number;
+    vacancyBreakdown?: any;
+    vacancies?: any;
+    payLevel?: string;
+    payScale?: string;
+    basicPay?: number;
+    applicationFee?: string;
+    ageMin?: number;
+    ageMax?: number;
+    ageRelaxation?: string;
+    applicationStartDate?: string;
+    applicationEndDate?: string;
+    examDate?: string;
+    admitCardUrl?: string;
+    resultUrl?: string;
+    notificationPdfUrl?: string;
+}
+
+export interface GroupedOpportunity {
+    id: string;
+    slug: string;
+    type: OpportunityType;
+    status: OpportunityStatus;
+    title: string;
+    description?: string | null;
+    sourceLink?: string | null;
+    applyLink?: string | null;
+
+    // Company & Branding
+    company: {
+        id?: string | null;
+        name: string;
+        slug: string;
+        website?: string | null;
+        logoUrl?: string | null;
+        stage?: string | null;
+        size?: string | null;
+        industryTags: string[];
+        topics: string[];
+    };
+
+    // Taxonomy & Work Mode
+    jobFunction?: string | null;
+    employmentType?: string | null;
+    workMode?: WorkMode | null;
+    locations: string[];
+
+    // Eligibility (No "allowed" prefix)
+    eligibility: {
+        experienceMin?: number | null;
+        experienceMax?: number | null;
+        degrees: EducationLevel[];
+        courses: string[];
+        specializations: string[];
+        batches: number[];
+        availability?: string | null;
+    };
+
+    // Skills & Discovery Tags
+    skills: {
+        required: string[];
+        tags: string[];
+    };
+
+    // Compensation & Stipend
+    salary: {
+        min?: number | null;
+        max?: number | null;
+        range?: string | null;
+        period?: SalaryPeriod;
+        stipend?: string | null;
+        incentives?: string | null;
+    };
+
+    // Hiring & Selection Workflow
+    hiring: {
+        selectionProcess?: string | null;
+        notesHighlights?: string | null;
+        applicationDetails?: ApplicationDetails | null;
+    };
+
+    // Engagement & Metrics
+    metrics: {
+        clicks: number;
+        saves: number;
+        shares: number;
+        comments: number;
+        trendingScore: number;
+    };
+
+    // Link Health & Verification
+    health: {
+        linkHealth: LinkHealth;
+        verificationFailures: number;
+        lastVerifiedAt: Date | string;
+    };
+
+    // Lifecycle & Auditing
+    lifecycle: {
+        postedByUserId: string;
+        postedAt: Date | string;
+        publishedAt?: Date | string | null;
+        expiresAt?: Date | string | null;
+        updatedAt?: Date | string;
+        deletedAt?: Date | string | null;
+        deletionReason?: string | null;
+    };
+
+    // Sub-spec extensions (present when applicable)
+    walkin?: GroupedWalkInDetails | null;
+    govt?: GroupedGovernmentDetails | null;
+}
+
+// ============================================================================
+// COMPANY GROUPBY RESPONSE TYPES
+// ============================================================================
+
+export interface CompanyGroupedItem {
+    id?: string | null;
+    name: string;
+    slug: string;
+    website?: string | null;
+    logoUrl?: string | null;
+    stage?: string | null;
+    size?: string | null;
+    industryTags: string[];
+    topics: string[];
+    opportunityCount: number;
+    opportunities: GroupedOpportunity[];
+}
+
+export interface CompanyGroup {
+    company: CompanyMetadata;
+    opportunityCount: number;
+    opportunities: Opportunity[];
+}
+
+export interface CompanyMetadata {
+    id?: string;
+    name: string;
+    slug: string;
+    website?: string;
+    logoUrl?: string;
+    stage?: string;
+    size?: string;
+    industryTags?: string[];
+    topics?: string[];
+}
+
+export interface GroupedOpportunitiesResponse {
+    grouped: boolean;
+    groupBy: 'company' | null;
+    companies?: CompanyGroup[];
+    opportunities?: Opportunity[];
+    total: number;
+    timestamp: number;
+}
+
+/** Clean grouped response using nested GroupedOpportunity contract. */
+export interface CompanyGroupedResponse {
+    companies: CompanyGroupedItem[];
+    totalOpportunities: number;
+    totalCompanies: number;
+    timestamp: number;
+}
 
 export * from './schemas.js';
 

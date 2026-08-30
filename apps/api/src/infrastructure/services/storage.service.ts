@@ -5,9 +5,34 @@ import { logger } from '@fresherflow/utils';
 
 export class StorageService {
     private static readonly PUBLIC_ROOT = path.join(process.cwd(), 'public');
+    private static s3ClientInstance: S3Client | null = null;
 
     static getPublicRoot(): string {
         return this.PUBLIC_ROOT;
+    }
+
+    private static getS3Client(): S3Client | null {
+        if (this.s3ClientInstance) return this.s3ClientInstance;
+
+        const endpoint = process.env.R2_ENDPOINT;
+        const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+        const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+
+        if (!endpoint || !accessKeyId || !secretAccessKey) {
+            return null;
+        }
+
+        this.s3ClientInstance = new S3Client({
+            region: 'auto',
+            endpoint,
+            credentials: {
+                accessKeyId,
+                secretAccessKey,
+            },
+            maxAttempts: 2,
+        });
+
+        return this.s3ClientInstance;
     }
 
     static ensureDirectoryExists(dirPath: string): void {
@@ -28,26 +53,15 @@ export class StorageService {
     }
 
     static async uploadToR2(key: string, body: string, contentType: string): Promise<void> {
-        const endpoint = process.env.R2_ENDPOINT;
-        const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-        const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
         const bucketName = process.env.R2_BUCKET_NAME;
+        const s3 = this.getS3Client();
 
-        if (!endpoint || !accessKeyId || !secretAccessKey) {
+        if (!s3 || !bucketName) {
             logger.warn(`[StorageService] Skipping R2 upload for ${key} - R2 credentials not fully configured in environment.`);
             return;
         }
 
         try {
-            const s3 = new S3Client({
-                region: 'auto',
-                endpoint,
-                credentials: {
-                    accessKeyId,
-                    secretAccessKey,
-                },
-            });
-
             await s3.send(
                 new PutObjectCommand({
                     Bucket: bucketName,
@@ -57,32 +71,20 @@ export class StorageService {
                     CacheControl: key === 'feed-version.json' ? 'no-cache, no-store, must-revalidate' : undefined,
                 })
             );
-            logger.info(`[StorageService] Successfully uploaded to R2: ${key}`);
         } catch (error) {
             logger.error(`[StorageService] Failed to upload ${key} to R2`, error);
         }
     }
 
     static async fetchFromR2(key: string): Promise<string | null> {
-        const endpoint = process.env.R2_ENDPOINT;
-        const accessKeyId = process.env.R2_ACCESS_KEY_ID;
-        const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
         const bucketName = process.env.R2_BUCKET_NAME;
+        const s3 = this.getS3Client();
 
-        if (!endpoint || !accessKeyId || !secretAccessKey) {
+        if (!s3 || !bucketName) {
             return null;
         }
 
         try {
-            const s3 = new S3Client({
-                region: 'auto',
-                endpoint,
-                credentials: {
-                    accessKeyId,
-                    secretAccessKey,
-                },
-            });
-
             const response = await s3.send(
                 new GetObjectCommand({
                     Bucket: bucketName,

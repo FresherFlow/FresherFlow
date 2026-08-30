@@ -1,4 +1,4 @@
-import { AtsJob, BOARD_SCRAPER_REGISTRY, JobType, ScraperInputDto, toAtsJob } from '@fresherflow/plugins';
+import { AtsJob, BOARD_SCRAPER_REGISTRY, PLUGIN_REGISTRY, JobType, ScraperInputDto, toAtsJob } from '@fresherflow/plugins';
 import { isSeniorJob } from '@fresherflow/utils';
 import { parseJobUrl } from '@fresherflow/parser';
 

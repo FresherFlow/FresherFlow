@@ -61,6 +61,9 @@ export interface AtsJob {
     emails?: string[];
     compensation?: { interval: string; minAmount?: number; maxAmount?: number; currency?: string; };
     salarySource?: string;
+    companyStage?: string;
+    tags?: string[];
+    stipend?: string;
     rawPayload?: unknown;
     source: string;
     sourceType: 'ATS' | 'AGGREGATOR';
@@ -409,6 +412,9 @@ export function toAtsJob(
             currency: job.compensation.currency || 'USD'
         } : undefined,
         salarySource: job.salarySource || undefined,
+        companyStage: job.companyStage || undefined,
+        tags: job.tags || undefined,
+        stipend: job.stipend || undefined,
         source: 'ATS_' + providerName.toUpperCase().replace(/[^A-Z0-9]/g, '_'),
         sourceType,
         site: job.site || providerName.toLowerCase(),

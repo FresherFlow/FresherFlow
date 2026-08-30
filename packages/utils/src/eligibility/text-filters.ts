@@ -81,20 +81,20 @@ export function isSeniorJob(text: string): boolean {
         return true;
     }
     
-    // Check for ranges like "2-5 years of experience", "10-13 years" (excluding ranges starting with 0 or 1)
-    const expRangeRegex = /(?:[2-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z',-]+\s+){0,5}(?:experience|building|working|developing|engineering|leading|managing)/gi;
+    // Check for ranges like "1-3 years of experience", "2-5 years of experience", "10-13 years"
+    const expRangeRegex = /(?:\b1\s*(?:-|–|\bto\b)\s*(?:[2-9]|\d{2,})|(?:[2-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+))\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z',-]+\s+){0,5}(?:experience|building|working|developing|engineering|leading|managing|payroll|recruiting|sales|accounting)/gi;
     if (expRangeRegex.test(lowerText)) {
         return true;
     }
 
-    // Check for "Experience: 2-5 years", "Experience: 6 to 10"
-    const prefixExpRangeRegex = /(?:experience|exp|requires?|requiring)[^a-z0-9]{1,4}(?:[2-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)(?:\s*(?:years?|yrs?|y\b))?/gi;
+    // Check for "Experience: 1-3 years", "Experience: 2-5 years", "Experience: 6 to 10"
+    const prefixExpRangeRegex = /(?:experience|exp|requires?|requiring)[^a-z0-9]{1,4}(?:\b1\s*(?:-|–|\bto\b)\s*(?:[2-9]|\d{2,})|(?:[2-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+))(?:\s*(?:years?|yrs?|y\b))?/gi;
     if (prefixExpRangeRegex.test(lowerText)) {
         return true;
     }
 
     // Check for experience requirements of 2+ years (e.g. "2 years' experience", "5 year's analytical experience")
-    const expReqRegex = /(?<!\b[0-1]\s*(?:-|–|\bto\b)\s*)(?:\b[2-9]\b|\b\d{2,}\b)\s*(?:years'|year's|years|year|yrs|yr)(?:\s*(?:of\s+)?(?:[a-z',-]+\s+){0,5}(?:experience|building|working|developing|engineering|leading|managing))?/gi;
+    const expReqRegex = /(?<!\b[0-1]\s*(?:-|–|\bto\b)\s*)(?:\b[2-9]\b|\b\d{2,}\b)\s*(?:years'|year's|years|year|yrs|yr)(?:\s*(?:of\s+)?(?:[a-z',-]+\s+){0,5}(?:experience|building|working|developing|engineering|leading|managing|payroll|recruiting|sales|accounting))?/gi;
     if (expReqRegex.test(lowerText)) {
         return true;
     }

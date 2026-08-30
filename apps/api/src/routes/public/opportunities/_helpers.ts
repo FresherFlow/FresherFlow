@@ -290,6 +290,70 @@ export function normalizeSafeQueryString(value: unknown, maxLen = 80) {
     return String(value || '').trim().slice(0, maxLen);
 }
 
+/**
+ * Selects every field required to build the clean grouped/company contract via
+ * `toGroupedOpportunity`. Used by the opt-in `groupBy=company` feed response.
+ */
+export function buildGroupedOpportunitySelect() {
+    return {
+        id: true,
+        slug: true,
+        type: true,
+        status: true,
+        title: true,
+        company: true,
+        companyId: true,
+        companyWebsite: true,
+        companyLogoUrl: true,
+        companyStage: true,
+        companySize: true,
+        companyIndustry: true,
+        companyTopics: true,
+        description: true,
+        sourceLink: true,
+        applyLink: true,
+        jobFunction: true,
+        employmentType: true,
+        workMode: true,
+        locations: true,
+        allowedDegrees: true,
+        allowedCourses: true,
+        allowedSpecializations: true,
+        allowedPassoutYears: true,
+        allowedAvailability: true,
+        experienceMin: true,
+        experienceMax: true,
+        requiredSkills: true,
+        tags: true,
+        salaryMin: true,
+        salaryMax: true,
+        salaryRange: true,
+        salaryPeriod: true,
+        stipend: true,
+        incentives: true,
+        selectionProcess: true,
+        notesHighlights: true,
+        applicationDetails: true,
+        clicksCount: true,
+        savesCount: true,
+        sharesCount: true,
+        commentsCount: true,
+        trendingScore: true,
+        linkHealth: true,
+        verificationFailures: true,
+        lastVerifiedAt: true,
+        postedByUserId: true,
+        postedAt: true,
+        publishedAt: true,
+        expiresAt: true,
+        updatedAt: true,
+        deletedAt: true,
+        deletionReason: true,
+        walkInDetails: true,
+        governmentJobDetails: true,
+    } as const;
+}
+
 export function parseStrictPositiveInt(value: unknown): number | null {
     const raw = String(value ?? '').trim();
     if (!/^\d+$/.test(raw)) return null;

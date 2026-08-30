@@ -484,6 +484,10 @@ model Opportunity {
   company     String
   companyWebsite String?
   companyLogoUrl String?
+  companyStage    String?
+  companySize     String?
+  companyIndustry String[] @default([])
+  companyTopics   String[] @default([])
   description String? @db.Text
 
   // Eligibility Rules (DB-filterable)
@@ -583,6 +587,8 @@ model Opportunity {
   @@index([requiredSkills], type: Gin)
   @@index([tags], type: Gin)
   @@index([salaryMin, salaryMax])
+  @@index([companyIndustry], type: Gin)
+  @@index([companyTopics], type: Gin)
   @@index([company])
   @@index([title]) // Maps to 'role' in queries
   @@index([slug])
@@ -611,6 +617,10 @@ model WalkInDetails {
   requiredDocuments String[]
   contactPerson     String?
   contactPhone      String?
+  expiryDate        DateTime?
+  landmark          String?
+  transitInfo       String?
+  selectionProcess  String? @db.Text
 
   opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
 
@@ -641,8 +651,10 @@ model GovernmentJobDetails {
   vacancyNature          VacancyNature?
   vacancyBreakdown       Json?
   categoryVacancies      Json?
+  vacancies              Json?
   
   payLevel               String?
+  payScale               String?
   basicPay               Int?
   allowances             String[] @default([])
   

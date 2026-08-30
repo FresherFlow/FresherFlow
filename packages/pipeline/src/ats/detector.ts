@@ -39,6 +39,11 @@ export function extractAtsBoard(urlStr: string): { provider: keyof AtsRegistry, 
             if (parts.length > 0) return { provider: 'smartrecruiters', boardId: parts[0] };
         }
         
+        // Getro: jobs.accel.com, jobs.blume.vc, jobs.generalcatalyst.com
+        if (host === 'jobs.accel.com') return { provider: 'getro', boardId: '8672' };
+        if (host === 'jobs.blume.vc') return { provider: 'getro', boardId: '32333' };
+        if (host === 'jobs.generalcatalyst.com') return { provider: 'getro', boardId: '222' };
+
         // Workable: apply.workable.com/company
         if (host === 'apply.workable.com' || host.endsWith('.workable.com')) {
             const parts = path.split('/').filter(Boolean);

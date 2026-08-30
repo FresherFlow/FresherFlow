@@ -53,7 +53,7 @@ export const ATS_PROVIDERS = [
     'bamboohr', 'recruitee', 'jobvite', 'teamtailor', 'eightfold', 'darwinbox',
     'zohorecruit', 'freshteam', 'keka', 'workable',
     // Newly verified Indian ATS targets
-    'avature', 'breezy', 'breezyhr', 'bullhorn', 'mercor', 'personio', 'phenom', 'pinpoint'
+    'avature', 'breezy', 'breezyhr', 'bullhorn', 'mercor', 'personio', 'phenom', 'pinpoint', 'getro'
 ];
 
 export const ATS_HOSTNAMES = [

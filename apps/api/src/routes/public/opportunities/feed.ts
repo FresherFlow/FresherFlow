@@ -1,8 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { Prisma, OpportunityStatus as DbOpportunityStatus, OpportunityType as DbOpportunityType } from '@fresherflow/database';
-import { OpportunityStatus, OpportunityType, Profile, Opportunity } from '@fresherflow/types';
+import { OpportunityStatus, OpportunityType, Profile, Opportunity, CompanyGroupedResponse } from '@fresherflow/types';
 import { env } from '@fresherflow/utils';
 import { logger } from '@fresherflow/utils';
+import { toGroupedOpportunity, groupOpportunitiesByCompany } from '@fresherflow/utils';
 import { redis } from '@fresherflow/database';
 import prisma from '../../../infrastructure/database/prisma';
 import { AppError } from '../../../middleware/errorHandler';
@@ -11,7 +12,7 @@ import {
     isLikelyBotTraffic, publicFeedLimiter, publicFeedBotLimiter,
     GUEST_FEED_LIMIT, MAX_FEED_LIMIT, MAX_FEED_PAGE, GUEST_FEED_CACHE_TTL_SECONDS,
     normalizeSafeQueryString, parseStrictPositiveInt, ALLOWED_SORT_KEYS, MAX_SALARY_FILTER,
-    buildGuestOpportunitySelect, buildPublicOpportunitySelect, getFreshnessScore, parseSiteMode,
+    buildGuestOpportunitySelect, buildPublicOpportunitySelect, buildGroupedOpportunitySelect, getFreshnessScore, parseSiteMode,
     GUEST_FEED_CACHE_CONTROL
 } from './_helpers';
 
@@ -42,7 +43,7 @@ function parseOpportunityType(raw?: string): OpportunityType | undefined {
 
 router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { type, city, tag, relevanceDebug, minSalary, maxSalary, company, closingSoon, page = '1', limit = '50', sort, siteMode, feedType } = req.query;
+        const { type, city, tag, relevanceDebug, minSalary, maxSalary, company, closingSoon, page = '1', limit = '50', sort, siteMode, feedType, groupBy } = req.query;
         const typeValue = normalizeSafeQueryString(type, 24);
         const cityValue = normalizeSafeQueryString(city, 80);
         const tagValue = normalizeSafeQueryString(tag, 80);
@@ -117,6 +118,39 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
             ...(companyValue ? { company: { equals: companyValue, mode: 'insensitive' } } : {}),
             ...(closingSoonValue ? { expiresAt: { lte: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) } } : {}),
         };
+
+        // Opt-in grouped-by-company mode (Getro-style clean contract).
+        // Default remains the backward-compatible flat `opportunities` list.
+        const groupByValue = normalizeSafeQueryString(groupBy, 16);
+        if (groupByValue === 'company') {
+            const groupedRows = await prisma.opportunity.findMany({
+                where: whereClause,
+                select: buildGroupedOpportunitySelect(),
+                orderBy: { postedAt: 'desc' },
+                distinct: ['id'],
+            });
+
+            const groupedOpportunities = groupedRows.map((row) =>
+                toGroupedOpportunity(row as unknown as Parameters<typeof toGroupedOpportunity>[0])
+            );
+
+            const companies = groupOpportunitiesByCompany(groupedOpportunities);
+
+            if (isGuest) {
+                res.setHeader('Cache-Control', GUEST_FEED_CACHE_CONTROL);
+            } else {
+                res.setHeader('Cache-Control', 'private, no-store');
+                res.setHeader('Vary', 'Cookie, Authorization');
+            }
+
+            const response: CompanyGroupedResponse = {
+                companies,
+                totalOpportunities: groupedOpportunities.length,
+                totalCompanies: companies.length,
+                timestamp: Date.now(),
+            };
+            return res.json(response);
+        }
 
         const effectiveGuestPage = 1;
         const effectiveGuestLimit = Math.min(l, GUEST_FEED_LIMIT);

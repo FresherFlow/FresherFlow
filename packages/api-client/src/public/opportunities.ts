@@ -1,4 +1,4 @@
-import { ParsedJob, OpportunityStatus } from '@fresherflow/types';
+import { ParsedJob, OpportunityStatus, CompanyGroupedResponse } from '@fresherflow/types';
 import { apiClient } from './apiClient';
 
 export interface SyncUpdate {
@@ -27,6 +27,18 @@ export const opportunitiesApi = {
 
         const queryString = query.toString();
         return apiClient(`/api/opportunities${queryString ? `?${queryString}` : ''}`);
+    },
+    /**
+     * Fetches opportunities grouped by company (clean Getro-style contract).
+     * Opt-in: the backend keeps the default flat feed backward-compatible.
+     */
+    getGroupedByCompany: (params?: { city?: string; tag?: string; type?: string }) => {
+        const query = new URLSearchParams();
+        query.append('groupBy', 'company');
+        if (params?.city) query.append('city', params.city);
+        if (params?.tag) query.append('tag', params.tag);
+        if (params?.type) query.append('type', params.type);
+        return apiClient<CompanyGroupedResponse>(`/api/opportunities?${query.toString()}`);
     },
     search: (params: { q: string; type?: string; city?: string; page?: number; limit?: number }) => {
         const query = new URLSearchParams();

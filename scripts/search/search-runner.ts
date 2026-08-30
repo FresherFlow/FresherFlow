@@ -6,6 +6,7 @@ import {
   collectDirectCompanyPortals,
   collectDorkSearches,
   collectHyderabadWalkinDrives,
+  collectVcStartupPortals,
 
   filterAndVerifyJobs,
   saveDiscoveredJobsArtifact,
@@ -26,6 +27,8 @@ interface RunnerOptions {
   dork?: boolean;
   roles?: boolean;
   dryRun?: boolean;
+  channel?: string;
+  noCache?: boolean;
 }
 
 function parseRunnerArgs(args: string[]): RunnerOptions {
@@ -37,6 +40,8 @@ function parseRunnerArgs(args: string[]): RunnerOptions {
     else if (arg === '--dork') options.dork = true;
     else if (arg === '--roles') options.roles = true;
     else if (arg === '--dry-run') options.dryRun = true;
+    else if (arg === '--no-cache' || arg === '--force') options.noCache = true;
+    else if (arg === '--channel' && args[i + 1]) options.channel = args[++i].toLowerCase();
   }
   return options;
 }
@@ -48,10 +53,13 @@ async function runSearchEngine() {
   const envHours = process.env.HOURS_OLD ? parseInt(process.env.HOURS_OLD, 10) : undefined;
   const hoursOld: number = options.hoursOld ?? (!isNaN(envHours!) ? envHours! : 72);
   const limit = options.resultsWanted ?? 15;
+  const channel = options.channel || 'all';
 
   console.log(`\n======================================================`);
   console.log(`🚀 STARTING EXTERNAL MULTI-CHANNEL JOB SEARCH ENGINE`);
+  console.log(`   └─ Channel: ${channel.toUpperCase()}`);
   console.log(`   └─ Cutoff: ${hoursOld} hours`);
+  console.log(`   └─ Cache: ${options.noCache ? 'BYPASS' : 'ENABLED'}`);
   console.log(`   └─ Dorking Enabled: ${options.dork ? 'YES' : 'NO'}`);
   console.log(`   └─ Role Expansion: ${options.roles ? 'YES' : 'NO'}`);
   console.log(`   └─ Dry Run: ${options.dryRun ? 'YES' : 'NO'}`);
@@ -62,29 +70,30 @@ async function runSearchEngine() {
   try {
     const { sendTelegramMessage } = await import('@fresherflow/utils');
     await sendTelegramMessage(
-      `🚀 <b>External Search Bot Started</b>\n\nChannels: Feeds + Boards + GitHub + Walkins + ${options.dork ? 'Dorks' : 'Fast Mode'}`
+      `🚀 <b>External Search Bot Started</b>\n\nChannels: ${channel.toUpperCase()} (${options.dork ? 'Dorks' : 'Fast Mode'})`
     );
   } catch {
     // Non-blocking
   }
 
-  const seenUrlsCache = await loadSeenUrlsCache();
+  const seenUrlsCache = options.noCache ? new Set<string>() : await loadSeenUrlsCache();
   const rawCandidates: AtsJob[] = [];
   const rawSourceCounts: Record<string, number> = {};
 
   try {
     const keywords = options.roles ? await loadRolesFromCdn() : CORE_SEARCH_KEYWORDS;
 
-    // Run Feeds, Boards, Direct Enterprise Portals, GitHub, and Walk-ins concurrently
-    const [feedJobs, boardJobs, companyJobs, githubJobs, walkinJobs] = await Promise.all([
-      collectPublicFeeds({ resultsWanted: limit, hoursOld }),
-      collectBoardSearches(keywords, { resultsPerKeyword: limit, hoursOld }),
-      collectDirectCompanyPortals({ resultsWanted: limit, hoursOld }),
-      collectGitHubHiring({ resultsWanted: limit }),
-      collectHyderabadWalkinDrives({ resultsWanted: 10, hoursOld }),
+    // Run selected or all channels concurrently
+    const [feedJobs, boardJobs, vcJobs, companyJobs, githubJobs, walkinJobs] = await Promise.all([
+      (channel === 'all' || channel === 'feeds') ? collectPublicFeeds({ resultsWanted: limit, hoursOld }) : Promise.resolve([]),
+      (channel === 'all' || channel === 'boards') ? collectBoardSearches(keywords, { resultsPerKeyword: limit, hoursOld }) : Promise.resolve([]),
+      (channel === 'all' || channel === 'vc' || channel === 'boards') ? collectVcStartupPortals() : Promise.resolve([]),
+      (channel === 'all' || channel === 'companies') ? collectDirectCompanyPortals({ resultsWanted: limit, hoursOld }) : Promise.resolve([]),
+      (channel === 'all' || channel === 'github') ? collectGitHubHiring({ resultsWanted: limit }) : Promise.resolve([]),
+      (channel === 'all' || channel === 'walkin') ? collectHyderabadWalkinDrives({ resultsWanted: 10, hoursOld }) : Promise.resolve([]),
     ]);
 
-    rawCandidates.push(...feedJobs, ...boardJobs, ...companyJobs, ...githubJobs, ...walkinJobs);
+    rawCandidates.push(...feedJobs, ...boardJobs, ...vcJobs, ...companyJobs, ...githubJobs, ...walkinJobs);
 
 
     // Track raw source counts
