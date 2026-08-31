@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { withRateLimit } from '@/lib/api/rateLimit';
 
 const WORKER_URL = process.env.WORKER_URL || '';
 const WORKER_SECRET = process.env.WORKER_SECRET ?? '';
@@ -9,7 +10,7 @@ export const dynamic = 'force-dynamic';
  *  Proxies to the worker's /social/platforms endpoint.
  *  Returns { telegram: bool, x: bool, linkedin: bool } — which platforms are configured.
  */
-export async function GET() {
+async function getPlatforms() {
     if (!WORKER_URL) {
         return NextResponse.json(
             { telegram: false, x: false, linkedin: false, reason: 'WORKER_URL not configured' },
@@ -35,3 +36,5 @@ export async function GET() {
         return NextResponse.json({ telegram: false, x: false, linkedin: false, reason: msg }, { status: 200 });
     }
 }
+
+export const GET = withRateLimit(getPlatforms, { windowMs: 60_000, max: 60, keyPrefix: 'social-platforms' });

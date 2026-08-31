@@ -1,20 +1,32 @@
-import { NextResponse } from 'next/server';
-
-const INGESTION_URL = process.env.INGESTION_SERVICE_URL || process.env.NEXT_PUBLIC_INGESTION_URL || process.env.INGESTION_URL || 'http://localhost:3005';
+import { NextRequest, NextResponse } from 'next/server';
+import { withRateLimit } from '@/lib/api/rateLimit';
+import { hasIngestionDb, queryRows, ingestionDbError } from '@/lib/ingestion/db';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
+interface DiscoveryRunRow {
+  id: string;
+  startedAt: Date | null;
+  completedAt: Date | null;
+  durationMs: number | null;
+  totalFound: number | null;
+  accepted: number | null;
+  reviewRequired: number | null;
+  duplicates: number | null;
+  failed: number | null;
+  status: string | null;
+}
+
+async function getRuns(request: NextRequest) {
+  if (!hasIngestionDb) return ingestionDbError();
   try {
-    const { searchParams } = new URL(request.url);
-    const query = searchParams.toString();
-    const res = await fetch(`${INGESTION_URL}/data/runs${query ? '?' + query : ''}`, {
-      headers: { 'Cache-Control': 'no-store' },
-      next: { revalidate: 0 },
-    });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch (e) {
-    return NextResponse.json({ error: 'Ingestion service unreachable' }, { status: 503 });
+    const runs = await queryRows<DiscoveryRunRow>(
+      'SELECT id, started_at as "startedAt", completed_at as "completedAt", duration_ms as "durationMs", total_found as "totalFound", accepted, review_required as "reviewRequired", duplicates, failed, status FROM discovery_runs ORDER BY started_at DESC LIMIT 20'
+    );
+    return NextResponse.json({ runs });
+  } catch {
+    return ingestionDbError();
   }
 }
+
+export const GET = withRateLimit(getRuns, { windowMs: 60_000, max: 60, keyPrefix: 'discovery-runs' });

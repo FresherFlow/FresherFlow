@@ -39,7 +39,7 @@ export default async function BatchIndexPage() {
 
     return (
         <div className="bg-background font-sans">
-            <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
+            <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
                 <HeaderPortal>
                     <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Batches' }]} />
                 </HeaderPortal>
@@ -50,7 +50,7 @@ export default async function BatchIndexPage() {
                     data={sorted}
                     urlPrefix="/batch/"
                 />
-            </main>
+            </div>
         </div>
     );
 }

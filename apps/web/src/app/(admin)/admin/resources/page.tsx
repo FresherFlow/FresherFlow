@@ -4,8 +4,6 @@ import { SKILLS_METADATA_URL, COMPANIES_METADATA_URL } from '@/lib/utils/runtime
 
 
 
-export const dynamic = 'force-dynamic';
-
 export default async function AdminResourcesPage() {
     let initialSkills: string[] = [];
     let initialCompanies: string[] = [];

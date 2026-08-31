@@ -41,6 +41,10 @@ export default async function CompaniesIndexPage() {
         logoUrl?: string | null;
         website?: string | null;
         links: string[];
+        companyStage?: string | null;
+        companySize?: string | null;
+        companyIndustry?: string[];
+        companyTopics?: string[];
     }> = {};
 
     const directory = companyList || [];
@@ -60,12 +64,24 @@ export default async function CompaniesIndexPage() {
                 logoUrl: opp.companyLogoUrl,
                 website: opp.companyWebsite,
                 links: [],
+                companyStage: opp.companyStage,
+                companySize: opp.companySize,
+                companyIndustry: opp.companyIndustry || [],
+                companyTopics: opp.companyTopics || [],
             };
         }
         companyData[slug].count++;
         if (opp.companyWebsite) companyData[slug].links.push(opp.companyWebsite);
         if (opp.applyLink) companyData[slug].links.push(opp.applyLink);
         if (opp.sourceLink) companyData[slug].links.push(opp.sourceLink);
+        if (!companyData[slug].companyStage && opp.companyStage) companyData[slug].companyStage = opp.companyStage;
+        if (!companyData[slug].companySize && opp.companySize) companyData[slug].companySize = opp.companySize;
+        for (const ind of opp.companyIndustry || []) {
+            if (!companyData[slug].companyIndustry!.includes(ind)) companyData[slug].companyIndustry!.push(ind);
+        }
+        for (const topic of opp.companyTopics || []) {
+            if (!companyData[slug].companyTopics!.includes(topic)) companyData[slug].companyTopics!.push(topic);
+        }
     }
 
     // Enrich active companies with logo/website from directory, but don't add dead ones.
@@ -95,19 +111,23 @@ export default async function CompaniesIndexPage() {
             logoUrl: co.logoUrl,
             website: co.website,
             atsProvider: detectAtsProvider([co.website, ...co.links]),
+            companyStage: co.companyStage,
+            companySize: co.companySize,
+            companyIndustry: co.companyIndustry,
+            companyTopics: co.companyTopics,
         }))
         .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
     const totalJobs = opportunities.length;
 
     return (
-        <div className="bg-background">
-            <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 space-y-6">
+        <div className="bg-background font-sans">
+            <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
                 <HeaderPortal>
                     <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Companies' }]} />
                 </HeaderPortal>
                 <CompaniesDirectoryClient companies={companies} totalJobs={totalJobs} />
-            </main>
+            </div>
         </div>
     );
 }

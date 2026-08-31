@@ -27,6 +27,15 @@ function LoginContent() {
 
     const { sendOtp, verifyOtp, loginWithGoogle, user, isLoading } = useAuth();
     const searchParams = useSearchParams();
+
+    useEffect(() => {
+        if (searchParams.get('expired') === 'true') {
+            toast('Your session has expired. Please sign in to continue.', {
+                icon: '🔐',
+                duration: 6000,
+            });
+        }
+    }, [searchParams]);
     const source = searchParams.get('source') || undefined;
     const refCode = searchParams.get('ref') || undefined;
     const redirectParam = searchParams.get('redirect');

@@ -1,9 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/firebase/admin';
 import prisma from '@fresherflow/database';
 import { generateAccessToken, generateRefreshToken } from '@fresherflow/utils';
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
+import { withRateLimit } from '@/lib/api/rateLimit';
 
 const ACCESS_TOKEN_MAX_AGE_MS = 15 * 60 * 1000;
 const REFRESH_TOKEN_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
@@ -49,7 +50,7 @@ async function bindReferral(newUserId: string, refCode: string | undefined | nul
     });
 }
 
-export async function POST(req: Request) {
+async function createLocalSession(req: NextRequest) {
     try {
         const authHeader = req.headers.get('Authorization');
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -164,3 +165,5 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }
+
+export const POST = withRateLimit(createLocalSession, { windowMs: 60_000, max: 10, keyPrefix: 'auth-local-session' });

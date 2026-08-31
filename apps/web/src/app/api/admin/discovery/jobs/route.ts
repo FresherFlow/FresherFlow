@@ -1,26 +1,48 @@
-import { NextResponse } from 'next/server';
-
-const INGESTION_URL = process.env.INGESTION_SERVICE_URL || process.env.NEXT_PUBLIC_INGESTION_URL || process.env.INGESTION_URL || 'http://localhost:3005';
-const INGESTION_SECRET = process.env.INGESTION_SECRET || process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || '';
+import { NextRequest, NextResponse } from 'next/server';
+import { withRateLimit } from '@/lib/api/rateLimit';
+import { hasIngestionDb, queryRows, execute, ingestionDbError } from '@/lib/ingestion/db';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
+interface DiscoveredJobRow {
+  id: string;
+  company: string | null;
+  title: string | null;
+  location: string | null;
+  apply_link: string | null;
+  status: string | null;
+  ats_type: string | null;
+  fresher_score: number | null;
+  created_at: Date | null;
+}
+
+async function getJobs(request: NextRequest) {
+  if (!hasIngestionDb) return ingestionDbError();
   try {
     const { searchParams } = new URL(request.url);
-    const query = searchParams.toString();
-    const res = await fetch(`${INGESTION_URL}/data/jobs${query ? '?' + query : ''}`, {
-      headers: { 'Cache-Control': 'no-store' },
-      next: { revalidate: 0 },
-    });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch (e) {
-    return NextResponse.json({ error: 'Ingestion service unreachable' }, { status: 503 });
+    const status = searchParams.get('status');
+    const limitRaw = searchParams.get('limit');
+    const limit = Math.max(1, Math.min(1000, parseInt(limitRaw ?? '50', 10) || 50));
+
+    let q =
+      'SELECT id, company, title, location, apply_link, status, source_type as ats_type, fresher_score, created_at FROM discovered_jobs';
+    const params: unknown[] = [];
+    if (status && status !== 'ALL') {
+      q += ' WHERE status = $1';
+      params.push(status);
+    }
+    params.push(String(limit));
+    q += ` ORDER BY created_at DESC LIMIT $${params.length}`;
+
+    const jobs = await queryRows<DiscoveredJobRow>(q, params);
+    return NextResponse.json({ jobs });
+  } catch {
+    return ingestionDbError();
   }
 }
 
-export async function PATCH(request: Request) {
+async function patchJob(request: NextRequest) {
+  if (!hasIngestionDb) return ingestionDbError();
   try {
     const body = await request.json();
     const { id, status } = body;
@@ -31,37 +53,34 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Job ID is required' }, { status: 400 });
     }
 
-    const res = await fetch(`${INGESTION_URL}/data/jobs/${jobId}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-store',
-        ...(INGESTION_SECRET ? { 'Authorization': `Bearer ${INGESTION_SECRET}` } : {}),
-      },
-      body: JSON.stringify({ status }),
-    });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch (e) {
-    return NextResponse.json({ error: 'Ingestion service unreachable' }, { status: 503 });
+    const statusValue = typeof status === 'string' ? status : null;
+    await execute('UPDATE discovered_jobs SET status = $1 WHERE id = $2', [statusValue, jobId]);
+    return NextResponse.json({ ok: true });
+  } catch {
+    return ingestionDbError();
   }
 }
 
-export async function DELETE(request: Request) {
+async function deleteJobs(request: NextRequest) {
+  if (!hasIngestionDb) return ingestionDbError();
   try {
     const body = await request.json();
-    const res = await fetch(`${INGESTION_URL}/data/jobs`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'Cache-Control': 'no-store',
-        ...(INGESTION_SECRET ? { 'Authorization': `Bearer ${INGESTION_SECRET}` } : {}),
-      },
-      body: JSON.stringify(body),
-    });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch (e) {
-    return NextResponse.json({ error: 'Ingestion service unreachable' }, { status: 503 });
+    const { ids, type } = body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return NextResponse.json({ error: 'Missing or invalid ids' }, { status: 400 });
+    }
+
+    const table = type === 'processed' ? 'processed_jobs' : 'discovered_jobs';
+    const deleted = await execute(`DELETE FROM ${table} WHERE id = ANY($1::uuid[])`, [ids]);
+    return NextResponse.json({ ok: true, deleted });
+  } catch {
+    return ingestionDbError();
   }
 }
+
+const rateLimitOptions = { windowMs: 60_000, max: 60, keyPrefix: 'discovery-jobs' };
+
+export const GET = withRateLimit(getJobs, rateLimitOptions);
+export const PATCH = withRateLimit(patchJob, rateLimitOptions);
+export const DELETE = withRateLimit(deleteJobs, rateLimitOptions);

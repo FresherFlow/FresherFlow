@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withRateLimit } from '@/lib/api/rateLimit';
 
 const WORKER_URL = process.env.WORKER_URL || '';
 const WORKER_SECRET = process.env.WORKER_SECRET ?? '';
@@ -16,7 +17,7 @@ interface SendBody {
  *  Body: { platform: 'telegram' | 'x' | 'linkedin', text: string }
  *  The worker holds all social API credentials — this route never touches them.
  */
-export async function POST(req: NextRequest) {
+async function sendSocial(req: NextRequest) {
     if (!WORKER_URL) {
         return NextResponse.json({ error: 'WORKER_URL not configured on this deployment' }, { status: 503 });
     }
@@ -61,3 +62,5 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: msg }, { status: 502 });
     }
 }
+
+export const POST = withRateLimit(sendSocial, { windowMs: 60_000, max: 30, keyPrefix: 'social-send' });

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withRateLimit } from '@/lib/api/rateLimit';
 
 const WORKER_URL = process.env.WORKER_URL || '';
 const WORKER_SECRET = process.env.WORKER_SECRET ?? '';
@@ -10,7 +11,7 @@ export const maxDuration = 15;
  *  Queues a BullMQ delayed job via the worker.
  *  Body: { platform: 'telegram' | 'x' | 'linkedin', text: string, scheduledAt: number (ms) }
  */
-export async function POST(req: NextRequest) {
+async function scheduleSocial(req: NextRequest) {
     if (!WORKER_URL) {
         return NextResponse.json({ error: 'WORKER_URL not configured' }, { status: 503 });
     }
@@ -52,7 +53,7 @@ export async function POST(req: NextRequest) {
  *  Cancels a scheduled BullMQ delayed job.
  *  Body: { jobId: string }
  */
-export async function DELETE(req: NextRequest) {
+async function cancelSchedule(req: NextRequest) {
     if (!WORKER_URL) {
         return NextResponse.json({ error: 'WORKER_URL not configured' }, { status: 503 });
     }
@@ -86,3 +87,6 @@ export async function DELETE(req: NextRequest) {
         return NextResponse.json({ error: msg }, { status: 502 });
     }
 }
+
+export const POST = withRateLimit(scheduleSocial, { windowMs: 60_000, max: 60, keyPrefix: 'social-schedule' });
+export const DELETE = withRateLimit(cancelSchedule, { windowMs: 60_000, max: 60, keyPrefix: 'social-schedule' });

@@ -5,6 +5,7 @@ import { Suspense } from 'react';
 import CategoryPage from '@/features/opportunities/components/CategoryPage';
 import { FeedPageSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
+import { truncateTitleByPixels, truncateDescription } from '@/lib/seo/seoMetrics';
 
 export const revalidate = false;
 export const dynamicParams = true;
@@ -57,14 +58,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const companiesCount = new Set(filtered.map(o => o.company).filter(Boolean)).size;
     const totalRoles = filtered.length;
 
-    const title = `Jobs for ${year} Passouts | ${totalRoles > 0 ? `${totalRoles} Openings | ` : ''}FresherFlow`;
-    const description = `Find verified jobs, internships and walk-in drives hiring ${year} batch passouts. ${companiesCount > 0 ? `${companiesCount} companies hiring ${year} passouts.` : ''} Direct official application links.`;
+    const rawTitle = `Jobs for ${year} Passouts | ${totalRoles > 0 ? `${totalRoles} Openings | ` : ''}FresherFlow`;
+    const title = truncateTitleByPixels(rawTitle);
+    const rawDescription = `Find verified jobs, internships and walk-in drives hiring ${year} batch passouts. ${companiesCount > 0 ? `${companiesCount} companies hiring ${year} passouts.` : ''} Direct official application links.`;
+    const description = truncateDescription(rawDescription);
     const base = SITE_URL.replace(/\/+$/, '');
     const ogImageUrl = `${CDN_URL}/og/batch/${year}.png`;
 
     return {
         title,
         description,
+        robots: {
+            index: filtered.length > 0,
+            follow: true,
+        },
         alternates: {
             canonical: `${base}/batch/${year}`
         },

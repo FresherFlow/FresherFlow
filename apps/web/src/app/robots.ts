@@ -32,7 +32,7 @@ export default function robots(): MetadataRoute.Robots {
                     '/',
                     '/jobs',
                     '/jobs/internships',
-                    '/jobs/walk-ins',
+                    '/jobs/walkins',
                     '/govt',
                     '/companies',
                 ],
@@ -48,6 +48,8 @@ export default function robots(): MetadataRoute.Robots {
                     '/login',
                     '/signup',
                     '/logout',
+                    '/dev',
+                    '/sentry-example-page',
                 ],
             },
             {

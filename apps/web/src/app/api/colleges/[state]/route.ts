@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
 import path from 'path';
 import { CDN_URL } from '@/lib/utils/runtimeConfig';
+import { withRateLimit } from '@/lib/api/rateLimit';
 
-export async function GET(
+async function getStateColleges(
     request: NextRequest,
     { params }: { params: Promise<{ state: string }> }
 ) {
@@ -32,3 +33,11 @@ export async function GET(
         return NextResponse.json([], { status: 200 });
     }
 }
+
+export const GET = withRateLimit(
+    async (request, context) => {
+        const props = context as { params: Promise<{ state: string }> };
+        return getStateColleges(request, props);
+    },
+    { windowMs: 60_000, max: 30, keyPrefix: 'colleges-state' }
+);

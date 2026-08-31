@@ -1,4 +1,4 @@
-const SW_VERSION = '2.0.0';
+const SW_VERSION = '2.1.0';
 const STATIC_CACHE = `fresherflow-static-${SW_VERSION}`;
 const CDN_CACHE = `fresherflow-cdn-${SW_VERSION}`;
 const OFFLINE_URL = '/offline.html';
@@ -30,9 +30,11 @@ const PRECACHE_ASSETS = [
   '/dashboard',
   '/jobs',
   '/jobs/internships',
-  '/jobs/walk-ins',
+  '/jobs/remote',
+  '/jobs/walkins',
   '/deadlines',
   '/account',
+  '/login',
   '/favicon.ico',
   '/manifest.webmanifest',
 ];
@@ -137,6 +139,28 @@ self.addEventListener('fetch', (event) => {
           return new Response(OFFLINE_FALLBACK_HTML, {
             status: 200,
             headers: { 'Content-Type': 'text/html; charset=utf-8' },
+          });
+        }
+      })()
+    );
+    return;
+  }
+
+  // ── Public API: network-first, 10-minute stale fallback ────────────────────
+  const isPublicApi = isSameOrigin && url.pathname.startsWith('/api/public/');
+  if (isPublicApi) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(CDN_CACHE);
+        try {
+          const res = await fetch(event.request);
+          if (res && res.ok) cache.put(event.request, res.clone());
+          return res;
+        } catch {
+          const cached = await cache.match(event.request);
+          return cached || new Response(JSON.stringify({ error: 'offline' }), {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' },
           });
         }
       })()

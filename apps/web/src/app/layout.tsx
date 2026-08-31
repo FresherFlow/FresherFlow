@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { ConditionalAuthProvider } from "@/lib/providers/ConditionalAuthProvider";
 import { SmartToaster } from '@/lib/components/SmartToaster';
@@ -32,7 +33,7 @@ import { cn } from "@/lib/utils/utils";
 import { AuthFormDataProvider } from '@/lib/auth/AuthFormDataContext';
 import { ErrorBoundary } from '@/lib/components/ErrorBoundary';
 
-const geist = Geist({subsets:['latin'],variable:'--font-sans'});
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
 
 const SITE_ORIGIN = SITE_URL;
 const METADATA_BASE = SITE_ORIGIN ? new URL(SITE_ORIGIN) : undefined;
@@ -100,11 +101,14 @@ export default async function RootLayout({
       <head>
         <meta charSet="utf-8" />
         <meta name="color-scheme" content="light dark" />
-        <meta name="theme-color" content="#e2eaf2" id="theme-color-meta" />
-        <script id="theme-script" dangerouslySetInnerHTML={{ __html: themeScriptContent }} />
-        <script dangerouslySetInnerHTML={{ __html: getHeadInjectionScripts() }} />
+        <script id="head-init-script" dangerouslySetInnerHTML={{ __html: themeScriptContent.trim() + '\n' + getHeadInjectionScripts().trim() }} />
+        <link rel="preconnect" href="https://static.cloudflareinsights.com" />
         <link rel="manifest" href="/manifest.webmanifest" id="ff-manifest-link" />
-        <link rel="preload" as="image" href="/logo-optimized.png?v=3" />
+        {/* DNS prefetch and preconnect for faster initial connections */}
+        <link rel="preconnect" href="https://cdn.fresherflow.in" />
+        <link rel="dns-prefetch" href="https://cdn.fresherflow.in" />
+        <link rel="preconnect" href={process.env.NEXT_PUBLIC_API_URL || 'https://api.fresherflow.in'} crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_API_URL || 'https://api.fresherflow.in'} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -153,6 +157,13 @@ export default async function RootLayout({
             `
           }}
         />
+        {process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_CF_BEACON_TOKEN && (
+          <Script
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            data-cf-beacon={`{"token": "${process.env.NEXT_PUBLIC_CF_BEACON_TOKEN}"}`}
+            strategy="afterInteractive"
+          />
+        )}
       </body>
     </html>
   );

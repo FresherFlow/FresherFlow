@@ -1,6 +1,7 @@
 export const revalidate = 300; // ISR: re-render every 5min (CDN serves; Render never touched)
 
 import type { Metadata } from 'next';
+import { cache } from 'react';
 import { CDN_URL } from '@/lib/utils/runtimeConfig';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -71,7 +72,7 @@ function getCdnBaseUrl(): string {
     return CDN_URL.replace(/\/+$/, '');
 }
 
-async function fetchPublicProfile(username: string): Promise<PublicProfileData | null> {
+const _fetchPublicProfile = async (username: string): Promise<PublicProfileData | null> => {
     // 1. Try CDN first — Cloudflare serves this, zero Render/API hits
     try {
         const cdnUrl = `${getCdnBaseUrl()}/profiles/${username}.json`;
@@ -96,7 +97,9 @@ async function fetchPublicProfile(username: string): Promise<PublicProfileData |
     } catch {
         return null;
     }
-}
+};
+
+const fetchPublicProfile = cache(_fetchPublicProfile);
 
 function isProfileIndexable(profile: PublicProfileData['profile'], user: PublicProfileData['user']): boolean {
     if (profile.visibility !== 'PUBLIC') return false;

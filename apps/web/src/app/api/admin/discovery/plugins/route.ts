@@ -1,20 +1,26 @@
-import { NextResponse } from 'next/server';
-
-const INGESTION_URL = process.env.INGESTION_SERVICE_URL || process.env.NEXT_PUBLIC_INGESTION_URL || process.env.INGESTION_URL || 'http://localhost:3005';
+import { NextRequest, NextResponse } from 'next/server';
+import { withRateLimit } from '@/lib/api/rateLimit';
+import { PLUGIN_REGISTRY, getPluginCategories } from '@fresherflow/plugins';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const query = searchParams.toString();
-    const res = await fetch(`${INGESTION_URL}/plugins${query ? '?' + query : ''}`, {
-      headers: { 'Cache-Control': 'no-store' },
-      next: { revalidate: 0 },
-    });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch (e) {
-    return NextResponse.json({ error: 'Ingestion service unreachable' }, { status: 503 });
-  }
+function getPlugins() {
+  const categories = getPluginCategories();
+  const plugins = Object.entries(PLUGIN_REGISTRY).map(([provider, adapter]) => ({
+    provider,
+    providerName: adapter.providerName || provider,
+    hasDetailFetcher: typeof adapter.fetchJobDetails === 'function'
+  }));
+
+  return {
+    plugins,
+    boards: categories.boards,
+    companies: categories.companies
+  };
 }
+
+async function handleGetPlugins(request: NextRequest) {
+  return NextResponse.json(getPlugins());
+}
+
+export const GET = withRateLimit(handleGetPlugins, { windowMs: 60_000, max: 60, keyPrefix: 'discovery-plugins' });

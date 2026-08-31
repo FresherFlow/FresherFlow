@@ -216,7 +216,7 @@ function ReferralPageContent() {
                                     href={whatsappShareUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center justify-center gap-2 bg-[#25D366] text-white rounded-xl py-2 px-3 text-xs font-bold hover:bg-[#22c35e] transition-colors active:scale-95 shadow-sm"
+                                    className="flex items-center justify-center gap-2 bg-brand-whatsapp text-white rounded-xl py-2 px-3 text-xs font-bold hover:bg-brand-whatsapp-hover transition-colors active:scale-95 shadow-sm"
                                 >
                                     <ChatBubbleLeftRightIcon className="w-4 h-4" /> WhatsApp
                                 </a>

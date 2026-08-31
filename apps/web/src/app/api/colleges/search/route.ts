@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CDN_URL } from '@/lib/utils/runtimeConfig';
 import fs from 'fs/promises';
 import path from 'path';
+import { withRateLimit } from '@/lib/api/rateLimit';
 
 export interface CollegeItem {
     id?: string;
@@ -79,7 +80,7 @@ async function loadCollegesForSlug(slug: string): Promise<CollegeItem[]> {
     return list;
 }
 
-export async function GET(request: NextRequest) {
+async function searchColleges(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const q = (searchParams.get('q') || '').trim().toLowerCase();
     const stateParam = searchParams.get('state') || '';
@@ -134,3 +135,5 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(results);
 }
+
+export const GET = withRateLimit(searchColleges, { windowMs: 60_000, max: 30, keyPrefix: 'colleges-search' });

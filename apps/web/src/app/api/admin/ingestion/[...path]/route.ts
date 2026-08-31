@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { withRateLimit } from '@/lib/api/rateLimit';
 
 const INGESTION_SERVICE_URL = process.env.INGESTION_SERVICE_URL || 'http://localhost:3005';
 const INGESTION_SECRET = process.env.INGESTION_SECRET || process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || '';
@@ -44,18 +45,34 @@ async function proxyRequest(req: NextRequest, { params }: { params: Promise<{ pa
     }
 }
 
-export async function GET(req: NextRequest, props: { params: Promise<{ path: string[] }> }) {
-    return proxyRequest(req, props);
-}
+export const GET = withRateLimit(
+    async (req, context) => {
+        const props = context as { params: Promise<{ path: string[] }> };
+        return proxyRequest(req, props);
+    },
+    { windowMs: 60_000, max: 60, keyPrefix: 'ingestion' }
+);
 
-export async function POST(req: NextRequest, props: { params: Promise<{ path: string[] }> }) {
-    return proxyRequest(req, props);
-}
+export const POST = withRateLimit(
+    async (req, context) => {
+        const props = context as { params: Promise<{ path: string[] }> };
+        return proxyRequest(req, props);
+    },
+    { windowMs: 60_000, max: 60, keyPrefix: 'ingestion' }
+);
 
-export async function PUT(req: NextRequest, props: { params: Promise<{ path: string[] }> }) {
-    return proxyRequest(req, props);
-}
+export const PUT = withRateLimit(
+    async (req, context) => {
+        const props = context as { params: Promise<{ path: string[] }> };
+        return proxyRequest(req, props);
+    },
+    { windowMs: 60_000, max: 60, keyPrefix: 'ingestion' }
+);
 
-export async function DELETE(req: NextRequest, props: { params: Promise<{ path: string[] }> }) {
-    return proxyRequest(req, props);
-}
+export const DELETE = withRateLimit(
+    async (req, context) => {
+        const props = context as { params: Promise<{ path: string[] }> };
+        return proxyRequest(req, props);
+    },
+    { windowMs: 60_000, max: 60 }
+);

@@ -7,6 +7,7 @@ import CategoryPage from '@/features/opportunities/components/CategoryPage';
 import { FeedPageSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
+import { truncateTitleByPixels, truncateDescription } from '@/lib/seo/seoMetrics';
 
 
 
@@ -66,8 +67,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const slug = slugify(decodeURIComponent(name));
     const label = formatSkillLabel(name);
 
-    const title = `${label} Jobs for Freshers | Jobs & Internships`;
-    const description = `Find verified fresher jobs and internships requiring ${label}, including entry-level opportunities with direct official apply links.`;
+    const rawTitle = `${label} Jobs for Freshers | Jobs & Internships`;
+    const title = truncateTitleByPixels(rawTitle);
+    const rawDescription = `Find verified fresher jobs and internships requiring ${label}, including entry-level opportunities with direct official apply links.`;
+    const description = truncateDescription(rawDescription);
     const base = SITE_URL.replace(/\/+$/, '');
     const ogImageUrl = `${CDN_URL}/og/skills/${slug}.png`;
 

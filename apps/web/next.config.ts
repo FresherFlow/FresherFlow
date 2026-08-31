@@ -9,8 +9,18 @@ const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const originalConsoleError = console.error;
 console.error = (...args: any[]) => {
   for (const arg of args) {
-    if (arg && typeof arg === 'object' && arg.cause) {
-      if (arg.cause.code === 'ENOTFOUND' || arg.cause.message?.includes('ENOTFOUND')) {
+    if (typeof arg === 'string' && (arg.includes('Failed to proxy') || arg.includes('ECONNREFUSED'))) {
+      return;
+    }
+    if (arg && typeof arg === 'object') {
+      const err = arg as any;
+      if (err.code === 'ECONNREFUSED' || err.message?.includes('ECONNREFUSED')) {
+        return;
+      }
+      if (err.cause && (err.cause.code === 'ENOTFOUND' || err.cause.code === 'ECONNREFUSED' || err.cause.message?.includes('ENOTFOUND') || err.cause.message?.includes('ECONNREFUSED'))) {
+        return;
+      }
+      if (Array.isArray(err.errors) && err.errors.some((e: any) => e.code === 'ECONNREFUSED' || e.message?.includes('ECONNREFUSED'))) {
         return;
       }
     }
@@ -93,13 +103,10 @@ const nextConfig: NextConfig = {
   output: 'standalone',
 
   transpilePackages: [
-    "@fresherflow/types", 
-    "@fresherflow/types", 
-    "@fresherflow/constants", 
-    "@fresherflow/utils", 
+    "@fresherflow/types",
+    "@fresherflow/constants",
     "@fresherflow/utils",
     "@fresherflow/api-client",
-    "@fresherflow/plugins",
     "@repo/ui"
   ],
 
@@ -108,12 +115,15 @@ const nextConfig: NextConfig = {
   // so we list them here to keep them server-side only.
   serverExternalPackages: [
     "@fresherflow/parser",
+    "@fresherflow/pipeline",
+    "@fresherflow/plugins",
     "@aws-sdk/client-s3",
     "@aws-sdk/s3-request-presigner",
     "firebase-admin",
     "jsonwebtoken",
     "jwks-rsa",
     "jose",
+    "pg",
     "sharp",
     "fs",
     "node:fs",
@@ -135,7 +145,6 @@ const nextConfig: NextConfig = {
       "@repo/ui",
       "@fresherflow/utils",
       "@fresherflow/types",
-      "@fresherflow/utils",
       "@fresherflow/constants",
       "@heroicons/react",
       "lucide-react",
@@ -237,13 +246,28 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/internships/:slug+",
+        destination: "/jobs/:slug+",
+        permanent: true,
+      },
+      {
         source: "/remote",
         destination: "/jobs/remote",
         permanent: true,
       },
       {
         source: "/walk-ins",
-        destination: "/jobs/walk-ins",
+        destination: "/jobs/walkins",
+        permanent: true,
+      },
+      {
+        source: "/jobs/walk-ins",
+        destination: "/jobs/walkins",
+        permanent: true,
+      },
+      {
+        source: "/jobs/walk-ins/:path*",
+        destination: "/jobs/walkins/:path*",
         permanent: true,
       },
       {
@@ -290,6 +314,11 @@ const nextConfig: NextConfig = {
       {
         source: "/download",
         destination: "/app",
+        permanent: true,
+      },
+      {
+        source: "/:slug([a-z0-9][a-z0-9-]*-[a-f0-9]{8})",
+        destination: "/jobs/:slug",
         permanent: true,
       },
     ];

@@ -37,7 +37,8 @@ export function handleAuth(req: NextRequest) {
     if (isAuthPath(pathname) && hostRole !== 'admin') {
         // Enforce the standard auth gate to prevent logged in users from seeing login again
         const loggedIn = req.cookies.has("accessToken") || req.cookies.has("ff_logged_in");
-        if (loggedIn) {
+        const isExpiredFlow = req.nextUrl.searchParams.has('expired') || req.nextUrl.searchParams.has('logout');
+        if (loggedIn && !isExpiredFlow) {
             const url = new URL(`${req.nextUrl.protocol}//${req.nextUrl.host}/dashboard`);
             return NextResponse.redirect(url, 307);
         }

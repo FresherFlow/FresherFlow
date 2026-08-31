@@ -1,20 +1,23 @@
-import { NextResponse } from 'next/server';
-
-const INGESTION_URL = process.env.INGESTION_SERVICE_URL || process.env.NEXT_PUBLIC_INGESTION_URL || process.env.INGESTION_URL || 'http://localhost:3005';
+import { NextRequest, NextResponse } from 'next/server';
+import { withRateLimit } from '@/lib/api/rateLimit';
+import { loadDefaultTargets } from '@/lib/ingestion/targets';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
+async function getTargets(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const query = searchParams.toString();
-    const res = await fetch(`${INGESTION_URL}/targets${query ? '?' + query : ''}`, {
-      headers: { 'Cache-Control': 'no-store' },
-      next: { revalidate: 0 },
+    const targets = await loadDefaultTargets();
+    return NextResponse.json({
+      status: 'ok',
+      total: targets.length,
+      targets
     });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch (e) {
-    return NextResponse.json({ error: 'Ingestion service unreachable' }, { status: 503 });
+  } catch (error) {
+    return NextResponse.json(
+      { status: 'error', error: String(error) },
+      { status: 500 }
+    );
   }
 }
+
+export const GET = withRateLimit(getTargets, { windowMs: 60_000, max: 60, keyPrefix: 'discovery-targets' });

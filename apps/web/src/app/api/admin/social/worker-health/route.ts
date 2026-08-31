@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { withRateLimit } from '@/lib/api/rateLimit';
 
 const WORKER_URL = process.env.WORKER_URL || '';
 const WORKER_SECRET = process.env.WORKER_SECRET ?? '';
@@ -9,7 +10,7 @@ export const dynamic = 'force-dynamic';
  *  Pings the worker's /health endpoint and returns its status.
  *  Used by CaptionsTool to show a live "worker online" badge before sending.
  */
-export async function GET() {
+async function getWorkerHealth() {
     if (!WORKER_URL) {
         return NextResponse.json({ online: false, reason: 'WORKER_URL not configured' }, { status: 200 });
     }
@@ -29,3 +30,5 @@ export async function GET() {
         return NextResponse.json({ online: false, reason: msg }, { status: 200 });
     }
 }
+
+export const GET = withRateLimit(getWorkerHealth, { windowMs: 60_000, max: 60, keyPrefix: 'social-worker-health' });

@@ -6,7 +6,7 @@ export interface DiscoveredJob {
   location?: string;
   applyLink?: string;
   atsType?: string;
-  status: 'DISCOVERED' | 'PROCESSING' | 'PROCESSED' | 'DUPLICATE' | 'REJECTED' | 'FAILED' | 'EXPIRED' | string;
+  status: 'PENDING' | 'PROCESSED' | 'REJECTED' | 'EXPIRED' | string;
   fresherScore?: number;
   createdAt?: string;
   // Fallbacks for API returning snake_case
@@ -42,7 +42,7 @@ export interface ProcessedJob {
   type?: 'JOB' | 'INTERNSHIP' | string;
   title: string;
   company: string;
-  status: 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'PUBLISHED' | 'EXPIRED' | string;
+  status: 'PENDING_REVIEW' | 'PUBLISHED' | 'REJECTED' | 'EXPIRED' | string;
   requiredSkills?: string[];
   locations?: string[];
   applyLink?: string;

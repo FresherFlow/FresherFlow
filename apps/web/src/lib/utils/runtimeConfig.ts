@@ -93,29 +93,33 @@ export const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL as string;
 export const BOOTSTRAP_FEED_URL =
     process.env.NEXT_PUBLIC_BOOTSTRAP_FEED_URL ||
     process.env.BOOTSTRAP_FEED_URL ||
-    `${CDN_URL}/bootstrap-feed.min.json`;
+    `${CDN_URL}/feeds/bootstrap-feed.min.json`;
+
+export const FEED_INDEX_URL =
+    process.env.NEXT_PUBLIC_FEED_INDEX_URL ||
+    `${CDN_URL}/feeds/feed-index.json`;
 
 export const EXPIRED_FEED_URL =
     process.env.NEXT_PUBLIC_EXPIRED_FEED_URL ||
     process.env.EXPIRED_FEED_URL ||
-    `${CDN_URL}/expired-feed.min.json`;
+    `${CDN_URL}/feeds/expired-feed.min.json`;
 
 export const GOVERNMENT_FEED_URL =
     process.env.NEXT_PUBLIC_GOVERNMENT_FEED_URL ||
     process.env.GOVERNMENT_FEED_URL ||
-    `${CDN_URL}/government-feed.json`;
+    `${CDN_URL}/feeds/government-feed.json`;
 
-export const FEED_VERSION_URL = `${CDN_URL}/feed-version.json`;
+export const FEED_VERSION_URL = `${CDN_URL}/meta/feed-version.json`;
 
 export const SITEMAP_DATA_URL =
     process.env.NEXT_PUBLIC_SITEMAP_DATA_URL ||
     process.env.SITEMAP_DATA_URL ||
-    `${CDN_URL}/sitemap-data.json`;
+    `${CDN_URL}/sitemaps/sitemap-data.json`;
 
 export const LINKS_FEED_URL =
     process.env.NEXT_PUBLIC_LINKS_FEED_URL ||
     process.env.LINKS_FEED_URL ||
-    `${CDN_URL}/links.min.json`;
+    `${CDN_URL}/feeds/links.min.json`;
 
 export const GET_CATEGORY_SHARD_URL = (id: string) =>
     `${CDN_URL}/categories/${id}.json`;

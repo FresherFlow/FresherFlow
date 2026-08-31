@@ -9,7 +9,7 @@ import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
 import { toOpportunityCardDTO } from '@fresherflow/types';
 import { getCompanyDescription } from '@/features/companies/utils/companyContent';
-import { fetchCompanyShard, fetchCompaniesMetadata, fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+import { fetchCompanyShard, fetchCompaniesMetadata, fetchBootstrapFeed, fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { CompanySlugger } from '@/features/companies/utils/companySlugger';
 import CompanyFollowButton from '@/features/companies/components/CompanyFollowButton';
 import { PageTagLinks } from '@/ui/PageTagLinks';
@@ -130,21 +130,38 @@ export async function generateMetadata(
     { params }: { params: Promise<{ slug: string }> }
 ): Promise<Metadata> {
     const { slug: rawSlug } = await params;
-    const slug = slugify(decodeURIComponent(rawSlug));
+    const properSlug = slugify(decodeURIComponent(rawSlug));
     const base = SITE_URL.replace(/\/+$/, '');
-    const canonicalUrl = `${base}/companies/${slug}`;
+    const canonicalUrl = `${base}/companies/${properSlug}`;
 
-    const companyName = slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const [companyDirectory, shard] = await Promise.all([
+        fetchCompaniesMetadata(true),
+        fetchCompanyShard(properSlug, undefined, true),
+    ]);
+
+    let activeShard = shard;
+    let companyName = (shard as any)?.company || shard?.opportunities?.[0]?.company || properSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    if (companyDirectory && companyDirectory.length > 0) {
+        const matched = companyDirectory.find(c => c && (c.slug === properSlug || slugify(c.name || '') === properSlug));
+        if (matched?.name) {
+            companyName = matched.name;
+        }
+        if ((!activeShard || !activeShard.opportunities || activeShard.opportunities.length === 0) && matched?.slug && matched.slug !== properSlug) {
+            activeShard = await fetchCompanyShard(matched.slug, undefined, true);
+        }
+    }
+
+    const hasJobs = Boolean(activeShard && activeShard.opportunities && activeShard.opportunities.length > 0);
 
     const title = `${companyName} Jobs & Internships for Freshers`;
     const description = `Find verified fresher jobs, internships and off-campus opportunities at ${companyName}, with direct official application links.`;
-    const ogImageUrl = `${CDN_URL}/og/companies/${slug}.png`;
+    const ogImageUrl = `${CDN_URL}/og/companies/${properSlug}.png`;
 
     return {
         title,
         description,
         alternates: { canonical: canonicalUrl },
-        robots: { index: true, follow: true },
+        robots: hasJobs ? { index: true, follow: true } : { index: false, follow: true },
         openGraph: {
             title,
             description,
@@ -207,8 +224,8 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         permanentRedirect(`/companies/${shouldRedirectTo}`);
     }
 
-    const [bootstrapFeed, companyShard] = await Promise.all([
-        fetchBootstrapFeed(false, undefined, true),
+    const [feedIndex, companyShard] = await Promise.all([
+        fetchFeedIndex(false, undefined, true),
         fetchCompanyShard(targetSlug, undefined, true)
     ]);
 
@@ -223,10 +240,24 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         }
     }
 
+    if (companyJobs.length === 0) {
+        logRouteResult('/companies/[slug]', '404');
+        notFound();
+    }
+
     const companyName = (feed as any)?.company || companyJobs[0]?.company ||
         targetSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
     const firstJob = companyJobs[0];
+
+    const companyStage = firstJob?.companyStage || null;
+    const companySize = firstJob?.companySize || null;
+    const companyIndustries = Array.from(new Set(
+        companyJobs.flatMap((j: any) => j.companyIndustry || [])
+    )).filter(Boolean);
+    const companyTopics = Array.from(new Set(
+        companyJobs.flatMap((j: any) => j.companyTopics || [])
+    )).filter(Boolean);
 
     const allSkills = Array.from(new Set(companyJobs.flatMap(j => (j as any).requiredSkills || []))).filter(Boolean);
     const allLocations = Array.from(new Set(companyJobs.flatMap(j => (j as any).locations || []))).filter(Boolean);
@@ -234,8 +265,8 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     const companyDescriptionHtml = getCompanyDescription(targetSlug, companyName, stats);
 
     // Validate skills and locations against existing directory paths
-    const validDirectoryLinks = bootstrapFeed?.opportunities
-        ? getValidDirectoryLinks(bootstrapFeed.opportunities)
+    const validDirectoryLinks = feedIndex?.opportunities
+        ? getValidDirectoryLinks(feedIndex.opportunities)
         : { validSkills: new Set<string>(), validLocations: new Set<string>() };
 
     const validLocationsMapKeys = new Set(Object.keys(VALID_LOCATIONS));
@@ -251,55 +282,47 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         return mergedValidLocations.has(lower) || mergedValidLocations.has(slugify(l));
     });
 
-    // Compute Hiring DNA
-    let totalJobsEver = companyJobs.length;
-    let fresherJobsCount = companyJobs.filter(j => ['JOB', 'INTERNSHIP', 'WALKIN'].includes(j.type || '')).length;
+    // Compute Hiring DNA in-memory from companyJobs
+    const totalJobsEver = companyJobs.length;
+    const fresherJobsCount = companyJobs.filter(j => ['JOB', 'INTERNSHIP', 'WALKIN'].includes(j.type || '')).length;
     let avgHiringFrequencyDays: number | string = '—';
-    let topSkills: string[] = allSkills.slice(0, 8);
-    let atsProvider = getAtsProvider(firstJob?.applyLink);
 
-    try {
-        const prismaModule = await import('@fresherflow/database');
-        const prisma = prismaModule.default || prismaModule.prisma;
-        const historicalJobs = await prisma.opportunity.findMany({
-            where: { company: { equals: companyName, mode: 'insensitive' } },
-            select: { id: true, type: true, postedAt: true, requiredSkills: true, applyLink: true }
-        });
-        
-        if (historicalJobs.length > 0) {
-            totalJobsEver = historicalJobs.length;
-            fresherJobsCount = historicalJobs.filter((j: any) => ['JOB', 'INTERNSHIP', 'WALKIN'].includes(j.type)).length;
-
-            if (historicalJobs.length > 1) {
-                const dates = historicalJobs.map((j: any) => j.postedAt ? new Date(j.postedAt).getTime() : 0).filter((d: number) => d > 0).sort((a: number, b: number) => a - b);
-                if (dates.length > 1) {
-                    const diffs = [];
-                    for (let i = 1; i < dates.length; i++) {
-                        diffs.push(dates[i] - dates[i-1]);
-                    }
-                    const avgDiffMs = diffs.reduce((a, b) => a + b, 0) / diffs.length;
-                    avgHiringFrequencyDays = Math.round(avgDiffMs / (1000 * 60 * 60 * 24));
-                }
+    if (companyJobs.length > 1) {
+        const dates = companyJobs
+            .map((j: any) => j.postedAt ? new Date(j.postedAt).getTime() : 0)
+            .filter((d: number) => d > 0)
+            .sort((a: number, b: number) => a - b);
+        if (dates.length > 1) {
+            const diffs: number[] = [];
+            for (let i = 1; i < dates.length; i++) {
+                diffs.push(dates[i] - dates[i - 1]);
             }
-
-            const skillCounts: Record<string, number> = {};
-            for (const job of historicalJobs) {
-                for (const s of (job.requiredSkills || [])) {
-                    if (s) skillCounts[s] = (skillCounts[s] || 0) + 1;
-                }
-            }
-            topSkills = Object.entries(skillCounts).sort((a, b) => b[1] - a[1]).slice(0, 8).map(x => x[0]);
-            
-            // Recompute ATS provider based on all jobs if first job didn't have a recognizable one
-            if (atsProvider === 'Custom / In-house') {
-                const knownAtsJob = historicalJobs.find((j: any) => getAtsProvider(j.applyLink || '') !== 'Custom / In-house');
-                if (knownAtsJob) {
-                    atsProvider = getAtsProvider(knownAtsJob.applyLink || '');
-                }
-            }
+            const avgDiffMs = diffs.reduce((a, b) => a + b, 0) / diffs.length;
+            const days = Math.round(avgDiffMs / (1000 * 60 * 60 * 24));
+            avgHiringFrequencyDays = days > 0 ? days : 1;
         }
-    } catch (e) {
-        console.error("Failed to compute Hiring DNA", e);
+    }
+
+    const skillCounts: Record<string, number> = {};
+    for (const job of companyJobs) {
+        for (const s of ((job as any).requiredSkills || [])) {
+            if (s) skillCounts[s] = (skillCounts[s] || 0) + 1;
+        }
+    }
+    let topSkills = Object.entries(skillCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(x => x[0]);
+    if (topSkills.length === 0) {
+        topSkills = allSkills.slice(0, 8);
+    }
+
+    let atsProvider = getAtsProvider(firstJob?.applyLink);
+    if (atsProvider === 'Custom / In-house') {
+        const knownAtsJob = companyJobs.find((j: any) => getAtsProvider(j.applyLink || '') !== 'Custom / In-house');
+        if (knownAtsJob) {
+            atsProvider = getAtsProvider(knownAtsJob.applyLink || '');
+        }
     }
 
     const topContent = (
@@ -433,6 +456,18 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                             <div className="text-sm font-medium text-foreground">Not listed</div>
                         )}
                     </div>
+                    {(companyStage || companySize || companyIndustries.length > 0) && (
+                        <div className="p-4 rounded-xl border border-border/50 bg-muted/30">
+                            <div className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Company Profile</div>
+                            <div className="space-y-1.5 text-sm font-medium text-foreground">
+                                {companyStage && <div className="capitalize">Stage: {companyStage}</div>}
+                                {companySize && <div>{companySize}</div>}
+                                {companyIndustries.length > 0 && (
+                                    <div className="capitalize">{companyIndustries.slice(0, 2).join(', ')}</div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

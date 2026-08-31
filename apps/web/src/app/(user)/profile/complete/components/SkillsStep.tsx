@@ -67,7 +67,7 @@ export const SkillsStep = ({
                                 }
                                 else if (e.key === 'Escape') setSkillOpen(false);
                             }}
-                            className="premium-input h-10! text-sm flex-1"
+                            className="h-10! text-sm flex-1"
                             placeholder="e.g. React, Node.js, Python"
                         />
                         <button onClick={addSkill} className="w-10 h-10 flex items-center justify-center rounded-lg border border-border bg-card hover:bg-muted transition-colors shrink-0">

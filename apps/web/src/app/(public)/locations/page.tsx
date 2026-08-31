@@ -114,7 +114,7 @@ export default async function LocationIndexPage() {
 
     return (
         <div className="bg-background font-sans">
-            <main className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-8">
+            <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-8">
                 <HeaderPortal>
                     <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Locations' }]} />
                 </HeaderPortal>
@@ -178,7 +178,7 @@ export default async function LocationIndexPage() {
                         urlPrefix="/locations/"
                     />
                 </section>
-            </main>
+            </div>
         </div>
     );
 }

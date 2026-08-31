@@ -7,7 +7,7 @@ The community-driven fresher job network. We aggregate and verify off-campus job
 - Remote Jobs: https://fresherflow.in/remote
 - Internships: https://fresherflow.in/internships
 - Government Jobs: https://fresherflow.in/government-jobs
-- Walk-ins: https://fresherflow.in/walk-ins
+- Walk-ins: https://fresherflow.in/jobs/walkins
 - App Download: https://fresherflow.in/app
 
 ## Structure

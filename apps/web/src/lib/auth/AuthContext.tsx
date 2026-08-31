@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { useRouter } from 'next/navigation';
 import { authApi, UnauthorizedError, clearUserTokens, setUserTokens } from '@/lib/api/client';
 import { clearUnreadCache } from '@/features/notifications/hooks/useUnreadNotifications';
-import { User, Profile, Role } from '@fresherflow/types';
+import { User, Profile } from '@fresherflow/types';
 
 interface AuthContextType {
     user: User | null;
@@ -240,6 +240,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const silent = options?.silent === true;
         const force = options?.force === true;
         if (!silent) setIsLoading(true);
+
+        // Safety timeout: if API hangs (not down, but slow/stuck), bail out after 10s
+        // so users never get trapped on a blank loading screen when the backend is unhealthy.
+        const timeoutId = setTimeout(() => {
+            const cached = readCachedSession();
+            if (cached) {
+                setUser(cached.user);
+                setProfile(cached.profile);
+                setSkipUsernameSetup(!!cached.skipUsernameSetup);
+                setClientSessionHints();
+            } else {
+                setUser(null);
+                setProfile(null);
+                clearClientSessionHints();
+                clearCachedSession();
+            }
+            setIsLoading(false);
+        }, 10000);
+
         try {
             const cached = readCachedSession();
             const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
@@ -339,7 +358,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setProfile(null);
                 setSkipUsernameSetup(false);
             } else {
-                // Silently fall back to cached session or guest state on 503 / 5xx / network errors
+                // Silently fall back to cached session on 503 / 5xx / network errors
                 const cached = readCachedSession();
                 if (cached) {
                     setUser(cached.user);
@@ -348,38 +367,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     setClientSessionHints();
                     lastSuccessfulLoadAtRef.current = cached.savedAt;
                 } else {
-                    try {
-                        const { auth } = await import('@/lib/api/firebase');
-                        const firebaseUser = auth.currentUser;
-
-                        if (firebaseUser) {
-                            const fallbackUser: User = {
-                                id: firebaseUser.uid,
-                                email: firebaseUser.email || undefined,
-                                fullName: firebaseUser.displayName || 'Fresher',
-                                username: firebaseUser.email ? firebaseUser.email.split('@')[0] : 'user_' + firebaseUser.uid.slice(0, 5),
-                                role: Role.USER,
-                                isAnonymous: firebaseUser.isAnonymous,
-                                createdAt: new Date().toISOString()
-                            };
-                            setUser(fallbackUser);
-                            setProfile(null);
-                            setSkipUsernameSetup(true);
-                            setClientSessionHints();
-                            lastSuccessfulLoadAtRef.current = Date.now();
-                        } else {
-                            setUser(null);
-                            setProfile(null);
-                            setSkipUsernameSetup(false);
-                        }
-                    } catch {
-                        setUser(null);
-                        setProfile(null);
-                        setSkipUsernameSetup(false);
-                    }
+                    setUser(null);
+                    setProfile(null);
+                    setSkipUsernameSetup(false);
+                    clearClientSessionHints();
+                    clearCachedSession();
                 }
             }
         } finally {
+            clearTimeout(timeoutId);
             setIsLoading(false);
         }
     }, []);
@@ -421,12 +417,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [user, skipUsernameSetup]);
 
     useEffect(() => {
+        const handleUnauthorized = () => {
+            if (isLoggingOutRef.current) return;
+            clearCachedSession();
+            clearUserTokens();
+            clearClientSessionHints();
+            clearAllClientCaches();
+            setUser(null);
+            setProfile(null);
+            const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/dashboard';
+            const loginUrl = `/login?expired=true${currentPath && currentPath !== '/login' ? `&redirect=${encodeURIComponent(currentPath)}` : ''}`;
+            window.location.replace(loginUrl);
+        };
+        window.addEventListener('fresherflow-unauthorized', handleUnauthorized);
+        return () => window.removeEventListener('fresherflow-unauthorized', handleUnauthorized);
+    }, []);
+
+    useEffect(() => {
         if (user && !isLoggingOutRef.current && typeof document !== 'undefined' && !document.cookie.includes('ff_logged_in=true')) {
             setClientSessionHints();
         }
     }, [user]);
 
     useEffect(() => {
+        // For anonymous visitors (no session cookie and no cached session) skip
+        // Firebase auth initialization entirely. This avoids external auth network
+        // round-trips (gapi / auth iframe) that otherwise delay first paint on
+        // public pages. Returning users always have either the session cookie
+        // (setClientSessionHints) or a cached session in localStorage.
+        const hasCookie =
+            typeof document !== 'undefined' &&
+            (document.cookie.includes('ff_logged_in=true') || document.cookie.includes('accessToken'));
+        const hasCachedSession = readCachedSession() !== null;
+        if (!hasCookie && !hasCachedSession) {
+            setUser(null);
+            setProfile(null);
+            setIsLoading(false);
+            return;
+        }
+
         let unsubscribe: (() => void) | undefined;
         import('@/lib/api/firebase').then(({ auth }) => {
             unsubscribe = auth.onAuthStateChanged((firebaseUser: any) => {

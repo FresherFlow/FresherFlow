@@ -3,6 +3,8 @@
 import { useState, useContext } from 'react';
 import { AuthContext } from '@/lib/auth/AuthContext';
 import { useRouter } from 'next/navigation';
+import { Button } from '@/ui/Button';
+import { Input } from '@/ui/Input';
 
 interface AuthDialogProps {
     isOpen: boolean;
@@ -76,13 +78,13 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
                             <label className="text-[10px] font-bold text-muted-foreground capitalize tracking-widest ml-1">
                                 Email Address
                             </label>
-                            <input
+                            <Input
                                 type="email"
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="IDENTITY@DOMAIN.COM"
-                                className="premium-input !h-12"
+                                className="!h-12"
                             />
                         </div>
 
@@ -90,13 +92,13 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
                             <label className="text-[10px] font-bold text-muted-foreground capitalize tracking-widest ml-1">
                                 Access Password
                             </label>
-                            <input
+                            <Input
                                 type="password"
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="••••••••"
-                                className="premium-input !h-12"
+                                className="!h-12"
                             />
                         </div>
 
@@ -106,10 +108,10 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
                             </div>
                         )}
 
-                        <button
+                        <Button
                             type="submit"
                             disabled={loading}
-                            className="w-full premium-button !h-12 text-sm capitalize font-bold tracking-widest transition-all shadow-lg shadow-primary/20"
+                            className="w-full !h-12 text-sm capitalize font-bold tracking-widest transition-all shadow-lg shadow-primary/20"
                         >
                             {loading ? (
                                 <div className="flex items-center gap-2">
@@ -119,7 +121,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
                             ) : (
                                 'Authenticate'
                             )}
-                        </button>
+                        </Button>
                     </form>
                 </div>
             </div>

@@ -4,6 +4,7 @@ import { useEffect, Suspense } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useSearchParams } from 'next/navigation';
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
+import { Card } from '@/ui/Card';
 
 function LogoutContent() {
     const { logout } = useAuth();
@@ -22,7 +23,7 @@ function LogoutContent() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20 p-4">
-            <div className="premium-card max-w-md w-full p-8 text-center space-y-6 animate-in fade-in zoom-in duration-500">
+            <Card className="max-w-md w-full p-8 text-center space-y-6 animate-in fade-in zoom-in duration-500">
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto animate-pulse">
                     <ArrowRightOnRectangleIcon className="w-8 h-8 text-primary" />
                 </div>
@@ -37,7 +38,7 @@ function LogoutContent() {
                     <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
                     <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
                 </div>
-            </div>
+            </Card>
         </div>
     );
 }

@@ -1,20 +1,44 @@
-import { NextResponse } from 'next/server';
-
-const INGESTION_URL = process.env.INGESTION_SERVICE_URL || process.env.NEXT_PUBLIC_INGESTION_URL || process.env.INGESTION_URL || 'http://localhost:3005';
+import { NextRequest, NextResponse } from 'next/server';
+import { withRateLimit } from '@/lib/api/rateLimit';
+import { hasIngestionDb, queryRows, ingestionDbError } from '@/lib/ingestion/db';
+import { loadDefaultTargets } from '@/lib/ingestion/targets';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: Request) {
+interface IngestionCountsRow {
+  discovered: string;
+  processed: string;
+  runs: string;
+  skipped: string;
+  lastRunAt: Date | null;
+}
+
+async function getStats(request: NextRequest) {
+  if (!hasIngestionDb) return ingestionDbError();
   try {
-    const { searchParams } = new URL(request.url);
-    const query = searchParams.toString();
-    const res = await fetch(`${INGESTION_URL}/stats/summary${query ? '?' + query : ''}`, {
-      headers: { 'Cache-Control': 'no-store' },
-      next: { revalidate: 0 },
+    const [counts] = await queryRows<IngestionCountsRow>(
+      `SELECT
+        (SELECT COUNT(*) FROM discovered_jobs) AS discovered,
+        (SELECT COUNT(*) FROM processed_jobs) AS processed,
+        (SELECT COUNT(*) FROM discovery_runs) AS runs,
+        (SELECT COALESCE(SUM(duplicates), 0) FROM discovery_runs) AS skipped,
+        (SELECT MAX(started_at) FROM discovery_runs) AS last_run_at`
+    );
+    const totalTargets = await loadDefaultTargets();
+
+    return NextResponse.json({
+      totalTargets: totalTargets.length,
+      totalJobsIngested: Number(counts?.discovered ?? 0),
+      totalJobsSaved: Number(counts?.processed ?? 0),
+      totalJobsSkipped: Number(counts?.skipped ?? 0),
+      totalRuns: Number(counts?.runs ?? 0),
+      uptimeSeconds: 0,
+      lastRunAt: counts?.lastRunAt ? new Date(counts.lastRunAt).toISOString() : null,
+      engineVersion: '1.0.0'
     });
-    const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
-  } catch (e) {
-    return NextResponse.json({ error: 'Ingestion service unreachable' }, { status: 503 });
+  } catch {
+    return ingestionDbError();
   }
 }
+
+export const GET = withRateLimit(getStats, { windowMs: 60_000, max: 60, keyPrefix: 'discovery-stats' });

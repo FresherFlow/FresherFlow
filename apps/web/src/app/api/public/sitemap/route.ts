@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CDN_URL, SITE_URL } from '@/lib/utils/runtimeConfig';
+import { withRateLimit } from '@/lib/api/rateLimit';
 
 export const revalidate = false;
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+async function serveSitemap(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const file = searchParams.get('file');
@@ -14,7 +15,7 @@ export async function GET(request: NextRequest) {
         }
 
         const cdnBase = CDN_URL.replace(/\/+$/, '');
-        const sitemapUrl = `${cdnBase}/${file}`;
+        const sitemapUrl = `${cdnBase}/sitemaps/${file}`;
 
         const res = await fetch(sitemapUrl, {
             next: { revalidate: 3600 } // Cache sitemaps on Vercel Edge for 1 hour
@@ -45,3 +46,5 @@ export async function GET(request: NextRequest) {
         return new NextResponse('Internal Server Error', { status: 500 });
     }
 }
+
+export const GET = withRateLimit(serveSitemap, { windowMs: 60_000, max: 60, keyPrefix: 'sitemap' });

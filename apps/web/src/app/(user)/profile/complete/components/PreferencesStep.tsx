@@ -160,10 +160,10 @@ export const PreferencesStep = ({
                                 }
                                 else if (e.key === 'Escape') setSkillOpen(false);
                             }}
-                            className="premium-input h-10! text-sm flex-1"
+                            className="h-10! text-sm flex-1"
                             placeholder="e.g. React, Node.js, Python"
                         />
-                        <button onClick={addSkill} className="w-11 h-11 flex items-center justify-center rounded-xl border border-slate-200 bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all shrink-0">
+                        <button onClick={addSkill} className="w-11 h-11 flex items-center justify-center rounded-xl border border-border bg-muted hover:bg-muted/80 text-foreground transition-all shrink-0">
                             <PlusIcon className="w-5 h-5" />
                         </button>
                     </div>

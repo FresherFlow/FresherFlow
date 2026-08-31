@@ -6,6 +6,7 @@ import CategoryPage from '@/features/opportunities/components/CategoryPage';
 import { FeedPageSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
+import { truncateTitleByPixels, truncateDescription } from '@/lib/seo/seoMetrics';
 import { unstable_noStore } from 'next/cache';
 
 export const revalidate = false;
@@ -85,8 +86,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         roleInfo = { label, keywords: [label.toLowerCase()] };
     }
 
-    const title = `${roleInfo.label} Jobs for Freshers | Entry-Level Opportunities`;
-    const description = `Find verified ${roleInfo.label} jobs, internships and off-campus opportunities for freshers with direct apply links and eligibility details.`;
+    const rawTitle = `${roleInfo.label} Jobs for Freshers | Entry-Level Opportunities`;
+    const title = truncateTitleByPixels(rawTitle);
+    const rawDescription = `Find verified ${roleInfo.label} jobs, internships and off-campus opportunities for freshers with direct apply links and eligibility details.`;
+    const description = truncateDescription(rawDescription);
     const base = SITE_URL.replace(/\/+$/, '');
     const slugNormalized = slugify(decodeURIComponent(slug));
     const ogImageUrl = `${CDN_URL}/og/roles/${slugNormalized}.png`;

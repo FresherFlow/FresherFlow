@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { withRateLimit } from '@/lib/api/rateLimit';
 
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || undefined;
 
@@ -11,7 +12,7 @@ const COOKIE_OPTIONS = {
     ...(COOKIE_DOMAIN ? { domain: COOKIE_DOMAIN } : {})
 };
 
-export async function POST() {
+async function logout() {
     const cookieStore = await cookies();
     
     // Clear cookies
@@ -21,3 +22,5 @@ export async function POST() {
 
     return NextResponse.json({ success: true }, { status: 200 });
 }
+
+export const POST = withRateLimit(logout, { windowMs: 60_000, max: 60, keyPrefix: 'auth-logout' });

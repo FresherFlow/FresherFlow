@@ -40,26 +40,40 @@ function shouldBypassCache(endpoint: string, method: string) {
 
  
 export async function serverApiClient<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
-    const { cookies, headers } = await import('next/headers');
-    const cookieStore = await cookies();
-    const cookieHeader = cookieStore.getAll().map(c => `${c.name}=${c.value}`).join('; ');
-    const headersStore = await headers();
-    const host = headersStore.get('host') || ADMIN_WEB_HOST;
-    const proto = headersStore.get('x-forwarded-proto') || 'https';
+    const method = (options.method || 'GET').toUpperCase();
+    const isPrivate = shouldBypassCache(endpoint, method);
+
+    let cookieHeader = '';
+    let host = ADMIN_WEB_HOST;
+    let proto = 'https';
+
+    // Only read cookies & request headers if this is a private/authenticated endpoint
+    // or if the request explicitly asks for credentials, to avoid dynamic server de-opt on public static/ISR routes.
+    if (isPrivate || options.credentials === 'include') {
+        try {
+            const { cookies, headers } = await import('next/headers');
+            const cookieStore = await cookies();
+            cookieHeader = cookieStore.getAll().map(c => `${c.name}=${c.value}`).join('; ');
+            const headersStore = await headers();
+            host = headersStore.get('host') || ADMIN_WEB_HOST;
+            proto = headersStore.get('x-forwarded-proto') || 'https';
+        } catch {
+            // next/headers might not be available in non-request contexts
+        }
+    }
 
     const headersObj: Record<string, string> = {
         'Content-Type': 'application/json',
         'X-Requested-From': 'fresherflow-web',
-        'Cookie': cookieHeader,
+        ...(cookieHeader ? { 'Cookie': cookieHeader } : {}),
         'Origin': `${proto}://${host}`,
         'X-Forwarded-Host': host,
         ...(options.headers as Record<string, string> || {}),
     };
-    const method = (options.method || 'GET').toUpperCase();
     const hasExplicitCacheConfig = options.cache !== undefined || options.next !== undefined;
     const cacheOptions = hasExplicitCacheConfig
         ? {}
-        : shouldBypassCache(endpoint, method)
+        : isPrivate
             ? { cache: 'no-store' as const }
             : { next: { revalidate: DEFAULT_PUBLIC_REVALIDATE_SECONDS } };
 

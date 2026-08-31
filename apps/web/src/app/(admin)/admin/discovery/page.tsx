@@ -3,8 +3,6 @@ import { DiscoveryWorkspace } from '@/features/admin/discovery/DiscoveryWorkspac
 
 
 
-export const dynamic = 'force-dynamic';
-
 export default function AdminDiscoveryPage() {
     return <DiscoveryWorkspace />;
 }

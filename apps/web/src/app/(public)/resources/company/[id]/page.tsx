@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { getResourcesFeed } from '@/features/resources/api/getResourcesFeed';
 import { notFound } from 'next/navigation';
 import { ResourceCard } from '@/features/resources/components/ResourceCard';
@@ -46,9 +47,9 @@ export default async function CompanyResourcesPage(props: CompanyResourcesPagePr
             </Link>
             
             <div className="flex items-center gap-6 mb-8">
-                <div className="w-20 h-20 rounded-2xl bg-accent flex items-center justify-center overflow-hidden border">
+                <div className="relative w-20 h-20 rounded-2xl bg-accent flex items-center justify-center overflow-hidden border">
                     {meta?.logoUrl ? (
-                        <img src={meta.logoUrl} alt={companyName} className="w-full h-full object-contain p-2" />
+                        <Image src={meta.logoUrl} alt={companyName} fill className="object-contain p-2" unoptimized />
                     ) : (
                         <Building className="w-10 h-10 text-muted-foreground" />
                     )}

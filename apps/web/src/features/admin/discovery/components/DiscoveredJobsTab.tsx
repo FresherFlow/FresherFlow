@@ -243,17 +243,13 @@ export function DiscoveredJobsTab() {
          <SelectTrigger className="h-10 text-xs py-1 min-w-[140px] w-auto border-border/80 bg-card focus:outline-none focus-visible:bg-muted/60 focus-visible:text-foreground cursor-pointer">
            <SelectValue placeholder="All Status" />
          </SelectTrigger>
-         <SelectContent>
-           <SelectItem value="ALL">All Status</SelectItem>
-           <SelectItem value="PENDING">Pending</SelectItem>
-           <SelectItem value="APPROVED">Approved</SelectItem>
-           <SelectItem value="DISCOVERED">Discovered</SelectItem>
-           <SelectItem value="PROCESSING">Processing</SelectItem>
-           <SelectItem value="PROCESSED">Processed</SelectItem>
-           <SelectItem value="REJECTED">Rejected</SelectItem>
-           <SelectItem value="FAILED">Failed</SelectItem>
-           <SelectItem value="EXPIRED">Expired</SelectItem>
-         </SelectContent>
+          <SelectContent>
+            <SelectItem value="ALL">All Status</SelectItem>
+            <SelectItem value="PENDING">Pending</SelectItem>
+            <SelectItem value="PROCESSED">Processed</SelectItem>
+            <SelectItem value="REJECTED">Rejected</SelectItem>
+            <SelectItem value="EXPIRED">Expired</SelectItem>
+          </SelectContent>
        </Select>
      </div>
    </div>

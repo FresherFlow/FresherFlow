@@ -797,7 +797,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     {/* Left: Feed opportunities selector */}
-                    <div className="lg:col-span-2 h-screen sm:h-auto rounded-none sm:rounded-2xl border-y sm:border border-x-0 sm:border-border bg-[#F5F4EF] dark:bg-card p-3 sm:p-4 shadow-none sm:shadow-sm flex flex-col space-y-4 overflow-hidden">
+                    <div className="lg:col-span-2 h-screen sm:h-auto rounded-none sm:rounded-2xl border-y sm:border border-x-0 sm:border-border bg-surface-warm dark:bg-card p-3 sm:p-4 shadow-none sm:shadow-sm flex flex-col space-y-4 overflow-hidden">
                         {/* Title + worker status pill */}
                         <div className="border-b border-border pb-3 shrink-0 flex items-start justify-between gap-4">
                             <div className="min-w-0">
@@ -859,7 +859,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                     <div key={category} className="pb-5 space-y-2">
                                         <h4 
                                             onClick={() => toggleCollapseCategory(category)}
-                                            className="sticky top-0 bg-[#F5F4EF] dark:bg-card z-10 py-1.5 text-[10px] font-bold uppercase tracking-wider text-primary border-b border-border flex items-center justify-between cursor-pointer select-none hover:text-primary/80"
+                                            className="sticky top-0 bg-surface-warm dark:bg-card z-10 py-1.5 text-[10px] font-bold uppercase tracking-wider text-primary border-b border-border flex items-center justify-between cursor-pointer select-none hover:text-primary/80"
                                         >
                                             <span className="flex items-center gap-1">
                                                 {collapsedCategories[category] ? (
@@ -965,7 +965,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                                                                                     const p = item.platform.toLowerCase();
                                                                                                     if (p === 'telegram') return <TelegramBrandIcon key={p} className="w-3.5 h-3.5 text-primary shrink-0" />;
                                                                                                     if (p === 'x' || p === 'twitter') return <XBrandIcon key={p} className="w-3.5 h-3.5 text-foreground dark:text-white shrink-0" />;
-                                                                                                    if (p === 'linkedin') return <LinkedInBrandIcon key={p} className="w-3.5 h-3.5 text-[#0A66C2] shrink-0" />;
+                                                                                                    if (p === 'linkedin') return <LinkedInBrandIcon key={p} className="w-3.5 h-3.5 text-brand-linkedin shrink-0" />;
                                                                                                     return <ClockIcon key={p} className="w-3.5 h-3.5 text-muted-foreground shrink-0" />;
                                                                                                 })}
                                                                                             </div>
@@ -1072,7 +1072,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
 
                         {/* Active job — Publish Actions */}
                         {activeOpportunity && (
-                            <div className="rounded-2xl border border-border bg-[#F5F4EF] dark:bg-card p-4 shadow-sm space-y-3">
+                            <div className="rounded-2xl border border-border bg-surface-warm dark:bg-card p-4 shadow-sm space-y-3">
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-3">
                                         <CompanyLogo
@@ -1193,7 +1193,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                                             !canSend ? 'border-border bg-muted/20 opacity-50 cursor-not-allowed'
                                                             : status === 'sent' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 shadow-sm'
                                                             : status === 'error' ? 'border-red-500/30 bg-red-500/10 text-red-500 shadow-sm'
-                                                            : 'border-border bg-[#F5F4EF] dark:bg-card hover:bg-muted/50 hover:border-primary/30 shadow-sm group'
+                                                            : 'border-border bg-surface-warm dark:bg-card hover:bg-muted/50 hover:border-primary/30 shadow-sm group'
                                                         }`}
                                                         title={!canSend ? 'Platform not configured' : isScheduleActive ? `Schedule to ${label}` : `Publish directly to ${label}`}
                                                     >
@@ -1277,7 +1277,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                         )}
 
                         {/* Bulk Job Updates — with blast send */}
-                        <div className="rounded-2xl border border-border bg-[#F5F4EF] dark:bg-card p-4 shadow-sm space-y-3 flex flex-col">
+                        <div className="rounded-2xl border border-border bg-surface-warm dark:bg-card p-4 shadow-sm space-y-3 flex flex-col">
                             <div className="flex items-center justify-between border-b border-border pb-2">
                                 <div>
                                     <h3 className="text-sm font-bold text-foreground">{"Today's Bulk Job Updates"}</h3>
@@ -1307,7 +1307,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                         <button
                                             key={p}
                                             onClick={() => setBulkPreviewPlatform(p)}
-                                            className={`p-2 rounded-lg transition-all ${bulkPreviewPlatform === p ? 'bg-[#F5F4EF] dark:bg-card shadow-sm text-foreground border border-border' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent'}`}
+                                            className={`p-2 rounded-lg transition-all ${bulkPreviewPlatform === p ? 'bg-surface-warm dark:bg-card shadow-sm text-foreground border border-border' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent'}`}
                                             title={`Preview for ${p}`}
                                         >
                                             {icon}
@@ -1374,7 +1374,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                     onClick={() => setIsSingleModalOpen(false)}
                 >
                     <div
-                        className="bg-[#F5F4EF] dark:bg-card w-full max-w-md rounded-t-3xl p-5 space-y-3 animate-in slide-in-from-bottom duration-300 shadow-2xl border-t border-border"
+                        className="bg-surface-warm dark:bg-card w-full max-w-md rounded-t-3xl p-5 space-y-3 animate-in slide-in-from-bottom duration-300 shadow-2xl border-t border-border"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Header */}
@@ -1559,7 +1559,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                     onClick={() => setIsBulkModalOpen(false)}
                 >
                     <div
-                        className="bg-[#F5F4EF] dark:bg-card w-full max-w-md rounded-t-3xl p-5 space-y-3 animate-in slide-in-from-bottom duration-300 shadow-2xl border-t border-border"
+                        className="bg-surface-warm dark:bg-card w-full max-w-md rounded-t-3xl p-5 space-y-3 animate-in slide-in-from-bottom duration-300 shadow-2xl border-t border-border"
                         onClick={(e) => e.stopPropagation()}
                     >
                         <div className="flex items-center justify-between pb-3 border-b border-border">

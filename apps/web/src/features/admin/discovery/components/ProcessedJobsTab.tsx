@@ -122,26 +122,43 @@ export function ProcessedJobsTab() {
     }
   };
 
- function handleApprove(id: string) {
- setJobs(prev =>
- prev.map(j => (j.id === id ? { ...j, status: 'APPROVED' } : j))
- );
- toast.success('Job approved');
- }
+  async function handleApprove(id: string) {
+    try {
+      const res = await fetch('/api/admin/discovery/push', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: [id] }),
+      });
+      if (res.ok) {
+        setJobs(prev =>
+          prev.map(j => (j.id === id ? { ...j, status: 'PUBLISHED' } : j))
+        );
+        toast.success('Job approved and published to live feed');
+      } else {
+        toast.error('Failed to publish job');
+      }
+    } catch {
+      toast.error('Network error approving job');
+    }
+  }
 
- function handleReject(id: string) {
- setJobs(prev =>
- prev.map(j => (j.id === id ? { ...j, status: 'REJECTED' } : j))
- );
- toast.success('Job rejected');
- }
-
- function handlePublish(id: string) {
- setJobs(prev =>
- prev.map(j => (j.id === id ? { ...j, status: 'PUBLISHED' } : j))
- );
- toast.success('Job published to feed');
- }
+  async function handleReject(id: string) {
+    try {
+      const res = await fetch(`/api/admin/discovery/jobs/processed?id=${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: 'REJECTED' }),
+      });
+      if (res.ok) {
+        setJobs(prev =>
+          prev.map(j => (j.id === id ? { ...j, status: 'REJECTED' } : j))
+        );
+        toast.success('Job rejected');
+      }
+    } catch {
+      toast.error('Failed to reject job');
+    }
+  }
 
  const uniqueAtsTypes = Array.from(new Set(jobs.map(j => detectAtsFromUrl(j.applyLink || j.apply_link)))).filter(Boolean).sort();
 
@@ -293,14 +310,13 @@ export function ProcessedJobsTab() {
          <SelectTrigger className="h-10 text-xs py-1 min-w-[140px] w-auto border-border/80 bg-card focus:outline-none focus-visible:bg-muted/60 focus-visible:text-foreground cursor-pointer">
            <SelectValue placeholder="All Status" />
          </SelectTrigger>
-         <SelectContent>
-           <SelectItem value="ALL">All Status</SelectItem>
-           <SelectItem value="PUBLISHED">Published</SelectItem>
-           <SelectItem value="PENDING_REVIEW">Pending Review</SelectItem>
-           <SelectItem value="APPROVED">Approved</SelectItem>
-           <SelectItem value="REJECTED">Rejected</SelectItem>
-           <SelectItem value="EXPIRED">Expired</SelectItem>
-         </SelectContent>
+          <SelectContent>
+            <SelectItem value="ALL">All Status</SelectItem>
+            <SelectItem value="PENDING_REVIEW">Pending Review</SelectItem>
+            <SelectItem value="PUBLISHED">Published</SelectItem>
+            <SelectItem value="REJECTED">Rejected</SelectItem>
+            <SelectItem value="EXPIRED">Expired</SelectItem>
+          </SelectContent>
        </Select>
      </div>
    </div>
@@ -467,8 +483,6 @@ export function ProcessedJobsTab() {
  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
  : job.status === 'PENDING_REVIEW'
  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
- : job.status === 'APPROVED'
- ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30'
  : job.status === 'EXPIRED'
  ? 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/30'
  : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30'
@@ -509,18 +523,12 @@ export function ProcessedJobsTab() {
        {job.status === 'PENDING_REVIEW' && (
          <>
            <DropdownMenuItem onClick={() => handleApprove(job.id)} className="cursor-pointer text-emerald-600 dark:text-emerald-400">
-             <CheckCircleIcon className="w-4 h-4 mr-2" /> Approve
+             <CheckCircleIcon className="w-4 h-4 mr-2" /> Approve & Publish
            </DropdownMenuItem>
            <DropdownMenuItem onClick={() => handleReject(job.id)} className="cursor-pointer text-red-600 dark:text-red-400">
              <XCircleIcon className="w-4 h-4 mr-2" /> Reject
            </DropdownMenuItem>
          </>
-       )}
-       
-       {job.status === 'APPROVED' && (
-         <DropdownMenuItem onClick={() => handlePublish(job.id)} className="cursor-pointer">
-           <SparklesIcon className="w-4 h-4 mr-2" /> Publish
-         </DropdownMenuItem>
        )}
 
        <DropdownMenuSeparator />

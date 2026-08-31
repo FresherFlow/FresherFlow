@@ -55,7 +55,7 @@ function ChooseUsernameForm() {
     useEffect(() => {
         async function fetchTakenUsernames() {
             try {
-                const rawUrl = `${CDN_URL}/taken-usernames.min.json`;
+                const rawUrl = `${CDN_URL}/meta/taken-usernames.min.json`;
                 const signedUrl = await signProtectedCdnUrl(rawUrl);
                 const res = await fetch(signedUrl);
                 if (res.ok) {

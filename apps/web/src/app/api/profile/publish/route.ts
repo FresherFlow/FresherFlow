@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import prisma from '@fresherflow/database';
 import { verifyAccessToken } from '@fresherflow/utils';
+import { withRateLimit } from '@/lib/api/rateLimit';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,7 @@ function getS3Client(): S3Client {
     });
 }
 
-export async function POST() {
+async function publishProfile() {
     try {
         // 1. Auth — read access token from cookie, same pattern as other server routes
         const cookieStore = await cookies();
@@ -95,3 +96,5 @@ export async function POST() {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
+
+export const POST = withRateLimit(publishProfile, { windowMs: 60_000, max: 30, keyPrefix: 'profile-publish' });

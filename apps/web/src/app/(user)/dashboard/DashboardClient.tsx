@@ -42,6 +42,7 @@ import { promptLoginToast } from '@/lib/utils/toastUtils';
 import { DashboardHeader } from './components/DashboardHeader';
 import { DashboardSection } from './components/DashboardSection';
 import { RecentlyViewedRow } from './components/RecentlyViewedRow';
+import { getSubmissionHistoryAction } from '../../(public)/submit/actions';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -55,9 +56,10 @@ interface DashboardStatsProps {
     trackerCount: number;
     interviewCount: number;
     profileCompletion: number;
+    submissionsCount: number;
 }
 
-function DashboardStats({ savedCount, trackerCount, interviewCount, profileCompletion }: DashboardStatsProps) {
+function DashboardStats({ savedCount, trackerCount, interviewCount, profileCompletion, submissionsCount }: DashboardStatsProps) {
     const router = useRouter();
     return (
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
@@ -116,6 +118,20 @@ function DashboardStats({ savedCount, trackerCount, interviewCount, profileCompl
                     </CardContent>
                 </Card>
             </div>
+
+            <div onClick={() => router.push('/submit')} className="group cursor-pointer">
+                <Card className="hover:border-primary/40 transition-all duration-150 ease-out active:scale-[0.97] hover:shadow-sm cursor-pointer border-border/60 bg-card/80 backdrop-blur-sm">
+                    <CardContent className="px-3.5 py-2 flex items-center gap-2.5">
+                        <div className="p-1.5 w-fit rounded-lg bg-primary/10 text-primary group-hover:scale-105 transition-transform">
+                            <RocketLaunchIcon className="w-4 h-4" />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none">Submissions</p>
+                            <p className="text-base font-black text-foreground leading-tight mt-0.5">{submissionsCount}</p>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 }
@@ -142,6 +158,14 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
 
     const { trackerMap } = useFirebaseTracker(user?.id);
     const { savedJobsMap, toggleSavedJob } = useFirebaseSaved(user?.id);
+
+    const [submissionsCount, setSubmissionsCount] = useState(0);
+
+    useEffect(() => {
+        getSubmissionHistoryAction(user?.id).then((res) => {
+            if (res.submissions) setSubmissionsCount(res.submissions.length);
+        });
+    }, [user?.id]);
 
     const loadRecentOpportunities = useCallback(async (options?: { force?: boolean }) => {
         if (recentOpps.length > 0 && !options?.force) {
@@ -369,6 +393,7 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
                             trackerCount={Object.keys(trackerMap).length}
                             interviewCount={Object.values(trackerMap).filter((t: any) => ['INTERVIEWED', 'SHORTLISTED', 'ASSESSMENT'].includes(t.status)).length}
                             profileCompletion={profileCompletion}
+                            submissionsCount={submissionsCount}
                         />
                     </div>
 
@@ -605,7 +630,7 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
                                     description="Direct interview walk-in events and venue drives"
                                     count={dataStreams.walkins.length}
                                     icon={<UserGroupIcon className="w-5 h-5 text-muted-foreground" />}
-                                    viewAllHref="/jobs?type=walkin"
+                                    viewAllHref="/jobs/walkins"
                                 >
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {dataStreams.walkins.map((opp) => (

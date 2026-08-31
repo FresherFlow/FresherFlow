@@ -8,6 +8,7 @@ import { FeedPageSkeleton } from '@/features/opportunities/components/Opportunit
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
 import { VALID_LOCATIONS, getCanonicalLocation } from '@/features/opportunities/utils/locationUtils';
+import { truncateTitleByPixels, truncateDescription } from '@/lib/seo/seoMetrics';
 
 export const revalidate = false;
 export const dynamicParams = true;
@@ -57,7 +58,7 @@ export async function generateStaticParams() {
         validCities.forEach(city => {
             const locInfo = VALID_LOCATIONS[city as keyof typeof VALID_LOCATIONS];
             if (locInfo) {
-                locInfo.aliases.forEach(alias => aliasesToGenerate.add(alias));
+                locInfo.aliases.forEach((alias: string) => aliasesToGenerate.add(alias));
             }
         });
 
@@ -90,14 +91,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
         const hasLocMatch = opp.locations?.some((l: string) => {
             const lower = l.toLowerCase();
-            return locInfo.aliases.some(alias => lower.includes(alias));
+            return locInfo.aliases.some((alias: string) => lower.includes(alias));
         });
 
         return !!hasLocMatch;
     });
 
-    const title = `Jobs in ${locInfo.label} | FresherFlow`;
-    const description = `Find ${filtered.length > 0 ? `${filtered.length} ` : ''}verified fresher jobs, internships and off-campus opportunities in ${locInfo.label} with direct application links.`;
+    const rawTitle = `Jobs in ${locInfo.label} | FresherFlow`;
+    const title = truncateTitleByPixels(rawTitle);
+    const rawDescription = `Find ${filtered.length > 0 ? `${filtered.length} ` : ''}verified fresher jobs, internships and off-campus opportunities in ${locInfo.label} with direct application links.`;
+    const description = truncateDescription(rawDescription);
     const base = SITE_URL.replace(/\/+$/, '');
     const slug = slugify(decodeURIComponent(city));
     const ogImageUrl = `${CDN_URL}/og/location/${slug}.png`;
@@ -105,6 +108,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
         title,
         description,
+        robots: {
+            index: filtered.length > 0,
+            follow: true,
+        },
         alternates: {
             canonical: `${base}/locations/${city}`
         },
@@ -164,7 +171,7 @@ export default async function LocationPage({ params }: Props) {
 
         const hasLocMatch = opp.locations?.some((l: string) => {
             const lower = l.toLowerCase();
-            return locInfo.aliases.some(alias => lower.includes(alias));
+            return locInfo.aliases.some((alias: string) => lower.includes(alias));
         });
 
         return !!hasLocMatch;

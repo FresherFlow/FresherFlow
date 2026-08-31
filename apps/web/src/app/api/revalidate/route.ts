@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
+import { withRateLimit } from '@/lib/api/rateLimit';
 
 // ⚠️  ISR WRITE SAFETY — READ BEFORE EDITING THIS FILE
 //
@@ -20,8 +21,8 @@ const HUB_PATHS = new Set([
     '/jobs',
     '/internships',
     '/jobs/internships',
-    '/walk-ins',
-    '/jobs/walk-ins',
+    '/walkins',
+    '/jobs/walkins',
     '/remote',
     '/jobs/remote',
     '/government-jobs',
@@ -51,7 +52,7 @@ function deriveTagsFromPaths(paths: string[]): string[] {
 
     const hasGovt = paths.some(p => p.startsWith('/government-jobs') || p.startsWith('/govt'));
     const hasCompany = paths.some(p => p.startsWith('/companies/'));
-    const hasWalkin = paths.some(p => p.startsWith('/jobs/walk-ins') || p.startsWith('/walk-ins/'));
+    const hasWalkin = paths.some(p => p.includes('/walk-ins') || p.includes('/walkins'));
     const hasNormal = paths.some(p => !p.startsWith('/government-jobs') && !p.startsWith('/govt') && !p.startsWith('/companies/'));
 
     if (hasNormal || hasWalkin) tags.push('homepage-feed');
@@ -67,7 +68,7 @@ function deriveTagsFromPaths(paths: string[]): string[] {
 
         if (path.startsWith('/companies/')) {
             tags.push(`company-${lastPart}`);
-        } else if (path.startsWith('/jobs/walk-ins') || path.startsWith('/walk-ins/')) {
+        } else if (path.includes('/walk-ins') || path.includes('/walkins')) {
             tags.push(`city-${lastPart}`);
         } else {
             tags.push(`opportunity-${lastPart}`);
@@ -79,7 +80,7 @@ function deriveTagsFromPaths(paths: string[]): string[] {
     return tags;
 }
 
-export async function POST(request: NextRequest) {
+async function handleRevalidate(request: NextRequest) {
     try {
         const body = await request.json();
         const { secret, paths } = body;
@@ -161,3 +162,5 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ message: 'Error parsing request body' }, { status: 400 });
     }
 }
+
+export const POST = withRateLimit(handleRevalidate, { windowMs: 60_000, max: 60, keyPrefix: 'revalidate' });

@@ -79,7 +79,7 @@ export default async function SkillsIndexPage() {
 
     return (
         <div className="bg-background font-sans">
-            <main className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
+            <div className="max-w-4xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
                 <HeaderPortal>
                     <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Skills' }]} />
                 </HeaderPortal>
@@ -112,7 +112,7 @@ export default async function SkillsIndexPage() {
 
                                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 mt-2">
                                     {topRoles.length > 0 && (
-                                        <div className="space-y-1.5">
+                                         <div className="space-y-1.5">
                                             <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                                                 <IdentificationIcon className="w-3.5 h-3.5" />
                                                 <span>Top Roles</span>
@@ -151,7 +151,7 @@ export default async function SkillsIndexPage() {
                         );
                     })}
                 </div>
-            </main>
+            </div>
         </div>
     );
 }

@@ -1,12 +1,14 @@
 import { NextResponse, NextRequest } from 'next/server';
 import prisma from '@fresherflow/database';
 import { generateSlug } from '@fresherflow/utils';
-
-const INGESTION_URL =
-  process.env.INGESTION_SERVICE_URL ||
-  process.env.NEXT_PUBLIC_INGESTION_URL ||
-  process.env.INGESTION_URL ||
-  'http://localhost:3005';
+import { withRateLimit } from '@/lib/api/rateLimit';
+import {
+  hasIngestionDb,
+  queryRows,
+  execute,
+  ingestionDbError,
+  PROCESSED_JOB_COLUMNS
+} from '@/lib/ingestion/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +47,8 @@ interface ProcessedJob {
 }
 
 async function handlePush(req?: NextRequest) {
+  if (!hasIngestionDb) return ingestionDbError();
+
   try {
     let ids: string[] | undefined;
     if (req && req.method === 'POST') {
@@ -53,41 +57,30 @@ async function handlePush(req?: NextRequest) {
         if (body && Array.isArray(body.ids) && body.ids.length > 0) {
           ids = body.ids;
         }
-      } catch (e) {
+      } catch {
         // Ignore JSON parse errors for empty bodies
       }
     }
 
-    let res;
-    if (ids) {
-      res = await fetch(`${INGESTION_URL}/data/jobs/processed/push-batch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids }),
-      });
-    } else {
-      res = await fetch(`${INGESTION_URL}/data/jobs/processed?status=PUBLISHED&limit=500`, {
-        headers: { 'Cache-Control': 'no-store' },
-        next: { revalidate: 0 },
-      });
-
-      if (!res.ok) {
-        res = await fetch(`${INGESTION_URL}/data/push`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-        });
+    let jobs: ProcessedJob[];
+    try {
+      if (ids) {
+        jobs = await queryRows<ProcessedJob>(
+          `SELECT ${PROCESSED_JOB_COLUMNS} FROM processed_jobs WHERE id = ANY($1::uuid[])`,
+          [ids]
+        );
+      } else {
+        jobs = await queryRows<ProcessedJob>(
+          `SELECT ${PROCESSED_JOB_COLUMNS} FROM processed_jobs WHERE status = 'PUBLISHED' ORDER BY created_at DESC LIMIT 500`
+        );
       }
-    }
-
-    if (!res.ok) {
+    } catch (dbErr) {
+      console.error('[Push API Error] Failed to fetch jobs from ingestion database', dbErr);
       return NextResponse.json(
-        { error: 'Failed to fetch jobs from ingestion service', status: res.status },
+        { error: 'Failed to fetch jobs from ingestion database', status: 502 },
         { status: 502 }
       );
     }
-
-    const data = await res.json();
-    const jobs: ProcessedJob[] = data.jobs || [];
 
     let adminUser = await prisma.user.findFirst({
       where: { role: 'ADMIN' },
@@ -295,25 +288,17 @@ async function handlePush(req?: NextRequest) {
 
     if (successfulIds.length > 0) {
       try {
-        await fetch(`${INGESTION_URL}/data/jobs/processed/mark-published`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids: successfulIds }),
-        });
+        await execute("UPDATE processed_jobs SET status = 'PUBLISHED' WHERE id = ANY($1::uuid[])", [successfulIds]);
       } catch (err) {
-        console.error('[Push API Error] Failed to mark jobs as published in Ingestion DB', err);
+        console.error('[Push API Error] Failed to mark jobs as published in ingestion database', err);
       }
     }
 
     if (failedIds.length > 0) {
       try {
-        await fetch(`${INGESTION_URL}/data/jobs/processed/mark-rejected`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids: failedIds }),
-        });
+        await execute("UPDATE processed_jobs SET status = 'REJECTED' WHERE id = ANY($1::uuid[])", [failedIds]);
       } catch (err) {
-        console.error('[Push API Error] Failed to mark jobs as rejected in Ingestion DB', err);
+        console.error('[Push API Error] Failed to mark jobs as rejected in ingestion database', err);
       }
     }
 
@@ -330,10 +315,5 @@ async function handlePush(req?: NextRequest) {
   }
 }
 
-export async function GET(req: NextRequest) {
-  return handlePush(req);
-}
-
-export async function POST(req: NextRequest) {
-  return handlePush(req);
-}
+export const GET = withRateLimit(handlePush, { windowMs: 60_000, max: 30, keyPrefix: 'discovery-push' });
+export const POST = withRateLimit(handlePush, { windowMs: 60_000, max: 30, keyPrefix: 'discovery-push' });

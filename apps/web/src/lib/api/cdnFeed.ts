@@ -2,6 +2,7 @@ import { cache } from 'react';
 import { Opportunity } from '@fresherflow/types';
 import { 
     BOOTSTRAP_FEED_URL, 
+    FEED_INDEX_URL,
     EXPIRED_FEED_URL,
     FEED_VERSION_URL,
     GET_CATEGORY_SHARD_URL, 
@@ -303,6 +304,64 @@ const _fetchBootstrapFeed = async (forceLive = false, customTags?: string[], unt
 export const fetchBootstrapFeed = cache(_fetchBootstrapFeed);
 
 /**
+ * Fetches the lightweight feed index from CDN.
+ * Contains only card-rendering fields (~700 bytes/job vs ~2.5KB in full bootstrap).
+ * Falls back to the full bootstrap feed if the index is unavailable.
+ */
+const _fetchFeedIndex = async (forceLive = false, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> => {
+    if (typeof window !== 'undefined') {
+        if (clientBootstrapCache && !forceLive) {
+            return clientBootstrapCache;
+        }
+        const cached = readFeedCache();
+        if (cached && Array.isArray(cached.opportunities) && cached.opportunities.length > 0) {
+            const result: BootstrapFeedResponse = {
+                opportunities: cached.opportunities,
+                count: cached.count || cached.opportunities.length,
+                generatedAt: new Date(cached.cachedAt || Date.now()).toISOString(),
+            };
+            clientBootstrapCache = result;
+            return result;
+        }
+        return clientBootstrapCache || null;
+    }
+
+    try {
+        const feedVersion = await fetchFeedVersion(untracked);
+        const rawUrl = FEED_INDEX_URL;
+        const signedUrl = await signUrlWithVersion(rawUrl, feedVersion.version);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+        let res = await fetch(signedUrl, getCDNFetchOptions({
+            cache: forceLive ? 'no-store' : 'force-cache',
+            ...(!forceLive && !untracked ? { next: { revalidate: false, tags: customTags ?? ['feed-index'] } } : {}),
+            signal: controller.signal,
+        }));
+
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+            cancelResponseBody(res);
+            console.warn(`Feed index returned ${res.status}, falling back to bootstrap feed`);
+            return _fetchBootstrapFeed(forceLive, customTags, untracked);
+        }
+
+        const data = await res.json() as BootstrapFeedResponse;
+        if (!data || !Array.isArray(data.opportunities)) {
+            return _fetchBootstrapFeed(forceLive, customTags, untracked);
+        }
+
+        return data;
+    } catch (err) {
+        console.warn('Feed index fetch failed, falling back to bootstrap:', err instanceof Error ? err.message : err);
+        return _fetchBootstrapFeed(forceLive, customTags, untracked);
+    }
+};
+export const fetchFeedIndex = cache(_fetchFeedIndex);
+
+/**
  * Fetches the static expired feed from the CDN.
  * Used as a fallback by detail pages to prevent 404s for recently expired opportunities.
  */
@@ -431,9 +490,58 @@ const _fetchGovernmentFeed = async (_forceLive = false, customTags?: string[], u
 export const fetchGovernmentFeed = cache(_fetchGovernmentFeed);
 
 /**
+ * Fetches an individual opportunity JSON directly from R2/CDN edge.
+ * Used by job detail pages (/jobs/[slug]) for ultra-fast, ~2.5KB payload loads.
+ */
+const _fetchOpportunityDetail = async (idOrSlug: string, untracked = false): Promise<Opportunity | null> => {
+    if (!idOrSlug) return null;
+    try {
+        const feedVersion = await fetchFeedVersion(untracked);
+        
+        let targetId = idOrSlug;
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+        
+        if (!isUuid) {
+            // Quick in-memory check against lightweight feed index (~20KB) to resolve slug -> id
+            const index = await fetchFeedIndex(false, undefined, untracked);
+            const matched = index?.opportunities?.find(o => o.slug === idOrSlug || o.id === idOrSlug);
+            if (matched?.id) {
+                targetId = matched.id;
+            }
+        }
+
+        const rawUrl = `${CDN_URL}/jobs/${encodeURIComponent(targetId)}.json`;
+        const signedUrl = typeof window === 'undefined'
+            ? await signUrlWithVersion(rawUrl, feedVersion.version)
+            : `${rawUrl}?v=${feedVersion.version}`;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+        const res = await fetch(signedUrl, getCDNFetchOptions({
+            cache: 'force-cache',
+            signal: controller.signal,
+        }));
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+            const data = await res.json() as Opportunity;
+            if (data && (data.id || data.title)) {
+                return data;
+            }
+        }
+        cancelResponseBody(res);
+    } catch {
+        // Fallback to bootstrap feed search in caller
+    }
+    return null;
+};
+export const fetchOpportunityDetail = cache(_fetchOpportunityDetail);
+
+/**
  * Fetches a specific category shard (e.g. trending, remote, 2026)
  */
-export async function fetchCategoryShard(id: string, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> {
+const _fetchCategoryShard = async (id: string, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> => {
     if (typeof window !== 'undefined') {
         return null;
     }
@@ -467,12 +575,13 @@ export async function fetchCategoryShard(id: string, customTags?: string[], untr
         console.warn(`Failed to fetch shard ${id}:`, err);
         return null;
     }
-}
+};
+export const fetchCategoryShard = cache(_fetchCategoryShard);
 
 /**
  * Fetches a specific company shard (e.g. google, microsoft)
  */
-export async function fetchCompanyShard(slug: string, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> {
+const _fetchCompanyShard = async (slug: string, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> => {
     if (typeof window !== 'undefined') {
         return null;
     }
@@ -506,7 +615,8 @@ export async function fetchCompanyShard(slug: string, customTags?: string[], unt
         console.warn(`Failed to fetch company shard ${slug}:`, err);
         return null;
     }
-}
+};
+export const fetchCompanyShard = cache(_fetchCompanyShard);
 
 export interface EducationMetadata {
     educationLevels: string[];
@@ -529,7 +639,7 @@ async function signStableUrl(rawUrl: string, untracked = false): Promise<string>
 /**
  * Fetches education metadata from CDN through Next's tagged cache.
  */
-export async function fetchEducationMetadata(): Promise<EducationMetadata | null> {
+const _fetchEducationMetadata = async (): Promise<EducationMetadata | null> => {
     if (typeof window !== 'undefined') {
         return null;
     }
@@ -548,12 +658,13 @@ export async function fetchEducationMetadata(): Promise<EducationMetadata | null
         console.warn('Failed to fetch education metadata from CDN:', err);
         return null;
     }
-}
+};
+export const fetchEducationMetadata = cache(_fetchEducationMetadata);
 
 /**
  * Fetches skills list from CDN through Next's tagged cache.
  */
-export async function fetchSkillsMetadata(): Promise<string[] | null> {
+const _fetchSkillsMetadata = async (): Promise<string[] | null> => {
     if (typeof window !== 'undefined') {
         return null;
     }
@@ -572,7 +683,8 @@ export async function fetchSkillsMetadata(): Promise<string[] | null> {
         console.warn('Failed to fetch skills metadata from CDN:', err);
         return null;
     }
-}
+};
+export const fetchSkillsMetadata = cache(_fetchSkillsMetadata);
 
 export interface CompanyMetadata {
     name: string;
@@ -625,7 +737,7 @@ export interface SitemapDataResponse {
 /**
  * Fetches sitemap raw data (companies + up to 1000 opportunities) from the CDN.
  */
-export async function fetchSitemapData(): Promise<SitemapDataResponse | null> {
+const _fetchSitemapData = async (): Promise<SitemapDataResponse | null> => {
     if (typeof window !== 'undefined') {
         return null;
     }
@@ -660,4 +772,5 @@ export async function fetchSitemapData(): Promise<SitemapDataResponse | null> {
         console.warn('Sitemap CDN fetch failed:', err instanceof Error ? err.message : err);
         return null;
     }
-}
+};
+export const fetchSitemapData = cache(_fetchSitemapData);

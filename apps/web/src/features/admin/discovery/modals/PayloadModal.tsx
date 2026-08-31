@@ -204,7 +204,7 @@ export function PayloadModal({
  className="h-8 px-3 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
  >
  <CheckCircleIcon className="w-3.5 h-3.5" />
- Approve
+ Approve & Publish
  </button>
  )}
  {onReject && (
@@ -217,15 +217,6 @@ export function PayloadModal({
  </button>
  )}
  </>
- )}
- {status === 'APPROVED' && onPublish && (
- <button
- onClick={() => { onPublish(data.id); onClose(); }}
- className="h-8 px-3 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
- >
- <SparklesIcon className="w-3.5 h-3.5" />
- Publish Feed
- </button>
  )}
  <button
  onClick={onClose}

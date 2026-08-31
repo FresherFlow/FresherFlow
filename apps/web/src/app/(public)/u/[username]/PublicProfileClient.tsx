@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
@@ -341,11 +342,13 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                             {/* Avatar */}
                             {profile.avatarUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
+                                <Image
                                     src={profile.avatarUrl}
                                     alt={user.fullName || 'Candidate'}
+                                    width={80}
+                                    height={80}
                                     className="w-16 h-16 md:w-20 md:h-20 rounded-2xl object-cover shrink-0 border border-border/80 shadow-xs"
+                                    unoptimized
                                 />
                             ) : (
                                 <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-primary text-primary-foreground font-extrabold text-xl md:text-2xl flex items-center justify-center shrink-0 shadow-xs">
