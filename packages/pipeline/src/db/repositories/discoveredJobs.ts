@@ -221,3 +221,11 @@ export async function markDiscoveredJobStatus(
         console.warn(`[DB] Failed to mark job ${id} as ${status}: ${(error as Error).message}`);
     }
 }
+
+export async function deleteDiscoveredJob(id: string): Promise<void> {
+    try {
+        await pool.query(`DELETE FROM discovered_jobs WHERE id = $1`, [id]);
+    } catch (error) {
+        console.warn(`[DB] Failed to delete job ${id}: ${(error as Error).message}`);
+    }
+}

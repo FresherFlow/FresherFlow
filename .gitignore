@@ -64,7 +64,7 @@ coverage/
 .gemini/
 brain/
 # docs (Documentation should be tracked, but ignore large generated text files)
-docs/
+
 .artifacts
 **/.expo/
 
@@ -111,5 +111,9 @@ scripts/pipeline-client/
 *.db-journal
 
 plans
-
+web/docs/
 # Data dumps and logs 
+files/
+
+
+.*

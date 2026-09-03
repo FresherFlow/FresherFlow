@@ -1,10 +1,10 @@
 import { DiscoveryState } from '@fresherflow/pipeline';
 import { normalizeUrl } from '@fresherflow/pipeline';
-import { PLUGIN_REGISTRY, AtsJob } from '@fresherflow/plugins';
+import { PLUGIN_REGISTRY, AtsJob, BOARD_SET } from '@fresherflow/plugins';
 import { parseJobUrl } from '@fresherflow/parser';
 import { isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/utils';
 import { isJobLive } from '@fresherflow/pipeline';
-import { BAD_TITLE_REGEXES } from '@fresherflow/pipeline';
+import { BAD_TITLE_REGEXES, loadRoleWords, titleHasValidRoleWord } from '@fresherflow/pipeline';
 
 export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning: () => boolean) {
     const VERIFIER_CONCURRENCY = 3;
@@ -87,7 +87,15 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                         continue;
                     }
 
-                    const atsScore = scoreJobDescription(nativeData.rawPayload.title || candidate.aggregatorTitle || 'Unknown', nativeData.textForFiltering);
+                    // Check for dead API responses
+                    const apiText = nativeData.textForFiltering || '';
+                    if (apiText === '{"error":"Job not found"}' || apiText.includes('Job not found') || apiText.length < 100) {
+                        console.log(`  -> ❌ Skipping API job: Dead or empty response (${apiText.length} chars)`);
+                        state.visited["__discovered_apply_links__"].push(normalizeUrl(candidate.applyLink));
+                        continue;
+                    }
+
+                    const atsScore = scoreJobDescription(nativeData.rawPayload.title || candidate.aggregatorTitle || 'Unknown', apiText);
                     if (atsScore.verdict === 'REJECT') {
                         console.log(`  -> ❌ Skipping API job: Rejected by scorer (Score: ${atsScore.score})`);
                         state.visited["__discovered_apply_links__"].push(normalizeUrl(candidate.applyLink));
@@ -100,6 +108,17 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                         console.log(`  -> ❌ Skipping API job: Bad title (${titleToCheck})`);
                         state.visited["__discovered_apply_links__"].push(normalizeUrl(candidate.applyLink));
                         continue;
+                    }
+
+                    // Role title validation: only for ATS sources (skip boards/aggregators/Telegram/Getro)
+                    const sourceIsBoard = candidate.source ? BOARD_SET.has(candidate.source) : false;
+                    if (candidate.sourceType === 'ATS' && !sourceIsBoard) {
+                        const rw = await loadRoleWords();
+                        if (rw.size > 0 && !titleHasValidRoleWord(titleToCheck, rw)) {
+                            console.log(`  -> ❌ Skipping API job: No role match (${titleToCheck})`);
+                            state.visited["__discovered_apply_links__"].push(normalizeUrl(candidate.applyLink));
+                            continue;
+                        }
                     }
 
                     console.log(`  ✅ API LIVE: ${candidate.applyLink}`);
@@ -207,14 +226,39 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                     if (isBadTitle) {
                         console.log(`  -> ❌ Skipping job: Bad title (${jobTitle})`);
                         const normalizedApplyLink = normalizeUrl(actualApplyLink);
-                        state.visited["__discovered_apply_links__"].push(normalizedApplyLink);
+                        state.visited["__discovered_apply_links__"].push(normalizeUrl(candidate.applyLink));
                         if (state.visited["__discovered_apply_links__"].length > 50000) state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
                         state.rejectedReasons[normalizedApplyLink] = `Bad Job Title: ${jobTitle}`;
                         continue;
                     }
 
-                    if (checkResult.atsText) {
-                        const atsScore = scoreJobDescription(jobTitle, checkResult.atsText);
+                    // Role title validation: only for ATS sources (skip boards/aggregators/Telegram/Getro)
+                    const sourceIsBoard2 = candidate.source ? BOARD_SET.has(candidate.source) : false;
+                    if (candidate.sourceType === 'ATS' && !sourceIsBoard2) {
+                        const rw = await loadRoleWords();
+                        if (rw.size > 0 && !titleHasValidRoleWord(jobTitle, rw)) {
+                            console.log(`  -> ❌ Skipping job: No role match (${jobTitle})`);
+                            const normalizedApplyLink = normalizeUrl(actualApplyLink);
+                            state.visited["__discovered_apply_links__"].push(normalizedApplyLink);
+                            if (state.visited["__discovered_apply_links__"].length > 50000) state.visited["__discovered_apply_links__"].slice(-50000);
+                            state.rejectedReasons[normalizedApplyLink] = `No role match: ${jobTitle}`;
+                            continue;
+                        }
+                    }
+
+                    // Reject thin content (same threshold as processor)
+                    const bodyText = checkResult.atsText || '';
+                    if (bodyText.length > 0 && bodyText.length < 600 && !candidate.isAggregatorReview) {
+                        console.log(`  -> ❌ Skipping job: Thin content (${bodyText.length} chars)`);
+                        const normalizedApplyLink2 = normalizeUrl(actualApplyLink);
+                        state.visited["__discovered_apply_links__"].push(normalizedApplyLink2);
+                        if (state.visited["__discovered_apply_links__"].length > 50000) state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
+                        state.rejectedReasons[normalizedApplyLink2] = `Thin content: ${bodyText.length} chars`;
+                        continue;
+                    }
+
+                    if (bodyText) {
+                        const atsScore = scoreJobDescription(jobTitle, bodyText);
                         if (atsScore.verdict === 'REJECT') {
                             console.log(`  -> ❌ Skipping job: Rejected by scorer (Score: ${atsScore.score})`);
                             continue;

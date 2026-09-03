@@ -46,7 +46,7 @@ export class GetroService implements IScraper {
         const body: Record<string, any> = {
           hitsPerPage,
           page,
-          query: input.location || input.searchTerm || 'India',
+          query: input.location || input.searchTerm || '',
           filters: {
             seniority: ['internship', 'entry_level'],
           },
@@ -82,6 +82,12 @@ export class GetroService implements IScraper {
 
   private parseJob(rj: GetroJob, input: ScraperInputDto): JobPostDto | null {
     if (!rj.title) return null;
+
+    // Reject if Getro JSON explicitly tags as senior/mid/lead/director/manager/staff
+    const seniority = Array.isArray(rj.seniority) ? rj.seniority : (rj.seniority ? [rj.seniority] : []);
+    const seniorities = seniority.map(s => String(s).toLowerCase());
+    const isSenior = seniorities.some(s => ['senior', 'sr', 'lead', 'principal', 'director', 'executive', 'manager', 'head', 'vp', 'staff', 'mid'].includes(s));
+    if (isSenior) return null;
 
     const companyName = rj.organization?.name || input.searchTerm || 'Company';
     const applyUrl = rj.apply_url || rj.url || '';

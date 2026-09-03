@@ -174,7 +174,7 @@ async function run(): Promise<void> {
         !['--chunk', '--limit', '--batch-size', '--batch-delay'].includes(args[idx - 1])
     );
 
-    const { fetchUnprocessedFromSupabase, markDiscoveredJobStatus } = await import('@fresherflow/pipeline');
+    const { fetchUnprocessedFromSupabase, markDiscoveredJobStatus, deleteDiscoveredJob } = await import('@fresherflow/pipeline');
     const { isJobLive } = await import('./src/liveness.js');
 
     let jobs: any[] = [];
@@ -308,7 +308,7 @@ async function run(): Promise<void> {
                     console.log(`[DEAD] ${job.applyLink} — skipping`);
                     failureList.push({ url: job.applyLink, reason: 'Dead link (404)' });
                     await saveState(job.applyLink, 'REJECTED');
-                    if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
+                    if (job._supabaseId) await deleteDiscoveredJob(job._supabaseId);
                     continue;
                 }
 
@@ -325,7 +325,7 @@ async function run(): Promise<void> {
                     console.log(`[DEAD] Native ATS API returned not found — skipping`);
                     failureList.push({ url: job.applyLink, reason: 'Native ATS API - Job not found' });
                     await saveState(job.applyLink, 'REJECTED');
-                    if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
+                    if (job._supabaseId) await deleteDiscoveredJob(job._supabaseId);
                     continue;
                 }
 
@@ -382,7 +382,7 @@ async function run(): Promise<void> {
                         console.error('Insufficient job description text obtained.');
                         failureList.push({ url: job.applyLink, reason: 'Insufficient page text extracted' });
                         await saveState(job.applyLink, 'FAILED');
-                        if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
+                        if (job._supabaseId) await deleteDiscoveredJob(job._supabaseId);
                         continue;
                     }
                 }
@@ -580,7 +580,7 @@ async function run(): Promise<void> {
                 } catch (parseErr) {
                     console.warn('Zod validation failed:', (parseErr as Error).message);
                     failureList.push({ url: job.applyLink, reason: 'Zod validation failed' });
-                    if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
+                    if (job._supabaseId) await deleteDiscoveredJob(job._supabaseId);
                     continue;
                 }
 
@@ -608,7 +608,7 @@ async function run(): Promise<void> {
                     if (!ok) {
                         console.log(`[FILTER] International job skipped: ${JSON.stringify(extracted.structuredLocations)}`);
                         failureList.push({ url: job.applyLink, reason: 'International/unsupported location' });
-                        if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
+                        if (job._supabaseId) await deleteDiscoveredJob(job._supabaseId);
                         continue;
                     }
                 }
@@ -619,7 +619,7 @@ async function run(): Promise<void> {
                 if (minExp > 1 || (minExp >= 1 && maxExp > 1) || maxExp > 2) {
                     console.log(`[FILTER] Non-fresher skipped: experience=${minExp}-${maxExp} yr`);
                     failureList.push({ url: job.applyLink, reason: `Non-fresher (experience=${minExp}-${maxExp} yr)` });
-                    if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
+                    if (job._supabaseId) await deleteDiscoveredJob(job._supabaseId);
                     continue;
                 }
 
@@ -629,7 +629,7 @@ async function run(): Promise<void> {
                 if (scoreResult.verdict === 'REJECT') {
                     console.log(`[FILTER] Domain Scorer rejected: ${scoreResult.metadata.blockingRule || 'Low Score'}`);
                     failureList.push({ url: job.applyLink, reason: `Domain Scorer rejected: ${scoreResult.metadata.blockingRule || 'Low Score'}` });
-                    if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
+                    if (job._supabaseId) await deleteDiscoveredJob(job._supabaseId);
                     continue;
                 }
 
@@ -659,7 +659,7 @@ async function run(): Promise<void> {
                     } else {
                         failureList.push({ url: job.applyLink, reason: 'Supabase API insert rejected' });
                         await saveState(job.applyLink, 'FAILED');
-                        if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
+                        if (job._supabaseId) await deleteDiscoveredJob(job._supabaseId);
                     }
                 } else {
                     console.log('Dry-run: skipping API upload.');
@@ -672,7 +672,7 @@ async function run(): Promise<void> {
                 console.error(`[CRITICAL] Error processing ${job.applyLink}:`, jobErr);
                 failureList.push({ url: job.applyLink, reason: `Crash: ${(jobErr as Error).message}` });
                 await saveState(job.applyLink, 'FAILED');
-                if (job._supabaseId) await markDiscoveredJobStatus(job._supabaseId, 'REJECTED');
+                if (job._supabaseId) await deleteDiscoveredJob(job._supabaseId);
             }
 
             // Cooldown between batches

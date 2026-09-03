@@ -197,11 +197,18 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                 const jobLinks: string[] = [];
                 const siteDomain = new URL(site.urls[0]).hostname;
 
+                let allLinksThisSite: { text: string; href: string }[] = [];
+                const govtUrls = new Set((site as any).govtUrls || []);
                 for (const url of site.urls) {
+                    if (govtUrls.has(url)) {
+                        console.log(`  -> Skipping govt URL: ${url}`);
+                        continue;
+                    }
                     console.log(`  -> Loading start page: ${url}`);
                     try {
                         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
                         const allLinks = await page.$$eval('a', anchors => anchors.map(a => ({ text: a.innerText.trim(), href: a.href })));
+                        allLinksThisSite.push(...allLinks);
                         const filtered = allLinks
                             .filter(l => {
                                 try {
@@ -228,7 +235,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                                         u.pathname.endsWith('-jobs')
                                     ) return false;
                                     return u.hostname.includes(siteDomain) &&
-                                        (u.pathname.includes('job') || u.pathname.includes('hiring') || u.pathname.includes('recruitment') || u.pathname.includes('career') || u.pathname.includes('vacancy') || u.pathname.includes('opportunity') || u.pathname.includes('fresher'));
+                                        (u.pathname.includes('job') || u.pathname.includes('hiring') || u.pathname.includes('recruitment') || u.pathname.includes('career') || u.pathname.includes('vacancy') || u.pathname.includes('opportunity') || u.pathname.includes('fresher') || u.pathname.includes('walk') || u.pathname.includes('drive') || u.pathname.includes('intern'));
                                 } catch {
                                     return false;
                                 }
@@ -240,12 +247,36 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                     }
                 }
 
+                // Follow pagination: check for ?page=N links on start pages
+                const startUrls = new Set(site.urls.map(u => u.split('?')[0]));
+                const paginationLinks = allLinksThisSite
+                    .filter(l => /\?page=\d+/.test(l.href) && !startUrls.has(l.href.split('?')[0]))
+                    .map(l => l.href)
+                    .slice(0, 5); // max 5 extra pages per start URL
+                for (const pageUrl of paginationLinks) {
+                    try {
+                        await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 15000 });
+                        const pageLinks = await page.$$eval('a', anchors => anchors.map(a => ({ text: a.innerText.trim(), href: a.href })));
+                        const pageFiltered = pageLinks
+                            .filter(l => {
+                                try {
+                                    const u = new URL(l.href);
+                                    if (u.pathname === '/' || u.pathname.includes('/category/') || u.pathname.includes('/tag/') || u.pathname.includes('/page/') || u.pathname.includes('/author/') || u.pathname.includes('/search/')) return false;
+                                    return u.hostname.includes(siteDomain) &&
+                                        (u.pathname.includes('job') || u.pathname.includes('hiring') || u.pathname.includes('recruitment') || u.pathname.includes('career') || u.pathname.includes('vacancy') || u.pathname.includes('opportunity') || u.pathname.includes('fresher') || u.pathname.includes('walk') || u.pathname.includes('drive') || u.pathname.includes('intern'));
+                                } catch { return false; }
+                            })
+                            .map(l => l.href);
+                        jobLinks.push(...pageFiltered);
+                    } catch {}
+                }
+
                 const uniqueJobLinks = [...new Set(jobLinks)];
                 const visitedSet = new Set(state.visited[site.name]);
                 const unvisitedLinks = uniqueJobLinks.filter(link => !visitedSet.has(link));
                 console.log(`Found ${unvisitedLinks.length} new unvisited links for ${site.name}.`);
 
-                for (const jobLink of unvisitedLinks.slice(0, 20)) {
+                for (const jobLink of unvisitedLinks.slice(0, 50)) {
                     if (state.isTimeUp()) {
                         console.log(`\n[Timeout] ⏱️ Exceeded 80 minutes, halting aggregator post processing.`);
                         break;

@@ -151,6 +151,17 @@ export function cleanClickbait(markdown: string): string {
     // Strip any lingering markdown images
     clean = clean.replace(/!\[.*?\]\(.*?\)/g, '');
 
+    // Strip Internshala-style markdown links: [Text](/company/...) or [Text](/static/...)
+    clean = clean.replace(/\[([^\]]+)\]\(\/company\/[^)]+\)/g, '$1');
+    clean = clean.replace(/\[([^\]]*)\]\(\/static\/[^)]+\)/g, '');
+    clean = clean.replace(/\[([^\]]*)\]\(https?:\/\/wa\.me\/[^)]+\)/g, '');
+    clean = clean.replace(/\[([^\]]*)\]\(https?:\/\/internshala\.com\/[^)]+\)/g, '');
+
+    // Strip Internshala metadata lines
+    clean = clean.replace(/^\s*(?:Start Date|Duration|Stipend|APPLY BY|Posted|Internship|Fresher Job|\d+ applicants)\s.*$/gmi, '');
+    clean = clean.replace(/^\s*Be an early applicant\s*$/gmi, '');
+    clean = clean.replace(/^\s*Internship !\s*$/gmi, '');
+
     // Collapse excessive blank lines
     clean = clean.replace(/\r/g, '').replace(/\n{3,}/g, '\n\n');
 

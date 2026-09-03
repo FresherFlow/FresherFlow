@@ -31,7 +31,7 @@ export function isValidApplyLink(urlStr: string, currentDomain: string): boolean
                 return false;
             }
         }
-        if (u.protocol.includes('mailto')) return false;
+        if (u.protocol.includes('mailto') || u.protocol.includes('javascript')) return false;
         if (targetHost.startsWith('courses.')) return false;
         if (u.pathname.toLowerCase().includes('.pdf')) return false;
 

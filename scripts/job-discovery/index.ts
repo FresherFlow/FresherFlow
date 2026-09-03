@@ -1,6 +1,7 @@
 import { loadEnv } from '@fresherflow/pipeline';
 import { bootstrapState } from './src/pipeline/bootstrap.js';
 import { discoverAtsJobs, discoverAggregatorJobs } from './src/pipeline/discovery.js';
+import { discoverChannelJobs } from './src/pipeline/channels.js';
 import { discoverDorkerJobs } from './src/pipeline/dorker.js';
 import { verifyCandidates } from './src/pipeline/verifier.js';
 import { persistLocalData, uploadToDataLake } from './src/pipeline/storage.js';
@@ -26,11 +27,12 @@ async function run() {
         // Start the verifier daemon in parallel
         const verifierPromise = verifyCandidates(state, () => isDiscoveryRunning);
 
-        // Run all three discovery phases concurrently — dorker doesn't block aggregators
+        // Run all four discovery phases concurrently — dorker and channels don't block aggregators
         await Promise.all([
             discoverAtsJobs(state),
             discoverDorkerJobs(state),
             discoverAggregatorJobs(state),
+            discoverChannelJobs(state),
         ]);
 
         // Signal that discovery is complete

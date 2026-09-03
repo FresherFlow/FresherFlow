@@ -122,13 +122,15 @@ export const HEAVY_DORK_QUERIES = [
     'site:boards.greenhouse.io ("intern" OR "internship" OR "fresher" OR "junior" OR "SDE 1") ("India" OR "Remote")',
 ];
 
-export let TARGET_SITES: { name: string; urls: string[] }[] = [];
+export let TARGET_SITES: { name: string; urls: string[]; govtUrls?: string[] }[] = [];
 
-export async function fetchTargetSitesFromCdn(): Promise<{ name: string; urls: string[] }[]> {
+export async function fetchTargetSitesFromCdn(): Promise<{ name: string; urls: string[]; govtUrls?: string[] }[]> {
     try {
         const res = await fetch(`${CDN_URL}/aggregators.json`);
         if (res.ok) {
-            TARGET_SITES = await res.json();
+            const raw: any = await res.json();
+            // Support both old flat array format and new { sites: [...] } wrapper
+            TARGET_SITES = Array.isArray(raw) ? raw : (raw?.sites ?? []);
             return TARGET_SITES;
         }
     } catch {}
@@ -187,6 +189,47 @@ export const BAD_TITLE_REGEXES = [
     /^(login|sign in|welcome|job details|job details page|careers|opportunities|skip to content|careers at .+|jobs at .+|error|404|403|not found|access denied|page not found)$/i,
     /\b(am -|old -)\b/i
 ];
+
+// ── Role Title Words (from CDN roles.json) ──────────────────────────────────
+// Used to reject garbage titles from ATS scrapers (page titles, internal codes).
+// Only applied to ATS plugin sources — boards, aggregators, Telegram skip this.
+let _roleWords: Set<string> | null = null;
+let _roleWordsPromise: Promise<Set<string>> | null = null;
+
+export async function loadRoleWords(): Promise<Set<string>> {
+    if (_roleWords) return _roleWords;
+    if (_roleWordsPromise) return _roleWordsPromise;
+
+    _roleWordsPromise = (async () => {
+        try {
+            const res = await fetch(`${CDN_URL}/api/meta/roles.json`, { signal: AbortSignal.timeout(8000) });
+            if (res.ok) {
+                const roles: string[] = await res.json();
+                const words = new Set<string>();
+                for (const role of roles) {
+                    for (const w of role.toLowerCase().split(/\s+/)) {
+                        if (w.length >= 2) words.add(w);
+                    }
+                }
+                _roleWords = words;
+                console.log(`[RoleFilter] Loaded ${words.size} role words from CDN`);
+                return words;
+            }
+        } catch (err) {
+            console.warn('[RoleFilter] CDN fetch failed:', (err as Error).message);
+        }
+        _roleWords = new Set();
+        return _roleWords;
+    })();
+    return _roleWordsPromise;
+}
+
+export function titleHasValidRoleWord(title: string, roleWords: Set<string>): boolean {
+    if (!title || roleWords.size === 0) return true;
+    const titleLower = title.toLowerCase();
+    const titleWords = titleLower.split(/[^a-z0-9\/]+/).filter(w => w.length >= 2);
+    return titleWords.some(w => roleWords.has(w));
+}
 
 export const DORKER_ENABLED = process.env.DORKER_ENABLED !== 'false';
 export const DORKER_PAGES_PER_QUERY = parseInt(process.env.DORKER_PAGES_PER_QUERY || '2', 10);

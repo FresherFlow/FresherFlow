@@ -92,8 +92,16 @@ export class ConsiderService implements IScraper {
       const data = searchRes.data;
       const rawJobs: ConsiderJob[] = data.jobs || [];
       const jobs: JobPostDto[] = [];
+    const ACCEPTED_SENIORITIES = new Set(['internship', 'intern', 'entry_level', 'junior']);
 
       for (const rj of rawJobs) {
+        // Filter: only include internship and entry-level (fresher) jobs
+        const jobSeniorities = (rj.jobSeniorities || []).map(s => (s.id || '').toLowerCase());
+        const hasAcceptedSeniority = jobSeniorities.some(s => ACCEPTED_SENIORITIES.has(s));
+        if (!hasAcceptedSeniority && jobSeniorities.length > 0) {
+          continue; // Skip mid/senior/director/manager roles
+        }
+        
         const parsed = this.parseJob(rj, input);
         if (parsed) {
           jobs.push(parsed);
@@ -149,8 +157,10 @@ export class ConsiderService implements IScraper {
     const companyIndustry = marketTags.length > 0 ? marketTags.join(', ') : undefined;
 
     const jobFunction = (rj.jobFunctions || [])[0]?.label || undefined;
-    const isIntern = rj.jobSeniorities?.some(s => s.id === 'internship') || /intern/i.test(rj.title);
-    const jobType = isIntern ? [JobType.INTERNSHIP] : [JobType.FULL_TIME];
+    const isIntern = rj.jobSeniorities?.some(s => s.id === 'internship' || s.id === 'intern') || /intern/i.test(rj.title);
+    const isEntryLevel = rj.jobSeniorities?.some(s => s.id === 'entry_level' || s.id === 'junior');
+    // Include both internships and entry-level (fresher) jobs
+    const jobType = isIntern ? [JobType.INTERNSHIP] : (isEntryLevel ? [JobType.FULL_TIME] : [JobType.FULL_TIME]);
 
     const companyLogo = rj.companyLogos?.manual?.src || rj.companyLogos?.linkedin?.src || rj.company?.logo || undefined;
     const companyUrl = rj.companyDomain ? (rj.companyDomain.startsWith('http') ? rj.companyDomain : `https://${rj.companyDomain}`) : undefined;

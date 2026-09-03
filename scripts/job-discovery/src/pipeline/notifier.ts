@@ -2,6 +2,21 @@ import fs from 'node:fs/promises';
 import { DiscoveryState, DiscoveredJobEntry } from '@fresherflow/pipeline';
 import { sendTelegramMessage } from '@fresherflow/utils';
 
+function getFormattedDate(): string {
+    const now = new Date();
+    const months = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'];
+    const day = now.getDate();
+    const suffix = (d: number) => {
+        if (d > 3 && d < 21) return 'th';
+        switch (d % 10) {
+            case 1: return 'st'; case 2: return 'nd'; case 3: return 'rd';
+            default: return 'th';
+        }
+    };
+    return `${day}${suffix(day)} ${months[now.getMonth()]}, ${now.getFullYear()}`;
+}
+
 export async function sendNotifications(state: DiscoveryState) {
     if (state.newJobsFound.length === 0) {
         console.log("No new jobs found this run.");
@@ -32,7 +47,7 @@ export async function sendNotifications(state: DiscoveryState) {
     const aggOverflow = aggJobs.length > 15 ? `\n  ...and ${aggJobs.length - 15} more` : '';
 
     // ── Build message ─────────────────────────────────────────────────────────
-    let tgMsg = `🔥 Job Discovery Run\n`;
+    let tgMsg = `🔥 Job Discovery Run — ${getFormattedDate()}\n`;
     tgMsg += `Total: ${state.newJobsFound.length} jobs`;
     if (reviewJobs.length > 0) {
         tgMsg += ` (${validJobs.length} confirmed, ${reviewJobs.length} review)`;
@@ -67,22 +82,25 @@ const SOCIAL_PLATFORMS = ['x', 'linkedin', 'telegram'] as const;
 const STAGGER_MS = 10 * 60 * 1000; // 10 minutes between posts
 
 function formatXCaption(job: DiscoveredJobEntry): string {
+    const date = getFormattedDate();
     const title = job.title.length > 60 ? job.title.slice(0, 57) + '...' : job.title;
-    const caption = `New Job Opening\n\nRole: ${title}\nApply: ${job.applyLink}\n\n#FresherJobs #Hiring`;
+    const caption = `New Job Opening | ${date}\n\nRole: ${title}\nApply: ${job.applyLink}\n\n#FresherJobs #Hiring`;
     // X limit is 280 chars. If over, shorten further.
     if (caption.length > 280) {
         const shortTitle = job.title.length > 40 ? job.title.slice(0, 37) + '...' : job.title;
-        return `New Job Opening\n\nRole: ${shortTitle}\nApply: ${job.applyLink}\n\n#FresherJobs`;
+        return `New Job Opening | ${date}\n\nRole: ${shortTitle}\nApply: ${job.applyLink}\n\n#FresherJobs`;
     }
     return caption;
 }
 
 function formatLinkedInCaption(job: DiscoveredJobEntry): string {
-    return `New Job Opening\n\nRole: ${job.title}\n\nApply: ${job.applyLink}\n\n#Freshers #Hiring #EntryLevel #Jobs`;
+    const date = getFormattedDate();
+    return `New Job Opening | ${date}\n\nRole: ${job.title}\n\nApply: ${job.applyLink}\n\n#Freshers #Hiring #EntryLevel #Jobs`;
 }
 
 function formatTelegramCaption(job: DiscoveredJobEntry): string {
-    return `New Job Opening\n\nRole: ${job.title}\nApply Here: ${job.applyLink}\n\n#Freshers #Hiring #EntryLevel`;
+    const date = getFormattedDate();
+    return `New Job Opening | ${date}\n\nRole: ${job.title}\nApply Here: ${job.applyLink}\n\n#Freshers #Hiring #EntryLevel`;
 }
 
 function formatCaption(job: DiscoveredJobEntry, platform: string): string {

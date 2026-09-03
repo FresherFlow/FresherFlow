@@ -1,5 +1,6 @@
 import { pool } from '../pool.js';
 import { resolveCompanyWebsiteAndLogo } from '@fresherflow/utils';
+import { parseHtmlToMarkdown } from '@fresherflow/parser';
 
 export interface ProcessedJobPayload {
   discoveredJobId?: string | null;
@@ -88,8 +89,8 @@ export async function upsertProcessedJob(
     }
   }
 
-  // 3. Fallback for description (NOT NULL column)
-  const description = job.description?.trim() || `${job.title} at ${job.company}. Visit the official careers portal for details.`;
+  // 3. Fallback for description (NOT NULL column) — convert HTML to clean markdown
+  const description = job.description ? parseHtmlToMarkdown(job.description) : `${job.title} at ${job.company}. Visit the official careers portal for details.`;
 
   // 4. Clean passout years as integers for integer[] column
   const passoutYears: number[] = Array.isArray(job.allowedPassoutYears)
