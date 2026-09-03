@@ -31,7 +31,7 @@ import { DataTable } from '@/ui/data-table/DataTable';
 import { DataTableColumnHeader } from '@/ui/data-table/DataTableColumnHeader';
 import { DataTableToolbar } from '@/ui/data-table/DataTableToolbar';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/ui/Table';
-import { ColumnDef } from '@tanstack/react-table';
+import { LegacyColumnDef } from '@tanstack/react-table/legacy';
 import { Tabs } from '@repo/ui/components/Tabs';
 
 interface GovernmentJobDetailViewProps {
@@ -148,7 +148,7 @@ const VacancyTable = ({ data }: { data: { columns: string[]; rows: (string | num
         return val;
     };
 
-    const tableColumns = React.useMemo<ColumnDef<any>[]>(() => {
+    const tableColumns = React.useMemo<LegacyColumnDef<any>[]>(() => {
         return columns.map((col, idx) => {
             const isNumeric = isNumericColumn[idx];
             return {
@@ -478,7 +478,7 @@ export function GovernmentJobDetailView({
         (r: any) => r.notes && r.notes.trim() !== '' && r.notes.trim() !== '-'
     );
 
-    const relaxationColumns: ColumnDef<any>[] = hasAnyRelaxationNotes
+    const relaxationColumns: LegacyColumnDef<any>[] = hasAnyRelaxationNotes
         ? [
             { accessorKey: "category", header: "Category", enableSorting: false },
             { accessorKey: "relaxation", header: "Age Relaxation", enableSorting: false },
@@ -505,7 +505,7 @@ export function GovernmentJobDetailView({
 
     // Mapping exam pattern syllabus tabs
     const syllabusTabs = (Array.isArray(details.examPattern?.tiers) ? details.examPattern.tiers : []).map((tier: any, index: number) => {
-        const subjectsColumns: ColumnDef<any>[] = [
+        const subjectsColumns: LegacyColumnDef<any>[] = [
             { accessorKey: "subject", header: "Subject", enableSorting: false },
             { accessorKey: "questions", header: "Questions", enableSorting: false },
             { accessorKey: "marks", header: "Marks", enableSorting: false },

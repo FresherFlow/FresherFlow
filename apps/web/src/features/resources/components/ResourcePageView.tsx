@@ -248,8 +248,8 @@ export function ResourcePageView({ feed }: { feed: ResourcesFeed }) {
                 {filteredResources.length === 0 ? (
                     <EmptyState
                         title="No resources found"
-                        description="Try removing some filters or search keywords."
-                        action={<Button variant="outline" onClick={() => { setSearch(''); setActiveSkills([]); }} className="h-11 px-6 text-sm font-bold capitalize tracking-widest">Clear all filters</Button>}
+                        description={search.trim() || activeSkills.length > 0 ? "Try removing some filters or search keywords." : undefined}
+                        action={search.trim() || activeSkills.length > 0 ? <Button variant="outline" onClick={() => { setSearch(''); setActiveSkills([]); }} className="h-11 px-6 text-sm font-bold capitalize tracking-widest">Clear all filters</Button> : undefined}
                     />
                 ) : (
                     <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">

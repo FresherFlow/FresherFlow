@@ -23,7 +23,7 @@ export function ScrollReveal({ children, delay = 0, className, ...props }: Scrol
           observer.unobserve(el);
         }
       },
-      { threshold: 0.1, rootMargin: '-50px' }
+      { threshold: 0.05, rootMargin: '-20px' }
     );
 
     observer.observe(el);
@@ -34,8 +34,8 @@ export function ScrollReveal({ children, delay = 0, className, ...props }: Scrol
     <div
       ref={ref}
       className={cn(
-        'transition-all duration-[600ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
-        hasRevealed ? '[clip-path:inset(0_0_0_0)]' : '[clip-path:inset(0_0_100%_0)]',
+        'transition-all duration-[500ms] ease-[cubic-bezier(0.23,1,0.32,1)]',
+        hasRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3',
         className
       )}
       style={{ transitionDelay: `${delay}ms` }}

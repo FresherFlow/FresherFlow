@@ -224,9 +224,15 @@ export default function PublicSubmitPage() {
         { id: 'HISTORY', label: 'History', icon: ClockIcon },
     ];
 
+    const steps = [
+        { title: 'Paste any link', body: 'ATS portals, Google Forms, careers pages — anything works.' },
+        { title: 'We normalize & verify', body: 'Duplicates removed, details parsed, queued for review.' },
+        { title: 'Live on feed + Telegram', body: 'Verified posts reach the community within hours.' },
+    ];
+
     return (
-        <div className="min-h-screen bg-background pb-20">
-            <main className="max-w-xl mx-auto px-4 py-8 space-y-6">
+        <div className="min-h-[calc(100vh-3.5rem)] bg-background pb-20">
+            <main className="max-w-xl lg:max-w-6xl mx-auto px-4 py-8 space-y-6">
                 {/* Header */}
                 <div className="space-y-1.5">
                     <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold">
@@ -237,6 +243,8 @@ export default function PublicSubmitPage() {
                     <p className="text-sm text-muted-foreground">Job link, prep resource, or referral — submit in seconds.</p>
                 </div>
 
+                <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8 lg:items-start">
+                <div className="min-w-0 space-y-6 lg:rounded-2xl lg:border lg:border-border/60 lg:bg-card lg:shadow-xs lg:p-6">
                 {/* Tab Selector */}
                 <div className="flex gap-1 p-1 bg-muted/60 rounded-xl border border-border/80 overflow-x-auto">
                     {tabs.map((tab) => (
@@ -493,9 +501,9 @@ export default function PublicSubmitPage() {
                     </div>
                 )}
 
-                {/* Guidelines */}
+                {/* Guidelines — inline on mobile, verification rail on desktop */}
                 {mode !== 'HISTORY' && (
-                    <div className="space-y-2 pt-2 border-t border-border/40">
+                    <div className="space-y-2 pt-2 border-t border-border/40 lg:hidden">
                         <p className="text-xs font-semibold text-foreground">Verification</p>
                         <ul className="space-y-1.5 text-xs text-muted-foreground">
                             <li className="flex gap-2"><span className="text-primary">•</span> Freshers, 2024–2026 graduates, 0–1yr experience</li>
@@ -504,6 +512,38 @@ export default function PublicSubmitPage() {
                         </ul>
                     </div>
                 )}
+                </div>
+
+                {/* Right rail — desktop only */}
+                <aside className="hidden lg:flex flex-col gap-4 lg:sticky lg:top-20">
+                    {/* How it works */}
+                    <div className="rounded-2xl border border-border/60 bg-card shadow-xs p-5 space-y-4">
+                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/70">How it works</p>
+                        <ol className="space-y-4">
+                            {steps.map((step, index) => (
+                                <li key={step.title} className="flex gap-3">
+                                    <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                                        {index + 1}
+                                    </span>
+                                    <div className="space-y-0.5">
+                                        <p className="text-sm font-semibold text-foreground">{step.title}</p>
+                                        <p className="text-xs text-muted-foreground leading-relaxed">{step.body}</p>
+                                    </div>
+                                </li>
+                            ))}
+                        </ol>
+                    </div>
+                    {/* Verification */}
+                    <div className="rounded-2xl border border-border/60 bg-card shadow-xs p-5 space-y-3">
+                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/70">Verification</p>
+                        <ul className="space-y-1.5 text-xs text-muted-foreground">
+                            <li className="flex gap-2"><span className="text-primary">•</span> Freshers, 2024–2026 graduates, 0–1yr experience</li>
+                            <li className="flex gap-2"><span className="text-primary">•</span> Official ATS portals, Google Forms, verified HR emails</li>
+                            <li className="flex gap-2"><span className="text-primary">•</span> Verified links go live on feed + Telegram community</li>
+                        </ul>
+                    </div>
+                </aside>
+                </div>
             </main>
         </div>
     );

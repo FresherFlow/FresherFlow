@@ -95,23 +95,14 @@ export function TopUtilityBar() {
                         </DropdownMenu>
                     </div>
 
-                    {pathname !== '/app' && (
-                        <div className="auth-guest-only flex items-center gap-2">
-                            <Link
-                                href="/login"
-                                className="px-3 py-1.5 text-xs font-semibold text-foreground hover:text-primary transition-all duration-150 ease-out active:scale-[0.97] shrink-0"
-                            >
-                                Log in
-                            </Link>
-                            <Link
-                                href="/app"
-                                target="_self"
-                                className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-[0.97] shadow-sm shrink-0"
-                            >
-                                Get App
-                            </Link>
-                        </div>
-                    )}
+                    <div className="auth-guest-only flex items-center gap-2">
+                        <Link
+                            href="/login"
+                            className="px-3 py-1.5 text-xs font-semibold text-foreground hover:text-primary transition-all duration-150 ease-out active:scale-[0.97] shrink-0"
+                        >
+                            Log in
+                        </Link>
+                    </div>
                 </>
             )}
         </div>

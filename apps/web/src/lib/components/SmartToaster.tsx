@@ -50,9 +50,9 @@ export function SmartToaster() {
                     className: '!p-4 !shadow-2xl text-sm font-bold antialiased',
                     duration: 4000,
                 style: {
-                    background: 'hsl(var(--card))',
-                    color: 'hsl(var(--foreground))',
-                    border: '1px solid hsl(var(--border))',
+                    background: 'var(--color-card)',
+                    color: 'var(--color-foreground)',
+                    border: '1px solid var(--color-border)',
                     borderRadius: '12px',
                 },
                 // Add success/error specific styles if needed

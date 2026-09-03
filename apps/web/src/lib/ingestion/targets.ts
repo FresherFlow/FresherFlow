@@ -19,47 +19,67 @@ function resolveAtsCdnBase(): string {
   return '';
 }
 
+// Targets change rarely — cache for a minute so /targets and /stats don't
+// refetch every plugin file on each request.
+const TARGETS_CACHE_TTL = 60_000;
+let targetsCache: { at: number; data: IngestionTarget[] } | null = null;
+
 export async function loadDefaultTargets(): Promise<IngestionTarget[]> {
-  const targets: IngestionTarget[] = [];
+  if (targetsCache && Date.now() - targetsCache.at < TARGETS_CACHE_TTL) {
+    return targetsCache.data;
+  }
+
   const cdnBase = resolveAtsCdnBase();
 
   const atsKeys = Object.keys(PLUGIN_REGISTRY).filter(
     (key) => !BOARD_SET.has(key) && !COMPANY_PROVIDER_SET.has(key)
   );
 
-  for (const ats of atsKeys) {
-    let content: Record<string, string> = {};
-    if (cdnBase) {
-      try {
-        const res = await fetch(`${cdnBase}/${ats}.json`);
-        if (res.ok) {
-          content = (await res.json()) as Record<string, string>;
+  // Fetch every plugin file in parallel with a hard timeout: sequential
+  // unbounded fetches here used to block /targets and /stats for 15-25s when
+  // the CDN was slow or unreachable.
+  const perAts = await Promise.all(
+    atsKeys.map(async (ats): Promise<IngestionTarget[]> => {
+      let content: Record<string, string> = {};
+      if (cdnBase) {
+        try {
+          const res = await fetch(`${cdnBase}/${ats}.json`, {
+            signal: AbortSignal.timeout(4_000),
+          });
+          if (res.ok) {
+            content = (await res.json()) as Record<string, string>;
+          }
+        } catch {
+          // ATS file may not be published to the CDN yet
         }
-      } catch {
-        // ATS file may not be published to the CDN yet
+      } else {
+        const filePath = path.join(process.cwd(), '../../docs/data/ats', `${ats}.json`);
+        try {
+          const fileData = await fs.readFile(filePath, 'utf-8');
+          content = JSON.parse(fileData) as Record<string, string>;
+        } catch {
+          // file might not exist yet for this ATS plugin
+        }
       }
-    } else {
-      const filePath = path.join(process.cwd(), '../../docs/data/ats', `${ats}.json`);
-      try {
-        const fileData = await fs.readFile(filePath, 'utf-8');
-        content = JSON.parse(fileData) as Record<string, string>;
-      } catch {
-        // file might not exist yet for this ATS plugin
-      }
-    }
 
-    for (const [slug, company] of Object.entries(content)) {
-      if (slug.startsWith('//')) continue;
-      targets.push({
-        company,
-        ats,
-        slug,
-        resultsWanted: 50,
-        hoursOld: 72,
-        filter: true
-      });
-    }
-  }
+      const targets: IngestionTarget[] = [];
+      for (const [slug, company] of Object.entries(content)) {
+        if (slug.startsWith('//')) continue;
+        targets.push({
+          company,
+          ats,
+          slug,
+          resultsWanted: 50,
+          hoursOld: 72,
+          filter: true
+        });
+      }
+      return targets;
+    })
+  );
+
+  const targets = perAts.flat();
+  targetsCache = { at: Date.now(), data: targets };
 
   for (const board of BOARD_SET) {
     targets.push({

@@ -15,8 +15,14 @@ import {
     getTypeHubPath,
     ExtendedOpportunity
 } from './opportunitySeo';
-import { fetchBootstrapFeed, fetchGovernmentFeed } from '@/lib/api/cdnFeed';
+import { fetchBootstrapFeed, fetchGovernmentFeed, fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { getRelatedOpportunities, getValidDirectoryLinks } from '@/features/opportunities/utils/detailUtils';
+
+/** Returns true for errors thrown by notFound() or redirect()/permanentRedirect() in Next.js 15+/16. */
+function isNextNavigationError(err: unknown): boolean {
+    const digest = (err as { digest?: string })?.digest ?? '';
+    return digest === 'NEXT_HTTP_ERROR_FALLBACK;404' || digest.startsWith('NEXT_REDIRECT');
+}
 
 const CRAWLER_PATHS = new Set(['wp-admin', 'wp-login.php', 'xmlrpc.php', 'ads.txt', 'phpmyadmin', 'admin.php', 'demo', 'generate', 'blog', 'null', 'undefined', 'login', 'jobs', 'saved', 'tracker']);
 
@@ -99,10 +105,10 @@ export default async function OpportunityDetailPage({ params }: Props) {
     let validDirectoryLinks = { validSkills: new Set<string>(), validLocations: new Set<string>() };
 
     try {
-        // Parallelize opportunity details and bootstrap feed fetching
+        // Parallelize opportunity details and lightweight feed index fetching
         const [oppResult, feed] = await Promise.all([
             fetchOpportunityForPage(slugOrId),
-            fetchBootstrapFeed(false, undefined, true)
+            fetchFeedIndex(false, undefined, true)
         ]);
 
         opportunityData = oppResult;
@@ -135,10 +141,9 @@ export default async function OpportunityDetailPage({ params }: Props) {
             validDirectoryLinks = getValidDirectoryLinks(feed.opportunities);
         }
     } catch (err) {
-        // Re-throw Next.js navigation errors (notFound, redirect) so they work correctly.
+        // Re-throw Next.js navigation signals (notFound, redirect) — they must propagate.
         // Only swallow genuine network/fetch failures.
-        const msg = err instanceof Error ? err.message : '';
-        if (msg === 'NEXT_NOT_FOUND' || msg === 'NEXT_REDIRECT') throw err;
+        if (isNextNavigationError(err)) throw err;
         // CDN is temporarily down — render client with null so it can show retry UI
         // rather than hard 404-ing on a transient error.
     }
@@ -150,16 +155,10 @@ export default async function OpportunityDetailPage({ params }: Props) {
     return (
         <>
             {opportunityData && !getExpiryState(opportunityData).isExpired && (
-                <>
-                    <script
-                        type="application/ld+json"
-                        dangerouslySetInnerHTML={{ __html: JSON.stringify(generateOpportunityJsonLd(opportunityData)) }}
-                    />
-                    <script
-                        type="application/ld+json"
-                        dangerouslySetInnerHTML={{ __html: JSON.stringify(generateOpportunityBreadcrumbsJsonLd(opportunityData)) }}
-                    />
-                </>
+                <script
+                    type="application/ld+json"
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(generateOpportunityJsonLd(opportunityData)) }}
+                />
             )}
             <Suspense fallback={<OpportunityDetailSkeleton />}>
                 <OpportunityDetailClient 

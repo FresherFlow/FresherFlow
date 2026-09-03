@@ -12,14 +12,13 @@ interface LogoImageProps {
 export function LogoImage({ width, height, className }: LogoImageProps) {
     return (
         <div className="flex items-center justify-center rounded-lg bg-zinc-900 dark:bg-zinc-900 p-1 shrink-0 shadow-sm">
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
                 src="/logo-white-optimized.png"
                 alt="FresherFlow Logo"
                 width={width}
                 height={height}
-                priority
                 className={cn("object-contain", className)}
-                suppressHydrationWarning
             />
         </div>
     );

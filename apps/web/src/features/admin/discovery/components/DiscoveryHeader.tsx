@@ -94,42 +94,17 @@ export function DiscoveryHeader({
  : 'Checking Engine...'}
  </span>
 
- {/* Telemetry Stats Bar */}
- <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 max-w-full">
- <div className="px-2.5 py-1 rounded bg-muted/30 border border-border/40 text-xs shrink-0">
- <span className="text-muted-foreground">Ingested: </span>
- <span className="text-foreground font-bold">{(stats.totalJobsIngested ?? 0).toLocaleString()}</span>
- </div>
- <div className="px-2.5 py-1 rounded bg-muted/30 border border-border/40 text-xs shrink-0">
- <span className="text-muted-foreground">Saved: </span>
- <span className="text-foreground font-bold">{(stats.totalJobsSaved ?? 0).toLocaleString()}</span>
- </div>
- <div className="px-2.5 py-1 rounded bg-muted/30 border border-border/40 text-xs shrink-0">
- <span className="text-muted-foreground">Skipped: </span>
- <span className="text-foreground font-bold">{(stats.totalJobsSkipped ?? 0).toLocaleString()}</span>
- </div>
- <div className="px-2.5 py-1 rounded bg-muted/30 border border-border/40 text-xs shrink-0">
- <span className="text-muted-foreground">Runs: </span>
- <span className="text-foreground font-bold">{(stats.totalRuns ?? 0).toLocaleString()}</span>
- </div>
- <div className="px-2.5 py-1 rounded bg-muted/30 border border-border/40 text-xs shrink-0">
- <span className="text-muted-foreground">Uptime: </span>
- <span className="text-foreground font-bold">
- {stats.uptimeSeconds ? `${Math.floor(stats.uptimeSeconds / 3600)}h ${Math.floor((stats.uptimeSeconds % 3600) / 60)}m` : '0h 0m'}
- </span>
- </div>
  {lastRunTime && (
- <div className="px-2.5 py-1 rounded bg-muted/30 border border-border/40 text-xs shrink-0">
- <span className="text-muted-foreground">Last Run: </span>
- <span className="text-foreground font-bold">
+ <span className="hidden lg:inline text-xs text-muted-foreground shrink-0">
+ Last run{' '}
+ <span className="text-foreground font-semibold">
  {new Date(lastRunTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
  </span>
- </div>
+ </span>
  )}
  </div>
- </div>
-
- <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+ 
+<div className="flex items-center gap-1.5 shrink-0 ml-auto">
  <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer mr-1 border border-border/60 px-2 py-1 rounded-lg bg-background hover:bg-muted transition-colors">
  <input 
  type="checkbox" 

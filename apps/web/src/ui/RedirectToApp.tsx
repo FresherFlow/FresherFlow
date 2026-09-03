@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { Button } from '@/ui/Button';
 import { LogoImage } from '@/lib/navigation/LogoImage';
 
 export default function RedirectToApp({ title = "Feature moved to Mobile", message }: { title?: string; message?: string }) {
@@ -17,12 +18,11 @@ export default function RedirectToApp({ title = "Feature moved to Mobile", messa
                     </p>
                 </div>
                 <div className="pt-4 flex flex-col gap-3">
-                    <Link 
-                        href="/jobs" 
-                        className="premium-button w-full justify-center text-xs capitalize tracking-widest"
-                    >
-                        Get the Mobile App
-                    </Link>
+                    <Button variant="default" size="sm" asChild className="w-full justify-center text-xs capitalize tracking-widest">
+                        <Link href="/jobs">
+                            Get the Mobile App
+                        </Link>
+                    </Button>
                     <Link 
                         href="/" 
                         className="text-sm font-medium text-primary hover:underline"

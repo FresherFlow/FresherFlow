@@ -45,7 +45,7 @@ export function Footer({ className }: FooterProps) {
     const topCategories = [
         { href: '/govt', label: 'Government Jobs' },
         { href: '/jobs', label: 'Off-Campus Drives' },
-        { href: '/jobs/walk-ins', label: 'Walk-in Interviews' },
+        { href: '/jobs/walkins', label: 'Walk-in Interviews' },
         { href: '/jobs/internships', label: 'Student Internships' },
     ];
 
@@ -69,13 +69,13 @@ export function Footer({ className }: FooterProps) {
     ];
 
     const socialLinks = [
-        { href: 'https://t.me/fresherflowin', label: 'Telegram', Icon: TelegramBrandIcon, colorClass: 'bg-[#229ED9] text-white border-transparent hover:opacity-90 shadow-sm' },
-        { href: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D', label: 'WhatsApp', Icon: WhatsAppBrandIcon, colorClass: 'bg-[#25D366] text-white border-transparent hover:opacity-90 shadow-sm' },
-        { href: 'https://www.linkedin.com/company/fresherflow-in', label: 'LinkedIn', Icon: LinkedInBrandIcon, colorClass: 'bg-[#0A66C2] text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://t.me/fresherflowin', label: 'Telegram', Icon: TelegramBrandIcon, colorClass: 'bg-brand-telegram text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D', label: 'WhatsApp', Icon: WhatsAppBrandIcon, colorClass: 'bg-brand-whatsapp text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://www.linkedin.com/company/fresherflow-in', label: 'LinkedIn', Icon: LinkedInBrandIcon, colorClass: 'bg-brand-linkedin text-white border-transparent hover:opacity-90 shadow-sm' },
         { href: 'https://x.com/Fresherflow', label: 'X', Icon: XBrandIcon, colorClass: 'bg-black dark:bg-white text-white dark:text-black border-transparent hover:opacity-90 shadow-sm' },
-        { href: 'https://discord.gg/CcPAnWSHD', label: 'Discord', Icon: DiscordBrandIcon, colorClass: 'bg-[#5865F2] text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://discord.gg/CcPAnWSHD', label: 'Discord', Icon: DiscordBrandIcon, colorClass: 'bg-brand-discord text-white border-transparent hover:opacity-90 shadow-sm' },
         { href: 'https://instagram.com/fresherflow', label: 'Instagram', Icon: InstagramBrandIcon, colorClass: 'bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white border-transparent hover:opacity-90 shadow-sm' },
-        { href: 'https://www.facebook.com/FresherFlow.in', label: 'Facebook', Icon: FacebookBrandIcon, colorClass: 'bg-[#1877F2] text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://www.facebook.com/FresherFlow.in', label: 'Facebook', Icon: FacebookBrandIcon, colorClass: 'bg-brand-facebook text-white border-transparent hover:opacity-90 shadow-sm' },
     ];
 
     return (
@@ -112,10 +112,10 @@ export function Footer({ className }: FooterProps) {
                     {/* Links Columns */}
                     <div className="space-y-4">
                         <h4 className="text-sm font-bold text-foreground">Opportunities</h4>
-                        <ul className="space-y-2">
+                        <ul className="space-y-1">
                             {topCategories.map((link) => (
                                 <li key={link.href}>
-                                    <Link href={link.href} className="text-sm text-muted-foreground hover:text-primary transition-colors inline-block">
+                                    <Link href={link.href} className="text-sm py-1.5 text-muted-foreground hover:text-primary transition-colors inline-block">
                                         {link.label}
                                     </Link>
                                 </li>
@@ -125,10 +125,10 @@ export function Footer({ className }: FooterProps) {
 
                     <div className="space-y-4">
                         <h4 className="text-sm font-bold text-foreground">Directories</h4>
-                        <ul className="space-y-2">
+                        <ul className="space-y-1">
                             {directories.map((link) => (
                                 <li key={link.href}>
-                                    <Link href={link.href} className="text-sm text-muted-foreground hover:text-primary transition-colors inline-block">
+                                    <Link href={link.href} className="text-sm py-1.5 text-muted-foreground hover:text-primary transition-colors inline-block">
                                         {link.label}
                                     </Link>
                                 </li>
@@ -138,10 +138,10 @@ export function Footer({ className }: FooterProps) {
 
                     <div className="space-y-4">
                         <h4 className="text-sm font-bold text-foreground">Resources</h4>
-                        <ul className="space-y-2">
+                        <ul className="space-y-1">
                             {resources.map((link) => (
                                 <li key={link.href}>
-                                    <Link href={link.href} className="text-sm text-muted-foreground hover:text-primary transition-colors inline-block">
+                                    <Link href={link.href} className="text-sm py-1.5 text-muted-foreground hover:text-primary transition-colors inline-block">
                                         {link.label}
                                     </Link>
                                 </li>
@@ -151,10 +151,10 @@ export function Footer({ className }: FooterProps) {
 
                     <div className="space-y-4">
                         <h4 className="text-sm font-bold text-foreground">FresherFlow</h4>
-                        <ul className="space-y-2">
+                        <ul className="space-y-1">
                             {company.map((link) => (
                                 <li key={link.href}>
-                                    <Link href={link.href} className="text-sm text-muted-foreground hover:text-primary transition-colors inline-block">
+                                    <Link href={link.href} className="text-sm py-1.5 text-muted-foreground hover:text-primary transition-colors inline-block">
                                         {link.label}
                                     </Link>
                                 </li>

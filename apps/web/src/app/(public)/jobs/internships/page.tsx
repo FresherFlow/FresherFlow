@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import CategoryPage from '@/features/opportunities/components/CategoryPage';
-import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+import { fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { toOpportunityCardDTO, OpportunityType } from '@fresherflow/types';
 
 // On-demand revalidation via /api/revalidate — called when jobs are published/expired.
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
 };
 
 export default async function InternshipsPage() {
-    const bootstrapData = await fetchBootstrapFeed(false, undefined, true);
+    const bootstrapData = await fetchFeedIndex(false, undefined, true);
     const initialData = bootstrapData ? {
         opportunities: bootstrapData.opportunities.filter(o => o.type === OpportunityType.INTERNSHIP).map(toOpportunityCardDTO) as any,
         total: bootstrapData.opportunities.filter(o => o.type === OpportunityType.INTERNSHIP).length,

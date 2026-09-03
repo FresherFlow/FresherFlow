@@ -120,6 +120,8 @@ export function AlertsDropdown({ className }: { className?: string }) {
         <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
             <DropdownMenuTrigger asChild>
                 <button
+                    type="button"
+                    suppressHydrationWarning
                     className={cn(
                         'relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all cursor-pointer focus:outline-none',
                         className

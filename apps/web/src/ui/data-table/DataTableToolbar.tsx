@@ -1,18 +1,19 @@
 "use client"
 
-import { Table } from "@tanstack/react-table"
+import type { RowData } from "@tanstack/react-table"
+import type { LegacyReactTable } from "@tanstack/react-table/legacy"
 import { X } from "lucide-react"
 
 import { Button } from "@/ui/Button"
 import { Input } from "@/ui/Input"
 
-interface DataTableToolbarProps<TData> {
-  table: Table<TData>
+interface DataTableToolbarProps<TData extends RowData> {
+  table: LegacyReactTable<TData>
   searchColumn?: string
   searchPlaceholder?: string
 }
 
-export function DataTableToolbar<TData>({
+export function DataTableToolbar<TData extends RowData>({
   table,
   searchColumn,
   searchPlaceholder,

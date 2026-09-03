@@ -1,7 +1,7 @@
 'use client';
 
 import { Opportunity, OpportunityCardDTO } from '@fresherflow/types';
-import JobCard from './JobCard';
+import { JobCardResponsive } from './JobCard';
 import { SkeletonJobCard } from '@/features/opportunities/components/OpportunitySkeletons';
 import { ErrorMessage } from '@/ui/ErrorMessage';
 import { cn } from '@repo/ui/utils/cn';
@@ -84,29 +84,31 @@ export function OpportunityGrid({
                         role="listitem" 
                         data-opp-id={opp.id}
                     >
-                        <JobCard
-                            job={{
-                                ...opp,
-                                normalizedRole: opp.title,
-                                salary: ((opp as any).salaryMin !== undefined && (opp as any).salaryMax !== undefined) ? { min: (opp as any).salaryMin, max: (opp as any).salaryMax } : undefined,
-                            } as any}
-                            jobId={opp.id}
-                            isSaved={(opp as any).isSaved || false}
-                            isApplied={((opp as any).actions || []).some((a: OpportunityAction) => a.actionType === 'APPLIED')}
-                            onToggleSave={() => onToggleSave(opp.id)}
-                            isAdmin={isAdmin}
-                            priority={index < 4}
-                            variant={isSplitView ? 'compact' : 'wide'}
-                            isSelected={opp.id === selectedOppId || (opp as any).slug === selectedOppId}
-                            searchQuery={searchQuery}
-                            className="bg-card/60 border-border/60 backdrop-blur-xl shadow-md hover:shadow-lg hover:border-primary/40 active:scale-[0.97] transition-all duration-150 ease-out"
-                            onClick={(e) => {
-                                if (onSelectOpportunity) {
-                                    e.preventDefault();
-                                    onSelectOpportunity(opp);
+                        <JobCardResponsive
+                                job={
+                                    {
+                                        ...opp,
+                                        normalizedRole: opp.title,
+                                        salary: ((opp as any).salaryMin !== undefined && (opp as any).salaryMax !== undefined) ? { min: (opp as any).salaryMin, max: (opp as any).salaryMax } : undefined,
+                                    } as any
                                 }
-                            }}
-                        />
+                                jobId={opp.id}
+                                isSaved={(opp as any).isSaved || false}
+                                isApplied={((opp as any).actions || []).some((a: OpportunityAction) => a.actionType === 'APPLIED')}
+                                onToggleSave={() => onToggleSave(opp.id)}
+                                isAdmin={isAdmin}
+                                priority={index < 4}
+                                variant={isSplitView ? 'compact' : 'wide'}
+                                isSelected={opp.id === selectedOppId || (opp as any).slug === selectedOppId}
+                                searchQuery={searchQuery}
+                                className="bg-card/60 border-border/60 shadow-sm hover:shadow"
+                                onClick={(e) => {
+                                    if (onSelectOpportunity) {
+                                        e.preventDefault();
+                                        onSelectOpportunity(opp);
+                                    }
+                                }}
+                            />
                     </div>
                 ))}
             </div>

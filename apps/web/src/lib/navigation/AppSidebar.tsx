@@ -50,31 +50,7 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
     const [prevContext, setPrevContext] = useState('default');
     let context = 'default';
 
-    const [engineOnline, setEngineOnline] = useState<boolean | null>(null);
-
-    useEffect(() => {
-        if (!forceSubContext && customHeaderTitle !== 'Discovery Engine') return;
-
-        let isMounted = true;
-        const checkHealth = async () => {
-            try {
-                const INGESTION_URL = process.env.NEXT_PUBLIC_INGESTION_URL || 'http://localhost:3005';
-                const res = await fetch(`${INGESTION_URL}/health`, { cache: 'no-store' });
-                if (isMounted) setEngineOnline(res.ok);
-            } catch {
-                if (isMounted) setEngineOnline(false);
-            }
-        };
-
-        void checkHealth();
-        const interval = setInterval(() => void checkHealth(), 10000);
-        return () => {
-            isMounted = false;
-            clearInterval(interval);
-        };
-    }, [forceSubContext, customHeaderTitle]);
-
-    const sharedPaths = ['/companies', '/saved', '/tracker', '/resources'];
+    const sharedPaths = ['/companies', '/saved', '/tracker', '/resources', '/submit'];
     const isShared = sharedPaths.some(p => pathname.startsWith(p));
 
     if (
@@ -177,24 +153,11 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
                                         <span className="font-semibold text-foreground truncate whitespace-nowrap">{headerTitle}</span>
                                     </Link>
                                 );
-                                const statusBadge = engineOnline !== null ? (
-                                    <div className={cn("flex items-center gap-2 py-1 px-1.5 mx-1 rounded text-xs", collapsed && "justify-center px-0")}>
-                                        <span className={cn("w-2 h-2 rounded-full shrink-0 transition-colors", engineOnline ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)] animate-pulse" : "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]")} />
-                                        {!collapsed && (
-                                            <span className="text-[11px] font-medium text-muted-foreground truncate">
-                                                Engine {engineOnline ? 'Online' : 'Offline'}
-                                            </span>
-                                        )}
-                                    </div>
-                                ) : null;
                                 return (
                                     <>
                                         {collapsed ? (
                                             <Hint label={headerTitle} side="right">{backLink}</Hint>
                                         ) : backLink}
-                                        {statusBadge && (collapsed ? (
-                                            <Hint label={engineOnline ? 'Engine Online' : 'Engine Offline'} side="right">{statusBadge}</Hint>
-                                        ) : statusBadge)}
                                         <div className="h-px bg-border/50 my-2 mx-1" />
                                     </>
                                 );
@@ -266,9 +229,9 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
 
                                 return (
                                     <React.Fragment key={item.name}>
-                                        {context === 'jobs' && (item.name === 'Skills' || item.name === 'Government') && (
-                                            <div className="h-px bg-border/40 my-1 mx-1.5" />
-                                        )}
+                            {context === 'jobs' && (item.name === 'Skills' || item.name === 'Government' || item.name === 'Post a Job') && (
+                                <div className="h-px bg-border/40 my-1 mx-1.5" />
+                            )}
                                         {context === 'government' && item.name === 'Private Jobs' && (
                                             <div className="h-px bg-border/40 my-1 mx-1.5" />
                                         )}
@@ -297,6 +260,8 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
                                 <TooltipTrigger asChild>
                                     <ThemeSwitcher className="w-full">
                                         <button
+                                            type="button"
+                                            suppressHydrationWarning
                                             className="w-full flex items-center gap-2 px-1.5 rounded-md h-9 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring overflow-hidden mb-1"
                                             aria-label="Toggle Theme"
                                         >
@@ -323,6 +288,8 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
                         <Tooltip>
                             <TooltipTrigger asChild>
                                 <button
+                                    type="button"
+                                    suppressHydrationWarning
                                     onClick={onToggleCollapse}
                                     className="w-full flex items-center gap-2 px-1.5 rounded-md h-9 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-ring overflow-hidden"
                                     aria-label="Toggle Sidebar"

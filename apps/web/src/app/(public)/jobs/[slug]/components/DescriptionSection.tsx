@@ -8,10 +8,17 @@ interface DescriptionSectionProps {
 
 export const DescriptionSection = ({ description, title = 'Description' }: DescriptionSectionProps) => {
     return (
-        <div className="space-y-3 py-2">
+        <div className="space-y-3">
             <h3 className="text-base font-bold text-foreground tracking-tight">{title}</h3>
             <div
-                className="max-w-none text-sm leading-relaxed text-foreground/90 [&_p]:my-3 [&_p]:text-foreground/90 [&_p]:font-normal [&_ul]:my-4 [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:text-foreground/90 [&_li]:my-1.5 [&_li]:pl-1 [&_li]:font-normal [&_li]:marker:text-foreground/30 [&_h4]:mt-6 [&_h4]:mb-2.5 [&_h4]:text-sm [&_h4]:font-bold [&_h4]:tracking-tight [&_h4]:text-foreground [&_strong]:font-semibold [&_strong]:text-foreground"
+                className="max-w-none text-base leading-[1.75] text-foreground/85
+                    [&_p]:my-3 [&_p]:text-base [&_p]:leading-[1.75]
+                    [&_ul]:my-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:space-y-1.5
+                    [&_ol]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:space-y-1.5
+                    [&_li]:text-base [&_li]:leading-relaxed
+                    [&_h4]:mt-5 [&_h4]:mb-2 [&_h4]:text-base [&_h4]:font-bold [&_h4]:text-foreground
+                    [&_strong]:font-semibold [&_strong]:text-foreground
+                    [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 [&_a]:decoration-primary/30 [&_a]:hover:decoration-primary/60"
                 dangerouslySetInnerHTML={{ __html: sanitizeHtml(description) }}
             />
         </div>

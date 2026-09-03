@@ -1,31 +1,32 @@
 import { Metadata } from 'next';
-import { Suspense } from 'react';
-import WalkinClient from './WalkinClient';
-import { FeedPageSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
+import { OpportunityType } from '@fresherflow/types';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { toOpportunityCardDTO } from '@fresherflow/types';
+import sampleWalkins from '@/features/opportunities/data/sampleWalkins.json';
+import { WalkInsClient } from './WalkInsClient';
 
 export const revalidate = false;
 
 export const metadata: Metadata = {
-    title: 'Walk-In Jobs | FresherFlow',
-    description: 'Browse verified walk-in drives and direct interview opportunities across India.',
+    title: 'Walk-in Drives & Interviews for Freshers | India',
+    description: 'Find verified walk-in interviews and direct hiring drives for freshers across India with interview dates, locations and eligibility details.',
+    keywords: 'walk in interviews, walk in jobs, fresher walk ins, walk in drives, direct hiring, off campus drives',
     alternates: {
         canonical: '/jobs/walkins',
     },
 };
 
-export default async function WalkinsPage() {
-    const bootstrapData = await fetchBootstrapFeed(false);
-    const initialData = bootstrapData ? {
-        opportunities: bootstrapData.opportunities.map(toOpportunityCardDTO) as any,
-        total: bootstrapData.count,
-        cachedAt: new Date(bootstrapData.generatedAt).getTime(),
-    } : null;
+export default async function WalkInsPage() {
+    const bootstrapData = await fetchBootstrapFeed(false, undefined, true);
+    const feedWalkins = bootstrapData?.opportunities?.filter(o => o.type === OpportunityType.WALKIN) || [];
+    const rawWalkins = feedWalkins.length > 0 ? feedWalkins : (sampleWalkins as any[]);
+    const opportunities = rawWalkins.map(toOpportunityCardDTO);
 
-    return (
-        <Suspense fallback={<FeedPageSkeleton />}>
-            <WalkinClient initialData={initialData} />
-        </Suspense>
-    );
+    const initialData = {
+        opportunities: opportunities as any,
+        total: opportunities.length,
+        cachedAt: bootstrapData?.generatedAt ? new Date(bootstrapData.generatedAt).getTime() : Date.now(),
+    };
+
+    return <WalkInsClient initialData={initialData} />;
 }

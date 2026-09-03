@@ -41,7 +41,7 @@ import { ExpiredWarning } from './components/ExpiredWarning';
 import { DescriptionSection } from './components/DescriptionSection';
 import { GovernmentJobDetailView } from './components/GovernmentJobDetailView';
 import CompanyLogo from '@/ui/CompanyLogo';
-import { AppPromoBanner } from '@/ui/AppPromoBanner';
+// import { AppPromoBanner } from '@/ui/AppPromoBanner';
 
 // Hooks & Utils
 import { useOpportunityDetail } from '@/features/opportunities/hooks/useOpportunityDetail';
@@ -274,66 +274,53 @@ export default function OpportunityDetailClient({
                 </div>
             </div>
 
-            {/* Edge-to-Edge Banner Header on Desktop / Standard Detail Top Section */}
-            <div className="w-full bg-background py-5 md:py-7">
-                <div className="max-w-7xl mx-auto px-4">
-                    {/* Visual Breadcrumbs */}
-                    <nav className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground font-medium select-none mb-3">
-                        <Link href="/" className="hover:text-primary transition-colors">
-                            Home
-                        </Link>
-                        <span className="text-muted-foreground/40">/</span>
-                        <Link href={opp.type === 'INTERNSHIP' ? '/jobs/internships' : opp.type === 'WALKIN' ? '/jobs/walk-ins' : '/jobs'} className="hover:text-primary transition-colors">
-                            {opp.type === 'INTERNSHIP' ? 'Internships' : opp.type === 'WALKIN' ? 'Walk-ins' : 'Jobs'}
-                        </Link>
-                        <span className="text-muted-foreground/40">/</span>
-                        <Link href={`/companies/${(opp as any).companySlug || getCompanySlug((opp as any).companyWebsite, opp.company)}`} className="hover:text-primary transition-colors truncate max-w-[120px]">
-                            {opp.company}
-                        </Link>
-                        <span className="text-muted-foreground/40">/</span>
-                        <span className="text-foreground font-semibold truncate max-w-[200px]" title={opp.title}>
-                            {opp.title}
-                        </span>
-                    </nav>
+            {/* Main Layout: Title+Content (left) + Sidebar (right) */}
+            <div className="max-w-7xl mx-auto px-4 pt-4 pb-8 md:pt-6">
+                {/* Breadcrumbs — mobile only (desktop has header breadcrumb) */}
+                <nav className="md:hidden flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground font-medium select-none mb-4">
+                    <Link href="/" className="hover:text-primary transition-colors">Home</Link>
+                    <span className="text-muted-foreground/40">/</span>
+                    <Link href={opp.type === 'INTERNSHIP' ? '/jobs/internships' : opp.type === 'WALKIN' ? '/jobs/walkins' : '/jobs'} className="hover:text-primary transition-colors">
+                        {opp.type === 'INTERNSHIP' ? 'Internships' : opp.type === 'WALKIN' ? 'Walk-ins' : 'Jobs'}
+                    </Link>
+                    <span className="text-muted-foreground/40">/</span>
+                    <Link href={`/companies/${(opp as any).companySlug || getCompanySlug((opp as any).companyWebsite, opp.company)}`} className="hover:text-primary transition-colors truncate max-w-[120px]">
+                        {opp.company}
+                    </Link>
+                    <span className="text-muted-foreground/40">/</span>
+                    <span className="text-foreground font-semibold truncate max-w-[200px]" title={opp.title}>{opp.title}</span>
+                </nav>
 
-                    <DetailHeroSection
-                        opp={opp}
-                        isCampusDrive={ds.isCampusDrive}
-                        listingState={ds.listingState}
-                        driveDateItems={ds.driveDateItems}
-                        driveMeta={ds.driveMeta}
-                        displaySalary={ds.displaySalary}
-                        locationInfo={ds.locationInfo}
-                        formatDeadline={ds.formatDeadline}
-                        isExpired={ds.isExpired}
-                        isClosingSoon={ds.isClosingSoon}
-                        isMobile={false}
-                        hasApplyLink={ds.hasApplyLink}
-                        handleApply={handleApply}
-                        handleShare={handleShare}
-                        handleCopyLink={handleCopyLink}
-                    />
-                </div>
-            </div>
-
-            <main className="relative z-10 max-w-7xl mx-auto px-4 py-6 md:py-8 space-y-6 pb-24 lg:pb-8">
-                {/* Combined Responsive Layout */}
+                {/* Two-column: Content (left) + Sidebar (right) */}
                 <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
-                    {/* Left/Main Column (60% width on Desktop) */}
-                    <div className="space-y-4 md:space-y-6 lg:col-span-3">
+                    {/* LEFT: Hero + Description + Related */}
+                    <div className="lg:col-span-3 space-y-5">
+                        <DetailHeroSection
+                            opp={opp}
+                            isCampusDrive={ds.isCampusDrive}
+                            listingState={ds.listingState}
+                            driveDateItems={ds.driveDateItems}
+                            driveMeta={ds.driveMeta}
+                            displaySalary={ds.displaySalary}
+                            locationInfo={ds.locationInfo}
+                            formatDeadline={ds.formatDeadline}
+                            isExpired={ds.isExpired}
+                            isClosingSoon={ds.isClosingSoon}
+                            isMobile={false}
+                            hasApplyLink={ds.hasApplyLink}
+                            handleApply={handleApply}
+                            handleShare={handleShare}
+                            handleCopyLink={handleCopyLink}
+                        />
+
                         {opp.expiresAt && ds.isExpired(opp) && <ExpiredWarning />}
 
-                        {/* Mobile-Only Sidebar boxes rendered inline between Hero and Details */}
+                        {/* Mobile-Only Sidebar boxes */}
                         <div className="lg:hidden space-y-4">
-                            {/* Combined Requirements */}
                             <RequirementsBox opp={opp} educationDetails={ds.educationDetails} />
-
-                            {/* Combined Additional Details */}
                             <AdditionalDetailsBox opp={opp} />
-
                         </div>
 
-                        {/* Complexity / Walk-in / Campus / Timeline details */}
                         {opp.applicationDetails && opp.applicationDetails.method === 'FORM' && (
                             <ComplexityCard applicationDetails={opp.applicationDetails} />
                         )}
@@ -355,31 +342,25 @@ export default function OpportunityDetailClient({
                             upcomingTimelineEvents={ds.upcomingTimelineEvents}
                         />
 
-                        <AppPromoBanner />
-
-                        {/* Description Section */}
                         <DescriptionSection
                             description={opp.description}
                             title="Description"
                         />
 
                         {/* Internal Linking Tag Chips */}
-                        <div className="space-y-4 py-4 border-t border-border/40">
-                            <h3 className="text-base font-bold text-foreground tracking-tight">Explore Related Placements</h3>
+                        <div className="space-y-3 py-3 border-t border-border/40">
+                            <h3 className="text-sm font-bold text-foreground tracking-tight">Explore Related Placements</h3>
                             <div className="flex flex-wrap gap-2 text-xs">
-                                {/* Company Link */}
                                 <Link href={`/companies/${(opp as any).companySlug || getCompanySlug((opp as any).companyWebsite, opp.company)}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/5 hover:bg-primary/10 text-primary font-semibold border border-primary/10 transition-colors">
                                     <BriefcaseIcon className="w-3.5 h-3.5" />
                                     {opp.company} Careers
                                 </Link>
-                                {/* Batch Links */}
                                 {opp.allowedPassoutYears?.map(year => (
                                     <Link key={year} href={`/batch/${year}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
                                         <CalendarIcon className="w-3.5 h-3.5" />
                                         {year} Batch Jobs
                                     </Link>
                                 ))}
-                                {/* Location Links */}
                                 {opp.locations?.filter(loc => {
                                     if (loc.toLowerCase() === 'india' || loc.toLowerCase() === 'pan india') return false;
                                     if (validDirectoryLinks?.validLocations?.length) {
@@ -395,7 +376,6 @@ export default function OpportunityDetailClient({
                                         </Link>
                                     );
                                 })}
-                                {/* Skill Links */}
                                 {opp.requiredSkills?.filter(skill => {
                                     if (validDirectoryLinks?.validSkills?.length) {
                                         return validDirectoryLinks.validSkills.includes(skill.trim().toLowerCase());
@@ -407,15 +387,11 @@ export default function OpportunityDetailClient({
                                         <span className="capitalize">{skill}</span>{' '}Jobs
                                     </Link>
                                 ))}
-                                {/* Role / Job Function Link */}
                                 {(() => {
                                     if (!opp.jobFunction) return null;
                                     if (opp.jobFunction.toLowerCase() === 'internship') {
                                         return (
-                                            <Link 
-                                                href="/jobs/internships"
-                                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors"
-                                            >
+                                            <Link href="/jobs/internships" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
                                                 <UserIcon className="w-3.5 h-3.5" />
                                                 <span className="capitalize">{opp.jobFunction}</span> Jobs
                                             </Link>
@@ -425,10 +401,7 @@ export default function OpportunityDetailClient({
                                     const CURATED_ROLES = new Set(['software-engineer', 'data-analyst', 'business-analyst', 'frontend-developer', 'test-engineer']);
                                     if (!CURATED_ROLES.has(roleSlug)) return null;
                                     return (
-                                        <Link 
-                                            href={`/roles/${roleSlug}`}
-                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors"
-                                        >
+                                        <Link href={`/roles/${roleSlug}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
                                             <UserIcon className="w-3.5 h-3.5" />
                                             <span className="capitalize">{opp.jobFunction}</span> Jobs
                                         </Link>
@@ -451,9 +424,7 @@ export default function OpportunityDetailClient({
                                                 disabled={isUpdatingAction}
                                                 className={cn(
                                                     "h-8 rounded-lg border text-[11px] font-bold transition-all",
-                                                    isActive
-                                                        ? "bg-primary/10 text-primary border-primary/20"
-                                                        : "bg-muted/20 border-border text-muted-foreground hover:bg-muted/40",
+                                                    isActive ? "bg-primary/10 text-primary border-primary/20" : "bg-muted/20 border-border text-muted-foreground hover:bg-muted/40",
                                                     isUpdatingAction && "opacity-50 cursor-not-allowed"
                                                 )}
                                             >
@@ -465,55 +436,66 @@ export default function OpportunityDetailClient({
                             </div>
                         )}
 
-                        {/* Mobile-Only Admin Actions */}
                         {isMounted && user?.role === 'ADMIN' && (
                             <div className="lg:hidden bg-card p-4 border border-primary/20 rounded-xl space-y-2">
                                 <h4 className="text-xs font-bold text-primary">Admin Control</h4>
                                 <Link href={`/opportunities/edit/${opp.id}`} className="block">
-                                    <Button variant="outline" className="w-full text-xs font-bold h-8 hover:bg-primary/5">
-                                        Edit Opportunity
-                                    </Button>
+                                    <Button variant="outline" className="w-full text-xs font-bold h-8 hover:bg-primary/5">Edit Opportunity</Button>
                                 </Link>
                             </div>
                         )}
+
+                        {opp.applicationDetails && opp.applicationDetails.method === 'ASSESSMENT' && (
+                            <ComplexityCard applicationDetails={opp.applicationDetails} />
+                        )}
+
+                        {/* Community Submission CTA */}
+                        <div className="mt-6 pt-4 border-t border-border/40 text-center">
+                            <p className="text-xs text-muted-foreground">
+                                Know of a similar opening?{' '}
+                                <a href="/submit" className="font-semibold text-primary hover:underline">
+                                    Submit it to help others →
+                                </a>
+                            </p>
+                        </div>
                     </div>
 
-                    <aside className="hidden lg:block lg:col-span-2 space-y-4 md:space-y-6 lg:sticky lg:top-14">
-                        <DetailSidebarActions
-                            user={user}
-                            opp={opp}
-                            currentAction={ds.currentAction}
-                            trackerOptions={ds.trackerOptions}
-                            isUpdatingAction={isUpdatingAction}
-                            handleSetAction={handleSetAction}
-                            hasApplyLink={ds.hasApplyLink}
-                            isCampusDrive={ds.isCampusDrive}
-                            timelineEvents={ds.timelineEvents}
-                            jumpToTimeline={jumpToTimeline}
-                            loginFromDetailHref={ds.loginFromDetailHref}
-                            listingState={ds.listingState}
-                            formatDeadline={ds.formatDeadline}
-                            handleApply={handleApply}
-                            handleToggleSave={handleToggleSave}
-                            handleShare={handleShare}
-                            handleCopyLink={handleCopyLink}
-                        />
-
-
-
-                        <DetailRequirements
-                            opp={opp}
-                            educationDetails={ds.educationDetails}
-                        />
+                    {/* RIGHT: Sidebar (desktop only, sticky) */}
+                    <aside className="hidden lg:block lg:col-span-2 lg:sticky lg:top-14">
+                        <div className="bg-card border border-border/60 rounded-2xl p-5 space-y-5">
+                            <DetailSidebarActions
+                                user={user}
+                                opp={opp}
+                                currentAction={ds.currentAction}
+                                trackerOptions={ds.trackerOptions}
+                                isUpdatingAction={isUpdatingAction}
+                                handleSetAction={handleSetAction}
+                                hasApplyLink={ds.hasApplyLink}
+                                isCampusDrive={ds.isCampusDrive}
+                                timelineEvents={ds.timelineEvents}
+                                jumpToTimeline={jumpToTimeline}
+                                loginFromDetailHref={ds.loginFromDetailHref}
+                                listingState={ds.listingState}
+                                formatDeadline={ds.formatDeadline}
+                                handleApply={handleApply}
+                                handleToggleSave={handleToggleSave}
+                                handleShare={handleShare}
+                                handleCopyLink={handleCopyLink}
+                            />
+                            <div className="border-t border-border/40" />
+                            <DetailRequirements
+                                opp={opp}
+                                educationDetails={ds.educationDetails}
+                            />
+                        </div>
                     </aside>
                 </div>
 
-                {opp.applicationDetails && opp.applicationDetails.method === 'ASSESSMENT' && (
-                    <ComplexityCard applicationDetails={opp.applicationDetails} />
-                )}
-
-                <RelatedOpportunities relatedOpps={relatedForMode} isLoadingRelated={isLoadingRelated} />
-            </main>
+                {/* Related Opportunities - full width below the two-column layout */}
+                <div className="mt-8 pt-6 border-t border-border/40">
+                    <RelatedOpportunities relatedOpps={relatedForMode} isLoadingRelated={isLoadingRelated} />
+                </div>
+            </div>
 
             {/* Sticky Bottom Apply Bar on Mobile */}
             {ds.hasApplyLink && (

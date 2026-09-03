@@ -25,6 +25,10 @@ export interface CompanyDirectoryItem {
     logoUrl?: string | null;
     website?: string | null;
     atsProvider?: string | null;
+    companyStage?: string | null;
+    companySize?: string | null;
+    companyIndustry?: string[];
+    companyTopics?: string[];
 }
 
 interface CompaniesDirectoryClientProps {
@@ -36,6 +40,35 @@ function isGenericAts(ats?: string | null): boolean {
     if (!ats) return true;
     const lower = ats.toLowerCase().trim();
     return lower === 'direct ats' || lower === 'official portal' || lower === 'unknown' || lower === 'direct';
+}
+
+function CompanyMeta({ co }: { co: CompanyDirectoryItem }) {
+    const industry = (co.companyIndustry || [])[0];
+    const topics = (co.companyTopics || []).slice(0, 2);
+    return (
+        <div className="flex flex-wrap gap-1.5 mt-2">
+            {co.companyStage && (
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 font-semibold text-muted-foreground capitalize">
+                    {co.companyStage}
+                </Badge>
+            )}
+            {co.companySize && (
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 font-semibold text-muted-foreground">
+                    {co.companySize}
+                </Badge>
+            )}
+            {industry && (
+                <Badge variant="outline" className="text-[10px] px-2 py-0.5 font-semibold text-muted-foreground capitalize truncate max-w-[140px]">
+                    {industry}
+                </Badge>
+            )}
+            {topics.map((t) => (
+                <Badge key={t} variant="secondary" className="text-[10px] px-2 py-0.5 font-semibold text-muted-foreground truncate max-w-[120px]">
+                    {t}
+                </Badge>
+            ))}
+        </div>
+    );
 }
 
 export default function CompaniesDirectoryClient({ companies, totalJobs }: CompaniesDirectoryClientProps) {
@@ -245,6 +278,7 @@ export default function CompaniesDirectoryClient({ companies, totalJobs }: Compa
                                                     </span>
                                                 )}
                                             </div>
+                                            <CompanyMeta co={co} />
                                         </Card>
                                     </Link>
                                 ))}

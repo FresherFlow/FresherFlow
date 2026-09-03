@@ -7,6 +7,7 @@ import { Breadcrumb } from '@/ui/Breadcrumb';
 
 const LABEL_OVERRIDES: Record<string, string> = {
     'govt': 'Government Jobs',
+    'walkins': 'Walk-ins',
     'walk-ins': 'Walk-ins',
 };
 
@@ -45,7 +46,7 @@ function TopHeaderBarContent() {
     }
 
     const isFeedRoute = !isAdminRoute && (
-        (segments[0] === 'jobs' && (segments.length === 1 || ['internships', 'walk-ins', 'remote'].includes(segments[1]))) ||
+        (segments[0] === 'jobs' && (segments.length === 1 || ['internships', 'walkins', 'walk-ins', 'remote'].includes(segments[1]))) ||
         (['govt', 'hackathons', 'resources'].includes(segments[0]) && segments.length === 1)
     );
     return (

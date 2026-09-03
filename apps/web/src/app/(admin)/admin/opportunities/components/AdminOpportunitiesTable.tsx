@@ -19,7 +19,7 @@ import {
     ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '@/ui/Button';
-import { ColumnDef } from '@tanstack/react-table';
+import { LegacyColumnDef } from '@tanstack/react-table/legacy';
 import { DataTable } from '@/ui/data-table/DataTable';
 import { DataTableColumnHeader } from '@/ui/data-table/DataTableColumnHeader';
 import { PaginationControls } from '@/ui/data-table/DataTablePagination';
@@ -192,7 +192,7 @@ const Pagination = ({ page, effectiveTotalPages, totalCount, pageSize, setPage }
 
 // ─── Desktop Table ────────────────────────────────────────────────────────────
 const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSelect, toggleSelectAll, ...actions }: Props) => {
-    const columns = React.useMemo<ColumnDef<Opp>[]>(() => [
+    const columns = React.useMemo<LegacyColumnDef<Opp>[]>(() => [
         {
             id: 'select',
             enableSorting: false,

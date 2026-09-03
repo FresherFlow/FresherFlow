@@ -18,7 +18,7 @@ export default function TopNav() {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
     const isOpportunitiesRoute = pathname === '/' || pathname.startsWith('/jobs');
-    const isWalkinsMode = isOpportunitiesRoute && pathname.includes('/walk-ins');
+    const isWalkinsMode = isOpportunitiesRoute && (pathname.includes('/walkins') || pathname.includes('/walk-ins'));
     const isJobsMode = isOpportunitiesRoute && !isWalkinsMode;
     const isAdminRoute = pathname.startsWith('/admin');
 
@@ -67,7 +67,7 @@ export default function TopNav() {
                                 Jobs
                             </Link>
                             <Link
-                                href="/jobs/walk-ins"
+                                href="/jobs/walkins"
                                 className={cn(
                                     "px-4 py-2 text-sm font-medium rounded-md transition-colors",
                                     isWalkinsMode
@@ -91,8 +91,17 @@ export default function TopNav() {
                             </Link>
                         )}
 
-                        {/* Right: Alerts + Account */}
-                        <div className="flex items-center gap-4 relative">
+                        {/* Right: Post a Job + Alerts + Account */}
+                        <div className="flex items-center gap-3 md:gap-4 relative">
+                            {!isAdminRoute && (
+                                <Link
+                                    href="/submit"
+                                    className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-all border border-primary/20"
+                                >
+                                    <span>+ Post a Job</span>
+                                </Link>
+                            )}
+
                             {user ? (
                                 <AlertsDropdown />
                             ) : (
@@ -106,6 +115,7 @@ export default function TopNav() {
                                     </svg>
                                 </button>
                             )}
+
 
                             <div className="relative">
                                 <button

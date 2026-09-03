@@ -4,7 +4,10 @@ import { Button } from '@/ui/Button';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
+import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
+import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
 import Link from 'next/link';
+import { CopyButton } from '@/ui/CopyButton';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import UsersIcon from '@heroicons/react/24/outline/UsersIcon';
 import CurrencyRupeeIcon from '@heroicons/react/24/outline/CurrencyRupeeIcon';
@@ -56,211 +59,158 @@ export function DetailSidebarActions({
     formatDeadline,
     handleApply,
     handleToggleSave,
+    handleShare,
 }: DetailSidebarActionsProps) {
     const locationsGrouped = getGroupedLocations(opp.locations);
+    const hasSalary = !!opp.salaryMax;
+    const salaryText = hasSalary ? `₹${opp.salaryMin} – ₹${opp.salaryMax}` : null;
+    const experience = opp.experienceMax ? `${opp.experienceMin || 0}–${opp.experienceMax} yrs` : 'Fresher';
 
     return (
         <div className="space-y-4">
-            {opp.type === 'WALKIN' && (
-                <div className="hidden lg:block bg-muted/30 p-5 rounded-2xl space-y-3">
-                    <h4 className="text-xs font-bold text-primary">Walk-in snapshot</h4>
-                    <div className="space-y-2 text-xs text-muted-foreground">
-                        <div>
-                            <p className="text-xs font-bold text-muted-foreground">Date & Time</p>
-                            <p className="text-foreground font-semibold">
-                                {opp.walkInDetails?.dateRange} {opp.walkInDetails?.timeRange ? `• ${opp.walkInDetails.timeRange}` : ''}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-xs font-bold text-muted-foreground">Venue</p>
-                            <p className="text-foreground">{opp.walkInDetails?.venueAddress}</p>
-                        </div>
+            {/* ── CTA Row: Apply + Save ── */}
+            <div className="flex gap-2">
+                {hasApplyLink && listingState !== 'EXPIRED' ? (
+                    <Button
+                        onClick={handleApply}
+                        className="flex-1 h-10 text-sm font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]"
+                    >
+                        Apply
+                        <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
+                    </Button>
+                ) : hasApplyLink && listingState === 'EXPIRED' ? (
+                    <div className="flex-1 h-10 rounded-lg border border-muted bg-muted/50 flex items-center justify-center gap-1.5 text-muted-foreground text-sm font-semibold cursor-not-allowed select-none">
+                        Closed
                     </div>
-                </div>
-            )}
-
-            {/* Unified Job Overview Card */}
-            <div className="hidden lg:block bg-muted/30 p-5 rounded-2xl space-y-4">
-                <h4 className="text-sm font-bold text-foreground pb-2.5 border-b border-border/40">Job Overview</h4>
-                <div className="space-y-4">
-                    <div className="flex items-start gap-3">
-                        <BriefcaseIcon className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                        <div>
-                            <p className="text-[10px] font-bold text-muted-foreground tracking-wide leading-none">Experience</p>
-                            <p className="text-sm font-semibold text-foreground mt-1">
-                                {opp.experienceMax ? `${opp.experienceMin || 0}-${opp.experienceMax}y` : 'Fresher'}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                        <UsersIcon className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                        <div>
-                            <p className="text-[10px] font-bold text-muted-foreground tracking-wide leading-none">Employment</p>
-                            <p className="text-sm font-semibold text-foreground mt-1">
-                                {formatEmploymentText(opp.employmentType)}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                        <ShieldCheckIcon className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                        <div>
-                            <p className="text-[10px] font-bold text-muted-foreground tracking-wide leading-none">Role Title</p>
-                            <p className="text-sm font-semibold text-foreground mt-1">
-                                {opp.jobFunction || 'General'}
-                            </p>
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                        <CurrencyRupeeIcon className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                        <div>
-                            <p className="text-[10px] font-bold text-muted-foreground tracking-wide leading-none">Salary</p>
-                            <p className="text-sm font-semibold text-foreground mt-1">
-                                {opp.salaryMax ? `₹${opp.salaryMin} - ₹${opp.salaryMax}` : 'Competitive'}
-                            </p>
-                        </div>
-                    </div>
-                    {opp.postedAt && (
-                        <div className="flex items-start gap-3">
-                            <ClockIcon className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                            <div>
-                                <p className="text-[10px] font-bold text-muted-foreground tracking-wide leading-none">Date Posted</p>
-                                <p className="text-sm font-semibold text-foreground mt-1">
-                                    {new Date(opp.postedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                </p>
-                            </div>
-                        </div>
+                ) : null}
+                <button
+                    onClick={handleToggleSave}
+                    className={cn(
+                        "h-10 px-3 rounded-lg border flex items-center justify-center gap-1.5 text-sm font-semibold transition-all shrink-0",
+                        opp.isSaved
+                            ? "bg-primary/10 border-primary/20 text-primary"
+                            : "border-border text-muted-foreground hover:border-primary/30 hover:text-foreground"
                     )}
-                    {opp.expiresAt && (
-                        <div className="flex items-start gap-3">
-                            <CalendarIcon className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                            <div>
-                                <p className="text-[10px] font-bold text-muted-foreground tracking-wide leading-none">Application Deadline</p>
-                                <p className="text-sm font-semibold text-foreground mt-1">
-                                    {formatDeadline(opp)}
-                                </p>
-                            </div>
-                        </div>
-                    )}
-                    {locationsGrouped.length > 0 && (
-                        <div className="flex items-start gap-3">
-                            <MapPinIcon className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                            <div>
-                                <p className="text-[10px] font-bold text-muted-foreground tracking-wide leading-none">Locations</p>
-                                <p className="text-sm font-semibold text-foreground mt-1 leading-snug">
-                                    {locationsGrouped.join(' • ')}
-                                </p>
-                            </div>
-                        </div>
-                    )}
-
-                    {hasApplyLink ? (
-                        <div className="space-y-2">
-                            {isCampusDrive && timelineEvents.length > 0 && (
-                                <button
-                                    onClick={jumpToTimeline}
-                                    className="w-full h-10 rounded-lg border border-primary/25 bg-primary/5 text-primary hover:bg-primary/10 transition-all text-xs font-bold uppercase tracking-widest"
-                                >
-                                    Track Updates
-                                </button>
-                            )}
-                            {listingState === 'EXPIRED' ? (
-                                <div className="w-full h-12 rounded-xl border border-destructive/30 bg-destructive/5 flex items-center justify-center gap-2 text-destructive text-sm font-bold uppercase tracking-tight cursor-not-allowed select-none">
-                                    <span className="w-2 h-2 rounded-full bg-destructive" />
-                                    Applications Closed
-                                </div>
-                            ) : (
-                                <div className="flex gap-2">
-                                    <Button
-                                        onClick={handleApply}
-                                        className="flex-1 h-12 text-base bg-primary/70 text-primary-foreground border border-primary/60 hover:bg-primary/80 rounded-xl flex items-center justify-center gap-2 font-bold uppercase tracking-tight shadow-lg hover:shadow-xl transition-all"
-                                    >
-                                        Apply Now
-                                        <ArrowTopRightOnSquareIcon className="w-5 h-5" />
-                                    </Button>
-                                    <button
-                                        onClick={handleToggleSave}
-                                        className={cn(
-                                            "w-12 h-12 rounded-xl border flex items-center justify-center transition-all shrink-0",
-                                            opp.isSaved
-                                                ? "bg-primary/10 border-primary/20 text-primary shadow-sm"
-                                                : "bg-background border-border text-muted-foreground hover:border-primary/30"
-                                        )}
-                                        aria-label={opp.isSaved ? "Remove from saved" : "Save opportunity"}
-                                    >
-                                        {opp.isSaved ? <BookmarkSolidIcon className="w-5 h-5" /> : <BookmarkIcon className="w-5 h-5" />}
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    ) : (
-                        <button
-                            onClick={handleToggleSave}
-                            className={cn(
-                                "w-full h-12 rounded-xl border flex items-center justify-center gap-2 font-bold text-sm transition-all",
-                                opp.isSaved
-                                    ? "bg-primary/10 border-primary/20 text-primary shadow-sm"
-                                    : "bg-background border-border text-muted-foreground hover:border-primary/30"
-                            )}
-                        >
-                            {opp.isSaved ? <BookmarkSolidIcon className="w-5 h-5" /> : <BookmarkIcon className="w-5 h-5" />}
-                            {opp.isSaved ? 'Saved' : 'Save Opportunity'}
-                        </button>
-                    )}
-                </div>
+                >
+                    {opp.isSaved ? <BookmarkSolidIcon className="w-4 h-4" /> : <BookmarkIcon className="w-4 h-4" />}
+                    {opp.isSaved ? 'Saved' : 'Save'}
+                </button>
+                <button
+                    onClick={handleShare}
+                    className="h-10 w-10 rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground flex items-center justify-center transition-all shrink-0"
+                    title="Share"
+                >
+                    <ShareIcon className="w-4 h-4" />
+                </button>
+                <CopyButton
+                    variant="ghost"
+                    value={typeof window !== 'undefined' ? window.location.href : ''}
+                    icon={LinkIcon}
+                    iconClassName="w-4 h-4"
+                    className="h-10 w-10 !p-0 rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground flex items-center justify-center transition-all shrink-0"
+                />
             </div>
 
-            {/* Progress Tracker Card */}
-            {((user) || (hasApplyLink && isCampusDrive && timelineEvents.length > 0)) && (
-                <div className="bg-muted/30 p-5 rounded-2xl space-y-3">
-                    <div className="space-y-3">
-                        {user && (
-                            <div className="space-y-2">
-                                <h4 className="text-sm font-bold text-foreground/80 flex items-center gap-2">
-                                    Track your progress
-                                </h4>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {trackerOptions.map((option) => {
-                                        const isActive = currentAction === option.key;
-                                        return (
-                                            <button
-                                                key={option.key}
-                                                onClick={() => handleSetAction(option.key)}
-                                                disabled={isUpdatingAction}
-                                                className={cn(
-                                                    "h-8 rounded-lg border text-xs font-bold transition-all",
-                                                    isActive
-                                                        ? "bg-primary/10 text-primary border-primary/20"
-                                                        : "bg-muted/20 border-border text-muted-foreground hover:bg-muted/40",
-                                                    isUpdatingAction && "opacity-50 cursor-not-allowed"
-                                                )}
-                                            >
-                                                {option.label}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
+            {/* ── Key Facts ── */}
+            <div className="space-y-2.5">
+                {hasSalary && (
+                    <div className="flex items-center gap-2.5">
+                        <CurrencyRupeeIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm font-semibold text-foreground">{salaryText}</span>
+                        <span className="text-xs text-muted-foreground">/yr</span>
+                    </div>
+                )}
+                <div className="flex items-center gap-2.5">
+                    <BriefcaseIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm text-foreground">{experience}</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                    <UsersIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm text-foreground">{formatEmploymentText(opp.employmentType)}</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                    <ShieldCheckIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className="text-sm text-foreground">{opp.jobFunction || 'General'}</span>
+                </div>
+                {locationsGrouped.length > 0 && (
+                    <div className="flex items-center gap-2.5">
+                        <MapPinIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm text-foreground leading-snug">{locationsGrouped.join(', ')}</span>
+                    </div>
+                )}
+                {opp.postedAt && (
+                    <div className="flex items-center gap-2.5">
+                        <ClockIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm text-foreground">
+                            {new Date(opp.postedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                    </div>
+                )}
+                {opp.expiresAt && (
+                    <div className="flex items-center gap-2.5">
+                        <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm text-foreground">{formatDeadline(opp)}</span>
+                    </div>
+                )}
+            </div>
 
-                        {hasApplyLink && isCampusDrive && timelineEvents.length > 0 && (
-                            <button
-                                onClick={jumpToTimeline}
-                                className="w-full h-10 rounded-lg border border-primary/25 bg-primary/5 text-primary hover:bg-primary/10 transition-all text-xs font-bold"
-                            >
-                                Track Updates
-                            </button>
-                        )}
+            {/* ── Campus Drive ── */}
+            {isCampusDrive && timelineEvents.length > 0 && (
+                <button
+                    onClick={jumpToTimeline}
+                    className="w-full h-9 rounded-lg border border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 transition-all text-xs font-semibold"
+                >
+                    View drive timeline
+                </button>
+            )}
+
+            {/* ── Status (logged-in users only) ── */}
+            {user && trackerOptions.length > 0 && (
+                <div className="pt-3 border-t border-border/40 space-y-2">
+                    {!currentAction && (
+                        <p className="text-xs text-muted-foreground">Mark your status:</p>
+                    )}
+                    <div className="flex flex-wrap gap-1.5">
+                        {trackerOptions.map((option) => {
+                            const isActive = currentAction === option.key;
+                            return (
+                                <button
+                                    key={option.key}
+                                    onClick={() => handleSetAction(option.key)}
+                                    disabled={isUpdatingAction}
+                                    className={cn(
+                                        "h-7 px-3 rounded-full text-xs font-medium transition-all",
+                                        isActive
+                                            ? "bg-primary text-primary-foreground"
+                                            : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground",
+                                        isUpdatingAction && "opacity-50 cursor-not-allowed"
+                                    )}
+                                >
+                                    {isActive && "✓ "}{option.label}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
             )}
 
-            {/* Admin Control Card */}
+            {/* ── Submit a job ── */}
+            <div className="pt-3 border-t border-border/40">
+                <Link
+                    href="/submit"
+                    className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                    <span className="w-4 h-4 rounded border border-dashed border-current flex items-center justify-center text-[10px] leading-none">+</span>
+                    Know about a job opening? Submit it
+                </Link>
+            </div>
+
+            {/* ── Admin ── */}
             {user?.role === 'ADMIN' && (
-                <div className="bg-muted/30 p-5 border border-primary/25 rounded-2xl space-y-2">
-                    <h4 className="text-sm font-bold text-primary">Admin Control</h4>
+                <div className="pt-3 border-t border-border/40">
                     <Link href={`/opportunities/edit/${opp.id}`} className="block">
-                        <Button variant="outline" className="w-full text-xs font-bold h-8 hover:bg-primary/5">
-                            Edit Opportunity
+                        <Button variant="outline" className="w-full text-xs font-semibold h-8">
+                            Edit
                         </Button>
                     </Link>
                 </div>

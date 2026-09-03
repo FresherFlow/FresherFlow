@@ -1,6 +1,7 @@
 "use client"
 
-import { Table } from "@tanstack/react-table"
+import type { RowData } from "@tanstack/react-table"
+import { LegacyReactTable } from "@tanstack/react-table/legacy"
 import {
   ChevronLeft,
   ChevronRight,
@@ -194,11 +195,11 @@ export function PaginationControls({
   )
 }
 
-interface DataTablePaginationProps<TData> {
-  table: Table<TData>
+interface DataTablePaginationProps<TData extends RowData> {
+  table: LegacyReactTable<TData>
 }
 
-export function DataTablePagination<TData>({
+export function DataTablePagination<TData extends RowData>({
   table,
 }: DataTablePaginationProps<TData>) {
   return (

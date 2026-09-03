@@ -14,17 +14,32 @@ interface CategoryPageProps {
     customTitle?: string;
     topContent?: React.ReactNode;
     bottomContent?: React.ReactNode;
+    userLocation?: { latitude: number; longitude: number } | null;
+    onLocationRequest?: () => void;
+    onLocationClear?: () => void;
+    locationLoading?: boolean;
+    locationRequested?: boolean;
+    locationDenied?: boolean;
 }
 
-function CategoryPageContainer({ type, initialData, initialFilters, canonicalRedirect, customTitle, topContent, bottomContent }: CategoryPageProps) {
-    const state = useCategoryPageState({ type, initialData, initialFilters, canonicalRedirect, customTitle, topContent, bottomContent });
-    return <CategoryPageView {...state} />;
+function CategoryPageContainer({ type, initialData, initialFilters, canonicalRedirect, customTitle, topContent, bottomContent, userLocation, onLocationRequest, onLocationClear, locationLoading, locationRequested, locationDenied }: CategoryPageProps) {
+    const state = useCategoryPageState({ type, initialData, initialFilters, canonicalRedirect, customTitle, topContent, bottomContent, userLocation });
+    return (
+        <CategoryPageView
+            {...state}
+            onLocationRequest={onLocationRequest}
+            onLocationClear={onLocationClear}
+            locationLoading={locationLoading}
+            locationRequested={locationRequested}
+            locationDenied={locationDenied}
+        />
+    );
 }
 
-export default function CategoryPage({ type, initialData, initialFilters, canonicalRedirect, customTitle, topContent, bottomContent }: CategoryPageProps) {
+export default function CategoryPage({ type, initialData, initialFilters, canonicalRedirect, customTitle, topContent, bottomContent, userLocation, onLocationRequest, onLocationClear, locationLoading, locationRequested, locationDenied }: CategoryPageProps) {
     return (
         <Suspense fallback={<FeedPageSkeleton isGovt={type === OpportunityType.GOVERNMENT} />}>
-            <CategoryPageContainer type={type} initialData={initialData} initialFilters={initialFilters} canonicalRedirect={canonicalRedirect} customTitle={customTitle} topContent={topContent} bottomContent={bottomContent} />
+            <CategoryPageContainer type={type} initialData={initialData} initialFilters={initialFilters} canonicalRedirect={canonicalRedirect} customTitle={customTitle} topContent={topContent} bottomContent={bottomContent} userLocation={userLocation} onLocationRequest={onLocationRequest} onLocationClear={onLocationClear} locationLoading={locationLoading} locationRequested={locationRequested} locationDenied={locationDenied} />
         </Suspense>
     );
 }

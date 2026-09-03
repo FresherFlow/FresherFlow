@@ -134,6 +134,15 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             icon: AcademicCapIcon,
         },
         {
+            href: '/jobs/walkins',
+            label: 'Walk-ins',
+            mobileTitle: 'Walk-in Drives',
+            mobileLabel: 'Walk-ins',
+            showInDesktop: true,
+            showInMobileTabs: true,
+            icon: BriefcaseIcon,
+        },
+        {
             href: '/jobs/remote',
             label: 'Remote',
             mobileTitle: 'Remote Jobs Feed',

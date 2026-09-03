@@ -1,13 +1,7 @@
-'use client';
-
-import { useState } from 'react';
 import Link from 'next/link';
 import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
 
 export default function DeadlinesPage() {
-    const [selectedMonth, setSelectedMonth] = useState('August 2026');
-    const [selectedType, setSelectedType] = useState('All');
-    const [selectedBatch, setSelectedBatch] = useState('All');
 
     return (
         <div className="w-full max-w-4xl mx-auto px-4 py-8 space-y-8">
@@ -32,8 +26,7 @@ export default function DeadlinesPage() {
             {/* Quick Filters */}
             <div className="flex flex-wrap gap-4 border-b border-border pb-6">
                 <select 
-                    value={selectedMonth} 
-                    onChange={(e) => setSelectedMonth(e.target.value)}
+                    defaultValue="August 2026"
                     className="border border-border rounded-lg px-3 py-1.5 text-sm bg-card text-foreground"
                 >
                     <option value="August 2026">August 2026</option>
@@ -42,8 +35,7 @@ export default function DeadlinesPage() {
                 </select>
                 
                 <select 
-                    value={selectedType} 
-                    onChange={(e) => setSelectedType(e.target.value)}
+                    defaultValue="All"
                     className="border border-border rounded-lg px-3 py-1.5 text-sm bg-card text-foreground"
                 >
                     <option value="All">All Company Types</option>
@@ -54,8 +46,7 @@ export default function DeadlinesPage() {
                 </select>
                 
                 <select 
-                    value={selectedBatch} 
-                    onChange={(e) => setSelectedBatch(e.target.value)}
+                    defaultValue="All"
                     className="border border-border rounded-lg px-3 py-1.5 text-sm bg-card text-foreground"
                 >
                     <option value="All">All Batches</option>

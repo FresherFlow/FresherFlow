@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Button } from '@/ui/Button';
 
 export function FinalCTA() {
     return (
@@ -11,9 +12,9 @@ export function FinalCTA() {
                     Join thousands of students getting fast, direct redirection to authentic, manual-checked career openings.
                 </p>
                 <div className="flex justify-center pt-2">
-                    <Link href="/app" className="premium-button px-9 text-[12px] uppercase tracking-widest shadow-md">
-                        Download App
-                    </Link>
+                    <Button variant="default" size="sm" asChild className="px-9 text-[12px] uppercase tracking-widest shadow-md">
+                        <Link href="/app">Download App</Link>
+                    </Button>
                 </div>
             </div>
         </section>

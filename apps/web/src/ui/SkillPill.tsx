@@ -3,7 +3,11 @@
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils/utils';
 import { Icon, loadIcons } from '@iconify/react';
-import { formatSkillTitleCase } from '@fresherflow/utils';
+
+function formatSkillTitleCase(skill: string | null | undefined): string {
+    if (!skill) return '';
+    return skill.charAt(0).toUpperCase() + skill.slice(1);
+}
 
 const ALIAS_MAP: Record<string, string> = {
   'c++': 'cplusplus',
@@ -80,43 +84,36 @@ interface SkillPillProps {
   skill: string;
   className?: string;
   size?: 'sm' | 'xs';
+  hideFallbackIcon?: boolean;
 }
 
-export function SkillPill({ skill, className, size = 'sm' }: SkillPillProps) {
+export function SkillPill({ skill, className, size = 'sm', hideFallbackIcon = false }: SkillPillProps) {
   const { iconName } = useSkillIcon(skill);
 
-  if (iconName) {
-    return (
-      <span
-        className={cn(
-          'inline-flex items-center gap-1.5 rounded-md border border-transparent font-medium whitespace-nowrap',
-          size === 'xs' ? 'h-5 px-1.5 text-[10px]' : 'h-7 px-2.5 text-sm',
-          'bg-muted/60 text-foreground/80',
-          className
-        )}
-      >
-        <Icon 
-          icon={iconName} 
-          className={cn(
-            'shrink-0', 
-            size === 'xs' ? 'w-2.5 h-2.5' : 'w-3.5 h-3.5',
-            iconName.startsWith('simple-icons:') ? 'text-current' : ''
-          )}
-        />
-        {formatSkillTitleCase(skill)}
-      </span>
-    );
-  }
+  const hasIcon = Boolean(iconName);
+  const showIcon = hasIcon || !hideFallbackIcon;
 
-  // Fallback: no icon, just text pill (also used as loading state)
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-md border border-border/50 font-medium whitespace-nowrap bg-muted/40 text-muted-foreground',
-        size === 'xs' ? 'h-5 px-1.5 text-[10px]' : 'h-7 px-2.5 text-sm',
+        'inline-flex items-center gap-1.5 rounded-md border font-medium whitespace-nowrap',
+        size === 'xs' ? 'h-5 px-1.5 text-[10px]' : 'h-[26px] px-2.5 text-[13px]',
+        hasIcon
+          ? 'border-transparent bg-muted/40 text-foreground/80'
+          : 'border-border/50 bg-muted/40 text-muted-foreground',
         className
       )}
     >
+      {showIcon && (
+        <SkillIcon
+          skill={skill}
+          className={cn(
+            'shrink-0',
+            size === 'xs' ? 'w-2.5 h-2.5' : 'w-3.5 h-3.5',
+            hasIcon && iconName?.startsWith('simple-icons:') ? 'text-current' : ''
+          )}
+        />
+      )}
       {formatSkillTitleCase(skill)}
     </span>
   );

@@ -8,7 +8,14 @@ import { getOpportunityPath } from '@/features/opportunities/domain/opportunityP
 import { fetchBootstrapFeed, fetchGovernmentFeed } from '@/lib/api/cdnFeed';
 import { OpportunityType } from '@fresherflow/types';
 import { getRelatedOpportunities } from '@/features/opportunities/utils/detailUtils';
-import { generateOpportunityMetadata, generateOpportunityJsonLd, generateOpportunityBreadcrumbsJsonLd, getExpiryState, ExtendedOpportunity } from '../../jobs/[slug]/opportunitySeo';
+import {
+    fetchOpportunityForPage,
+    generateOpportunityMetadata,
+    generateOpportunityJsonLd,
+    generateOpportunityBreadcrumbsJsonLd,
+    getExpiryState,
+    ExtendedOpportunity
+} from '../../jobs/[slug]/opportunitySeo';
 
 export const revalidate = false;
 export const dynamicParams = true;
@@ -45,17 +52,18 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     const { slug } = await params;
     if (isInvalidSlug(slug)) notFound();
     try {
-        const [govtFeed, bootstrapFeed] = await Promise.all([
-            fetchGovernmentFeed(false, undefined, true),
-            fetchBootstrapFeed(false, undefined, true),
-        ]);
-        const opp = (govtFeed?.opportunities?.find((o) => o.slug === slug || o.id === slug) ||
-            bootstrapFeed?.opportunities?.find((o) => (o.slug === slug || o.id === slug) && (o.type === OpportunityType.GOVERNMENT || Boolean(o.governmentJobDetails)))) as ExtendedOpportunity | undefined;
+        const opp = await fetchOpportunityForPage(slug);
         if (!opp) throw new Error('Not found');
         return await generateOpportunityMetadata(opp as ExtendedOpportunity);
     } catch {
         return { title: 'Opportunity Not Found', description: 'This opportunity listing is no longer available.' };
     }
+}
+
+/** Returns true for errors thrown by notFound() or redirect()/permanentRedirect() in Next.js 15+/16. */
+function isNextNavigationError(err: unknown): boolean {
+    const digest = (err as { digest?: string })?.digest ?? '';
+    return digest === 'NEXT_HTTP_ERROR_FALLBACK;404' || digest.startsWith('NEXT_REDIRECT');
 }
 
 export default async function GovernmentJobDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -65,38 +73,47 @@ export default async function GovernmentJobDetailPage({ params }: { params: Prom
         notFound();
     }
 
-    const [govtFeed, bootstrapFeed] = await Promise.all([
-        fetchGovernmentFeed(false, undefined, true),
-        fetchBootstrapFeed(false, undefined, true)
-    ]);
+    let opp: ExtendedOpportunity | null = null;
+    let related: ReturnType<typeof getRelatedOpportunities> = [];
 
-    const opp = (govtFeed?.opportunities?.find((o) => o.slug === slug || o.id === slug) ||
-        bootstrapFeed?.opportunities?.find((o) => (o.slug === slug || o.id === slug) && (o.type === OpportunityType.GOVERNMENT || Boolean(o.governmentJobDetails)))) as ExtendedOpportunity | undefined;
+    try {
+        const [oppResult, govtFeed] = await Promise.all([
+            fetchOpportunityForPage(slug),
+            fetchGovernmentFeed(false, undefined, true)
+        ]);
 
-    if (!opp) {
-        logRouteResult('/govt/[slug]', '404');
-        const { unstable_noStore } = await import('next/cache');
-        unstable_noStore();
-        notFound();
+        opp = oppResult;
+
+        if (!opp) {
+            logRouteResult('/govt/[slug]', '404');
+            const { unstable_noStore } = await import('next/cache');
+            unstable_noStore();
+            notFound();
+        }
+
+        if (slug === opp.id && opp.slug) {
+            logRouteResult('/govt/[slug]', '308');
+            permanentRedirect(getOpportunityPath(opp.type, opp.slug));
+        }
+
+        if (getExpiryState(opp).pastGrace) {
+            logRouteResult('/govt/[slug]', '308');
+            permanentRedirect('/govt');
+        }
+
+        related = govtFeed?.opportunities ? getRelatedOpportunities(opp, govtFeed.opportunities) : [];
+    } catch (err) {
+        // Re-throw Next.js navigation signals (notFound, redirect) — they must propagate.
+        // Only swallow genuine network/fetch failures.
+        if (isNextNavigationError(err)) throw err;
+        // CDN is temporarily down — fall through with null opp so the client can show retry UI.
     }
 
-    if (slug === opp.id && opp.slug) {
-        logRouteResult('/govt/[slug]', '308');
-        permanentRedirect(getOpportunityPath(opp.type, opp.slug));
-    }
-
-    if (getExpiryState(opp).pastGrace) {
-        logRouteResult('/govt/[slug]', '308');
-        permanentRedirect('/jobs');
-    }
-
-    const related = bootstrapFeed?.opportunities ? getRelatedOpportunities(opp, bootstrapFeed.opportunities) : [];
-
-    logRouteResult('/govt/[slug]', '200');
+    logRouteResult('/govt/[slug]', opp ? '200' : '500');
 
     return (
         <>
-            {!getExpiryState(opp).isExpired && (
+            {opp && !getExpiryState(opp).isExpired && (
                 <>
                     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(generateOpportunityJsonLd(opp)) }} />
                     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(generateOpportunityBreadcrumbsJsonLd(opp)) }} />

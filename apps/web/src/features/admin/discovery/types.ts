@@ -42,7 +42,7 @@ export interface ProcessedJob {
   type?: 'JOB' | 'INTERNSHIP' | string;
   title: string;
   company: string;
-  status: 'PENDING_REVIEW' | 'PUBLISHED' | 'REJECTED' | 'EXPIRED' | string;
+  status: 'DRAFT' | 'PENDING_REVIEW' | 'PUBLISHED' | 'REJECTED' | 'EXPIRED' | string;
   requiredSkills?: string[];
   locations?: string[];
   applyLink?: string;

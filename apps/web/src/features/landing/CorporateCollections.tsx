@@ -33,7 +33,7 @@ const COLLECTIONS = [
     { 
         title: 'Walk-In Recruitment Drives', 
         desc: 'Direct on-site interview schedules with verified physical venues and contact coordinates.', 
-        href: '/jobs/walk-ins',
+        href: '/jobs/walkins',
         icon: MapPinIcon,
         color: 'text-emerald-500',
         bg: 'bg-emerald-500/10',

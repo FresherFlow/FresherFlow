@@ -5,8 +5,9 @@ import { getOpportunityPath } from '@/features/opportunities/domain/opportunityP
 import { parseOpportunityLocation } from '@/features/opportunities/domain/opportunityDisplay';
 import { getDriveDates, isCampusDriveOpportunity } from '@/lib/utils/driveTimeline';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
-import { fetchBootstrapFeed, fetchExpiredFeed, fetchGovernmentFeed } from '@/lib/api/cdnFeed';
+import { fetchBootstrapFeed, fetchExpiredFeed, fetchGovernmentFeed, fetchOpportunityDetail } from '@/lib/api/cdnFeed';
 import { slugify } from '@fresherflow/utils/slugify';
+import { truncateTitleByPixels, truncateDescription } from '@/lib/seo/seoMetrics';
 
 export interface ExtendedOpportunity extends Opportunity {
     updatedAt?: string | Date;
@@ -35,7 +36,7 @@ export function getExpiryState(opportunity: ExtendedOpportunity) {
 export function getTypeHubPath(type?: Opportunity['type']) {
     if (type === 'JOB') return '/jobs';
     if (type === 'INTERNSHIP') return '/jobs/internships';
-    if (type === 'WALKIN') return '/jobs/walk-ins';
+    if (type === 'WALKIN') return '/jobs/walkins';
     return '/jobs';
 }
 
@@ -115,9 +116,13 @@ function parseStructuredSalary(opportunity: Opportunity): ParsedSalary | null {
 // feed JSON separately. With cache(), the second call is free.
 export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<ExtendedOpportunity | null> => {
     try {
-        // Fetch all three feeds in parallel — eliminates sequential 3× CDN latency on cold cache.
-        // Each uses force-cache so on a warm CDN, all three complete near-simultaneously.
-        // On a cold CDN (post-publish bust), parallel saves up to 2× the wait vs sequential.
+        // 1. Try direct individual static JSON on CDN edge first (ultra-fast, ~2.5KB payload)
+        const directJob = await fetchOpportunityDetail(slugOrId, true);
+        if (directJob) {
+            return directJob as ExtendedOpportunity;
+        }
+
+        // 2. Fallback to bootstrap / govt / expired feeds if individual JSON is missing or cold
         const [feed, govtFeed, expiredFeed] = await Promise.all([
             fetchBootstrapFeed(false, undefined, true),
             fetchGovernmentFeed(false, undefined, true),
@@ -188,10 +193,10 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
                 ? 'Walk-in'
                 : 'Job';
 
-    let seoTitle = `${role} at ${company} | ${type}`;
-    if (batch) seoTitle += ` | ${batch}`;
-    seoTitle += ` | ${location}`;
-    seoTitle = seoTitle.length > 65 ? seoTitle.substring(0, 62) + '...' : seoTitle;
+    let rawTitle = `${role} at ${company} | ${type}`;
+    if (batch) rawTitle += ` | ${batch}`;
+    rawTitle += ` | ${location}`;
+    const seoTitle = truncateTitleByPixels(rawTitle);
 
     const eligibility = opportunity.allowedPassoutYears.length > 0
         ? `${opportunity.allowedPassoutYears.join(', ')} graduates`
@@ -204,9 +209,7 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
         ? ` Registration closes ${driveDates.regEnd ? driveDates.regEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'soon'}.`
         : '';
     const rawDescription = baseDesc + applyInfo + driveInfo + freshInfo;
-    const description = rawDescription.length > 160
-        ? rawDescription.substring(0, 157).replace(/\s+\S*$/, '') + '...'
-        : rawDescription;
+    const description = truncateDescription(rawDescription);
 
     const canonicalId = opportunity.slug || opportunity.id;
     const canonicalPath = getOpportunityPath(opportunity.type, canonicalId);
@@ -321,6 +324,10 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
         employmentType: opportunity.type === 'INTERNSHIP' ? 'INTERN' : 'FULL_TIME',
         directApply: true,
         skills: opportunity.requiredSkills?.join(', '),
+        experienceRequirements: {
+            '@type': 'OccupationalExperienceRequirements',
+            monthsOfExperience: 0,
+        },
     };
 
     const locationLabel = parsedLocation.fullLabel.toLowerCase();
@@ -363,13 +370,51 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
         ].filter(Boolean).join(' | ');
     }
 
-    return schema;
+    const base = SITE_URL.replace(/\/+$/, '');
+    const typeLabel = opportunity.type === 'INTERNSHIP' ? 'Internships' : opportunity.type === 'WALKIN' ? 'Walk-ins' : 'Jobs';
+    const typePath = opportunity.type === 'INTERNSHIP' ? '/jobs/internships' : opportunity.type === 'WALKIN' ? '/jobs/walkins' : '/jobs';
+    const companySlug = slugify(opportunity.company || '');
+
+    const breadcrumbs = {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+            {
+                '@type': 'ListItem',
+                position: 1,
+                name: 'Home',
+                item: `${base}`
+            },
+            {
+                '@type': 'ListItem',
+                position: 2,
+                name: typeLabel,
+                item: `${base}${typePath}`
+            },
+            {
+                '@type': 'ListItem',
+                position: 3,
+                name: opportunity.company,
+                item: `${base}/companies/${companySlug}`
+            },
+            {
+                '@type': 'ListItem',
+                position: 4,
+                name: opportunity.title,
+                item: `${base}${getOpportunityPath(opportunity.type, opportunity.slug || opportunity.id)}`
+            }
+        ]
+    };
+
+    return {
+        '@context': 'https://schema.org',
+        '@graph': [breadcrumbs, schema]
+    };
 };
 
 export const generateOpportunityBreadcrumbsJsonLd = (opportunity: Opportunity) => {
     const base = SITE_URL.replace(/\/+$/, '');
     const typeLabel = opportunity.type === 'INTERNSHIP' ? 'Internships' : opportunity.type === 'WALKIN' ? 'Walk-ins' : 'Jobs';
-    const typePath = opportunity.type === 'INTERNSHIP' ? '/jobs/internships' : opportunity.type === 'WALKIN' ? '/jobs/walk-ins' : '/jobs';
+    const typePath = opportunity.type === 'INTERNSHIP' ? '/jobs/internships' : opportunity.type === 'WALKIN' ? '/jobs/walkins' : '/jobs';
     const companySlug = slugify(opportunity.company || '');
     
     return {

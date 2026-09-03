@@ -1,472 +1,776 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { Opportunity, OpportunityType } from '@fresherflow/types';
-import { useOpportunitiesFeed } from '@/features/opportunities/hooks/useOpportunitiesFeed';
-import { useAuth } from '@/lib/auth/AuthContext';
-import { type FilterBarFilters } from '@/features/opportunities/components/FilterDropdownBar';
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Opportunity, OpportunityType } from "@fresherflow/types";
+import { useOpportunitiesFeed } from "@/features/opportunities/hooks/useOpportunitiesFeed";
+import { useAuth } from "@/lib/auth/AuthContext";
+import { type FilterBarFilters } from "@/features/opportunities/components/FilterDropdownBar";
 import {
-    GOVT_PHASE_STATUSES,
-    GOVT_CATEGORIES,
-    jobMatchesCategory,
-    type GovtPhaseFilter,
-    type GovtCategoryFilter,
-} from '@/features/opportunities/components/GovtPhaseTabs';
-import { formatJobFeedTitle } from '@/features/opportunities/utils/formatJobFeedTitle';
+  GOVT_PHASE_STATUSES,
+  GOVT_CATEGORIES,
+  jobMatchesCategory,
+  type GovtPhaseFilter,
+  type GovtCategoryFilter,
+} from "@/features/opportunities/components/GovtPhaseTabs";
+import { formatJobFeedTitle } from "@/features/opportunities/utils/formatJobFeedTitle";
+import {
+  getOpportunityDistanceKm,
+  isWalkinInPeriod,
+  type WalkinDrivePeriod,
+} from "@/features/opportunities/utils/walkinMapUtils";
+import { sanitizeSearchQuery } from "@/features/opportunities/utils/searchUtils";
 
 const PAGE_SIZE = 20;
 
 export interface UseCategoryPageStateProps {
-    type: OpportunityType | null;
-    initialData?: { opportunities: Opportunity[]; total: number; cachedAt?: number } | null;
-    initialFilters?: Partial<FilterBarFilters>;
-    canonicalRedirect?: boolean;
-    customTitle?: string;
-    topContent?: React.ReactNode;
-    bottomContent?: React.ReactNode;
+  type: OpportunityType | null;
+  initialData?: {
+    opportunities: Opportunity[];
+    total: number;
+    cachedAt?: number;
+  } | null;
+  initialFilters?: Partial<FilterBarFilters>;
+  canonicalRedirect?: boolean;
+  customTitle?: string;
+  topContent?: React.ReactNode;
+  bottomContent?: React.ReactNode;
+  userLocation?: { latitude: number; longitude: number } | null;
 }
 
-export function useCategoryPageState({ type: propType, initialData, initialFilters, canonicalRedirect, customTitle, topContent, bottomContent }: UseCategoryPageStateProps) {
-    const { user } = useAuth();
-    const searchParams = useSearchParams();
-    const router = useRouter();
+export function useCategoryPageState({
+  type: propType,
+  initialData,
+  initialFilters,
+  canonicalRedirect,
+  customTitle,
+  topContent,
+  bottomContent,
+  userLocation,
+}: UseCategoryPageStateProps) {
+  const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const router = useRouter();
 
-    const urlType = searchParams?.get('type');
-    const type = (urlType ? urlType.toUpperCase() : propType) as OpportunityType | null;
-    const mode = searchParams?.get('mode');
-    const sourceParam = searchParams?.get('source');
-    const source = sourceParam ? sourceParam.split(',') : [];
-    const sort = searchParams?.get('sort');
+  const urlType = searchParams?.get("type");
+  const type = (
+    urlType ? urlType.toUpperCase() : propType
+  ) as OpportunityType | null;
+  const mode = searchParams?.get("mode");
+  const sourceParam = searchParams?.get("source");
+  const source = sourceParam ? sourceParam.split(",") : [];
+  const sort = searchParams?.get("sort");
 
-    const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
-    const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
+  const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
+  const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
 
-    useEffect(() => {
-        setIsDesktop(window.innerWidth >= 1024);
-        const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
+  useEffect(() => {
+    setIsDesktop(window.innerWidth >= 1024);
+    const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
-    useEffect(() => {
-        const handlePopState = (event: PopStateEvent) => {
-            if (!event?.state || !event.state.modalOpen) {
-                setSelectedOpp(null);
-            }
-        };
-        window.addEventListener('popstate', handlePopState);
-        return () => window.removeEventListener('popstate', handlePopState);
-    }, []);
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (!event?.state || !event.state.modalOpen) {
+        setSelectedOpp(null);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
-    useEffect(() => {
-        if (!selectedOpp) return;
-        if (window.innerWidth >= 1024) return; // Only lock scroll on mobile
-        document.body.style.overflow = 'hidden';
-        return () => {
-            document.body.style.overflow = '';
-        };
-    }, [selectedOpp]);
+  useEffect(() => {
+    if (!selectedOpp) return;
+    if (window.innerWidth >= 1024) return; // Only lock scroll on mobile
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [selectedOpp]);
 
-    const handleSelectOpportunity = (opp: Opportunity) => {
-        setSelectedOpp(opp);
-        window.history.pushState({ modalOpen: true }, '', window.location.href);
+  const handleSelectOpportunity = (opp: Opportunity) => {
+    setSelectedOpp(opp);
+    window.history.pushState({ modalOpen: true }, "", window.location.href);
+  };
+
+  const handleCloseOpportunityPane = () => {
+    const mobileModal = document.getElementById("mobile-detail-modal");
+    if (mobileModal) {
+      mobileModal.classList.remove("animate-in", "slide-in-from-bottom");
+      mobileModal.classList.add(
+        "animate-out",
+        "slide-out-to-bottom",
+        "fade-out",
+        "duration-300",
+      );
+    }
+    setTimeout(() => {
+      setSelectedOpp(null);
+      if (window.history.state?.modalOpen) window.history.back();
+    }, 250);
+  };
+
+  const [search, setSearch] = useState(() =>
+    sanitizeSearchQuery(searchParams?.get("q") || ""),
+  );
+  const [govtPhase, setGovtPhase] = useState<GovtPhaseFilter>("ALL");
+  const [govtCategory, setGovtCategory] = useState<GovtCategoryFilter>(
+    (searchParams?.get("category") as GovtCategoryFilter) || null,
+  );
+  const [filters, setFilters] = useState<FilterBarFilters>({
+    location: searchParams?.get("location") || initialFilters?.location || null,
+    year: searchParams?.get("year")
+      ? parseInt(searchParams.get("year")!, 10)
+      : initialFilters?.year || null,
+    closingSoon: searchParams?.get("closingSoon") === "true",
+    saved: searchParams?.get("saved") === "true",
+    sector: searchParams?.get("sector") || initialFilters?.sector || null,
+    qualification:
+      searchParams?.get("qualification") ||
+      initialFilters?.qualification ||
+      null,
+    course: searchParams?.get("course") || initialFilters?.course || null,
+    workMode: searchParams?.getAll("mode").length
+      ? searchParams.getAll("mode").map((m) => m.toUpperCase())
+      : initialFilters?.workMode || null,
+    skills: searchParams?.get("skills")
+      ? searchParams.get("skills")!.split(",").filter(Boolean)
+      : initialFilters?.skills || [],
+    source: searchParams?.get("source")
+      ? searchParams.get("source")!.split(",").filter(Boolean)
+      : initialFilters?.source || [],
+    company: searchParams?.get("company")
+      ? searchParams.get("company")!.split(",").filter(Boolean)
+      : initialFilters?.company || [],
+    role: searchParams?.get("role")
+      ? searchParams.get("role")!.split(",").filter(Boolean)
+      : initialFilters?.role || [],
+  });
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+  const [draftLoc, setDraftLoc] = useState<string | null>(null);
+  const [draftYear, setDraftYear] = useState<number | null>(null);
+  const [draftClosingSoon, setDraftClosingSoon] = useState(false);
+  const [driveDate, setDriveDate] = useState<WalkinDrivePeriod>(
+    (searchParams?.get("driveDate") as WalkinDrivePeriod) || "all",
+  );
+  const [draftShowOnlySaved, setDraftShowOnlySaved] = useState(false);
+  const [draftSector, setDraftSector] = useState<string | null>(null);
+  const [draftQualification, setDraftQualification] = useState<string | null>(
+    null,
+  );
+  const [draftCourse, setDraftCourse] = useState<string | null>(null);
+  const [draftWorkMode, setDraftWorkMode] = useState<string[] | null>(null);
+  const [draftSkills, setDraftSkills] = useState<string[]>([]);
+  const [draftSource, setDraftSource] = useState<string[]>([]);
+  const [draftCompany, setDraftCompany] = useState<string[]>([]);
+  const [draftRole, setDraftRole] = useState<string[]>([]);
+
+  const [mounted, setMounted] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(20);
+  const replaceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Keep a ref to the latest searchParams so the outbound effect can read
+  // the current URL without depending on searchParams reactively.
+  const searchParamsRef = React.useRef(searchParams);
+  useEffect(() => {
+    searchParamsRef.current = searchParams;
+  });
+
+  // Sync filter state FROM URL when searchParams change (e.g. sidebar link navigation).
+  // Skip the first render — state is already initialised from searchParams above.
+  const isFirstRender = React.useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    const sp = searchParams;
+    setSearch(sp?.get("q") || "");
+    setGovtCategory((sp?.get("category") as GovtCategoryFilter) || null);
+    setFilters({
+      location: sp?.get("location") || initialFilters?.location || null,
+      year: sp?.get("year")
+        ? parseInt(sp.get("year")!, 10)
+        : initialFilters?.year || null,
+      closingSoon: sp?.get("closingSoon") === "true",
+      saved: sp?.get("saved") === "true",
+      sector: sp?.get("sector") || initialFilters?.sector || null,
+      qualification:
+        sp?.get("qualification") || initialFilters?.qualification || null,
+      course: sp?.get("course") || initialFilters?.course || null,
+      workMode: sp?.getAll("mode").length
+        ? sp.getAll("mode").map((m) => m.toUpperCase())
+        : initialFilters?.workMode || null,
+      skills: sp?.get("skills")
+        ? sp.get("skills")!.split(",").filter(Boolean)
+        : initialFilters?.skills || [],
+      source: sp?.get("source")
+        ? sp.get("source")!.split(",").filter(Boolean)
+        : initialFilters?.source || [],
+      company: sp?.get("company")
+        ? sp.get("company")!.split(",").filter(Boolean)
+        : initialFilters?.company || [],
+      role: sp?.get("role")
+        ? sp.get("role")!.split(",").filter(Boolean)
+        : initialFilters?.role || [],
+    });
+  }, [searchParams]);
+
+  // Reset pagination when search or filters change
+  useEffect(() => {
+    setVisibleCount(20);
+  }, [
+    search,
+    type,
+    filters.location,
+    filters.sector,
+    filters.qualification,
+    filters.course,
+    filters.year,
+    filters.closingSoon,
+    filters.saved,
+    filters.workMode,
+    filters.skills,
+    filters.source,
+    filters.company,
+    filters.role,
+    driveDate,
+  ]);
+
+  const mobileActiveCount =
+    (filters.location ? 1 : 0) +
+    (filters.closingSoon ? 1 : 0) +
+    (filters.saved ? 1 : 0) +
+    (filters.sector ? 1 : 0) +
+    (filters.qualification ? 1 : 0) +
+    (filters.course ? 1 : 0) +
+    (filters.year ? 1 : 0) +
+    (filters.workMode ? 1 : 0) +
+    (filters.skills && filters.skills.length > 0 ? 1 : 0) +
+    (filters.source && filters.source.length > 0 ? 1 : 0) +
+    (filters.company && filters.company.length > 0 ? 1 : 0) +
+    (filters.role && filters.role.length > 0 ? 1 : 0);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    if (canonicalRedirect && initialFilters) {
+      let canonicalCleared = false;
+      if (
+        initialFilters.skills &&
+        initialFilters.skills.length > 0 &&
+        (!filters.skills || filters.skills.length === 0)
+      )
+        canonicalCleared = true;
+      if (initialFilters.location && !filters.location) canonicalCleared = true;
+      if (initialFilters.year && !filters.year) canonicalCleared = true;
+
+      if (canonicalCleared) {
+        router.push("/jobs");
+        return;
+      }
+    }
+
+    const params = new URLSearchParams(
+      searchParamsRef.current?.toString() || "",
+    );
+    let changed = false;
+
+    const updateParam = (
+      key: string,
+      value: string | null | undefined | boolean | number,
+    ) => {
+      if (value) {
+        const strValue = String(value);
+        if (params.get(key) !== strValue) {
+          params.set(key, strValue);
+          changed = true;
+        }
+      } else if (params.has(key)) {
+        params.delete(key);
+        changed = true;
+      }
     };
 
-    const handleCloseOpportunityPane = () => {
-        const mobileModal = document.getElementById('mobile-detail-modal');
-        if (mobileModal) {
-            mobileModal.classList.remove('animate-in', 'slide-in-from-bottom');
-            mobileModal.classList.add('animate-out', 'slide-out-to-bottom', 'fade-out', 'duration-300');
-        }
-        setTimeout(() => {
-            setSelectedOpp(null);
-            if (window.history.state?.modalOpen) window.history.back();
-        }, 250);
+    updateParam("q", sanitizeSearchQuery(search) || null);
+    updateParam("category", govtCategory);
+    updateParam("location", filters.location);
+    updateParam("year", filters.year);
+    updateParam("closingSoon", filters.closingSoon);
+    updateParam("driveDate", driveDate !== "all" ? driveDate : null);
+    updateParam("saved", filters.saved);
+    updateParam("sector", filters.sector);
+    updateParam("qualification", filters.qualification);
+    updateParam("course", filters.course);
+
+    if (params.has("workMode")) {
+      params.delete("workMode");
+      changed = true;
+    } // Cleanup old param
+
+    const currentModes = params.getAll("mode");
+    const nextModes = (filters.workMode || []).map((m) => m.toLowerCase());
+
+    // Simple array check
+    if (currentModes.join(",") !== nextModes.join(",")) {
+      params.delete("mode");
+      nextModes.forEach((m) => params.append("mode", m));
+      changed = true;
+    }
+
+    if (filters.skills && filters.skills.length > 0) {
+      updateParam("skills", filters.skills.join(","));
+    } else {
+      updateParam("skills", null);
+    }
+
+    if (filters.source && filters.source.length > 0) {
+      updateParam("source", filters.source.join(","));
+    } else {
+      updateParam("source", null);
+    }
+
+    if (filters.company && filters.company.length > 0) {
+      updateParam("company", filters.company.join(","));
+    } else {
+      updateParam("company", null);
+    }
+
+    if (filters.role && filters.role.length > 0) {
+      updateParam("role", filters.role.join(","));
+    } else {
+      updateParam("role", null);
+    }
+
+    if (changed) {
+      if (replaceTimerRef.current) clearTimeout(replaceTimerRef.current);
+      replaceTimerRef.current = setTimeout(() => {
+        const newUrl = params.toString()
+          ? `?${params.toString()}`
+          : window.location.pathname;
+        window.history.replaceState(null, "", newUrl);
+      }, 300);
+    }
+
+    return () => {
+      if (replaceTimerRef.current) clearTimeout(replaceTimerRef.current);
     };
+  }, [
+    search,
+    govtCategory,
+    filters.location,
+    filters.year,
+    filters.closingSoon,
+    filters.saved,
+    filters.sector,
+    filters.qualification,
+    filters.course,
+    filters.skills,
+    filters.source,
+    filters.company,
+    filters.role,
+    filters.workMode,
+    driveDate,
+    mounted,
+  ]);
 
-    const [search, setSearch] = useState(searchParams?.get('q') || '');
-    const [govtPhase, setGovtPhase] = useState<GovtPhaseFilter>('ALL');
-    const [govtCategory, setGovtCategory] = useState<GovtCategoryFilter>((searchParams?.get('category') as GovtCategoryFilter) || null);
-    const [filters, setFilters] = useState<FilterBarFilters>({
-        location: searchParams?.get('location') || initialFilters?.location || null, 
-        year: searchParams?.get('year') ? parseInt(searchParams.get('year')!, 10) : (initialFilters?.year || null), 
-        closingSoon: searchParams?.get('closingSoon') === 'true', 
-        saved: searchParams?.get('saved') === 'true', 
-        sector: searchParams?.get('sector') || initialFilters?.sector || null, 
-        qualification: searchParams?.get('qualification') || initialFilters?.qualification || null, 
-        course: searchParams?.get('course') || initialFilters?.course || null, 
-        workMode: searchParams?.getAll('mode').length ? searchParams.getAll('mode').map(m => m.toUpperCase()) : (initialFilters?.workMode || null), 
-        skills: searchParams?.get('skills') ? searchParams.get('skills')!.split(',') : (initialFilters?.skills || []),
-        source: searchParams?.get('source') ? searchParams.get('source')!.split(',') : (initialFilters?.source || []),
-        company: searchParams?.get('company') ? searchParams.get('company')!.split(',').filter(Boolean) : (initialFilters?.company || []),
-    });
-    const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
-    const [draftLoc, setDraftLoc] = useState<string | null>(null);
-    const [draftYear, setDraftYear] = useState<number | null>(null);
-    const [draftClosingSoon, setDraftClosingSoon] = useState(false);
-    const [draftShowOnlySaved, setDraftShowOnlySaved] = useState(false);
-    const [draftSector, setDraftSector] = useState<string | null>(null);
-    const [draftQualification, setDraftQualification] = useState<string | null>(null);
-    const [draftCourse, setDraftCourse] = useState<string | null>(null);
-    const [draftWorkMode, setDraftWorkMode] = useState<string[] | null>(null);
-    const [draftSkills, setDraftSkills] = useState<string[]>([]);
-    const [draftSource, setDraftSource] = useState<string[]>([]);
-    const [draftCompany, setDraftCompany] = useState<string[]>([]);
-    const [mounted, setMounted] = useState(false);
-    const [visibleCount, setVisibleCount] = useState(20);
-    const replaceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const {
+    opportunities,
+    filteredOpps,
+    isLoading,
+    error,
+    profileIncomplete,
+    toggleSave,
+    reload,
+  } = useOpportunitiesFeed({
+    type,
+    mode,
+    source,
+    company: filters.company,
+    sort,
+    selectedLoc: filters.location,
+    showOnlySaved: filters.saved,
+    closingSoon: filters.closingSoon,
+    sector: filters.sector,
+    qualification: filters.qualification,
+    course: filters.course,
+    selectedYear: filters.year,
+    skills: filters.skills,
+    roles: filters.role,
+    search,
+    initialData,
+  });
 
-    useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [type]);
 
-    // Keep a ref to the latest searchParams so the outbound effect can read
-    // the current URL without depending on searchParams reactively.
-    const searchParamsRef = React.useRef(searchParams);
-    useEffect(() => { searchParamsRef.current = searchParams; });
+  const phaseCounts = useMemo(() => {
+    if (type !== OpportunityType.GOVERNMENT) return undefined;
+    const counts: Partial<Record<GovtPhaseFilter, number>> = {};
+    for (const [phase, statuses] of Object.entries(GOVT_PHASE_STATUSES)) {
+      const key = phase as GovtPhaseFilter;
+      counts[key] =
+        key === "ALL"
+          ? filteredOpps.length
+          : filteredOpps.filter((o) => {
+              const s =
+                (o.governmentJobDetails as any)?.applicationStatus || "OPEN";
+              return s && statuses.includes(s);
+            }).length;
+    }
+    return counts;
+  }, [filteredOpps, type]);
 
-    // Sync filter state FROM URL when searchParams change (e.g. sidebar link navigation).
-    // Skip the first render — state is already initialised from searchParams above.
-    const isFirstRender = React.useRef(true);
-    useEffect(() => {
-        if (isFirstRender.current) { isFirstRender.current = false; return; }
-        const sp = searchParams;
-        setSearch(sp?.get('q') || '');
-        setGovtCategory((sp?.get('category') as GovtCategoryFilter) || null);
-        setFilters({
-            location: sp?.get('location') || initialFilters?.location || null,
-            year: sp?.get('year') ? parseInt(sp.get('year')!, 10) : (initialFilters?.year || null),
-            closingSoon: sp?.get('closingSoon') === 'true',
-            saved: sp?.get('saved') === 'true',
-            sector: sp?.get('sector') || initialFilters?.sector || null,
-            qualification: sp?.get('qualification') || initialFilters?.qualification || null,
-            course: sp?.get('course') || initialFilters?.course || null,
-            workMode: sp?.getAll('mode').length ? sp.getAll('mode').map(m => m.toUpperCase()) : (initialFilters?.workMode || null),
-            skills: sp?.get('skills') ? sp.get('skills')!.split(',') : (initialFilters?.skills || []),
-            source: sp?.get('source') ? sp.get('source')!.split(',') : (initialFilters?.source || []),
-            company: sp?.get('company') ? sp.get('company')!.split(',').filter(Boolean) : (initialFilters?.company || []),
-        });
-     
-    }, [searchParams]);
+  const categoryCounts = useMemo(() => {
+    if (type !== OpportunityType.GOVERNMENT) return undefined;
+    const counts: Record<string, number> = {};
+    for (const { label } of GOVT_CATEGORIES) {
+      counts[label] = filteredOpps.filter((o) =>
+        jobMatchesCategory(o.governmentJobDetails, label),
+      ).length;
+    }
+    return counts;
+  }, [filteredOpps, type]);
 
-    // Reset pagination when search or filters change
-    useEffect(() => {
-        setVisibleCount(20);
-    }, [search, type, filters.location, filters.sector, filters.qualification, filters.course, filters.year, filters.closingSoon, filters.saved, filters.workMode, filters.skills, filters.source, filters.company]);
-
-    const mobileActiveCount =
-        (filters.location ? 1 : 0) + (filters.closingSoon ? 1 : 0) + (filters.saved ? 1 : 0) +
-        (filters.sector ? 1 : 0) + (filters.qualification ? 1 : 0) + (filters.course ? 1 : 0) + (filters.year ? 1 : 0) + (filters.workMode ? 1 : 0) + (filters.skills && filters.skills.length > 0 ? 1 : 0) + (filters.source && filters.source.length > 0 ? 1 : 0) + (filters.company && filters.company.length > 0 ? 1 : 0);
-
-    useEffect(() => {
-        if (!mounted) return;
-
-        if (canonicalRedirect && initialFilters) {
-            let canonicalCleared = false;
-            if (initialFilters.skills && initialFilters.skills.length > 0 && (!filters.skills || filters.skills.length === 0)) canonicalCleared = true;
-            if (initialFilters.location && !filters.location) canonicalCleared = true;
-            if (initialFilters.year && !filters.year) canonicalCleared = true;
-            
-            if (canonicalCleared) {
-                router.push('/jobs');
-                return;
+  const visibleOpps = useMemo(() => {
+    const filtered = filteredOpps.filter((opp) => {
+      if (filters.saved) return true;
+      if (
+        type !== OpportunityType.GOVERNMENT &&
+        opp.expiresAt &&
+        new Date(opp.expiresAt) < new Date()
+      )
+        return false;
+      if (type === OpportunityType.GOVERNMENT && govtPhase !== "ALL") {
+        const s =
+          (opp.governmentJobDetails as any)?.applicationStatus || "OPEN";
+        if (!s || !GOVT_PHASE_STATUSES[govtPhase].includes(s)) return false;
+      }
+      if (type === OpportunityType.GOVERNMENT && govtCategory !== null) {
+        if (!jobMatchesCategory(opp.governmentJobDetails, govtCategory))
+          return false;
+      }
+      if (type !== OpportunityType.GOVERNMENT) {
+        if (filters.workMode && filters.workMode.length > 0) {
+          const isMatch = filters.workMode.some((m) => {
+            const sel = m.toLowerCase();
+            const oppWorkMode = String(
+              (opp as any).workMode || "",
+            ).toLowerCase();
+            if (sel === "remote") {
+              return (
+                (opp.locations || []).some((loc) => {
+                  const l = loc.toLowerCase();
+                  return (
+                    l.includes("remote") ||
+                    l.includes("wfh") ||
+                    l.includes("work from home")
+                  );
+                }) ||
+                oppWorkMode === "remote" ||
+                (opp.title || "").toLowerCase().includes("remote")
+              );
             }
-        }
-
-        const params = new URLSearchParams(searchParamsRef.current?.toString() || '');
-        let changed = false;
-
-        const updateParam = (key: string, value: string | null | undefined | boolean | number) => {
-            if (value) {
-                const strValue = String(value);
-                if (params.get(key) !== strValue) {
-                    params.set(key, strValue);
-                    changed = true;
-                }
-            } else if (params.has(key)) {
-                params.delete(key);
-                changed = true;
+            if (sel === "hybrid") {
+              return (
+                (opp.locations || []).some((loc) =>
+                  loc.toLowerCase().includes("hybrid"),
+                ) ||
+                oppWorkMode === "hybrid" ||
+                (opp.title || "").toLowerCase().includes("hybrid")
+              );
             }
-        };
-
-        updateParam('q', search);
-        updateParam('category', govtCategory);
-        updateParam('location', filters.location);
-        updateParam('year', filters.year);
-        updateParam('closingSoon', filters.closingSoon);
-        updateParam('saved', filters.saved);
-        updateParam('sector', filters.sector);
-        updateParam('qualification', filters.qualification);
-        updateParam('course', filters.course);
-        
-        if (params.has('workMode')) { params.delete('workMode'); changed = true; } // Cleanup old param
-        
-        const currentModes = params.getAll('mode');
-        const nextModes = (filters.workMode || []).map(m => m.toLowerCase());
-        
-        // Simple array check
-        if (currentModes.join(',') !== nextModes.join(',')) {
-            params.delete('mode');
-            nextModes.forEach(m => params.append('mode', m));
-            changed = true;
-        }
-        
-        if (filters.skills && filters.skills.length > 0) {
-            updateParam('skills', filters.skills.join(','));
-        } else {
-            updateParam('skills', null);
-        }
-
-        if (filters.source && filters.source.length > 0) {
-            updateParam('source', filters.source.join(','));
-        } else {
-            updateParam('source', null);
-        }
-
-        if (filters.company && filters.company.length > 0) {
-            updateParam('company', filters.company.join(','));
-        } else {
-            updateParam('company', null);
-        }
-
-        if (changed) {
-            if (replaceTimerRef.current) clearTimeout(replaceTimerRef.current);
-            replaceTimerRef.current = setTimeout(() => {
-                const newUrl = params.toString() ? `?${params.toString()}` : window.location.pathname;
-                window.history.replaceState(null, '', newUrl);
-            }, 300);
-        }
-
-        return () => {
-            if (replaceTimerRef.current) clearTimeout(replaceTimerRef.current);
-        };
-    }, [search, govtCategory, filters.location, filters.year, filters.closingSoon, filters.saved, filters.sector, filters.qualification, filters.course, filters.skills, filters.source, filters.company, filters.workMode, mounted]);
-
-
-    const { opportunities, filteredOpps, isLoading, error, profileIncomplete, toggleSave, reload } = useOpportunitiesFeed({
-        type,
-        mode,
-        source,
-        company: filters.company,
-        sort,
-        selectedLoc: filters.location,
-        showOnlySaved: filters.saved,
-        closingSoon: filters.closingSoon,
-        sector: filters.sector,
-        qualification: filters.qualification,
-        course: filters.course,
-        selectedYear: filters.year,
-        skills: filters.skills,
-        roles: (filters as any).roles,
-        search,
-        initialData,
-    });
-
-    useEffect(() => {
-        setVisibleCount(PAGE_SIZE);
-    }, [type]);
-
-    const phaseCounts = useMemo(() => {
-        if (type !== OpportunityType.GOVERNMENT) return undefined;
-        const counts: Partial<Record<GovtPhaseFilter, number>> = {};
-        for (const [phase, statuses] of Object.entries(GOVT_PHASE_STATUSES)) {
-            const key = phase as GovtPhaseFilter;
-            counts[key] = key === 'ALL'
-                ? filteredOpps.length
-                : filteredOpps.filter(o => { const s = (o.governmentJobDetails as any)?.applicationStatus || 'OPEN'; return s && statuses.includes(s); }).length;
-        }
-        return counts;
-    }, [filteredOpps, type]);
-
-    const categoryCounts = useMemo(() => {
-        if (type !== OpportunityType.GOVERNMENT) return undefined;
-        const counts: Record<string, number> = {};
-        for (const { label } of GOVT_CATEGORIES) {
-            counts[label] = filteredOpps.filter(o => jobMatchesCategory(o.governmentJobDetails, label)).length;
-        }
-        return counts;
-    }, [filteredOpps, type]);
-
-    const visibleOpps = useMemo(() => {
-        return filteredOpps.filter(opp => {
-            if (filters.saved) return true;
-            if (type !== OpportunityType.GOVERNMENT && opp.expiresAt && new Date(opp.expiresAt) < new Date()) return false;
-            if (type === OpportunityType.GOVERNMENT && govtPhase !== 'ALL') {
-                const s = (opp.governmentJobDetails as any)?.applicationStatus || 'OPEN';
-                if (!s || !GOVT_PHASE_STATUSES[govtPhase].includes(s)) return false;
-            }
-            if (type === OpportunityType.GOVERNMENT && govtCategory !== null) {
-                if (!jobMatchesCategory(opp.governmentJobDetails, govtCategory)) return false;
-            }
-            if (type !== OpportunityType.GOVERNMENT) {
-                if (filters.workMode && filters.workMode.length > 0) {
-                    const isMatch = filters.workMode.some(m => {
-                        const sel = m.toLowerCase();
-                        const oppWorkMode = String((opp as any).workMode || '').toLowerCase();
-                        if (sel === 'remote') {
-                            return (opp.locations || []).some(loc => {
-                                const l = loc.toLowerCase();
-                                return l.includes('remote') || l.includes('wfh') || l.includes('work from home');
-                            }) || oppWorkMode === 'remote' || (opp.title || '').toLowerCase().includes('remote');
-                        }
-                        if (sel === 'hybrid') {
-                            return (opp.locations || []).some(loc => loc.toLowerCase().includes('hybrid')) 
-                                || oppWorkMode === 'hybrid' || (opp.title || '').toLowerCase().includes('hybrid');
-                        }
-                        if (sel === 'on_site' || sel === 'onsite') {
-                            return oppWorkMode === 'on_site' || oppWorkMode === 'onsite' || 
-                            (!oppWorkMode && !((opp.locations || []).some(loc => {
-                                const l = loc.toLowerCase();
-                                return l.includes('remote') || l.includes('wfh') || l.includes('work from home') || l.includes('hybrid');
-                            })) && !(opp.title || '').toLowerCase().includes('remote') && !(opp.title || '').toLowerCase().includes('hybrid'));
-                        }
-                        return false;
-                    });
-                    if (!isMatch) return false;
-                }
-                if (filters.skills && filters.skills.length > 0) {
-                    const hasAllSkills = filters.skills.every(s => 
-                        opp.requiredSkills?.some(rs => rs.toLowerCase() === s.toLowerCase())
+            if (sel === "on_site" || sel === "onsite") {
+              return (
+                oppWorkMode === "on_site" ||
+                oppWorkMode === "onsite" ||
+                (!oppWorkMode &&
+                  !(opp.locations || []).some((loc) => {
+                    const l = loc.toLowerCase();
+                    return (
+                      l.includes("remote") ||
+                      l.includes("wfh") ||
+                      l.includes("work from home") ||
+                      l.includes("hybrid")
                     );
-                    if (!hasAllSkills) return false;
-                }
+                  }) &&
+                  !(opp.title || "").toLowerCase().includes("remote") &&
+                  !(opp.title || "").toLowerCase().includes("hybrid"))
+              );
             }
-            return true;
+            return false;
+          });
+          if (!isMatch) return false;
+        }
+        if (filters.skills && filters.skills.length > 0) {
+          const hasAllSkills = filters.skills.every((s) =>
+            opp.requiredSkills?.some(
+              (rs) => rs.toLowerCase() === s.toLowerCase(),
+            ),
+          );
+          if (!hasAllSkills) return false;
+        }
+        if (filters.role && filters.role.length > 0) {
+          const matchesRole = filters.role.some((r) => {
+            const rLower = r.toLowerCase();
+            const titleMatch = (opp.title || "").toLowerCase().includes(rLower);
+            const normRoleMatch = ((opp.normalizedRole || "") as string)
+              .toLowerCase()
+              .includes(rLower);
+            const rolesMatch = ((opp as any).roles || []).some(
+              (roleItem: string) => roleItem.toLowerCase().includes(rLower),
+            );
+            return titleMatch || normRoleMatch || rolesMatch;
+          });
+          if (!matchesRole) return false;
+        }
+      }
+
+      // Walk-in date filter: today or this week
+      if (type === OpportunityType.WALKIN && driveDate !== "all") {
+        if (!isWalkinInPeriod(opp, driveDate)) return false;
+      }
+
+      return true;
+    });
+
+    // For WALKIN type: compute distance from user and sort nearest-first
+    if (type === OpportunityType.WALKIN && userLocation) {
+      const withDistance = filtered.map((opp) => ({
+        ...opp,
+        distanceKm: getOpportunityDistanceKm(
+          opp,
+          userLocation.latitude,
+          userLocation.longitude,
+        ),
+      }));
+      withDistance.sort((a, b) => {
+        const dA = a.distanceKm ?? Infinity;
+        const dB = b.distanceKm ?? Infinity;
+        return dA - dB;
+      });
+      return withDistance;
+    }
+
+    return filtered;
+  }, [
+    filteredOpps,
+    filters.saved,
+    filters.workMode,
+    filters.skills,
+    filters.role,
+    type,
+    govtPhase,
+    govtCategory,
+    userLocation,
+    driveDate,
+  ]);
+
+  useEffect(() => {
+    if (!mounted) return;
+    const newTitle = formatJobFeedTitle({
+      type: type,
+      workMode: filters.workMode,
+      location: filters.location,
+      skills: filters.skills,
+      sector: filters.sector,
+      course: filters.course,
+      search: search,
+      year: filters.year,
+    });
+    if (newTitle) {
+      const count = visibleOpps.length;
+      const countPrefix = count > 0 ? `${count} ` : "";
+      const finalTitle = `${countPrefix}${newTitle} | FresherFlow`;
+
+      if (document.title !== finalTitle) {
+        document.title = finalTitle;
+      }
+
+      // Next.js completely replaces the <title> tag on soft navigation.
+      // We MUST observe the document head to catch the replacement and enforce our dynamic title.
+      const observer = new MutationObserver(() => {
+        if (document.title !== finalTitle) {
+          document.title = finalTitle;
+        }
+      });
+
+      if (document.head) {
+        observer.observe(document.head, {
+          childList: true,
+          subtree: true,
+          characterData: true,
         });
-    }, [filteredOpps, filters.saved, filters.workMode, filters.skills, type, govtPhase, govtCategory]);
+      }
 
-    useEffect(() => {
-        if (!mounted) return;
-        const newTitle = formatJobFeedTitle({
-            type: type,
-            workMode: filters.workMode,
-            location: filters.location,
-            skills: filters.skills,
-            sector: filters.sector,
-            course: filters.course,
-            search: search,
-            year: filters.year,
-        });
-        if (newTitle) {
-            const count = visibleOpps.length;
-            const countPrefix = count > 0 ? `${count} ` : '';
-            const finalTitle = `${countPrefix}${newTitle} | FresherFlow`;
-            
-            if (document.title !== finalTitle) {
-                document.title = finalTitle;
-            }
+      return () => observer.disconnect();
+    }
+  }, [type, filters, search, mounted, searchParams, visibleOpps.length]);
 
-            // Next.js completely replaces the <title> tag on soft navigation.
-            // We MUST observe the document head to catch the replacement and enforce our dynamic title.
-            const observer = new MutationObserver(() => {
-                if (document.title !== finalTitle) {
-                    document.title = finalTitle;
-                }
-            });
-            
-            if (document.head) {
-                observer.observe(document.head, { childList: true, subtree: true, characterData: true });
-            }
-            
-            return () => observer.disconnect();
-        }
-    }, [type, filters, search, mounted, searchParams, visibleOpps.length]);
+  // Keep selectedOpp in sync with visibleOpps on desktop without flashing null/skeleton (except Walkins where all pins are visible by default)
+  useEffect(() => {
+    if (
+      isDesktop === true &&
+      type !== OpportunityType.GOVERNMENT &&
+      type !== OpportunityType.WALKIN
+    ) {
+      if (visibleOpps.length === 0) {
+        setSelectedOpp(null);
+      } else if (
+        !selectedOpp ||
+        !visibleOpps.some((o) => o.id === selectedOpp.id)
+      ) {
+        setSelectedOpp(visibleOpps[0]);
+      }
+    }
+  }, [isDesktop, visibleOpps, selectedOpp, type]);
 
-    // Keep selectedOpp in sync with visibleOpps on desktop without flashing null/skeleton
-    useEffect(() => {
-        if (isDesktop === true && type !== OpportunityType.GOVERNMENT) {
-            if (visibleOpps.length === 0) {
-                setSelectedOpp(null);
-            } else if (!selectedOpp || !visibleOpps.some(o => o.id === selectedOpp.id)) {
-                setSelectedOpp(visibleOpps[0]);
-            }
-        }
-    }, [isDesktop, visibleOpps, selectedOpp, type]);
+  // Ensure selectedOpp is strictly null on government and walkin pages initially
+  useEffect(() => {
+    if (
+      type === OpportunityType.GOVERNMENT ||
+      type === OpportunityType.WALKIN
+    ) {
+      setSelectedOpp(null);
+    }
+  }, [type]);
 
-    // Ensure selectedOpp is strictly null on government page
-    useEffect(() => {
-        if (type === OpportunityType.GOVERNMENT) {
-            setSelectedOpp(null);
-        }
-    }, [type]);
+  const isJobSaved = (opp: Opportunity) => opp.isSaved || false;
+  const isJobApplied = (opp: Opportunity) =>
+    !!(opp.actions && opp.actions.length > 0);
 
-    const isJobSaved = (opp: Opportunity) => opp.isSaved || false;
-    const isJobApplied = (opp: Opportunity) => !!(opp.actions && opp.actions.length > 0);
+  const openMobileFilters = () => {
+    setDraftLoc(filters.location);
+    setDraftYear(filters.year);
+    setDraftClosingSoon(filters.closingSoon);
+    setDraftShowOnlySaved(filters.saved);
+    setDraftSector(filters.sector);
+    setDraftQualification(filters.qualification);
+    setDraftCourse(filters.course);
+    setDraftWorkMode(filters.workMode);
+    setDraftSkills(filters.skills || []);
+    setDraftSource(filters.source || []);
+    setDraftCompany(filters.company || []);
+    setDraftRole(filters.role || []);
+    setIsMobileFilterOpen(true);
+  };
 
-    const openMobileFilters = () => {
-        setDraftLoc(filters.location); setDraftYear(filters.year); setDraftClosingSoon(filters.closingSoon);
-        setDraftShowOnlySaved(filters.saved); setDraftSector(filters.sector);
-        setDraftQualification(filters.qualification); setDraftCourse(filters.course);
-        setDraftWorkMode(filters.workMode); setDraftSkills(filters.skills || []);
-        setDraftSource(filters.source || []);
-        setDraftCompany(filters.company || []);
-        setIsMobileFilterOpen(true);
-    };
+  const applyMobileFilters = () => {
+    setFilters({
+      location: draftLoc,
+      year: draftYear,
+      closingSoon: draftClosingSoon,
+      saved: draftShowOnlySaved,
+      sector: draftSector,
+      qualification: draftQualification,
+      course: draftCourse,
+      workMode: draftWorkMode,
+      skills: draftSkills,
+      source: draftSource,
+      company: draftCompany,
+      role: draftRole,
+    });
+    setIsMobileFilterOpen(false);
+  };
 
-    const applyMobileFilters = () => {
-        setFilters({ location: draftLoc, year: draftYear, closingSoon: draftClosingSoon, saved: draftShowOnlySaved, sector: draftSector, qualification: draftQualification, course: draftCourse, workMode: draftWorkMode, skills: draftSkills, source: draftSource, company: draftCompany });
-        setIsMobileFilterOpen(false);
-    };
+  const clearAll = () => {
+    setSearch("");
+    setDriveDate("all");
+    setFilters({
+      location: null,
+      year: null,
+      closingSoon: false,
+      saved: false,
+      sector: null,
+      qualification: null,
+      course: null,
+      workMode: null,
+      skills: [],
+      source: [],
+      company: [],
+      role: [],
+    });
+  };
 
-    const clearAll = () => {
-        setSearch('');
-        setFilters({ location: null, year: null, closingSoon: false, saved: false, sector: null, qualification: null, course: null, workMode: null, skills: [], source: [], company: [] });
-    };
+  return {
+    type,
+    user,
+    opportunities,
+    filteredOpps,
+    visibleOpps,
+    isLoading,
+    error,
+    profileIncomplete,
+    mounted,
+    isDesktop,
 
-    return {
-        type,
-        user,
-        opportunities,
-        filteredOpps,
-        visibleOpps,
-        isLoading,
-        error,
-        profileIncomplete,
-        mounted,
-        isDesktop,
-        
-        selectedOpp,
-        handleSelectOpportunity,
-        handleCloseOpportunityPane,
-        
-        search,
-        setSearch,
-        filters,
-        setFilters,
-        
-        govtPhase,
-        setGovtPhase,
-        govtCategory,
-        setGovtCategory,
-        phaseCounts,
-        categoryCounts,
-        
-        isMobileFilterOpen,
-        setIsMobileFilterOpen,
-        draftLoc, setDraftLoc,
-        draftYear, setDraftYear,
-        draftClosingSoon, setDraftClosingSoon,
-        draftShowOnlySaved, setDraftShowOnlySaved,
-        draftSector, setDraftSector,
-        draftQualification, setDraftQualification,
-        draftCourse, setDraftCourse,
-        draftWorkMode, setDraftWorkMode,
-        draftSkills, setDraftSkills,
-        draftSource, setDraftSource,
-        draftCompany, setDraftCompany,
-        mobileActiveCount,
-        openMobileFilters,
-        applyMobileFilters,
-        clearAll,
-        
-        visibleCount,
-        setVisibleCount,
-        
-        isJobSaved,
-        isJobApplied,
-        toggleSave,
-        reload,
-        customTitle,
-        topContent,
-        bottomContent,
-    };
+    selectedOpp,
+    handleSelectOpportunity,
+    handleCloseOpportunityPane,
+
+    search,
+    setSearch,
+    filters,
+    setFilters,
+
+    govtPhase,
+    setGovtPhase,
+    govtCategory,
+    setGovtCategory,
+    phaseCounts,
+    categoryCounts,
+
+    isMobileFilterOpen,
+    setIsMobileFilterOpen,
+    draftLoc,
+    setDraftLoc,
+    draftYear,
+    setDraftYear,
+    draftClosingSoon,
+    setDraftClosingSoon,
+    draftShowOnlySaved,
+    setDraftShowOnlySaved,
+    draftSector,
+    setDraftSector,
+    draftQualification,
+    setDraftQualification,
+    draftCourse,
+    setDraftCourse,
+    draftWorkMode,
+    setDraftWorkMode,
+    draftSkills,
+    setDraftSkills,
+    draftSource,
+    setDraftSource,
+    draftCompany,
+    setDraftCompany,
+    draftRole,
+    setDraftRole,
+    mobileActiveCount,
+    openMobileFilters,
+    applyMobileFilters,
+    clearAll,
+
+    driveDate,
+    setDriveDate,
+
+    visibleCount,
+    setVisibleCount,
+
+    isJobSaved,
+    isJobApplied,
+    toggleSave,
+    reload,
+    customTitle,
+    topContent,
+    bottomContent,
+    userLocation: userLocation ?? null,
+  };
 }
 
 export type CategoryPageState = ReturnType<typeof useCategoryPageState>;

@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { Suspense } from 'react';
 import CategoryPage from '@/features/opportunities/components/CategoryPage';
 import { FeedPageSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
-import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+import { fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { toOpportunityCardDTO } from '@fresherflow/types';
 
 // On-demand revalidation via /api/revalidate — called when jobs are published/expired.
@@ -37,16 +37,12 @@ export const metadata: Metadata = {
 };
 
 export default async function JobsPage() {
-    const bootstrapData = await fetchBootstrapFeed(false);
+    const bootstrapData = await fetchFeedIndex(false);
     const initialData = bootstrapData ? {
         opportunities: bootstrapData.opportunities.map(toOpportunityCardDTO) as any,
         total: bootstrapData.count,
         cachedAt: new Date(bootstrapData.generatedAt).getTime(),
     } : null;
 
-    return (
-        <Suspense fallback={<FeedPageSkeleton />}>
-            <CategoryPage type={null} initialData={initialData} />
-        </Suspense>
-    );
+    return <CategoryPage type={null} initialData={initialData} />;
 }

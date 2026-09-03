@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { Button } from '@/ui/Button';
 import { logRouteResult } from '@/lib/observability';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 import { fetchBootstrapFeed, fetchGovernmentFeed, fetchExpiredFeed } from '@/lib/api/cdnFeed';
@@ -84,25 +85,37 @@ export async function generateMetadata({ params }: { params: Promise<{ city: str
     };
 }
 
+/** Returns true for errors thrown by notFound() or redirect()/permanentRedirect() in Next.js 15+/16. */
+function isNextNavigationError(err: unknown): boolean {
+    const digest = (err as { digest?: string })?.digest ?? '';
+    return digest === 'NEXT_HTTP_ERROR_FALLBACK;404' || digest.startsWith('NEXT_REDIRECT');
+}
+
 export default async function WalkInsCityLandingPage({ params }: { params: Promise<{ city: string }> }) {
     const { city } = await params;
-    
-    // Validate city against feed to prevent cache poisoning by bots
-    const feed = await fetchBootstrapFeed(false, undefined, true);
-    const hasCity = feed?.opportunities?.some(opp => 
-        opp.type === 'WALKIN' && 
-        opp.locations?.some(loc => loc.trim().toLowerCase().replace(/\s+/g, '-') === city)
-    );
 
-    if (!hasCity) {
-        logRouteResult('/jobs/walk-ins/[city]', '404');
-        notFound();
+    try {
+        // Validate city against feed to prevent cache poisoning by bots
+        const feed = await fetchBootstrapFeed(false, undefined, true);
+        const hasCity = feed?.opportunities?.some(opp =>
+            opp.type === 'WALKIN' &&
+            opp.locations?.some(loc => loc.trim().toLowerCase().replace(/\s+/g, '-') === city)
+        );
+
+        if (!hasCity) {
+            logRouteResult('/jobs/walkins/[city]', '404');
+            notFound();
+        }
+    } catch (err) {
+        if (isNextNavigationError(err)) throw err;
+        // CDN is temporarily down — fall through and render the page optimistically.
+        // dynamicParams = false means this city was valid at build time.
     }
 
-    logRouteResult('/jobs/walk-ins/[city]', '200');
+    logRouteResult('/jobs/walkins/[city]', '200');
 
     const cityLabel = formatLabel(city);
-    const pageUrl = `${SITE_URL}/jobs/walk-ins/${city}`;
+    const pageUrl = `${SITE_URL}/jobs/walkins/${city}`;
     const jsonLd = {
         '@context': 'https://schema.org',
         '@type': 'CollectionPage',
@@ -128,15 +141,12 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
                         We verify walk-in drives and entry-level openings so you can apply confidently.
                     </p>
                     <div className="flex flex-wrap gap-2">
-                        <Link href="/jobs" className="premium-button h-10 px-5 text-xs rounded-lg">
-                            Browse verified walk-ins
-                        </Link>
-                        <Link
-                            href="/login"
-                            className="premium-button-outline h-10 px-5 text-xs rounded-lg bg-background hover:bg-muted"
-                        >
-                            Get alerts for {cityLabel}
-                        </Link>
+                        <Button variant="default" size="sm" asChild className="h-10 px-5 text-xs rounded-lg">
+                            <Link href="/jobs">Browse verified walk-ins</Link>
+                        </Button>
+                        <Button variant="outline" size="sm" asChild className="h-10 px-5 text-xs rounded-lg">
+                            <Link href="/login">Get alerts for {cityLabel}</Link>
+                        </Button>
                     </div>
                 </div>
 

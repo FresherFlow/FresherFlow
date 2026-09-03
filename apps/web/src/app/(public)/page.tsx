@@ -1,15 +1,34 @@
 import type { Metadata } from 'next';
-import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+import { fetchFeedIndex, fetchGovernmentFeed } from '@/lib/api/cdnFeed';
 import dynamic from 'next/dynamic';
 import { HeroSection } from '@/features/landing/HeroSection';
-import { HomeAuthGuard } from '@/features/auth/components/HomeAuthGuard';
-const CorporateCollections = dynamic(() => import('@/features/landing/CorporateCollections').then(m => m.CorporateCollections));
-const ExamCategories = dynamic(() => import('@/features/landing/ExamCategories').then(m => m.ExamCategories));
-const GovtNoticeBoard = dynamic(() => import('@/features/landing/GovtNoticeBoard').then(m => m.GovtNoticeBoard));
-const FinalCTA = dynamic(() => import('@/features/landing/FinalCTA').then(m => m.FinalCTA));
-import { RecentOpportunities } from '@/features/landing/RecentOpportunities';
 import type { Opportunity } from '@fresherflow/types';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
+
+// Lazy-load below-the-fold sections so the heavy JobCard chain (Firebase + location
+// taxonomy) never delays above-the-fold LCP. Skeletons preserve layout with no CLS.
+const RecentOpportunities = dynamic(
+    () => import('@/features/landing/RecentOpportunities').then(m => m.RecentOpportunities),
+    { loading: () => <div className="py-10 md:py-14 px-6 border-t border-border/40"><div className="max-w-6xl mx-auto space-y-7"><div className="h-4 w-40 bg-muted/50 rounded animate-pulse" /><div className="h-8 w-64 bg-muted/40 rounded animate-pulse" /><div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-8">{[1,2,3,4].map(i => <div key={i} className="h-44 bg-muted/30 rounded-2xl animate-pulse" />)}</div></div></div> }
+);
+
+// Dynamic imports with instant loading skeletons — no blank flash
+const CorporateCollections = dynamic(
+    () => import('@/features/landing/CorporateCollections').then(m => m.CorporateCollections),
+    { loading: () => <div className="py-16 px-6"><div className="max-w-6xl mx-auto space-y-8"><div className="h-8 w-48 bg-muted/50 rounded-lg animate-pulse" /><div className="h-4 w-80 bg-muted/40 rounded animate-pulse" /><div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">{[1,2,3].map(i => <div key={i} className="h-40 bg-muted/30 rounded-2xl animate-pulse" />)}</div></div></div> }
+);
+const ExamCategories = dynamic(
+    () => import('@/features/landing/ExamCategories').then(m => m.ExamCategories),
+    { loading: () => <div className="py-14 px-6"><div className="max-w-6xl mx-auto"><div className="h-6 w-40 bg-muted/50 rounded-lg animate-pulse mx-auto" /><div className="flex flex-wrap justify-center gap-4 mt-8">{[1,2,3].map(i => <div key={i} className="h-16 w-64 bg-muted/30 rounded-xl animate-pulse" />)}</div></div></div> }
+);
+const GovtNoticeBoard = dynamic(
+    () => import('@/features/landing/GovtNoticeBoard').then(m => m.GovtNoticeBoard),
+    { loading: () => <div className="py-14 px-6"><div className="max-w-7xl mx-auto"><div className="h-6 w-52 bg-muted/50 rounded-lg animate-pulse" /><div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">{[1,2,3,4].map(i => <div key={i} className="h-48 bg-muted/30 rounded-xl animate-pulse" />)}</div></div></div> }
+);
+const FinalCTA = dynamic(
+    () => import('@/features/landing/FinalCTA').then(m => m.FinalCTA),
+    { loading: () => null }
+);
 
 export const metadata: Metadata = {
     title: {
@@ -47,37 +66,36 @@ export const revalidate = false;
 
 export default async function LandingPage() {
 
-    // ZERO-BLOCKING STRATEGY:
-    // Race data fetching against a 500ms timeout so a slow CDN never
-    // causes a "circling" hang — we render with defaults instead.
-    let liveCount = 207;
-    let companiesCount = 166;
+    let liveCount = 0;
+    let companiesCount = 0;
     let recentOps: Opportunity[] = [];
     let govtOps: Opportunity[] = [];
 
     try {
-        const dataPromise = fetchBootstrapFeed();
-
         const isBuild = process.env.NEXT_PHASE === 'phase-production-build';
-        const timeoutMs = isBuild ? 15000 : 500;
+        const timeoutMs = isBuild ? 15000 : 200; // 200ms max — render fast with defaults
         const timeoutPromise = new Promise<any>((resolve) =>
             setTimeout(() => resolve(null), timeoutMs)
         );
 
-        const resolvedFeed = await Promise.race([dataPromise, timeoutPromise]);
-        if (resolvedFeed) {
-            const rawOps = resolvedFeed.opportunities || [];
-            liveCount = resolvedFeed.count || rawOps.length || 207;
+        // Fetch index (lightweight) + govt feed in parallel
+        const [resolvedJobsFeed, resolvedGovtFeed] = await Promise.all([
+            Promise.race([fetchFeedIndex(), timeoutPromise]),
+            Promise.race([fetchGovernmentFeed(), timeoutPromise]),
+        ]);
+
+        if (resolvedJobsFeed) {
+            const rawOps = resolvedJobsFeed.opportunities || [];
+            liveCount = resolvedJobsFeed.count || rawOps.length || 0;
             companiesCount = rawOps.length > 0
                 ? new Set(rawOps.map((o: Opportunity) => o.company).filter(Boolean)).size
-                : 166;
+                : 0;
             
-            recentOps = rawOps
-                .filter((o: Opportunity) => !o.governmentJobDetails && String(o.type) !== 'GOVERNMENT')
-                .slice(0, 4);
-                
-            govtOps = rawOps
-                .filter((o: Opportunity) => String(o.type) === 'GOVERNMENT');
+            recentOps = rawOps.slice(0, 4);
+        }
+
+        if (resolvedGovtFeed) {
+            govtOps = (resolvedGovtFeed.opportunities || []) as unknown as Opportunity[];
         }
     } catch (err) {
         console.error('[Landing] Critical data resolution failure:', err);
@@ -97,7 +115,6 @@ export default async function LandingPage() {
 
     return (
         <>
-            <HomeAuthGuard />
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}

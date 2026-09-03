@@ -49,7 +49,7 @@ export function MiniFooter({ className }: MiniFooterProps) {
     const opportunities = [
         { href: '/govt', label: 'Government Jobs' },
         { href: '/jobs', label: 'Off-Campus Drives' },
-        { href: '/jobs/walk-ins', label: 'Walk-in Interviews' },
+        { href: '/jobs/walkins', label: 'Walk-in Interviews' },
         { href: '/jobs/internships', label: 'Student Internships' },
     ];
 
@@ -61,13 +61,13 @@ export function MiniFooter({ className }: MiniFooterProps) {
     ];
 
     const socialLinks = [
-        { href: 'https://t.me/fresherflowin', label: 'Telegram', Icon: TelegramBrandIcon, colorClass: 'bg-[#229ED9] text-white border-transparent hover:opacity-90 shadow-sm' },
-        { href: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D', label: 'WhatsApp', Icon: WhatsAppBrandIcon, colorClass: 'bg-[#25D366] text-white border-transparent hover:opacity-90 shadow-sm' },
-        { href: 'https://www.linkedin.com/company/fresherflow-in', label: 'LinkedIn', Icon: LinkedInBrandIcon, colorClass: 'bg-[#0A66C2] text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://t.me/fresherflowin', label: 'Telegram', Icon: TelegramBrandIcon, colorClass: 'bg-brand-telegram text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D', label: 'WhatsApp', Icon: WhatsAppBrandIcon, colorClass: 'bg-brand-whatsapp text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://www.linkedin.com/company/fresherflow-in', label: 'LinkedIn', Icon: LinkedInBrandIcon, colorClass: 'bg-brand-linkedin text-white border-transparent hover:opacity-90 shadow-sm' },
         { href: 'https://x.com/Fresherflow', label: 'X', Icon: XBrandIcon, colorClass: 'bg-black dark:bg-white text-white dark:text-black border-transparent hover:opacity-90 shadow-sm' },
-        { href: 'https://discord.gg/CcPAnWSHD', label: 'Discord', Icon: DiscordBrandIcon, colorClass: 'bg-[#5865F2] text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://discord.gg/CcPAnWSHD', label: 'Discord', Icon: DiscordBrandIcon, colorClass: 'bg-brand-discord text-white border-transparent hover:opacity-90 shadow-sm' },
         { href: 'https://instagram.com/fresherflow', label: 'Instagram', Icon: InstagramBrandIcon, colorClass: 'bg-gradient-to-tr from-[#f09433] via-[#dc2743] to-[#bc1888] text-white border-transparent hover:opacity-90 shadow-sm' },
-        { href: 'https://www.facebook.com/FresherFlow.in', label: 'Facebook', Icon: FacebookBrandIcon, colorClass: 'bg-[#1877F2] text-white border-transparent hover:opacity-90 shadow-sm' },
+        { href: 'https://www.facebook.com/FresherFlow.in', label: 'Facebook', Icon: FacebookBrandIcon, colorClass: 'bg-brand-facebook text-white border-transparent hover:opacity-90 shadow-sm' },
         { href: 'https://github.com/FresherFlow/FresherFlow', label: 'GitHub', Icon: GithubBrandIcon, colorClass: 'bg-black dark:bg-white text-white dark:text-black border-transparent hover:opacity-90 shadow-sm' },
     ];
 

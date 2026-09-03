@@ -1,8 +1,5 @@
-'use client';
-
-import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeftIcon, CalendarIcon, ClockIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, CalendarIcon, ClockIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 
 interface BlogPost {
     id: string;
@@ -67,12 +64,6 @@ const BLOG_POSTS: BlogPost[] = [
 ];
 
 export default function BlogPage() {
-    const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
-
-    const togglePost = (postId: string) => {
-        setExpandedPostId((prev) => (prev === postId ? null : postId));
-    };
-
     const renderParagraph = (text: string) => {
         const parts = text.split(/(\*\*.*?\*\*)/g);
         return parts.map((part, index) => {
@@ -107,72 +98,56 @@ export default function BlogPage() {
             </header>
 
             <section className="space-y-6">
-                {BLOG_POSTS.map((post) => {
-                    const isExpanded = expandedPostId === post.id;
-                    return (
-                        <article 
-                            key={post.id}
-                            className={`rounded-3xl border transition-all duration-300 bg-card overflow-hidden ${
-                                isExpanded ? 'border-primary/40 ring-1 ring-primary/20' : 'border-border hover:border-border/100 hover:shadow-sm'
-                            }`}
-                        >
-                            {/* Card Header (Always Visible) */}
-                            <div 
-                                onClick={() => togglePost(post.id)}
-                                className="p-6 md:p-8 cursor-pointer select-none space-y-4"
-                            >
-                                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground font-semibold">
-                                    <span className="bg-primary/10 text-primary px-2.5 py-1 rounded-full text-[10px] tracking-wider uppercase font-bold">
-                                        {post.category}
-                                    </span>
-                                    <div className="flex items-center gap-1">
-                                        <CalendarIcon className="w-3.5 h-3.5" />
-                                        {post.date}
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <ClockIcon className="w-3.5 h-3.5" />
-                                        {post.readingTime}
-                                    </div>
+                {BLOG_POSTS.map((post) => (
+                    <details 
+                        key={post.id}
+                        className="group rounded-3xl border border-border hover:border-border/100 hover:shadow-sm open:border-primary/40 open:ring-1 open:ring-primary/20 transition-all duration-300 bg-card overflow-hidden"
+                    >
+                        {/* Card Header (Always Visible) */}
+                        <summary className="p-6 md:p-8 cursor-pointer select-none space-y-4 list-none [&::-webkit-details-marker]:hidden">
+                            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground font-semibold">
+                                <span className="bg-primary/10 text-primary px-2.5 py-1 rounded-full text-[10px] tracking-wider uppercase font-bold">
+                                    {post.category}
+                                </span>
+                                <div className="flex items-center gap-1">
+                                    <CalendarIcon className="w-3.5 h-3.5" />
+                                    {post.date}
                                 </div>
-
-                                <div className="flex items-start justify-between gap-4">
-                                    <h2 className="text-xl md:text-2xl font-black tracking-tight text-foreground group-hover:text-primary">
-                                        {post.title}
-                                    </h2>
-                                    <div className="p-1 rounded-lg border border-border bg-background text-muted-foreground shrink-0 mt-1">
-                                        {isExpanded ? <ChevronUpIcon className="w-4 h-4" /> : <ChevronDownIcon className="w-4 h-4" />}
-                                    </div>
+                                <div className="flex items-center gap-1">
+                                    <ClockIcon className="w-3.5 h-3.5" />
+                                    {post.readingTime}
                                 </div>
-
-                                <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
-                                    {post.excerpt}
-                                </p>
                             </div>
 
-                            {/* Card Body (Detailed Content) */}
-                            {isExpanded && (
-                                <div className="px-6 pb-8 md:px-8 md:pb-10 border-t border-border/40 pt-6 animate-in slide-in-from-top-3 duration-300">
-                                    <div className="prose prose-neutral dark:prose-invert max-w-none space-y-4 text-sm md:text-base leading-relaxed text-foreground/90 font-medium font-sans">
-                                        {post.content.map((paragraph, index) => (
-                                            <p key={index}>{renderParagraph(paragraph)}</p>
-                                        ))}
-                                    </div>
-                                    <div className="pt-6 mt-6 border-t border-border/40 flex justify-between items-center">
-                                        <Link href="/app" className="text-xs font-bold text-primary hover:underline">
-                                            Try the FresherFlow App &rarr;
-                                        </Link>
-                                        <button 
-                                            onClick={() => togglePost(post.id)}
-                                            className="text-xs font-semibold text-muted-foreground hover:text-foreground"
-                                        >
-                                            Collapse reading pane
-                                        </button>
-                                    </div>
+                            <div className="flex items-start justify-between gap-4">
+                                <h2 className="text-xl md:text-2xl font-black tracking-tight text-foreground group-hover:text-primary">
+                                    {post.title}
+                                </h2>
+                                <div className="p-1 rounded-lg border border-border bg-background text-muted-foreground shrink-0 mt-1">
+                                    <ChevronDownIcon className="w-4 h-4 transition-transform duration-200 group-open:rotate-180" />
                                 </div>
-                            )}
-                        </article>
-                    );
-                })}
+                            </div>
+
+                            <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
+                                {post.excerpt}
+                            </p>
+                        </summary>
+
+                        {/* Card Body (Detailed Content) */}
+                        <div className="px-6 pb-8 md:px-8 md:pb-10 border-t border-border/40 pt-6">
+                            <div className="prose prose-neutral dark:prose-invert max-w-none space-y-4 text-sm md:text-base leading-relaxed text-foreground/90 font-medium font-sans">
+                                {post.content.map((paragraph, index) => (
+                                    <p key={index}>{renderParagraph(paragraph)}</p>
+                                ))}
+                            </div>
+                            <div className="pt-6 mt-6 border-t border-border/40 flex justify-between items-center">
+                                <Link href="/app" className="text-xs font-bold text-primary hover:underline">
+                                    Try the FresherFlow App &rarr;
+                                </Link>
+                            </div>
+                        </div>
+                    </details>
+                ))}
             </section>
         </main>
     );

@@ -1,6 +1,7 @@
 "use client"
 
-import { Column } from "@tanstack/react-table"
+import type { RowData } from "@tanstack/react-table"
+import { LegacyColumn } from "@tanstack/react-table/legacy"
 import { ArrowDown, ArrowUp, ChevronsUpDown, EyeOff } from "lucide-react"
 
 import { cn } from "@/lib/utils/utils"
@@ -13,13 +14,13 @@ import {
   DropdownMenuTrigger,
 } from "@/ui/DropdownMenu"
 
-interface DataTableColumnHeaderProps<TData, TValue>
-  extends React.HTMLAttributes<HTMLDivElement> {
-  column: Column<TData, TValue>
-  title: string
+interface DataTableColumnHeaderProps<TData extends RowData, TValue>
+  extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
+  column: LegacyColumn<TData, TValue>
+  title: React.ReactNode
 }
 
-export function DataTableColumnHeader<TData, TValue>({
+export function DataTableColumnHeader<TData extends RowData, TValue>({
   column,
   title,
   className,

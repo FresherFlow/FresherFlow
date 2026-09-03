@@ -4,7 +4,6 @@ import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { cn } from '@repo/ui/utils/cn';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import ChevronDownIcon from '@heroicons/react/24/outline/ChevronDownIcon';
-import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
 import { SkillPill } from '@/ui/SkillPill';
@@ -21,11 +20,28 @@ export interface FilterBarFilters {
     skills: string[];
     source: string[];
     company: string[];
+    role?: string[];
+    driveDate?: 'all' | 'today' | 'thisWeek';
 }
 
 const GOVT_SECTORS = ['Defense', 'Railways', 'Banking', 'Teaching', 'Police', 'SSC / UPSC', 'PSU'];
 const GOVT_QUALIFICATIONS = ['10th Pass', '12th Pass', 'Diploma', 'Graduate', 'Postgraduate'];
 const CORP_COURSES = ['B.Tech/B.E.', 'M.C.A.', 'MBA', 'B.Sc/B.Com/B.A', 'Diploma'];
+
+const ROLE_OPTIONS = [
+    'Software Engineer',
+    'Frontend Developer',
+    'Backend Developer',
+    'Full Stack Developer',
+    'Data Scientist',
+    'Data Analyst',
+    'QA / Test Engineer',
+    'DevOps Engineer',
+    'Product Manager',
+    'UI/UX Designer',
+    'Android Developer',
+    'iOS Developer',
+];
 
 interface FilterDropdownBarProps {
     filters: FilterBarFilters;
@@ -34,6 +50,8 @@ interface FilterDropdownBarProps {
     selectedType?: string | null;
     onTypeChange?: (type: string | null) => void;
     pageType?: string;
+    driveDate?: 'all' | 'today' | 'thisWeek';
+    onDriveDateChange?: (v: 'all' | 'today' | 'thisWeek') => void;
     aggregates?: {
         locations: Record<string, number>;
         skills: Record<string, number>;
@@ -43,7 +61,7 @@ interface FilterDropdownBarProps {
     };
 }
 
-type OpenPanel = 'location' | 'year' | 'company' | 'type' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | 'source' | null;
+type OpenPanel = 'location' | 'year' | 'company' | 'type' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | 'source' | 'driveDate' | 'role' | null;
 
 type DropdownOption =
     | { kind: 'type'; value: string | null; label: string }
@@ -57,7 +75,8 @@ type DropdownOption =
     | { kind: 'source'; value: string; count: number }
     | { kind: 'yearAny' }
     | { kind: 'year'; year: number; count: number }
-    | { kind: 'company'; company: string; count: number };
+    | { kind: 'company'; company: string; count: number }
+    | { kind: 'role'; role: string };
 
 function useClickOutside(ref: React.RefObject<HTMLElement | null>, handler: () => void) {
     useEffect(() => {
@@ -74,9 +93,9 @@ function useClickOutside(ref: React.RefObject<HTMLElement | null>, handler: () =
     }, [ref, handler]);
 }
 
-const chipBase = 'h-9 px-2 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors transition-transform duration-150 ease-out active:scale-[0.97] whitespace-nowrap select-none cursor-pointer outline-none motion-reduce:transform-none motion-reduce:transition-none';
-const chipDefault = 'bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent transition-colors duration-100';
-const chipActive = 'bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent transition-colors duration-100';
+const chipBase = 'h-9 px-3 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition-all duration-150 ease-out active:scale-[0.97] whitespace-nowrap select-none cursor-pointer outline-none motion-reduce:transform-none motion-reduce:transition-none';
+const chipDefault = 'bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground';
+const chipActive = 'bg-chip-active text-chip-active-text border-chip-active-border font-semibold';
 
 const TYPE_OPTIONS = [
     { label: 'All types', value: null },
@@ -85,19 +104,32 @@ const TYPE_OPTIONS = [
     { label: 'Walk-ins', value: 'WALKIN' },
 ];
 
-export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeChange, pageType, aggregates }: FilterDropdownBarProps) {
+export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeChange, pageType, aggregates, driveDate = 'all', onDriveDateChange }: FilterDropdownBarProps) {
     const [open, setOpen] = useState<OpenPanel>(null);
     const [locSearch, setLocSearch] = useState('');
     const [skillSearch, setSkillSearch] = useState('');
     const [companySearch, setCompanySearch] = useState('');
+    const [roleSearch, setRoleSearch] = useState('');
     const [activeIndex, setActiveIndex] = useState(0);
     const barRef = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-    useClickOutside(barRef, () => { setOpen(null); setLocSearch(''); setSkillSearch(''); setCompanySearch(''); });
+    useClickOutside(barRef, () => {
+        setOpen(null);
+        setLocSearch('');
+        setSkillSearch('');
+        setCompanySearch('');
+        setRoleSearch('');
+    });
 
     useEffect(() => {
-        const onScroll = () => { setOpen(null); setLocSearch(''); setSkillSearch(''); setCompanySearch(''); };
+        const onScroll = () => {
+            setOpen(null);
+            setLocSearch('');
+            setSkillSearch('');
+            setCompanySearch('');
+            setRoleSearch('');
+        };
         window.addEventListener('scroll', onScroll, { passive: true });
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
@@ -107,6 +139,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
         if (panel !== 'location') setLocSearch('');
         if (panel !== 'skills') setSkillSearch('');
         if (panel !== 'company') setCompanySearch('');
+        if (panel !== 'role') setRoleSearch('');
     };
 
     const isGovt = pageType === 'GOVERNMENT';
@@ -155,6 +188,11 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
         return compQuery ? sortedCompanies.filter(c => c.company.toLowerCase().includes(compQuery)) : sortedCompanies;
     }, [compQuery, sortedCompanies]);
 
+    const roleQuery = roleSearch.trim().toLowerCase();
+    const filteredRoles = useMemo(() => {
+        return roleQuery ? ROLE_OPTIONS.filter(r => r.toLowerCase().includes(roleQuery)) : ROLE_OPTIONS;
+    }, [roleQuery]);
+
     // Flatten options for the currently open dropdown
     const options = useMemo<DropdownOption[]>(() => {
         if (!open) return [];
@@ -178,6 +216,8 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                 return GOVT_SECTORS.map(s => ({ kind: 'sector' as const, value: s }));
             case 'qualification':
                 return GOVT_QUALIFICATIONS.map(q => ({ kind: 'qualification' as const, value: q }));
+            case 'role':
+                return filteredRoles.map(role => ({ kind: 'role' as const, role }));
             case 'skills':
                 return filteredSkills.map(({ skill, count }) => ({ kind: 'skills' as const, skill, count }));
             case 'course':
@@ -194,7 +234,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
             default:
                 return [];
         }
-    }, [open, isGovt, filteredLocations, filteredSkills, sortedSources, sortedYears, filteredCompanies]);
+    }, [open, isGovt, filteredLocations, filteredRoles, filteredSkills, sortedSources, sortedYears, filteredCompanies]);
 
     const handleSelectOption = useCallback((option: DropdownOption) => {
         if (!option) return;
@@ -232,6 +272,15 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                 setFilters({ ...filters, qualification: filters.qualification === option.value ? null : option.value });
                 setOpen(null);
                 break;
+            case 'role': {
+                const r = option.role;
+                const isSelected = filters.role?.includes(r);
+                const newRoles = isSelected
+                    ? (filters.role || []).filter(item => item !== r)
+                    : [...(filters.role || []), r];
+                setFilters({ ...filters, role: newRoles });
+                break;
+            }
             case 'skills': {
                 const skill = option.skill;
                 const isSelected = filters.skills?.includes(skill);
@@ -277,7 +326,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
     // Reset activeIndex when open panel or search query changes
     useEffect(() => {
         setActiveIndex(0);
-    }, [open, locSearch, skillSearch, companySearch]);
+    }, [open, locSearch, skillSearch, companySearch, roleSearch]);
 
     // Keyboard navigation listener
     useEffect(() => {
@@ -301,6 +350,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                 setLocSearch('');
                 setSkillSearch('');
                 setCompanySearch('');
+                setRoleSearch('');
             }
         };
 
@@ -539,9 +589,108 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                 </>
             )}
 
+            {/* When (drive date) — walk-in specific */}
+            {pageType === 'WALKIN' && onDriveDateChange && (
+                <div className="relative">
+                    <button
+                        onClick={() => toggle('driveDate')}
+                        aria-expanded={open === 'driveDate'}
+                        className={cn(chipBase, driveDate && driveDate !== 'all' ? chipActive : chipDefault)}
+                    >
+                        <CalendarIcon className="w-4 h-4 shrink-0" />
+                        {driveDate === 'today' ? 'Today' : driveDate === 'thisWeek' ? 'This Week' : 'When'}
+                    </button>
+                    {open === 'driveDate' && (
+                        <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-1.5 w-44 z-[100]">
+                            {([
+                                { value: 'all' as const, label: 'All Dates' },
+                                { value: 'today' as const, label: 'Today' },
+                                { value: 'thisWeek' as const, label: 'This Week' },
+                            ]).map((opt, idx) => (
+                                <button
+                                    key={opt.value}
+                                    tabIndex={-1}
+                                    ref={el => { itemRefs.current[idx] = el; }}
+                                    onClick={() => {
+                                        onDriveDateChange(opt.value);
+                                        setOpen(null);
+                                    }}
+                                    onMouseEnter={() => setActiveIndex(idx)}
+                                    className={cn(
+                                        'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none text-foreground',
+                                        idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                    )}
+                                >
+                                    <input type="radio" tabIndex={-1} checked={driveDate === opt.value} readOnly className="w-4 h-4 rounded-full border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Corporate specific dropdowns */}
             {!isGovt && (
                 <>
+                    {/* Role dropdown */}
+                    <div className="relative">
+                        <button
+                            onClick={() => toggle('role')}
+                            aria-expanded={open === 'role'}
+                            aria-haspopup="listbox"
+                            className={cn(chipBase, filters.role && filters.role.length > 0 ? chipActive : chipDefault)}
+                        >
+                            Role
+                            {filters.role && filters.role.length > 0 && (
+                                <span className="bg-muted text-foreground rounded-md px-1.5 text-sm font-medium shrink-0 flex items-center justify-center h-5 min-w-[20px]">
+                                    {filters.role.length}
+                                </span>
+                            )}
+                        </button>
+                        {open === 'role' && (
+                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-64 z-[100] flex flex-col gap-1 max-h-80">
+                                <div className="px-1 pb-1 pt-0.5 shrink-0">
+                                    <input
+                                        type="text"
+                                        value={roleSearch}
+                                        onChange={e => setRoleSearch(e.target.value)}
+                                        placeholder="Search roles..."
+                                        className="w-full h-9 px-3 rounded-lg border border-border bg-background text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20"
+                                        onClick={e => e.stopPropagation()}
+                                        autoFocus
+                                    />
+                                </div>
+                                <div className="overflow-y-auto flex-1 overscroll-contain space-y-0.5">
+                                    {filteredRoles.map((role, idx) => {
+                                        const isSelected = filters.role?.includes(role);
+                                        return (
+                                            <button
+                                                key={role}
+                                                tabIndex={-1}
+                                                ref={el => { itemRefs.current[idx] = el; }}
+                                                onClick={() => handleSelectOption(options[idx])}
+                                                onMouseEnter={() => setActiveIndex(idx)}
+                                                className={cn(
+                                                    'w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2.5 cursor-pointer outline-none select-none',
+                                                    idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                                )}
+                                            >
+                                                <input type="checkbox" tabIndex={-1} checked={!!isSelected} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
+                                                <span className="truncate flex-1 text-foreground">{role}</span>
+                                            </button>
+                                        );
+                                    })}
+                                    {filteredRoles.length === 0 && (
+                                        <div className="px-3 py-4 text-center text-sm text-muted-foreground">
+                                            No roles found
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
                     <div className="relative">
                         <button
                             onClick={() => toggle('skills')}
@@ -784,7 +933,6 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                     </div>
                 </>
             )}
-
         </div>
     );
 }

@@ -9,8 +9,8 @@ interface LandingStatsProps {
 }
 
 export function LandingStats({ initialLiveCount, initialCompaniesCount }: LandingStatsProps) {
-    const [liveCount, setLiveCount] = useState(initialLiveCount || 207);
-    const [companiesCount, setCompaniesCount] = useState(initialCompaniesCount || 166);
+    const [liveCount, setLiveCount] = useState(initialLiveCount || 0);
+    const [companiesCount, setCompaniesCount] = useState(initialCompaniesCount || 0);
     
     const [animatedLive, setAnimatedLive] = useState(0);
     const [animatedCompanies, setAnimatedCompanies] = useState(0);
@@ -20,20 +20,13 @@ export function LandingStats({ initialLiveCount, initialCompaniesCount }: Landin
         const initialLive = liveCount;
         const initialCompanies = companiesCount;
 
-        const isLocal = typeof window !== 'undefined' && 
-            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-
-        if (isLocal) {
-            // Skip live fetch on localhost to prevent CORS/offline console errors in dev
-            if (!initialLive || initialLive === 0) setLiveCount(207);
-            if (!initialCompanies || initialCompanies === 0) setCompaniesCount(166);
-            return;
-        }
+        if (!CDN_URL) return;
 
         // Fetch fresh stats from R2/CDN stats.json (lightweight, ~100 bytes)
-        fetch(`${CDN_URL}/stats.json`)
-            .then(res => res.json())
-            .then((data) => {
+        fetch(`${CDN_URL}/meta/stats.json`)
+            .then(async (res) => {
+                if (!res.ok) return;
+                const data = await res.json();
                 if (data && typeof data.opportunities === 'number') {
                     setLiveCount(data.opportunities);
                 }
@@ -41,11 +34,10 @@ export function LandingStats({ initialLiveCount, initialCompaniesCount }: Landin
                     setCompaniesCount(data.companies);
                 }
             })
-            .catch((err) => {
-                console.error('[LandingStats] Failed to fetch stats.json:', err);
-                // Fallback to static numbers if CDN is unreachable
-                if (!initialLive || initialLive === 0) setLiveCount(207);
-                if (!initialCompanies || initialCompanies === 0) setCompaniesCount(166);
+            .catch(() => {
+                // Keep initial live counts from server render if CDN is unreachable
+                if (initialLive > 0) setLiveCount(initialLive);
+                if (initialCompanies > 0) setCompaniesCount(initialCompanies);
             });
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);

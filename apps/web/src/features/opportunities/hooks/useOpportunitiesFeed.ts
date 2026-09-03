@@ -8,9 +8,13 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import toast from 'react-hot-toast';
 import { readFeedCache } from '@/lib/api/offline/opportunitiesFeedCache';
 import { calculateOpportunityMatch, isNotEligible } from '@/features/opportunities/domain/matchScore';
+import { isStaleWalkin } from '@/features/opportunities/utils/walkinMapUtils';
+export { isStaleWalkin };
 
 import { useFirebaseSaved } from '@/features/dashboard/hooks/useFirebaseSaved';
 import { promptLoginToast } from '@/lib/utils/toastUtils';
+import { liveSearch, liveJobToOpportunity, type LiveSearchJob } from '@/lib/api/liveSearch';
+import { opportunityMatchesSearch, sanitizeSearchQuery } from '@/features/opportunities/utils/searchUtils';
 
 
 const WEB_STATIC_DISCOVERY = true;
@@ -83,6 +87,7 @@ interface UseOpportunitiesFeedOptions {
     course?: string | null;
     skills?: string[] | null;
     roles?: string[] | null;
+    experience?: string[] | null;
     minSalary?: number | null;
     maxSalary?: number | null;
     initialData?: {
@@ -91,10 +96,6 @@ interface UseOpportunitiesFeedOptions {
         cachedAt?: number;
     } | null;
 }
-
-type OpportunityAction = {
-    actionType: string;
-};
 
 export function useOpportunitiesFeed({
     type,
@@ -112,6 +113,7 @@ export function useOpportunitiesFeed({
     course,
     skills,
     roles,
+    experience,
     initialData,
 }: UseOpportunitiesFeedOptions) {
     const router = useRouter();
@@ -147,7 +149,7 @@ export function useOpportunitiesFeed({
     const lastRequestTimestamp = useRef(0);
     const opportunitiesCountRef = useRef(opportunities.length);
     const debouncedSearch = useDebounce(search, 500);
-    const normalizedSearch = debouncedSearch.trim();
+    const normalizedSearch = sanitizeSearchQuery(debouncedSearch);
     const shouldUseBackendSearch = normalizedSearch.length >= 2;
     const cacheScope = useMemo(() => {
         return `type:${(type || 'all').toLowerCase()}`;
@@ -201,7 +203,26 @@ export function useOpportunitiesFeed({
                 }
                 throw new Error('Saved jobs are disabled on web');
             } else if (shouldUseBackendSearch) {
-                throw new Error('Backend search is disabled on web');
+                // Live concurrent fan-out search across all scrapers
+                const locationHint = selectedLoc || undefined;
+                const result = await liveSearch({
+                    searchTerm: normalizedSearch,
+                    location: locationHint,
+                    resultsWanted: 100,
+                });
+
+                if (lastRequestTimestamp.current !== timestamp) return;
+
+                const convertedJobs = (result.jobs || []).map((j: LiveSearchJob) => liveJobToOpportunity(j) as unknown as Opportunity);
+                setOpportunities(convertedJobs);
+                setTotalCount(result.count || convertedJobs.length);
+                setPage(1);
+                setHasMore(false);
+                setError(null);
+                setProfileIncomplete(null);
+                setUsingCachedFeed(false);
+                setIsLoading(false);
+                return;
             } else {
                 throw new Error('Opportunity API list is disabled on web');
             }
@@ -232,7 +253,7 @@ export function useOpportunitiesFeed({
                 setIsLoading(false);
             }
         }
-    }, [user, authLoading, showOnlySaved, cacheScope, shouldUseBackendSearch, initialData]);
+    }, [user, authLoading, showOnlySaved, cacheScope, shouldUseBackendSearch, initialData, normalizedSearch, selectedLoc]);
 
     const hasOpportunities = !!initialData?.opportunities?.length;
     const hasInitialData = !!initialData;
@@ -265,6 +286,11 @@ export function useOpportunitiesFeed({
             const isGovOpp = opp.type === 'GOVERNMENT' || Boolean(opp.governmentJobDetails);
             const isGovFeed = type === 'GOVERNMENT';
             if (isGovOpp !== isGovFeed) {
+                return false;
+            }
+
+            // Suppress stale walk-in drives whose dates are entirely in the past (unless showOnlySaved is true)
+            if (!showOnlySaved && isStaleWalkin(opp)) {
                 return false;
             }
 
@@ -321,26 +347,7 @@ export function useOpportunitiesFeed({
                 }
             }
 
-            const govtDetails = opp.governmentJobDetails as unknown as Record<string, unknown> | undefined;
-            const matchesSearch = !normalizedSearch || [
-                opp.title,
-                opp.normalizedRole,
-                opp.company,
-                opp.description,
-                ...( (opp as any).allowedCourses || []),
-                ...( (opp as any).allowedDegrees || []),
-                ...((opp as any).skills || opp.requiredSkills || []),
-                ...( (opp as any).roles || []),
-                ...( (opp as any).categories || []),
-                govtDetails?.recruitingBody,
-                govtDetails?.organization,
-                govtDetails?.department,
-                govtDetails?.examName,
-                govtDetails?.postName,
-                govtDetails?.advertisementNumber,
-                ...(Array.isArray(govtDetails?.jobCategory) ? govtDetails.jobCategory : []),
-                govtDetails?.minimumQualification
-            ].some((value) => String(value || '').toLowerCase().includes(normalizedSearch.toLowerCase()));
+            const matchesSearch = opportunityMatchesSearch(opp, debouncedSearch);
 
             const matchesLoc = !selectedLoc || (opp.locations || []).some((loc) => {
                 const l = loc.toLowerCase().trim();
@@ -407,15 +414,43 @@ export function useOpportunitiesFeed({
                 ((opp as any).skills || opp.requiredSkills || []).some((os: string) => os.toLowerCase() === s.toLowerCase())
             );
 
-            const matchesRoles = !roles || roles.length === 0 || roles.some((r: string) =>
-                ((opp as any).roles || []).some((or: string) => or.toLowerCase() === r.toLowerCase())
-            );
+            const matchesRoles = !roles || roles.length === 0 || roles.some((r: string) => {
+                const rLower = r.toLowerCase();
+                const titleMatch = (opp.title || '').toLowerCase().includes(rLower);
+                const normRoleMatch = ((opp.normalizedRole || '') as string).toLowerCase().includes(rLower);
+                const rolesMatch = ((opp as any).roles || []).some((or: string) => or.toLowerCase().includes(rLower));
+                return titleMatch || normRoleMatch || rolesMatch;
+            });
+
+            const matchesExperience = !experience || experience.length === 0 || experience.some(expStr => {
+                const oppMin = opp.experienceMin ?? (opp as any).experienceRange?.min ?? 0;
+                const oppMax = opp.experienceMax ?? (opp as any).experienceRange?.max ?? oppMin;
+                if (expStr.includes('Fresher') || expStr.includes('0 years')) {
+                    return oppMin === 0;
+                }
+                if (expStr === '0-1 years') {
+                    return oppMin <= 1 && oppMax >= 0;
+                }
+                if (expStr === '1-2 years') {
+                    return oppMin <= 2 && oppMax >= 1;
+                }
+                if (expStr === '2-3 years') {
+                    return oppMin <= 3 && oppMax >= 2;
+                }
+                if (expStr === '3-5 years') {
+                    return oppMin <= 5 && oppMax >= 3;
+                }
+                if (expStr === '5+ years') {
+                    return oppMax >= 5 || oppMin >= 5;
+                }
+                return true;
+            });
 
             const matchesCompany = !company || company.length === 0 || company.some((c: string) =>
                 (opp.company || '').toLowerCase() === c.toLowerCase()
             );
 
-            return matchesSearch && matchesLoc && matchesClosingSoon && matchesSector && matchesQualification && matchesCourse && matchesYear && matchesSkills && matchesRoles && matchesCompany;
+            return matchesSearch && matchesLoc && matchesClosingSoon && matchesSector && matchesQualification && matchesCourse && matchesYear && matchesSkills && matchesRoles && matchesExperience && matchesCompany;
         });
 
         const enriched = filtered.map((opp) => {
@@ -432,13 +467,6 @@ export function useOpportunitiesFeed({
         if (!isMounted) {
             return enriched;
         }
-
-        const bucketWeight = (opp: Opportunity & { isSaved?: boolean; actions?: OpportunityAction[] }) => {
-            const isApplied = Array.isArray(opp.actions) && opp.actions.some((a: OpportunityAction) => a.actionType === 'APPLIED');
-            if (isApplied) return 2;
-            if (opp.isSaved) return 1;
-            return 0;
-        };
 
         const now = Date.now();
         const sortKeys = new Map(enriched.map(opp => [
@@ -461,11 +489,7 @@ export function useOpportunitiesFeed({
             // 2. Not-eligible jobs always go to the bottom
             if (isNotEligible(a) !== isNotEligible(b)) return isNotEligible(a) ? 1 : -1;
 
-            // 3. Bucket weight (unapplied/unsaved first)
-            const bucketDiff = bucketWeight(a) - bucketWeight(b);
-            if (bucketDiff !== 0) return bucketDiff;
-
-            // 4. Sort override
+            // 3. Sort override
             if (sort === 'expiring') {
                 const expA = keysA.expiresAt;
                 const expB = keysB.expiresAt;
@@ -478,27 +502,32 @@ export function useOpportunitiesFeed({
                 const trendA = (a as unknown as Record<string, unknown>).views || (a as unknown as Record<string, unknown>).applicationsCount || a.matchScore || 0;
                 const trendB = (b as unknown as Record<string, unknown>).views || (b as unknown as Record<string, unknown>).applicationsCount || b.matchScore || 0;
                 if ((trendB as number) !== (trendA as number)) return (trendB as number) - (trendA as number);
+            } else {
+                // 4. Mobile Architecture: Recency priority (newer postedAt date comes first)
+                const timeA = keysA.postedAt;
+                const timeB = keysB.postedAt;
+
+                const diff = Math.abs(timeB - timeA);
+                if (diff > 24 * 60 * 60 * 1000) {
+                    return timeB - timeA;
+                }
+
+                // Match score tie-breaker for postings within the same 24h window
+                const scoreA = a.matchScore ?? 0;
+                const scoreB = b.matchScore ?? 0;
+                if (scoreB !== scoreA) {
+                    return scoreB - scoreA;
+                }
+
+                if (timeB !== timeA) {
+                    return timeB - timeA;
+                }
             }
 
-            // 5. Mobile Architecture: Recency priority (newer postedAt date comes first)
-            const timeA = keysA.postedAt;
-            const timeB = keysB.postedAt;
-
-            const diff = Math.abs(timeB - timeA);
-            if (diff > 24 * 60 * 60 * 1000) {
-                return timeB - timeA;
-            }
-
-            // 5. Match score tie-breaker for postings within the same 24h window
-            const scoreA = a.matchScore ?? 0;
-            const scoreB = b.matchScore ?? 0;
-            if (scoreB !== scoreA) {
-                return scoreB - scoreA;
-            }
-
-            return timeB - timeA;
+            // Universal deterministic secondary tie-breaker
+            return a.id.localeCompare(b.id);
         });
-    }, [opportunities, selectedLoc, selectedYear, closingSoon, sector, qualification, course, skills, roles, company, profile, normalizedSearch, type, mode, source, sort, showOnlySaved, savedJobsMap, isMounted]);
+    }, [opportunities, selectedLoc, selectedYear, closingSoon, sector, qualification, course, skills, company, profile, normalizedSearch, type, mode, source, sort, showOnlySaved, savedJobsMap, isMounted]);
 
     const toggleSave = async (opportunityId: string) => {
         if (!user) {

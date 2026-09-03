@@ -21,7 +21,6 @@ import CompanyLogo from '@/ui/CompanyLogo';
 import { cn } from '@repo/ui/utils/cn';
 import Link from 'next/link';
 import { Button } from '@/ui/Button';
-import { AppPromoBanner } from '@/ui/AppPromoBanner';
 import { Hint } from '@/ui/Tooltip';
 import { CopyButton } from '@/ui/CopyButton';
 
@@ -208,161 +207,94 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                         formatDeadline={ds.formatDeadline}
                     />
                 ) : (
-                    <div className="space-y-5">
+                    <div className="space-y-4">
                         {opp.expiresAt && ds.isExpired(opp) && <ExpiredWarning />}
 
-                        {/* Type + Status badges row — shown at top of content */}
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-md bg-muted/80 text-foreground border border-border/70">
-                                {ds.isCampusDrive ? 'Hiring drive' : opp.type === 'INTERNSHIP' ? 'Internship' : opp.type === 'WALKIN' ? 'Walk-in' : 'Job'}
-                            </span>
-                            {ds.listingState === 'ACTIVE' ? (
-                                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold rounded-md">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                                    Active
-                                </div>
-                            ) : ds.listingState === 'EXPIRED' ? (
-                                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-destructive/5 border border-destructive/10 text-destructive text-xs font-semibold rounded-md">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                                    Expired
-                                </div>
-                            ) : ds.listingState === 'CLOSING_SOON' ? (
-                                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-orange-500/10 border border-orange-500/20 text-orange-700 dark:text-orange-400 text-xs font-semibold rounded-md">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-                                    Closing soon
-                                </div>
-                            ) : null}
-                            {getGroupedLocations(opp.locations).length > 0 && (
-                                <div className="flex items-center gap-1 text-muted-foreground ml-1">
-                                    <MapPinIcon className="w-3.5 h-3.5 shrink-0" />
-                                    <span className="text-xs font-medium leading-relaxed">
-                                        {getGroupedLocations(opp.locations).join(' • ')}
+                        {/* Compact header: badges + location + meta — all in one tight block */}
+                        <div className="space-y-3">
+                            {/* Badges row */}
+                            <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="px-2 py-0.5 text-[11px] font-bold rounded bg-muted text-foreground">
+                                    {ds.isCampusDrive ? 'Hiring drive' : opp.type === 'INTERNSHIP' ? 'Internship' : opp.type === 'WALKIN' ? 'Walk-in' : 'Job'}
+                                </span>
+                                {ds.listingState === 'ACTIVE' ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold rounded">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Active
                                     </span>
+                                ) : ds.listingState === 'EXPIRED' ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-destructive/10 text-destructive text-[11px] font-bold rounded">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Expired
+                                    </span>
+                                ) : ds.listingState === 'CLOSING_SOON' ? (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-500/10 text-orange-600 dark:text-orange-400 text-[11px] font-bold rounded">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" /> Closing soon
+                                    </span>
+                                ) : null}
+                                {getGroupedLocations(opp.locations).length > 0 && (
+                                    <span className="inline-flex items-center gap-1 text-muted-foreground">
+                                        <MapPinIcon className="w-3 h-3" />
+                                        <span className="text-[11px] font-medium">{getGroupedLocations(opp.locations).join(', ')}</span>
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Meta rows — tight label:value pairs */}
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                                {([
+                                    { icon: BriefcaseIcon, label: 'Experience', value: opp.experienceMax ? `${opp.experienceMin || 0}–${opp.experienceMax}y` : 'Fresher' },
+                                    { icon: UsersIcon, label: 'Employment', value: opp.employmentType ? opp.employmentType.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase()) : 'Full Time' },
+                                    { icon: ShieldCheckIcon, label: 'Role title', value: opp.jobFunction || 'General' },
+                                    { icon: CurrencyRupeeIcon, label: 'Salary', value: ds.displaySalary || 'Competitive' },
+                                    ...(opp.postedAt && getPostedLabel(opp.postedAt) ? [{ icon: CalendarIcon, label: 'Posted', value: getPostedLabel(opp.postedAt)! }] : []),
+                                ] as const).map((item) => (
+                                    <div key={item.label} className="flex items-baseline gap-2">
+                                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 shrink-0">{item.label}</span>
+                                        <span className="text-xs font-semibold text-foreground truncate">{item.value}</span>
+                                    </div>
+                                ))}
+                                {opp.expiresAt && (() => {
+                                    const exp = ds.isExpired(opp);
+                                    const cs = ds.isClosingSoon(opp);
+                                    const deadline = ds.formatDeadline(opp);
+                                    return (
+                                        <div className="flex items-baseline gap-2">
+                                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 shrink-0">Deadline</span>
+                                            <span className={cn('text-xs font-semibold truncate', exp ? 'text-rose-600' : cs ? 'text-orange-600' : 'text-foreground')}>
+                                                {exp ? `Closed (${deadline})` : deadline || 'Not set'}
+                                            </span>
+                                        </div>
+                                    );
+                                })()}
+                            </div>
+
+                            {/* Track Progress */}
+                            {user && (
+                                <div className="flex items-center gap-2 pt-0.5">
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Progress</span>
+                                    <div className="flex gap-1">
+                                        {ds.trackerOptions.map((option) => {
+                                            const isActive = ds.currentAction === option.key;
+                                            return (
+                                                <button
+                                                    key={option.key}
+                                                    onClick={() => handleSetAction(option.key)}
+                                                    disabled={isUpdatingAction}
+                                                    className={cn(
+                                                        "h-6 px-2.5 rounded text-[10px] font-bold transition-colors duration-150",
+                                                        isActive
+                                                            ? "bg-foreground text-background"
+                                                            : "bg-muted text-muted-foreground hover:text-foreground",
+                                                        isUpdatingAction && "opacity-50 cursor-not-allowed"
+                                                    )}
+                                                >
+                                                    {option.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             )}
                         </div>
-
-                        {(() => {
-                            const oppWithMatch = opp as Opportunity & { matchScore?: number; matchReason?: string };
-                            if (!oppWithMatch?.matchReason || oppWithMatch?.matchScore === undefined || oppWithMatch?.matchScore <= 0) return null;
-                            const notEligible = isNotEligible(oppWithMatch);
-                            return (
-                                <div className={cn(
-                                    "p-4 rounded-2xl border text-sm font-semibold flex items-start gap-3 mt-4",
-                                    notEligible
-                                        ? "bg-rose-500/5 border-rose-500/20 text-rose-600 dark:text-rose-400"
-                                        : "bg-emerald-500/5 border-emerald-500/20 text-emerald-700 dark:text-emerald-400"
-                                )}>
-                                    <span className="text-lg leading-none mt-0.5">✦</span>
-                                    <div>
-                                        <p className="font-bold">{notEligible ? 'Eligibility Warning' : 'Match Relevance'}</p>
-                                        <p className="text-xs text-muted-foreground mt-0.5 font-medium leading-relaxed">
-                                            {oppWithMatch.matchReason}
-                                        </p>
-                                    </div>
-                                </div>
-                            );
-                        })()}
-
-                        {/* Meta boxes — Experience, Employment, Role Title, Salary, Posted, Deadline */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            <div className="bg-muted/10 border border-border/40 rounded-xl p-3 flex items-start gap-2.5 min-h-[64px] min-w-0">
-                                <BriefcaseIcon className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-[10px] font-bold text-muted-foreground tracking-wide leading-none">Experience</p>
-                                    <p className="text-xs font-semibold text-foreground mt-1 truncate" title={opp.experienceMax ? `${opp.experienceMin || 0}–${opp.experienceMax}y` : 'Fresher'}>
-                                        {opp.experienceMax ? `${opp.experienceMin || 0}–${opp.experienceMax}y` : 'Fresher'}
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="bg-muted/10 border border-border/40 rounded-xl p-3 flex items-start gap-2.5 min-h-[64px] min-w-0">
-                                <UsersIcon className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-[10px] font-bold text-muted-foreground tracking-wide leading-none">Employment</p>
-                                    <p className="text-xs font-semibold text-foreground mt-1 truncate" title={opp.employmentType ? opp.employmentType.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase()) : 'Full Time'}>
-                                        {opp.employmentType ? opp.employmentType.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase()) : 'Full Time'}
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="bg-muted/10 border border-border/40 rounded-xl p-3 flex items-start gap-2.5 min-h-[64px] min-w-0">
-                                <ShieldCheckIcon className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-[10px] font-bold text-muted-foreground tracking-wide leading-none">Role title</p>
-                                    <p className="text-xs font-semibold text-foreground mt-0.5 line-clamp-2 leading-tight" title={opp.jobFunction || 'General'}>
-                                        {opp.jobFunction || 'General'}
-                                    </p>
-                                </div>
-                            </div>
-
-                            <div className="bg-muted/10 border border-border/40 rounded-xl p-3 flex items-start gap-2.5 min-h-[64px] min-w-0">
-                                <CurrencyRupeeIcon className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-[10px] font-bold text-muted-foreground tracking-wide leading-none">Salary</p>
-                                    <p className="text-xs font-semibold text-foreground mt-1 truncate" title={ds.displaySalary || 'Competitive'}>{ds.displaySalary || 'Competitive'}</p>
-                                </div>
-                            </div>
-                            {opp.postedAt && (() => {
-                                const label = getPostedLabel(opp.postedAt);
-                                return label ? (
-                                    <div className="bg-muted/10 border border-border/40 rounded-xl p-3 flex items-start gap-2.5 min-h-[64px] min-w-0">
-                                        <CalendarIcon className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-[10px] font-bold text-muted-foreground tracking-wide leading-none">Posted</p>
-                                            <p className="text-xs font-semibold text-foreground mt-1 line-clamp-2 leading-tight">{label}</p>
-                                        </div>
-                                    </div>
-                                ) : null;
-                            })()}
-                            {opp.expiresAt && (() => {
-                                const exp = ds.isExpired(opp);
-                                const cs = ds.isClosingSoon(opp);
-                                const deadline = ds.formatDeadline(opp);
-                                return (
-                                    <div className={cn(
-                                        'border rounded-xl p-3 flex items-start gap-2.5 min-h-[64px] min-w-0',
-                                        exp ? 'bg-rose-500/5 border-rose-500/20' : cs ? 'bg-orange-500/5 border-orange-500/20' : 'bg-muted/10 border-border/40'
-                                    )}>
-                                        <ClockIcon className={cn('w-5 h-5 shrink-0 mt-0.5', exp ? 'text-rose-600' : cs ? 'text-orange-600' : 'text-primary')} />
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-[10px] font-bold text-muted-foreground tracking-wide leading-none">Deadline</p>
-                                            <p className={cn('text-xs font-semibold mt-1 line-clamp-2 leading-tight',
-                                                exp ? 'text-rose-600' : cs ? 'text-orange-600' : 'text-foreground'
-                                            )}>
-                                                {exp ? `Closed (${deadline})` : deadline || 'Not set'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                );
-                            })()}
-                        </div>
-
-                        {/* Track Progress (User specific) */}
-                        {user && (
-                            <div className="p-4 bg-muted/10 border border-border/60 rounded-xl space-y-2">
-                                <h4 className="text-xs font-bold text-foreground/80">Track your progress</h4>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                                    {ds.trackerOptions.map((option) => {
-                                        const isActive = ds.currentAction === option.key;
-                                        return (
-                                            <button
-                                                key={option.key}
-                                                onClick={() => handleSetAction(option.key)}
-                                                disabled={isUpdatingAction}
-                                                className={cn(
-                                                    "h-8 rounded-lg border text-[11px] font-bold transition-all",
-                                                    isActive
-                                                        ? "bg-primary/10 text-primary border-primary/20"
-                                                        : "bg-muted/20 border-border text-muted-foreground hover:bg-muted/40",
-                                                    isUpdatingAction && "opacity-50 cursor-not-allowed"
-                                                )}
-                                            >
-                                                {option.label}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
 
 
                         {(() => {
@@ -376,8 +308,6 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                                 />
                             );
                         })()}
-
-                        <AppPromoBanner />
 
                         <DescriptionSection
                             description={opp.description}

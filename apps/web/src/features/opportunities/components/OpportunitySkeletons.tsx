@@ -2,70 +2,51 @@ import * as React from "react";
 import { Skeleton } from "@/ui/Skeleton";
 
 export function SkeletonJobCard({ variant = 'wide' }: { variant?: 'vertical' | 'compact' | 'wide' }) {
-    if (variant === 'compact' || variant === 'wide') {
+    if (variant === 'compact' || variant === 'wide' || variant === 'vertical') {
         return (
-            <div className="bg-card border border-border/50 rounded-xl p-3.5 shadow-sm space-y-3">
-                <div className="flex items-start gap-3 relative">
-                    <Skeleton className="h-10 w-10 rounded-lg shrink-0" />
-                    <div className="flex-1 space-y-2 py-1">
-                        <div className="flex justify-between items-center">
-                            <Skeleton className="h-3 w-24 rounded" />
-                            <Skeleton className="h-3 w-12 rounded" />
-                        </div>
+            <div className="bg-card border border-l-[3px] border-l-primary/30 border-border/50 rounded-xl p-3.5 shadow-sm space-y-2">
+                <div className="flex items-start gap-3">
+                    <Skeleton className="h-10 w-10 rounded-xl shrink-0" />
+                    <div className="flex-1 space-y-2">
                         <Skeleton className="h-4 w-3/4 rounded" />
+                        <Skeleton className="h-3 w-1/2 rounded" />
                     </div>
+                    <Skeleton className="h-8 w-16 rounded-lg shrink-0" />
                 </div>
-                <div className="flex justify-between items-center pt-2 border-t border-border/30">
-                    <div className="flex items-center gap-3">
-                        <Skeleton className="h-3 w-20 rounded" />
-                        <Skeleton className="h-3 w-20 rounded" />
-                    </div>
-                    <Skeleton className="h-5 w-16 rounded" />
+                <div className="flex gap-4 py-2 border-y border-border/40">
+                    <Skeleton className="h-3 w-16 rounded" />
+                    <Skeleton className="h-3 w-20 rounded" />
+                    <Skeleton className="h-3 w-14 rounded" />
+                </div>
+                <div className="flex gap-1.5">
+                    <Skeleton className="h-6 w-14 rounded" />
+                    <Skeleton className="h-6 w-16 rounded" />
+                    <Skeleton className="h-6 w-12 rounded" />
+                </div>
+                <div className="flex justify-between items-center pt-0.5">
+                    <Skeleton className="h-3 w-32 rounded" />
+                    <Skeleton className="h-8 w-20 rounded-lg" />
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="bg-card rounded-lg border border-border p-4 space-y-3">
-            {/* Header Mirror */}
-            <div className="flex justify-between items-start">
-                <div className="flex items-center gap-2 flex-1">
-                    <Skeleton className="h-10 w-10 rounded shrink-0" />
-                    <div className="flex-1 space-y-2">
-                        <Skeleton className="h-3 w-1/3" />
-                        <Skeleton className="h-4 w-2/3" />
-                    </div>
+        <div className="bg-card border border-l-[3px] border-l-primary/30 border-border/50 rounded-xl p-3.5 shadow-sm space-y-2">
+            <div className="flex items-start gap-3">
+                <Skeleton className="h-10 w-10 rounded-xl shrink-0" />
+                <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4 rounded" />
+                    <Skeleton className="h-3 w-1/2 rounded" />
                 </div>
-                <Skeleton className="h-10 w-10 rounded shrink-0" />
             </div>
-
-            {/* Badge Row Mirror */}
-            <div className="flex justify-between items-center pt-1">
-                <Skeleton className="h-6 w-20 rounded" />
+            <div className="flex gap-4 py-2 border-y border-border/40">
                 <Skeleton className="h-3 w-16 rounded" />
+                <Skeleton className="h-3 w-20 rounded" />
             </div>
-
-            {/* Grid Mirror */}
-            <div className="grid grid-cols-3 gap-4 pt-4 border-t border-border/50">
-                <div className="space-y-2">
-                    <Skeleton className="h-3 w-3/4" />
-                    <Skeleton className="h-4 w-full" />
-                </div>
-                <div className="space-y-2">
-                    <Skeleton className="h-3 w-3/4" />
-                    <Skeleton className="h-4 w-full" />
-                </div>
-                <div className="space-y-2">
-                    <Skeleton className="h-3 w-3/4" />
-                    <Skeleton className="h-4 w-full" />
-                </div>
-            </div>
-
-            {/* Footer Mirror */}
-            <div className="pt-4 border-t border-border/30 flex justify-between items-center">
-                <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-4 w-24" />
+            <div className="flex justify-between items-center">
+                <Skeleton className="h-3 w-28 rounded" />
+                <Skeleton className="h-8 w-20 rounded-lg" />
             </div>
         </div>
     );
@@ -85,7 +66,7 @@ export function FeedPageSkeleton({ isGovt = false }: { isGovt?: boolean }) {
                 </div>
             </div>
             {isGovt ? (
-                <div className="max-w-3xl mx-auto grid grid-cols-1 gap-2">
+                <div className="max-w-[52rem] mx-auto grid grid-cols-1 gap-2">
                     {Array.from({ length: 6 }).map((_, index) => (
                         <SkeletonJobCard key={index} variant="wide" />
                     ))}

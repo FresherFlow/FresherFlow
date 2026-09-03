@@ -9,7 +9,7 @@ import { Opportunity, OpportunityType } from '@fresherflow/types';
 import dynamic from 'next/dynamic';
 
 const OpportunityDetailPane = dynamic(() => import('./OpportunityDetailPane').then(m => m.OpportunityDetailPane));
-import JobCard from '@/features/opportunities/components/JobCard';
+import { JobCardResponsive } from '@/features/opportunities/components/JobCard';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
 import Squares2X2Icon from '@heroicons/react/24/outline/Squares2X2Icon';
@@ -27,6 +27,8 @@ import BuildingOfficeIcon from '@heroicons/react/24/outline/BuildingOfficeIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import ChevronUpIcon from '@heroicons/react/24/solid/ChevronUpIcon';
+import MapIcon from '@heroicons/react/24/outline/MapIcon';
+import ListBulletIcon from '@heroicons/react/24/outline/ListBulletIcon';
 import { Breadcrumb } from '@/ui/Breadcrumb';
 import { SkillPill } from '@/ui/SkillPill';
 import { Button } from '@/ui/Button';
@@ -36,6 +38,7 @@ import { SkeletonJobCard, OpportunityDetailSkeleton } from '@/features/opportuni
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { EmptyState } from '@/ui/EmptyState';
 import { FilterDropdownBar } from '@/features/opportunities/components/FilterDropdownBar';
+import { WalkinMapPane } from '@/features/opportunities/components/WalkinMapPane';
 import {
     GovtPhaseTabs,
     GovtCategoryFilter as GovtCategoryFilterComponent,
@@ -123,20 +126,62 @@ export function CategoryPageView({
     draftWorkMode, setDraftWorkMode, draftSkills, setDraftSkills, draftSource, setDraftSource, draftCompany, setDraftCompany,
     mobileActiveCount, openMobileFilters, applyMobileFilters, clearAll,
     visibleCount, setVisibleCount, isJobSaved, isJobApplied, toggleSave, reload,
-    customTitle, topContent, bottomContent
-}: CategoryPageState) {
+    customTitle, topContent, bottomContent, userLocation, driveDate, setDriveDate,
+    onLocationRequest, onLocationClear, locationLoading, locationRequested, locationDenied
+}: CategoryPageState & {
+    onLocationRequest?: () => void;
+    onLocationClear?: () => void;
+    locationLoading?: boolean;
+    locationRequested?: boolean;
+    locationDenied?: boolean;
+}) {
     const router = useRouter();
+    const mobileGrid = isDesktop === false;
     const config = (type ? CATEGORY_CONFIG[type] : undefined) ?? { title: 'Jobs', subtitle: '', icon: BriefcaseIcon };
     const { targetRef: loadMoreRef, isIntersecting } = useIntersectionObserver({ threshold: 0.1, rootMargin: '400px' });
-    const [isLoadingMore, setIsLoadingMore] = useState(false);
     const { setCount } = useFeedHeader();
     const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const gridContainerRef = useRef<HTMLDivElement>(null);
     const [showScrollTop, setShowScrollTop] = useState(false);
 
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
         setShowScrollTop(e.currentTarget.scrollTop > 400);
     };
+
+    const resetFeedScroll = useCallback((behavior: ScrollBehavior = 'instant') => {
+        // 1. Primary scroll container (List mode, Mobile, Govt)
+        if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTo({ top: 0, left: 0, behavior });
+        }
+        // 2. Split-pane left column container (Desktop Split view)
+        if (gridContainerRef.current) {
+            gridContainerRef.current.scrollTo({ top: 0, left: 0, behavior });
+        }
+        // Fallback targeting by ID in case ref hasn't attached yet
+        const gridEl = typeof document !== 'undefined' ? document.getElementById('category-grid-container') : null;
+        if (gridEl && gridEl !== gridContainerRef.current) {
+            gridEl.scrollTo({ top: 0, left: 0, behavior });
+        }
+        // 3. Viewport fallback (for mobile browser address bar collapse / document scroll)
+        if (typeof window !== 'undefined') {
+            window.scrollTo({ top: 0, left: 0, behavior });
+        }
+    }, []);
+
+    // Always start from the top when the feed component first mounts
+    // (handles Back button navigation restoring old scroll position)
+    useEffect(() => {
+        resetFeedScroll('instant');
+        if (typeof window !== 'undefined') {
+            window.history.scrollRestoration = 'manual';
+        }
+        return () => {
+            if (typeof window !== 'undefined') {
+                window.history.scrollRestoration = 'auto';
+            }
+        };
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
     const filterAggregates = useMemo(() => {
         const locations: Record<string, number> = {};
         const skills: Record<string, number> = {};
@@ -187,13 +232,29 @@ export function CategoryPageView({
         return { locations: filteredLocations, skills, sources, years, companies };
     }, [opportunities]);
 
-    // Reset scroll when type changes
+    // Unified reactive scroll reset on any filter, search, tab, or type change
     useEffect(() => {
-        const container = document.getElementById('feed-scroll-container');
-        if (container) {
-            container.scrollTo(0, 0);
-        }
-    }, [type]);
+        resetFeedScroll('instant');
+    }, [
+        type,
+        search,
+        filters.location,
+        filters.year,
+        filters.closingSoon,
+        filters.saved,
+        filters.sector,
+        filters.qualification,
+        filters.course,
+        filters.workMode,
+        filters.skills,
+        filters.source,
+        filters.company,
+        filters.role,
+        driveDate,
+        govtPhase,
+        govtCategory,
+        resetFeedScroll,
+    ]);
 
     useEffect(() => {
         setPortalTarget(document.getElementById('top-header-portal-target'));
@@ -207,14 +268,10 @@ export function CategoryPageView({
     }, [filteredOpps.length, setCount]);
 
     useEffect(() => {
-        if (isIntersecting && visibleCount < visibleOpps.length && !isLoadingMore) {
-            setIsLoadingMore(true);
-            setTimeout(() => {
-                setVisibleCount(prev => prev + 20);
-                setIsLoadingMore(false);
-            }, 600);
+        if (isIntersecting && visibleCount < visibleOpps.length) {
+            setVisibleCount(prev => Math.min(prev + 20, visibleOpps.length));
         }
-    }, [isIntersecting, visibleCount, visibleOpps.length, isLoadingMore, setVisibleCount]);
+    }, [isIntersecting, visibleCount, visibleOpps.length, setVisibleCount]);
 
     const tickerItems = useMemo(() => {
         if (type !== OpportunityType.GOVERNMENT) return [];
@@ -282,6 +339,8 @@ export function CategoryPageView({
 
     // ── Detail pane toggle (persisted) ──────────────────────────────────────
     const [showDetail, setShowDetail] = useState(false);
+    const [hoveredOppId, setHoveredOppId] = useState<string | null>(null);
+    const [mobileMapView, setMobileMapView] = useState(false);
     useEffect(() => {
         const stored = localStorage.getItem('ff:showDetail');
         if (stored === 'true') setShowDetail(true);
@@ -344,7 +403,7 @@ export function CategoryPageView({
 
                         {/* Desktop filter dropdowns */}
                         <div className="hidden lg:flex items-center gap-2 flex-wrap">
-                            <FilterDropdownBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} aggregates={filterAggregates} />
+                            <FilterDropdownBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} aggregates={filterAggregates} driveDate={driveDate} onDriveDateChange={setDriveDate} />
                         </div>
                     </div>
                 </div>
@@ -392,17 +451,37 @@ export function CategoryPageView({
 
                             {/* Desktop filter dropdowns + toggle */}
                             <div className="hidden lg:flex items-center gap-2 flex-wrap">
-                                <FilterDropdownBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} aggregates={filterAggregates} />
-                                <Hint label={showDetail ? 'Hide detail pane' : 'Show detail pane'} side="top" avoidCollisions={false}>
+                                <FilterDropdownBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} aggregates={filterAggregates} driveDate={driveDate} onDriveDateChange={setDriveDate} />
+                                
+                                {/* View mode switcher (List vs Split) */}
+                                <div className="inline-flex items-center bg-muted rounded-lg border border-border/70 shrink-0 p-0.5">
                                     <button
-                                        onClick={toggleShowDetail}
-                                        className="flex items-center gap-1.5 h-9 px-3 rounded-xl border border-border bg-card text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                        aria-label={showDetail ? 'Hide detail pane' : 'Show detail pane'}
+                                        type="button"
+                                        onClick={() => { if (showDetail) toggleShowDetail(); }}
+                                        className={cn(
+                                            'flex items-center gap-1.5 h-7.5 px-3 rounded-md text-xs font-semibold cursor-pointer select-none',
+                                            !showDetail ? 'bg-card text-foreground shadow-xs border border-border/40' : 'text-muted-foreground hover:text-foreground'
+                                        )}
+                                        aria-label="List view"
+                                        aria-pressed={!showDetail}
                                     >
-                                        {showDetail ? <Bars3Icon className="w-4 h-4" /> : <Squares2X2Icon className="w-4 h-4" />}
-                                        {showDetail ? 'List' : 'Split'}
+                                        {!showDetail && <Bars3Icon className="w-3.5 h-3.5 shrink-0" aria-hidden />}
+                                        <span>List</span>
                                     </button>
-                                </Hint>
+                                    <button
+                                        type="button"
+                                        onClick={() => { if (!showDetail) toggleShowDetail(); }}
+                                        className={cn(
+                                            'flex items-center gap-1.5 h-7.5 px-3 rounded-md text-xs font-semibold cursor-pointer select-none',
+                                            showDetail ? 'bg-card text-foreground shadow-xs border border-border/40' : 'text-muted-foreground hover:text-foreground'
+                                        )}
+                                        aria-label="Split view"
+                                        aria-pressed={showDetail}
+                                    >
+                                        {showDetail && <Squares2X2Icon className="w-3.5 h-3.5 shrink-0" aria-hidden />}
+                                        <span>Split</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -591,7 +670,7 @@ export function CategoryPageView({
                 </div>
             ) : isLoading ? (
                 type === OpportunityType.GOVERNMENT ? (
-                    <div className="max-w-3xl mx-auto grid grid-cols-1 gap-2 pt-3.5">
+                    <div className="max-w-[52rem] mx-auto grid grid-cols-1 gap-2 pt-3.5">
                         {[1,2,3,4,5,6].map(i => <SkeletonJobCard key={i} variant={isDesktop === false ? 'compact' : 'wide'} />)}
                     </div>
                 ) : (
@@ -623,10 +702,25 @@ export function CategoryPageView({
                 <div className="flex flex-col min-w-0 pt-3.5">
                     <EmptyState
                         title={`No ${dynamicTitle} found`}
-                        description="Try removing some filters or search keywords."
-                        action={<Button variant="outline" onClick={clearAll} className="h-11 px-6 text-sm font-bold capitalize tracking-widest">Clear all filters</Button>}
+                        description={
+                            (mobileActiveCount > 0 || search.trim().length > 0 || (driveDate !== undefined && driveDate !== "all"))
+                                ? "Try removing some filters or search keywords."
+                                : undefined
+                        }
+                        action={
+                            (mobileActiveCount > 0 || search.trim().length > 0 || (driveDate !== undefined && driveDate !== "all"))
+                                ? <Button variant="outline" onClick={clearAll} className="h-11 px-6 text-sm font-bold capitalize tracking-widest">Clear all filters</Button>
+                                : undefined
+                        }
                         variant="ghost"
                     />
+
+                    <p className="mt-4 pt-3 border-t border-border/30 text-center text-sm text-muted-foreground">
+                        Know of an opening that&apos;s missing?{" "}
+                        <a href="/submit" className="font-semibold text-primary hover:underline">
+                            Submit it →
+                        </a>
+                    </p>
                     
                     {type !== OpportunityType.GOVERNMENT && (
                         <RelatedSearches 
@@ -635,7 +729,7 @@ export function CategoryPageView({
                             filters={filters} 
                             onSearch={(term) => {
                                 setSearch(term);
-                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                resetFeedScroll('instant');
                             }} 
                         />
                     )}
@@ -645,43 +739,51 @@ export function CategoryPageView({
                 <div className={cn(
                     "w-full grid gap-2 items-start",
                     (type !== OpportunityType.GOVERNMENT && showDetail)
-                        ? "grid-cols-1 lg:grid-cols-[1.1fr_1.3fr] xl:grid-cols-[45%_55%] [:root[data-show-detail='false']_&]:lg:grid-cols-1 [:root[data-show-detail='false']_&]:max-w-3xl [:root[data-show-detail='false']_&]:mx-auto"
-                        : "grid-cols-1 max-w-3xl mx-auto"
+                        ? "grid-cols-1 lg:grid-cols-[1.1fr_1.3fr] xl:grid-cols-[45%_55%] [:root[data-show-detail='false']_&]:lg:grid-cols-1 [:root[data-show-detail='false']_&]:max-w-[52rem] [:root[data-show-detail='false']_&]:mx-auto"
+                        : "grid-cols-1 max-w-[52rem] mx-auto"
                 )}>
                     {/* Left Column: list grid */}
-                    <div id="category-grid-container" className={cn(
-                        "min-w-0 pt-3.5",
-                        type !== OpportunityType.GOVERNMENT && showDetail && "lg:sticky lg:top-[var(--sticky-h,8rem)] lg:h-[calc(100vh-var(--sticky-h,8rem))] lg:overflow-y-auto lg:pr-2 custom-scrollbar [:root[data-show-detail='false']_&]:lg:static [:root[data-show-detail='false']_&]:lg:h-auto [:root[data-show-detail='false']_&]:lg:overflow-y-visible [:root[data-show-detail='false']_&]:lg:pr-0"
-                    )}>
+                    <div
+                        id="category-grid-container"
+                        ref={gridContainerRef}
+                        onScroll={handleScroll}
+                        className={cn(
+                            "min-w-0 pt-3.5",
+                            type !== OpportunityType.GOVERNMENT && showDetail && "lg:sticky lg:top-[var(--sticky-h,8rem)] lg:h-[calc(100vh-var(--sticky-h,8rem))] lg:overflow-y-auto lg:pr-2 custom-scrollbar [:root[data-show-detail='false']_&]:lg:static [:root[data-show-detail='false']_&]:lg:h-auto [:root[data-show-detail='false']_&]:lg:overflow-y-visible [:root[data-show-detail='false']_&]:lg:pr-0"
+                        )}
+                    >
                         <div className="grid grid-cols-1 gap-2">
                             {visibleOpps.slice(0, visibleCount).map((opp, index) => (
-                                <JobCard
-                                    key={opp.id}
-                                    job={{ ...opp, normalizedRole: opp.title, salary: (opp.salaryMin !== undefined && opp.salaryMax !== undefined) ? { min: opp.salaryMin, max: opp.salaryMax } : undefined }}
-                                    jobId={opp.id}
-                                    isSaved={isJobSaved(opp)}
-                                    isApplied={isJobApplied(opp)}
-                                    onToggleSave={() => toggleSave(opp.id)}
+                                <JobCardResponsive
+                                        key={opp.id}
+                                        job={{ ...opp, normalizedRole: opp.title, salary: (opp.salaryMin !== undefined && opp.salaryMax !== undefined) ? { min: opp.salaryMin, max: opp.salaryMax } : undefined } as any}
+                                        jobId={opp.id}
+                                        isSaved={isJobSaved(opp)}
+                                        isApplied={isJobApplied(opp)}
+                                        onToggleSave={() => toggleSave(opp.id)}
+                                        searchQuery={search}
+priority={index < 4}
                                     isAdmin={user?.role === 'ADMIN'}
-                                    isSelected={Boolean(type !== OpportunityType.GOVERNMENT && showDetail && isDesktop && (opp.id === selectedOpp?.id || opp.slug === selectedOpp?.slug))}
+                                    isSelected={Boolean(type !== OpportunityType.GOVERNMENT && showDetail && isDesktop && selectedOpp && opp.id === selectedOpp.id)}
+                                    isHovered={Boolean(hoveredOppId && opp.id === hoveredOppId)}
+                                    onMouseEnter={() => setHoveredOppId(opp.id)}
+                                    onMouseLeave={() => setHoveredOppId(null)}
                                     variant={
-                                        (isDesktop === false || (type !== OpportunityType.GOVERNMENT && showDetail))
+                                        (mobileGrid || (type !== OpportunityType.GOVERNMENT && showDetail))
                                             ? 'compact'
-                                            : 'wide'
+                                             : 'wide'
                                     }
-                                    searchQuery={search}
                                     onClick={(e) => {
-                                        if (type !== OpportunityType.GOVERNMENT && (showDetail || isDesktop === false)) {
+                                        if (type !== OpportunityType.GOVERNMENT && (showDetail || mobileGrid)) {
                                             e.preventDefault();
                                             handleSelectOpportunity(opp);
                                         }
                                     }}
-                                    priority={index < 4}
                                 />
                             ))}
                         </div>
                         
-                        {(visibleCount < visibleOpps.length || isLoadingMore) && (
+                        {(visibleCount < visibleOpps.length) && (
                             <div ref={loadMoreRef} className="flex justify-center pt-8 pb-4">
                                 <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
                             </div>
@@ -694,7 +796,7 @@ export function CategoryPageView({
                                 filters={filters} 
                                 onSearch={(term) => {
                                     setSearch(term);
-                                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                                    resetFeedScroll('instant');
                                 }} 
                             />
                         )}
@@ -705,14 +807,30 @@ export function CategoryPageView({
                             </div>
                         )}
                         
-                        {/* Essential spacer so the last card never sticks to the bottom of the screen */}
-                        <div className="h-24 md:h-32 shrink-0" />
+                        {/* Spacer so the last card doesn't stick to bottom */}
+                        <div className="h-16 md:h-20 shrink-0" />
                     </div>
 
-                    {/* Right Column: Detail Panel (desktop, split mode only) */}
+                    {/* Right Column: Map for Walk-ins / Detail Panel for Jobs (desktop) */}
                     {type !== OpportunityType.GOVERNMENT && showDetail && (
                         <div className="hidden lg:flex flex-col sticky top-24 h-[calc(100vh-8rem)] bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm mt-3.5 [:root[data-show-detail='false']_&]:!hidden">
-                            {selectedOpp ? (
+                            {type === OpportunityType.WALKIN ? (
+                                <WalkinMapPane
+                                    opportunity={selectedOpp}
+                                    opportunities={visibleOpps}
+                                    totalDrives={visibleOpps.length}
+                                    hoveredOppId={hoveredOppId}
+                                    userLocation={userLocation}
+                                    onLocationRequest={onLocationRequest}
+                                    onLocationClear={onLocationClear}
+                                    locationLoading={locationLoading}
+                                    locationRequested={locationRequested}
+                                    locationDenied={locationDenied}
+                                    onSelectOpportunity={handleSelectOpportunity}
+                                    onClearSelection={handleCloseOpportunityPane}
+                                    onHoverOpportunity={setHoveredOppId}
+                                />
+                            ) : selectedOpp ? (
                                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                                     <Suspense fallback={<OpportunityDetailSkeleton />}>
                                         <OpportunityDetailPane
@@ -756,12 +874,63 @@ export function CategoryPageView({
                             </div>
                         </div>
                     )}
+
+                    {/* Mobile Map View Full Screen Overlay for Walkins */}
+                    {type === OpportunityType.WALKIN && mobileMapView && (
+                        <div className="lg:hidden fixed inset-x-0 top-14 bottom-0 z-30 bg-background flex flex-col map-view-enter">
+                            {/* Drag handle for visual affordance */}
+                            <div className="shrink-0 flex justify-center">
+                                <div className="mobile-map-drag-handle" />
+                            </div>
+                            <div className="flex-1 min-h-0">
+                                <WalkinMapPane
+                                    opportunity={selectedOpp}
+                                    opportunities={visibleOpps}
+                                    totalDrives={visibleOpps.length}
+                                    hoveredOppId={hoveredOppId}
+                                    userLocation={userLocation}
+                                    onLocationRequest={onLocationRequest}
+                                    onLocationClear={onLocationClear}
+                                    locationLoading={locationLoading}
+                                    locationRequested={locationRequested}
+                                    locationDenied={locationDenied}
+                                    onSelectOpportunity={handleSelectOpportunity}
+                                    onClearSelection={handleCloseOpportunityPane}
+                                    onHoverOpportunity={setHoveredOppId}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
-                {!showDetail && showScrollTop && (
+                {/* Mobile Floating Map/List Switcher for Walkins */}
+                {type === OpportunityType.WALKIN && (
+                    <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] pointer-events-auto">
+                        <button
+                            type="button"
+                            onClick={() => setMobileMapView(prev => !prev)}
+                            className="flex items-center gap-2 px-5 py-3 rounded-full bg-foreground text-background font-bold text-xs shadow-2xl border border-border/50 backdrop-blur-md active:scale-95 transition-all duration-150 cursor-pointer hover:shadow-lg"
+                        >
+                            {mobileMapView ? (
+                                <>
+                                    <ListBulletIcon className="w-4 h-4 text-emerald-400" />
+                                    <span>Show List</span>
+                                </>
+                            ) : (
+                                <>
+                                    <MapIcon className="w-4 h-4 text-emerald-400" />
+                                    <span>Show Map</span>
+                                    <span className="text-[10px] text-background/60 font-medium">({visibleOpps.length})</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                )}
+
+                {showScrollTop && (
                     <button
-                        onClick={() => scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+                        onClick={() => resetFeedScroll('smooth')}
                         aria-label="Scroll to top"
                         className="fixed bottom-[5.5rem] md:bottom-8 right-4 md:right-8 z-[70] flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-all duration-200 animate-in fade-in slide-in-from-bottom-2"
                     >
@@ -831,7 +1000,7 @@ function RelatedSearches({
     if (relatedTerms.length === 0) return null;
 
     return (
-        <div className="pt-12 pb-24 border-t border-border/50 mt-12 mb-12">
+        <div className="pt-8 pb-8 border-t border-border/50 mt-8 mb-4">
             <h3 className="text-sm font-medium text-muted-foreground mb-4">People also searched</h3>
             <div className="flex flex-wrap gap-2.5">
                 {relatedTerms.map(term => (

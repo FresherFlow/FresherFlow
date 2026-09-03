@@ -23,9 +23,7 @@ import {
     UserPlusIcon,
     PlusCircleIcon,
     Cog6ToothIcon,
-    ClockIcon,
     ArrowTrendingUpIcon,
-    BellAlertIcon,
     UserIcon,
     BuildingOffice2Icon,
     LinkIcon,
@@ -47,6 +45,7 @@ export const DEFAULT_NAV_ITEMS = [
     { name: 'Platforms', href: '/platforms', icon: GlobeAltIcon },
     { name: 'Saved', href: '/saved', icon: BookmarkIcon, requiresAuth: true },
     { name: 'Tracker', href: '/tracker', icon: ChartBarIcon, requiresAuth: true },
+    { name: 'Post Opportunity', href: '/submit', icon: PlusCircleIcon },
     { name: 'Account', href: '/account', icon: UserCircleIcon, hasSubmenu: true, requiresAuth: true },
 ];
 
@@ -54,8 +53,8 @@ export const JOBS_NAV_ITEMS = [
     { name: 'All Jobs', href: '/jobs', icon: BriefcaseIcon },
     { name: 'Internships', href: '/jobs?type=internship', icon: AcademicCapIcon },
     { name: 'Remote', href: '/jobs?mode=remote', icon: ComputerDesktopIcon },
-    { name: 'Walk-ins', href: '/jobs?type=walkin', icon: MapIcon },
-    { name: 'Closing Soon', href: '/jobs?sort=expiring', icon: BellAlertIcon },
+    { name: 'Walk-ins', href: '/jobs/walkins', icon: MapIcon },
+    { name: 'Post a Job', href: '/submit', icon: PlusCircleIcon },
     // { name: 'Latest', href: '/jobs?sort=latest', icon: ClockIcon },
     // { name: 'Trending', href: '/jobs?sort=trending', icon: ArrowTrendingUpIcon },
     { name: 'Skills', href: '/skills', icon: CodeBracketIcon },
@@ -80,6 +79,7 @@ export const GOVT_NAV_ITEMS = [
     { name: 'Police', href: '/govt?category=Police', icon: ShieldExclamationIcon },
     { name: 'Engineering', href: '/govt?category=Engineering', icon: WrenchScrewdriverIcon },
     { name: 'Private Jobs', href: '/jobs', icon: BriefcaseIcon, hasSubmenu: true },
+    { name: 'Post a Job', href: '/submit', icon: PlusCircleIcon },
 ];
 
 export const ACCOUNT_NAV_ITEMS = [
@@ -89,7 +89,7 @@ export const ACCOUNT_NAV_ITEMS = [
     { name: 'Saved', href: '/saved', icon: BookmarkIcon, requiresAuth: true },
     { name: 'Following', href: '/followed-companies', icon: Building, requiresAuth: true },
     { name: 'Referrals', href: '/referral', icon: UserPlusIcon, requiresAuth: true },
-    { name: 'Contributions', href: '/contribute', icon: PlusCircleIcon, requiresAuth: true },
+    { name: 'Post Opportunity', href: '/submit', icon: PlusCircleIcon },
     { name: 'Settings', href: '/settings', icon: Cog6ToothIcon, requiresAuth: true },
 ];
 
@@ -104,8 +104,7 @@ export function getNavContext(pathname: string): 'default' | 'account' | 'govern
         pathname.startsWith('/alerts') ||
         pathname.startsWith('/notifications') ||
         pathname.startsWith('/followed-companies') ||
-        pathname.startsWith('/referral') ||
-        pathname.startsWith('/contribute')
+        pathname.startsWith('/referral')
     ) {
         return 'account';
     } else if (pathname.startsWith('/govt')) {
@@ -139,6 +138,7 @@ export function getNavItemsForContext(context: 'default' | 'account' | 'governme
 
 export const RESOURCES_NAV_ITEMS = [
     { name: 'Career Resources', href: '/resources', icon: BuildingLibraryIcon },
-    { name: 'Submit Job Link', href: '/contribute', icon: LinkIcon, requiresAuth: true },
+    { name: 'Post an Opportunity', href: '/submit', icon: LinkIcon },
     { name: 'Invite Friends', href: '/referral', icon: UserGroupIcon, requiresAuth: true },
 ];
+

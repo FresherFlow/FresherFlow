@@ -171,7 +171,7 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
         }
         if (isTcsBrand) {
             return (
-                <div className={cn("w-12 h-12 bg-[#005a9c] border border-[#005a9c] rounded flex items-center justify-center shrink-0", className)}>
+                <div className={cn("w-12 h-12 bg-brand-company-blue border border-brand-company-blue rounded flex items-center justify-center shrink-0", className)}>
                     <span className="text-white text-[11px] font-bold tracking-wide">TCS</span>
                 </div>
             );

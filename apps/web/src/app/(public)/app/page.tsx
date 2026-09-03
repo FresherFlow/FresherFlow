@@ -1,6 +1,7 @@
 import { ArrowDownTrayIcon, DevicePhoneMobileIcon, CheckBadgeIcon, ClockIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { APP_LINKS } from '@/lib/config/links';
 import DownloadMockup from '@/lib/layout/DownloadMockup';
+import { Button } from '@/ui/Button';
 
 export const metadata = {
     title: {
@@ -91,17 +92,26 @@ export default function DownloadPage() {
                     <div className="flex flex-col w-full sm:max-w-xl order-4 items-start select-none pb-6">
                         {/* Download CTA Buttons */}
                         <div className="flex flex-col sm:flex-row gap-3.5 sm:gap-4 w-full">
-                            <a
-                                href={APP_LINKS.androidDownload}
-                                className="premium-button w-full sm:w-auto px-5 py-3 text-[12px] uppercase font-bold tracking-widest flex items-center justify-center gap-2 !shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 bg-primary text-primary-foreground border border-primary/20 shrink-0"
+                            <Button
+                                variant="default"
+                                size="sm"
+                                asChild
+                                className="w-full sm:w-auto px-5 py-3 text-[12px] uppercase font-bold tracking-widest !shadow-none hover:scale-[1.02] active:scale-[0.98] border border-primary/20 shrink-0"
                             >
-                                <ArrowDownTrayIcon className="w-4 h-4" />
-                                Download Android App
-                            </a>
-                            <div className="premium-button-outline w-full sm:w-auto px-5 py-3 text-[12px] uppercase font-semibold tracking-widest flex items-center justify-center gap-2 cursor-not-allowed opacity-75 bg-transparent border border-border/40 text-muted-foreground/80 !shadow-none shrink-0">
+                                <a href={APP_LINKS.androidDownload}>
+                                    <ArrowDownTrayIcon className="w-4 h-4" />
+                                    Download Android App
+                                </a>
+                            </Button>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled
+                                className="w-full sm:w-auto px-5 py-3 text-[12px] uppercase font-semibold tracking-widest cursor-not-allowed !shadow-none shrink-0"
+                            >
                                 <DevicePhoneMobileIcon className="w-4 h-4 text-foreground/75" />
                                 iOS Coming Soon
-                            </div>
+                            </Button>
                         </div>
 
                         {/* Universal APK Helper Text Block (12px before helper text) */}
@@ -164,78 +174,7 @@ export default function DownloadPage() {
                 </div>
             </div>
 
-            {/* App vs Web Comparison */}
-            <div className="border-t border-border/40 pt-12 space-y-6">
-                <div className="text-center space-y-2 max-w-xl mx-auto">
-                    <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">Choose your experience.</h2>
-                    <p className="text-sm text-muted-foreground">The web feed is great for browsing, but the app is built for serious job hunting.</p>
-                </div>
 
-                {/* Mobile Comparison Table (Compact row comparison) */}
-                <div className="md:hidden divide-y divide-border/50 border border-border/80 rounded-xl overflow-hidden bg-card/25">
-                    {[
-                        { feature: 'Browse Opportunity Feed', web: true, app: true },
-                        { feature: 'Filter by Batch & Skill', web: true, app: true },
-                        { feature: 'Instant Push Notifications', web: false, app: true },
-                        { feature: 'Offline Saving & Reading', web: false, app: true },
-                        { feature: 'Application Tracker', web: false, app: true },
-                    ].map((row) => (
-                        <div key={row.feature} className="p-3.5 flex items-center justify-between text-xs">
-                            <span className="font-semibold text-foreground">{row.feature}</span>
-                            <div className="flex items-center gap-5 shrink-0">
-                                <div className="flex flex-col items-center">
-                                    <span className="text-[8px] uppercase tracking-wider font-bold text-muted-foreground">Web</span>
-                                    <span className="mt-0.5 text-xs">{row.web ? '✅' : '❌'}</span>
-                                </div>
-                                <div className="flex flex-col items-center">
-                                    <span className="text-[8px] uppercase tracking-wider font-extrabold text-primary">App</span>
-                                    <span className="mt-0.5 text-xs">{row.app ? '✅' : '❌'}</span>
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-
-                {/* Desktop Comparison Table (Visible only on md+) */}
-                <div className="hidden md:block max-w-3xl mx-auto overflow-hidden rounded-xl border border-border bg-card/35">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="border-b border-border bg-muted/20 text-sm font-semibold text-foreground">
-                                <th className="p-4">Features</th>
-                                <th className="p-4 text-center">Web Platform</th>
-                                <th className="p-4 text-center text-primary">Mobile App</th>
-                            </tr>
-                        </thead>
-                        <tbody className="text-sm text-muted-foreground divide-y divide-border/60">
-                            <tr>
-                                <td className="p-4 font-medium text-foreground">Browse Opportunity Feed</td>
-                                <td className="p-4 text-center">Yes</td>
-                                <td className="p-4 text-center text-foreground font-semibold">Yes</td>
-                            </tr>
-                            <tr>
-                                <td className="p-4 font-medium text-foreground">Filter by Batch & Skill</td>
-                                <td className="p-4 text-center">Yes</td>
-                                <td className="p-4 text-center text-foreground font-semibold">Yes</td>
-                            </tr>
-                            <tr>
-                                <td className="p-4 font-medium text-foreground">Instant Push Notifications</td>
-                                <td className="p-4 text-center">No</td>
-                                <td className="p-4 text-center text-primary font-bold">Yes</td>
-                            </tr>
-                            <tr>
-                                <td className="p-4 font-medium text-foreground">Offline Saving & Reading</td>
-                                <td className="p-4 text-center">No</td>
-                                <td className="p-4 text-center text-primary font-bold">Yes</td>
-                            </tr>
-                            <tr>
-                                <td className="p-4 font-medium text-foreground">Application Tracker</td>
-                                <td className="p-4 text-center">No</td>
-                                <td className="p-4 text-center text-primary font-bold">Yes</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
         </div>
     );
 }

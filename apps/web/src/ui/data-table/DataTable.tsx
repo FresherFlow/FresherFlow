@@ -2,17 +2,21 @@
 
 import * as React from "react"
 import {
-  ColumnDef,
   flexRender,
+  SortingState,
+  ColumnFiltersState,
+  RowData,
+} from "@tanstack/react-table"
+import {
   getCoreRowModel,
-  useReactTable,
+  useLegacyTable,
   getSortedRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
-  SortingState,
-  ColumnFiltersState,
-  Table as ReactTable,
-} from "@tanstack/react-table"
+  LegacyColumnDef,
+  LegacyTable,
+  LegacyReactTable,
+} from "@tanstack/react-table/legacy"
 
 import {
   Table,
@@ -22,10 +26,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/ui/Table"
+import { EmptyState } from "@/ui/EmptyState"
 import { DataTablePagination } from "./DataTablePagination"
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[]
+interface DataTableProps<TData extends RowData, TValue> {
+  columns: LegacyColumnDef<TData, any>[]
   data: TData[]
   enableSorting?: boolean
   enableFiltering?: boolean
@@ -40,10 +45,10 @@ interface DataTableProps<TData, TValue> {
   }
   onPaginationChange?: (updater: any) => void
   onRowSelectionChange?: (selectedRows: TData[]) => void
-  toolbar?: (table: ReactTable<TData>) => React.ReactNode
+  toolbar?: (table: LegacyReactTable<TData>) => React.ReactNode
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends RowData, TValue>({
   columns,
   data,
   enableSorting,
@@ -75,7 +80,7 @@ export function DataTable<TData, TValue>({
     }
   }, [sorting, columnFilters, manualPagination])
 
-  const table = useReactTable({
+  const table = useLegacyTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
@@ -148,8 +153,14 @@ export function DataTable<TData, TValue>({
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground text-sm">
-                    No results found.
+                  <TableCell colSpan={columns.length} className="p-6">
+                    <EmptyState
+                      title="No results found"
+                      description="Try adjusting your search or filters."
+                      icon="search"
+                      size="md"
+                      variant="ghost"
+                    />
                   </TableCell>
                 </TableRow>
               )}

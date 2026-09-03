@@ -21,7 +21,7 @@ function getMobileTitle(pathname: string): string {
     if (pathname.startsWith('/admin/discovery')) return 'Discovery Engine';
     if (pathname.startsWith('/admin')) return 'FF Admin';
     if (pathname.startsWith('/jobs/internships')) return 'Internship';
-    if (pathname.startsWith('/jobs/walk-ins')) return 'Walk-in';
+    if (pathname.startsWith('/jobs/walkins') || pathname.startsWith('/jobs/walk-ins')) return 'Walk-in';
     if (pathname.startsWith('/jobs/')) return 'Job';
     if (pathname === '/profile') return 'Profile';
     if (pathname === '/alerts' || pathname === '/account/alerts') return 'Alerts';
@@ -121,7 +121,7 @@ export function MobileTopNav() {
                                     <AlertsDropdown />
                                 )}
                                 {!isAuthRoute && (
-                                    <button onClick={() => setMenuOpen(true)} className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all duration-150 ease-out active:scale-[0.97]" aria-label="Open menu">
+                                    <button onClick={() => setMenuOpen(true)} className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all duration-150 ease-out active:scale-[0.97]" aria-label="Open menu">
                                         <div className="relative">
                                             <Bars3Icon className="w-5 h-5" />
                                             {resolvedUser && unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-primary rounded-full ring-1 ring-background" />}

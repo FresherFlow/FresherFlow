@@ -26,6 +26,8 @@
 
   --color-card: oklch(100% 0.000 90);                  /* Card bg */
   --color-card-foreground: oklch(20.6% 0.039 266);     /* Card text */
+  --color-popover: oklch(100% 0.000 90);               /* Popover / menu bg */
+  --color-popover-foreground: oklch(20.6% 0.039 266);  /* Popover text */
 
   /* ── Borders & inputs ────────────────────────────────────────── */
   --color-border: oklch(80.4% 0.023 255);              /* Visible borders */
@@ -123,6 +125,8 @@
 
     --color-card: oklch(17.1% 0.004 220);                /* 5% white lift */
     --color-card-foreground: oklch(97.7% 0.003 229);
+    --color-popover: oklch(21.5% 0.005 220);             /* Elevated menu surface */
+    --color-popover-foreground: oklch(97.7% 0.003 229);
 
     --color-primary: oklch(97.7% 0.003 229);
     --color-primary-foreground: oklch(10.3% 0.007 196);
