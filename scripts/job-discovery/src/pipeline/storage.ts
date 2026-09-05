@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { DiscoveryState } from '@fresherflow/pipeline';
+import { DiscoveredJobEntry } from '@fresherflow/pipeline';
 import { CDN_URL } from '@fresherflow/pipeline';
 import { uploadJsonToR2, listR2Objects } from '@fresherflow/utils/r2';
 import { saveVisited, saveRejectedReasons, savePostedLinks } from '@fresherflow/pipeline';
@@ -60,6 +61,43 @@ export async function persistLocalData(state: DiscoveryState) {
     const allPassedOutputPath = path.join(process.cwd(), 'all_passed_jobs.json');
     await fs.writeFile(allPassedOutputPath, JSON.stringify({ version: 1, source: 'job-discovery-bot', jobs: validJobs }, null, 2), 'utf8');
     console.log(`Saved all ${validJobs.length} passed jobs to ${allPassedOutputPath} for manual verification`);
+
+    // Push discovered jobs to Google Sheet (non-blocking, best-effort)
+    await pushJobsToGoogleSheet(validJobs);
+}
+
+async function pushJobsToGoogleSheet(jobs: DiscoveredJobEntry[]): Promise<void> {
+    const scriptUrl = process.env.GOOGLE_SHEET_SCRIPT_URL;
+    const secret = process.env.GOOGLE_SHEET_SECRET;
+    if (!scriptUrl || !secret) {
+        console.warn('[sheet] GOOGLE_SHEET_SCRIPT_URL or GOOGLE_SHEET_SECRET not set — skipping sheet push');
+        return;
+    }
+
+    for (const job of jobs) {
+        try {
+            const row = {
+                secret,
+                title: job.title || '',
+                company: job.company || '',
+                location: (job as any).location || '',
+                url: job.applyLink || '',
+            };
+            const res = await fetch(scriptUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(row),
+            });
+            const text = await res.text();
+            if (!res.ok || text !== 'OK') {
+                console.warn(`[sheet] Failed to push job ${job.title}: ${text}`);
+            } else {
+                console.log(`[sheet] Pushed job: ${job.title} (${job.company})`);
+            }
+        } catch (err) {
+            console.warn(`[sheet] Error pushing job ${job.title}:`, err);
+        }
+    }
 }
 
 function isAtsBoardOrCompany(applyLink: string): boolean {
