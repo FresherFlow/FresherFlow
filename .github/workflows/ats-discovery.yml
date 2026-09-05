@@ -24,6 +24,10 @@ jobs:
         working-directory: scripts/job-discovery
         run: pnpm install
 
+      - name: Install Playwright Browsers
+        working-directory: scripts/job-discovery
+        run: pnpm exec playwright install --with-deps chromium
+
       - name: Build Workspace Packages
         run: pnpm build --filter "@fresherflow/constants" --filter "@fresherflow/types" --filter "@fresherflow/utils" --filter "@fresherflow/parser" --filter "@fresherflow/plugins" --filter "@fresherflow/pipeline"
 
@@ -43,6 +47,8 @@ jobs:
           INGESTION_DATABASE_URL: ${{ secrets.INGESTION_DATABASE_URL || secrets.DATABASE_URL }}
           WORKER_URL: ${{ secrets.WORKER_URL }}
           WORKER_SECRET: ${{ secrets.WORKER_SECRET }}
+          GOOGLE_SHEET_SCRIPT_URL: ${{ secrets.GOOGLE_SHEET_SCRIPT_URL }}
+          GOOGLE_SHEET_SECRET: ${{ secrets.GOOGLE_SHEET_SECRET }}
           DISCOVERY_MODE: ats
           PROXY_LIST: ${{ secrets.PROXY_LIST }}
         run: pnpm start

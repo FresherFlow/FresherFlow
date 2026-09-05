@@ -62,6 +62,8 @@ jobs:
           DISCOVERY_MODE: aggregator
           DISCOVERY_STATE_STORAGE: "local"
           PROXY_LIST: ${{ secrets.PROXY_LIST }}
+          GOOGLE_SHEET_SCRIPT_URL: ${{ secrets.GOOGLE_SHEET_SCRIPT_URL }}
+          GOOGLE_SHEET_SECRET: ${{ secrets.GOOGLE_SHEET_SECRET }}
         run: pnpm start
 
       - name: Upload Discovered Jobs Artifact

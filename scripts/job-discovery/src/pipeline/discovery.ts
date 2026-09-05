@@ -457,7 +457,6 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                 }
             } finally {
                 try { await page.close(); } catch {}
-            try { await context.close(); } catch {}
             }
         }
         await context.close();
