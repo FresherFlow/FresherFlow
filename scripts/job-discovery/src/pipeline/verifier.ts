@@ -49,8 +49,12 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                 if (isRejectedApplyUrl(candidate.applyLink)) {
                     console.log(`  -> ❌ Skipping: aggregator/govt/listing URL (${candidate.applyLink})`);
                     const normRejected = normalizeUrl(candidate.applyLink);
+                    state.knownLinks.add(normRejected);
                     state.visited["__discovered_apply_links__"].push(normRejected);
                     state.rejectedReasons[normRejected] = 'Aggregator/govt/listing URL';
+                    if (state.visited["__discovered_apply_links__"].length > 50000) {
+                      state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
+                    }
                     continue;
                 }
                 
@@ -139,7 +143,7 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                         }
                     }
 
-                    console.log(`  ✅ API LIVE: ${candidate.applyLink}`);
+                    console.log(`  ✅ LIVE (API): ${candidate.applyLink}`);
                     const normalizedApplyLink = normalizeUrl(candidate.applyLink);
                     state.visited["__discovered_apply_links__"].push(normalizedApplyLink);
                     if (state.visited["__discovered_apply_links__"].length > 50000) state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
@@ -208,7 +212,7 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                             actualApplyLink = candidate.applyLink;
                         }
                     } catch {}
-                    console.log(`  ✅ LIVE: ${actualApplyLink} (${checkResult.status})`);
+                    console.log(`  ✅ VERIFIED LIVE: ${actualApplyLink}`);
 
                     // Register newly discovered ATS board from dorker — only if confirmed live via Playwright
                     const cb = candidate as any;
@@ -309,10 +313,19 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                 } else {
                     const normalizedApplyLink = normalizeUrl(candidate.applyLink);
                     if (checkResult.status === 'failed') {
-                        console.log(`  -> ATS check failed (network/timeout). Will retry next run.`);
+                        console.log(`  ⚠️ Check FAILED (network/timeout) — will retry next run.`);
                         state.knownLinks.delete(normalizedApplyLink);
                     } else {
-                        console.log(`  -> ATS page is expired/senior. Discarding. Reason: ${checkResult.rejectReason}`);
+                        // Scorer rejections mean the page loaded fine but the role is
+                        // senior/experienced — a "not a fresher job" decision, NOT an
+                        // expired posting. Report the two cases differently.
+                        const rejectReason = checkResult.rejectReason || 'Unknown reason';
+                        const isSeniorReject = /scorer rejected/i.test(rejectReason);
+                        console.log(
+                            isSeniorReject
+                                ? `  👨‍💼 Not a fresher job — discarded (${rejectReason})`
+                                : `  ⏰ Expired / unavailable — discarded (${rejectReason})`,
+                        );
                         state.visited["__discovered_apply_links__"].push(normalizedApplyLink);
                         if (state.visited["__discovered_apply_links__"].length > 50000) state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
                         state.rejectedReasons[normalizedApplyLink] = checkResult.rejectReason || 'Unknown reason';

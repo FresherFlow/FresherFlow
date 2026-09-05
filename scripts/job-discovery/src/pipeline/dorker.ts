@@ -83,6 +83,12 @@ export async function discoverDorkerJobs(state: DiscoveryState) {
                         totalDupes++;
                         continue;
                     }
+                    // Mark as globally-visited NOW so other parallel workers skip it.
+                    state.knownLinks.add(normalized);
+                    state.visited["__discovered_apply_links__"].push(normalized);
+                    if (state.visited["__discovered_apply_links__"].length > 50000) {
+                      state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
+                    }
 
                     // Extract board metadata
                     const boardMatch = extractAtsBoard(cleanUrl);

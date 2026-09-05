@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { DiscoveryState } from '@fresherflow/pipeline';
 import { ATS_CDN_BASE, ATS_PROVIDERS, TARGET_SITES, fetchTargetSitesFromCdn } from '@fresherflow/pipeline';
-import { normalizeUrl, sanitizeAtsUrl } from '@fresherflow/pipeline';
+import { normalizeUrl, sanitizeAtsUrl, isValidApplyLink } from '@fresherflow/pipeline';
 import { isLocationIndiaOrRemote, scoreJobDescription, hasFresherKeyword, isActualJob, isFresherJob, isSeniorJob } from '@fresherflow/utils';
 import { logDecision } from '@fresherflow/pipeline';
 import { findActualApplyLink } from '@fresherflow/pipeline';
@@ -10,7 +10,7 @@ import { extractAtsBoard } from '@fresherflow/pipeline';
 import { runAtsDiscovery, runDirectCompanyDiscovery } from '@fresherflow/pipeline';
 
 export async function discoverAtsJobs(state: DiscoveryState) {
-    console.log(`\n=== Phase 0: Direct Company & ATS Discovery ===\n`);
+    console.log(`\n=== 🏢 Phase 0: Direct Company & ATS Discovery ===\n`);
     
     // 1. Direct Company Scrapers (Google, Amazon, Microsoft, IBM, Apple, Uber, Stripe, Meta, Nvidia)
     const companyJobs = await runDirectCompanyDiscovery(
@@ -86,22 +86,22 @@ export async function discoverAtsJobs(state: DiscoveryState) {
         }
 
         if (!job.title || job.title === 'Unknown Title') {
-            console.log(`  [ATS] Skipping — invalid title: ${job.title}`);
+            console.log(`  🚫 [ATS] Skipped — invalid title: ${job.title}`);
             continue;
         }
         if (!job.applyLink || job.applyLink.includes('/undefined')) {
-            console.log(`  [ATS] Skipping — invalid link: ${job.applyLink}`);
+            console.log(`  🚫 [ATS] Skipped — invalid link: ${job.applyLink}`);
             continue;
         }
         if (!(job as any).isTestBypass && !isLocationIndiaOrRemote(job.location || '', job.title)) {
-            console.log(`  [ATS] Skipping — foreign location "${job.location || 'No Loc'}": ${job.title}`);
+            console.log(`  🌍 [ATS] Skipped — foreign location "${job.location || 'No Loc'}": ${job.title}`);
             atsRejected++;
             continue;
         }
 
         const normalizedLink = normalizeUrl(job.applyLink);
         if (!(job as any).isTestBypass && (state.knownLinks.has(normalizedLink) || state.visited["__discovered_apply_links__"].includes(normalizedLink))) {
-            console.log(`  [ATS] Skipping — already known: ${normalizedLink}`);
+            console.log(`  ♻️ [ATS] Skipped — already known: ${normalizedLink}`);
             continue;
         }
 
@@ -143,7 +143,7 @@ export async function discoverAtsJobs(state: DiscoveryState) {
         atsQueued++;
     }
 
-    console.log(`\n-> ATS Phase 0: ${atsQueued} queued for verification, ${atsRejected} rejected (foreign location).\n`);
+    console.log(`\n✅ ATS Phase 0: ${atsQueued} queued for verification, ${atsRejected} rejected (foreign location).\n`);
 }
 
 export async function discoverAggregatorJobs(state: DiscoveryState) {
@@ -152,7 +152,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
         return;
     }
     const SCRAPER_CONCURRENCY = 4;
-    console.log(`\n=== Phase 2: Scraping aggregators (${SCRAPER_CONCURRENCY} workers) ===\n`);
+    console.log(`\n=== 🌐 Phase 2: Scraping aggregator sites (${SCRAPER_CONCURRENCY} workers) ===\n`);
 
     let activeSites = [...TARGET_SITES];
     if (activeSites.length === 0) {
@@ -191,12 +191,12 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
             
             let page = await context.newPage();
             try {
-                console.log(`\n--- Scraping ${site.name} ---`);
+                console.log(`🌐 Scraping site: ${site.name}`);
                 if (!state.visited[site.name]) state.visited[site.name] = [];
 
                 // Govt-only sites have empty urls (everything sits in govtUrls) — skip them
                 if (!site.urls || site.urls.length === 0) {
-                    console.log(`  -> Skipping ${site.name}: no non-govt urls to scrape.`);
+                    console.log(`⏭️  Skipped ${site.name}: govt-only (no non-govt URLs configured).`);
                     continue;
                 }
 
@@ -207,10 +207,10 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                 const govtUrls = new Set((site as any).govtUrls || []);
                 for (const url of site.urls) {
                     if (govtUrls.has(url)) {
-                        console.log(`  -> Skipping govt URL: ${url}`);
+                        console.log(`🏛️  Skipped govt URL: ${url}`);
                         continue;
                     }
-                    console.log(`  -> Loading start page: ${url}`);
+                    console.log(`📄 Loading start page: ${url}`);
                     try {
                         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
                         const allLinks = await page.$$eval('a', anchors => anchors.map(a => ({ text: a.innerText.trim(), href: a.href })));
@@ -249,7 +249,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                             .map(l => l.href);
                         jobLinks.push(...filtered);
                     } catch (gotoErr) {
-                        console.error(`  -> Failed to load start page ${url}:`, (gotoErr as Error).message);
+                        console.error(`❌ Failed to load start page: ${url} —`, (gotoErr as Error).message);
                     }
                 }
 
@@ -277,19 +277,44 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                     } catch {}
                 }
 
-                const uniqueJobLinks = [...new Set(jobLinks)];
-                const visitedSet = new Set(state.visited[site.name]);
-                const unvisitedLinks = uniqueJobLinks.filter(link => !visitedSet.has(link));
-                console.log(`Found ${unvisitedLinks.length} new unvisited links for ${site.name}.`);
+                // Deduplicate and exclude already-visited links — NORMALIZE before comparison
+                // so that /career/, /career/#respond, /career?utm=x all count as the same page.
+                const seenNormalized = new Set(
+                    state.visited[site.name].map((l: string) => normalizeUrl(l)),
+                );
+                const uniqueJobLinks: string[] = [];
+                const seen: Set<string> = new Set();
+                for (const link of jobLinks) {
+                    const norm = normalizeUrl(link);
+                    if (!seen.has(norm) && !seenNormalized.has(norm)) {
+                        seen.add(norm);
+                        uniqueJobLinks.push(link);
+                    }
+                }
+                console.log(`🆕 Found ${uniqueJobLinks.length} new link(s) on ${site.name}.`);
 
-                for (const jobLink of unvisitedLinks.slice(0, 50)) {
+                for (const jobLink of uniqueJobLinks.slice(0, 50)) {
                     if (state.isTimeUp()) {
                         console.log(`\n[Timeout] ⏱️ Exceeded 80 minutes, halting aggregator post processing.`);
                         break;
                     }
 
-                    console.log(`Checking aggregator post: ${jobLink}`);
-                    state.visited[site.name].push(jobLink);
+                    const jobLinkNorm = normalizeUrl(jobLink);
+                    // Add to GLOBAL visited IMMEDIATELY so other parallel workers (channel,
+                    // dorker, verifier) skip this link even though we're still processing it.
+                    state.knownLinks.add(jobLinkNorm);
+                    state.visited["__discovered_apply_links__"].push(jobLinkNorm);
+                    if (state.visited["__discovered_apply_links__"].length > 50000) {
+                        state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
+                    }
+                    // Re-check against global knownLinks (channel+site dedup):
+                    if (state.knownLinks.has(jobLinkNorm) ||
+                        state.visited["__discovered_apply_links__"].includes(jobLinkNorm)) {
+                        console.log(`♻️ Skipped: already visited from another source`);
+                        continue;
+                    }
+                    state.visited[site.name].push(jobLinkNorm);
+                    console.log(`🔍 Checking post: ${jobLink}`);
                     
                     if (state.visited[site.name].length > 50000) {
                         state.visited[site.name] = state.visited[site.name].slice(-50000);
@@ -298,15 +323,20 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                     await page.close().catch(() => {});
                     page = await context.newPage();
                     
+                    // Fast reject: if the jobLink itself is a listing/aggregator/govt URL — don't load it.
+                    // (isValidApplyLink checks this WITHOUT opening the page.)
+
+
                     try {
                         await page.goto(jobLink, { waitUntil: 'domcontentloaded', timeout: 20000 });
                     } catch (gotoErr) {
-                        console.log(`  -> Failed to load aggregator post: ${(gotoErr as Error).message}`);
+                        console.log(`❌ Failed to load post: ${(gotoErr as Error).message}`);
                         continue;
                     }
 
-                    await page.waitForSelector('article, .post-body, .entry-content, main, #main-content, .post, .job-description', { timeout: 10000 }).catch(() => {});
-                    await page.waitForTimeout(1000);
+                    // Tighten selector wait — 6s max, JS-heavy pages just wait for body.
+                    await page.waitForSelector('article, .post-body, .entry-content, main, .post, .job-description, h1', { timeout: 6000 }).catch(() => {});
+                    await page.waitForTimeout(500);
                     const aggregatorTitle = await page.locator('h1').first().innerText({ timeout: 500 }).catch(() => "");
                     
                     const scoreResult = scoreJobDescription(aggregatorTitle, "", { skipDriveBlocker: true });
@@ -320,18 +350,24 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                     // fresher decision happens on the actual apply page in the verifier,
                     // where real description text exists. Never kill on drive words here.
                     if (scoreResult.verdict === 'REJECT' && scoreResult.score < 0) {
-                        console.log(`  -> Skipping: Rejected by NLP scorer (score ${scoreResult.score})`);
+                        console.log(`❌ Skipped: not fresher (score ${scoreResult.score})`);
                         continue;
                     }
 
-                    // Apply the strict regex logic that was previously in verify-reviews.ts
                     if (isSeniorJob(aggregatorTitle)) {
-                        console.log(`  -> Skipping: Confirmed senior job (Regex pattern found in title)`);
+                        console.log(`👨‍💼 Skipped: senior/experienced role`);
+                        continue;
+                    }
+
+                    // Quick secondary gate before full page work: if title is clearly NOT a job,
+                    // skip BEFORE extracting apply links.
+                    if (!isActualJob(aggregatorTitle, { allowDriveTitles: true }) && !hasFresherKeyword(aggregatorTitle)) {
+                        console.log(`🚫 Skipped: not a job post`);
                         continue;
                     }
 
                     if (isFresherJob(aggregatorTitle)) {
-                        console.log(`  -> Title contains strong fresher regex patterns. Skipping review flag.`);
+                        console.log(`🎓 Clear fresher title — no review needed.`);
                         isAggregatorReview = false;
                     } else if (scoreResult.verdict === 'MEDIUM') {
                         // Keep review required if we aren't 100% sure
@@ -340,17 +376,20 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
 
                     if (!isActualJob(aggregatorTitle, { allowDriveTitles: true })) {
                         if (hasFresherKeyword(aggregatorTitle)) {
-                            console.log(`  -> Borderline non-job type (Syllabus/PDF). Keeping review flag TRUE.`);
+                            console.log(`⚠️ Borderline non-job (syllabus/PDF) — flagged for review.`);
                             isAggregatorReview = true;
                         } else {
-                            console.log(`  -> Skipping: Not an actual job post.`);
+                            console.log(`🚫 Skipped: not a job post.`);
                             continue;
                         }
                     }
 
+                    // Cap apply-link extraction: most Indian job pages have 1-3 real buttons.
+                    // Pages with 5+ dead buttons (794 in this run) waste time checking each.
+                    // Pass a button cap so the extractor stops after finding max N candidates.
                     const applyLink = await findActualApplyLink(page, context, siteDomain);
                     if (!applyLink) {
-                        console.log(`  -> Failed to extract apply link.`);
+                        console.log(`❌ No apply link found on this page.`);
                         continue;
                     }
 
@@ -395,13 +434,13 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                     const normalizedApplyLink = normalizeUrl(cleanApplyLink);
 
                     if (state.knownLinks.has(normalizedApplyLink) || state.visited["__discovered_apply_links__"].includes(normalizedApplyLink)) {
-                        console.log(`  -> Skipping: Already seen/discovered.`);
+                        console.log(`♻️ Skipped: apply link already known`);
                         continue;
                     }
 
                     state.knownLinks.add(normalizedApplyLink);
 
-                    console.log(`  -> Queued for ATS verification: ${cleanApplyLink}`);
+                    console.log(`📥 Queued for verification: ${cleanApplyLink}`);
                     state.candidateQueue.push({
                         applyLink: cleanApplyLink,
                         source: site.name,
@@ -410,14 +449,20 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                         aggregatorTitle: aggregatorTitle.trim(),
                         isAggregatorReview
                     });
+                    state.knownLinks.add(normalizeUrl(cleanApplyLink));
+                    state.visited["__discovered_apply_links__"].push(normalizeUrl(cleanApplyLink));
+                    if (state.visited["__discovered_apply_links__"].length > 50000) {
+                        state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
+                    }
                 }
             } finally {
-                await page.close();
+                try { await page.close(); } catch {}
+            try { await context.close(); } catch {}
             }
         }
         await context.close();
     };
 
     await Promise.all(Array.from({ length: SCRAPER_CONCURRENCY }, () => scraperWorker()));
-    console.log(`\n=== Phase 2 Complete. ${state.candidateQueue.length} candidates queued for verification. ===\n`);
+    console.log(`\n=== ✅ Phase 2 complete — ${state.candidateQueue.length} candidates queued for verification. ===\n`);
 }

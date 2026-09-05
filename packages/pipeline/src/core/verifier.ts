@@ -19,7 +19,7 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
         try {
             response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
         } catch (gotoErr) {
-            console.log(`  -> Navigation warning: ${(gotoErr as Error).message}. Checking DOM anyway.`);
+            console.log(`  ⚠️ Navigation warning: ${(gotoErr as Error).message}. Checking page content anyway.`);
             const errMsg = (gotoErr as Error).message.toLowerCase();
             if (errMsg.includes('net::err_name_not_resolved') || 
                 errMsg.includes('net::err_connection_refused') || 
@@ -27,14 +27,14 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
                 errMsg.includes('net::err_connection_aborted') ||
                 errMsg.includes('net::err_connection_reset')
             ) {
-                console.log(`  -> Hard network/DNS error: ${errMsg}. Marking as failed.`);
+                console.log(`  ❌ Network/DNS error — marking FAILED: ${errMsg}`);
                 return { live: false, status: 'failed', atsText: '', rejectReason: `Network error: ${errMsg}` };
             }
             loadFailed = true;
         }
 
         if (response && (response.status() === 404 || response.status() === 410 || response.status() === 403 || response.status() === 401)) {
-            console.log(`  -> Page returned inactive status code: ${response.status()}`);
+            console.log(`  ❌ Page unreachable (HTTP ${response.status()}) — job expired/removed.`);
             return { live: false, status: 'expired', atsText: '', rejectReason: `HTTP status code ${response.status()}` };
         }
 
@@ -45,7 +45,7 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
         const pageTitle = await page.title().catch(() => "");
         const lowerTitle = pageTitle.toLowerCase().trim();
         if (lowerTitle.includes('403') || lowerTitle.includes('forbidden') || lowerTitle.includes('access denied') || lowerTitle.includes('checking your browser') || lowerTitle.includes('attention required') || lowerTitle.includes('privacy error')) {
-            console.log(`  -> Access blocked (Forbidden/Cloudflare/403 page title: "${pageTitle}").`);
+            console.log(`  🛡️ Access blocked (Cloudflare/403 page) — "${pageTitle}".`);
             return { live: false, status: 'expired', atsText: '', rejectReason: `Blocked page title: "${pageTitle}"` };
         }
         // Generic ATS/careers portal titles — not a specific job page
@@ -56,7 +56,7 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
             /^career site$/i.test(lowerTitle)
         );
         if (isGenericTitle) {
-            console.log(`  -> Page title is generic careers portal ("${pageTitle}"). Marking as expired.`);
+            console.log(`  🏢 Generic careers portal page, not a job ("${pageTitle}") — marking EXPIRED.`);
             return { live: false, status: 'expired', atsText: '', rejectReason: `Generic portal title: "${pageTitle}"` };
         }
         
@@ -74,7 +74,7 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
         const finalUrl = page.url();
         const finalUrlLower = finalUrl.toLowerCase();
         if (finalUrlLower.includes('not_found') || finalUrlLower.includes('jobnotfound') || finalUrlLower.includes('job-not-found') || finalUrlLower.includes('/jobnotfound') || finalUrlLower.includes('/job-not-found') || finalUrlLower.includes('/expired') || finalUrlLower.includes('error=true') || finalUrlLower.endsWith('/error') || finalUrlLower.includes('/error-page/')) {
-            console.log(`  -> URL indicates job not found / redirect to portal: ${finalUrl}. Marking as expired.`);
+            console.log(`  🔗 Redirected to a not-found / portal page: ${finalUrl} — marking EXPIRED.`);
             return { live: false, status: 'expired', atsText: '', rejectReason: `URL pattern indicates job not found (${finalUrl})` };
         }
 
@@ -90,7 +90,7 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
                 const cFinal = cleanPath(finalUrlObj.pathname);
                 
                 if (cOrig !== cFinal && cOrig.startsWith(cFinal) && cFinal.length < cOrig.length) {
-                    console.log(`  -> Redirect to parent page detected: ${cOrig} -> ${cFinal}. Marking as expired.`);
+                    console.log(`  🔗 Redirected to parent listing page (${cOrig} → ${cFinal}) — marking EXPIRED.`);
                     return { live: false, status: 'expired', atsText: '', rejectReason: `Redirected to parent portal path (${finalUrl})` };
                 }
             }
@@ -136,7 +136,7 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
         
         if (!bodyText || bodyText.trim().length < 100) {
             if (loadFailed) {
-                console.log(`  -> Navigation failed and page body is empty/too short. Marking as failed.`);
+                console.log(`  ❌ Navigation failed and page body is empty — marking FAILED.`);
                 return { live: false, status: 'failed', atsText: '', rejectReason: `Navigation failed and short body` };
             }
             // Retry: wait 3 more seconds for JS-heavy pages to render
@@ -144,7 +144,7 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
             const retryBody = await page.locator('body').innerText({ timeout: 3000 }).catch(() => '');
             bodyText = mainText || (retryBody + iframeText);
             if (!bodyText || bodyText.trim().length < 100) {
-                console.log(`  -> Page body still too short after retry (${bodyText?.trim().length || 0} chars). Marking as failed to avoid bypassing NLP.`);
+                console.log(`  ❌ Page body still too short after retry (${bodyText?.trim().length || 0} chars) — marking FAILED.`);
                 return { live: false, status: 'failed', atsText: '', rejectReason: `Body too short after retry: ${bodyText?.trim().length || 0} chars` };
             }
         }
@@ -164,10 +164,10 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
 
         if (scoreResult.verdict === 'REJECT') {
             const mainRule = scoreResult.metadata.blockingRule || scoreResult.evidence.blockers[0]?.rule || scoreResult.evidence.negative[0]?.rule || 'SCORE_TOO_LOW';
-            console.log(`  -> ATS page rejected by scorer (Score: ${scoreResult.score}). Marking as expired.`);
+            console.log(`  ❌ Not a fresher job — rejected by scorer (score ${scoreResult.score}, reason: ${mainRule}).`);
             return { live: false, status: 'expired', atsText: '', rejectReason: `Scorer rejected (Score: ${scoreResult.score}, Reason: ${mainRule})` };
         } else if (scoreResult.verdict === 'MEDIUM') {
-            console.log(`  -> ATS page returned MEDIUM confidence (${scoreResult.score}). Treating as live.`);
+            console.log(`  🤔 Medium confidence (score ${scoreResult.score}) — treating as live.`);
             isReview = false;
         }
 
@@ -175,7 +175,7 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
         const atsText = bodyText.trim().substring(0, 8000);
         return { live: true, status: 'live', atsText, finalUrl };
     } catch (err) {
-        console.error("  -> Error checking if job is live:", (err as Error).message);
+        console.error("  ❌ Error checking if job is live:", (err as Error).message);
         return { live: false, status: 'failed', atsText: '', rejectReason: `Unexpected error: ${(err as Error).message}` };
     }
 }

@@ -250,7 +250,7 @@ async function processScheduledSocialJob(platform: string, text: string): Promis
     } else if (platform === 'x') {
         await postToX(text);
     } else if (platform === 'linkedin') {
-        await postToLinkedIn(text);
+        await postToLinkedIn(text, true);
     } else {
         throw new Error(`Unknown platform: ${platform}`);
     }

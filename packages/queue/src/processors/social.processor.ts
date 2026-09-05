@@ -192,8 +192,31 @@ export async function postToX(text: string): Promise<string> {
   return postToBuffer(process.env.BUFFER_X_CHANNEL_ID, text);
 }
 
-export async function postToLinkedIn(text: string): Promise<string> {
-  return postToBuffer(process.env.BUFFER_LINKEDIN_CHANNEL_ID, text);
+export async function postToLinkedIn(text: string, attachLink = false): Promise<string> {
+  const channelId = process.env.BUFFER_LINKEDIN_CHANNEL_ID;
+  if (!channelId) throw new Error('BUFFER_LINKEDIN_CHANNEL_ID not configured');
+  const apiKey = process.env.BUFFER_API_KEY;
+  if (!apiKey) throw new Error('Buffer API key not configured');
+  const urlMatch = text.match(/(https?:\/\/[^\s]+|fresherflow\.in[^\s]+)/);
+  let extractedUrl: string | undefined;
+  if (urlMatch) {
+    extractedUrl = urlMatch[0];
+    if (!extractedUrl.startsWith('http')) {
+      extractedUrl = `https://${extractedUrl}`;
+    }
+  }
+  const input: Record<string, unknown> = {
+    channelId,
+    text,
+    schedulingType: 'automatic',
+    mode: 'shareNow',
+  };
+  if (extractedUrl && attachLink) {
+    input.metadata = {
+      linkedin: { linkAttachment: { url: extractedUrl } },
+    };
+  }
+  return postToBuffer(channelId, text);
 }
 
 async function postToFacebook(text: string): Promise<string> {

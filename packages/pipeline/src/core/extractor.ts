@@ -149,27 +149,35 @@ export function isValidApplyLink(urlStr: string, currentDomain: string): boolean
 }
 
 // Find actual ATS link
-export async function findActualApplyLink(page: Page, context: BrowserContext, currentDomain: string): Promise<string | null> {
+export async function findActualApplyLink(
+    page: Page,
+    context: BrowserContext,
+    currentDomain: string,
+    maxButtons: number = 999,
+): Promise<string | null> {
     try {
         // Search for explicit apply/register/click here/submit text across the page
         const applyButtons = await page.locator('a, button', { hasText: /(apply|register|click here|submit|official link|careers link|form)/i }).elementHandles();
-        console.log(`[DEBUG] Found ${applyButtons.length} explicit apply buttons.`);
+        console.log(`🔍 Found ${applyButtons.length} apply button(s) on page.`);
+        let checked = 0;
         for (const btn of applyButtons) {
+            if (checked >= maxButtons) break;
+            checked++;
             const href = await btn.getAttribute('href');
             if (href) {
                 try {
                     const u = new URL(href, page.url());
                     const currentU = new URL(page.url());
                     if (u.pathname.replace(/\/$/, '') === currentU.pathname.replace(/\/$/, '')) {
-                        console.log(`[DEBUG] Skipping self-link: ${u.href}`);
+                        console.log(`🚫 Skipped self-link (same page): ${u.href}`);
                         continue; // Skip self-links even with different query params or trailing slashes
                     }
                     const unwrappedHref = unwrapRedirectors(u.href);
                     if (isValidApplyLink(unwrappedHref, currentDomain)) {
-                        console.log(`[DEBUG] Returning explicit apply link: ${unwrappedHref}`);
+                        console.log(`🔗 Apply link found: ${unwrappedHref}`);
                         return unwrappedHref;
                     } else {
-                        console.log(`[DEBUG] Explicit apply link invalid: ${unwrappedHref}`);
+                        console.log(`❌ Invalid apply link — not a real application page (skipping): ${unwrappedHref}`);
                     }
                 } catch {
                     // Ignore invalid URLs
@@ -182,7 +190,7 @@ export async function findActualApplyLink(page: Page, context: BrowserContext, c
             anchors.map(a => (a as HTMLAnchorElement).href)
         );
         const externalLinks = links.map(unwrapRedirectors).filter(l => isValidApplyLink(l, currentDomain));
-        console.log(`[DEBUG] Found ${links.length} total links, ${externalLinks.length} valid external links.`);
+        console.log(`🔍 Scanned ${links.length} links; ${externalLinks.length} valid external link(s).`);
 
         for (const link of externalLinks) {
             try {
@@ -202,7 +210,7 @@ export async function findActualApplyLink(page: Page, context: BrowserContext, c
                     }
                 }
                 if (isAts || h.includes('workday') || h.includes('taleo') || pathLower.includes('careers') || pathLower.includes('jobs')) {
-                    console.log(`[DEBUG] Returning ATS fallback link: ${link}`);
+                    console.log(`🔗 ATS fallback link: ${link}`);
                     return link;
                 }
             } catch {}
@@ -249,7 +257,7 @@ export async function findActualApplyLink(page: Page, context: BrowserContext, c
         return externalLinks.length > 0 ? externalLinks[0] : null;
 
     } catch (err) {
-        console.error("Error finding actual apply link:", (err as Error).message);
+        console.error("❌ Error finding apply link:", (err as Error).message);
         return null;
     }
 }

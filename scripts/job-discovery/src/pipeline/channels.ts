@@ -169,14 +169,14 @@ function parseChannelPosts(
 
 export async function discoverChannelJobs(state: DiscoveryState) {
   if (process.env.SKIP_CHANNELS === "true") {
-    console.log(`\n=== Phase 3: Channel channels (SKIPPED via ENV) ===\n`);
+    console.log(`\n=== 📡 Phase 3: Channel discovery (SKIPPED via ENV) ===\n`);
     return;
   }
   CHANNEL_LIST = await loadChannelList();
   if (CHANNEL_LIST.length === 0) return;
 
   console.log(
-    `\n=== Phase 3: Channel channel discovery (${CHANNEL_LIST.length} channels) ===\n`,
+    `\n=== 📡 Phase 3: Telegram channel discovery (${CHANNEL_LIST.length} channels) ===\n`,
   );
 
   if (!state.browser) {
@@ -194,15 +194,15 @@ export async function discoverChannelJobs(state: DiscoveryState) {
   for (const channel of CHANNEL_LIST) {
     if (state.isTimeUp()) break;
 
-    console.log(`Fetching channel: ${channel}`);
+    console.log(`📡 Fetching channel: ${channel}`);
     let html = await fetchChannelPage(channel);
     if (!html) {
-      console.log(`  -> Failed to fetch`);
+      console.log(`  ❌ Failed to fetch channel page.`);
       continue;
     }
 
     let posts = parseChannelPosts(html);
-    console.log(`  Page 1: ${posts.length} posts`);
+    console.log(`  📄 Page 1: ${posts.length} posts`);
     for (const p of posts) {
       for (const url of p.urls) {
         allUrls.push({ url, channel, postText: p.text, postId: p.id });
@@ -218,7 +218,7 @@ export async function discoverChannelJobs(state: DiscoveryState) {
       html = await fetchChannelPage(channel, firstMsgId);
       if (!html) break;
       posts = parseChannelPosts(html);
-      console.log(`  Page ${pageNum + 1}: ${posts.length} posts`);
+      console.log(`  📄 Page ${pageNum + 1}: ${posts.length} posts`);
       for (const p of posts) {
         for (const url of p.urls) {
           allUrls.push({ url, channel, postText: p.text, postId: p.id });
@@ -233,18 +233,20 @@ export async function discoverChannelJobs(state: DiscoveryState) {
   // Dedup by post ID (prevents reprocessing same TG post across runs)
   const seenPostIds = new Set<string>();
   const seenUrls = new Set<string>();
-  const uniqueUrls = allUrls.filter((item) => {
-    // Dedup by TG post ID
-    if (item.postId && seenPostIds.has(item.postId)) return false;
+  const uniqueUrls: typeof allUrls = [];
+  for (const item of allUrls) {
+    // Dedup by TG post ID (same post shared across channels = same ID)
+    if (item.postId && seenPostIds.has(item.postId)) continue;
     if (item.postId) seenPostIds.add(item.postId);
-    // Dedup by URL
-    if (seenUrls.has(item.url)) return false;
-    seenUrls.add(item.url);
-    return true;
-  });
+    // Dedup by normalized URL (same job post found via different channel posts)
+    const normUrl = normalizeUrl(item.url);
+    if (seenUrls.has(normUrl)) continue;
+    seenUrls.add(normUrl);
+    uniqueUrls.push(item);
+  }
 
   console.log(
-    `\nCollected ${uniqueUrls.length} unique URLs from Channel sources.`,
+    `\n📥 Collected ${uniqueUrls.length} unique URLs from channels.`,
   );
 
   // Step 2: Visit each URL with Playwright and extract real ATS links
@@ -272,12 +274,17 @@ export async function discoverChannelJobs(state: DiscoveryState) {
       break;
     }
 
-    // Skip URLs we already know
+    // Add to global visited IMMEDIATELY so other parallel workers (aggregator,
+    // dorker, verifier) skip this URL even though we may still be visiting it.
     const normalizedUrl = normalizeUrl(item.url);
-    if (
-      state.knownLinks.has(normalizedUrl) ||
-      state.visited["__discovered_apply_links__"].includes(normalizedUrl)
-    ) {
+    state.knownLinks.add(normalizedUrl);
+    state.visited["__discovered_apply_links__"].push(normalizedUrl);
+    if (state.visited["__discovered_apply_links__"].length > 50000) {
+      state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
+    }
+    // Skip if another parallel worker already queued/processed this URL.
+    if (state.knownLinks.has(normalizedUrl) ||
+        state.visited["__discovered_apply_links__"].includes(normalizedUrl)) {
       skipped++;
       continue;
     }
@@ -295,13 +302,13 @@ export async function discoverChannelJobs(state: DiscoveryState) {
     // pass through flagged for review — the fresher decision happens on the actual
     // apply page in the verifier. Never kill on drive words here.
     if (scoreResult.verdict === "REJECT" && scoreResult.score < 0) {
-      console.log(`  -> Skipping: Rejected by scorer (score ${scoreResult.score})`);
+      console.log(`❌ Skipped: not fresher-friendly (score ${scoreResult.score})`);
       processed++;
       continue;
     }
 
     if (isSeniorJob(title)) {
-      console.log(`  -> Skipping: Senior job`);
+      console.log(`👨‍💼 Skipped: senior role`);
       processed++;
       continue;
     }
@@ -310,7 +317,7 @@ export async function discoverChannelJobs(state: DiscoveryState) {
       if (hasFresherKeyword(title)) {
         // Keep it, might be relevant
       } else {
-        console.log(`  -> Skipping: Not an actual job post`);
+        console.log(`🚫 Skipped: not a job post`);
         processed++;
         continue;
       }
@@ -320,7 +327,7 @@ export async function discoverChannelJobs(state: DiscoveryState) {
     const govtPatterns =
       /\b(SSC|UPSC|RRB|Railway|Banking|IBPS|SBI|India Post|GDS|Constable|Sub.?Inspector|Forest Guard|Postal|government recruitment|govt recruitment|sarkari|central government|state government|public service commission|PSU|coal india|defense|army|navy|airforce)\b/i;
     if (govtPatterns.test(item.postText) || govtPatterns.test(title)) {
-      console.log(`  -> Skipping: Government job`);
+      console.log(`🏛️  Skipped: government job`);
       processed++;
       continue;
     }
@@ -356,7 +363,7 @@ export async function discoverChannelJobs(state: DiscoveryState) {
     // the wrapper URL itself is such a page, skip it (don't post the wrapper).
     if (!extractedLink && isRejectedApplyUrl(item.url)) {
       console.log(
-        `  -> Skipping: wrapper URL is aggregator/govt/listing (${item.url})`,
+        `🚫 Skipped: wrapper is an aggregator/govt/listing page (${item.url})`,
       );
       processed++;
       continue;
@@ -404,20 +411,20 @@ export async function discoverChannelJobs(state: DiscoveryState) {
       state.knownLinks.has(normalizedApplyLink) ||
       state.visited["__discovered_apply_links__"].includes(normalizedApplyLink)
     ) {
-      console.log(`  -> Skipping: Already seen`);
+      console.log(`♻️ Skipped: already seen`);
       processed++;
       continue;
-    }
-
-    state.knownLinks.add(normalizedApplyLink);
-    // Also track wrapper URL to prevent re-queueing same post from different channels
-    state.knownLinks.add(normalizedUrl);
+    }                    state.knownLinks.add(normalizedApplyLink);
+                    state.visited["__discovered_apply_links__"].push(normalizedApplyLink);
+                    if (state.visited["__discovered_apply_links__"].length > 50000) {
+                      state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
+                    }
 
     let isReview = true;
     if (isFresherJob(title)) isReview = false;
     else if (scoreResult.verdict === "HIGH") isReview = false;
 
-    console.log(`  -> Queued: ${cleanApplyLink}`);
+    console.log(`📥 Queued: ${cleanApplyLink}`);
     state.candidateQueue.push({
       applyLink: cleanApplyLink,
       source: `channel-${item.channel}`,
@@ -435,6 +442,6 @@ export async function discoverChannelJobs(state: DiscoveryState) {
   await context.close();
 
   console.log(
-    `\n-> Channel Phase 3: ${extracted} queued, ${skipped} skipped (known), ${processed - extracted} failed extraction.\n`,
+    `\n✅ Channel Phase 3: ${extracted} queued, ${skipped} skipped (known), ${processed - extracted} no apply link.\n`,
   );
 }

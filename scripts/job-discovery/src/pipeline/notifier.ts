@@ -61,7 +61,7 @@ async function filterAggregatorSiteLinks(jobs: DiscoveredJobEntry[]): Promise<Di
     const domains = await getAggregatorDomains();
     const kept = jobs.filter(j => !isAggregatorSiteUrl(j.applyLink, domains));
     if (kept.length !== jobs.length) {
-        console.log(`  [Notifier] Skipped ${jobs.length - kept.length} jobs with aggregator-site links (posting only real apply links).`);
+        console.log(`  🚫 [Notifier] Skipped ${jobs.length - kept.length} jobs whose apply link is an aggregator site — posting only real apply links.`);
     }
     return kept;
 }
