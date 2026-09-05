@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { registerAggregatorDomains } from '../core/extractor.js';
 
 // --- LOAD ENV ---
 export function loadEnvSync() {
@@ -131,6 +132,18 @@ export async function fetchTargetSitesFromCdn(): Promise<{ name: string; urls: s
             const raw: any = await res.json();
             // Support both old flat array format and new { sites: [...] } wrapper
             TARGET_SITES = Array.isArray(raw) ? raw : (raw?.sites ?? []);
+            // Register every aggregator site hostname (regular + govt URLs) so
+            // their pages are never treated as real apply links. Single source
+            // of truth = aggregators.json on CDN, not hardcoded lists.
+            const hosts: string[] = [];
+            for (const site of TARGET_SITES) {
+                for (const u of [...(site.urls || []), ...(site.govtUrls || [])]) {
+                    try {
+                        hosts.push(new URL(u).hostname);
+                    } catch {}
+                }
+            }
+            registerAggregatorDomains(hosts);
             return TARGET_SITES;
         }
     } catch {}

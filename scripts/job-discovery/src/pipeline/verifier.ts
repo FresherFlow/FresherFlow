@@ -5,6 +5,7 @@ import { parseJobUrl } from '@fresherflow/parser';
 import { isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/utils';
 import { isJobLive } from '@fresherflow/pipeline';
 import { BAD_TITLE_REGEXES, loadRoleWords, titleHasValidRoleWord } from '@fresherflow/pipeline';
+import { isRejectedApplyUrl } from '@fresherflow/pipeline';
 
 export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning: () => boolean) {
     const VERIFIER_CONCURRENCY = 3;
@@ -40,6 +41,18 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                 }
 
                 console.log(`  [Verifier] Checking: ${candidate.applyLink}`);
+
+                // Hard gate: aggregator site posts / govt portals / listing pages
+                // (e.g. acciojob.com/jobs, joinsaarthi.com/drives/off-campus, ssc.gov.in,
+                // jobs.dailypharmajobs.in/...) must never become jobs. Drop before any
+                // network work so they can't be marked LIVE or posted to social.
+                if (isRejectedApplyUrl(candidate.applyLink)) {
+                    console.log(`  -> ❌ Skipping: aggregator/govt/listing URL (${candidate.applyLink})`);
+                    const normRejected = normalizeUrl(candidate.applyLink);
+                    state.visited["__discovered_apply_links__"].push(normRejected);
+                    state.rejectedReasons[normRejected] = 'Aggregator/govt/listing URL';
+                    continue;
+                }
                 
                 // ── Bronze Layer Native API Fetch ─────────────────────────────────
                 let nativeData: { rawPayload: any; textForFiltering: string; locationsForFiltering: string[]; company: string } | null = null;

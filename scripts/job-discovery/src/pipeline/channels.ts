@@ -13,6 +13,7 @@ import {
 } from "@fresherflow/utils";
 import { logDecision } from "@fresherflow/pipeline";
 import { findActualApplyLink } from "@fresherflow/pipeline";
+import { isRejectedApplyUrl } from "@fresherflow/pipeline";
 import { extractAtsBoard } from "@fresherflow/pipeline";
 import { parseJobTextLite } from "@fresherflow/parser";
 import * as cheerio from "cheerio";
@@ -330,6 +331,7 @@ export async function discoverChannelJobs(state: DiscoveryState) {
 
     await page.close().catch(() => {});
     page = await context.newPage();
+    let extractedLink: string | null = null;
     try {
       await page.goto(item.url, {
         waitUntil: "domcontentloaded",
@@ -341,13 +343,24 @@ export async function discoverChannelJobs(state: DiscoveryState) {
         })
         .catch(() => {});
       await page.waitForTimeout(500);
-      const extractedLink = await findActualApplyLink(
+      extractedLink = await findActualApplyLink(
         page,
         context,
         siteDomain,
       );
       if (extractedLink) applyLink = extractedLink;
     } catch {}
+
+    // Aggregator site posts / govt portals / listing pages must never become
+    // jobs — only real apply links get queued. If extraction found nothing and
+    // the wrapper URL itself is such a page, skip it (don't post the wrapper).
+    if (!extractedLink && isRejectedApplyUrl(item.url)) {
+      console.log(
+        `  -> Skipping: wrapper URL is aggregator/govt/listing (${item.url})`,
+      );
+      processed++;
+      continue;
+    }
 
     const boardMatch = extractAtsBoard(applyLink);
     if (boardMatch) {

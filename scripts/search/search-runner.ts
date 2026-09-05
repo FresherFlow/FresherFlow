@@ -14,6 +14,7 @@ import {
   writeGitHubStepSummary,
   startRun,
   finishRun,
+  fetchTargetSitesFromCdn,
   loadSeenUrlsCache,
   saveSeenUrlsCache,
   loadPostedUrlsCache,
@@ -81,6 +82,9 @@ async function runSearchEngine() {
     }
   }
 
+  // Register CDN aggregator domains so aggregator-site wrapper URLs are never
+  // treated as real apply links by isValidApplyLink (used by walkin collector).
+  await fetchTargetSitesFromCdn();
   const seenUrlsCache = options.noCache ? new Set<string>() : await loadSeenUrlsCache();
   // Social-post dedup: never schedule the same apply link to X/LinkedIn/TG twice.
   const postedUrlsCache = options.noCache ? [] : await loadPostedUrlsCache();
