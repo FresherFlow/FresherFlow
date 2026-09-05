@@ -12,7 +12,14 @@ import { extractSections } from './parser.js';
 const ENGINE_VERSION = "1.2.0";
 const WEIGHTS_VERSION = "1.0.0";
 
-export function evaluateTitle(title: string): { contributions: ScoreContribution[], signals: Signal[], trace: DecisionTraceEvent[] } {
+export interface TitleScoreOptions {
+    // Phase-1 pre-checks on aggregator/channel wrapper titles should NOT block on
+    // drive words ("mass hiring", "mega drive", "off campus drive") because real
+    // fresher drives are titled exactly that. Only the apply page itself may.
+    skipDriveBlocker?: boolean;
+}
+
+export function evaluateTitle(title: string, opts: TitleScoreOptions = {}): { contributions: ScoreContribution[], signals: Signal[], trace: DecisionTraceEvent[] } {
     const contributions: ScoreContribution[] = [];
     const signals: Signal[] = [];
     const trace: DecisionTraceEvent[] = [];
@@ -82,21 +89,26 @@ export function evaluateTitle(title: string): { contributions: ScoreContribution
         }
     }
 
-    // Blocker: aggregator spam / fake mass hiring titles
-    const aggregatorDriveTitles = ['mega drive', 'off campus drive', 'off-campus drive', 'mass hiring', 'pool campus', 'bulk hiring'];
-    for (const dt of aggregatorDriveTitles) {
-        if (lowerTitle.includes(dt)) {
-            signals.push({
-                type: 'title',
-                section: 'TITLE',
-                rule: 'TITLE_BLOCKER_DRIVE',
-                weight: -100,
-                matched: dt,
-                context: title
-            });
-            contributions.push({ rule: 'TITLE_BLOCKER_DRIVE', delta: -100, section: 'TITLE' });
-            trace.push({ step: 'evaluateTitle', result: 'matched drive blocker', rule: 'TITLE_BLOCKER_DRIVE', delta: -100 });
-            break;
+    // Blocker: aggregator spam / fake mass hiring titles.
+    // Skipped in phase 1 (aggregator/channel wrapper titles) — real fresher drives
+    // are literally titled "TCS Mass Hiring", "X Off Campus Drive" etc., so those
+    // words must not kill a job before its real apply page is ever checked.
+    if (!opts.skipDriveBlocker) {
+        const aggregatorDriveTitles = ['mega drive', 'off campus drive', 'off-campus drive', 'mass hiring', 'pool campus', 'bulk hiring'];
+        for (const dt of aggregatorDriveTitles) {
+            if (lowerTitle.includes(dt)) {
+                signals.push({
+                    type: 'title',
+                    section: 'TITLE',
+                    rule: 'TITLE_BLOCKER_DRIVE',
+                    weight: -100,
+                    matched: dt,
+                    context: title
+                });
+                contributions.push({ rule: 'TITLE_BLOCKER_DRIVE', delta: -100, section: 'TITLE' });
+                trace.push({ step: 'evaluateTitle', result: 'matched drive blocker', rule: 'TITLE_BLOCKER_DRIVE', delta: -100 });
+                break;
+            }
         }
     }
 
@@ -312,7 +324,7 @@ export function calculateConfidence(
     return Math.max(0, Math.min(100, conf));
 }
 
-export function scoreJobDescription(title: string, text: string): ScoreResult {
+export function scoreJobDescription(title: string, text: string, opts: TitleScoreOptions = {}): ScoreResult {
     const trace: DecisionTraceEvent[] = [];
     trace.push({ step: 'init', details: 'Starting evaluation' });
 
@@ -323,7 +335,7 @@ export function scoreJobDescription(title: string, text: string): ScoreResult {
     const allContributions: ScoreContribution[] = [];
 
     // 1. Evaluate Title
-    const titleEval = evaluateTitle(title);
+    const titleEval = evaluateTitle(title, opts);
     allSignals.push(...titleEval.signals);
     allContributions.push(...titleEval.contributions);
     trace.push(...titleEval.trace);

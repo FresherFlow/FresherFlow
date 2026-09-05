@@ -95,7 +95,12 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                         continue;
                     }
 
-                    const atsScore = scoreJobDescription(nativeData.rawPayload.title || candidate.aggregatorTitle || 'Unknown', apiText);
+                    // Aggregator/channel jobs must not be killed on drive words in the
+                    // title even here — when the API has no clean title we fall back to
+                    // the wrapper title ("TCS Mass Hiring"), and the real apply page is
+                    // what should decide. Only ATS-direct jobs keep the drive blocker.
+                    const scoreOpts = candidate.sourceType === 'AGGREGATOR' ? { skipDriveBlocker: true } : {};
+                    const atsScore = scoreJobDescription(nativeData.rawPayload.title || candidate.aggregatorTitle || 'Unknown', apiText, scoreOpts);
                     if (atsScore.verdict === 'REJECT') {
                         console.log(`  -> ❌ Skipping API job: Rejected by scorer (Score: ${atsScore.score})`);
                         state.visited["__discovered_apply_links__"].push(normalizeUrl(candidate.applyLink));
@@ -258,7 +263,12 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                     }
 
                     if (bodyText) {
-                        const atsScore = scoreJobDescription(jobTitle, bodyText);
+                        // Aggregator/channel jobs: never kill on drive words in the title
+                        // (which may be the wrapper's "Mass Hiring" fallback). Only ATS-direct
+                        // jobs keep the drive blocker. Seniority/experience in the real body
+                        // still blocks via score < 0.
+                        const scoreOpts = candidate.sourceType === 'AGGREGATOR' ? { skipDriveBlocker: true } : {};
+                        const atsScore = scoreJobDescription(jobTitle, bodyText, scoreOpts);
                         if (atsScore.verdict === 'REJECT') {
                             console.log(`  -> ❌ Skipping job: Rejected by scorer (Score: ${atsScore.score})`);
                             continue;

@@ -16,6 +16,9 @@ import {
   finishRun,
   loadSeenUrlsCache,
   saveSeenUrlsCache,
+  loadPostedUrlsCache,
+  savePostedUrlsCache,
+  postJobsToSocial,
   loadEnv,
   loadRolesFromCdn,
   CORE_SEARCH_KEYWORDS,
@@ -65,18 +68,22 @@ async function runSearchEngine() {
   console.log(`   └─ Dry Run: ${options.dryRun ? 'YES' : 'NO'}`);
   console.log(`======================================================`);
 
-  const runId = await startRun();
+  const runId = options.dryRun ? null : await startRun();
 
-  try {
-    const { sendTelegramMessage } = await import('@fresherflow/utils');
-    await sendTelegramMessage(
-      `🚀 <b>External Search Bot Started</b>\n\nChannels: ${channel.toUpperCase()} (${options.dork ? 'Dorks' : 'Fast Mode'})`
-    );
-  } catch {
-    // Non-blocking
+  if (!options.dryRun) {
+    try {
+      const { sendTelegramMessage } = await import('@fresherflow/utils');
+      await sendTelegramMessage(
+        `🚀 <b>External Search Bot Started</b>\n\nChannels: ${channel.toUpperCase()} (${options.dork ? 'Dorks' : 'Fast Mode'})`
+      );
+    } catch {
+      // Non-blocking
+    }
   }
 
   const seenUrlsCache = options.noCache ? new Set<string>() : await loadSeenUrlsCache();
+  // Social-post dedup: never schedule the same apply link to X/LinkedIn/TG twice.
+  const postedUrlsCache = options.noCache ? [] : await loadPostedUrlsCache();
   const rawCandidates: AtsJob[] = [];
   const rawSourceCounts: Record<string, number> = {};
 
@@ -119,12 +126,6 @@ async function runSearchEngine() {
       cachedSeenUrls: seenUrlsCache,
     });
 
-    // Update seen URLs cache with newly discovered candidate URLs
-    for (const candidate of rawCandidates) {
-      if (candidate.applyLink) seenUrlsCache.add(candidate.applyLink);
-    }
-    await saveSeenUrlsCache(seenUrlsCache);
-
     // Calculate verified count per source
     const verifiedSourceCounts: Record<string, number> = {};
     for (const j of verifiedJobs) {
@@ -132,9 +133,57 @@ async function runSearchEngine() {
       verifiedSourceCounts[src] = (verifiedSourceCounts[src] || 0) + 1;
     }
 
+    // DRY RUN: show what WOULD be posted, touch nothing — no DB write, no social
+    // posts, no cache mutation. Safe for sample/local test runs.
+    if (options.dryRun) {
+      console.log(`\n⚠️  DRY RUN — skipping DB persist + social posting + cache writes.`);
+      console.log(`🎯 Verified candidates that WOULD be posted (${verifiedJobs.length}):`);
+      verifiedJobs.forEach((j, i) => {
+        console.log(`   ${i + 1}. [${j.company || '?'}] ${j.title}\n      Apply: ${j.applyLink}`);
+      });
+      const durationSec = Math.round((Date.now() - startTime) / 1000);
+      console.log(`\n📊 DRY SUMMARY\n   ├─ Raw Fetched:   ${stats.totalRaw}\n   ├─ Verified Live:  ${verifiedJobs.length}\n   └─ Duration:      ${durationSec}s`);
+      await finishRun(runId, {
+        total_found: stats.totalRaw,
+        accepted: 0,
+        review_required: 0,
+        duplicates: 0,
+        failed: 0,
+        duration_ms: Date.now() - startTime,
+        status: 'COMPLETED',
+        metadata: { dry_run: true, live_count: verifiedJobs.length },
+      });
+      return;
+    }
+
+    // Update seen URLs cache with newly discovered candidate URLs
+    for (const candidate of rawCandidates) {
+      if (candidate.applyLink) seenUrlsCache.add(candidate.applyLink);
+    }
+    await saveSeenUrlsCache(seenUrlsCache);
+
     // Output Artifact & Persist to Database (Supabase discovered_jobs)
     await saveDiscoveredJobsArtifact(verifiedJobs, 'discovered_jobs.json');
     await persistDiscoveredJobsToDb(verifiedJobs, runId);
+
+    // Schedule verified jobs to social (X, LinkedIn, Telegram channel). Search
+    // results carry real company names (Aditya Birla Capital, Oshi Health...), so
+    // the shared caption renders the Company line. Posted links are cached so a
+    // job is never scheduled twice across runs.
+    try {
+      if (verifiedJobs.length > 0) {
+        const socialJobs = verifiedJobs
+          .filter(j => j.applyLink && j.title)
+          .map(j => ({ title: j.title, applyLink: j.applyLink, company: j.company, source: j.source }));
+        const scheduled = await postJobsToSocial(socialJobs, postedUrlsCache);
+        console.log(`[Social] ${scheduled} new verified jobs scheduled to social media.`);
+      } else {
+        console.log('[Social] No verified jobs to post this run.');
+      }
+      await savePostedUrlsCache(postedUrlsCache);
+    } catch (err: any) {
+      console.warn(`[Social] Posting note: ${err.message}`);
+    }
 
     const durationSec = Math.round((Date.now() - startTime) / 1000);
 

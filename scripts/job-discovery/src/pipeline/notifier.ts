@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises';
-import { DiscoveryState, DiscoveredJobEntry } from '@fresherflow/pipeline';
+import { DiscoveryState, DiscoveredJobEntry, fetchTargetSitesFromCdn, postJobsToSocial } from '@fresherflow/pipeline';
 import { sendTelegramMessage } from '@fresherflow/utils';
 
 function getFormattedDate(): string {
@@ -17,6 +17,55 @@ function getFormattedDate(): string {
     return `${day}${suffix(day)} ${months[now.getMonth()]}, ${now.getFullYear()}`;
 }
 
+// Which bot is running — set via DISCOVERY_MODE in the workflow env
+const BOT_MODE = (process.env.DISCOVERY_MODE || 'all').toLowerCase();
+const BOT_TITLE =
+    BOT_MODE === 'ats' ? '🏢 ATS Discovery Run' :
+    BOT_MODE === 'aggregator' ? '🌐 Aggregator Discovery Run' :
+    '🔥 Job Discovery Run';
+
+// Aggregator site domains from the CDN json — we only post real external apply
+// links, never the aggregator sites' own post URLs.
+let cachedAggregatorDomains: Set<string> | null = null;
+
+async function getAggregatorDomains(): Promise<Set<string>> {
+    if (cachedAggregatorDomains) return cachedAggregatorDomains;
+    const domains = new Set<string>();
+    try {
+        const sites = await fetchTargetSitesFromCdn();
+        for (const site of sites) {
+            for (const u of [...(site.urls || []), ...(site.govtUrls || [])]) {
+                try { domains.add(new URL(u).hostname.toLowerCase()); } catch { /* ignore invalid */ }
+            }
+        }
+    } catch {
+        console.warn('[Notifier] Failed to load aggregator sites from CDN — cannot filter aggregator-site links.');
+    }
+    cachedAggregatorDomains = domains;
+    return domains;
+}
+
+function isAggregatorSiteUrl(url: string, domains: Set<string>): boolean {
+    if (domains.size === 0) return false; // CDN unavailable — don't drop jobs
+    try {
+        const host = new URL(url).hostname.toLowerCase();
+        for (const d of domains) {
+            if (host === d || host.endsWith('.' + d)) return true;
+        }
+    } catch { /* unparseable URL */ }
+    return false;
+}
+
+async function filterAggregatorSiteLinks(jobs: DiscoveredJobEntry[]): Promise<DiscoveredJobEntry[]> {
+    if (jobs.length === 0) return jobs;
+    const domains = await getAggregatorDomains();
+    const kept = jobs.filter(j => !isAggregatorSiteUrl(j.applyLink, domains));
+    if (kept.length !== jobs.length) {
+        console.log(`  [Notifier] Skipped ${jobs.length - kept.length} jobs with aggregator-site links (posting only real apply links).`);
+    }
+    return kept;
+}
+
 export async function sendNotifications(state: DiscoveryState) {
     if (state.newJobsFound.length === 0) {
         console.log("No new jobs found this run.");
@@ -27,6 +76,8 @@ export async function sendNotifications(state: DiscoveryState) {
     const reviewJobs = state.newJobsFound.filter(j => j.reviewRequired);
     const atsJobs = state.newJobsFound.filter(j => j.sourceType === 'ATS');
     const aggJobs = state.newJobsFound.filter(j => j.sourceType === 'AGGREGATOR');
+    // Never post the aggregator sites' own URLs — only real external apply links
+    const realAggJobs = await filterAggregatorSiteLinks(aggJobs);
 
     // ── Per-ATS breakdown (counts only, no links) ─────────────────────────────
     const atsPerProvider: Record<string, number> = {};
@@ -47,25 +98,30 @@ export async function sendNotifications(state: DiscoveryState) {
     const aggOverflow = aggJobs.length > 15 ? `\n  ...and ${aggJobs.length - 15} more` : '';
 
     // ── Build message ─────────────────────────────────────────────────────────
-    let tgMsg = `🔥 Job Discovery Run — ${getFormattedDate()}\n`;
+    let tgMsg = `${BOT_TITLE} — ${getFormattedDate()}\n`;
     tgMsg += `Total: ${state.newJobsFound.length} jobs`;
     if (reviewJobs.length > 0) {
         tgMsg += ` (${validJobs.length} confirmed, ${reviewJobs.length} review)`;
     }
     tgMsg += `\n\n`;
 
-    tgMsg += `🏢 ATS Direct: ${atsJobs.length}\n${atsBreakdown || '  (none)'}`;
-    tgMsg += `\n\n`;
+    if (BOT_MODE !== 'aggregator') {
+        tgMsg += `🏢 ATS Direct: ${atsJobs.length}\n${atsBreakdown || '  (none)'}`;
+        tgMsg += `\n\n`;
+    }
 
-    tgMsg += `🌐 Aggregator: ${aggJobs.length}\n`;
+    if (BOT_MODE !== 'ats') {
+        tgMsg += `🌐 Aggregator: ${realAggJobs.length}\n`;
+        tgMsg += `\n\n`;
+    }
 
-    tgMsg += `\n\n✅ Uploaded to Supabase`;
+    tgMsg += `✅ Uploaded to Supabase`;
 
     console.log("Sending Telegram message:\n" + tgMsg);
     await sendTelegramMessage(tgMsg);
 
     // Post aggregator jobs to social media (X, LinkedIn, Telegram)
-    await postAggregatorsToSocial(aggJobs);
+    await postAggregatorsToSocial(realAggJobs, state.postedLinks);
 
     const apiBaseUrl = (process.env.API_BASE_URL || '').trim().replace(/\/$/, '');
     if (apiBaseUrl) {
@@ -76,107 +132,20 @@ export async function sendNotifications(state: DiscoveryState) {
 
 // ─── Social Media Posting ───────────────────────────────────────────────────
 
-const WORKER_URL = (process.env.WORKER_URL || '').trim().replace(/\/$/, '');
-const WORKER_SECRET = process.env.WORKER_SECRET || '';
-const SOCIAL_PLATFORMS = ['x', 'linkedin', 'telegram'] as const;
-const STAGGER_MS = 10 * 60 * 1000; // 10 minutes between posts
-
-function formatXCaption(job: DiscoveredJobEntry): string {
-    const date = getFormattedDate();
-    const title = job.title.length > 60 ? job.title.slice(0, 57) + '...' : job.title;
-    const caption = `New Job Opening | ${date}\n\nRole: ${title}\nApply: ${job.applyLink}\n\n#FresherJobs #Hiring`;
-    // X limit is 280 chars. If over, shorten further.
-    if (caption.length > 280) {
-        const shortTitle = job.title.length > 40 ? job.title.slice(0, 37) + '...' : job.title;
-        return `New Job Opening | ${date}\n\nRole: ${shortTitle}\nApply: ${job.applyLink}\n\n#FresherJobs`;
-    }
-    return caption;
-}
-
-function formatLinkedInCaption(job: DiscoveredJobEntry): string {
-    const date = getFormattedDate();
-    return `New Job Opening | ${date}\n\nRole: ${job.title}\n\nApply: ${job.applyLink}\n\n#Freshers #Hiring #EntryLevel #Jobs`;
-}
-
-function formatTelegramCaption(job: DiscoveredJobEntry): string {
-    const date = getFormattedDate();
-    return `New Job Opening | ${date}\n\nRole: ${job.title}\nApply Here: ${job.applyLink}\n\n#Freshers #Hiring #EntryLevel`;
-}
-
-function formatCaption(job: DiscoveredJobEntry, platform: string): string {
-    switch (platform) {
-        case 'x': return formatXCaption(job);
-        case 'linkedin': return formatLinkedInCaption(job);
-        case 'telegram': return formatTelegramCaption(job);
-        default: return formatLinkedInCaption(job);
-    }
-}
-
-async function schedulePost(platform: string, text: string, scheduledAt: number): Promise<void> {
-    if (!WORKER_URL || !WORKER_SECRET) {
-        console.warn(`[social] WORKER_URL or WORKER_SECRET not set, skipping ${platform} post`);
-        return;
-    }
-    try {
-        const res = await fetch(`${WORKER_URL}/social/schedule`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-worker-secret': WORKER_SECRET,
-            },
-            body: JSON.stringify({ platform, text, scheduledAt }),
-        });
-        
-        let data: any = {};
-        const contentType = res.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-            data = await res.json();
-        } else {
-            const raw = await res.text();
-            if (!res.ok) {
-                console.warn(`[social] Failed to schedule ${platform}: HTTP ${res.status} ${res.statusText}`);
-                return;
-            }
-        }
-
-        if (!res.ok || data.ok === false) {
-            console.warn(`[social] Failed to schedule ${platform}: ${data.error || res.statusText}`);
-        } else {
-            console.log(`[social] Scheduled ${platform} post at ${new Date(scheduledAt).toISOString()} (job: ${data.jobId})`);
-        }
-    } catch (err) {
-        console.warn(`[social] Error scheduling ${platform}: ${(err as Error).message}`);
-    }
-}
-
-async function postAggregatorsToSocial(aggJobs: DiscoveredJobEntry[]): Promise<void> {
+// Shared poster (packages/pipeline/src/utils/social.ts) handles captions, adaptive
+// stagger, dedup and the worker call. Aggregator wrapper titles rarely carry a
+// reliable company name, so aggregator jobs post WITHOUT a Company line — only
+// the external search bot (which has real companies) passes company.
+async function postAggregatorsToSocial(aggJobs: DiscoveredJobEntry[], postedLinks: string[]): Promise<void> {
     if (aggJobs.length === 0) return;
-    if (!WORKER_URL || !WORKER_SECRET) {
-        console.warn('[social] WORKER_URL or WORKER_SECRET not set, skipping social posts');
-        return;
-    }
-
-    console.log(`[social] Posting ${aggJobs.length} aggregator jobs to ${SOCIAL_PLATFORMS.join(', ')}`);
-
-    // Add a 2-minute buffer to ensure the first post is strictly in the future for the worker API
-    const now = Date.now() + 2 * 60 * 1000;
-    let postIndex = 0;
-
-    for (const job of aggJobs) {
-        for (const platform of SOCIAL_PLATFORMS) {
-            const text = formatCaption(job, platform);
-            const scheduledAt = now + (postIndex * STAGGER_MS);
-            await schedulePost(platform, text, scheduledAt);
-        }
-        postIndex++;
-    }
-
-    console.log(`[social] All ${aggJobs.length} aggregator jobs scheduled across ${SOCIAL_PLATFORMS.length} platforms`);
+    const jobs = aggJobs.map(j => ({ title: j.title, applyLink: j.applyLink, source: j.source }));
+    await postJobsToSocial(jobs, postedLinks);
 }
 
 export async function writeGitHubSummary(state: DiscoveryState) {
     const atsJobs = state.newJobsFound.filter(j => j.sourceType === 'ATS');
     const aggJobs = state.newJobsFound.filter(j => j.sourceType === 'AGGREGATOR');
+    const realAggJobs = await filterAggregatorSiteLinks(aggJobs);
     const reviewTotal = state.newJobsFound.filter(j => j.reviewRequired).length;
     const confirmedTotal = state.newJobsFound.filter(j => !j.reviewRequired).length;
 
@@ -191,14 +160,17 @@ export async function writeGitHubSummary(state: DiscoveryState) {
         .map(([p, n]) => `║  ├─ ${p.padEnd(22)}: ${String(n).padEnd(16)}║`)
         .join('\n');
 
+    const boxTitle = BOT_MODE === 'ats' ? 'ATS RUN SUMMARY' : BOT_MODE === 'aggregator' ? 'AGGREGATOR RUN SUMMARY' : 'RUN SUMMARY';
+    const atsBoxRows = BOT_MODE !== 'aggregator' ? `║  ├─ ATS Direct           : ${String(atsJobs.length).padEnd(20)}║\n${providerLines}` : '';
+    const aggBoxRow = BOT_MODE !== 'ats' ? `║  └─ Aggregator           : ${String(realAggJobs.length).padEnd(20)}║` : '';
+
     console.log(`
 ╔══════════════════════════════════════════════════╗
-║               RUN SUMMARY                        ║
+║  ${boxTitle.padEnd(46)}║
 ╠══════════════════════════════════════════════════╣
 ║  Total new jobs found    : ${String(state.newJobsFound.length).padEnd(20)}║
-║  ├─ ATS Direct           : ${String(atsJobs.length).padEnd(20)}║
-${providerLines}
-║  └─ Aggregator           : ${String(aggJobs.length).padEnd(20)}║
+${atsBoxRows}
+${aggBoxRow}
 ║                                                  ║
 ║  Confirmed (no review)   : ${String(confirmedTotal).padEnd(20)}║
 ║  Flagged for review      : ${String(reviewTotal).padEnd(20)}║
@@ -206,13 +178,18 @@ ${providerLines}
 
     // ── GitHub Actions step summary ───────────────────────────────────────────
     if (process.env.GITHUB_STEP_SUMMARY) {
-        let summary = `# 🔍 Job Discovery Bot Summary\n\n`;
+        const botName = BOT_MODE === 'ats' ? 'ATS Discovery Bot' : BOT_MODE === 'aggregator' ? 'Aggregator Discovery Bot' : 'Job Discovery Bot';
+        let summary = `# 🔍 ${botName} Summary\n\n`;
         summary += `| Metric | Value |\n`;
         summary += `|---|---|\n`;
         summary += `| **Total Discovered** | **${state.newJobsFound.length}** |\n`;
-        summary += `| **🏢 Direct ATS Jobs** | ${atsJobs.length} |\n`;
-        summary += `| **🌐 Aggregator Jobs** | ${aggJobs.length} |\n`;
-        summary += `| **✅ Confirmed (Direct)** | ${confirmedTotal} |\n`;
+        if (BOT_MODE !== 'aggregator') {
+            summary += `| **🏢 Direct ATS Jobs** | ${atsJobs.length} |\n`;
+        }
+        if (BOT_MODE !== 'ats') {
+            summary += `| **🌐 Aggregator Jobs** | ${realAggJobs.length} |\n`;
+        }
+        summary += `| **✅ Confirmed** | ${confirmedTotal} |\n`;
         summary += `| **⚠️ Flagged for Review** | ${reviewTotal} |\n\n`;
 
         // ATS count breakdown table
@@ -239,12 +216,12 @@ ${providerLines}
             summary += `\n`;
         }
 
-        // Aggregator list with links
-        if (aggJobs.length > 0) {
-            summary += `## 🌐 Aggregator Jobs (${aggJobs.length})\n\n`;
+        // Aggregator list with links (only real apply links — never aggregator site URLs)
+        if (realAggJobs.length > 0) {
+            summary += `## 🌐 Aggregator Jobs (${realAggJobs.length})\n\n`;
             summary += `| # | Role Title | Company | Source | Review | Apply Link |\n`;
             summary += `|---|---|---|---|---|---|\n`;
-            aggJobs.forEach((j, idx) => {
+            realAggJobs.forEach((j, idx) => {
                 const title = (j.title || 'Job').replace(/\|/g, '&#124;');
                 const company = (j.company || 'Company').replace(/\|/g, '&#124;');
                 const reviewMark = j.reviewRequired ? '⚠️ Review' : '✅ Verified';

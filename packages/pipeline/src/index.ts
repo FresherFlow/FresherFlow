@@ -17,6 +17,7 @@ export * from './core/normalizer.js';
 export * from './core/dork-executor.js';
 export * from './core/state.js';
 export * from './utils/storage.js';
+export * from './utils/social.js';
 export * from './db/index.js';
 export * from './search/index.js';
 

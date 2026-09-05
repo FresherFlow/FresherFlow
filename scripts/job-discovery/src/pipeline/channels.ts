@@ -1,7 +1,9 @@
-import fs from "fs";
-import path from "path";
 import { DiscoveryState } from "@fresherflow/pipeline";
-import { normalizeUrl, sanitizeAtsUrl } from "@fresherflow/pipeline";
+import {
+  normalizeUrl,
+  sanitizeAtsUrl,
+  CDN_URL,
+} from "@fresherflow/pipeline";
 import {
   scoreJobDescription,
   hasFresherKeyword,
@@ -19,25 +21,17 @@ let CHANNEL_LIST: string[] = [];
 
 export async function loadChannelList(): Promise<string[]> {
   try {
-    const cdnUrl = process.env.CDN_URL;
-    const res = await fetch(`${cdnUrl}/aggregators.json`);
+    const res = await fetch(`${CDN_URL}/aggregators.json`);
     if (res.ok) {
       const data = await res.json();
-      if (Array.isArray(data?.channel_list)) return data.channel_list;
+      // New CDN format uses telegram_channels (old flat format used channel_list)
+      const list = data?.telegram_channels ?? data?.channel_list;
+      if (Array.isArray(list)) return list;
     }
   } catch {}
 
-  try {
-    const raw = fs.readFileSync(
-      path.resolve(process.cwd(), "aggregators.json"),
-      "utf8",
-    );
-    const data = JSON.parse(raw);
-    if (Array.isArray(data?.channel_list)) return data.channel_list;
-  } catch {}
-
   console.warn(
-    "No channel_list found in aggregators.json. Skipping Channel discovery.",
+    "No telegram_channels found in CDN aggregators.json. Skipping Channel discovery.",
   );
   return [];
 }
@@ -292,11 +286,15 @@ export async function discoverChannelJobs(state: DiscoveryState) {
     const title = parsed.title || item.postText.slice(0, 100);
     const parsedCompany = parsed.company || "";
 
-    const scoreResult = scoreJobDescription(title, item.postText);
+    const scoreResult = scoreJobDescription(title, item.postText, { skipDriveBlocker: true });
     logDecision(scoreResult, item.url, "Channel");
 
-    if (scoreResult.verdict === "REJECT") {
-      console.log(`  -> Skipping: Rejected by scorer`);
+    // Phase-1 wrapper-title check: only skip on REAL negative evidence (score < 0 =
+    // senior/experienced signals). Score 0 / unknown drive titles ("TCS Mass Hiring")
+    // pass through flagged for review — the fresher decision happens on the actual
+    // apply page in the verifier. Never kill on drive words here.
+    if (scoreResult.verdict === "REJECT" && scoreResult.score < 0) {
+      console.log(`  -> Skipping: Rejected by scorer (score ${scoreResult.score})`);
       processed++;
       continue;
     }
@@ -307,7 +305,7 @@ export async function discoverChannelJobs(state: DiscoveryState) {
       continue;
     }
 
-    if (!isActualJob(title)) {
+    if (!isActualJob(title, { allowDriveTitles: true })) {
       if (hasFresherKeyword(title)) {
         // Keep it, might be relevant
       } else {

@@ -81,6 +81,7 @@ export interface DiscoveryState {
     knownLinks: Set<string>;
     visited: Record<string, string[]>;
     rejectedReasons: Record<string, string>;
+    postedLinks: string[];           // apply links already posted to social — never post again
     candidateQueue: Candidate[];
     newJobsFound: DiscoveredJobEntry[];
     atsRegistry: AtsRegistry;
@@ -97,6 +98,7 @@ export function createInitialState(): DiscoveryState {
         knownLinks: new Set(),
         visited: { "__discovered_apply_links__": [] },
         rejectedReasons: {},
+        postedLinks: [],
         candidateQueue: [],
         newJobsFound: [],
         atsRegistry: {},

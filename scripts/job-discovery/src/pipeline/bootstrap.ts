@@ -1,12 +1,16 @@
 import { chromium } from 'playwright';
 import { DiscoveryState, createInitialState } from '@fresherflow/pipeline';
-import { loadVisited, loadRejectedReasons, fetchTargetSitesFromCdn } from '@fresherflow/pipeline';
+import { loadVisited, loadRejectedReasons, loadPostedLinks, fetchTargetSitesFromCdn } from '@fresherflow/pipeline';
 import { CDN_SECRET } from '@fresherflow/pipeline';
 import { signUrl, normalizeUrl } from '@fresherflow/pipeline';
 
 
 export async function bootstrapState(): Promise<DiscoveryState> {
-    await fetchTargetSitesFromCdn();
+    // Aggregator sites/channels json is only needed when this run does aggregator work
+    const mode = (process.env.DISCOVERY_MODE || 'all').toLowerCase();
+    if (mode !== 'ats') {
+        await fetchTargetSitesFromCdn();
+    }
     const state = createInitialState();
     
     console.log("Fetching CDN feed...");
@@ -33,6 +37,7 @@ export async function bootstrapState(): Promise<DiscoveryState> {
 
     state.visited = await loadVisited();
     state.rejectedReasons = await loadRejectedReasons();
+    state.postedLinks = await loadPostedLinks();
     if (!state.visited["__discovered_apply_links__"]) {
         state.visited["__discovered_apply_links__"] = [];
     }

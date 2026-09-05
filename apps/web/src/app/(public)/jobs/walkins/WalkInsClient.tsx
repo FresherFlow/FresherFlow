@@ -9,7 +9,7 @@ interface WalkInsClientProps {
         opportunities: Opportunity[];
         total: number;
         cachedAt: number;
-    };
+    } | null;
 }
 
 export function WalkInsClient({ initialData }: WalkInsClientProps) {

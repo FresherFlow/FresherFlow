@@ -115,5 +115,7 @@ web/docs/
 # Data dumps and logs 
 files/
 
+# Discovery bot local state (visited/rejected/posted) — restored via GitHub Actions cache
+.state/
 
-.*
+

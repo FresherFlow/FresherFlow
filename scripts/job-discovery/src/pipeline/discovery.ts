@@ -194,6 +194,12 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                 console.log(`\n--- Scraping ${site.name} ---`);
                 if (!state.visited[site.name]) state.visited[site.name] = [];
 
+                // Govt-only sites have empty urls (everything sits in govtUrls) — skip them
+                if (!site.urls || site.urls.length === 0) {
+                    console.log(`  -> Skipping ${site.name}: no non-govt urls to scrape.`);
+                    continue;
+                }
+
                 const jobLinks: string[] = [];
                 const siteDomain = new URL(site.urls[0]).hostname;
 
@@ -303,13 +309,18 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                     await page.waitForTimeout(1000);
                     const aggregatorTitle = await page.locator('h1').first().innerText({ timeout: 500 }).catch(() => "");
                     
-                    const scoreResult = scoreJobDescription(aggregatorTitle, "");
+                    const scoreResult = scoreJobDescription(aggregatorTitle, "", { skipDriveBlocker: true });
                     logDecision(scoreResult, jobLink, 'Aggregator');
 
                     let isAggregatorReview = true;
 
-                    if (scoreResult.verdict === 'REJECT') {
-                        console.log(`  -> Skipping: Rejected by NLP scorer`);
+                    // Phase-1 wrapper-title check: only skip on REAL negative evidence
+                    // (score < 0 = senior/experienced signals). Score 0 / unknown titles
+                    // like "TCS Mass Hiring 2026" pass through flagged for review — the
+                    // fresher decision happens on the actual apply page in the verifier,
+                    // where real description text exists. Never kill on drive words here.
+                    if (scoreResult.verdict === 'REJECT' && scoreResult.score < 0) {
+                        console.log(`  -> Skipping: Rejected by NLP scorer (score ${scoreResult.score})`);
                         continue;
                     }
 
@@ -327,7 +338,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                         isAggregatorReview = true;
                     }
 
-                    if (!isActualJob(aggregatorTitle)) {
+                    if (!isActualJob(aggregatorTitle, { allowDriveTitles: true })) {
                         if (hasFresherKeyword(aggregatorTitle)) {
                             console.log(`  -> Borderline non-job type (Syllabus/PDF). Keeping review flag TRUE.`);
                             isAggregatorReview = true;

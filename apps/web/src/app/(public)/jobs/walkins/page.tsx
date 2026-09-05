@@ -1,8 +1,6 @@
 import { Metadata } from 'next';
-import { OpportunityType } from '@fresherflow/types';
-import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+import { fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { toOpportunityCardDTO } from '@fresherflow/types';
-import sampleWalkins from '@/features/opportunities/data/sampleWalkins.json';
 import { WalkInsClient } from './WalkInsClient';
 
 export const revalidate = false;
@@ -17,16 +15,12 @@ export const metadata: Metadata = {
 };
 
 export default async function WalkInsPage() {
-    const bootstrapData = await fetchBootstrapFeed(false, undefined, true);
-    const feedWalkins = bootstrapData?.opportunities?.filter(o => o.type === OpportunityType.WALKIN) || [];
-    const rawWalkins = feedWalkins.length > 0 ? feedWalkins : (sampleWalkins as any[]);
-    const opportunities = rawWalkins.map(toOpportunityCardDTO);
-
-    const initialData = {
-        opportunities: opportunities as any,
-        total: opportunities.length,
-        cachedAt: bootstrapData?.generatedAt ? new Date(bootstrapData.generatedAt).getTime() : Date.now(),
-    };
+    const bootstrapData = await fetchFeedIndex(false);
+    const initialData = bootstrapData ? {
+        opportunities: bootstrapData.opportunities.map(toOpportunityCardDTO) as any,
+        total: bootstrapData.count,
+        cachedAt: new Date(bootstrapData.generatedAt).getTime(),
+    } : null;
 
     return <WalkInsClient initialData={initialData} />;
 }

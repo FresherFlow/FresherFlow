@@ -6,6 +6,7 @@ import { upsertJobs } from '../db/repositories/discoveredJobs.js';
 
 const CACHE_DIR = path.resolve(process.cwd(), '.cache');
 const CACHE_FILE = path.join(CACHE_DIR, 'seen_urls.json');
+const POSTED_FILE = path.join(CACHE_DIR, 'posted_urls.json');
 
 export async function loadSeenUrlsCache(): Promise<Set<string>> {
   try {
@@ -29,6 +30,31 @@ export async function saveSeenUrlsCache(seenUrls: Set<string>): Promise<void> {
     console.log(`[Cache] 💾 Saved ${arr.length} seen job URLs to cache.`);
   } catch (err: any) {
     console.warn(`[Cache] Note: Could not save cache: ${err.message}`);
+  }
+}
+
+export async function loadPostedUrlsCache(): Promise<string[]> {
+  try {
+    const raw = await fs.readFile(POSTED_FILE, 'utf8');
+    const arr = JSON.parse(raw);
+    if (Array.isArray(arr)) {
+      console.log(`[Social] 📦 Loaded ${arr.length} previously posted job URLs from GitHub cache.`);
+      return arr;
+    }
+  } catch {
+    // Cache file doesn't exist yet on fresh runs
+  }
+  return [];
+}
+
+export async function savePostedUrlsCache(postedUrls: string[]): Promise<void> {
+  try {
+    await fs.mkdir(CACHE_DIR, { recursive: true });
+    const arr = postedUrls.slice(-50000);
+    await fs.writeFile(POSTED_FILE, JSON.stringify(arr), 'utf8');
+    console.log(`[Social] 💾 Saved ${arr.length} posted job URLs to cache.`);
+  } catch (err: any) {
+    console.warn(`[Social] Note: Could not save posted cache: ${err.message}`);
   }
 }
 

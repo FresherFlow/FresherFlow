@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import { DiscoveryState } from '@fresherflow/pipeline';
 import { CDN_URL } from '@fresherflow/pipeline';
 import { uploadJsonToR2, listR2Objects } from '@fresherflow/utils/r2';
-import { saveVisited, saveRejectedReasons } from '@fresherflow/pipeline';
+import { saveVisited, saveRejectedReasons, savePostedLinks } from '@fresherflow/pipeline';
 import { parseJobUrl } from '@fresherflow/parser';
 
 import { withConcurrency } from '@fresherflow/pipeline';
@@ -17,6 +17,7 @@ export async function persistLocalData(state: DiscoveryState) {
     delete state.visited["pending_admin_approval"];
     await saveVisited(state.visited);
     await saveRejectedReasons(state.rejectedReasons);
+    await savePostedLinks(state.postedLinks);
 
     // Resolve companies against Supabase Company Registry
     await resolveAndAttachCompanies(state.newJobsFound, state.stats);

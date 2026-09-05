@@ -143,13 +143,24 @@ export function hasFresherKeyword(text: string): boolean {
 }
 
 // Check if a page is actually a job post (vs a course, syllabus, prep guide, roadmap, exam result, or aggregator drive)
-export function isActualJob(title: string): boolean {
+export interface JobTitleOptions {
+    // Phase-1 pre-checks on aggregator/channel wrapper titles must NOT treat drive
+    // words ("mass hiring", "off campus drive", "walk-in drive") as non-jobs — real
+    // fresher drives are titled exactly that. Only the apply page itself may.
+    allowDriveTitles?: boolean;
+}
+
+export function isActualJob(title: string, opts: JobTitleOptions = {}): boolean {
     const titleLower = title.toLowerCase();
 
-    // Aggregator drive / mass hiring posts — not real job applications
-    const driveKeywords = ['mega drive', 'off campus drive', 'off-campus drive', 'mass hiring', 'pool campus', 'bulk hiring', 'walkin drive', 'walk-in drive'];
-    for (const kw of driveKeywords) {
-        if (titleLower.includes(kw)) return false;
+    // Aggregator drive / mass hiring posts — not real job applications.
+    // Skipped in phase 1: a real fresher drive post titled "TCS Mass Hiring" links
+    // to a real apply page, so it must not be discarded before that page is checked.
+    if (!opts.allowDriveTitles) {
+        const driveKeywords = ['mega drive', 'off campus drive', 'off-campus drive', 'mass hiring', 'pool campus', 'bulk hiring', 'walkin drive', 'walk-in drive'];
+        for (const kw of driveKeywords) {
+            if (titleLower.includes(kw)) return false;
+        }
     }
 
     // Only block if the title explicitly indicates it is a course, syllabus, mock test, study material, roadmap, or exam info.

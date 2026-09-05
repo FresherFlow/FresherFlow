@@ -1,18 +1,17 @@
-name: Job Discovery Bot
+name: ATS Discovery Bot
 
 on:
   schedule:
-    # Run four times a day: 10:00 AM, 2:00 PM, 6:00 PM, and 10:00 PM IST (4:30 AM, 8:30 AM, 12:30 PM, 4:30 PM UTC)
-    - cron: "30 4,8,12,16 * * *"
-  workflow_dispatch: # Allow manual trigger from GitHub UI
+    - cron: '0 3,15 * * *'   # 8:30 AM + 8:30 PM IST, twice a day
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  discover:
+  ats-discover:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 45
 
     steps:
       - name: Checkout Code
@@ -20,30 +19,15 @@ jobs:
 
       - name: Setup Node.js + pnpm
         uses: ./.github/actions/setup-node
-        with:
-          install-playwright: "true"
 
       - name: Install Discovery Dependencies
         working-directory: scripts/job-discovery
         run: pnpm install
 
-      - name: Install Playwright Browsers
-        working-directory: scripts/job-discovery
-        run: pnpm exec playwright install --with-deps chromium
-
-
       - name: Build Workspace Packages
         run: pnpm build --filter "@fresherflow/constants" --filter "@fresherflow/types" --filter "@fresherflow/utils" --filter "@fresherflow/parser" --filter "@fresherflow/plugins" --filter "@fresherflow/pipeline"
 
-      - name: Restore Aggregator State Cache (visited / rejected / posted)
-        uses: actions/cache@v4
-        with:
-          path: scripts/job-discovery/.state
-          key: aggregator-discovery-state-${{ github.run_id }}
-          restore-keys: |
-            aggregator-discovery-state-
-
-      - name: Run Job Discovery Bot
+      - name: Run ATS Discovery Bot
         working-directory: scripts/job-discovery
         env:
           CDN_SIGNATURE_SECRET: ${{ secrets.CDN_SIGNATURE_SECRET }}
@@ -59,8 +43,7 @@ jobs:
           INGESTION_DATABASE_URL: ${{ secrets.INGESTION_DATABASE_URL || secrets.DATABASE_URL }}
           WORKER_URL: ${{ secrets.WORKER_URL }}
           WORKER_SECRET: ${{ secrets.WORKER_SECRET }}
-          DISCOVERY_MODE: aggregator
-          DISCOVERY_STATE_STORAGE: "local"
+          DISCOVERY_MODE: ats
           PROXY_LIST: ${{ secrets.PROXY_LIST }}
         run: pnpm start
 
@@ -68,8 +51,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: discovered-jobs
-          path: |
-            scripts/job-discovery/discovered_jobs.json
-            scripts/job-discovery/review_jobs.json
+          name: ats-discovered-jobs
+          path: scripts/job-discovery/discovered_jobs.json
           retention-days: 7
