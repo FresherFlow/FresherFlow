@@ -8,10 +8,10 @@ This file is for AI coding agents working in `scripts/job-processor`. Read the r
 |---|---|
 | Runtime | Node.js, ESM |
 | Language | TypeScript |
-| Browser automation | Playwright |
-| LLM enrichment | Gemini API |
-| Purpose | Scrape, enrich, normalize, and submit discovered jobs |
-| Input | Discovery output from R2 or local dry-run input |
+| Browser automation | Playwright (fallback only) |
+| Data extraction | Native ATS APIs + plugins (no LLM) |
+| Purpose | Second pass: normalize and submit discovery content |
+| Input | Discovery output from R2/Supabase `discovered_jobs` |
 | Output | Structured opportunities submitted to the API |
 
 ## Processing stages
@@ -19,10 +19,10 @@ This file is for AI coding agents working in `scripts/job-processor`. Read the r
 Do not reorder stages.
 
 1. Load input
-2. Native ATS extraction
-3. Browser scrape when needed
-4. Metadata extraction
-5. LLM enrichment when needed
+2. Consume pre-supplied discovery content (preferred, no re-fetch)
+3. Native ATS extraction (fallback when no content stored)
+4. Browser scrape (fallback when no content stored)
+5. Metadata extraction
 6. Normalize
 7. Submit to API
 8. Persist dedup state
@@ -37,32 +37,35 @@ Each stage should keep enough context for error reporting without logging secret
 | Native ATS extraction | Provider APIs that avoid browser cost |
 | Browser scrape | Playwright fallback extraction |
 | Metadata extraction | HTML, JSON-LD, Open Graph, and provider fields |
-| LLM enrichment | Missing structured fields only |
 | Normalize | API-ready opportunity shape |
 | Submit | API contract, retry, dedup handling |
 | Dedup state | Processed URL state in R2 |
 
-## Native ATS before browser
+## Content priority
 
-Native extraction is the default path when available.
+The processor is a second pass over discovery output. Discovery already fetched and
+stored the content, so the processor reuses it instead of re-scraping.
 
-- Try native ATS extraction before opening Playwright
-- Do not call Gemini for jobs with complete structured native data
+1. Pre-supplied discovery content (`atsText`/`description` stored in `discovered_jobs`) — no re-fetch
+2. Structured discovery fields (title + company + skills) — no browser
+3. Native ATS JSON extraction (Lever, Greenhouse, Ashby, SmartRecruiters)
+4. Browser scrape (fallback only, when no content is stored)
+
+Priority rules:
+
+- Consume stored content before opening any browser or calling native APIs
+- Never call an LLM — extraction is 100% plugin and rule based
 - Do not open a browser for URLs already handled by native providers
 - Keep provider-specific extraction isolated
 - Add timeouts and failure categories for new providers
 
-## LLM cost gates
+## No LLM policy
 
-Gemini calls cost money and can affect data quality.
+The processor never calls an LLM. All extraction is deterministic.
 
-- Call the large language model only when required fields are missing
-- Respect `--no-llm` or equivalent debug flags
-- Keep prompts schema-bound and deterministic
-- Validate model output before normalization
-- Track fallback and failure counts
-- Test prompt changes with varied job descriptions before scheduled use
-- Never send secrets, tokens, or internal API responses to the model
+- Reject any change that introduces Gemini, OpenAI, or any model call into the processor
+- `packages/plugins` and `packages/pipeline` adapters own extraction
+- Fix extraction quality in the plugins or rule engine, never by adding a model call
 
 ## Normalization and API submit contract
 
@@ -105,7 +108,6 @@ R2 is the source of truth for processed URL state.
 | `src/api.ts` | API submission |
 | `src/browser.ts` | Playwright browser pool |
 | `src/ats-native.ts` | Native ATS extraction |
-| `src/providers.ts` | Provider-specific browser extraction |
 | `src/metadata.ts` | Generic metadata extraction |
 | `src/normalizer.ts` | API-ready normalization |
 | `src/cdn-matcher.ts` | Company and logo matching |
@@ -122,14 +124,6 @@ R2 is the source of truth for processed URL state.
 4. Add provider detection
 5. Test with several real URLs in no-submit mode
 6. Verify normalized output before API submit
-
-### Change LLM enrichment
-
-1. Keep output schema strict
-2. Run with `--no-llm` to compare native and metadata extraction
-3. Test varied job descriptions with the model enabled
-4. Inspect normalized output
-5. Confirm cost impact before scheduled use
 
 ### Change API submission
 
@@ -155,8 +149,8 @@ npx tsx index.ts --input test-jobs.json --no-submit
 
 Verify:
 
-- Native providers run before browser fallback
-- No LLM call happens when `--no-llm` is set
+- Pre-supplied discovery content is consumed before native API or browser fallback
+- No LLM call exists anywhere in the processor
 - Normalized output has all required API fields
 - Duplicate URLs are skipped or treated as successful duplicates
 - No production R2 state changes happen in dry-run mode

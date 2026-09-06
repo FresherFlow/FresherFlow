@@ -381,8 +381,9 @@ function extractAtsBoard(urlStr: string): { provider: string, boardId: string } 
         const host = u.hostname.toLowerCase();
         const path = u.pathname;
 
-        // Greenhouse: boards.greenhouse.io/company
-        if (host === 'boards.greenhouse.io' || host.endsWith('.boards.greenhouse.io') || host === 'careers.greenhouse.io' || host.endsWith('.careers.greenhouse.io')) {
+        // Greenhouse: boards.greenhouse.io/company, career.greenhouse.io/company,
+        // job-boards.greenhouse.io/company (all share the same public board path shape)
+        if (host === 'boards.greenhouse.io' || host.endsWith('.boards.greenhouse.io') || host === 'careers.greenhouse.io' || host.endsWith('.careers.greenhouse.io') || host === 'job-boards.greenhouse.io' || host.endsWith('.job-boards.greenhouse.io')) {
             const parts = path.split('/').filter(Boolean);
             if (parts.length > 0 && parts[0] !== 'jobs') return { provider: 'greenhouse', boardId: parts[0] };
         }

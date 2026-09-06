@@ -1,6 +1,6 @@
 import { LocationDto } from '../base/models/index.js';
 
-import { State } from '@fresherflow/constants';
+import { State, INDIAN_STATES, STATE_ALIASES, getStateForCity } from '@fresherflow/constants';
 
 const usStatesData = State.getStatesOfCountry('US');
 
@@ -91,11 +91,66 @@ export function parseLocationText(
     };
   }
 
+  const indian = parseIndianLocation(geographicText);
+  if (indian) {
+    return {
+      location: new LocationDto(indian),
+      remoteMentioned,
+      workFromHomeType,
+    };
+  }
+
   return {
     location: new LocationDto({ city: normalized }),
     remoteMentioned,
     workFromHomeType,
   };
+}
+
+const INDIAN_STATE_NAME_BY_ALIAS: Record<string, string> = {};
+for (const name of INDIAN_STATES) {
+  INDIAN_STATE_NAME_BY_ALIAS[name.toLowerCase()] = name;
+}
+if (!INDIAN_STATE_NAME_BY_ALIAS['delhi']) INDIAN_STATE_NAME_BY_ALIAS['delhi'] = 'Delhi';
+
+/**
+ * Conservative non-US fallback for Indian `City, Country` and
+ * `City, State, Country` labels (e.g. `Bengaluru, Karnataka, India`).
+ * A split only happens when the state/country are recognized, so every
+ * other format keeps the current whole-string behavior.
+ */
+function parseIndianLocation(
+  text: string,
+): { city: string; state?: string; country?: string } | null {
+  const parts = text
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (parts.length < 2) return null;
+
+  const last = parts[parts.length - 1].toLowerCase();
+
+  if (last === 'india' || last === 'in') {
+    if (parts.length === 3) {
+      const state = INDIAN_STATE_NAME_BY_ALIAS[parts[1].toLowerCase()];
+      if (!state) return null;
+      return { city: parts[0], state, country: 'India' };
+    }
+    if (parts.length === 2) {
+      const cityState = getStateForCity(parts[0]);
+      return cityState
+        ? { city: parts[0], state: cityState, country: 'India' }
+        : { city: parts[0], country: 'India' };
+    }
+    return null;
+  }
+
+  if (parts.length === 2) {
+    const state = INDIAN_STATE_NAME_BY_ALIAS[last];
+    if (state) return { city: parts[0], state };
+  }
+
+  return null;
 }
 
 /**

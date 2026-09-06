@@ -15,7 +15,6 @@
     "@fresherflow/pipeline": "workspace:*",
     "@fresherflow/plugins": "workspace:*",
     "@fresherflow/utils": "workspace:*",
-    "@google/genai": "^2.15.0",
     "@supabase/supabase-js": "^2.112.0",
     "pg": "^8.22.0",
     "playwright": "^1.62.1",

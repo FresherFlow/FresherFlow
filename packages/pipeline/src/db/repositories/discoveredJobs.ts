@@ -11,24 +11,36 @@ export async function upsertJobs(jobs: any[], runId: string | null) {
     let external_id: string | null = null;
     let company = job.company || 'unknown';
 
-    const parsed = parseJobUrl(job.applyLink);
-    if (parsed) {
-      source = parsed.adapter;
-      external_id = parsed.jobId;
-      // For ATS jobs, the adapter already resolved the real company name from the API.
-      // Only fall back to URL-parsed company for aggregator jobs.
-      if (job.sourceType === 'ATS' && job.company && job.company !== 'unknown') {
-        company = job.company; // keep what the adapter returned
-      } else {
-        company = parsed.company || job.company || 'unknown';
+    // When an ATS adapter already resolved the provider and its structured ID,
+    // trust it directly. URL re-parsing is only a fallback because some ATS
+    // boards use custom career domains the URL parser does not recognize
+    // (e.g. recruitment hosts per company).
+    if (job.sourceType === 'ATS' && job.site) {
+      source = job.site;
+      external_id = job.atsId || job.externalId || null;
+      if (job.company && job.company !== 'unknown') {
+        company = job.company;
       }
-    } else if (job.sourceType === 'AGGREGATOR') {
-      // For aggregators (e.g. YC, Wellfound), we might not have a clean parser yet.
-      // Use the domain as the source.
-      try {
-        const url = new URL(job.applyLink);
-        source = url.hostname.replace('www.', '');
-      } catch {}
+    } else {
+      const parsed = parseJobUrl(job.applyLink);
+      if (parsed) {
+        source = parsed.adapter;
+        external_id = parsed.jobId;
+        // For ATS jobs, the adapter already resolved the real company name from the API.
+        // Only fall back to URL-parsed company for aggregator jobs.
+        if (job.sourceType === 'ATS' && job.company && job.company !== 'unknown') {
+          company = job.company; // keep what the adapter returned
+        } else {
+          company = parsed.company || job.company || 'unknown';
+        }
+      } else if (job.sourceType === 'AGGREGATOR') {
+        // For aggregators (e.g. YC, Wellfound), we might not have a clean parser yet.
+        // Use the domain as the source.
+        try {
+          const url = new URL(job.applyLink);
+          source = url.hostname.replace('www.', '');
+        } catch {}
+      }
     }
 
     return {
@@ -56,13 +68,36 @@ export async function upsertJobs(jobs: any[], runId: string | null) {
       company_industry: job.companyIndustry || null,
       company_logo: job.companyLogo || null,
       company_url: job.companyUrl || null,
+      company_url_direct: job.companyUrlDirect || null,
+      company_num_employees: job.companyNumEmployees || null,
       job_function: job.jobFunction || null,
-      location_city: job.parsedLocation?.city || null,
-      location_country: job.parsedLocation?.country || null,
-      description: job.description || null,
+      location_city: job.locationCity || job.parsedLocation?.city || null,
+      location_country: job.locationCountry || job.parsedLocation?.country || null,
+      location_region: job.locationRegion || job.parsedLocation?.region || null,
+      description: job.atsText || job.description || job.rawHtml || null,
+      description_source: job.descriptionSource || null,
       experience_level: job.experienceLevel || null,
+      experience_range: job.experienceRange || null,
       experience_years: job.experienceYears || null,
       is_remote: job.isRemote || false,
+      work_from_home_type: job.workFromHomeType || null,
+      job_type: job.jobType ? (Array.isArray(job.jobType) ? job.jobType[0] : job.jobType) : null,
+      listing_type: job.listingType || null,
+      job_level: job.jobLevel || null,
+      site: job.site || null,
+      ats_id: job.atsId || null,
+      board_token: job.boardToken || null,
+      source_url: job.sourceUrl || job.jobUrlDirect || job.applyUrl || null,
+      apply_url: job.applyUrl || null,
+      job_url_direct: job.jobUrlDirect || null,
+      salary_min: job.salaryMin ?? job.compensation?.minAmount ?? null,
+      salary_max: job.salaryMax ?? job.compensation?.maxAmount ?? null,
+      salary_currency: job.salaryCurrency ?? job.compensation?.currency ?? null,
+      salary_interval: job.salaryInterval ?? job.compensation?.interval ?? null,
+      salary_source: job.salarySource || null,
+      emails: job.emails ? (Array.isArray(job.emails) ? JSON.stringify(job.emails) : String(job.emails)) : null,
+      vacancy_count: job.vacancyCount || null,
+      team: job.team || null,
       posted_at: job.postedAt || null,
       venue_address: job.venueAddress || job.walkInDetails?.venueAddress || null,
       cluster_name: job.clusterName || job.cluster?.cluster?.name || null,
@@ -95,36 +130,36 @@ export async function upsertJobs(jobs: any[], runId: string | null) {
       });
       const withoutExt = Array.from(withoutExtMap.values());
 
+      const COLUMNS = [
+        'run_id', 'company_id', 'source', 'source_type', 'company', 'title', 'location', 'employment_type', 'apply_link', 'external_id', 'fresher_score', 'review_required', 'status', 'updated_at', 'last_seen_at', 'department', 'batch_year', 'degree', 'skills', 'tags', 'company_stage', 'company_industry', 'company_logo', 'company_url', 'company_url_direct', 'company_num_employees', 'job_function', 'location_city', 'location_country', 'location_region', 'description', 'description_source', 'experience_level', 'experience_range', 'experience_years', 'is_remote', 'work_from_home_type', 'job_type', 'listing_type', 'job_level', 'site', 'ats_id', 'board_token', 'source_url', 'apply_url', 'job_url_direct', 'salary_min', 'salary_max', 'salary_currency', 'salary_interval', 'salary_source', 'emails', 'vacancy_count', 'team', 'posted_at',
+        'venue_address', 'cluster_name', 'latitude', 'longitude', 'walkin_date', 'walkin_time', 'reporting_time', 'contact_person', 'contact_phone', 'required_docs'
+      ];
+      const UPSERT_GROUPS = [
+        'company_stage', 'company_industry', 'company_logo', 'company_url',
+        'company_url_direct', 'company_num_employees', 'job_function',
+        'location', 'location_city', 'location_country', 'location_region', 'description_source',
+        'experience_level', 'experience_range', 'experience_years', 'is_remote',
+        'work_from_home_type', 'job_type', 'listing_type', 'job_level', 'site', 'ats_id',
+        'board_token', 'source_url', 'apply_url', 'job_url_direct',
+        'salary_min', 'salary_max', 'salary_currency', 'salary_interval', 'salary_source',
+        'emails', 'vacancy_count', 'team', 'department', 'batch_year', 'degree', 'skills', 'tags',
+        'posted_at',
+        'venue_address', 'cluster_name', 'latitude', 'longitude',
+        'walkin_date', 'walkin_time', 'reporting_time', 'contact_person', 'contact_phone', 'required_docs'
+      ];
+      const colList = COLUMNS.join(', ');
+      const paramList = COLUMNS.map((_, idx) => `$${idx + 1}`).join(', ');
+
       if (withExt.length > 0) {
         for (const row of withExt) {
           try {
             await pool.query(
-              `INSERT INTO discovered_jobs (
-                run_id, company_id, source, source_type, company, title, location, employment_type, apply_link, external_id, fresher_score, review_required, status, updated_at, last_seen_at, department, batch_year, degree, skills, tags, company_stage, company_industry, company_logo, company_url, job_function, location_city, location_country, description, experience_level, experience_years, is_remote, posted_at,
-                venue_address, cluster_name, latitude, longitude, walkin_date, walkin_time, reporting_time, contact_person, contact_phone, required_docs
-              ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32,
-                $33, $34, $35, $36, $37, $38, $39, $40, $41, $42
-              ) ON CONFLICT (source, external_id) DO UPDATE SET
-                updated_at = EXCLUDED.updated_at,
-                last_seen_at = EXCLUDED.last_seen_at,
-                company_stage = COALESCE(EXCLUDED.company_stage, discovered_jobs.company_stage),
-                company_industry = COALESCE(EXCLUDED.company_industry, discovered_jobs.company_industry),
-                company_logo = COALESCE(EXCLUDED.company_logo, discovered_jobs.company_logo),
-                company_url = COALESCE(EXCLUDED.company_url, discovered_jobs.company_url),
-                job_function = COALESCE(EXCLUDED.job_function, discovered_jobs.job_function),
-                tags = COALESCE(EXCLUDED.tags, discovered_jobs.tags),
-                venue_address = COALESCE(EXCLUDED.venue_address, discovered_jobs.venue_address),
-                cluster_name = COALESCE(EXCLUDED.cluster_name, discovered_jobs.cluster_name),
-                latitude = COALESCE(EXCLUDED.latitude, discovered_jobs.latitude),
-                longitude = COALESCE(EXCLUDED.longitude, discovered_jobs.longitude),
-                walkin_date = COALESCE(EXCLUDED.walkin_date, discovered_jobs.walkin_date),
-                walkin_time = COALESCE(EXCLUDED.walkin_time, discovered_jobs.walkin_time),
-                reporting_time = COALESCE(EXCLUDED.reporting_time, discovered_jobs.reporting_time)`,
-              [
-                row.run_id, row.company_id, row.source, row.source_type, row.company, row.title, row.location, row.employment_type, row.apply_link, row.external_id, row.fresher_score, row.review_required, row.status, row.updated_at, row.last_seen_at, row.department, row.batch_year, row.degree, row.skills, row.tags, row.company_stage, row.company_industry, row.company_logo, row.company_url, row.job_function, row.location_city, row.location_country, row.description, row.experience_level, row.experience_years, row.is_remote, row.posted_at,
-                row.venue_address, row.cluster_name, row.latitude, row.longitude, row.walkin_date, row.walkin_time, row.reporting_time, row.contact_person, row.contact_phone, row.required_docs
-              ]
+              `INSERT INTO discovered_jobs (${colList}) VALUES (${paramList})
+               ON CONFLICT (source, external_id) DO UPDATE SET
+                 updated_at = EXCLUDED.updated_at,
+                 last_seen_at = EXCLUDED.last_seen_at` +
+              UPSERT_GROUPS.map(c => `,\n                ${c} = COALESCE(EXCLUDED.${c}, discovered_jobs.${c})`).join(''),
+              COLUMNS.map((c: string) => (row as any)[c])
             );
           } catch (error: any) {
             console.error('Error upserting jobs (with external_id):', error.message);
@@ -136,32 +171,12 @@ export async function upsertJobs(jobs: any[], runId: string | null) {
         for (const row of withoutExt) {
           try {
             await pool.query(
-              `INSERT INTO discovered_jobs (
-                run_id, company_id, source, source_type, company, title, location, employment_type, apply_link, external_id, fresher_score, review_required, status, updated_at, last_seen_at, department, batch_year, degree, skills, tags, company_stage, company_industry, company_logo, company_url, job_function, location_city, location_country, description, experience_level, experience_years, is_remote, posted_at,
-                venue_address, cluster_name, latitude, longitude, walkin_date, walkin_time, reporting_time, contact_person, contact_phone, required_docs
-              ) VALUES (
-                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32,
-                $33, $34, $35, $36, $37, $38, $39, $40, $41, $42
-              ) ON CONFLICT (source, apply_link) DO UPDATE SET
-                updated_at = EXCLUDED.updated_at,
-                last_seen_at = EXCLUDED.last_seen_at,
-                company_stage = COALESCE(EXCLUDED.company_stage, discovered_jobs.company_stage),
-                company_industry = COALESCE(EXCLUDED.company_industry, discovered_jobs.company_industry),
-                company_logo = COALESCE(EXCLUDED.company_logo, discovered_jobs.company_logo),
-                company_url = COALESCE(EXCLUDED.company_url, discovered_jobs.company_url),
-                job_function = COALESCE(EXCLUDED.job_function, discovered_jobs.job_function),
-                tags = COALESCE(EXCLUDED.tags, discovered_jobs.tags),
-                venue_address = COALESCE(EXCLUDED.venue_address, discovered_jobs.venue_address),
-                cluster_name = COALESCE(EXCLUDED.cluster_name, discovered_jobs.cluster_name),
-                latitude = COALESCE(EXCLUDED.latitude, discovered_jobs.latitude),
-                longitude = COALESCE(EXCLUDED.longitude, discovered_jobs.longitude),
-                walkin_date = COALESCE(EXCLUDED.walkin_date, discovered_jobs.walkin_date),
-                walkin_time = COALESCE(EXCLUDED.walkin_time, discovered_jobs.walkin_time),
-                reporting_time = COALESCE(EXCLUDED.reporting_time, discovered_jobs.reporting_time)`,
-              [
-                row.run_id, row.company_id, row.source, row.source_type, row.company, row.title, row.location, row.employment_type, row.apply_link, row.external_id, row.fresher_score, row.review_required, row.status, row.updated_at, row.last_seen_at, row.department, row.batch_year, row.degree, row.skills, row.tags, row.company_stage, row.company_industry, row.company_logo, row.company_url, row.job_function, row.location_city, row.location_country, row.description, row.experience_level, row.experience_years, row.is_remote, row.posted_at,
-                row.venue_address, row.cluster_name, row.latitude, row.longitude, row.walkin_date, row.walkin_time, row.reporting_time, row.contact_person, row.contact_phone, row.required_docs
-              ]
+              `INSERT INTO discovered_jobs (${colList}) VALUES (${paramList})
+               ON CONFLICT (source, apply_link) DO UPDATE SET
+                 updated_at = EXCLUDED.updated_at,
+                 last_seen_at = EXCLUDED.last_seen_at` +
+              UPSERT_GROUPS.map(c => `,\n                ${c} = COALESCE(EXCLUDED.${c}, discovered_jobs.${c})`).join(''),
+              COLUMNS.map((c: string) => (row as any)[c])
             );
           } catch (error: any) {
             console.error('Error upserting jobs (without external_id):', error.message);
@@ -181,24 +196,37 @@ export interface DiscoveredJobRow {
     source_url?: string;
     company: string;
     title: string;
-    ats_text?: string;
     description?: string;
     location?: string;
     location_city?: string;
+    location_country?: string;
+    location_region?: string;
     is_remote?: boolean;
-    experience_years?: number;
     employment_type?: string;
+    job_type?: string;
+    job_level?: string;
+    work_from_home_type?: string;
+    experience_years?: number;
+    experience_level?: string;
+    experience_range?: string;
+    salary_min?: number;
+    salary_max?: number;
+    salary_currency?: string;
+    salary_interval?: string;
     skills?: string; // JSON string
     posted_at?: string;
     batch_year?: string;
     degree?: string;
     department?: string;
+    job_function?: string;
+    ats_id?: string;
+    site?: string;
     status: string;
 }
 
 export async function fetchUnprocessedFromSupabase(limit = 100): Promise<DiscoveredJobRow[]> {
     const { rows } = await pool.query<DiscoveredJobRow>(
-        `SELECT id, apply_link, source, source_url, company, title, description, location, location_city, is_remote, experience_years, employment_type, skills, posted_at, batch_year, degree, department, status 
+        `SELECT id, apply_link, source, source_url, company, title, description, location, location_city, location_country, location_region, is_remote, employment_type, job_type, job_level, work_from_home_type, skills, experience_level, experience_range, experience_years, salary_min, salary_max, salary_currency, salary_interval, batch_year, degree, department, job_function, posted_at, ats_id, site, status 
          FROM discovered_jobs 
          WHERE status IN ('PENDING', 'APPROVED') 
          ORDER BY created_at DESC 

@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { chromium } from 'playwright';
-import { GoogleGenAI } from '@google/genai';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,11 +33,6 @@ import {
 
 import { extractNativeAtsData } from '@fresherflow/pipeline';
 import { applyRuleEngine } from '@fresherflow/utils';
-
-import {
-    enrichMissingFields,
-    EnrichableField,
-} from './src/providers';
 
 import {
     saveJobToSupabase,
@@ -158,11 +152,8 @@ async function run(): Promise<void> {
         skills: CANONICAL_SKILLS_MAP
     });
 
-    const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || '').trim();
     const API_BASE_URL = (process.env.API_BASE_URL || '').trim().replace(/\/$/, '');
     const ENABLE_API_UPLOAD = process.env.ENABLE_API_UPLOAD === 'true';
-
-    const ai = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
 
 
     const statePath = path.join(process.cwd(), 'processed_urls.json');
@@ -204,17 +195,27 @@ async function run(): Promise<void> {
                 source: r.source,
                 company: r.company,
                 title: r.title,
-                atsText: r.ats_text || '',
+                atsText: r.description || '',
                 description: r.description || '',
                 location: r.location || r.location_city || '',
+                locationCity: r.location_city,
                 isRemote: r.is_remote,
                 experienceYears: r.experience_years,
+                experienceLevel: r.experience_level,
                 employmentType: r.employment_type,
+                workFromHomeType: r.work_from_home_type,
+                salaryMin: r.salary_min,
+                salaryMax: r.salary_max,
+                salaryCurrency: r.salary_currency,
+                salaryInterval: r.salary_interval,
                 skills: r.skills ? (Array.isArray(r.skills) ? r.skills : typeof r.skills === 'string' && r.skills.startsWith('[') ? JSON.parse(r.skills) : [r.skills]) : [],
                 postedAt: r.posted_at,
                 batchYear: r.batch_year,
                 degree: r.degree,
                 department: r.department,
+                jobFunction: r.job_function,
+                atsId: r.ats_id,
+                site: r.site,
                 _supabaseId: r.id,
             })).filter(j => !processedUrls.has(j.applyLink));
 
@@ -245,10 +246,6 @@ async function run(): Promise<void> {
         console.log(`Limiting to first ${limit} unprocessed jobs.`);
         jobs = jobs.slice(0, limit);
     }
-
-    // --no-llm: skip all LLM calls
-    const NO_LLM = process.argv.includes('--no-llm') || process.env.NO_LLM === 'true';
-    if (NO_LLM) console.log('NO_LLM mode: LLM calls skipped, using native+rules only.');
 
     // Batch config
     const batchSizeIndex = process.argv.indexOf('--batch-size');
@@ -293,13 +290,17 @@ async function run(): Promise<void> {
 
             try {
                 // ─────────────────────────────────────────────────────────
-                // STEP 1: CONTENT EXTRACTION
+                // STEP 1: CONTENT EXTRACTION — second pass over discovery output
+                // Discovery already fetched the page/API at level 1 and stored
+                // the extracted content in the DB. This bot only re-processes
+                // that content. Browser/API are fallbacks for rows that have none.
                 // Priority order:
-                //   1. Pre-supplied atsText from discovery phase
-                //   2. Native JSON API (Lever, Greenhouse, Ashby, SmartRecruiters)
-                //   3. ATS-specific Playwright adapter (Workday, Oracle, iCIMS, etc.)
-                //   4. Generic Playwright scrape
-                //   5. Aggregator text fallback
+                //   1. Pre-supplied atsText/description from discovery phase
+                //   2. Structured discovery fields (title + company + skills)
+                //   3. Native JSON API (Lever, Greenhouse, Ashby, SmartRecruiters)
+                //   4. ATS-specific Playwright adapter (Workday, Oracle, iCIMS, etc.)
+                //   5. Generic Playwright scrape
+                //   6. Aggregator text fallback
                 // ─────────────────────────────────────────────────────────
 
                 // LIVENESS CHECK FIRST
@@ -315,60 +316,62 @@ async function run(): Promise<void> {
                 let atsContent: { title: string; text: string; html: string; externalApplyUrl?: string | null } = { title: '', text: '', html: '', externalApplyUrl: null };
                 let nativeData = null;
 
-                // Priority 1: Native ATS JSON API (Greenhouse, Lever, Ashby, SmartRecruiters)
-                const companySlug = GREENHOUSE_COMPANY_TO_SLUG.get((job.company || '').toLowerCase().trim())
-                    ?? CANONICAL_COMPANIES.get((job.company || '').toLowerCase().trim())?.slug;
-                
-                nativeData = await extractNativeAtsData(job.applyLink, source, undefined, companySlug);
-
-                if (nativeData?.text === '{"error":"Job not found"}' || nativeData?.title === 'Job not found') {
-                    console.log(`[DEAD] Native ATS API returned not found — skipping`);
-                    failureList.push({ url: job.applyLink, reason: 'Native ATS API - Job not found' });
-                    await saveState(job.applyLink, 'REJECTED');
-                    if (job._supabaseId) await deleteDiscoveredJob(job._supabaseId);
-                    continue;
-                }
-
-                if (nativeData && (nativeData.html.length > 200 || nativeData.text.length > 200)) {
-                    atsContent = { title: nativeData.title, text: nativeData.text, html: nativeData.html };
-                    console.log(`[Native ATS API] ${source || 'detected'}: ${atsContent.text.length} chars.`);
-                } else if ((job.atsText && job.atsText.length > 50) || (job.description && job.description.length > 50)) {
-                    // Priority 2: Pre-supplied ATS text from discovery
+                // Priority 1: Pre-supplied ATS text from discovery
+                if ((job.atsText && job.atsText.length > 50) || (job.description && job.description.length > 50)) {
                     atsContent.text = job.atsText || job.description;
                     atsContent.title = job.title;
-                    console.log(`Pre-supplied ATS text (${atsContent.text.length} chars). Skipping Playwright.`);
+                    console.log(`[Discovery Content] ${atsContent.text.length} chars. Skipping browser + native API.`);
                 } else if (job.title && job.company && ((job.skills && job.skills.length > 0) || (job.source || '').toLowerCase().includes('getro') || (job.source || '').toLowerCase().includes('consider') || (job.source || '').toLowerCase().includes('vc'))) {
-                    // Priority 2b: Direct structured discovery — Skip Playwright
+                    // Priority 2: Direct structured discovery
                     atsContent.text = job.description || job.title;
                     atsContent.title = job.title;
                     console.log(`[Structured Discovery] ${job.title} @ ${job.company}. Skipping Playwright.`);
                 } else {
-                    // Priority 3: Playwright browser fallback
-                    let page = null;
-                    try {
-                        page = await context.newPage();
-                        await applyStealth(page);
+                    // Priority 3: Native ATS JSON API (Greenhouse, Lever, Ashby, SmartRecruiters)
+                    const companySlug = GREENHOUSE_COMPANY_TO_SLUG.get((job.company || '').toLowerCase().trim())
+                        ?? CANONICAL_COMPANIES.get((job.company || '').toLowerCase().trim())?.slug;
 
-                        nativeData = await extractNativeAtsData(job.applyLink, source, page, companySlug);
+                    nativeData = await extractNativeAtsData(job.applyLink, source, undefined, companySlug);
 
-                        if (nativeData && (nativeData.html.length > 200 || nativeData.text.length > 200)) {
-                            atsContent = { title: nativeData.title, text: nativeData.text, html: nativeData.html };
-                            console.log(`[ATS Adapter] ${source || 'detected'}: ${atsContent.text.length} chars.`);
-                        } else {
-                            atsContent = await extractAtsContent(page, job.applyLink);
-                            const blocked = isBotOrError(atsContent.text, atsContent.title);
-                            if (blocked || atsContent.text.length < 600) {
-                                console.log(`Generic scrape thin/blocked (${atsContent.text.length} chars).`);
-                                atsContent.title = job.aggregatorTitle || job.title;
+                    if (nativeData?.text === '{"error":"Job not found"}' || nativeData?.title === 'Job not found') {
+                        console.log(`[DEAD] Native ATS API returned not found — skipping`);
+                        failureList.push({ url: job.applyLink, reason: 'Native ATS API - Job not found' });
+                        await saveState(job.applyLink, 'REJECTED');
+                        if (job._supabaseId) await deleteDiscoveredJob(job._supabaseId);
+                        continue;
+                    }
+
+                    if (nativeData && (nativeData.html.length > 200 || nativeData.text.length > 200)) {
+                        atsContent = { title: nativeData.title, text: nativeData.text, html: nativeData.html };
+                        console.log(`[Native ATS API] ${source || 'detected'}: ${atsContent.text.length} chars.`);
+                    } else {
+                        // Priority 4/5: Playwright browser fallback
+                        let page = null;
+                        try {
+                            page = await context.newPage();
+                            await applyStealth(page);
+
+                            nativeData = await extractNativeAtsData(job.applyLink, source, page, companySlug);
+
+                            if (nativeData && (nativeData.html.length > 200 || nativeData.text.length > 200)) {
+                                atsContent = { title: nativeData.title, text: nativeData.text, html: nativeData.html };
+                                console.log(`[ATS Adapter] ${source || 'detected'}: ${atsContent.text.length} chars.`);
                             } else {
-                                console.log(`Generic Playwright succeeded (${atsContent.text.length} chars).`);
+                                atsContent = await extractAtsContent(page, job.applyLink);
+                                const blocked = isBotOrError(atsContent.text, atsContent.title);
+                                if (blocked || atsContent.text.length < 600) {
+                                    console.log(`Generic scrape thin/blocked (${atsContent.text.length} chars).`);
+                                    atsContent.title = job.aggregatorTitle || job.title;
+                                } else {
+                                    console.log(`Generic Playwright succeeded (${atsContent.text.length} chars).`);
+                                }
                             }
+                        } catch (pageErr) {
+                            console.error(`[WARNING] Playwright failed: ${(pageErr as Error).message}`);
+                            atsContent.title = job.aggregatorTitle || job.title;
+                        } finally {
+                            if (page) await page.close();
                         }
-                    } catch (pageErr) {
-                        console.error(`[WARNING] Playwright failed: ${(pageErr as Error).message}`);
-                        atsContent.title = job.aggregatorTitle || job.title;
-                    } finally {
-                        if (page) await page.close();
                     }
                 }
 
@@ -420,8 +423,8 @@ async function run(): Promise<void> {
                 const pluginSalary = extractedSal ? `${extractedSal.currency || 'INR'} ${extractedSal.minSalary || ''}${extractedSal.maxSalary ? '-' + extractedSal.maxSalary : ''} / ${extractedSal.interval || 'year'}` : '';
 
                 // 2b. Build job from native structured data + local pipeline.db enriched data + rules
-                // Track whether data came from native ATS API (skip LLM) or Playwright scrape (need LLM)
-                const isNativeAtsData = !!(nativeData?.title || atsContent.title);
+                // Track whether data came from a Native/ATS API or was pre-supplied
+                const isNativeAtsData = !!nativeData;
 
                 const isWalkIn = rules.type === 'WALKIN' ||
                                  job.type === 'WALKIN' ||
@@ -547,29 +550,7 @@ async function run(): Promise<void> {
 
                 console.log(`CDN match done. Missing ${missingFields.length} fields: [${missingFields.join(', ')}]`);
 
-                // ─────────────────────────────────────────────────────────
-                // STEP 3: LLM ENRICHMENT — ONLY for Playwright-scraped pages
-                // Native ATS JSON already has everything the API provides.
-                // LLM guessing salary/incentives for API data is waste of quota.
-                // ─────────────────────────────────────────────────────────
-                if (isNativeAtsData || NO_LLM) {
-                    // Skip LLM entirely for native ATS jobs — data is already complete from the plugin.
-                    // Also skip all LLM calls in NO_LLM (--no-llm) mode.
-                } else if (missingFields.length > 0 && ai) {
-                    console.log(`Calling LLM enrichment for fields: ${missingFields.join(', ')}`);
-                    try {
-                        const enrichment = await enrichMissingFields(ai, textForLlm, missingFields as EnrichableField[]);
-                        if (enrichment) {
-                            if (enrichment.requiredSkills?.length) nativeJob.requiredSkills = [...new Set([...(nativeJob.requiredSkills as string[]), ...enrichment.requiredSkills])];
-                            if (enrichment.salaryRange) nativeJob.salaryRange = enrichment.salaryRange;
-                            if (enrichment.incentives) nativeJob.incentives = enrichment.incentives;
-                            if (enrichment.selectionProcess) nativeJob.selectionProcess = enrichment.selectionProcess;
-                        }
-                    } catch (err) {
-                        console.warn('LLM enrichment failed, falling back to native data:', (err as Error).message);
-                    }
-                }
-
+                // No LLM enrichment — plugins + CDN matcher are the source of truth.
 
                 // ─────────────────────────────────────────────────────────
                 // STEP 4: VALIDATE + NORMALIZE
@@ -680,7 +661,7 @@ async function run(): Promise<void> {
             if (nextJobIndex < jobs.length && nextJobIndex % batchSize === 0) {
                 console.log(`\n[BATCH COOLDOWN] Waiting ${batchDelay}s...`);
                 await new Promise(r => setTimeout(r, batchDelay * 1000));
-            } else if (!NO_LLM && i < jobs.length - 1) {
+            } else if (i < jobs.length - 1) {
                 await new Promise(r => setTimeout(r, 3000));
             }
         }

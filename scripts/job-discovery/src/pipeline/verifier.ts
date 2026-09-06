@@ -59,7 +59,7 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                 }
                 
                 // ── Bronze Layer Native API Fetch ─────────────────────────────────
-                let nativeData: { rawPayload: any; textForFiltering: string; locationsForFiltering: string[]; company: string } | null = null;
+                let nativeData: { rawPayload: any; textForFiltering: string; locationsForFiltering: string[]; company: string; skills?: string[]; salaryMin?: number; salaryMax?: number; salaryCurrency?: string; salaryInterval?: string; workFromHomeType?: string; employmentType?: string; experienceLevel?: string; experienceYears?: number; batchYear?: string; degree?: string; department?: string; jobFunction?: string; postedAt?: string } | null = null;
                 const parsed = parseJobUrl(candidate.applyLink);
                 if (parsed && parsed.adapter) {
                     const adapterKey = parsed.adapter.toLowerCase().replace('company-', '');
@@ -84,7 +84,22 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                                     rawPayload: { title, html: typeof details === 'string' ? '' : details.html },
                                     textForFiltering: fullText,
                                     locationsForFiltering: locations,
-                                    company: companyName || 'Unknown Company'
+                                    company: companyName || 'Unknown Company',
+                                    // Structured fields surfaced by the adapter
+                                    skills: (details as any)?.skills || undefined,
+                                    salaryMin: (details as any)?.salaryMin ?? (details as any)?.compensation?.minAmount,
+                                    salaryMax: (details as any)?.salaryMax ?? (details as any)?.compensation?.maxAmount,
+                                    salaryCurrency: (details as any)?.salaryCurrency ?? (details as any)?.compensation?.currency,
+                                    salaryInterval: (details as any)?.salaryInterval ?? (details as any)?.compensation?.interval,
+                                    workFromHomeType: (details as any)?.workFromHomeType,
+                                    employmentType: (details as any)?.employmentType,
+                                    experienceLevel: (details as any)?.experienceLevel,
+                                    experienceYears: (details as any)?.experienceYears,
+                                    batchYear: (details as any)?.batchYear,
+                                    degree: (details as any)?.degree,
+                                    department: (details as any)?.department,
+                                    jobFunction: (details as any)?.jobFunction,
+                                    postedAt: (details as any)?.postedAt,
                                 };
                             }
                         } catch (e: any) {
@@ -170,8 +185,23 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                         aggregatorUrl: candidate.aggregatorUrl,
                         aggregatorTitle: candidate.aggregatorTitle,
                         company: nativeData.company,
+                        atsText: nativeData.textForFiltering,
                         rawPayload: nativeData.rawPayload,
-                        rawHtml: nativeData.rawPayload.html || nativeData.textForFiltering
+                        rawHtml: nativeData.rawPayload.html || nativeData.textForFiltering,
+                        skills: nativeData.skills,
+                        salaryMin: nativeData.salaryMin,
+                        salaryMax: nativeData.salaryMax,
+                        salaryCurrency: nativeData.salaryCurrency,
+                        salaryInterval: nativeData.salaryInterval,
+                        workFromHomeType: nativeData.workFromHomeType,
+                        employmentType: nativeData.employmentType,
+                        experienceLevel: nativeData.experienceLevel,
+                        experienceYears: nativeData.experienceYears,
+                        batchYear: nativeData.batchYear,
+                        degree: nativeData.degree,
+                        department: nativeData.department,
+                        jobFunction: nativeData.jobFunction,
+                        postedAt: nativeData.postedAt
                     });
                     continue; // Skip Playwright completely!
                 }

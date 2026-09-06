@@ -20,6 +20,42 @@ import * as cheerio from "cheerio";
 
 let CHANNEL_LIST: string[] = [];
 
+// Persisted per-channel cursor: highest t.me post id already seen. Stored inside
+// state.visited so it rides the same R2/GitHub-cache state as site visited lists.
+const CHANNEL_CURSORS_KEY = "__channel_cursors__";
+
+function loadChannelCursors(
+  state: DiscoveryState,
+): Map<string, number> {
+  const map = new Map<string, number>();
+  const raw = state.visited[CHANNEL_CURSORS_KEY] || [];
+  for (const entry of raw) {
+    const eq = entry.indexOf("=");
+    if (eq > 0) {
+      const id = parseInt(entry.slice(eq + 1), 10);
+      if (!Number.isNaN(id)) map.set(entry.slice(0, eq), id);
+    }
+  }
+  return map;
+}
+
+function saveChannelCursor(
+  state: DiscoveryState,
+  cursors: Map<string, number>,
+) {
+  state.visited[CHANNEL_CURSORS_KEY] = Array.from(cursors.entries()).map(
+    ([channel, id]) => `${channel}=${id}`,
+  );
+}
+
+// "enggwave/4004" -> 4004. t.me DOM lists posts oldest-first, so the newest
+// post id on a page is the max numeric id.
+function postIdNum(postId: string): number {
+  const last = postId.split("/").pop() || "";
+  const n = parseInt(last, 10);
+  return Number.isNaN(n) ? 0 : n;
+}
+
 export async function loadChannelList(): Promise<string[]> {
   try {
     const res = await fetch(`${CDN_URL}/aggregators.json`);
@@ -191,6 +227,15 @@ export async function discoverChannelJobs(state: DiscoveryState) {
     postId: string;
   }[] = [];
 
+  const channelCursors = loadChannelCursors(state);
+  // Per-channel post-id frontier fetched this run. cursorReady means the fetched
+  // window is contiguous back to the old cursor (or it is a first run), so after
+  // Step 2 processes every new post we can safely persist newestFetched as the
+  // new cursor without skipping any unhandled posts.
+  const newestFetched = new Map<string, number>();
+  const oldestFetched = new Map<string, number>();
+  const cursorReady = new Set<string>();
+
   for (const channel of CHANNEL_LIST) {
     if (state.isTimeUp()) break;
 
@@ -203,13 +248,50 @@ export async function discoverChannelJobs(state: DiscoveryState) {
 
     let posts = parseChannelPosts(html);
     console.log(`  📄 Page 1: ${posts.length} posts`);
-    for (const p of posts) {
-      for (const url of p.urls) {
-        allUrls.push({ url, channel, postText: p.text, postId: p.id });
-      }
-    }
 
-    // Paginate (up to 2 more pages)
+    const cursor = channelCursors.get(channel) ?? 0;
+    const firstPageMaxId = posts.reduce(
+      (max, p) => Math.max(max, postIdNum(p.id)),
+      0,
+    );
+    // Cursor: post ids increase over time. If the newest post on page 1 is
+    // older than the last post we processed, this channel has nothing new.
+    if (firstPageMaxId > 0 && firstPageMaxId <= cursor) {
+      console.log(`  ⏭️  No new posts since #${cursor} — skipping.`);
+      await new Promise((r) => setTimeout(r, 1500));
+      continue;
+    }
+    // First run (no cursor yet): whole fetched window is new; safe to persist
+    // the newest id as cursor after Step 2 processes it.
+    if (cursor === 0 && posts.length > 0) cursorReady.add(channel);
+
+    const trackFetchedWindow = (postsList: typeof posts) => {
+      for (const p of postsList) {
+        const n = postIdNum(p.id);
+        if (n <= 0) continue;
+        newestFetched.set(channel, Math.max(newestFetched.get(channel) ?? 0, n));
+        oldestFetched.set(
+          channel,
+          Math.min(oldestFetched.get(channel) ?? Infinity, n),
+        );
+      }
+    };
+
+    const collectNewPosts = (postsList: typeof posts) => {
+      for (const p of postsList) {
+        // Only collect posts newer than the cursor (older ones were processed
+        // in a previous run — no need to re-fetch/re-visit them).
+        if (postIdNum(p.id) <= cursor) continue;
+        for (const url of p.urls) {
+          allUrls.push({ url, channel, postText: p.text, postId: p.id });
+        }
+      }
+    };
+    trackFetchedWindow(posts);
+    collectNewPosts(posts);
+
+    // Paginate older (up to 2 more pages) until a page is entirely older than
+    // the cursor — everything further back was already processed in a past run.
     let pageNum = 1;
     while (posts.length > 0 && pageNum < 3) {
       const firstMsgId = posts[0]?.id.split("/").pop();
@@ -219,11 +301,18 @@ export async function discoverChannelJobs(state: DiscoveryState) {
       if (!html) break;
       posts = parseChannelPosts(html);
       console.log(`  📄 Page ${pageNum + 1}: ${posts.length} posts`);
-      for (const p of posts) {
-        for (const url of p.urls) {
-          allUrls.push({ url, channel, postText: p.text, postId: p.id });
-        }
+      const olderMaxId = posts.reduce(
+        (max, p) => Math.max(max, postIdNum(p.id)),
+        0,
+      );
+      trackFetchedWindow(posts);
+      // Reached posts from the last run — everything older is already handled,
+      // so the window is contiguous back to the cursor and we can stop here.
+      if (olderMaxId > 0 && olderMaxId <= cursor) {
+        cursorReady.add(channel);
+        break;
       }
+      collectNewPosts(posts);
       pageNum++;
     }
 
@@ -274,20 +363,17 @@ export async function discoverChannelJobs(state: DiscoveryState) {
       break;
     }
 
-    // Add to global visited IMMEDIATELY so other parallel workers (aggregator,
-    // dorker, verifier) skip this URL even though we may still be visiting it.
+    // Skip if a parallel source (aggregator/dorker) already claimed this URL during
+    // this run. knownLinks is in-memory only — wrapper/post URLs must never be
+    // persisted into the apply-links bucket (that would poison cross-run dedupe).
     const normalizedUrl = normalizeUrl(item.url);
-    state.knownLinks.add(normalizedUrl);
-    state.visited["__discovered_apply_links__"].push(normalizedUrl);
-    if (state.visited["__discovered_apply_links__"].length > 50000) {
-      state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
-    }
-    // Skip if another parallel worker already queued/processed this URL.
-    if (state.knownLinks.has(normalizedUrl) ||
-        state.visited["__discovered_apply_links__"].includes(normalizedUrl)) {
+    if (state.knownLinks.has(normalizedUrl)) {
       skipped++;
       continue;
     }
+    // Claim NOW (in-memory only) so other parallel workers skip this URL while
+    // we're still visiting it.
+    state.knownLinks.add(normalizedUrl);
 
     // Parse structured Channel post text directly (no Playwright)
     const parsed = parseJobTextLite(item.postText);
@@ -414,11 +500,12 @@ export async function discoverChannelJobs(state: DiscoveryState) {
       console.log(`♻️ Skipped: already seen`);
       processed++;
       continue;
-    }                    state.knownLinks.add(normalizedApplyLink);
-                    state.visited["__discovered_apply_links__"].push(normalizedApplyLink);
-                    if (state.visited["__discovered_apply_links__"].length > 50000) {
-                      state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
-                    }
+    }
+    state.knownLinks.add(normalizedApplyLink);
+    state.visited["__discovered_apply_links__"].push(normalizedApplyLink);
+    if (state.visited["__discovered_apply_links__"].length > 50000) {
+      state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
+    }
 
     let isReview = true;
     if (isFresherJob(title)) isReview = false;

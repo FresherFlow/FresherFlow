@@ -91,11 +91,12 @@ async function runProvider(
         if (circuitBroken) return [];
         try {
             const proxies = process.env.PROXY_LIST ? process.env.PROXY_LIST.split(',').map(p => p.trim()).filter(Boolean) : undefined;
+            const requestTimeout = parseInt(process.env.ATS_REQUEST_TIMEOUT_SECONDS || '10', 10);
             const input = new ScraperInputDto({
                 companySlug: companyId,
                 location: 'India',
                 resultsWanted: 50,
-                requestTimeout: 3, // 3-second fast timeout per company
+                requestTimeout, // seconds; env-configurable, 10s default
                 descriptionFormat: 'PLAIN' as any,
                 proxies,
             });
@@ -180,6 +181,7 @@ export async function runAtsDiscovery(
 ): Promise<AtsJob[]> {
     console.log(`\n--- Starting ATS Direct Discovery (parallel, 300s max per provider) ---`);
     const visitedSet = new Set(visitedApplyLinks);
+    const providerTimeoutMs = parseInt(process.env.ATS_PROVIDER_TIMEOUT_MS || '300000', 10);
 
     const providerFilter = process.env.ATS_PROVIDER?.toLowerCase().trim();
     const activeProviders = Object.entries(registry).filter(([key, data]) => {
@@ -194,13 +196,16 @@ export async function runAtsDiscovery(
     const providerSettled = await Promise.allSettled(
         activeProviders.map(([key, data]) => {
             const providerTask = runProvider(key, key, data!, stats, knownLinks, visitedSet);
-            const timeoutTask = new Promise<AtsJob[]>((resolve) =>
-                setTimeout(() => {
-                    console.log(`  ⏱️ Provider ${key} reached 300s timeout, moving on.`);
+            let timeoutId: NodeJS.Timeout | undefined;
+            const timeoutTask = new Promise<AtsJob[]>((resolve) => {
+                timeoutId = setTimeout(() => {
+                    console.log(`  ⏱️ Provider ${key} reached ${providerTimeoutMs}ms timeout, moving on.`);
                     resolve([]);
-                }, 300000)
-            );
-            return Promise.race([providerTask, timeoutTask]);
+                }, providerTimeoutMs);
+            });
+            return Promise.race([providerTask, timeoutTask]).finally(() => {
+                if (timeoutId) clearTimeout(timeoutId);
+            });
         })
     );
 

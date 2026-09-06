@@ -1528,9 +1528,6 @@ importers:
       '@fresherflow/utils':
         specifier: workspace:*
         version: link:../../packages/utils
-      '@google/genai':
-        specifier: ^2.15.0
-        version: 2.15.0(@modelcontextprotocol/sdk@1.30.0(zod@4.4.3))
       '@supabase/supabase-js':
         specifier: ^2.112.0
         version: 2.112.0(@opentelemetry/api@1.9.1)
@@ -1614,22 +1611,6 @@ importers:
       playwright:
         specifier: ^1.62.1
         version: 1.62.1
-    devDependencies:
-      '@types/node':
-        specifier: ^26.1.2
-        version: 26.1.2
-      tsx:
-        specifier: ^4.23.5
-        version: 4.23.5
-      typescript:
-        specifier: ^5.7.3
-        version: 5.7.3
-
-  scripts/telegram-collector:
-    dependencies:
-      cheerio:
-        specifier: ^1.2.0
-        version: 1.2.0
     devDependencies:
       '@types/node':
         specifier: ^26.1.2

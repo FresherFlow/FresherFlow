@@ -28,6 +28,57 @@ export interface DiscoveredJobEntry {
     isTestBypass?: boolean;
     rawPayload?: any;
     rawHtml?: string;
+    // Structured adapter fields (AtsJob) — persisted to discovered_jobs
+    location?: string;
+    locationCity?: string;
+    locationCountry?: string;
+    locationRegion?: string;
+    isRemote?: boolean;
+    workFromHomeType?: string;
+    employmentType?: string;
+    jobType?: string | string[];
+    listingType?: string;
+    jobLevel?: string;
+    jobFunction?: string;
+    department?: string;
+    experienceLevel?: string;
+    experienceRange?: string;
+    experienceYears?: number;
+    batchYear?: string;
+    degree?: string;
+    skills?: string[];
+    salaryMin?: number;
+    salaryMax?: number;
+    salaryCurrency?: string;
+    salaryInterval?: string;
+    salarySource?: string;
+    companyStage?: string;
+    companyIndustry?: string;
+    companyLogo?: string;
+    companyUrl?: string;
+    companyUrlDirect?: string;
+    companyNumEmployees?: string;
+    vacancyCount?: number;
+    postedAt?: string;
+    site?: string;
+    atsId?: string;
+    boardToken?: string;
+    sourceUrl?: string;
+    applyUrl?: string;
+    jobUrlDirect?: string;
+    emails?: string[];
+    descriptionSource?: string;
+    walkInDetails?: any;
+    venueAddress?: string;
+    cluster?: any;
+    longitude?: number;
+    latitude?: number;
+    walkinDate?: string;
+    walkinTime?: string;
+    reportingTime?: string;
+    contactPerson?: string;
+    contactPhone?: string;
+    requiredDocs?: string | string[];
 }
 
 /** Every number tracked during a single pipeline run */

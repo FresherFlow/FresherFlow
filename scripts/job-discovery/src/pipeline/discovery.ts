@@ -123,7 +123,44 @@ export async function discoverAtsJobs(state: DiscoveryState) {
                 discoveredAt: new Date().toISOString(),
                 reviewRequired: needsReview,
                 atsText: job.description,
-                company: job.company
+                company: job.company,
+                // Structured fields from the adapter (AtsJob) — saved as-is
+                location: job.location,
+                locationCity: job.parsedLocation?.city,
+                locationCountry: job.parsedLocation?.country,
+                locationRegion: job.parsedLocation?.region,
+                isRemote: job.isRemote,
+                workFromHomeType: job.workFromHomeType,
+                employmentType: job.employmentType,
+                jobType: job.jobType,
+                listingType: job.listingType,
+                jobLevel: job.jobLevel,
+                jobFunction: job.jobFunction,
+                department: job.department,
+                experienceLevel: job.experienceLevel,
+                experienceRange: job.experienceRange,
+                experienceYears: job.experienceYears,
+                batchYear: job.batchYear,
+                degree: job.degree,
+                skills: job.skills,
+                salaryMin: job.compensation?.minAmount,
+                salaryMax: job.compensation?.maxAmount,
+                salaryCurrency: job.compensation?.currency,
+                salaryInterval: job.compensation?.interval,
+                salarySource: job.salarySource,
+                companyStage: job.companyStage,
+                companyIndustry: job.companyIndustry,
+                companyLogo: job.companyLogo,
+                companyUrl: job.companyUrl,
+                companyUrlDirect: job.companyUrlDirect,
+                companyNumEmployees: job.companyNumEmployees,
+                vacancyCount: job.vacancyCount,
+                postedAt: job.postedAt,
+                site: job.site,
+                atsId: job.atsId,
+                sourceUrl: job.jobUrlDirect || job.applyUrl || job.applyLink,
+                emails: job.emails,
+                descriptionSource: job.descriptionSource
             });
             state.visited["__discovered_apply_links__"].push(normalizedLink);
             atsQueued++;
@@ -300,25 +337,24 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                     }
 
                     const jobLinkNorm = normalizeUrl(jobLink);
-                    // Add to GLOBAL visited IMMEDIATELY so other parallel workers (channel,
-                    // dorker, verifier) skip this link even though we're still processing it.
-                    state.knownLinks.add(jobLinkNorm);
-                    state.visited["__discovered_apply_links__"].push(jobLinkNorm);
-                    if (state.visited["__discovered_apply_links__"].length > 50000) {
-                        state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
-                    }
-                    // Re-check against global knownLinks (channel+site dedup):
-                    if (state.knownLinks.has(jobLinkNorm) ||
-                        state.visited["__discovered_apply_links__"].includes(jobLinkNorm)) {
+                    // Skip if another parallel source (channel/dorker) already claimed this
+                    // wrapper post during this run. knownLinks is in-memory only — wrapper/post
+                    // URLs must never be persisted into the apply-links bucket (that would
+                    // poison cross-run dedupe).
+                    if (state.knownLinks.has(jobLinkNorm)) {
                         console.log(`♻️ Skipped: already visited from another source`);
                         continue;
                     }
+                    // Claim NOW (in-memory only) so other parallel workers skip this link.
+                    state.knownLinks.add(jobLinkNorm);
+                    // Remember per-site so future runs don't reprocess this post.
                     state.visited[site.name].push(jobLinkNorm);
-                    console.log(`🔍 Checking post: ${jobLink}`);
-                    
                     if (state.visited[site.name].length > 50000) {
                         state.visited[site.name] = state.visited[site.name].slice(-50000);
                     }
+                    console.log(`🔍 Checking post: ${jobLink}`);
+                    
+
                     // Close and recreate page to avoid stale browser state from previous timeout
                     await page.close().catch(() => {});
                     page = await context.newPage();
