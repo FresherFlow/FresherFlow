@@ -1,4 +1,5 @@
 import { Page, BrowserContext } from 'playwright';
+import { AGGREGATOR_RULES } from '../config/index.js';
 
 export function unwrapRedirectors(urlStr: string): string {
     try {
@@ -14,30 +15,8 @@ export function unwrapRedirectors(urlStr: string): string {
     return urlStr;
 }
 
-// Universal junk that never hosts jobs — NOT aggregator sites. Aggregator
-// domains (job4freshers.co.in, dailypharmajobs.in, ...) come from the CDN
-// aggregators.json via registerAggregatorDomains() — never hardcoded here.
-const blacklistedDomains = [
-    'facebook.com', 'twitter.com', 'x.com', 'whatsapp.com', 
-    'telegram.org', 't.me', 'telegram.me', 'telegram.dog', 'youtube.com', 'youtu.be', 
-    'instagram.com', 'foundit.in', 'naukri.com', 'cloudflare.com', 
-    'play.google.com', 'plus.google.com', 'accounts.google.com', 'apps.apple.com',
-    'pinterest.com', 'reddit.com',
-    'openinapp.co', 'openinapp.link', 'linktr.ee', 'bio.link', 'bit.ly', 'tinyurl.com',
-    'instamojo.com', 'razorpay.me', 'cosmofeed.com', 'topmate.io', 'gumroad.com',
-    'maps.google.com', 'maps.app.goo.gl', 'goo.gl/maps', 'easylatexresume.com',
-    'cookieyes.com', 'generatepress.com', 'wordpress.org', 'wordpress.com', 'gravatar.com',
-    'elementor.com', 'schema.org', 'doubleclick.net', 'google-analytics.com', 'googletagmanager.com',
-    'w.org', 'wp.com', 'blogspot.com', 'getrevue.co', 'revue.co',
-    'frontlinesedutech.com', 'courses.frontlinesedutech.com',
-    'apprenticeshipindia.org', 'mhrdnats.gov.in', 'nats.education.gov.in', 'udemy.com',
-    'coursera.org', 'edx.org', 'simplilearn.com', 'greatlearning.in', 'medium.com',
-    'subscribepage.com', 'mailerlite.com', 'getresponse.com', 'activecampaign.com', 'convertkit.com'
-];
+const checkedInvalidLinks = new Set<string>();
 
-// Aggregator site domains, populated from CDN aggregators.json at runtime
-// (fetchTargetSitesFromCdn). This is the single source of truth — if a site
-// is added/removed in the JSON, rejection follows automatically.
 const aggregatorDomains = new Set<string>();
 
 export function registerAggregatorDomains(hosts: string[]) {
@@ -54,15 +33,37 @@ function isAggregatorDomain(host: string): boolean {
     return false;
 }
 
-// Govt exam/recruitment portals — never post or save until govt support is planned
-const govtDomainSuffixes = [
-    '.gov.in', '.nic.in', '.ibps.in', 'ssc.gov.in', 'upsc.gov.in', 'rrb.gov.in',
-    'digialm.com', 'indiapost.gov.in', 'drdo.gov.in', 'isro.gov.in', 'bsf.gov.in'
-];
+export function isNoiseDomain(urlStr: string): boolean {
+    try {
+        const u = new URL(unwrapRedirectors(urlStr));
+        const host = u.hostname.replace(/^www\./, '').toLowerCase();
+        const skip: string[] = AGGREGATOR_RULES._rules?.blacklistedDomains ?? [];
+        if (skip.includes(host)) return true;
+        for (const noise of skip) {
+            if (host.endsWith('.' + noise)) return true;
+        }
+    } catch {}
+    return false;
+}
 
-// Listing/portal pages with no specific job (e.g. /jobs, /careers, /drives/off-campus).
-// Includes common misspellings seen on Indian job aggregator sites (carrers, jops...)
-// so a bare category page can't sneak past the URL gate.
+export function isGovtPortalUrl(urlStr: string): boolean {
+    try {
+        const u = new URL(unwrapRedirectors(urlStr));
+        const host = u.hostname.replace(/^www\./, '').toLowerCase();
+        const pathLower = u.pathname.toLowerCase();
+        const suffixes: string[] = AGGREGATOR_RULES._rules?.govtDomainSuffixes ?? [];
+        for (const suffix of suffixes) {
+            if (host === suffix.replace(/^\./, '') || host.endsWith(suffix)) return true;
+        }
+        const portalHosts: string[] = AGGREGATOR_RULES._rules?.govtPortalHosts ?? [];
+        if (portalHosts.includes(host) || host.endsWith('.gov.in') || host.endsWith('.nic.in')) {
+            const indicators: string[] = AGGREGATOR_RULES._rules?.govtPathIndicators ?? [];
+            if (indicators.some(ind => pathLower.includes(ind))) return true;
+        }
+    } catch {}
+    return false;
+}
+
 const listingPathSegments = new Set([
     'jobs', 'job', 'jops', 'jobss',
     'careers', 'career', 'carrers', 'carrer', 'carreers', 'carreer',
@@ -73,7 +74,8 @@ const listingPathSegments = new Set([
 ]);
 
 function isGovtDomain(host: string): boolean {
-    for (const suffix of govtDomainSuffixes) {
+    const suffixes: string[] = AGGREGATOR_RULES._rules?.govtDomainSuffixes ?? [];
+    for (const suffix of suffixes) {
         if (host === suffix.replace(/^\./, '') || host.endsWith(suffix)) return true;
     }
     return false;
@@ -106,7 +108,8 @@ export function isRejectedApplyUrl(urlStr: string): boolean {
         if (isGovtDomain(host)) return true;
         if (isListingUrl(u)) return true;
         if (isAggregatorDomain(host)) return true;
-        for (const domain of blacklistedDomains) {
+        const blocked: string[] = AGGREGATOR_RULES._rules?.blacklistedDomains ?? [];
+        for (const domain of blocked) {
             if (host === domain || host.endsWith('.' + domain)) return true;
         }
     } catch {
@@ -160,6 +163,9 @@ export async function findActualApplyLink(
         const applyButtons = await page.locator('a, button', { hasText: /(apply|register|click here|submit|official link|careers link|form)/i }).elementHandles();
         console.log(`🔍 Found ${applyButtons.length} apply button(s) on page.`);
         let checked = 0;
+        // Dedup anchors repeated within this page pass (sidebar/footer links
+        // appear once per wrap); checkedInvalidLinks dedups across passes.
+        const seenInPass = new Set<string>();
         for (const btn of applyButtons) {
             if (checked >= maxButtons) break;
             checked++;
@@ -173,10 +179,16 @@ export async function findActualApplyLink(
                         continue; // Skip self-links even with different query params or trailing slashes
                     }
                     const unwrappedHref = unwrapRedirectors(u.href);
+                    // Skip already-seen invalid URLs BEFORE validation work —
+                    // each invalid URL logs once per process.
+                    if (seenInPass.has(unwrappedHref)) continue;
+                    seenInPass.add(unwrappedHref);
+                    if (checkedInvalidLinks.has(unwrappedHref)) continue;
                     if (isValidApplyLink(unwrappedHref, currentDomain)) {
                         console.log(`🔗 Apply link found: ${unwrappedHref}`);
                         return unwrappedHref;
                     } else {
+                        checkedInvalidLinks.add(unwrappedHref);
                         console.log(`❌ Invalid apply link — not a real application page (skipping): ${unwrappedHref}`);
                     }
                 } catch {
@@ -189,7 +201,8 @@ export async function findActualApplyLink(
         const links = await page.locator('a').evaluateAll(anchors => 
             anchors.map(a => (a as HTMLAnchorElement).href)
         );
-        const externalLinks = links.map(unwrapRedirectors).filter(l => isValidApplyLink(l, currentDomain));
+        const uniqueLinks = [...new Set(links.map(unwrapRedirectors))];
+        const externalLinks = uniqueLinks.filter(l => isValidApplyLink(l, currentDomain));
         console.log(`🔍 Scanned ${links.length} links; ${externalLinks.length} valid external link(s).`);
 
         for (const link of externalLinks) {
@@ -228,8 +241,8 @@ export async function findActualApplyLink(
 
         if (clickTargets.length > 0 && context) {
             const [newPage] = await Promise.all([
-                context.waitForEvent('page', { timeout: 5000 }).catch(() => null),
-                clickTargets[0].click({ timeout: 5000 }).catch(() => null)
+                context.waitForEvent('page', { timeout: AGGREGATOR_RULES.preClickTimeout }).catch(() => null),
+                clickTargets[0].click({ timeout: AGGREGATOR_RULES.preClickTimeout }).catch(() => null)
             ]);
 
             if (newPage) {

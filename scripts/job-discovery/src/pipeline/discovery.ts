@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { DiscoveryState } from '@fresherflow/pipeline';
 import { ATS_CDN_BASE, ATS_PROVIDERS, TARGET_SITES, fetchTargetSitesFromCdn } from '@fresherflow/pipeline';
-import { normalizeUrl, sanitizeAtsUrl, isValidApplyLink } from '@fresherflow/pipeline';
+import { normalizeUrl, sanitizeAtsUrl, isValidApplyLink, matchesSiteIgnore } from '@fresherflow/pipeline';
 import { isLocationIndiaOrRemote, scoreJobDescription, hasFresherKeyword, isActualJob, isFresherJob, isSeniorJob } from '@fresherflow/utils';
 import { logDecision } from '@fresherflow/pipeline';
 import { findActualApplyLink } from '@fresherflow/pipeline';
@@ -256,6 +256,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                             .filter(l => {
                                 try {
                                     const u = new URL(l.href);
+                                    if (matchesSiteIgnore(site, l.href)) return false;
                                     if (
                                         u.pathname === '/' ||
                                         u.pathname === '/jobs/' ||
@@ -304,6 +305,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                             .filter(l => {
                                 try {
                                     const u = new URL(l.href);
+                                    if (matchesSiteIgnore(site, l.href)) return false;
                                     if (u.pathname === '/' || u.pathname.includes('/category/') || u.pathname.includes('/tag/') || u.pathname.includes('/page/') || u.pathname.includes('/author/') || u.pathname.includes('/search/')) return false;
                                     return u.hostname.includes(siteDomain) &&
                                         (u.pathname.includes('job') || u.pathname.includes('hiring') || u.pathname.includes('recruitment') || u.pathname.includes('career') || u.pathname.includes('vacancy') || u.pathname.includes('opportunity') || u.pathname.includes('fresher') || u.pathname.includes('walk') || u.pathname.includes('drive') || u.pathname.includes('intern'));
@@ -322,6 +324,9 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                 const uniqueJobLinks: string[] = [];
                 const seen: Set<string> = new Set();
                 for (const link of jobLinks) {
+                    // Per-site ignore: skip known sidebar/footer/govt repeat
+                    // slugs before browser work or queueing.
+                    if (matchesSiteIgnore(site, link)) continue;
                     const norm = normalizeUrl(link);
                     if (!seen.has(norm) && !seenNormalized.has(norm)) {
                         seen.add(norm);

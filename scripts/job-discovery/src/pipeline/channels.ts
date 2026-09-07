@@ -3,6 +3,10 @@ import {
   normalizeUrl,
   sanitizeAtsUrl,
   CDN_URL,
+  TARGET_SITES,
+  fetchTargetSitesFromCdn,
+  findTargetSite,
+  matchesSiteIgnore,
 } from "@fresherflow/pipeline";
 import {
   scoreJobDescription,
@@ -211,6 +215,15 @@ export async function discoverChannelJobs(state: DiscoveryState) {
   CHANNEL_LIST = await loadChannelList();
   if (CHANNEL_LIST.length === 0) return;
 
+  // Per-site ignore lists (TARGET_SITES `ignore`) keyed by site name, which
+  // matches the telegram channel name for channel-linked sites (e.g.
+  // mohancareers). Unknown channels fall back to global checks only.
+  if (TARGET_SITES.length === 0) {
+    try {
+      await fetchTargetSitesFromCdn();
+    } catch {}
+  }
+
   console.log(
     `\n=== 📡 Phase 3: Telegram channel discovery (${CHANNEL_LIST.length} channels) ===\n`,
   );
@@ -339,194 +352,234 @@ export async function discoverChannelJobs(state: DiscoveryState) {
   );
 
   // Step 2: Visit each URL with Playwright and extract real ATS links
-  const context = await state.browser.newContext({
-    userAgent:
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  });
-  await context.route("**/*", (route) => {
-    const type = route.request().resourceType();
-    if (["image", "media", "font"].includes(type)) {
-      route.abort();
-    } else {
-      route.continue();
-    }
-  });
+  // (parallel worker pool over a shared queue)
+  const WORKERS = Math.min(4, Math.max(1, parseInt(process.env.CHANNEL_CONCURRENCY || "3", 10)));
 
   let processed = 0,
     extracted = 0,
     skipped = 0;
-  let page = await context.newPage();
+  let next = 0;
+  const take = () => uniqueUrls[next++] ?? null;
 
-  for (const item of uniqueUrls) {
-    if (state.isTimeUp()) {
-      console.log(`\n[Timeout] ⏱️ Halting Channel discovery.`);
-      break;
-    }
-
-    // Skip if a parallel source (aggregator/dorker) already claimed this URL during
-    // this run. knownLinks is in-memory only — wrapper/post URLs must never be
-    // persisted into the apply-links bucket (that would poison cross-run dedupe).
-    const normalizedUrl = normalizeUrl(item.url);
-    if (state.knownLinks.has(normalizedUrl)) {
-      skipped++;
-      continue;
-    }
-    // Claim NOW (in-memory only) so other parallel workers skip this URL while
-    // we're still visiting it.
-    state.knownLinks.add(normalizedUrl);
-
-    // Parse structured Channel post text directly (no Playwright)
-    const parsed = parseJobTextLite(item.postText);
-    const title = parsed.title || item.postText.slice(0, 100);
-    const parsedCompany = parsed.company || "";
-
-    const scoreResult = scoreJobDescription(title, item.postText, { skipDriveBlocker: true });
-    logDecision(scoreResult, item.url, "Channel");
-
-    // Phase-1 wrapper-title check: only skip on REAL negative evidence (score < 0 =
-    // senior/experienced signals). Score 0 / unknown drive titles ("TCS Mass Hiring")
-    // pass through flagged for review — the fresher decision happens on the actual
-    // apply page in the verifier. Never kill on drive words here.
-    if (scoreResult.verdict === "REJECT" && scoreResult.score < 0) {
-      console.log(`❌ Skipped: not fresher-friendly (score ${scoreResult.score})`);
-      processed++;
-      continue;
-    }
-
-    if (isSeniorJob(title)) {
-      console.log(`👨‍💼 Skipped: senior role`);
-      processed++;
-      continue;
-    }
-
-    if (!isActualJob(title, { allowDriveTitles: true })) {
-      if (hasFresherKeyword(title)) {
-        // Keep it, might be relevant
+  const runWorker = async () => {
+    const context = await state.browser!.newContext({
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    });
+    await context.route("**/*", (route) => {
+      const type = route.request().resourceType();
+      if (["image", "media", "font"].includes(type)) {
+        route.abort();
       } else {
-        console.log(`🚫 Skipped: not a job post`);
-        processed++;
-        continue;
+        route.continue();
       }
-    }
-
-    // Skip government jobs (SSC, UPSC, Railway, Banking, govt orgs)
-    const govtPatterns =
-      /\b(SSC|UPSC|RRB|Railway|Banking|IBPS|SBI|India Post|GDS|Constable|Sub.?Inspector|Forest Guard|Postal|government recruitment|govt recruitment|sarkari|central government|state government|public service commission|PSU|coal india|defense|army|navy|airforce)\b/i;
-    if (govtPatterns.test(item.postText) || govtPatterns.test(title)) {
-      console.log(`🏛️  Skipped: government job`);
-      processed++;
-      continue;
-    }
-
-    // Visit wrapper page to get real ATS link (most TG posts link to wrappers)
-    const siteDomain = new URL(item.url).hostname;
-    let applyLink = item.url;
-
-    await page.close().catch(() => {});
-    page = await context.newPage();
-    let extractedLink: string | null = null;
+    });
+    let page = await context.newPage();
     try {
-      await page.goto(item.url, {
-        waitUntil: "domcontentloaded",
-        timeout: 20000,
-      });
-      await page
-        .waitForSelector("article, .post-body, .entry-content, main, .post", {
-          timeout: 8000,
-        })
-        .catch(() => {});
-      await page.waitForTimeout(500);
-      extractedLink = await findActualApplyLink(
-        page,
-        context,
-        siteDomain,
-      );
-      if (extractedLink) applyLink = extractedLink;
-    } catch {}
+      while (true) {
+        const item = take();
+        if (!item) break;
+        if (state.isTimeUp()) {
+          console.log(`\n[Timeout] ⏱️ Halting Channel discovery.`);
+          break;
+        }
 
-    // Aggregator site posts / govt portals / listing pages must never become
-    // jobs — only real apply links get queued. If extraction found nothing and
-    // the wrapper URL itself is such a page, skip it (don't post the wrapper).
-    if (!extractedLink && isRejectedApplyUrl(item.url)) {
-      console.log(
-        `🚫 Skipped: wrapper is an aggregator/govt/listing page (${item.url})`,
-      );
-      processed++;
-      continue;
-    }
+        // Skip if a parallel source (aggregator/dorker) already claimed this URL during
+        // this run. knownLinks is in-memory only — wrapper/post URLs must never be
+        // persisted into the apply-links bucket (that would poison cross-run dedupe).
+        const normalizedUrl = normalizeUrl(item.url);
+        if (state.knownLinks.has(normalizedUrl)) {
+          skipped++;
+          continue;
+        }
+        // Claim NOW (in-memory only) so other parallel workers skip this URL while
+        // we're still visiting it.
+        state.knownLinks.add(normalizedUrl);
 
-    const boardMatch = extractAtsBoard(applyLink);
-    if (boardMatch) {
-      const { provider, boardId } = boardMatch;
-      if (!state.atsRegistry[provider]) state.atsRegistry[provider] = {};
-      if (!state.atsRegistry[provider]![boardId]) {
-        let guessedName = boardId;
-        const atMatch = title.match(/ at (.+)$/i) || title.match(/ by (.+)$/i);
-        if (atMatch) {
-          guessedName = atMatch[1].trim();
-        } else if (boardId.startsWith("http")) {
+        // Per-site ignore prefilter: skip known repeat slugs for the source site
+        // before any browser work or queueing.
+        if (matchesSiteIgnore(findTargetSite(item.channel), item.url)) {
+          console.log(`🚫 Skipped: per-site ignore (${item.channel})`);
+          processed++;
+          continue;
+        }
+
+        // Parse structured Channel post text directly (no Playwright)
+        const parsed = parseJobTextLite(item.postText);
+        const title = parsed.title || item.postText.slice(0, 100);
+        const parsedCompany = parsed.company || "";
+
+        const scoreResult = scoreJobDescription(title, item.postText, { skipDriveBlocker: true });
+        logDecision(scoreResult, item.url, "Channel");
+
+        // Phase-1 wrapper-title check: only skip on REAL negative evidence (score < 0 =
+        // senior/experienced signals). Score 0 / unknown drive titles ("TCS Mass Hiring")
+        // pass through flagged for review — the fresher decision happens on the actual
+        // apply page in the verifier. Never kill on drive words here.
+        if (scoreResult.verdict === "REJECT" && scoreResult.score < 0) {
+          console.log(`❌ Skipped: not fresher-friendly (score ${scoreResult.score})`);
+          processed++;
+          continue;
+        }
+
+        if (isSeniorJob(title)) {
+          console.log(`👨‍💼 Skipped: senior role`);
+          processed++;
+          continue;
+        }
+
+        if (!isActualJob(title, { allowDriveTitles: true })) {
+          if (hasFresherKeyword(title)) {
+            // Keep it, might be relevant
+          } else {
+            console.log(`🚫 Skipped: not a job post`);
+            processed++;
+            continue;
+          }
+        }
+
+        // Skip government jobs (SSC, UPSC, Railway, Banking, govt orgs)
+        const govtPatterns =
+          /\b(SSC|UPSC|RRB|Railway|Banking|IBPS|SBI|India Post|GDS|Constable|Sub.?Inspector|Forest Guard|Postal|government recruitment|govt recruitment|sarkari|central government|state government|public service commission|PSU|coal india|defense|army|navy|airforce)\b/i;
+        if (govtPatterns.test(item.postText) || govtPatterns.test(title)) {
+          console.log(`🏛️  Skipped: government job`);
+          processed++;
+          continue;
+        }
+
+        // Visit wrapper page to get real ATS link (most TG posts link to wrappers)
+        const siteDomain = new URL(item.url).hostname;
+        let applyLink = item.url;
+
+        await page.close().catch(() => {});
+        page = await context.newPage();
+        let extractedLink: string | null = null;
+        try {
+          await page.goto(item.url, {
+            waitUntil: "domcontentloaded",
+            timeout: 20000,
+          });
+          await page
+            .waitForSelector("article, .post-body, .entry-content, main, .post", {
+              timeout: 8000,
+            })
+            .catch(() => {});
+          await page.waitForTimeout(500);
+          extractedLink = await findActualApplyLink(
+            page,
+            context,
+            siteDomain,
+          );
+          if (extractedLink) applyLink = extractedLink;
+        } catch {}
+
+        // Aggregator site posts / govt portals / listing pages must never become
+        // jobs — only real apply links get queued. If extraction found nothing and
+        // the wrapper URL itself is such a page, skip it (don't post the wrapper).
+        if (!extractedLink && isRejectedApplyUrl(item.url)) {
+          console.log(
+            `🚫 Skipped: wrapper is an aggregator/govt/listing page (${item.url})`,
+          );
+          processed++;
+          continue;
+        }
+
+        const boardMatch = extractAtsBoard(applyLink);
+        if (boardMatch) {
+          const { provider, boardId } = boardMatch;
+          if (!state.atsRegistry[provider]) state.atsRegistry[provider] = {};
+          if (!state.atsRegistry[provider]![boardId]) {
+            let guessedName = boardId;
+            const atMatch = title.match(/ at (.+)$/i) || title.match(/ by (.+)$/i);
+            if (atMatch) {
+              guessedName = atMatch[1].trim();
+            } else if (boardId.startsWith("http")) {
+              try {
+                guessedName = new URL(boardId).hostname.split(".")[0];
+                guessedName =
+                  guessedName.charAt(0).toUpperCase() + guessedName.slice(1);
+              } catch {}
+            }
+            state.atsRegistry[provider]![boardId] = guessedName;
+            state.registryModified = true;
+            console.log(
+              `  🌟 Discovered NEW ATS board from Channel! ${provider}: ${boardId} (${guessedName})`,
+            );
+          }
+        } else {
           try {
-            guessedName = new URL(boardId).hostname.split(".")[0];
-            guessedName =
-              guessedName.charAt(0).toUpperCase() + guessedName.slice(1);
+            const urlObj = new URL(applyLink);
+            const baseDomain = urlObj.origin;
+            const lowerUrl = applyLink.toLowerCase();
+            if (/career|job|workday|opportunit/i.test(lowerUrl)) {
+              state.discoveredCareers.add(baseDomain);
+            } else {
+              state.discoveredRemaining.add(baseDomain);
+            }
           } catch {}
         }
-        state.atsRegistry[provider]![boardId] = guessedName;
-        state.registryModified = true;
-        console.log(
-          `  🌟 Discovered NEW ATS board from Channel! ${provider}: ${boardId} (${guessedName})`,
-        );
-      }
-    } else {
-      try {
-        const urlObj = new URL(applyLink);
-        const baseDomain = urlObj.origin;
-        const lowerUrl = applyLink.toLowerCase();
-        if (/career|job|workday|opportunit/i.test(lowerUrl)) {
-          state.discoveredCareers.add(baseDomain);
-        } else {
-          state.discoveredRemaining.add(baseDomain);
+
+        const cleanApplyLink = sanitizeAtsUrl(applyLink);
+        const normalizedApplyLink = normalizeUrl(cleanApplyLink);
+
+        if (
+          state.knownLinks.has(normalizedApplyLink) ||
+          state.visited["__discovered_apply_links__"].includes(normalizedApplyLink)
+        ) {
+          console.log(`♻️ Skipped: already seen`);
+          processed++;
+          continue;
         }
-      } catch {}
+        state.knownLinks.add(normalizedApplyLink);
+        state.visited["__discovered_apply_links__"].push(normalizedApplyLink);
+        if (state.visited["__discovered_apply_links__"].length > 50000) {
+          state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
+        }
+
+        let isReview = true;
+        if (isFresherJob(title)) isReview = false;
+        else if (scoreResult.verdict === "HIGH") isReview = false;
+
+        console.log(`📥 Queued: ${cleanApplyLink}`);
+        state.candidateQueue.push({
+          applyLink: cleanApplyLink,
+          source: `channel-${item.channel}`,
+          sourceType: "AGGREGATOR",
+          aggregatorUrl: item.url,
+          aggregatorTitle: title.trim(),
+          isAggregatorReview: isReview,
+          company: parsedCompany,
+        });
+        extracted++;
+        processed++;
+      }
+    } finally {
+      await page.close().catch(() => {});
+      await context.close();
     }
+  };
 
-    const cleanApplyLink = sanitizeAtsUrl(applyLink);
-    const normalizedApplyLink = normalizeUrl(cleanApplyLink);
+  const workers = Array.from(
+    { length: uniqueUrls.length === 0 ? 0 : Math.min(WORKERS, uniqueUrls.length) },
+    () => runWorker(),
+  );
+  await Promise.all(workers);
 
-    if (
-      state.knownLinks.has(normalizedApplyLink) ||
-      state.visited["__discovered_apply_links__"].includes(normalizedApplyLink)
-    ) {
-      console.log(`♻️ Skipped: already seen`);
-      processed++;
-      continue;
+  // Per-channel yield: count queued jobs per channel from the candidateQueue.
+  const channelYield: Record<string, number> = {};
+  for (const item of state.candidateQueue) {
+    if (item.source && item.source.startsWith('channel-')) {
+      const ch = item.source.slice('channel-'.length);
+      channelYield[ch] = (channelYield[ch] || 0) + 1;
     }
-    state.knownLinks.add(normalizedApplyLink);
-    state.visited["__discovered_apply_links__"].push(normalizedApplyLink);
-    if (state.visited["__discovered_apply_links__"].length > 50000) {
-      state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
-    }
-
-    let isReview = true;
-    if (isFresherJob(title)) isReview = false;
-    else if (scoreResult.verdict === "HIGH") isReview = false;
-
-    console.log(`📥 Queued: ${cleanApplyLink}`);
-    state.candidateQueue.push({
-      applyLink: cleanApplyLink,
-      source: `channel-${item.channel}`,
-      sourceType: "AGGREGATOR",
-      aggregatorUrl: item.url,
-      aggregatorTitle: title.trim(),
-      isAggregatorReview: isReview,
-      company: parsedCompany,
-    });
-    extracted++;
-    processed++;
   }
-
-  await page.close().catch(() => {});
-  await context.close();
+  if (Object.keys(channelYield).length > 0) {
+    console.log('\n📊 Per-channel yield (queued jobs):');
+    const sorted = Object.entries(channelYield).sort((a, b) => b[1] - a[1]);
+    for (const [ch, count] of sorted) {
+      console.log(`  ${ch.padEnd(30)} ${count} job(s)`);
+    }
+  }
 
   console.log(
     `\n✅ Channel Phase 3: ${extracted} queued, ${skipped} skipped (known), ${processed - extracted} no apply link.\n`,
