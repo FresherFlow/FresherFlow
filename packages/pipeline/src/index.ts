@@ -1,5 +1,6 @@
 export * from './ats/parser.js';
 export * from './ats/detector.js';
+export * from './ats/job-identity.js';
 export * from './ats/native.js';
 
 export * from './core/extractor.js';

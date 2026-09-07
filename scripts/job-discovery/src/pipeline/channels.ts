@@ -3,10 +3,6 @@ import {
   normalizeUrl,
   sanitizeAtsUrl,
   CDN_URL,
-  TARGET_SITES,
-  fetchTargetSitesFromCdn,
-  findTargetSite,
-  matchesSiteIgnore,
 } from "@fresherflow/pipeline";
 import {
   scoreJobDescription,
@@ -18,11 +14,9 @@ import {
 import { logDecision } from "@fresherflow/pipeline";
 import { findActualApplyLink } from "@fresherflow/pipeline";
 import { isRejectedApplyUrl } from "@fresherflow/pipeline";
-import { extractAtsBoard } from "@fresherflow/pipeline";
+import { extractAtsBoard, buildJobIdentity } from "@fresherflow/pipeline";
 import { parseJobTextLite } from "@fresherflow/parser";
 import * as cheerio from "cheerio";
-
-let CHANNEL_LIST: string[] = [];
 
 // Persisted per-channel cursor: highest t.me post id already seen. Stored inside
 // state.visited so it rides the same R2/GitHub-cache state as site visited lists.
@@ -60,21 +54,31 @@ function postIdNum(postId: string): number {
   return Number.isNaN(n) ? 0 : n;
 }
 
-export async function loadChannelList(): Promise<string[]> {
+export async function loadChannelList(): Promise<{
+  channels: string[];
+  priorityChannels: string[];
+}> {
   try {
     const res = await fetch(`${CDN_URL}/aggregators.json`);
     if (res.ok) {
       const data = await res.json();
       // New CDN format uses telegram_channels (old flat format used channel_list)
-      const list = data?.telegram_channels ?? data?.channel_list;
-      if (Array.isArray(list)) return list;
+      const channels = data?.telegram_channels ?? data?.channel_list;
+      if (Array.isArray(channels)) {
+        const priorityChannels = Array.isArray(data?.priority_channels)
+          ? (data.priority_channels as unknown[]).filter(
+              (c): c is string => typeof c === "string",
+            )
+          : [];
+        return { channels, priorityChannels };
+      }
     }
   } catch {}
 
   console.warn(
     "No telegram_channels found in CDN aggregators.json. Skipping Channel discovery.",
   );
-  return [];
+  return { channels: [], priorityChannels: [] };
 }
 
 function extractUrlsFromText(text: string): string[] {
@@ -212,21 +216,42 @@ export async function discoverChannelJobs(state: DiscoveryState) {
     console.log(`\n=== 📡 Phase 3: Channel discovery (SKIPPED via ENV) ===\n`);
     return;
   }
-  CHANNEL_LIST = await loadChannelList();
-  if (CHANNEL_LIST.length === 0) return;
+  const { channels, priorityChannels } = await loadChannelList();
+  if (channels.length === 0) return;
 
-  // Per-site ignore lists (TARGET_SITES `ignore`) keyed by site name, which
-  // matches the telegram channel name for channel-linked sites (e.g.
-  // mohancareers). Unknown channels fall back to global checks only.
-  if (TARGET_SITES.length === 0) {
-    try {
-      await fetchTargetSitesFromCdn();
-    } catch {}
+  // Build priority-first iteration list: priority channels that also appear in
+  // telegram_channels, in declared priority order, then all remaining channels
+  // in original order. Channels not in priority_channels are NEVER treated
+  // differently than today (same pagination, same visit order).
+  const prioritySet = new Set(priorityChannels);
+  const seenOrder = new Set<string>();
+  const priorityFirst: string[] = [];
+  for (const p of priorityChannels) {
+    if (channels.includes(p) && !seenOrder.has(p)) {
+      priorityFirst.push(p);
+      seenOrder.add(p);
+    }
+  }
+  for (const ch of channels) {
+    if (!seenOrder.has(ch)) {
+      priorityFirst.push(ch);
+      seenOrder.add(ch);
+    }
   }
 
   console.log(
-    `\n=== 📡 Phase 3: Telegram channel discovery (${CHANNEL_LIST.length} channels) ===\n`,
+    `\n=== 📡 Phase 3: Telegram channel discovery (${channels.length} channels) ===\n`,
   );
+
+  const matchedPriority = priorityFirst.filter((c) => prioritySet.has(c));
+  if (matchedPriority.length > 0) {
+    const shown = matchedPriority.slice(0, 4).join(", ");
+    const more =
+      matchedPriority.length > 4 ? ` (+${matchedPriority.length - 4} more)` : "";
+    console.log(
+      `⭐ Priority channels (${matchedPriority.length}): ${shown}${more}`,
+    );
+  }
 
   if (!state.browser) {
     throw new Error("Browser is not initialized in DiscoveryState");
@@ -249,7 +274,7 @@ export async function discoverChannelJobs(state: DiscoveryState) {
   const oldestFetched = new Map<string, number>();
   const cursorReady = new Set<string>();
 
-  for (const channel of CHANNEL_LIST) {
+  for (const channel of priorityFirst) {
     if (state.isTimeUp()) break;
 
     console.log(`📡 Fetching channel: ${channel}`);
@@ -358,6 +383,7 @@ export async function discoverChannelJobs(state: DiscoveryState) {
   let processed = 0,
     extracted = 0,
     skipped = 0;
+  const httpGate = { attempted: 0, positive: 0, negative: 0, uncertain: 0 };
   let next = 0;
   const take = () => uniqueUrls[next++] ?? null;
 
@@ -396,15 +422,7 @@ export async function discoverChannelJobs(state: DiscoveryState) {
         // we're still visiting it.
         state.knownLinks.add(normalizedUrl);
 
-        // Per-site ignore prefilter: skip known repeat slugs for the source site
-        // before any browser work or queueing.
-        if (matchesSiteIgnore(findTargetSite(item.channel), item.url)) {
-          console.log(`🚫 Skipped: per-site ignore (${item.channel})`);
-          processed++;
-          continue;
-        }
-
-        // Parse structured Channel post text directly (no Playwright)
+    // Parse structured Channel post text directly (no Playwright)
         const parsed = parseJobTextLite(item.postText);
         const title = parsed.title || item.postText.slice(0, 100);
         const parsedCompany = parsed.company || "";
@@ -450,28 +468,117 @@ export async function discoverChannelJobs(state: DiscoveryState) {
         // Visit wrapper page to get real ATS link (most TG posts link to wrappers)
         const siteDomain = new URL(item.url).hostname;
         let applyLink = item.url;
-
-        await page.close().catch(() => {});
-        page = await context.newPage();
         let extractedLink: string | null = null;
-        try {
-          await page.goto(item.url, {
-            waitUntil: "domcontentloaded",
-            timeout: 20000,
-          });
-          await page
-            .waitForSelector("article, .post-body, .entry-content, main, .post", {
-              timeout: 8000,
-            })
-            .catch(() => {});
-          await page.waitForTimeout(500);
-          extractedLink = await findActualApplyLink(
-            page,
-            context,
-            siteDomain,
-          );
-          if (extractedLink) applyLink = extractedLink;
-        } catch {}
+
+        // HTTP pre-gate (additive): cheap static fetch before any browser work.
+        // POSITIVE -> applyLink + extractedLink set, skip browser. NEGATIVE
+        // (definitive 404/410) -> skip browser AND queueing. UNCERTAIN ->
+        // fall through to the browser path unchanged. Missing ATS evidence in
+        // static HTML is UNCERTAIN, never NEGATIVE.
+        let httpGateReason = "UNCERTAIN_BROWSER_FALLTHROUGH";
+        let httpGateResolved = false;
+        httpGate.attempted++;
+        if (extractAtsBoard(item.url)) {
+          applyLink = item.url;
+          extractedLink = item.url;
+          httpGateReason = "DIRECT_ATS";
+          httpGateResolved = true;
+          httpGate.positive++;
+        } else {
+          const httpCtrl = new AbortController();
+          const httpTimer = setTimeout(() => httpCtrl.abort(), 8000);
+          try {
+            const httpRes = await fetch(item.url, {
+              headers: {
+                "User-Agent":
+                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+              },
+              redirect: "follow",
+              signal: httpCtrl.signal,
+            });
+            if (httpRes.status === 404 || httpRes.status === 410) {
+              httpGateReason = "DEFINITIVE_404";
+              httpGate.negative++;
+              console.log(`http_gate=${httpGateReason} ${item.url}`);
+              processed++;
+              continue;
+            }
+            if (!httpRes.ok) {
+              httpGateReason = `UNCERTAIN_NON_200_${httpRes.status}`;
+              httpGate.uncertain++;
+            } else {
+              const finalUrl = httpRes.url || item.url;
+              if (extractAtsBoard(finalUrl)) {
+                applyLink = finalUrl;
+                extractedLink = finalUrl;
+                httpGateReason = "ATS_RESOLVED";
+                httpGateResolved = true;
+                httpGate.positive++;
+              } else {
+                const contentType = httpRes.headers.get("content-type") || "";
+                if (!contentType.includes("text/html")) {
+                  httpGateReason = "UNCERTAIN_CONTENT_TYPE";
+                  httpGate.uncertain++;
+                } else {
+                  const staticHtml = await httpRes.text();
+                  const $static = cheerio.load(staticHtml);
+                  let resolvedAts: string | null = null;
+                  $static("a[href]").each((_, el) => {
+                    if (resolvedAts) return;
+                    const rawHref = $static(el).attr("href");
+                    if (!rawHref) return;
+                    try {
+                      const abs = new URL(rawHref, finalUrl).toString();
+                      if (extractAtsBoard(abs)) resolvedAts = abs;
+                    } catch {}
+                  });
+                  if (resolvedAts) {
+                    applyLink = resolvedAts;
+                    extractedLink = resolvedAts;
+                    httpGateReason = "ATS_RESOLVED";
+                    httpGateResolved = true;
+                    httpGate.positive++;
+                  } else {
+                    httpGateReason = "UNCERTAIN_NO_ATS_HREF";
+                    httpGate.uncertain++;
+                  }
+                }
+              }
+            }
+          } catch (httpErr) {
+            httpGateReason =
+              httpErr instanceof Error && httpErr.name === "AbortError"
+                ? "UNCERTAIN_TIMEOUT"
+                : "UNCERTAIN_FETCH_ERROR";
+            httpGate.uncertain++;
+          } finally {
+            clearTimeout(httpTimer);
+          }
+        }
+        console.log(`http_gate=${httpGateReason} ${item.url}`);
+
+        if (!httpGateResolved) {
+          await page.close().catch(() => {});
+          page = await context.newPage();
+          try {
+            await page.goto(item.url, {
+              waitUntil: "domcontentloaded",
+              timeout: 20000,
+            });
+            await page
+              .waitForSelector("article, .post-body, .entry-content, main, .post", {
+                timeout: 8000,
+              })
+              .catch(() => {});
+            await page.waitForTimeout(500);
+            extractedLink = await findActualApplyLink(
+              page,
+              context,
+              siteDomain,
+            );
+            if (extractedLink) applyLink = extractedLink;
+          } catch {}
+        }
 
         // Aggregator site posts / govt portals / listing pages must never become
         // jobs — only real apply links get queued. If extraction found nothing and
@@ -541,6 +648,7 @@ export async function discoverChannelJobs(state: DiscoveryState) {
         else if (scoreResult.verdict === "HIGH") isReview = false;
 
         console.log(`📥 Queued: ${cleanApplyLink}`);
+        const channelIdentity = buildJobIdentity({ applyLink: cleanApplyLink, company: parsedCompany, title });
         state.candidateQueue.push({
           applyLink: cleanApplyLink,
           source: `channel-${item.channel}`,
@@ -549,7 +657,10 @@ export async function discoverChannelJobs(state: DiscoveryState) {
           aggregatorTitle: title.trim(),
           isAggregatorReview: isReview,
           company: parsedCompany,
+          jobIdentityKind: channelIdentity.kind,
+          jobIdentity: channelIdentity.value,
         });
+        console.log(`job_identity=${channelIdentity.kind}:${channelIdentity.value}`);
         extracted++;
         processed++;
       }
@@ -564,6 +675,19 @@ export async function discoverChannelJobs(state: DiscoveryState) {
     () => runWorker(),
   );
   await Promise.all(workers);
+
+  // Persist channel cursors so the next run collects only strictly-new posts.
+  // cursorReady = fetched window is contiguous back to the old cursor (or first
+  // run), so newestFetched is safe to store. Without this, every run replays
+  // the full 3-page window (~760 revisits, ~1h wasted): knownLinks is
+  // in-memory only and can never dedup across runs.
+  try {
+    for (const ch of cursorReady) {
+      const n = newestFetched.get(ch) ?? 0;
+      if (n > 0) channelCursors.set(ch, Math.max(channelCursors.get(ch) ?? 0, n));
+    }
+    saveChannelCursor(state, channelCursors);
+  } catch {}
 
   // Per-channel yield: count queued jobs per channel from the candidateQueue.
   const channelYield: Record<string, number> = {};
@@ -581,7 +705,29 @@ export async function discoverChannelJobs(state: DiscoveryState) {
     }
   }
 
+  // Priority yield: count how many times each priority channel contributed
+  // URLs to the allUrls collector after dedup (post-id + normalized URL).
+  if (prioritySet.size > 0) {
+    const priorityYield: Record<string, number> = {};
+    for (const item of uniqueUrls) {
+      if (prioritySet.has(item.channel)) {
+        priorityYield[item.channel] = (priorityYield[item.channel] || 0) + 1;
+      }
+    }
+    const entries = Object.entries(priorityYield).filter(([, c]) => c > 0);
+    if (entries.length > 0) {
+      console.log('\n⭐ Priority yield (URLs seen):');
+      const sorted = entries.sort((a, b) => b[1] - a[1]);
+      for (const [ch, count] of sorted) {
+        console.log(`  ${ch.padEnd(30)} ${count} URL(s)`);
+      }
+    }
+  }
+
   console.log(
     `\n✅ Channel Phase 3: ${extracted} queued, ${skipped} skipped (known), ${processed - extracted} no apply link.\n`,
+  );
+  console.log(
+    `http_gate funnel: attempted=${httpGate.attempted} positive=${httpGate.positive} negative=${httpGate.negative} uncertain=${httpGate.uncertain}`,
   );
 }

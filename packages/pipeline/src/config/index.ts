@@ -162,33 +162,20 @@ export const HEAVY_DORK_QUERIES = [
   'site:boards.greenhouse.io ("intern" OR "internship" OR "fresher" OR "junior" OR "SDE 1") ("India" OR "Remote")',
 ];
 
+export type SitemapEntry =
+  | string
+  | { post_sitemap_range: [number, number] }
+  | { wp_post_sitemaps: number[] }
+  | { job_posting_range: [number, number] };
+
 export type TargetSite = {
   name: string;
   urls: string[];
   govtUrls?: string[];
-  ignore?: string[];
+  sitemaps?: SitemapEntry[];
 };
 
 export let TARGET_SITES: TargetSite[] = [];
-
-// Substring match (case-insensitive) of a candidate URL against a site's
-// per-site ignore list. Returns false when the site is unknown or has no
-// ignore list — callers then fall back to global checks only.
-export function matchesSiteIgnore(
-  site: Pick<TargetSite, "ignore"> | undefined,
-  url: string,
-): boolean {
-  const patterns = site?.ignore;
-  if (!patterns || patterns.length === 0 || !url) return false;
-  const lower = url.toLowerCase();
-  return patterns.some((p) => !!p && lower.includes(p.toLowerCase()));
-}
-
-export function findTargetSite(name: string | undefined): TargetSite | undefined {
-  if (!name) return undefined;
-  const lower = name.toLowerCase();
-  return TARGET_SITES.find((s) => s.name.toLowerCase() === lower);
-}
 
 export async function fetchTargetSitesFromCdn(): Promise<TargetSite[]> {
   try {

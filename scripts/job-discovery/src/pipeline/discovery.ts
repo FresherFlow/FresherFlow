@@ -2,12 +2,15 @@ import fs from 'fs';
 import path from 'path';
 import { DiscoveryState } from '@fresherflow/pipeline';
 import { ATS_CDN_BASE, ATS_PROVIDERS, TARGET_SITES, fetchTargetSitesFromCdn } from '@fresherflow/pipeline';
-import { normalizeUrl, sanitizeAtsUrl, isValidApplyLink, matchesSiteIgnore } from '@fresherflow/pipeline';
+import { normalizeUrl, sanitizeAtsUrl, isValidApplyLink } from '@fresherflow/pipeline';
 import { isLocationIndiaOrRemote, scoreJobDescription, hasFresherKeyword, isActualJob, isFresherJob, isSeniorJob } from '@fresherflow/utils';
 import { logDecision } from '@fresherflow/pipeline';
 import { findActualApplyLink } from '@fresherflow/pipeline';
-import { extractAtsBoard } from '@fresherflow/pipeline';
+import { extractAtsBoard, buildJobIdentity } from '@fresherflow/pipeline';
+import { fetchSitemapPostUrls, listPostSitemapChildren } from './sitemap.js';
 import { runAtsDiscovery, runDirectCompanyDiscovery } from '@fresherflow/pipeline';
+
+const SITEMAP_SAFETY_WINDOW = 15;
 
 export async function discoverAtsJobs(state: DiscoveryState) {
     console.log(`\n=== 🏢 Phase 0: Direct Company & ATS Discovery ===\n`);
@@ -167,6 +170,7 @@ export async function discoverAtsJobs(state: DiscoveryState) {
             continue;
         }
 
+        const atsIdentity = buildJobIdentity({ applyLink: job.applyLink, company: job.company, title: job.title, location: job.location });
         state.candidateQueue.push({
             applyLink: job.applyLink,
             source: job.source,
@@ -175,12 +179,46 @@ export async function discoverAtsJobs(state: DiscoveryState) {
             aggregatorTitle: job.title,
             isAggregatorReview: false,
             company: job.company,
-            isTestBypass: (job as any).isTestBypass
+            isTestBypass: (job as any).isTestBypass,
+            jobIdentityKind: atsIdentity.kind,
+            jobIdentity: atsIdentity.value
         });
+        console.log(`job_identity=${atsIdentity.kind}:${atsIdentity.value}`);
         atsQueued++;
     }
 
     console.log(`\n✅ ATS Phase 0: ${atsQueued} queued for verification, ${atsRejected} rejected (foreign location).\n`);
+}
+
+export function isPostUrlCandidate(href: string, siteDomain: string): boolean {
+    try {
+        const u = new URL(href);
+        if (
+            u.pathname === '/' ||
+            u.pathname === '/jobs/' ||
+            u.pathname === '/freshers/' ||
+            u.pathname.includes('/category/') ||
+            u.pathname.includes('/tag/') ||
+            u.pathname.includes('/page/') ||
+            u.pathname.includes('/author/') ||
+            u.pathname.includes('/search/') ||
+            u.pathname.includes('/whatsapp-group/') ||
+            u.pathname.includes('/recruitment/') ||
+            u.pathname.includes('/jobs-by-location/') ||
+            u.pathname.includes('/jobs-by-batch-year/') ||
+            u.pathname.includes('/jobs-by-batch/') ||
+            u.pathname.includes('/off-campus-drive-jobs/') ||
+            u.pathname.includes('/work-from-home/') ||
+            u.pathname.includes('/internship/') ||
+            u.pathname.includes('-batch-jobs') ||
+            u.pathname.endsWith('-jobs/') ||
+            u.pathname.endsWith('-jobs')
+        ) return false;
+        return u.hostname.includes(siteDomain) &&
+            (u.pathname.includes('job') || u.pathname.includes('hiring') || u.pathname.includes('recruitment') || u.pathname.includes('career') || u.pathname.includes('vacancy') || u.pathname.includes('opportunity') || u.pathname.includes('fresher') || u.pathname.includes('walk') || u.pathname.includes('drive') || u.pathname.includes('intern'));
+    } catch {
+        return false;
+    }
 }
 
 export async function discoverAggregatorJobs(state: DiscoveryState) {
@@ -204,9 +242,17 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
         throw new Error("Browser is not initialized in DiscoveryState");
     }
 
+    const SMAP_REFRESH_KEY = '__smap_refresh';
+    const smapRefreshDue = (() => {
+        const stamp = state.visited[SMAP_REFRESH_KEY]?.[0];
+        if (!stamp) return true;
+        const t = Date.parse(stamp);
+        if (Number.isNaN(t)) return true;
+        return Date.now() - t > 24 * 60 * 60 * 1000;
+    })();
+
     const scraperWorker = async () => {
-        const context = await state.browser!.newContext({
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        const context = await state.browser!.newContext({            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         });
         await context.route('**/*', (route) => {
             const type = route.request().resourceType();
@@ -239,6 +285,117 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
 
                 const jobLinks: string[] = [];
                 const siteDomain = new URL(site.urls[0]).hostname;
+                // Per-site safety-window URL set (normalized) for this run —
+                // filled during the sitemap pass below, read at queue time.
+                const safetyNorms = new Set<string>();
+
+                // Sitemap-based URL discovery (additive): dated post URLs straight
+                // from each origin's sitemap(s), gated by a per-site lastmod
+                // watermark. Any failure contributes zero links; the start-page
+                // scrape below always still runs as the fallback.
+                const SITEMAP_WM_KEY = '__sitemap_wm_' + site.name;
+                let sitemapMaxLastmod: string | null = null;
+                try {
+                    const origins = new Set<string>();
+                    for (const u of [...(site.urls || []), ...((site as any).govtUrls || [])]) {
+                        try {
+                            origins.add(new URL(u).origin);
+                        } catch {}
+                    }
+                    const storedWm = state.visited[SITEMAP_WM_KEY]?.[0];
+                    const sitemapSurvivors: string[] = [];
+                    const sitemapSurvivorSet = new Set<string>();
+                    const safetyPool: { url: string; lastmod: string }[] = [];
+                    const knownSitemapsRaw = (site as any).sitemaps as string[] | undefined;
+                    let knownSitemaps = knownSitemapsRaw;
+                    if (smapRefreshDue && knownSitemapsRaw && knownSitemapsRaw.length > 0) {
+                        try {
+                            let firstSiteOrigin: string | null = null;
+                            try {
+                                firstSiteOrigin = new URL(site.urls[0]).origin;
+                            } catch {
+                                firstSiteOrigin = null;
+                            }
+                            if (firstSiteOrigin) {
+                                const discovered = await listPostSitemapChildren(firstSiteOrigin);
+                                const knownLower = new Set(knownSitemapsRaw.map((s) => s.toLowerCase()));
+                                const fresh: string[] = [];
+                                for (const child of discovered) {
+                                    if (!knownLower.has(child.toLowerCase())) {
+                                        console.log(`sitemap-new-child ${site.name} ${child}`);
+                                        knownLower.add(child.toLowerCase());
+                                        fresh.push(child);
+                                    }
+                                }
+                                if (fresh.length > 0) knownSitemaps = [...knownSitemapsRaw, ...fresh];
+                            }
+                        } catch {
+                            // refresh failures silent
+                        }
+                    }
+                    const allEntries: { url: string; lastmod: string | null }[] = [];
+                    let sitemapChildrenFetched = 0;
+                    let sitemapEarlyStopped = false;
+                    if (knownSitemaps && knownSitemaps.length > 0) {
+                        try {
+                            const firstOrigin = [...origins][0] ?? site.urls[0];
+                            const res = await fetchSitemapPostUrls(firstOrigin, knownSitemaps, storedWm ?? null);
+                            allEntries.push(...res.posts);
+                            sitemapChildrenFetched += res.stats.childrenFetched;
+                            if (res.stats.earlyStopped) sitemapEarlyStopped = true;
+                        } catch {
+                            // fall through with zero entries; start-page scrape still runs
+                        }
+                    } else {
+                    for (const origin of origins) {
+                        let entries: { url: string; lastmod: string | null }[] = [];
+                        try {
+                            const res = await fetchSitemapPostUrls(origin);
+                            entries = res.posts;
+                        } catch {
+                            entries = [];
+                        }
+                        allEntries.push(...entries);
+                    }
+                    }
+                    for (const e of allEntries) {
+                            if (e.lastmod && (!sitemapMaxLastmod || e.lastmod > sitemapMaxLastmod)) {
+                                sitemapMaxLastmod = e.lastmod;
+                            }
+                            if (!isPostUrlCandidate(e.url, siteDomain)) continue;
+                            try {
+                                if (!new URL(e.url).hostname.includes(siteDomain)) continue;
+                            } catch {
+                                continue;
+                            }
+                            if (e.lastmod) safetyPool.push({ url: e.url, lastmod: e.lastmod });
+                            if (storedWm && (!e.lastmod || e.lastmod < storedWm)) continue;
+                            if (!sitemapSurvivorSet.has(e.url)) {
+                                sitemapSurvivorSet.add(e.url);
+                                sitemapSurvivors.push(e.url);
+                            }
+                    }
+                    safetyPool.sort((a, b) => (a.lastmod < b.lastmod ? 1 : a.lastmod > b.lastmod ? -1 : 0));
+                    const watermarkCount = sitemapSurvivors.length;
+                    let safetyCatch = 0;
+                    for (const s of safetyPool.slice(0, SITEMAP_SAFETY_WINDOW)) {
+                        safetyNorms.add(normalizeUrl(s.url));
+                        if (!sitemapSurvivorSet.has(s.url)) {
+                            sitemapSurvivorSet.add(s.url);
+                            sitemapSurvivors.push(s.url);
+                            safetyCatch++;
+                        }
+                    }
+                    const capped = sitemapSurvivors.slice(0, 150);
+                    if (capped.length > 0) {
+                        const seenTotal = allEntries.length;
+                        const skippedWm = seenTotal - watermarkCount;
+                        console.log(`Sitemap ${site.name}: ${watermarkCount} watermark + ${safetyCatch} safety-catch (children ${sitemapChildrenFetched}, early-stop ${sitemapEarlyStopped ? 'yes' : 'no'}, seen ${seenTotal}, skipped-wm ${skippedWm})`);
+                    }
+                    jobLinks.push(...capped);
+                } catch (sitemapErr) {
+                    console.error(`🗺️  Sitemap discovery failed for ${site.name} —`, (sitemapErr as Error).message);
+                }
 
                 let allLinksThisSite: { text: string; href: string }[] = [];
                 const govtUrls = new Set((site as any).govtUrls || []);
@@ -254,35 +411,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                         allLinksThisSite.push(...allLinks);
                         const filtered = allLinks
                             .filter(l => {
-                                try {
-                                    const u = new URL(l.href);
-                                    if (matchesSiteIgnore(site, l.href)) return false;
-                                    if (
-                                        u.pathname === '/' ||
-                                        u.pathname === '/jobs/' ||
-                                        u.pathname === '/freshers/' ||
-                                        u.pathname.includes('/category/') ||
-                                        u.pathname.includes('/tag/') ||
-                                        u.pathname.includes('/page/') ||
-                                        u.pathname.includes('/author/') ||
-                                        u.pathname.includes('/search/') ||
-                                        u.pathname.includes('/whatsapp-group/') ||
-                                        u.pathname.includes('/recruitment/') ||
-                                        u.pathname.includes('/jobs-by-location/') ||
-                                        u.pathname.includes('/jobs-by-batch-year/') ||
-                                        u.pathname.includes('/jobs-by-batch/') ||
-                                        u.pathname.includes('/off-campus-drive-jobs/') ||
-                                        u.pathname.includes('/work-from-home/') ||
-                                        u.pathname.includes('/internship/') ||
-                                        u.pathname.includes('-batch-jobs') ||
-                                        u.pathname.endsWith('-jobs/') ||
-                                        u.pathname.endsWith('-jobs')
-                                    ) return false;
-                                    return u.hostname.includes(siteDomain) &&
-                                        (u.pathname.includes('job') || u.pathname.includes('hiring') || u.pathname.includes('recruitment') || u.pathname.includes('career') || u.pathname.includes('vacancy') || u.pathname.includes('opportunity') || u.pathname.includes('fresher') || u.pathname.includes('walk') || u.pathname.includes('drive') || u.pathname.includes('intern'));
-                                } catch {
-                                    return false;
-                                }
+                                return isPostUrlCandidate(l.href, siteDomain);
                             })
                             .map(l => l.href);
                         jobLinks.push(...filtered);
@@ -303,13 +432,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                         const pageLinks = await page.$$eval('a', anchors => anchors.map(a => ({ text: a.innerText.trim(), href: a.href })));
                         const pageFiltered = pageLinks
                             .filter(l => {
-                                try {
-                                    const u = new URL(l.href);
-                                    if (matchesSiteIgnore(site, l.href)) return false;
-                                    if (u.pathname === '/' || u.pathname.includes('/category/') || u.pathname.includes('/tag/') || u.pathname.includes('/page/') || u.pathname.includes('/author/') || u.pathname.includes('/search/')) return false;
-                                    return u.hostname.includes(siteDomain) &&
-                                        (u.pathname.includes('job') || u.pathname.includes('hiring') || u.pathname.includes('recruitment') || u.pathname.includes('career') || u.pathname.includes('vacancy') || u.pathname.includes('opportunity') || u.pathname.includes('fresher') || u.pathname.includes('walk') || u.pathname.includes('drive') || u.pathname.includes('intern'));
-                                } catch { return false; }
+                                return isPostUrlCandidate(l.href, siteDomain);
                             })
                             .map(l => l.href);
                         jobLinks.push(...pageFiltered);
@@ -324,9 +447,6 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                 const uniqueJobLinks: string[] = [];
                 const seen: Set<string> = new Set();
                 for (const link of jobLinks) {
-                    // Per-site ignore: skip known sidebar/footer/govt repeat
-                    // slugs before browser work or queueing.
-                    if (matchesSiteIgnore(site, link)) continue;
                     const norm = normalizeUrl(link);
                     if (!seen.has(norm) && !seenNormalized.has(norm)) {
                         seen.add(norm);
@@ -482,18 +602,34 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                     state.knownLinks.add(normalizedApplyLink);
 
                     console.log(`📥 Queued for verification: ${cleanApplyLink}`);
+                    const aggIdentity = buildJobIdentity({ applyLink: cleanApplyLink, title: aggregatorTitle.trim() });
+                    const isSafetyWindow = safetyNorms.has(jobLinkNorm);
                     state.candidateQueue.push({
                         applyLink: cleanApplyLink,
                         source: site.name,
                         sourceType: 'AGGREGATOR',
                         aggregatorUrl: jobLink,
                         aggregatorTitle: aggregatorTitle.trim(),
-                        isAggregatorReview
+                        isAggregatorReview,
+                        jobIdentityKind: aggIdentity.kind,
+                        jobIdentity: aggIdentity.value,
+                        ...(isSafetyWindow ? { fromSafetyWindow: true as const, safetySite: site.name } : {})
                     });
+                    console.log(`job_identity=${aggIdentity.kind}:${aggIdentity.value}`);
                     state.knownLinks.add(normalizeUrl(cleanApplyLink));
                     state.visited["__discovered_apply_links__"].push(normalizeUrl(cleanApplyLink));
                     if (state.visited["__discovered_apply_links__"].length > 50000) {
                         state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
+                    }
+                }
+
+                // Advance the sitemap lastmod watermark (single-element string
+                // array — R2 visited state only stores string arrays). Monotonic:
+                // never move it backwards. No sitemap lastmods seen = untouched.
+                if (sitemapMaxLastmod) {
+                    const prev = state.visited[SITEMAP_WM_KEY]?.[0];
+                    if (!prev || sitemapMaxLastmod > prev) {
+                        state.visited[SITEMAP_WM_KEY] = [sitemapMaxLastmod];
                     }
                 }
             } finally {
@@ -504,5 +640,8 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
     };
 
     await Promise.all(Array.from({ length: SCRAPER_CONCURRENCY }, () => scraperWorker()));
+    if (smapRefreshDue) {
+        state.visited[SMAP_REFRESH_KEY] = [new Date().toISOString()];
+    }
     console.log(`\n=== ✅ Phase 2 complete — ${state.candidateQueue.length} candidates queued for verification. ===\n`);
 }

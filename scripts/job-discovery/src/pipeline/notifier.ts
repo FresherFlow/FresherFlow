@@ -149,6 +149,18 @@ export async function writeGitHubSummary(state: DiscoveryState) {
     const reviewTotal = state.newJobsFound.filter(j => j.reviewRequired).length;
     const confirmedTotal = state.newJobsFound.filter(j => !j.reviewRequired).length;
 
+    // ── Safety-window usefulness (additive observability only) ───────────────
+    // Joined at publish time: published jobs whose wrapper post URL was in that
+    // run's per-site sitemap safety window, grouped by safetySite.
+    const safetyUseful: Record<string, number> = {};
+    for (const job of state.newJobsFound) {
+        if (job.fromSafetyWindow) {
+            const siteName = job.safetySite || job.source || 'unknown';
+            safetyUseful[siteName] = (safetyUseful[siteName] || 0) + 1;
+        }
+    }
+    const safetyUsefulPairs = Object.entries(safetyUseful).sort((a, b) => b[1] - a[1]);
+
     // Per-provider breakdown for console
     const atsPerProvider: Record<string, number> = {};
     for (const job of atsJobs) {
@@ -176,6 +188,10 @@ ${aggBoxRow}
 ║  Flagged for review      : ${String(reviewTotal).padEnd(20)}║
 ╚══════════════════════════════════════════════════╝`);
 
+    for (const [siteName, n] of safetyUsefulPairs) {
+        console.log(`useful-safety=${siteName}:${n}`);
+    }
+
     // ── GitHub Actions step summary ───────────────────────────────────────────
     if (process.env.GITHUB_STEP_SUMMARY) {
         const botName = BOT_MODE === 'ats' ? 'ATS Discovery Bot' : BOT_MODE === 'aggregator' ? 'Aggregator Discovery Bot' : 'Job Discovery Bot';
@@ -190,7 +206,11 @@ ${aggBoxRow}
             summary += `| **🌐 Aggregator Jobs** | ${realAggJobs.length} |\n`;
         }
         summary += `| **✅ Confirmed** | ${confirmedTotal} |\n`;
-        summary += `| **⚠️ Flagged for Review** | ${reviewTotal} |\n\n`;
+        summary += `| **⚠️ Flagged for Review** | ${reviewTotal} |\n`;
+        if (safetyUsefulPairs.length > 0) {
+            summary += `| **🪟 Useful safety-window** | ${safetyUsefulPairs.map(([s, n]) => `useful-safety=${s}:${n}`).join(', ')} |\n`;
+        }
+        summary += `\n`;
 
         // ATS count breakdown table
         if (Object.keys(atsPerProvider).length > 0) {

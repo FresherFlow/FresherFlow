@@ -10,6 +10,10 @@ export interface Candidate {
     isAggregatorReview: boolean;
     company?: string;
     isTestBypass?: boolean;
+    jobIdentityKind?: 'ats' | 'url' | 'fallback';
+    jobIdentity?: string;
+    fromSafetyWindow?: boolean;
+    safetySite?: string;
 }
 
 export interface DiscoveredJobEntry {
@@ -19,6 +23,8 @@ export interface DiscoveredJobEntry {
     sourceType: 'ATS' | 'AGGREGATOR';
     discoveredAt: string;
     reviewRequired?: boolean;
+    fromSafetyWindow?: boolean;
+    safetySite?: string;
     aggregatorUrl?: string;
     aggregatorTitle?: string;
     atsText?: string;

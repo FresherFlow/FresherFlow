@@ -1,7 +1,7 @@
 import { DiscoveryState } from '@fresherflow/pipeline';
 import { DORKER_ENABLED, DORKER_PAGES_PER_QUERY, HEAVY_DORK_QUERIES, ATS_HOSTNAMES, executeDorkQuery } from '@fresherflow/pipeline';
 import { normalizeUrl, sanitizeAtsUrl } from '@fresherflow/pipeline';
-import { extractAtsBoard } from '@fresherflow/pipeline';
+import { extractAtsBoard, buildJobIdentity } from '@fresherflow/pipeline';
 
 async function randomDelay(min = 2500, max = 5000) {
     const ms = Math.floor(Math.random() * (max - min + 1)) + min;
@@ -111,6 +111,7 @@ export async function discoverDorkerJobs(state: DiscoveryState) {
                     }
 
                     state.knownLinks.add(normalized);
+                    const dorkerIdentity = buildJobIdentity({ applyLink: cleanUrl, title: 'Dorker Discovered Job' });
                     state.candidateQueue.push({
                         applyLink: cleanUrl,
                         source: 'Dorker',
@@ -121,7 +122,10 @@ export async function discoverDorkerJobs(state: DiscoveryState) {
                         pendingBoardProvider,
                         pendingBoardId,
                         pendingBoardName,
+                        jobIdentityKind: dorkerIdentity.kind,
+                        jobIdentity: dorkerIdentity.value,
                     } as any);
+                    console.log(`job_identity=${dorkerIdentity.kind}:${dorkerIdentity.value}`);
 
                     pageQueued++;
                     totalQueued++;

@@ -116,3 +116,61 @@ export function extractAtsBoard(urlStr: string): { provider: keyof AtsRegistry, 
         return null;
     }
 }
+
+/**
+ * Extract a JOB-level posting ID from an ATS URL via path parsing only.
+ * No network calls. Companion to extractAtsBoard (which is BOARD/tenant level).
+ * Single home for ATS URL parsing — native.ts and job-identity.ts both use this
+ * instead of maintaining their own host lists and regexes.
+ */
+export function extractAtsJobId(urlStr: string): { provider: string; board: string | null; jobId: string } | null {
+    let u: URL;
+    try {
+        u = new URL(urlStr);
+    } catch {
+        return null;
+    }
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+
+    // Greenhouse: <board>.greenhouse.io/.../<board>/jobs/<numericId> (incl. embed form)
+    const gh = urlStr.match(/greenhouse\.io\/(?:embed\/job_board\/)?([^/?#]+)\/jobs\/(\d+)/i);
+    if (gh) return { provider: 'greenhouse', board: gh[1], jobId: gh[2] };
+
+    // Lever: jobs.lever.co/<company>/<postingId>
+    const lv = urlStr.match(/jobs\.lever\.co\/([^/?#]+)\/([a-f0-9-]+)/i);
+    if (lv) return { provider: 'lever', board: lv[1], jobId: lv[2] };
+
+    // Ashby: jobs.ashbyhq.com/<org>/<postingId>
+    const ab = urlStr.match(/jobs\.ashbyhq\.com\/([^/?#]+)\/([a-f0-9-]+)/i);
+    if (ab) return { provider: 'ashby', board: ab[1], jobId: ab[2] };
+
+    const host = u.hostname.toLowerCase();
+    const path = u.pathname;
+    const parts = path.split('/').filter(Boolean);
+
+    // Workday: <tenant>.wd*.myworkdayjobs.com/.../job/.../<reqId>
+    if (host === 'myworkdayjobs.com' || host.endsWith('.myworkdayjobs.com') || host === 'myworkdaysite.com' || host.endsWith('.myworkdaysite.com')) {
+        const last = parts.length > 0 ? parts[parts.length - 1] : '';
+        if (last && last.length >= 3 && (path.toLowerCase().includes('/job/') || /^(JR|R|REQ)[-_0-9]/i.test(last))) {
+            return { provider: 'workday', board: null, jobId: last };
+        }
+        return null;
+    }
+
+    // Workable: apply.workable.com/<company>/j/<shortId> or <company>.workable.com/jobs/<id>
+    if (host === 'apply.workable.com' || host.endsWith('.workable.com') || host === 'workable.com') {
+        const m = path.match(/\/j\/([^/?#]+)/) || path.match(/\/jobs\/([^/?#]+)/i);
+        if (m && m[1] && m[1].length >= 3) return { provider: 'workable', board: null, jobId: m[1] };
+        return null;
+    }
+
+    // SmartRecruiters: jobs.smartrecruiters.com/<company>/<jobId>
+    if (host === 'jobs.smartrecruiters.com' || host.endsWith('.jobs.smartrecruiters.com') || host === 'careers.smartrecruiters.com' || host.endsWith('.careers.smartrecruiters.com')) {
+        if (parts.length >= 2 && parts[1].length >= 4 && /^[A-Za-z0-9-]+$/.test(parts[1])) {
+            return { provider: 'smartrecruiters', board: parts[0], jobId: parts[1] };
+        }
+        return null;
+    }
+
+    return null;
+}

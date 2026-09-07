@@ -13,6 +13,7 @@ import { Page } from 'playwright';
 import { parseJobUrl } from '@fresherflow/parser';
 import { CANONICAL_CITIES_MAP } from '@fresherflow/parser/metadata';
 import { PLUGIN_REGISTRY } from '@fresherflow/plugins';
+import { extractAtsJobId } from './detector.js';
 
 /**
  * Normalizes raw ATS location strings to canonical city names.
@@ -219,9 +220,10 @@ export async function extractNativeAtsData(
         const host = urlObj.hostname.toLowerCase();
 
         // 1. Direct Greenhouse URL extraction
-        const ghMatch = url.match(/greenhouse\.io\/(?:embed\/job_board\/)?([^\/\?#]+)\/jobs\/(\d+)/i);
-        if (ghMatch) {
-            const [, board, jobId] = ghMatch;
+        const ghParsed = extractAtsJobId(url);
+        if (ghParsed && ghParsed.provider === 'greenhouse' && ghParsed.board) {
+            const board = ghParsed.board;
+            const jobId = ghParsed.jobId;
             const result = await fetchJson<any>(
                 `https://boards-api.greenhouse.io/v1/boards/${board}/jobs/${jobId}?content=true`
             );
@@ -242,9 +244,10 @@ export async function extractNativeAtsData(
         }
 
         // 1c. Direct Lever URL extraction
-        const leverMatch = url.match(/jobs\.lever\.co\/([^\/\?#]+)\/([a-f0-9\-]+)/i);
-        if (leverMatch) {
-            const [, company, jobId] = leverMatch;
+        const leverParsed = extractAtsJobId(url);
+        if (leverParsed && leverParsed.provider === 'lever' && leverParsed.board) {
+            const company = leverParsed.board;
+            const jobId = leverParsed.jobId;
             const result = await fetchJson<any>(`https://api.lever.co/v0/postings/${company}/${jobId}`);
             if (result && result.text) {
                 console.log(`[Native] Lever direct API (${company}/${jobId}) success`);
@@ -266,9 +269,10 @@ export async function extractNativeAtsData(
         }
 
         // 1d. Direct Ashby URL extraction
-        const ashbyMatch = url.match(/jobs\.ashbyhq\.com\/([^\/\?#]+)\/([a-f0-9\-]+)/i);
-        if (ashbyMatch) {
-            const [, company, jobId] = ashbyMatch;
+        const ashbyParsed = extractAtsJobId(url);
+        if (ashbyParsed && ashbyParsed.provider === 'ashby' && ashbyParsed.board) {
+            const company = ashbyParsed.board;
+            const jobId = ashbyParsed.jobId;
             const result = await fetchJson<any>(`https://api.ashbyhq.com/posting-api/job-board/${company}/job/${jobId}`);
             if (result && result.title) {
                 console.log(`[Native] Ashby direct API (${company}/${jobId}) success`);
