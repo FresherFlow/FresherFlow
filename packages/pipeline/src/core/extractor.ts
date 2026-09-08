@@ -157,6 +157,35 @@ export async function findActualApplyLink(
     context: BrowserContext,
     currentDomain: string,
     maxButtons: number = 999,
+    timeoutMs: number = 60_000,
+): Promise<string | null> {
+    // Hard per-page wall-clock deadline. The inner scanning loops use Playwright
+    // element / evaluate round-trips that accept no timeout option and can stay
+    // unresolved forever on a wedged page (the 2026-09-08 hang). A timestamp
+    // check between loops is not enough — only racing against a timer actually
+    // bounds the underlying awaits.
+    let timeoutId: NodeJS.Timeout | undefined;
+    const deadline: Promise<string | null> = new Promise((resolve) => {
+        timeoutId = setTimeout(() => {
+            console.log(`⏱️ findActualApplyLink exceeded ${timeoutMs}ms deadline on ${page.url()} — giving up on this page.`);
+            resolve(null);
+        }, timeoutMs);
+    });
+    try {
+        return await Promise.race([
+            extractCandidates(page, context, currentDomain, maxButtons),
+            deadline,
+        ]);
+    } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+    }
+}
+
+async function extractCandidates(
+    page: Page,
+    context: BrowserContext,
+    currentDomain: string,
+    maxButtons: number,
 ): Promise<string | null> {
     try {
         // Search for explicit apply/register/click here/submit text across the page

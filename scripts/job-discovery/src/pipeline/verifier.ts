@@ -16,6 +16,10 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
         throw new Error("Browser is not initialized in DiscoveryState");
     }
 
+    let checked = 0;
+    let live = 0;
+    let expired = 0;
+
     const verifierWorker = async () => {
         const context = await state.browser!.newContext({
             userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -41,6 +45,10 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                 }
 
                 console.log(`  [Verifier] Checking: ${candidate.applyLink}`);
+                checked++;
+                if (checked % 50 === 0) {
+                    console.log(`Verifier: ${checked} checked, ${live} live, ${expired} expired, ${state.candidateQueue.length} remaining`);
+                }
 
                 // Hard gate: aggregator site posts / govt portals / listing pages
                 // (e.g. acciojob.com/jobs, joinsaarthi.com/drives/off-campus, ssc.gov.in,
@@ -205,7 +213,43 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                         jobFunction: nativeData.jobFunction,
                         postedAt: nativeData.postedAt
                     });
+                    live++;
                     continue; // Skip Playwright completely!
+                }
+
+                // ── Dead-page fast path (HEAD precheck, fail open) ───────────────
+                // Plain HEAD fetch before any browser work: 404/410 short-circuits
+                // to the existing expired path; anything else falls through to the
+                // browser unchanged.
+                try {
+                    const precheckProto = new URL(candidate.applyLink).protocol;
+                    if (precheckProto === 'http:' || precheckProto === 'https:') {
+                        const ctrl = new AbortController();
+                        const precheckTimer = setTimeout(() => ctrl.abort(), 8000);
+                        try {
+                            const headRes = await fetch(candidate.applyLink, {
+                                method: 'HEAD',
+                                redirect: 'follow',
+                                signal: ctrl.signal,
+                                headers: {
+                                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                                },
+                            });
+                            if (headRes.status === 404 || headRes.status === 410) {
+                                console.log(`  ❌ Page unreachable (HTTP ${headRes.status}) — job expired/removed.`);
+                                const normalizedPrecheck = normalizeUrl(candidate.applyLink);
+                                state.visited["__discovered_apply_links__"].push(normalizedPrecheck);
+                                if (state.visited["__discovered_apply_links__"].length > 50000) state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
+                                state.rejectedReasons[normalizedPrecheck] = `HTTP status code ${headRes.status}`;
+                                expired++;
+                                continue;
+                            }
+                        } finally {
+                            clearTimeout(precheckTimer);
+                        }
+                    }
+                } catch {
+                    // Fail open: any precheck error/timeout → browser path unchanged.
                 }
 
                 // ── Fallback to Playwright (Non-API) ──────────────────────────────
@@ -344,6 +388,7 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                         isTestBypass: candidate.isTestBypass,
                         rawHtml: checkResult.atsText || '' // Fallback raw HTML
                     });
+                    live++;
                 } else {
                     const normalizedApplyLink = normalizeUrl(candidate.applyLink);
                     if (checkResult.status === 'failed') {
@@ -363,6 +408,7 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                         state.visited["__discovered_apply_links__"].push(normalizedApplyLink);
                         if (state.visited["__discovered_apply_links__"].length > 50000) state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
                         state.rejectedReasons[normalizedApplyLink] = checkResult.rejectReason || 'Unknown reason';
+                        expired++;
                     }
                 }
             }

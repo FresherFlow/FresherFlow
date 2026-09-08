@@ -303,6 +303,13 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                         } catch {}
                     }
                     const storedWm = state.visited[SITEMAP_WM_KEY]?.[0];
+                    let effectiveWm: string;
+                    if (storedWm) {
+                        effectiveWm = storedWm;
+                    } else {
+                        effectiveWm = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+                        console.log(`Sitemap ${site.name}: seeding watermark ${effectiveWm} (empty state)`);
+                    }
                     const sitemapSurvivors: string[] = [];
                     const sitemapSurvivorSet = new Set<string>();
                     const safetyPool: { url: string; lastmod: string }[] = [];
@@ -339,7 +346,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                     if (knownSitemaps && knownSitemaps.length > 0) {
                         try {
                             const firstOrigin = [...origins][0] ?? site.urls[0];
-                            const res = await fetchSitemapPostUrls(firstOrigin, knownSitemaps, storedWm ?? null);
+                            const res = await fetchSitemapPostUrls(firstOrigin, knownSitemaps, effectiveWm);
                             allEntries.push(...res.posts);
                             sitemapChildrenFetched += res.stats.childrenFetched;
                             if (res.stats.earlyStopped) sitemapEarlyStopped = true;
@@ -369,7 +376,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                                 continue;
                             }
                             if (e.lastmod) safetyPool.push({ url: e.url, lastmod: e.lastmod });
-                            if (storedWm && (!e.lastmod || e.lastmod < storedWm)) continue;
+                            if (!e.lastmod || e.lastmod < effectiveWm) continue;
                             if (!sitemapSurvivorSet.has(e.url)) {
                                 sitemapSurvivorSet.add(e.url);
                                 sitemapSurvivors.push(e.url);
@@ -548,6 +555,10 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                     // Cap apply-link extraction: most Indian job pages have 1-3 real buttons.
                     // Pages with 5+ dead buttons (794 in this run) waste time checking each.
                     // Pass a button cap so the extractor stops after finding max N candidates.
+                    if (state.isTimeUp()) {
+                        console.log(`\n[Timeout] ⏱️ Exceeded 80 minutes, halting aggregator post processing.`);
+                        break;
+                    }
                     const applyLink = await findActualApplyLink(page, context, siteDomain);
                     if (!applyLink) {
                         console.log(`❌ No apply link found on this page.`);

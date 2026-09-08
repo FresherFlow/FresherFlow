@@ -154,6 +154,62 @@ function parseIndexChildren(xml: string): string[] {
 }
 
 /**
+ * Index-lastmod precheck: drop known-list candidates whose exact URL
+ * (case-insensitive) appears in the site's sitemap index with a lastmod older
+ * than the watermark. Fail open in ALL cases: fetch fail, parse fail, no
+ * watermark passed, or child absent from the index → keep the candidate.
+ * Flat urlsets / news entries are never index children → they pass through
+ * untouched via the absent-from-index rule.
+ */
+export async function filterByIndexFreshness(
+  origin: string,
+  candidates: string[],
+  watermark: string | null | undefined,
+): Promise<string[]> {
+  try {
+    if (!watermark) return candidates;
+    if (candidates.length === 0) return candidates;
+    let root: string;
+    try {
+      const base = new URL(origin);
+      if (base.protocol !== 'http:' && base.protocol !== 'https:') return candidates;
+      root = base.origin;
+    } catch {
+      return candidates;
+    }
+    const robots = await fetchText(`${root}/robots.txt`);
+    let indexUrl: string | null = null;
+    if (robots) {
+      for (const s of parseRobotsSitemaps(robots)) {
+        if (s.toLowerCase().includes('index')) {
+          indexUrl = s;
+          break;
+        }
+      }
+    }
+    if (!indexUrl) indexUrl = `${root}/sitemap_index.xml`;
+    const xml = await fetchText(indexUrl);
+    if (!xml) return candidates;
+    const blocks = xml.match(/<sitemap>([\s\S]*?)<\/sitemap>/gi);
+    if (!blocks) return candidates;
+    const indexLastmod = new Map<string, string>();
+    for (const block of blocks) {
+      const loc = extractTag(block, 'loc');
+      const lastmod = extractTag(block, 'lastmod');
+      if (loc && lastmod && isHttpUrl(loc)) indexLastmod.set(loc.toLowerCase(), lastmod);
+    }
+    if (indexLastmod.size === 0) return candidates;
+    return candidates.filter((c) => {
+      const lm = indexLastmod.get(c.toLowerCase());
+      if (!lm) return true;
+      return lm >= watermark;
+    });
+  } catch {
+    return candidates;
+  }
+}
+
+/**
  * Best-effort sitemap post-URL discovery for one site origin.
  * robots.txt `Sitemap:` lines + `<origin>/sitemap.xml` + `<origin>/wp-sitemap.xml`;
  * follows sitemap indexes recursively (cap 8 child sitemaps per level).
@@ -174,7 +230,9 @@ export async function fetchSitemapPostUrls(
       const posts: SitemapPostUrl[] = [];
       let childrenFetched = 0;
       let earlyStopped = false;
-      const list = expandSitemapEntries(origin, knownSitemaps).slice(0, 6);
+      const expanded = expandSitemapEntries(origin, knownSitemaps);
+      const filtered = await filterByIndexFreshness(origin, expanded, watermark);
+      const list = filtered.slice(0, 30);
       for (const sitemapUrl of list) {
         let leafOrigin = origin;
         try {
