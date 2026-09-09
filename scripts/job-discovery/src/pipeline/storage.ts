@@ -14,6 +14,10 @@ import { resolveAndAttachCompanies } from '@fresherflow/pipeline';
 import { enrichJobPayload } from '@fresherflow/pipeline';
 
 export async function persistLocalData(state: DiscoveryState) {
+    // Drain any in-flight checkpoint first: it snapshots older state, so its
+    // writes must land before (never after) the final end-of-run save.
+    await flushStateCheckpoint();
+
     // Save local state files
     delete state.visited["pending_admin_approval"];
     await saveVisited(state.visited);
@@ -64,6 +68,48 @@ export async function persistLocalData(state: DiscoveryState) {
 
     // Push discovered jobs to Google Sheet (non-blocking, best-effort)
     await pushJobsToGoogleSheet(validJobs);
+}
+
+// ── Incremental visited-state checkpoints (P1 #2) ────────────────────────────
+// persistLocalData runs only on clean completion, so a cancelled run used to
+// lose all visited-state. maybeCheckpointState() re-saves just the 3 state
+// shards (same format, same backends as end-of-run), throttled so hot loops
+// pay ~nothing. Fire-and-forget: never throws, never blocks the crawler.
+// Deliberately does NOT do persistLocalData's Supabase/enrich/sheet work and
+// does NOT delete pending_admin_approval (end-of-run path unchanged).
+const CHECKPOINT_INTERVAL_MS = 120_000;
+let lastCheckpointAt = 0;
+let checkpointInFlight: Promise<void> | null = null;
+
+export function maybeCheckpointState(state: DiscoveryState): void {
+    const now = Date.now();
+    if (now - lastCheckpointAt < CHECKPOINT_INTERVAL_MS) return;
+    if (checkpointInFlight) return; // previous checkpoint still writing — skip, don't pile up
+    lastCheckpointAt = now;
+    checkpointInFlight = (async () => {
+        try {
+            await saveVisited(state.visited);
+            await saveRejectedReasons(state.rejectedReasons);
+            await savePostedLinks(state.postedLinks);
+            const applyLinks = state.visited["__discovered_apply_links__"]?.length ?? 0;
+            console.log(`💾 State checkpoint saved (${Object.keys(state.visited).length} visited keys, ${applyLinks} apply-links).`);
+        } catch (err) {
+            console.warn('⚠️ State checkpoint failed (non-fatal, will retry on next interval):', err instanceof Error ? err.message : err);
+        } finally {
+            checkpointInFlight = null;
+        }
+    })();
+}
+
+// Awaiter for shutdown/end-of-run: guarantees no checkpoint write can land
+// after the caller proceeds (used by persistLocalData so the final save is
+// always the last writer). Never throws.
+export async function flushStateCheckpoint(): Promise<void> {
+    const inFlight = checkpointInFlight;
+    if (!inFlight) return;
+    try {
+        await inFlight;
+    } catch {}
 }
 
 async function pushJobsToGoogleSheet(jobs: DiscoveredJobEntry[]): Promise<void> {

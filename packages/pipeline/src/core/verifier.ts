@@ -1,5 +1,6 @@
 import { Page } from 'playwright';
 import { EXPIRED_REGEXES } from '../config/index.js';
+import { isListingUrl } from './extractor.js';
 import { isActualJob, scoreJobDescription } from '@fresherflow/utils';
 import { logDecision } from '../utils/logger.js';
 
@@ -12,6 +13,44 @@ export interface JobCheckResult {
 }
 
 // Check if job is live (using existing sweeper logic)
+export function normalizeTitleForGuard(title: string): string {
+    return title.split('|')[0].replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+const GENERIC_PORTAL_TITLES = new Set([
+    'careers', 'career search', 'careersearch', 'search careers', 'careers search',
+    'job search', 'jobsearch', 'opportunities', 'job opportunities',
+    'career opportunities', 'open positions', 'current openings', 'search jobs',
+    'search for jobs', 'login', 'sign in', 'welcome', 'jobs', 'job', 'search',
+    'career site', 'job board',
+]);
+
+// Generic ATS/careers portal titles — not a specific job page. Exported for
+// unit tests; isJobLive feeds it the pipe-suffix-normalized title so
+// "Search for Jobs | Thomson Reuters" is caught, not just the bare string.
+// The /^jobs at / + /^careers at / prefix rules only fire without a ' - '
+// role tail: "Jobs at Acme - SDE Intern" carries specifics, "Jobs at Acme"
+// does not.
+export function isGenericPortalTitle(title: string): boolean {
+    const t = normalizeTitleForGuard(title);
+    if (GENERIC_PORTAL_TITLES.has(t)) return true;
+    if (t.includes(' - ')) return false;
+    return /^careers at /.test(t) ||
+        /^jobs at /.test(t) ||
+        /^career site$/.test(t);
+}
+
+// Listing-downgrade predicate (pure, tested): a queued requisition that lands
+// on a listing/search page must not be saved as the job. Same-URL tracking
+// rewrites and same-requisition redirects pass through untouched.
+export function isListingDowngrade(candidateUrl: string, finalUrl: string): boolean {
+    try {
+        if (candidateUrl === finalUrl) return false;
+        return isListingUrl(new URL(finalUrl));
+    } catch {
+        return false;
+    }
+}
 export async function isJobLive(page: Page, url: string): Promise<JobCheckResult> {
     try {
         let response = null;
@@ -43,19 +82,17 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
 
 
         const pageTitle = await page.title().catch(() => "");
-        const lowerTitle = pageTitle.toLowerCase().trim();
+        // Normalize before the generic-portal check: raw titles often carry
+        // site suffixes ("Search for Jobs | Thomson Reuters") that defeat the
+        // anchored patterns below. Stripping the pipe-tail is safe — no
+        // legitimate requisition title becomes generic by losing its suffix.
+        const lowerTitle = normalizeTitleForGuard(pageTitle);
         if (lowerTitle.includes('403') || lowerTitle.includes('forbidden') || lowerTitle.includes('access denied') || lowerTitle.includes('checking your browser') || lowerTitle.includes('attention required') || lowerTitle.includes('privacy error')) {
             console.log(`  🛡️ Access blocked (Cloudflare/403 page) — "${pageTitle}".`);
             return { live: false, status: 'expired', atsText: '', rejectReason: `Blocked page title: "${pageTitle}"` };
         }
         // Generic ATS/careers portal titles — not a specific job page
-        const isGenericTitle = (
-            /^(careers|career search|careersearch|search careers|careers search|job search|jobsearch|opportunities|job opportunities|career opportunities|open positions|current openings|search jobs|search for jobs|login|sign in|welcome|jobs|job|search|career site|job board)$/i.test(lowerTitle) ||
-            /^careers at /i.test(lowerTitle) ||
-            /^jobs at /i.test(lowerTitle) ||
-            /^career site$/i.test(lowerTitle)
-        );
-        if (isGenericTitle) {
+        if (isGenericPortalTitle(pageTitle)) {
             console.log(`  🏢 Generic careers portal page, not a job ("${pageTitle}") — marking EXPIRED.`);
             return { live: false, status: 'expired', atsText: '', rejectReason: `Generic portal title: "${pageTitle}"` };
         }

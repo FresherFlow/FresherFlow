@@ -6,13 +6,31 @@ const turndownService = new TurndownService({
     codeBlockStyle: 'fenced'
 });
 
-// Custom heading rule: output **Heading** per docs/templates.md
-turndownService.addRule('bold-headings', {
+// Inline bold/italic: emit plain text (no ** or _ markers) — the UI renders
+// descriptions as plain text, so markdown emphasis would show up literally.
+turndownService.addRule('plain-strong', {
+    filter: ['strong', 'b'],
+    replacement: function (content: string) {
+        return content.replace(/\*\*/g, '');
+    }
+});
+
+turndownService.addRule('plain-em', {
+    filter: ['em', 'i'],
+    replacement: function (content: string) {
+        return content.replace(/(^|\n)_|_(\n|$)/g, '$1$2');
+    }
+});
+
+// Custom heading rule: output a plain heading line.
+// Descriptions are rendered as plain text with line breaks (no markdown
+// renderer), so raw ** bold markers would show up literally in the UI.
+turndownService.addRule('plain-headings', {
     filter: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
     replacement: function (content: string) {
         const cleanContent = content.replace(/^\*\*|\*\*$/g, '').trim();
         if (!cleanContent) return '';
-        return `\n\n**${cleanContent}**\n\n`;
+        return `\n\n${cleanContent}\n\n`;
     }
 });
 
@@ -130,16 +148,16 @@ export function cleanClickbait(markdown: string): string {
     // Strip equal opportunity and disability boilerplate
     clean = clean.replace(/(?:Equal Opportunity Employer|We are an equal opportunity employer|EEO Statement|Accommodations are available|Diversity and Inclusion|Privacy Policy)[\s\S]*$/i, '');
 
-    // Convert any remaining #, ##, ### headers to **Heading**
+    // Convert any remaining #, ##, ### headers to a plain heading line
     clean = clean.replace(/^#{1,6}\s*(.+)$/gm, (match, heading) => {
         const cleanH = heading.replace(/^\*\*|\*\*$/g, '').trim();
-        return `\n\n**${cleanH}**\n\n`;
+        return `\n\n${cleanH}\n\n`;
     });
 
-    // Convert === or --- underline headers to **Heading**
+    // Convert === or --- underline headers to a plain heading line
     clean = clean.replace(/^([^\n]+)\n(=+|-{3,})$/gm, (match, heading) => {
         const cleanH = heading.replace(/^\*\*|\*\*$/g, '').trim();
-        return `\n\n**${cleanH}**\n\n`;
+        return `\n\n${cleanH}\n\n`;
     });
 
     // Strip standalone === or --- dividers
@@ -161,6 +179,14 @@ export function cleanClickbait(markdown: string): string {
     clean = clean.replace(/^\s*(?:Start Date|Duration|Stipend|APPLY BY|Posted|Internship|Fresher Job|\d+ applicants)\s.*$/gmi, '');
     clean = clean.replace(/^\s*Be an early applicant\s*$/gmi, '');
     clean = clean.replace(/^\s*Internship !\s*$/gmi, '');
+
+    // Final safety net: strip any remaining markdown so no raw markers reach
+    // the plain-text UI. Unescape turndown-escaped punctuation first.
+    clean = clean.replace(/\\([\*_.-])/g, '$1');
+    clean = clean.replace(/\*\*([^*]*)\*\*/g, '$1');
+    clean = clean.replace(/\*\*/g, '');
+    clean = clean.replace(/(^|\n)_+/g, '$1').replace(/_+(\n|$)/g, '$1');
+    clean = clean.replace(/(^|\n)\* +/g, '$1- ');
 
     // Collapse excessive blank lines
     clean = clean.replace(/\r/g, '').replace(/\n{3,}/g, '\n\n');

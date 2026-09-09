@@ -305,6 +305,8 @@ export const BAD_TITLE_REGEXES = [
   /\b(senior|sr\.?|lead|manager|director|head|vp|vice president|principal|architect|staff)\b/i,
   /^(login|sign in|welcome|job details|job details page|careers|opportunities|skip to content|careers at .+|jobs at .+|error|404|403|not found|access denied|page not found)$/i,
   /\b(am -|old -)\b/i,
+  // Partial-download / document filenames saved as titles (never a job title)
+  /\.crdownload\b/i,
 ];
 
 // ── Role Title Words (from CDN roles.json) ──────────────────────────────────

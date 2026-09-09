@@ -17,6 +17,7 @@ import { isRejectedApplyUrl } from "@fresherflow/pipeline";
 import { extractAtsBoard, buildJobIdentity } from "@fresherflow/pipeline";
 import { parseJobTextLite } from "@fresherflow/parser";
 import * as cheerio from "cheerio";
+import { maybeCheckpointState } from "./storage.js";
 
 // Persisted per-channel cursor: highest t.me post id already seen. Stored inside
 // state.visited so it rides the same R2/GitHub-cache state as site visited lists.
@@ -276,6 +277,7 @@ export async function discoverChannelJobs(state: DiscoveryState) {
 
   for (const channel of priorityFirst) {
     if (state.isTimeUp()) break;
+    maybeCheckpointState(state);
 
     console.log(`📡 Fetching channel: ${channel}`);
     let html = await fetchChannelPage(channel);

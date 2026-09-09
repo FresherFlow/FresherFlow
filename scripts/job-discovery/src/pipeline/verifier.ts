@@ -4,8 +4,9 @@ import { PLUGIN_REGISTRY, AtsJob, BOARD_SET } from '@fresherflow/plugins';
 import { parseJobUrl } from '@fresherflow/parser';
 import { isLocationIndiaOrRemote, scoreJobDescription } from '@fresherflow/utils';
 import { isJobLive } from '@fresherflow/pipeline';
-import { BAD_TITLE_REGEXES, loadRoleWords, titleHasValidRoleWord } from '@fresherflow/pipeline';
+import { BAD_TITLE_REGEXES, loadRoleWords, titleHasValidRoleWord, isListingDowngrade, classifyFormCandidate } from '@fresherflow/pipeline';
 import { isRejectedApplyUrl } from '@fresherflow/pipeline';
+import { maybeCheckpointState } from './storage.js';
 
 export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning: () => boolean) {
     const VERIFIER_CONCURRENCY = 3;
@@ -33,6 +34,7 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                     console.log(`\n[Timeout] ⏱️ Exceeded 80 minutes, gracefully stopping verifier daemon.`);
                     break;
                 }
+                maybeCheckpointState(state);
                 const candidate = state.candidateQueue.shift();
                 
                 if (!candidate) {
@@ -288,6 +290,19 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                             actualApplyLink = candidate.applyLink;
                         }
                     } catch {}
+                    // Listing-vs-requisition: a queued requisition that lands on a
+                    // search/listing page (e.g. bare .../External_Career_Site with
+                    // no /job/ id) must not be saved as the job. Pure predicate
+                    // (tested): only fires when the final URL differs from what
+                    // was queued — same-URL and same-requisition redirects pass.
+                    if (isListingDowngrade(candidate.applyLink, actualApplyLink)) {
+                        console.log(`  -> ❌ Skipping job: final URL is a listing/search page, not the queued requisition (${actualApplyLink})`);
+                        const normalizedListing = normalizeUrl(actualApplyLink);
+                        state.visited["__discovered_apply_links__"].push(normalizedListing);
+                        if (state.visited["__discovered_apply_links__"].length > 50000) state.visited["__discovered_apply_links__"].slice(-50000);
+                        state.rejectedReasons[normalizedListing] = `Redirected to listing page: ${actualApplyLink}`;
+                        continue;
+                    }
                     console.log(`  ✅ VERIFIED LIVE: ${actualApplyLink}`);
 
                     // Register newly discovered ATS board from dorker — only if confirmed live via Playwright
@@ -366,6 +381,27 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                             console.log(`  -> ❌ Skipping job: Rejected by scorer (Score: ${atsScore.score})`);
                             continue;
                         }
+                    }
+
+                    // Staleness + provenance (P1 #1, Gates 3+4) — pure classifier,
+                    // unit-tested. Strong dates decide alone; bare forms need
+                    // missing context on both titles; weak signals pass through.
+                    const formVerdict = classifyFormCandidate({
+                        applyLink: actualApplyLink,
+                        jobTitle,
+                        aggregatorTitle: candidate.aggregatorTitle,
+                        now: new Date(),
+                    });
+                    if (formVerdict.verdict !== 'ok') {
+                        const why = formVerdict.verdict === 'stale'
+                            ? `stale posting date (${formVerdict.detail})`
+                            : `bare form without job context (${jobTitle})`;
+                        console.log(`  -> ❌ Skipping job: ${why}`);
+                        const normalizedGated = normalizeUrl(actualApplyLink);
+                        state.visited["__discovered_apply_links__"].push(normalizedGated);
+                        if (state.visited["__discovered_apply_links__"].length > 50000) state.visited["__discovered_apply_links__"].slice(-50000);
+                        state.rejectedReasons[normalizedGated] = why;
+                        continue;
                     }
 
                     const normalizedApplyLink = normalizeUrl(actualApplyLink);

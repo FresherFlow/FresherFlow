@@ -70,7 +70,13 @@ const listingPathSegments = new Set([
     'drives', 'drive', 'off-campus', 'offcampus', 'offcampusdrive',
     'search', 'auth', 'signin', 'signup', 'register', 'registration', 'home', 'welcome',
     'opportunities', 'openings', 'vacancy', 'vacancies', 'find-jobs', 'job-search', 'jobsearch',
-    'notifications', 'notification', 'results', 'result', 'apply-online', 'applyonline'
+    'notifications', 'notification', 'results', 'result', 'apply-online', 'applyonline',
+    // Bare ATS career-site roots (no requisition id) are listings, not jobs —
+    // e.g. .../External_Career_Site vs .../External_Career_Site/job/..._R123
+    'external_career_site', 'externalcareersite', 'externalcareer',
+    // Bare position-listing pages (no requisition id). Requisition-shaped
+    // /search/<numeric-id> pages are NOT listings — see hasCareerEvidence.
+    'positions',
 ]);
 
 function isGovtDomain(host: string): boolean {
@@ -83,7 +89,7 @@ function isGovtDomain(host: string): boolean {
 
 // A URL is a listing/portal page (not a specific job) when the path is root
 // or its last segment is a listing word with no job ID after it.
-function isListingUrl(u: URL): boolean {
+export function isListingUrl(u: URL): boolean {
     const path = u.pathname.replace(/\/+$/, '');
     if (!path) return true; // bare domain root — not a specific job
     const segments = path.split('/').filter(Boolean);
@@ -99,7 +105,7 @@ function isListingUrl(u: URL): boolean {
 }
 
 // True when the URL must never become a job: malformed (no TLD), govt portal,
-// generic listing page, or a known aggregator/blocked domain.
+// generic listing page, document/blog content, or a known aggregator/blocked domain.
 export function isRejectedApplyUrl(urlStr: string): boolean {
     try {
         const u = new URL(unwrapRedirectors(urlStr));
@@ -108,6 +114,23 @@ export function isRejectedApplyUrl(urlStr: string): boolean {
         if (isGovtDomain(host)) return true;
         if (isListingUrl(u)) return true;
         if (isAggregatorDomain(host)) return true;
+        // Google Drive file/document URLs are documents, never applications.
+        // (docs.google.com FORMS stay allowed — proven walk-in channel.)
+        if (host === 'drive.google.com') return true;
+        // Blog/guide content paths are articles, never requisitions.
+        const segments = u.pathname.toLowerCase().split('/').filter(Boolean);
+        if (segments.some(s => s === 'blog' || s === 'blogs')) return true;
+        // 'blog' as a hyphen token (e.g. /blog-details/...) — same verdict,
+        // unless the host is a known ATS board OR the path carries its own
+        // exact career segment (e.g. corporate /careers/blog-writer-2026 role
+        // pages must survive). Both exemptions are corroborating evidence.
+        if (segments.flatMap(s => s.split('-')).some(t => t === 'blog' || t === 'blogs')) {
+            const careerSegments = new Set(['careers', 'career', 'jobs', 'job', 'apply']);
+            if (!isAtsHost(host) && !segments.some(s => careerSegments.has(s))) return true;
+        }
+        // Expired-redirect markers (e.g. LinkedIn trk=expired_jd_redirect) are
+        // strong stale evidence at URL level.
+        if (u.href.toLowerCase().includes('expired_jd_redirect')) return true;
         const blocked: string[] = AGGREGATOR_RULES._rules?.blacklistedDomains ?? [];
         for (const domain of blocked) {
             if (host === domain || host.endsWith('.' + domain)) return true;
@@ -115,6 +138,55 @@ export function isRejectedApplyUrl(urlStr: string): boolean {
     } catch {
         return true;
     }
+    return false;
+}
+
+// Career evidence for a candidate link: known ATS/application host, workday/
+// taleo host family, or an exact career path token (segments split on / - _ .,
+// so 'healthcare-careers' alone is NOT enough without host evidence — the
+// /blog/ rule above already removes article URLs before this is consulted).
+const ATS_HOSTS = [
+    'myworkdayjobs.com', 'myworkdaysite.com', 'greenhouse.io', 'lever.co',
+    'taleo.net', 'icims.com', 'smartrecruiters.com', 'eightfold.ai',
+    'oraclecloud.com', 'infosysapps.com', 'phenompro.com', 'ashbyhq.com',
+    'jobvite.com', 'workable.com', 'rippling.com', 'forms.gle',
+    'darwinbox.in', 'darwinbox.com', 'peoplestrong.com',
+];
+
+function isAtsHost(host: string): boolean {
+    for (const ats of ATS_HOSTS) {
+        if (host === ats || host.endsWith('.' + ats)) return true;
+    }
+    return false;
+}
+const CAREER_PATH_TOKENS = new Set([
+    'careers', 'career', 'jobs', 'job', 'apply', 'application', 'applications', 'applynow',
+    'vacancy', 'vacancies', 'opening', 'openings', 'opportunity', 'opportunities',
+    'requisition', 'jobboard', 'jobboards', 'jobdetail', 'jobdetails',
+    'opportunitydetail', 'document',
+]);
+
+export function hasCareerEvidence(link: string): boolean {
+    try {
+        const u = new URL(link);
+        const h = u.hostname.toLowerCase();
+        for (const ats of ATS_HOSTS) {
+            if (h === ats || h.endsWith('.' + ats)) return true;
+        }
+        if (h.includes('workday') || h.includes('taleo')) return true;
+        const segments = u.pathname.toLowerCase().split('/').filter(Boolean);
+        // Exact path segments are strong ('/careers/', '/JobBoard/').
+        if (segments.some(s => CAREER_PATH_TOKENS.has(s))) return true;
+        // Hyphen-sub-tokens are weak on their own ('healthcare-careers' also
+        // splits to 'careers'): require corroboration — a second career token.
+        // (ATS hosts already returned above, so this path is non-ATS only.)
+        const subtokens = segments.flatMap(s => s.split(/[-_.]+/));
+        if (subtokens.filter(t => CAREER_PATH_TOKENS.has(t)).length >= 2) return true;
+        // Requisition-shaped search pages: /search/<long-numeric-id> (observed
+        // legit application pages). Bare /search/ without an id stays evidence-free.
+        const tokens = subtokens;
+        if (tokens.includes('search') && tokens.some(t => /^\d{6,}$/.test(t))) return true;
+    } catch {}
     return false;
 }
 
@@ -236,22 +308,9 @@ async function extractCandidates(
 
         for (const link of externalLinks) {
             try {
-                const u = new URL(link);
-                const h = u.hostname.toLowerCase();
-                const pathLower = u.pathname.toLowerCase();
-                const atsHosts = [
-                    'myworkdayjobs.com', 'myworkdaysite.com', 'greenhouse.io', 'lever.co', 
-                    'taleo.net', 'icims.com', 'smartrecruiters.com', 'eightfold.ai', 
-                    'oraclecloud.com', 'infosysapps.com', 'phenompro.com', 'ashbyhq.com', 
-                    'jobvite.com', 'workable.com', 'rippling.com', 'forms.gle'
-                ];
-                let isAts = false;
-                for (const ats of atsHosts) {
-                    if (h === ats || h.endsWith('.' + ats)) {
-                        isAts = true; break;
-                    }
-                }
-                if (isAts || h.includes('workday') || h.includes('taleo') || pathLower.includes('careers') || pathLower.includes('jobs')) {
+                // ATS/career-evidence gate: a bare substring ('careers' also
+                // matches 'healthcare-careers') is not enough on its own.
+                if (hasCareerEvidence(link)) {
                     console.log(`🔗 ATS fallback link: ${link}`);
                     return link;
                 }
@@ -295,8 +354,15 @@ async function extractCandidates(
             }
         }
         
-        // 4. Return first external link from content area as a fallback
-        return externalLinks.length > 0 ? externalLinks[0] : null;
+        // 4. Last resort: first external link ONLY with career evidence.
+        // A generic first-external-link fallback produces arbitrary article/
+        // listing URLs as apply candidates — it must not queue on its own.
+        const evidenced = externalLinks.find(hasCareerEvidence);
+        if (evidenced) return evidenced;
+        if (externalLinks.length > 0) {
+            console.log(`❌ Fallback link lacks career evidence — not queueing (${externalLinks.length} external link(s) ignored).`);
+        }
+        return null;
 
     } catch (err) {
         console.error("❌ Error finding apply link:", (err as Error).message);

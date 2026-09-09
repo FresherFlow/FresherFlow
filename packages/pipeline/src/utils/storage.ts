@@ -18,6 +18,16 @@ function localStatePaths() {
     };
 }
 
+// Atomic local write (tmp + rename): a kill mid-write never leaves a torn
+// shard behind. Next-run loaders already treat a missing file as empty state.
+async function writeLocalJsonAtomic(file: string, data: unknown): Promise<void> {
+    const dir = path.dirname(file);
+    await fs.mkdir(dir, { recursive: true });
+    const tmp = `${file}.${process.pid}.tmp`;
+    await fs.writeFile(tmp, JSON.stringify(data), 'utf8');
+    await fs.rename(tmp, file);
+}
+
 function getBucket(): string {
     if (!process.env.R2_BUCKET_NAME) throw new Error('R2_BUCKET_NAME is not set.');
     return process.env.R2_BUCKET_NAME;
@@ -64,9 +74,8 @@ export async function loadVisited(): Promise<Record<string, string[]>> {
 // Save visited URLs into sharded R2 folders
 export async function saveVisited(visited: Record<string, string[]>) {
     if (STATE_STORAGE === 'local') {
-        const { dir, visited: file } = localStatePaths();
-        await fs.mkdir(dir, { recursive: true });
-        await fs.writeFile(file, JSON.stringify(visited), 'utf8');
+        const { visited: file } = localStatePaths();
+        await writeLocalJsonAtomic(file, visited);
         console.log(`Saved visited state to GitHub-cache file: ${file}`);
         return;
     }
@@ -127,9 +136,8 @@ export async function loadRejectedReasons(): Promise<Record<string, string>> {
 // Save rejected reasons sharded by domain to R2
 export async function saveRejectedReasons(reasons: Record<string, string>) {
     if (STATE_STORAGE === 'local') {
-        const { dir, rejected: file } = localStatePaths();
-        await fs.mkdir(dir, { recursive: true });
-        await fs.writeFile(file, JSON.stringify(reasons), 'utf8');
+        const { rejected: file } = localStatePaths();
+        await writeLocalJsonAtomic(file, reasons);
         console.log(`Saved rejected reasons to GitHub-cache file: ${file}`);
         return;
     }
@@ -179,9 +187,8 @@ export async function loadPostedLinks(): Promise<string[]> {
 // Save apply links posted to social media
 export async function savePostedLinks(posted: string[]) {
     if (STATE_STORAGE === 'local') {
-        const { dir, posted: file } = localStatePaths();
-        await fs.mkdir(dir, { recursive: true });
-        await fs.writeFile(file, JSON.stringify(posted), 'utf8');
+        const { posted: file } = localStatePaths();
+        await writeLocalJsonAtomic(file, posted);
         console.log(`Saved posted links to GitHub-cache file: ${file}`);
     }
 }

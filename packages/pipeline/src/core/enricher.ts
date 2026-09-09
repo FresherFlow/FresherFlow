@@ -22,7 +22,7 @@ Your task is to take a raw Job Description and extract a structured JSON payload
 5. **allowedPassoutYears**: Array of numbers representing eligible graduation years (e.g. [2024, 2025, 2026]). If none mentioned, return [].
 6. **experienceMin** and **experienceMax**: Min and max years of experience. For freshers/entry-level, experienceMin should be 0.
 7. **requiredSkills**: Array of technical skills, frameworks, tools, programming languages mentioned (e.g. ["Python", "React", "SQL"]).
-8. **description**: Must contain 80-90% of job info. Format cleanly using \\n for line breaks and **Heading** for section headings (**About the Role**, **Responsibilities**, **Requirements**, **Eligibility**).
+8. **description**: Must contain 80-90% of job info. Format cleanly using \\n for line breaks. Use plain section heading lines WITHOUT any markdown asterisks (e.g. "About the Role", "Responsibilities", "Requirements", "Eligibility" on their own lines). Never wrap headings or words in ** or _ — the UI renders plain text and asterisks show up literally.
 9. **notesHighlights**: Keep short callouts ONLY (e.g. shift timing, bond/service agreement, joining deadline). Must not exceed 25% of description length.
 10. **applicationDetails**: Must be null for direct URL redirect jobs.
 `;

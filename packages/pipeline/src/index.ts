@@ -9,6 +9,7 @@ export * from './core/enricher.js';
 export * from './core/enricher-schema.js';
 export * from './core/validator.js';
 export * from './core/verifier.js';
+export * from './core/staleness.js';
 
 export * from './utils/url.js';
 export * from './config/constants.js';

@@ -8,6 +8,7 @@ import { logDecision } from '@fresherflow/pipeline';
 import { findActualApplyLink } from '@fresherflow/pipeline';
 import { extractAtsBoard, buildJobIdentity } from '@fresherflow/pipeline';
 import { fetchSitemapPostUrls, listPostSitemapChildren } from './sitemap.js';
+import { maybeCheckpointState } from './storage.js';
 import { runAtsDiscovery, runDirectCompanyDiscovery } from '@fresherflow/pipeline';
 
 const SITEMAP_SAFETY_WINDOW = 15;
@@ -268,6 +269,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                 console.log(`\n[Timeout] ⏱️ Exceeded 80 minutes, halting aggregator scraping.`);
                 break;
             }
+            maybeCheckpointState(state);
 
             const site = activeSites.shift();
             if (!site) continue;
@@ -467,6 +469,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                         console.log(`\n[Timeout] ⏱️ Exceeded 80 minutes, halting aggregator post processing.`);
                         break;
                     }
+                    maybeCheckpointState(state);
 
                     const jobLinkNorm = normalizeUrl(jobLink);
                     // Skip if another parallel source (channel/dorker) already claimed this
