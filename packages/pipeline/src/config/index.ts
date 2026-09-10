@@ -242,6 +242,18 @@ export const AGGREGATOR_RULES: Record<string, any> = {
     navigateTimeout: 10000,
     selectorTimeout: 4000,
     preClickTimeout: 5000,
+    // Browser-lifecycle bounds: healthy close/newPage resolve in milliseconds
+    // (p99 low seconds on loaded runners); a wedged renderer never resolves,
+    // so these need only 2-3x headroom over p99. Single source of truth —
+    // callers must reference these, never hardcode the same milliseconds again.
+    pageCloseTimeout: 5000,
+    pageCreateTimeout: 10000,
+    contextCloseTimeout: 10000,
+    browserCloseTimeout: 10000,
+    // page.title() takes no timeout option; bound it like any lifecycle await.
+    pageTitleTimeout: 5000,
+    // Per-channel page fetch (Telegram web preview pages).
+    channelFetchTimeout: 15000,
   _rules: {
     blacklistedDomains: [] as string[],
     govtDomainSuffixes: [] as string[],

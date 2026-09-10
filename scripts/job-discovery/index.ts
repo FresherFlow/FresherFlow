@@ -13,6 +13,7 @@ import {
   writeGitHubSummary,
 } from "./src/pipeline/notifier.js";
 import { startRun, finishRun } from "@fresherflow/pipeline";
+import { withTimeout, AGGREGATOR_RULES } from "@fresherflow/pipeline";
 
 await loadEnv();
 
@@ -70,7 +71,9 @@ async function run() {
     throw err;
   } finally {
     if (state.browser) {
-      await state.browser.close();
+      if (await withTimeout(state.browser.close().catch(() => {}), AGGREGATOR_RULES.browserCloseTimeout) === null) {
+        console.log(`⚠️ browser.close() stuck >${AGGREGATOR_RULES.browserCloseTimeout / 1000}s — abandoning (process exits anyway)`);
+      }
     }
 
     const atsJobs = state.newJobsFound.filter((j) => j.sourceType === "ATS");

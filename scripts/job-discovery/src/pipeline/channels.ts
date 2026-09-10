@@ -1,4 +1,5 @@
 import { DiscoveryState } from "@fresherflow/pipeline";
+import { withTimeout, AGGREGATOR_RULES } from "@fresherflow/pipeline";
 import {
   normalizeUrl,
   sanitizeAtsUrl,
@@ -187,6 +188,7 @@ async function fetchChannelPage(
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
       },
+      signal: AbortSignal.timeout(AGGREGATOR_RULES.channelFetchTimeout),
     });
     if (!res.ok) return null;
     return res.text();
@@ -560,8 +562,16 @@ export async function discoverChannelJobs(state: DiscoveryState) {
         console.log(`http_gate=${httpGateReason} ${item.url}`);
 
         if (!httpGateResolved) {
-          await page.close().catch(() => {});
-          page = await context.newPage();
+          if (await withTimeout(page.close().catch(() => {}), AGGREGATOR_RULES.pageCloseTimeout) === null) {
+            console.log(`  ⚠️ page.close() stuck >${AGGREGATOR_RULES.pageCloseTimeout / 1000}s — abandoning page`);
+          }
+          const freshPage = await withTimeout(context.newPage(), AGGREGATOR_RULES.pageCreateTimeout);
+          if (!freshPage) {
+            console.log(`  ⚠️ context.newPage() stuck >${AGGREGATOR_RULES.pageCreateTimeout / 1000}s — skipping ${item.url}`);
+            processed++;
+            continue;
+          }
+          page = freshPage;
           try {
             await page.goto(item.url, {
               waitUntil: "domcontentloaded",
@@ -667,8 +677,12 @@ export async function discoverChannelJobs(state: DiscoveryState) {
         processed++;
       }
     } finally {
-      await page.close().catch(() => {});
-      await context.close();
+      if (await withTimeout(page.close().catch(() => {}), AGGREGATOR_RULES.pageCloseTimeout) === null) {
+        console.log(`  ⚠️ channel-teardown page.close() stuck >${AGGREGATOR_RULES.pageCloseTimeout / 1000}s — abandoning`);
+      }
+      if (await withTimeout(context.close(), AGGREGATOR_RULES.contextCloseTimeout) === null) {
+        console.log(`  ⚠️ channel-teardown context.close() stuck >${AGGREGATOR_RULES.contextCloseTimeout / 1000}s — abandoning`);
+      }
     }
   };
 

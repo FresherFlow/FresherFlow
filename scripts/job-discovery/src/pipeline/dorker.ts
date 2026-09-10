@@ -1,4 +1,5 @@
 import { DiscoveryState } from '@fresherflow/pipeline';
+import { withTimeout, AGGREGATOR_RULES } from '@fresherflow/pipeline';
 import { DORKER_ENABLED, DORKER_PAGES_PER_QUERY, HEAVY_DORK_QUERIES, ATS_HOSTNAMES, executeDorkQuery } from '@fresherflow/pipeline';
 import { normalizeUrl, sanitizeAtsUrl } from '@fresherflow/pipeline';
 import { extractAtsBoard, buildJobIdentity } from '@fresherflow/pipeline';
@@ -142,7 +143,9 @@ export async function discoverDorkerJobs(state: DiscoveryState) {
     try {
         await Promise.all(Array.from({ length: DORKER_CONCURRENCY }, () => dorkerWorker()));
     } finally {
-        await context.close().catch(() => {});
+        if (await withTimeout(context.close().catch(() => {}), AGGREGATOR_RULES.contextCloseTimeout) === null) {
+            console.log(`  ⚠️ dorker-teardown context.close() stuck >${AGGREGATOR_RULES.contextCloseTimeout / 1000}s — abandoning`);
+        }
     }
 
     console.log(`\n=== Phase 1.5 Complete ===`);

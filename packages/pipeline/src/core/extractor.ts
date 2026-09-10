@@ -223,6 +223,19 @@ export function isValidApplyLink(urlStr: string, currentDomain: string): boolean
     }
 }
 
+// Messaging-invite hosts never host job applications (WhatsApp/Telegram/
+// Discord/Slack communities). Matched by substring on the raw href — no URL
+// parse needed — so extractor drops them before validation and logging.
+const SOCIAL_INVITE_MARKERS = [
+    'chat.whatsapp.com/', 'whatsapp.com/', 't.me/', 'telegram.me/',
+    'discord.gg/', 'discord.com/invite', 'slack.com/', 'signal.me/',
+];
+
+export function isSocialInviteLink(href: string): boolean {
+    const h = href.toLowerCase();
+    return SOCIAL_INVITE_MARKERS.some(m => h.includes(m));
+}
+
 // Find actual ATS link
 export async function findActualApplyLink(
     page: Page,
@@ -267,11 +280,47 @@ async function extractCandidates(
         // Dedup anchors repeated within this page pass (sidebar/footer links
         // appear once per wrap); checkedInvalidLinks dedups across passes.
         const seenInPass = new Set<string>();
+        let skippedAnchors = 0;
+        let skippedSocial = 0;
+        let skippedInternal = 0;
         for (const btn of applyButtons) {
             if (checked >= maxButtons) break;
             checked++;
             const href = await btn.getAttribute('href');
-            if (href) {
+            // Buttons often carry no href at all — drop before any string/URL work.
+            if (!href) {
+                skippedAnchors++;
+                continue;
+            }
+            // Fragment links (#How_to_Apply, #Subscribe_..., full-URL or bare)
+            // match the apply-text locator but can never be apply links when
+            // they point at this page — suck them all up before URL work and
+            // per-link logging (they were 238+ log lines/run).
+            if (href.includes('#')) {
+                let isSamePageFrag = !href.slice(0, href.indexOf('#'));
+                if (!isSamePageFrag) {
+                    try {
+                        const bu = new URL(href, page.url());
+                        const cu = new URL(page.url());
+                        isSamePageFrag = bu.href === cu.href ||
+                            (bu.hostname.replace(/^www\./, '') === cu.hostname.replace(/^www\./, '') &&
+                             bu.pathname.replace(/\/$/, '') === cu.pathname.replace(/\/$/, ''));
+                    } catch {
+                        isSamePageFrag = true;
+                    }
+                }
+                if (isSamePageFrag) {
+                    skippedAnchors++;
+                    continue;
+                }
+            }
+            // Messaging-invite links (WhatsApp/Telegram/Discord/...) can never host
+            // an application — silently bucket them like anchors instead of burning
+            // a validation + log line per button (they recur on every page).
+            if (isSocialInviteLink(href)) {
+                skippedSocial++;
+                continue;
+            }
                 try {
                     const u = new URL(href, page.url());
                     const currentU = new URL(page.url());
@@ -290,12 +339,27 @@ async function extractCandidates(
                         return unwrappedHref;
                     } else {
                         checkedInvalidLinks.add(unwrappedHref);
-                        console.log(`❌ Invalid apply link — not a real application page (skipping): ${unwrappedHref}`);
+                        // Same-host navigation links (other posts on this aggregator)
+                        // are expected, not candidates — bucket silently. Only
+                        // external URLs earn a log line.
+                        const sameHost = u.hostname.replace(/^www\./, '').toLowerCase() ===
+                            currentU.hostname.replace(/^www\./, '').toLowerCase();
+                        if (sameHost) {
+                            skippedInternal++;
+                        } else {
+                            console.log(`❌ Invalid apply link — not a real application page (skipping): ${unwrappedHref}`);
+                        }
                     }
                 } catch {
                     // Ignore invalid URLs
                 }
-            }
+        }
+        const skippedParts: string[] = [];
+        if (skippedAnchors > 0) skippedParts.push(`${skippedAnchors} same-page anchor(s)`);
+        if (skippedSocial > 0) skippedParts.push(`${skippedSocial} social invite link(s)`);
+        if (skippedInternal > 0) skippedParts.push(`${skippedInternal} same-site link(s)`);
+        if (skippedParts.length > 0) {
+            console.log(`↩️ Skipped ${skippedParts.join(', ')} (never apply links).`);
         }
 
         // 2. Fall back to collecting all external links and checking for known ATS hosts

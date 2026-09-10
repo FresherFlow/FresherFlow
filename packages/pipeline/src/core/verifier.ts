@@ -1,5 +1,6 @@
 import { Page } from 'playwright';
-import { EXPIRED_REGEXES } from '../config/index.js';
+import { EXPIRED_REGEXES, AGGREGATOR_RULES } from '../config/index.js';
+import { withTimeout } from '../utils/timeout.js';
 import { isListingUrl } from './extractor.js';
 import { isActualJob, scoreJobDescription } from '@fresherflow/utils';
 import { logDecision } from '../utils/logger.js';
@@ -81,7 +82,9 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
 
 
 
-        const pageTitle = await page.title().catch(() => "");
+        // page.title() takes no timeout option — race it like any other
+        // lifecycle await; a wedged renderer hangs it the same way.
+        const pageTitle = (await withTimeout(page.title().catch(() => ""), AGGREGATOR_RULES.pageTitleTimeout)) ?? "";
         // Normalize before the generic-portal check: raw titles often carry
         // site suffixes ("Search for Jobs | Thomson Reuters") that defeat the
         // anchored patterns below. Stripping the pipe-tail is safe — no

@@ -1,4 +1,5 @@
 import { DiscoveryState } from '@fresherflow/pipeline';
+import { withTimeout, AGGREGATOR_RULES } from '@fresherflow/pipeline';
 import { normalizeUrl } from '@fresherflow/pipeline';
 import { PLUGIN_REGISTRY, AtsJob, BOARD_SET } from '@fresherflow/plugins';
 import { parseJobUrl } from '@fresherflow/parser';
@@ -255,9 +256,17 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                 }
 
                 // ── Fallback to Playwright (Non-API) ──────────────────────────────
-                // Close and recreate page to avoid stale browser state from previous timeout
-                await page.close().catch(() => {});
-                page = await context.newPage();
+                // Close and recreate page to avoid stale browser state from previous timeout.
+                // Bounded: abandon/skip instead of hanging the daemon on a wedged page.
+                if (await withTimeout(page.close().catch(() => {}), AGGREGATOR_RULES.pageCloseTimeout) === null) {
+                    console.log(`  ⚠️ page.close() stuck >${AGGREGATOR_RULES.pageCloseTimeout / 1000}s — abandoning page`);
+                }
+                const freshPage = await withTimeout(context.newPage(), AGGREGATOR_RULES.pageCreateTimeout);
+                if (!freshPage) {
+                    console.log(`  ⚠️ context.newPage() stuck >${AGGREGATOR_RULES.pageCreateTimeout / 1000}s — skipping candidate`);
+                    continue;
+                }
+                page = freshPage;
                 let checkResult = await isJobLive(page, candidate.applyLink);
                 if (candidate.isTestBypass) {
                     checkResult = { live: true, status: 'live', finalUrl: candidate.applyLink, atsText: checkResult.atsText || '' };
@@ -317,7 +326,7 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                         }
                     }
 
-                    let jobTitle = await page.title().catch(() => "");
+                    let jobTitle = (await withTimeout(page.title().catch(() => ""), AGGREGATOR_RULES.pageTitleTimeout)) ?? "";
                     jobTitle = jobTitle.replace(/( - Workday| - Lever| - Greenhouse| Careers| - Jobs| - Job Detail.*| - Careers Marketplace.*| - Harman.*| - Siemens.*| - \d+ | \| .*)$/i, '').trim();
                     // Clean up trailing dashes from stripping
                     jobTitle = jobTitle.replace(/( -)+$/, '').trim();
@@ -449,8 +458,12 @@ export async function verifyCandidates(state: DiscoveryState, isDiscoveryRunning
                 }
             }
         } finally {
-            await page.close();
-            await context.close();
+            if (await withTimeout(page.close().catch(() => {}), AGGREGATOR_RULES.pageCloseTimeout) === null) {
+                console.log(`  ⚠️ verifier-teardown page.close() stuck >${AGGREGATOR_RULES.pageCloseTimeout / 1000}s — abandoning`);
+            }
+            if (await withTimeout(context.close(), AGGREGATOR_RULES.contextCloseTimeout) === null) {
+                console.log(`  ⚠️ verifier-teardown context.close() stuck >${AGGREGATOR_RULES.contextCloseTimeout / 1000}s — abandoning`);
+            }
         }
     };
     await Promise.all(Array.from({ length: VERIFIER_CONCURRENCY }, () => verifierWorker()));

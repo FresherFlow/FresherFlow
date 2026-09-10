@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { DiscoveryState } from '@fresherflow/pipeline';
-import { ATS_CDN_BASE, ATS_PROVIDERS, TARGET_SITES, fetchTargetSitesFromCdn } from '@fresherflow/pipeline';
+import { ATS_CDN_BASE, ATS_PROVIDERS, TARGET_SITES, fetchTargetSitesFromCdn, AGGREGATOR_RULES } from '@fresherflow/pipeline';
 import { normalizeUrl, sanitizeAtsUrl, isValidApplyLink } from '@fresherflow/pipeline';
 import { isLocationIndiaOrRemote, scoreJobDescription, hasFresherKeyword, isActualJob, isFresherJob, isSeniorJob } from '@fresherflow/utils';
 import { logDecision } from '@fresherflow/pipeline';
@@ -9,6 +9,7 @@ import { findActualApplyLink } from '@fresherflow/pipeline';
 import { extractAtsBoard, buildJobIdentity } from '@fresherflow/pipeline';
 import { fetchSitemapPostUrls, listPostSitemapChildren } from './sitemap.js';
 import { maybeCheckpointState } from './storage.js';
+import { withTimeout } from '@fresherflow/pipeline';
 import { runAtsDiscovery, runDirectCompanyDiscovery } from '@fresherflow/pipeline';
 
 const SITEMAP_SAFETY_WINDOW = 15;
@@ -287,6 +288,8 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
 
                 const jobLinks: string[] = [];
                 const siteDomain = new URL(site.urls[0]).hostname;
+                // Worker heartbeat: posts checked on this site (logged at site end).
+                let siteChecked = 0;
                 // Per-site safety-window URL set (normalized) for this run —
                 // filled during the sitemap pass below, read at queue time.
                 const safetyNorms = new Set<string>();
@@ -408,6 +411,21 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
 
                 let allLinksThisSite: { text: string; href: string }[] = [];
                 const govtUrls = new Set((site as any).govtUrls || []);
+                // Conditional fallback: the sitemap pass already ran above. Only
+                // pay for the expensive HTML crawl when it yielded nothing (or
+                // the site has no sitemap configured at all) — crawling every
+                // listing page unconditionally burned ~100 page loads/run for
+                // links the sitemap had already supplied.
+                const sitemapYield = jobLinks.length;
+                const siteHasSitemaps = Array.isArray((site as any).sitemaps) && (site as any).sitemaps.length > 0;
+                if (!siteHasSitemaps) {
+                    console.log(`📄 No sitemap configured for ${site.name} — full start-page crawl.`);
+                } else if (sitemapYield === 0) {
+                    console.log(`📄 Sitemap yielded nothing new for ${site.name} — fallback start-page crawl.`);
+                } else {
+                    console.log(`⏭️ Skipping start-page crawl for ${site.name}: sitemap yielded ${sitemapYield} link(s).`);
+                }
+                if (!siteHasSitemaps || sitemapYield === 0) {
                 for (const url of site.urls) {
                     if (govtUrls.has(url)) {
                         console.log(`🏛️  Skipped govt URL: ${url}`);
@@ -447,6 +465,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                         jobLinks.push(...pageFiltered);
                     } catch {}
                 }
+                } // end conditional-fallback gate: start pages + pagination ran only when gated in
 
                 // Deduplicate and exclude already-visited links — NORMALIZE before comparison
                 // so that /career/, /career/#respond, /career?utm=x all count as the same page.
@@ -487,12 +506,21 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                     if (state.visited[site.name].length > 50000) {
                         state.visited[site.name] = state.visited[site.name].slice(-50000);
                     }
+                    siteChecked++;
                     console.log(`🔍 Checking post: ${jobLink}`);
                     
 
-                    // Close and recreate page to avoid stale browser state from previous timeout
-                    await page.close().catch(() => {});
-                    page = await context.newPage();
+                    // Close and recreate page to avoid stale browser state from previous timeout.
+                    // Bounded: a wedged renderer never acks close/newPage — abandon or bail out instead of hanging.
+                    if (await withTimeout(page.close().catch(() => {}), AGGREGATOR_RULES.pageCloseTimeout) === null) {
+                        console.log(`  ⚠️ page.close() stuck >${AGGREGATOR_RULES.pageCloseTimeout / 1000}s — abandoning page`);
+                    }
+                    const freshPage = await withTimeout(context.newPage(), AGGREGATOR_RULES.pageCreateTimeout);
+                    if (!freshPage) {
+                        console.log(`  ⚠️ context.newPage() stuck >${AGGREGATOR_RULES.pageCreateTimeout / 1000}s — skipping rest of ${site.name} (partial yield kept)`);
+                        break;
+                    }
+                    page = freshPage;
                     
                     // Fast reject: if the jobLink itself is a listing/aggregator/govt URL — don't load it.
                     // (isValidApplyLink checks this WITHOUT opening the page.)
@@ -646,11 +674,19 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                         state.visited[SITEMAP_WM_KEY] = [sitemapMaxLastmod];
                     }
                 }
+                // Worker heartbeat: names the worker's site at completion so a
+                // future silence points at a site instead of needing an autopsy.
+                console.log(`✅ Done site: ${site.name} (${siteChecked} posts checked)`);
             } finally {
-                try { await page.close(); } catch {}
+                // Bounded teardown: must never hold Promise.all past the run.
+                if (await withTimeout(page.close().catch(() => {}), AGGREGATOR_RULES.pageCloseTimeout) === null) {
+                    console.log(`  ⚠️ site-teardown page.close() stuck >${AGGREGATOR_RULES.pageCloseTimeout / 1000}s — abandoning`);
+                }
             }
         }
-        await context.close();
+        if (await withTimeout(context.close(), AGGREGATOR_RULES.contextCloseTimeout) === null) {
+            console.log(`  ⚠️ context.close() stuck >${AGGREGATOR_RULES.contextCloseTimeout / 1000}s — abandoning context`);
+        }
     };
 
     await Promise.all(Array.from({ length: SCRAPER_CONCURRENCY }, () => scraperWorker()));
