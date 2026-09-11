@@ -145,7 +145,7 @@ interface FeedOpportunity {
     applyLink?: string;
     sourceLink?: string;
     publishedAt?: string;
-    type?: 'production' | 'discovered' | 'processed';
+    type?: 'production' | 'discovered' | 'processed' | 'external';
 }
 
 interface FeedJson {
@@ -210,6 +210,29 @@ async function run() {
 
     if (!ingestionSuccess) {
         console.warn("Could not fetch from Ingestion API after all attempts. Proceeding with production jobs only.");
+    }
+
+    // Community board feed (India-Jobs-Internships data/jobs.json, via
+    // EXTERNAL_JOBS_JSON): unknown links join the same normalized-URL dedupe
+    // below, so overlaps with production/processed/discovered cost zero extra
+    // checks. Already-EXPIRED entries are never re-fetched. Unset = skipped.
+    const externalJobsUrl = (process.env.EXTERNAL_JOBS_JSON || '').trim();
+    if (externalJobsUrl) {
+        try {
+            const extRes = await fetch(externalJobsUrl);
+            if (extRes.ok) {
+                const extData = await extRes.json() as { jobs?: Array<{ title?: string; company?: string; applyLink?: string; status?: string }> };
+                const extOpps: FeedOpportunity[] = (extData.jobs || [])
+                    .filter(j => j.applyLink && (j.status || 'PUBLISHED') !== 'EXPIRED')
+                    .map(j => ({ id: '', title: j.title || 'External job', company: j.company || 'Unknown', applyLink: j.applyLink as string, sourceLink: j.applyLink as string, type: 'external' as const }));
+                opportunities = opportunities.concat(extOpps);
+                console.log(`Added ${extOpps.length} jobs from external board feed.`);
+            } else {
+                console.warn(`External board feed returned status: ${extRes.status}`);
+            }
+        } catch (err) {
+            console.warn('External board feed fetch failed (continuing without it):', err instanceof Error ? err.message : String(err));
+        }
     }
 
     console.log(`Found ${opportunities.length} active opportunities to check.`);
@@ -492,6 +515,32 @@ async function run() {
             }
         } catch (err) {
             console.error('Failed to call ingestion expire API:', err instanceof Error ? err.message : String(err));
+        }
+    }
+
+    // Community board handoff: expired external links go to the board's own
+    // bulk_mark_inactive issue flow (exact applyLink strings — its matcher is
+    // ===). Approval + deploy stay on that repo; nothing runs there.
+    const externalExpired = [...new Set(expiredJobs.filter(j => j.type === 'external' && j.applyLink).map(j => j.applyLink as string))];
+    if (externalExpired.length > 0) {
+        const boardToken = (process.env.JOBS_REPO_TOKEN || '').trim();
+        if (!boardToken) {
+            console.warn(`JOBS_REPO_TOKEN not set — skipping board handoff for ${externalExpired.length} expired external job(s).`);
+        } else {
+            try {
+                const today = new Date().toISOString().slice(0, 10);
+                const body = `### Job Posting URLs\n${externalExpired.join('\n')}\n\n### Reason for marking as inactive\nExpired: confirmed dead by FresherFlow sweeper (${today}).`;
+                const res = await fetch('https://api.github.com/repos/FresherFlow/India-Jobs-Internships/issues', {
+                    method: 'POST',
+                    headers: { 'Accept': 'application/vnd.github+json', 'Authorization': `Bearer ${boardToken}`, 'X-GitHub-Api-Version': '2022-11-28' },
+                    body: JSON.stringify({ title: `Bulk Marking Roles as Inactive (sweeper ${today})`, body, labels: ['bulk_mark_inactive'] }),
+                });
+                console.log(res.ok
+                    ? `Board handoff: filed bulk_mark_inactive issue with ${externalExpired.length} URL(s).`
+                    : `Board handoff failed: status ${res.status} ${(await res.text()).slice(0, 200)}`);
+            } catch (err) {
+                console.warn('Board handoff failed (continuing):', err instanceof Error ? err.message : String(err));
+            }
         }
     }
 

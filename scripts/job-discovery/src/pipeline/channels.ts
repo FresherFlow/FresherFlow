@@ -645,7 +645,7 @@ export async function discoverChannelJobs(state: DiscoveryState) {
           state.knownLinks.has(normalizedApplyLink) ||
           state.visited["__discovered_apply_links__"].includes(normalizedApplyLink)
         ) {
-          console.log(`♻️ Skipped: already seen`);
+          console.log(`♻️ Skipped: already seen [${item.channel}] ${cleanApplyLink}`);
           processed++;
           continue;
         }
@@ -659,7 +659,7 @@ export async function discoverChannelJobs(state: DiscoveryState) {
         if (isFresherJob(title)) isReview = false;
         else if (scoreResult.verdict === "HIGH") isReview = false;
 
-        console.log(`📥 Queued: ${cleanApplyLink}`);
+        console.log(`📥 Queued: ${cleanApplyLink} [${item.channel}]`);
         const channelIdentity = buildJobIdentity({ applyLink: cleanApplyLink, company: parsedCompany, title });
         state.candidateQueue.push({
           applyLink: cleanApplyLink,

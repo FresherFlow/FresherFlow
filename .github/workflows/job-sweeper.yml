@@ -48,4 +48,6 @@ jobs:
           R2_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          EXTERNAL_JOBS_JSON: https://raw.githubusercontent.com/FresherFlow/India-Jobs-Internships/main/data/jobs.json
+          JOBS_REPO_TOKEN: ${{ secrets.JOBS_REPO_TOKEN }}
         run: pnpm start
