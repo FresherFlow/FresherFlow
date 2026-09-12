@@ -51,7 +51,7 @@ export async function processSocialJob(job: Job<SocialJobData>): Promise<void> {
     if (post.platform === SocialPlatform.X) {
       externalPostId = await postToX(text);
     } else if (post.platform === SocialPlatform.LINKEDIN) {
-      externalPostId = await postToLinkedIn(text);
+      externalPostId = await postToLinkedIn(text, true);
     } else if (post.platform === SocialPlatform.FACEBOOK) {
       externalPostId = await postToFacebook(text);
     }
@@ -110,7 +110,7 @@ export async function processSocialJob(job: Job<SocialJobData>): Promise<void> {
   }
 }
 
-export async function postToBuffer(channelId: string | undefined, text: string): Promise<string> {
+export async function postToBuffer(channelId: string | undefined, text: string, attachLinkedInLink = false): Promise<string> {
   const apiKey = process.env.BUFFER_API_KEY;
   if (!apiKey) {
     throw new Error('Buffer API key is not configured. Set BUFFER_API_KEY in environment.');
@@ -135,7 +135,7 @@ export async function postToBuffer(channelId: string | undefined, text: string):
     mode: 'shareNow',
   };
 
-  if (extractedUrl && channelId === process.env.BUFFER_LINKEDIN_CHANNEL_ID) {
+  if (extractedUrl && (attachLinkedInLink || channelId === process.env.BUFFER_LINKEDIN_CHANNEL_ID)) {
     input.metadata = {
       linkedin: {
         linkAttachment: {
@@ -195,28 +195,7 @@ export async function postToX(text: string): Promise<string> {
 export async function postToLinkedIn(text: string, attachLink = false): Promise<string> {
   const channelId = process.env.BUFFER_LINKEDIN_CHANNEL_ID;
   if (!channelId) throw new Error('BUFFER_LINKEDIN_CHANNEL_ID not configured');
-  const apiKey = process.env.BUFFER_API_KEY;
-  if (!apiKey) throw new Error('Buffer API key not configured');
-  const urlMatch = text.match(/(https?:\/\/[^\s]+|fresherflow\.in[^\s]+)/);
-  let extractedUrl: string | undefined;
-  if (urlMatch) {
-    extractedUrl = urlMatch[0];
-    if (!extractedUrl.startsWith('http')) {
-      extractedUrl = `https://${extractedUrl}`;
-    }
-  }
-  const input: Record<string, unknown> = {
-    channelId,
-    text,
-    schedulingType: 'automatic',
-    mode: 'shareNow',
-  };
-  if (extractedUrl && attachLink) {
-    input.metadata = {
-      linkedin: { linkAttachment: { url: extractedUrl } },
-    };
-  }
-  return postToBuffer(channelId, text);
+  return postToBuffer(channelId, text, attachLink);
 }
 
 async function postToFacebook(text: string): Promise<string> {

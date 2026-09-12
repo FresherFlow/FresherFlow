@@ -62,23 +62,24 @@ export function formatSocialCaption(job: SocialPostJob, platform: string): strin
     const company = companyLine(job);
     const title = job.title;
     const link = job.applyLink;
+    const boardLink = `\n\nExplore more jobs: https://fresherflow.github.io/India-Jobs-Internships/#`;
 
     switch (platform) {
         case 'x': {
             const shortTitle = title.length > 60 ? title.slice(0, 57) + '...' : title;
-            let caption = `New Job Opening | ${date}\n\n${company}Role: ${shortTitle}\nApply: ${link}\n\n#FresherJobs #Hiring`;
+            let caption = `New Job Opening | ${date}\n\n${company}Role: ${shortTitle}\nApply: ${link}${boardLink}\n\n#FresherJobs #Hiring`;
             // X limit is 280 chars. If over, shorten further.
             if (caption.length > 280) {
                 const shorter = title.length > 40 ? title.slice(0, 37) + '...' : title;
-                caption = `New Job Opening | ${date}\n\n${company}Role: ${shorter}\nApply: ${link}\n\n#FresherJobs`;
+                caption = `New Job Opening | ${date}\n\n${company}Role: ${shorter}\nApply: ${link}${boardLink}\n\n#FresherJobs`;
             }
             return caption;
         }
         case 'linkedin':
-            return `New Job Opening | ${date}\n\n${company}Role: ${title}\n\nApply: ${link}\n\n#Freshers #Hiring #EntryLevel #Jobs`;
+            return `New Job Opening | ${date}\n\n${company}Role: ${title}\n\nApply: ${link}${boardLink}\n\n#Freshers #Hiring #EntryLevel #Jobs`;
         case 'telegram':
         default:
-            return `New Job Opening | ${date}\n\n${company}Role: ${title}\nApply Here: ${link}\n\n#Freshers #Hiring #EntryLevel`;
+            return `New Job Opening | ${date}\n\n${company}Role: ${title}\nApply Here: ${link}${boardLink}\n\n#Freshers #Hiring #EntryLevel`;
     }
 }
 
