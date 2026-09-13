@@ -58,7 +58,7 @@ const TIER_A_PROFILES: Record<string, string> = {
         <p>Freshers are recruited into two primary entry-level profiles:</p>
         <ul>
             <li><strong>Associate Software Engineer (ASE):</strong> Standard CTC is ₹4.5 LPA.</li>
-            <li><strong>Advanced Associate Software Engineer (AASE):</strong> Premium CTC ranging between ₹6.5 LPA and ₹7.0 LPA.</li>
+            <li><strong>Advanced Associate Software Engineer (AASE):</strong> Higher CTC band ranging between ₹6.5 LPA and ₹7.0 LPA.</li>
         </ul>
 
         <h3>Skills and Technologies Used</h3>
@@ -84,7 +84,7 @@ const TIER_A_PROFILES: Record<string, string> = {
         <ul>
             <li><strong>TCS Ninja:</strong> General entry-level role offering ₹3.36 LPA.</li>
             <li><strong>TCS Digital:</strong> Mid-tier development role focusing on next-gen tech, offering ₹7.0 LPA.</li>
-            <li><strong>TCS Prime:</strong> Premium engineering role focusing on advanced systems and R&D, offering ₹9.0 LPA.</li>
+            <li><strong>TCS Prime:</strong> Top-tier engineering role focusing on advanced systems and R&D, offering ₹9.0 LPA.</li>
         </ul>
 
         <h3>Skills and Technologies Used</h3>
@@ -124,8 +124,8 @@ const TIER_A_PROFILES: Record<string, string> = {
         <p>Cognizant's entry-level recruitment workflow generally features:</p>
         <ol>
             <li><strong>Aptitude & Technical MCQ Test:</strong> Evaluates quantitative aptitude, logical reasoning, and programming fundamentals (debugging and dry-runs).</li>
-            <li><strong>Coding Test:</strong> Practical coding challenges verifying algorithmic competence.</li>
-            <li><strong>Technical & HR Interview:</strong> Verifies core subjects like DBMS, Data Structures, OOPs, and review of academic projects.</li>
+            <li><strong>Coding Test:</strong> Practical coding challenges testing algorithmic competence.</li>
+            <li><strong>Technical & HR Interview:</strong> Covers core subjects like DBMS, Data Structures, OOPs, and review of academic projects.</li>
         </ol>
 
         <h3>Eligibility & Graduation Batches</h3>
@@ -211,6 +211,6 @@ export function getCompanyDescription(slug: string, name: string, stats: Company
         <p>Recruiters at ${cleanName} typically look for foundational expertise in <strong>${skillList}</strong>. Candidates are expected to possess strong communication skills, basic programming logic, and problem-solving capabilities. Common eligible degrees include BE, BTech, BCA, MCA, BSc CS, or related disciplines.</p>
 
         <h3>Recent Opportunities & Applying</h3>
-        <p>Active postings are verified and open to recent graduation batches, including 2025 and 2026 graduates. Every apply link directs candidates to the official careers site of ${cleanName}. Be sure to verify all requirements, aggregate percentage cutoffs, and bond commitments before submitting your application to ensure maximum success.</p>
+        <p>Active postings are current and open to recent graduation batches, including 2025 and 2026 graduates. Every apply link directs candidates to the official careers site of ${cleanName}. Be sure to double-check all requirements, aggregate percentage cutoffs, and bond commitments before submitting your application to ensure maximum success.</p>
     `;
 }

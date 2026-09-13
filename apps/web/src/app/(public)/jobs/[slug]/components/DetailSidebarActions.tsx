@@ -197,7 +197,7 @@ export function DetailSidebarActions({
             {/* ── Submit a job ── */}
             <div className="pt-3 border-t border-border/40">
                 <Link
-                    href="/submit"
+                    href="/post"
                     className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
                     <span className="w-4 h-4 rounded border border-dashed border-current flex items-center justify-center text-[10px] leading-none">+</span>

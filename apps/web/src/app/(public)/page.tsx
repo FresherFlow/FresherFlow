@@ -3,7 +3,10 @@ import { fetchFeedIndex, fetchGovernmentFeed } from '@/lib/api/cdnFeed';
 import dynamic from 'next/dynamic';
 import { HeroSection } from '@/features/landing/HeroSection';
 import type { Opportunity } from '@fresherflow/types';
+import { LinkHealth } from '@fresherflow/types';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
+import { formatBoardTime } from '@/features/landing/boardTime';
+import type { TickerEvent } from '@/features/landing/CommunityTicker';
 
 // Lazy-load below-the-fold sections so the heavy JobCard chain (Firebase + location
 // taxonomy) never delays above-the-fold LCP. Skeletons preserve layout with no CLS.
@@ -30,33 +33,37 @@ const FinalCTA = dynamic(
     { loading: () => null }
 );
 
+const LANDING_TITLE = 'FresherFlow - Fresher jobs, internships and walk-ins in India';
+const LANDING_DESCRIPTION =
+    'Off-campus jobs, internships and walk-ins for freshers in India, with who shared each opening and what other freshers found.';
+
 export const metadata: Metadata = {
     title: {
-        absolute: 'FresherFlow - Verified Fresher Jobs & Internships in India',
+        absolute: LANDING_TITLE,
     },
-    description: 'Discover manually verified off-campus jobs, internships, and walk-ins for freshers across India. No fake listings. Direct official apply links.',
-    keywords: ['verified off campus jobs', 'fresher jobs', 'internships', 'walk-ins', 'off campus drives', 'entry level jobs'],
+    description: LANDING_DESCRIPTION,
+    keywords: ['off campus jobs', 'fresher jobs', 'internships', 'walk-ins', 'entry level jobs', 'jobs for freshers'],
     alternates: {
         canonical: '/',
     },
     openGraph: {
         siteName: 'FresherFlow',
-        title: 'FresherFlow - Verified Fresher Jobs & Internships in India',
-        description: 'Discover manually verified off-campus jobs, internships, and walk-ins for freshers across India. No fake listings. Direct official apply links.',
+        title: LANDING_TITLE,
+        description: LANDING_DESCRIPTION,
         type: 'website',
         images: [
             {
                 url: '/opengraph-image',
                 width: 1200,
                 height: 630,
-                alt: 'FresherFlow - Verified Fresher Jobs and Internships',
+                alt: 'FresherFlow - fresher jobs and internships in India',
             },
         ],
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'FresherFlow - Verified Fresher Jobs & Internships in India',
-        description: 'Discover manually verified off-campus jobs, internships, and walk-ins for freshers across India. No fake listings. Direct official apply links.',
+        title: LANDING_TITLE,
+        description: LANDING_DESCRIPTION,
         images: ['/twitter-image'],
     },
 };
@@ -106,12 +113,29 @@ export default async function LandingPage() {
         '@type': 'Organization',
         name: 'FresherFlow',
         ...(SITE_URL ? { url: SITE_URL, logo: `${SITE_URL}/fresherflow-logo-v2.png` } : {}),
-        description: 'Discover manually verified off-campus jobs, internships, and walk-ins for freshers across India. No fake listings. Direct official apply links.',
+        description: LANDING_DESCRIPTION,
         sameAs: [
             'https://x.com/fresherflowin',
             'https://linkedin.com/company/fresherflow'
         ]
     };
+
+    // The ticker only carries facts the board can vouch for (plan 16 §16.8):
+    // real board entries and real link checks, never invented community activity.
+    const tickerEvents: TickerEvent[] = recentOps.slice(0, 4).flatMap((opportunity) => {
+        const events: TickerEvent[] = [];
+        const posted = formatBoardTime(opportunity.postedAt);
+        if (posted) {
+            events.push({ id: `${opportunity.id}-posted`, text: `${opportunity.title} - on the board ${posted}` });
+        }
+        if (opportunity.linkHealth === LinkHealth.HEALTHY) {
+            const checked = formatBoardTime(opportunity.lastVerifiedAt);
+            if (checked) {
+                events.push({ id: `${opportunity.id}-checked`, text: `${opportunity.company} - link checked ${checked}` });
+            }
+        }
+        return events;
+    });
 
     return (
         <>
@@ -121,7 +145,12 @@ export default async function LandingPage() {
             />
             <div className="min-h-screen bg-background flex flex-col selection:bg-primary/20 relative overflow-hidden">
                 <main className="flex-1 flex flex-col relative z-10">
-                    <HeroSection liveCount={liveCount} companiesCount={companiesCount} />
+                    <HeroSection
+                        liveCount={liveCount}
+                        companiesCount={companiesCount}
+                        signatureJob={recentOps[0] ?? null}
+                        events={tickerEvents}
+                    />
 
                     <RecentOpportunities opportunities={recentOps} />
                     <CorporateCollections />

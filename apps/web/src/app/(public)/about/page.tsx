@@ -14,16 +14,16 @@ import {
 } from 'lucide-react';
 
 export const metadata: Metadata = {
-    title: 'About FresherFlow | The Cleanest Path to Your First Job',
+    title: 'About FresherFlow | Jobs, powered by freshers.',
     description:
-        'FresherFlow is an independent, community-driven platform created to give students, freshers, and early-career engineers across India direct, verified access to job opportunities.',
+        'FresherFlow is a community of freshers who share opportunities, discuss hiring, and keep each other informed — so no fresher applies blind.',
     alternates: {
         canonical: '/about',
     },
     openGraph: {
-        title: 'About FresherFlow — The Cleanest Path to Your First Job',
+        title: 'About FresherFlow — Jobs, powered by freshers.',
         description:
-            'Direct ATS links, verified walk-in drives, and zero spam for early-career job seekers across India.',
+            'FresherFlow is a community of freshers who share opportunities, discuss hiring, and keep each other informed — so no fresher applies blind.',
         url: 'https://fresherflow.in/about',
         type: 'website',
     },
@@ -58,7 +58,7 @@ function XBrandIcon({ className }: { className?: string }) {
 const metrics = [
     {
         value: '100%',
-        label: 'Direct ATS Links',
+        label: 'Direct Apply Links',
         sub: 'Straight to official company career portals',
     },
     {
@@ -69,7 +69,7 @@ const metrics = [
     {
         value: '0–2 YoE',
         label: 'True Freshers Filter',
-        sub: 'Curated specifically for early-career roles',
+        sub: 'Focused on early-career roles',
     },
     {
         value: '2023–2027',
@@ -81,27 +81,27 @@ const metrics = [
 const principles = [
     {
         number: '01',
-        title: 'Direct Source of Truth',
+        title: 'Apply on the official page',
         description:
-            'Every single opening on FresherFlow links straight to the employer’s authentic applicant tracking system (Workday, Greenhouse, Lever, SmartRecruiters) or official company domain. We never use intermediate link shorteners, ad-network redirects, or affiliate tracking loops.',
+            'Every opening on FresherFlow links to the employer’s official careers page or applicant system (Workday, Greenhouse, Lever, SmartRecruiters) to apply on. We don’t claim to check every job — see who shared it, what freshers say, and what changed.',
     },
     {
         number: '02',
-        title: 'Zero Exploitation',
+        title: 'Free for candidates',
         description:
-            'The entry-level job hunt in India is full of predatory consultancies demanding ₹5,000–₹25,000 for fake interview rounds. FresherFlow is 100% free forever for candidates. We strictly reject paid training packages, paid interview guarantees, and selling candidate data.',
+            'The entry-level job hunt in India is full of consultancies demanding ₹5,000–₹25,000 for interview rounds. FresherFlow is free for candidates. We reject paid training packages, paid interview guarantees, and selling candidate data.',
     },
     {
         number: '03',
-        title: 'Verified Walk-In Drives',
+        title: 'Walk-in drives with dates and venues',
         description:
-            'On-site hiring drives and pool campus events across Bengaluru, Hyderabad, Pune, Chennai, Noida, and other tech hubs are manually verified with confirmed dates, time slots, eligibility criteria, and exact venue addresses so you never travel in vain.',
+            'On-site hiring drives and pool campus events across Bengaluru, Hyderabad, Pune, Chennai, Noida, and other tech hubs are shared with dates, time slots, eligibility criteria, and venue addresses from the source post. Check the official page before you travel — details can change.',
     },
     {
         number: '04',
-        title: 'Open & Community-Powered',
+        title: 'Community keeps it current',
         description:
-            'FresherFlow is built transparently with the community. Job listings are enriched with community-submitted tips and referrals, dead links are flagged and removed fast, and the core client apps are open source on GitHub.',
+            'FresherFlow is built transparently with the community. Listings carry who shared them and what changed, freshers flag closed links and suggest updates, and the core client apps are open source on GitHub.',
     },
 ] as const;
 
@@ -119,7 +119,7 @@ const ecosystem: EcosystemItem[] = [
         icon: Globe,
         title: 'Web Platform',
         description:
-            'A lightning-fast, keyboard-friendly web interface to search, filter by batch and tech stack, and track verified openings in real time.',
+            'A fast, keyboard-friendly web interface to search, filter by batch and tech stack, and track current openings shared by the community.',
         linkText: 'Explore Web',
         href: '/',
         external: false,
@@ -137,7 +137,7 @@ const ecosystem: EcosystemItem[] = [
         icon: UserCheck,
         title: 'Candidate Profiles (/u/)',
         description:
-            'Public proof-of-work profiles where students can showcase verified GitHub repositories, live projects, and technical skills directly to recruiters.',
+            'Public proof-of-work profiles where students can showcase GitHub repositories, live projects, and technical skills directly to recruiters.',
         linkText: 'Create Profile',
         href: '/profile',
         external: false,
@@ -164,14 +164,14 @@ interface CommunityChannel {
 const communityChannels: CommunityChannel[] = [
     {
         name: 'Telegram Channel',
-        description: 'Instant job alerts and verified walk-in drive notices.',
+        description: 'Instant job alerts and walk-in drive notices with dates and venues.',
         href: 'https://t.me/fresherflowin',
         icon: Send,
         action: 'Join Channel',
     },
     {
         name: 'WhatsApp Community',
-        description: 'Curated daily job digests delivered straight to chat.',
+        description: 'Daily job digests delivered straight to chat.',
         href: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D',
         icon: MessageCircle,
         action: 'Join Community',
@@ -236,11 +236,11 @@ export default function AboutPage() {
                     </div>
 
                     <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.12]">
-                        We’re building the cleanest path to your first job.
+                        Find jobs. Share opportunities. Help other freshers.
                     </h1>
 
                     <p className="text-base sm:text-lg md:text-xl text-muted-foreground leading-relaxed max-w-3xl">
-                        FresherFlow is an independent, community-driven platform created to give students, freshers, and early-career engineers across India direct, verified access to job opportunities.
+                        FresherFlow is a community of freshers who share opportunities, discuss hiring, and keep each other informed — so no fresher applies blind.
                     </p>
                 </div>
             </section>
@@ -287,7 +287,7 @@ export default function AboutPage() {
                 {/* Elegant Pull Quote */}
                 <div className="my-6 p-6 sm:p-8 rounded-xl border border-border bg-muted/20 border-l-4 border-l-primary space-y-3">
                     <blockquote className="text-lg sm:text-xl font-medium text-foreground italic leading-relaxed">
-                        &ldquo;Finding your first job should be about your skills, curiosity, and preparation—not how well you can navigate spam, paywalls, and fake placement traps.&rdquo;
+                        &ldquo;Finding your first job should be about your skills, curiosity, and preparation — not about guessing which link still works.&rdquo;
                     </blockquote>
                     <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
                         — The FresherFlow Manifesto
@@ -296,7 +296,7 @@ export default function AboutPage() {
 
                 <div className="space-y-6 text-base sm:text-lg text-muted-foreground leading-relaxed">
                     <p>
-                        We started FresherFlow to build what we wished had existed when we were graduating: a noise-free, ad-free portal where every listing is active, relevant, and connected straight to the employer’s authentic hiring portal.
+                        We started FresherFlow to build what we wished had existed when we were graduating: a community home for freshers where current openings link directly to the employer’s official page to apply on.
                     </p>
                 </div>
             </section>
@@ -411,7 +411,7 @@ export default function AboutPage() {
                             &quot;Our goal with FresherFlow is simple: to level the playing field. Whether you studied at a state university, a local college, or learned to code entirely on your own, you deserve direct access to official company openings without anyone demanding a cut or misleading you.&quot;
                         </p>
                         <p>
-                            &quot;FresherFlow will remain free, ad-clean, and focused on freshers. Thank you to every community member, contributor, and user who shares opportunities and helps keep this platform dependable.&quot;
+                            &quot;FresherFlow will remain free and focused on freshers. Thank you to every community member, contributor, and user who shares opportunities and helps keep this platform current.&quot;
                         </p>
 
                         <div className="pt-4 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">

@@ -7,14 +7,14 @@ export const metadata = {
     title: {
         absolute: 'Download FresherFlow Android App',
     },
-    description: 'Join the fresher job sharing community. Share verified off-campus opportunities and get instant apply alerts with zero redirect spam.',
+    description: 'Find jobs. Share opportunities. Help other freshers. Get instant alerts for current openings and apply directly on the official page.',
     alternates: {
         canonical: '/app',
     },
     openGraph: {
         type: 'website',
         title: 'Download FresherFlow Android App',
-        description: 'Join the fresher job sharing community. Share verified off-campus opportunities and get instant apply alerts with zero redirect spam.',
+        description: 'Find jobs. Share opportunities. Help other freshers. Get instant alerts for current openings and apply directly on the official page.',
         images: [
             {
                 url: '/app/opengraph-image',
@@ -28,7 +28,7 @@ export const metadata = {
     twitter: {
         card: 'summary_large_image',
         title: 'Download FresherFlow Android App',
-        description: 'Join the fresher job sharing community. Share verified off-campus opportunities and get instant apply alerts with zero redirect spam.',
+        description: 'Find jobs. Share opportunities. Help other freshers. Get instant alerts for current openings and apply directly on the official page.',
         images: ['/app/twitter-image'],
     }
 };
@@ -143,33 +143,33 @@ export default function DownloadPage() {
                 </div>
             </div>
 
-            {/* How Verification Works */}
+            {/* How listings stay current */}
             <div className="border-t border-border/40 pt-12 space-y-8">
                 <div className="text-center space-y-2 max-w-xl mx-auto">
-                    <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">How our verification works.</h2>
-                    <p className="text-sm text-muted-foreground max-w-lg mx-auto">Every opportunity is reviewed before it appears on FresherFlow.</p>
+                    <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">How listings stay current.</h2>
+                    <p className="text-sm text-muted-foreground max-w-lg mx-auto">Listings link to the official page to apply on. Freshers share updates, corrections, and interview notes.</p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                     <div className="p-4 md:p-5 space-y-2.5 rounded-xl border border-border bg-card/45">
                         <div className="p-2 bg-success/10 rounded-lg w-max">
                             <ShieldCheckIcon className="w-5 h-5 text-success" />
                         </div>
-                        <h3 className="font-bold text-sm text-foreground">1. Direct-Source Checks</h3>
-                        <p className="text-sm leading-relaxed text-muted-foreground">We trace every listing back to official career platforms like Greenhouse, Lever, Workday, or direct company pages.</p>
+                        <h3 className="font-bold text-sm text-foreground">1. Source links included</h3>
+                        <p className="text-sm leading-relaxed text-muted-foreground">Each listing links to the official careers page or applicant system to apply on, so you can check it yourself.</p>
                     </div>
                     <div className="p-4 md:p-5 space-y-2.5 rounded-xl border border-border bg-card/45">
                         <div className="p-2 bg-success/10 rounded-lg w-max">
                             <CheckBadgeIcon className="w-5 h-5 text-success" />
                         </div>
-                        <h3 className="font-bold text-sm text-foreground">2. Spam Filtering</h3>
-                        <p className="text-sm leading-relaxed text-muted-foreground">We aggressively filter out third-party blogs, mandatory sign-up traps, and MLM postings that clutter standard job boards.</p>
+                        <h3 className="font-bold text-sm text-foreground">2. Community updates</h3>
+                        <p className="text-sm leading-relaxed text-muted-foreground">Freshers flag closed links, suggest corrections, and share what changed, so listings stay current.</p>
                     </div>
                     <div className="p-4 md:p-5 space-y-2.5 rounded-xl border border-border bg-card/45">
                         <div className="p-2 bg-success/10 rounded-lg w-max">
                             <ClockIcon className="w-5 h-5 text-success" />
                         </div>
-                        <h3 className="font-bold text-sm text-foreground">3. Active Expiry Sweeps</h3>
-                        <p className="text-sm leading-relaxed text-muted-foreground">Closed or expired opportunities are removed immediately so you only see active listings.</p>
+                        <h3 className="font-bold text-sm text-foreground">3. Closed roles marked fast</h3>
+                        <p className="text-sm leading-relaxed text-muted-foreground">When applications close, the listing is marked and related discussions stay open to explore.</p>
                     </div>
                 </div>
             </div>

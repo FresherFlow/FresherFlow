@@ -135,8 +135,8 @@ function ReferralPageContent() {
         ? `${origin}/r/${data.referralCode}`
         : '…';
 
-    const whatsappShareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(`Join FresherFlow — find verified fresher jobs! ${shortUrl}`)}`;
-    const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Join FresherFlow — find verified fresher jobs!')}&url=${encodeURIComponent(shortUrl)}`;
+    const whatsappShareUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(`Join FresherFlow — find fresher jobs, internships and walk-ins ${shortUrl}`)}`;
+    const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent('Join FresherFlow — find fresher jobs, internships and walk-ins')}&url=${encodeURIComponent(shortUrl)}`;
 
     const handleCopy = async () => {
         if (shortUrl === '…') return;
@@ -153,7 +153,7 @@ function ReferralPageContent() {
 
     const handleShare = async () => {
         if (shortUrl === '…') return;
-        const shareData = { title: 'Join FresherFlow', text: 'Find verified fresher jobs, internships & walk-ins.', url: shortUrl };
+        const shareData = { title: 'Join FresherFlow', text: 'Find jobs. Share opportunities. Help other freshers.', url: shortUrl };
         if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
             try { await navigator.share(shareData); return; }
             catch (e) { if ((e as Error).name === 'AbortError') return; }

@@ -11,9 +11,11 @@ interface LandingStatsProps {
 export function LandingStats({ initialLiveCount, initialCompaniesCount }: LandingStatsProps) {
     const [liveCount, setLiveCount] = useState(initialLiveCount || 0);
     const [companiesCount, setCompaniesCount] = useState(initialCompaniesCount || 0);
+    const [visitorsCount, setVisitorsCount] = useState(0);
     
     const [animatedLive, setAnimatedLive] = useState(0);
     const [animatedCompanies, setAnimatedCompanies] = useState(0);
+    const [animatedVisitors, setAnimatedVisitors] = useState(0);
 
     useEffect(() => {
         // Capture initial values so the catch fallback doesn't close over state
@@ -40,6 +42,29 @@ export function LandingStats({ initialLiveCount, initialCompaniesCount }: Landin
                 if (initialCompanies > 0) setCompaniesCount(initialCompanies);
             });
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+        // Fetch daily visitors from same-origin /api/stats (Cloudflare Analytics,
+        // cached 5min at edge). Relative URL keeps staging/preview working.
+        fetch('/api/stats')
+            .then(async (res) => {
+                if (!res.ok) return;
+                const data = await res.json() as {
+                    today?: { visitors?: unknown };
+                    yesterday?: { visitors?: unknown };
+                };
+                const pick = (v: unknown): number | null =>
+                    typeof v === 'number' && Number.isFinite(v) && v >= 0 && v < 1_000_000_000
+                        ? Math.floor(v)
+                        : null;
+                setVisitorsCount(
+                    pick(data?.today?.visitors) ?? pick(data?.yesterday?.visitors) ?? 0
+                );
+            })
+            .catch(() => {
+                // Keep '- -' placeholder if stats endpoint is unreachable
+            });
     }, []);
 
 
@@ -97,22 +122,58 @@ export function LandingStats({ initialLiveCount, initialCompaniesCount }: Landin
         return () => window.cancelAnimationFrame(animationFrameId);
     }, [companiesCount]);
 
-    const stats = [
-        { label: 'Active Jobs', value: liveCount > 0 ? animatedLive.toLocaleString() : '- -' },
-        { label: 'Companies', value: companiesCount > 0 ? animatedCompanies.toLocaleString() : '- -' },
-        { label: 'Fake Listings', value: '0' },
-    ];
+    useEffect(() => {
+        if (visitorsCount === 0) return;
+
+        let startTimestamp: number | null = null;
+        const duration = 1500; // 1.5 seconds
+        let animationFrameId: number;
+
+        const step = (timestamp: number) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+
+            // easeOutQuad interpolation
+            const easeProgress = progress * (2 - progress);
+
+            setAnimatedVisitors(Math.floor(easeProgress * visitorsCount));
+
+            if (progress < 1) {
+                animationFrameId = window.requestAnimationFrame(step);
+            } else {
+                setAnimatedVisitors(visitorsCount);
+            }
+        };
+
+        animationFrameId = window.requestAnimationFrame(step);
+        return () => window.cancelAnimationFrame(animationFrameId);
+    }, [visitorsCount]);
+
+    // Quiet counters (plan 16 §16.4/§16.8): each one is a real number or it does
+    // not render at all. The data logic above is untouched.
+    const stats: { label: string; value: string }[] = [];
+    if (liveCount > 0) {
+        stats.push({ label: 'Openings shared', value: animatedLive.toLocaleString() });
+    }
+    if (companiesCount > 0) {
+        stats.push({ label: 'Companies on the board', value: animatedCompanies.toLocaleString() });
+    }
+    if (visitorsCount > 0) {
+        stats.push({ label: 'Freshers here today', value: animatedVisitors.toLocaleString() });
+    }
+
+    if (stats.length === 0) return null;
 
     return (
-        <div className="grid grid-cols-3 gap-2.5 sm:gap-4 pt-6">
+        <div className="flex flex-wrap items-end justify-center gap-x-8 gap-y-4 border-t border-border/50 pt-6">
             {stats.map((stat) => (
-                <div key={stat.label} className="rounded-xl sm:rounded-2xl border border-border bg-card/65 backdrop-blur p-2.5 sm:p-4.5 shadow-sm text-center flex flex-col justify-center">
-                    <div className="text-base sm:text-xl md:text-2xl font-extrabold tracking-tight text-foreground">
+                <div key={stat.label} className="flex flex-col items-center">
+                    <span className="font-display text-2xl font-bold tabular-nums tracking-tight text-foreground md:text-3xl">
                         {stat.value}
-                    </div>
-                    <div className="text-[8px] sm:text-[10px] uppercase tracking-wide sm:tracking-widest text-muted-foreground font-bold mt-0.5 sm:mt-1 leading-tight text-center">
+                    </span>
+                    <span className="mt-1 font-record text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                         {stat.label}
-                    </div>
+                    </span>
                 </div>
             ))}
         </div>

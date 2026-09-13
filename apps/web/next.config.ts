@@ -280,6 +280,55 @@ const nextConfig: NextConfig = {
         destination: "/locations/:path*",
         permanent: true,
       },
+
+      // ── Taxonomy v2 301 ledger (doc 22 §22.3 / doc 21 §21.7) ──
+      // ONE /jobs namespace: /jobs/{role}, /jobs/{city}, /jobs/{skill},
+      // /jobs/{year}-batch, /jobs/{role}-in-{city}, /jobs/browse.
+      {
+        source: "/skills",
+        destination: "/jobs/browse",
+        permanent: true,
+      },
+      {
+        source: "/skills/:name",
+        destination: "/jobs/:name",
+        permanent: true,
+      },
+      {
+        source: "/roles",
+        destination: "/jobs/browse",
+        permanent: true,
+      },
+      {
+        source: "/roles/:slug",
+        destination: "/jobs/:slug",
+        permanent: true,
+      },
+      {
+        source: "/locations",
+        destination: "/jobs/browse",
+        permanent: true,
+      },
+      {
+        source: "/locations/remote",
+        destination: "/jobs/remote",
+        permanent: true,
+      },
+      {
+        source: "/locations/:city",
+        destination: "/jobs/:city",
+        permanent: true,
+      },
+      {
+        source: "/batch",
+        destination: "/jobs/browse",
+        permanent: true,
+      },
+      {
+        source: "/batch/:year",
+        destination: "/jobs/:year-batch",
+        permanent: true,
+      },
       {
         source: "/opportunities/:slug",
         destination: "/jobs/:slug",

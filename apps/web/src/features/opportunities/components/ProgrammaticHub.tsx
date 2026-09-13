@@ -119,7 +119,7 @@ export default function ProgrammaticHub({
                 {/* Header */}
                 <div id="hub-top-header" className="flex flex-col gap-2 pb-6">
                     <div className="flex items-center gap-3">
-                        {breadcrumbUrl.startsWith('/skills/') && (
+                        {(breadcrumbUrl.startsWith('/skills/') || breadcrumbUrl.startsWith('/jobs/')) && (
                             <SkillIcon skill={breadcrumbLabel} className="w-10 h-10 shrink-0" />
                         )}
                         <h1 className="text-2xl md:text-4xl font-black tracking-tight text-foreground">

@@ -60,7 +60,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     const rawTitle = `Jobs for ${year} Passouts | ${totalRoles > 0 ? `${totalRoles} Openings | ` : ''}FresherFlow`;
     const title = truncateTitleByPixels(rawTitle);
-    const rawDescription = `Find verified jobs, internships and walk-in drives hiring ${year} batch passouts. ${companiesCount > 0 ? `${companiesCount} companies hiring ${year} passouts.` : ''} Direct official application links.`;
+    const rawDescription = `Find current jobs, internships and walk-in drives hiring ${year} batch passouts. ${companiesCount > 0 ? `${companiesCount} companies hiring ${year} passouts.` : ''} Direct official application links.`;
     const description = truncateDescription(rawDescription);
     const base = SITE_URL.replace(/\/+$/, '');
     const ogImageUrl = `${CDN_URL}/og/batch/${year}.png`;

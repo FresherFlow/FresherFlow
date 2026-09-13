@@ -154,7 +154,7 @@ export async function generateMetadata(
     const hasJobs = Boolean(activeShard && activeShard.opportunities && activeShard.opportunities.length > 0);
 
     const title = `${companyName} Jobs & Internships for Freshers`;
-    const description = `Find verified fresher jobs, internships and off-campus opportunities at ${companyName}, with direct official application links.`;
+    const description = `Find current fresher jobs, internships and off-campus openings at ${companyName}, with direct official application links.`;
     const ogImageUrl = `${CDN_URL}/og/companies/${properSlug}.png`;
 
     return {

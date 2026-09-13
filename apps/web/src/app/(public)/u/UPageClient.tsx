@@ -79,7 +79,7 @@ export function UPageClient() {
                         </h1>
 
                         <motion.p variants={itemVariants} className="text-base sm:text-lg text-muted-foreground leading-relaxed font-normal max-w-2xl mx-auto">
-                            Stop sending fragmented links and cluttered PDF resumes. FresherFlow gives you a verified, recruiter-ready public profile with interactive project demos, git documentation, and structured career availability—all at{' '}
+                            Stop sending fragmented links and cluttered PDF resumes. FresherFlow gives you a recruiter-ready public profile with interactive project demos, git documentation, and structured career availability—all at{' '}
                             <code className="px-2 py-0.5 rounded-md bg-muted text-foreground font-mono font-bold text-sm border border-border/60">
                                 fresherflow.in/u/yourname
                             </code>.
@@ -117,7 +117,7 @@ export function UPageClient() {
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <CheckCircleIcon className="w-4 h-4 text-primary shrink-0" />
-                                <span>Recruiter-Verified Data Schema</span>
+                                <span>Recruiter-ready data schema</span>
                             </div>
                         </motion.div>
                     </motion.div>
@@ -142,7 +142,7 @@ export function UPageClient() {
                                             </h3>
                                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold">
                                                 <ShieldCheckIcon className="w-3.5 h-3.5 shrink-0" />
-                                                Verified Market Ready
+                                                Market Ready
                                             </span>
                                         </div>
                                         <p className="text-xs sm:text-sm text-muted-foreground font-medium">
@@ -212,7 +212,7 @@ export function UPageClient() {
                                     </div>
                                     <div className="bg-muted/20 border border-border/40 rounded-2xl p-4 space-y-2.5">
                                         <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                            Verified Technical Skills
+                                            Technical Skills
                                         </h4>
                                         <div className="flex flex-wrap gap-1.5">
                                             {['TypeScript', 'JavaScript', 'Next.js', 'React', 'Node.js', 'PostgreSQL', 'Prisma', 'Redis', 'Tailwind CSS'].map((skill) => (
@@ -276,7 +276,7 @@ export function UPageClient() {
                         {[
                             { icon: CodeBracketIcon, title: "Interactive Project Demos", desc: "Don't just list project names. Provide recruiters with 1-click access to your live web apps and direct GitHub repository documentation." },
                             { icon: BriefcaseIcon, title: "Structured Career Preferences", desc: "Let hiring managers instantly see whether you're seeking a Full-Time Job, Internship, or Walk-In Interview." },
-                            { icon: AcademicCapIcon, title: "Verified Academic Stepper", desc: "Present your 10th, 12th, Undergraduate, and Postgraduate milestones in a clean, chronological timeline." }
+                            { icon: AcademicCapIcon, title: "Academic Timeline", desc: "Present your 10th, 12th, Undergraduate, and Postgraduate milestones in a clean, chronological timeline." }
                         ].map((feature, idx) => (
                             <motion.div key={idx} variants={itemVariants} className="group relative overflow-hidden bg-card border border-border/60 rounded-2xl p-6 md:p-8 space-y-4 shadow-xs hover:border-border hover:shadow-lg transition-all duration-200 ease-out">
                                 <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-200 ease-out">
@@ -307,7 +307,7 @@ export function UPageClient() {
                         {[
                             { step: "01", title: "Claim Your /u/ Link", desc: "Sign up for free and choose your custom username URL." },
                             { step: "02", title: "Add Your Skills & Projects", desc: "Add your technical skills, pin your top GitHub repositories, and attach live demo URLs." },
-                            { step: "03", title: "Share Everywhere", desc: "Paste your verified FresherFlow profile link on your resume, LinkedIn bio, and direct job application forms." }
+                            { step: "03", title: "Share Everywhere", desc: "Paste your FresherFlow profile link on your resume, LinkedIn bio, and direct job application forms." }
                         ].map((item, idx) => (
                             <motion.div key={idx} variants={itemVariants} className="group p-6 md:p-8 rounded-2xl bg-muted/20 border border-border/60 hover:border-border hover:bg-muted/40 transition-all duration-150 ease-out space-y-4">
                                 <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground font-extrabold text-base flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform duration-150 ease-out tabular-nums">{item.step}</div>

@@ -517,11 +517,11 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
                                 </DashboardSection>
                             )}
 
-                            {/* Latest Verified Opportunities */}
+                            {/* Latest openings */}
                             {dataStreams.latest.length > 0 && (
                                 <DashboardSection
-                                    title="Latest Verified Opportunities"
-                                    description="Newest verified postings added in real-time"
+                                    title="Latest openings"
+                                    description="Newest openings shared on FresherFlow"
                                     count={dataStreams.latest.length}
                                     icon={<ClockIcon className="w-5 h-5 text-muted-foreground" />}
                                     viewAllHref="/jobs?sort=latest"

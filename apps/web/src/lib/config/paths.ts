@@ -73,6 +73,7 @@ export function isPublicPath(pathname: string) {
     if (pathname.startsWith('/skills/')) return true;
     if (pathname.startsWith('/batch/')) return true;
     if (pathname.startsWith('/roles/')) return true;
+    // Legacy taxonomy namespaces 301 to /jobs/* (doc 22 v2) but stay public.
     if (pathname.startsWith('/govt/')) return true;
     if (pathname.startsWith('/resources/')) return true;
     if (pathname.startsWith('/blog/')) return true;

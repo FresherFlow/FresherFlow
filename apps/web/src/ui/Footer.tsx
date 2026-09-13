@@ -91,7 +91,7 @@ export function Footer({ className }: FooterProps) {
                                 <span className="text-2xl font-black tracking-tighter text-primary">FresherFlow<span className="text-foreground">.in</span></span>
                             </Link>
                             <p className="mt-4 text-sm text-muted-foreground leading-relaxed max-w-sm">
-                                Your ultimate destination for Government Jobs, Off-Campus Drives, and Walk-in Interviews. We empower job seekers with verified, up-to-date career opportunities.
+                                Jobs, powered by freshers. Find jobs, share opportunities, and help other freshers — with current openings linked directly to official pages to apply on.
                             </p>
                         </div>
                         

@@ -65,7 +65,7 @@ export function OpportunityGrid({
         return (
             <ErrorMessage
                 title="No results found"
-                message="Try adjusting your filters or search keywords to find matching verified opportunities."
+                message="Try adjusting your filters or search keywords to find matching current openings."
                 onRetry={onClearFilters}
                 variant="card"
             />

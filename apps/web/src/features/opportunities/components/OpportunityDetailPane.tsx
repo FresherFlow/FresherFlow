@@ -15,9 +15,10 @@ import CurrencyRupeeIcon from '@heroicons/react/24/outline/CurrencyRupeeIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import UsersIcon from '@heroicons/react/24/outline/UsersIcon';
 import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
-import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import CompanyLogo from '@/ui/CompanyLogo';
+import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
+import BookmarkSolidIcon from '@heroicons/react/24/solid/BookmarkIcon';
 import { cn } from '@repo/ui/utils/cn';
 import Link from 'next/link';
 import { Button } from '@/ui/Button';
@@ -125,10 +126,13 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
 
     const isGovernmentJob = Boolean(opp.governmentJobDetails);
 
+    const isOppSaved = Boolean((opp as unknown as Record<string, unknown>).isSaved);
+    const showApply = ds.hasApplyLink && !isMobile && ds.listingState !== 'EXPIRED';
+
     return (
         <div className="flex flex-col h-full bg-card relative">
-            {/* Header toolbar — compact: logo, company name, action buttons only */}
-            <div className="relative flex items-center justify-between p-4 border-b border-border/40 shrink-0 gap-3">
+            {/* Header — title + actions in one row */}
+            <div className="relative flex items-center justify-between px-4 md:px-6 py-4 border-b border-border/40 shrink-0 gap-3">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                     <CompanyLogo
                         companyName={opp.company}
@@ -136,25 +140,44 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                         companyLogoUrl={opp.companyLogoUrl}
                         applyLink={opp.applyLink}
                         isGovernment={isGovernmentJob}
-                        className="w-10 h-10 rounded-xl object-contain shrink-0"
+                        className="w-10 h-10 rounded-lg object-contain shrink-0"
                     />
                     <div className="min-w-0 flex-1">
-                        <span className="text-xs font-semibold text-muted-foreground block truncate leading-none">
+                        <span className="text-xs font-medium text-muted-foreground block truncate leading-none">
                             {opp.company}
                         </span>
-                        <h2 className="text-sm font-bold text-foreground mt-0.5 leading-snug line-clamp-2" title={opp.title}>
+                        <h2 className="text-[15px] font-bold text-foreground mt-1 leading-snug line-clamp-2" title={opp.title}>
                             {opp.title}
                         </h2>
                     </div>
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
-                    {ds.hasApplyLink && !isMobile && ds.listingState !== 'EXPIRED' && (
+                    <button
+                        type="button"
+                        onClick={() => void handleToggleSave()}
+                        aria-pressed={isOppSaved}
+                        className={cn(
+                            'h-9 px-3.5 rounded-lg border text-[13px] font-bold flex items-center justify-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                            isOppSaved
+                                ? 'border-primary/40 bg-primary/10 text-primary'
+                                : 'border-border bg-background text-foreground hover:bg-muted'
+                        )}
+                    >
+                        {isOppSaved ? (
+                            <BookmarkSolidIcon className="w-4 h-4" />
+                        ) : (
+                            <BookmarkIcon className="w-4 h-4" />
+                        )}
+                        {isOppSaved ? 'Saved' : 'Save'}
+                    </button>
+                    {showApply && (
                         <button
+                            type="button"
                             onClick={handleApply}
-                            className="px-4 h-9 text-xs bg-primary text-primary-foreground hover:bg-primary/95 active:scale-[0.99] rounded-lg flex items-center justify-center gap-1.5 font-bold shadow-sm transition-all"
+                            className="h-9 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.99] text-[13px] font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
-                            Apply Now
-                            <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
+                            Apply
+                            <ArrowTopRightOnSquareIcon className="w-4 h-4" />
                         </button>
                     )}
                     <Hint label="Copy link" side="top" avoidCollisions={false}>
@@ -238,18 +261,18 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                                 )}
                             </div>
 
-                            {/* Meta rows — tight label:value pairs */}
-                            <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+                            {/* Fact rows — icon + value */}
+                            <div className="space-y-3">
                                 {([
-                                    { icon: BriefcaseIcon, label: 'Experience', value: opp.experienceMax ? `${opp.experienceMin || 0}–${opp.experienceMax}y` : 'Fresher' },
-                                    { icon: UsersIcon, label: 'Employment', value: opp.employmentType ? opp.employmentType.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase()) : 'Full Time' },
-                                    { icon: ShieldCheckIcon, label: 'Role title', value: opp.jobFunction || 'General' },
-                                    { icon: CurrencyRupeeIcon, label: 'Salary', value: ds.displaySalary || 'Competitive' },
-                                    ...(opp.postedAt && getPostedLabel(opp.postedAt) ? [{ icon: CalendarIcon, label: 'Posted', value: getPostedLabel(opp.postedAt)! }] : []),
+                                    { icon: CurrencyRupeeIcon, value: ds.displaySalary || 'No salary listed' },
+                                    ...(getGroupedLocations(opp.locations).length > 0 ? [{ icon: MapPinIcon, value: getGroupedLocations(opp.locations).join(', ') }] : []),
+                                    { icon: BriefcaseIcon, value: opp.experienceMax ? `${opp.experienceMin || 0}–${opp.experienceMax} years` : 'Fresher' },
+                                    { icon: UsersIcon, value: opp.employmentType ? opp.employmentType.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase()) : 'Full Time' },
+                                    ...(opp.postedAt && getPostedLabel(opp.postedAt) ? [{ icon: CalendarIcon, value: `Posted ${getPostedLabel(opp.postedAt)}` }] : []),
                                 ] as const).map((item) => (
-                                    <div key={item.label} className="flex items-baseline gap-2">
-                                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 shrink-0">{item.label}</span>
-                                        <span className="text-xs font-semibold text-foreground truncate">{item.value}</span>
+                                    <div key={item.value} className="flex items-center gap-2.5">
+                                        <item.icon className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
+                                        <span className="text-sm font-semibold text-foreground">{item.value}</span>
                                     </div>
                                 ))}
                                 {opp.expiresAt && (() => {
@@ -257,10 +280,10 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                                     const cs = ds.isClosingSoon(opp);
                                     const deadline = ds.formatDeadline(opp);
                                     return (
-                                        <div className="flex items-baseline gap-2">
-                                            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 shrink-0">Deadline</span>
-                                            <span className={cn('text-xs font-semibold truncate', exp ? 'text-rose-600' : cs ? 'text-orange-600' : 'text-foreground')}>
-                                                {exp ? `Closed (${deadline})` : deadline || 'Not set'}
+                                        <div className="flex items-center gap-2.5">
+                                            <CalendarIcon className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
+                                            <span className={cn('text-sm font-semibold', exp ? 'text-rose-600' : cs ? 'text-orange-600' : 'text-foreground')}>
+                                                {exp ? `Closed (${deadline})` : `Deadline ${deadline || 'Not set'}`}
                                             </span>
                                         </div>
                                     );

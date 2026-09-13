@@ -9,6 +9,9 @@ import { toastError } from '@/lib/utils/error';
 import {
     ArrowPathIcon,
     ChevronLeftIcon,
+    BriefcaseIcon,
+    ChatBubbleLeftRightIcon,
+    UsersIcon,
 } from '@heroicons/react/24/outline';
 import { useAuthFormData } from '@/lib/auth/AuthFormDataContext';
 import { Button } from '@/ui/Button';
@@ -187,8 +190,50 @@ function LoginContent() {
     };
 
     return (
-        <div className="flex-1 flex flex-col items-center justify-center bg-background relative overflow-hidden h-[calc(100vh-64px)] md:h-[calc(100vh-88px)] max-h-[calc(100vh-64px)] md:max-h-[calc(100vh-88px)] px-4">
-            <div className="w-full max-w-[400px] bg-card border border-border/80 shadow-lg rounded-2xl p-7 md:p-9 space-y-6 animate-in fade-in duration-200">
+        <div className="flex-1 flex flex-col items-center justify-center bg-background relative overflow-hidden min-h-[calc(100vh-64px)] md:min-h-[calc(100vh-88px)] px-4 py-8">
+            <div className="w-full max-w-4xl md:grid md:grid-cols-2 md:border md:border-border/80 md:rounded-2xl md:shadow-lg md:overflow-hidden animate-in fade-in duration-200">
+                {/* Left — creative panel (desktop only) */}
+                <aside className="hidden md:flex flex-col justify-between bg-muted/40 text-foreground p-9 relative overflow-hidden border-r border-border/60">
+                    <div
+                        aria-hidden="true"
+                        className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:22px_22px] [mask-image:radial-gradient(ellipse_80%_80%_at_20%_10%,#000_60%,transparent_100%)] pointer-events-none"
+                    />
+                    <div className="relative space-y-2">
+                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">Jobs, powered by freshers.</p>
+                        <h2 className="text-3xl font-bold tracking-tight leading-tight">
+                            Find jobs. Share opportunities. Help other freshers.
+                        </h2>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                            Off-campus jobs, internships and walk-ins — shared and discussed by freshers like you.
+                        </p>
+                    </div>
+                    <ul className="relative space-y-4 pt-8">
+                        <li className="flex items-start gap-3">
+                            <BriefcaseIcon className="w-5 h-5 shrink-0 mt-0.5 text-muted-foreground" />
+                            <div>
+                                <p className="text-sm font-semibold">Fresh jobs, daily</p>
+                                <p className="text-xs text-muted-foreground">Off-campus roles and walk-ins, updated as the community shares them.</p>
+                            </div>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <ChatBubbleLeftRightIcon className="w-5 h-5 shrink-0 mt-0.5 text-muted-foreground" />
+                            <div>
+                                <p className="text-sm font-semibold">Real discussions</p>
+                                <p className="text-xs text-muted-foreground">See who applied, interview experiences, and what changed.</p>
+                            </div>
+                        </li>
+                        <li className="flex items-start gap-3">
+                            <UsersIcon className="w-5 h-5 shrink-0 mt-0.5 text-muted-foreground" />
+                            <div>
+                                <p className="text-sm font-semibold">Your batch, your filters</p>
+                                <p className="text-xs text-muted-foreground">Find what you are eligible for — by batch, role and city.</p>
+                            </div>
+                        </li>
+                    </ul>
+                </aside>
+
+                {/* Right — actual login */}
+                <div className="w-full flex flex-col justify-center bg-card border border-border/80 shadow-lg rounded-2xl md:border-0 md:shadow-none md:rounded-none p-7 md:p-9 space-y-6">
                 {/* Header */}
                 <div className="space-y-2 text-center">
                     {step !== 'email' && (
@@ -204,7 +249,7 @@ function LoginContent() {
                         {step === 'otp' ? 'Verify security code' : isSignupIntent ? 'Create your account' : 'Sign in to FresherFlow'}
                     </h1>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                        {step === 'otp' ? `We sent a 6-digit code to ${email}` : 'Access verified off-campus jobs & walk-in opportunities'}
+                        {step === 'otp' ? `We sent a 6-digit code to ${email}` : 'Find off-campus jobs, internships and walk-in drives'}
                     </p>
                 </div>
 
@@ -341,6 +386,7 @@ function LoginContent() {
                         <span className="text-muted-foreground/30">•</span>
                         <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
                     </div>
+                </div>
                 </div>
             </div>
         </div>

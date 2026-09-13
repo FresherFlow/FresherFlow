@@ -13,7 +13,7 @@ import { InstallPromptProvider } from "@/lib/providers/InstallPromptContext";
 import { themeScriptContent } from '@/lib/components/ThemeScript';
 // import OfflineNotification from "@/ui/OfflineNotification";
 import dynamic from "next/dynamic";
-import { Inter, Geist } from "next/font/google";
+import { Inter, Geist, Bricolage_Grotesque, IBM_Plex_Mono } from "next/font/google";
 
 const InstallAppBanner = dynamic(() => import("@/ui/InstallAppBanner"));
 
@@ -35,6 +35,22 @@ import { ErrorBoundary } from '@/lib/components/ErrorBoundary';
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
 
+// Plan 17 §17.2 type system: Bricolage Grotesque carries the display voice,
+// IBM Plex Mono the "official record" voice (stamps, board eyebrows, counts).
+// Build-time self-hosted by next/font — no npm dependency, no runtime fetch.
+const bricolage = Bricolage_Grotesque({
+  subsets: ['latin'],
+  variable: '--font-bricolage',
+  display: 'swap',
+});
+
+const plexMono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  variable: '--font-plex-mono',
+  display: 'swap',
+});
+
 const SITE_ORIGIN = SITE_URL;
 const METADATA_BASE = SITE_ORIGIN ? new URL(SITE_ORIGIN) : undefined;
 const OG_IMAGE_URL = SITE_ORIGIN ? `${SITE_ORIGIN}/opengraph-image` : '/opengraph-image';
@@ -51,29 +67,29 @@ export const metadata: Metadata = {
   metadataBase: METADATA_BASE,
   applicationName: "FresherFlow",
   title: {
-    default: "FresherFlow | Verified Jobs & Internships for Freshers",
+    default: "FresherFlow — Jobs, powered by freshers.",
     template: "%s | FresherFlow",
   },
-  description: "Find verified fresher jobs, internships, off-campus drives and walk-in interviews across India with direct official apply links.",
+  description: "FresherFlow is a community of freshers who share opportunities, discuss hiring, and keep each other informed — so no fresher applies blind.",
   openGraph: {
     type: "website",
     siteName: "FresherFlow",
-    title: "FresherFlow | Verified Jobs & Internships for Freshers",
-    description: "Find verified fresher jobs, internships, off-campus drives and walk-in interviews across India with direct official apply links.",
+    title: "FresherFlow — Jobs, powered by freshers.",
+    description: "FresherFlow is a community of freshers who share opportunities, discuss hiring, and keep each other informed — so no fresher applies blind.",
     images: [
       {
         url: OG_IMAGE_URL,
         width: 1200,
         height: 630,
         type: "image/png",
-        alt: "FresherFlow - Verified Off-Campus Opportunities",
+        alt: "FresherFlow — Jobs, powered by freshers.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "FresherFlow | Verified Jobs & Internships for Freshers",
-    description: "Find verified fresher jobs, internships, off-campus drives and walk-in interviews across India with direct official apply links.",
+    title: "FresherFlow — Jobs, powered by freshers.",
+    description: "FresherFlow is a community of freshers who share opportunities, discuss hiring, and keep each other informed — so no fresher applies blind.",
     images: [TWITTER_IMAGE_URL],
   },
   icons: {
@@ -97,7 +113,7 @@ export default async function RootLayout({
   const enableVercelAnalytics = process.env.NEXT_PUBLIC_ENABLE_VERCEL_ANALYTICS === 'true';
   const enableSpeedInsights = process.env.NEXT_PUBLIC_ENABLE_SPEED_INSIGHTS === 'true';
   return (
-    <html lang="en" suppressHydrationWarning className={cn("font-sans", geist.variable)}>
+    <html lang="en" suppressHydrationWarning className={cn("font-sans", geist.variable, bricolage.variable, plexMono.variable)}>
       <head>
         <meta charSet="utf-8" />
         <meta name="color-scheme" content="light dark" />

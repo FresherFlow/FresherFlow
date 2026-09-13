@@ -13,9 +13,6 @@ import {
     ShieldExclamationIcon,
     WrenchScrewdriverIcon,
     CodeBracketIcon,
-    IdentificationIcon,
-    MapPinIcon,
-    CalendarIcon,
     ClipboardDocumentCheckIcon,
     BanknotesIcon,
     ShieldCheckIcon,
@@ -57,11 +54,8 @@ export const JOBS_NAV_ITEMS = [
     { name: 'Post a Job', href: '/submit', icon: PlusCircleIcon },
     // { name: 'Latest', href: '/jobs?sort=latest', icon: ClockIcon },
     // { name: 'Trending', href: '/jobs?sort=trending', icon: ArrowTrendingUpIcon },
-    { name: 'Skills', href: '/skills', icon: CodeBracketIcon },
-    { name: 'Roles', href: '/roles', icon: IdentificationIcon },
-    { name: 'Location', href: '/locations', icon: MapPinIcon },
+    { name: 'Browse Boards', href: '/jobs/browse', icon: CodeBracketIcon },
     { name: 'Company', href: '/companies', icon: BuildingOfficeIcon },
-    { name: 'Batch', href: '/batch', icon: CalendarIcon },
     { name: 'Resources', href: '/resources', icon: BookOpenIcon },
     { name: 'Platforms', href: '/platforms', icon: GlobeAltIcon },
     { name: 'Government', href: '/govt', icon: BuildingLibraryIcon, hasSubmenu: true },
@@ -112,6 +106,7 @@ export function getNavContext(pathname: string): 'default' | 'account' | 'govern
     } else if (
         pathname.startsWith('/jobs') ||
         pathname.startsWith('/off-campus') ||
+        // Legacy taxonomy namespaces 301 to /jobs/* (doc 22 v2) but stay jobs-classified.
         pathname.startsWith('/skills') ||
         pathname.startsWith('/roles') ||
         pathname.startsWith('/locations') ||

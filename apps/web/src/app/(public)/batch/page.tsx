@@ -9,7 +9,7 @@ export const revalidate = false;
 
 export const metadata: Metadata = {
     title: 'Jobs by Graduation Batch | Fresher Jobs',
-    description: 'Find verified jobs, internships and off-campus opportunities for specific graduation batches, including 2026, 2025, 2024 and earlier.',
+    description: 'Find current jobs, internships and off-campus openings for specific graduation batches, including 2026, 2025, 2024 and earlier.',
     alternates: { canonical: `${SITE_URL}/batch` },
 };
 
@@ -46,7 +46,7 @@ export default async function BatchIndexPage() {
 
                 <DirectoryClient 
                     title="Browse Jobs by Graduation Batch"
-                    description="Find verified fresher jobs and internships matched to your specific graduation year."
+                    description="Find current fresher jobs and internships matched to your specific graduation year."
                     data={sorted}
                     urlPrefix="/batch/"
                 />

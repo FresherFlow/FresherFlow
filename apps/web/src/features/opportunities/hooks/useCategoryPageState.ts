@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { Opportunity, OpportunityType } from "@fresherflow/types";
 import { useOpportunitiesFeed } from "@/features/opportunities/hooks/useOpportunitiesFeed";
 import { useAuth } from "@/lib/auth/AuthContext";
@@ -63,10 +63,20 @@ export function useCategoryPageState({
   const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
 
   useEffect(() => {
-    setIsDesktop(window.innerWidth >= 1024);
-    const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
+    // Touch devices only ever get the single mobile view. Width alone handed
+    // landscape phones / tablets the desktop List + Split layout, so a tap on a
+    // job card navigated to the job page instead of opening the detail drawer.
+    const computeIsDesktop = () =>
+      window.innerWidth >= 1024 &&
+      !(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+    setIsDesktop(computeIsDesktop());
+    const handleResize = () => setIsDesktop(computeIsDesktop());
     window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
+    window.addEventListener("orientationchange", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("orientationchange", handleResize);
+    };
   }, []);
 
   useEffect(() => {
@@ -79,18 +89,15 @@ export function useCategoryPageState({
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
-  useEffect(() => {
-    if (!selectedOpp) return;
-    if (window.innerWidth >= 1024) return; // Only lock scroll on mobile
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [selectedOpp]);
+
 
   const handleSelectOpportunity = (opp: Opportunity) => {
     setSelectedOpp(opp);
-    window.history.pushState({ modalOpen: true }, "", window.location.href);
+    // No URL argument on purpose: Next.js patches history.pushState and
+    // dispatches a router restore for any truthy url, even the current one,
+    // which hands useSearchParams a fresh object. That rebuilds every filter
+    // array and resets the feed scroll + pagination on every row click.
+    window.history.pushState({ modalOpen: true }, "");
   };
 
   const handleCloseOpportunityPane = () => {
@@ -183,11 +190,23 @@ export function useCategoryPageState({
   // Sync filter state FROM URL when searchParams change (e.g. sidebar link navigation).
   // Skip the first render — state is already initialised from searchParams above.
   const isFirstRender = React.useRef(true);
+  const appliedUrlSignature = React.useRef<string | null>(null);
+  const pathname = usePathname();
   useEffect(() => {
+    const signature = `${pathname}?${searchParams?.toString() ?? ""}`;
     if (isFirstRender.current) {
       isFirstRender.current = false;
+      appliedUrlSignature.current = signature;
       return;
     }
+
+    // useSearchParams() hands back a fresh object on every router restore, even
+    // restores for the URL we are already on. Re-syncing then rebuilds all filter
+    // arrays with new identities, which resets the feed scroll and the visible
+    // card count. Only sync when the location actually changed.
+    if (appliedUrlSignature.current === signature) return;
+    appliedUrlSignature.current = signature;
+
     const sp = searchParams;
     setSearch(sp?.get("q") || "");
     setGovtCategory((sp?.get("category") as GovtCategoryFilter) || null);
@@ -218,7 +237,7 @@ export function useCategoryPageState({
         ? sp.get("role")!.split(",").filter(Boolean)
         : initialFilters?.role || [],
     });
-  }, [searchParams]);
+  }, [searchParams, pathname]);
 
   // Reset pagination when search or filters change
   useEffect(() => {
@@ -268,6 +287,18 @@ export function useCategoryPageState({
         canonicalCleared = true;
       if (initialFilters.location && !filters.location) canonicalCleared = true;
       if (initialFilters.year && !filters.year) canonicalCleared = true;
+      if (
+        initialFilters.workMode &&
+        initialFilters.workMode.length > 0 &&
+        (!filters.workMode || filters.workMode.length === 0)
+      )
+        canonicalCleared = true;
+      if (
+        initialFilters.role &&
+        initialFilters.role.length > 0 &&
+        (!filters.role || filters.role.length === 0)
+      )
+        canonicalCleared = true;
 
       if (canonicalCleared) {
         router.push("/jobs");
@@ -344,6 +375,27 @@ export function useCategoryPageState({
       updateParam("role", filters.role.join(","));
     } else {
       updateParam("role", null);
+    }
+
+    // Board pages (canonicalRedirect && initialFilters) encode their filter in
+    // the path — e.g. `/jobs/javascript` ~ skills=JavaScript. Final pass strips
+    // any board-implied param so the URL stays canonical (no `?skills=` echo),
+    // which is what caused the filter to appear duplicated on taxonomy boards.
+    if (canonicalRedirect && initialFilters) {
+      const stripParam = (key: string) => {
+        if (params.has(key)) {
+          params.delete(key);
+          changed = true;
+        }
+      };
+      if (initialFilters.skills?.length) stripParam("skills");
+      if (initialFilters.location) stripParam("location");
+      if (initialFilters.year != null) stripParam("year");
+      if (initialFilters.workMode?.length) {
+        stripParam("workMode");
+        stripParam("mode");
+      }
+      if (initialFilters.role?.length) stripParam("role");
     }
 
     if (changed) {
@@ -436,6 +488,11 @@ export function useCategoryPageState({
     }
     return counts;
   }, [filteredOpps, type]);
+
+  // Real feed freshness + total from the CDN bootstrap snapshot (generatedAt).
+  // Shown on list pages to signal live, honest, freshly-synced listings.
+  const feedUpdatedAt = initialData?.cachedAt ?? undefined;
+  const feedTotal = initialData?.total ?? 0;
 
   const visibleOpps = useMemo(() => {
     const filtered = filteredOpps.filter((opp) => {
@@ -708,6 +765,9 @@ export function useCategoryPageState({
     profileIncomplete,
     mounted,
     isDesktop,
+
+    feedUpdatedAt,
+    feedTotal,
 
     selectedOpp,
     handleSelectOpportunity,

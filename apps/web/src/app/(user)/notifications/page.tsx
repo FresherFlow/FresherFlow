@@ -1,28 +1,67 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth/AuthContext';
+import { communityApi } from '@fresherflow/api-client';
+import type { CommunityNotification } from '@fresherflow/types';
 import { UsernameGate } from '@/lib/components/ProfileGate';
-import { database } from '@/lib/api/firebase';
-import { ref, onValue, update } from 'firebase/database';
 import { ArrowLeftIcon, Cog6ToothIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
 import { cn } from '@repo/ui/utils/cn';
 
 type NotificationItem = {
     id: string;
     title: string;
-    company?: string;
-    matchScore?: number;
-    matchReason?: string;
+    body?: string | null;
     isRead: boolean;
     receivedAt: number;
-    opportunityId?: string;
-    kind?: 'closing_soon' | 'new_match' | 'following';
+    opportunitySlug?: string | null;
+    opportunityTitle?: string | null;
+    commentId?: string | null;
 };
 
-type RtdbNotifications = Record<string, Omit<NotificationItem, 'id'>>;
+function actorName(notification: CommunityNotification): string {
+    return notification.actor?.fullName || notification.actor?.username || 'Someone';
+}
+
+function toDisplayItem(notification: CommunityNotification): NotificationItem {
+    const name = actorName(notification);
+    const opportunityTitle = notification.opportunity?.title ?? null;
+    let title: string;
+
+    switch (notification.type) {
+        case 'COMMENT_REPLY':
+            title = `${name} replied to your comment`;
+            break;
+        case 'COMMENT_VOTE':
+            title = `${name} voted on your comment`;
+            break;
+        case 'JOB_SIGNAL_MILESTONE':
+            title = opportunityTitle ? `Your activity on ${opportunityTitle} is picking up` : 'Your signal milestone';
+            break;
+        case 'JOB_UPDATED':
+            title = opportunityTitle ? `${opportunityTitle} was updated` : 'A job you follow was updated';
+            break;
+        case 'JOB_CLOSED':
+            title = opportunityTitle ? `${opportunityTitle} is closing soon` : 'A job you follow is closing';
+            break;
+        case 'NEW_MATCHING_JOB':
+        default:
+            title = opportunityTitle ? `New match: ${opportunityTitle}` : 'A new matching job';
+            break;
+    }
+
+    return {
+        id: notification.id,
+        title,
+        body: notification.payload?.excerpt ?? null,
+        isRead: Boolean(notification.readAt),
+        receivedAt: new Date(notification.createdAt).getTime(),
+        opportunitySlug: notification.opportunity?.slug ?? null,
+        opportunityTitle,
+        commentId: notification.commentId ?? null,
+    };
+}
 
 function groupByDay(items: NotificationItem[]): { label: string; items: NotificationItem[] }[] {
     const now = new Date();
@@ -42,46 +81,44 @@ function groupByDay(items: NotificationItem[]): { label: string; items: Notifica
 
 function NotificationsPageContent() {
     const router = useRouter();
-    const { user } = useAuth();
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
+
+    const load = useCallback(async () => {
+        setLoading(true);
+        setError(false);
+        try {
+            const result = await communityApi.listNotifications();
+            setNotifications(result.notifications.map(toDisplayItem));
+        } catch {
+            setError(true);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
-        if (!user?.id) return;
-
-        const notifRef = ref(database, `/users/${user.id}/notifications`);
-        const unsubscribe = onValue(notifRef, (snapshot) => {
-            const val = snapshot.val() as RtdbNotifications | null;
-            if (val) {
-                const list = Object.entries(val)
-                    .map(([id, item]) => ({ ...item, id }))
-                    .sort((a, b) => b.receivedAt - a.receivedAt)
-                    .slice(0, 50);
-                setNotifications(list);
-            } else {
-                setNotifications([]);
-            }
-            setLoading(false);
-        }, () => setLoading(false));
-
-        return () => unsubscribe();
-    }, [user?.id]);
+        void load();
+    }, [load]);
 
     const markAllRead = async () => {
-        if (!user?.id || !notifications.length) return;
-        const patch: Record<string, { isRead: boolean }> = {};
-        notifications.forEach(n => {
-            if (!n.isRead) patch[n.id] = { isRead: true };
-        });
-        if (Object.keys(patch).length === 0) return;
-        const notifRef = ref(database, `/users/${user.id}/notifications`);
-        await update(notifRef, patch);
+        if (!notifications.some(n => !n.isRead)) return;
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+        try {
+            await communityApi.markNotificationsRead();
+        } catch {
+            void load();
+        }
     };
 
     const markRead = async (notifId: string) => {
-        if (!user?.id) return;
-        const itemRef = ref(database, `/users/${user.id}/notifications/${notifId}`);
-        await update(itemRef, { isRead: true });
+        setNotifications(prev => prev.map(n => (n.id === notifId ? { ...n, isRead: true } : n)));
+        try {
+            await communityApi.markNotificationsRead([notifId]);
+        } catch {
+            void load();
+        }
     };
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -93,6 +130,21 @@ function NotificationsPageContent() {
                 {[1, 2, 3, 4].map(i => (
                     <div key={i} className="h-16 bg-muted/40 rounded-xl animate-pulse" />
                 ))}
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="w-full max-w-2xl mx-auto px-4 py-16 text-center space-y-4">
+                <h2 className="text-base font-bold text-foreground">Could not load notifications</h2>
+                <p className="text-muted-foreground text-xs">Please try again.</p>
+                <button
+                    onClick={() => void load()}
+                    className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold capitalize tracking-widest text-[11px] rounded-lg hover:bg-primary/90 transition-all"
+                >
+                    Retry
+                </button>
             </div>
         );
     }
@@ -114,7 +166,7 @@ function NotificationsPageContent() {
                 <div className="flex items-center gap-2">
                     {unreadCount > 0 && (
                         <button
-                            onClick={markAllRead}
+                            onClick={() => void markAllRead()}
                             className="text-xs font-bold text-primary hover:text-primary/80 transition-colors px-3 py-1.5 rounded-lg hover:bg-primary/5"
                         >
                             Clear all
@@ -134,14 +186,14 @@ function NotificationsPageContent() {
                     <div className="space-y-2">
                         <h2 className="text-base font-bold text-foreground">No notifications yet</h2>
                         <p className="text-muted-foreground text-xs leading-relaxed max-w-xs mx-auto">
-                            We&apos;ll notify you about matching jobs, closing deadlines, and your followed companies.
+                            We&apos;ll let you know when someone replies to your discussion, or a job you follow changes.
                         </p>
                     </div>
                     <Link
-                        href="/account/alerts"
+                        href="/jobs"
                         className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold capitalize tracking-widest text-[11px] rounded-lg hover:bg-primary/90 transition-all shadow"
                     >
-                        Alert Settings
+                        Browse jobs
                     </Link>
                 </div>
             ) : (
@@ -161,8 +213,8 @@ function NotificationsPageContent() {
                                         )}
                                         onClick={() => {
                                             void markRead(notif.id);
-                                            if (notif.opportunityId) {
-                                                router.push(`/${notif.opportunityId}`);
+                                            if (notif.opportunitySlug) {
+                                                router.push(`/jobs/${notif.opportunitySlug}#discussion`);
                                             }
                                         }}
                                     >
@@ -174,13 +226,11 @@ function NotificationsPageContent() {
                                             <p className="text-sm font-semibold text-foreground leading-snug line-clamp-2">
                                                 {notif.title}
                                             </p>
-                                            {notif.company && (
-                                                <p className="text-xs text-muted-foreground">{notif.company}</p>
+                                            {notif.body && (
+                                                <p className="text-xs text-muted-foreground line-clamp-2">{notif.body}</p>
                                             )}
-                                            {notif.matchScore !== undefined && notif.matchScore > 0 && (
-                                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-500/10 px-2 py-0.5 rounded-full">
-                                                    {notif.matchScore}% match
-                                                </span>
+                                            {notif.opportunityTitle && (
+                                                <p className="text-xs text-muted-foreground">{notif.opportunityTitle}</p>
                                             )}
                                         </div>
                                         <p className="text-[10px] text-muted-foreground shrink-0 mt-0.5">

@@ -142,6 +142,18 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
         if (panel !== 'role') setRoleSearch('');
     };
 
+    // Hover support: open the panel when the mouse enters a trigger, and close
+    // it when the mouse leaves the trigger+panel wrapper (`relative` div). Click
+    // still works for touch / keyboard users.
+    const openOnEnter = (panel: OpenPanel) => {
+        setOpen(panel);
+        if (panel !== 'location') setLocSearch('');
+        if (panel !== 'skills') setSkillSearch('');
+        if (panel !== 'company') setCompanySearch('');
+        if (panel !== 'role') setRoleSearch('');
+    };
+    const closeOnLeave = () => setOpen(null);
+
     const isGovt = pageType === 'GOVERNMENT';
 
     const sortedLocations = useMemo(() => {
@@ -372,9 +384,10 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
 
             {/* Type dropdown */}
             {onTypeChange && (
-                <div className="relative">
+                <div className="relative" onMouseLeave={closeOnLeave}>
                     <button
                         onClick={() => toggle('type')}
+                        onMouseEnter={() => openOnEnter('type')}
                         aria-expanded={open === 'type'}
                         aria-haspopup="listbox"
                         className={cn(chipBase, selectedType ? chipActive : chipDefault)}
@@ -382,7 +395,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                         {selectedType === 'JOB' ? 'Jobs' : selectedType === 'INTERNSHIP' ? 'Internships' : selectedType === 'WALKIN' ? 'Walk-ins' : 'Type'}
                     </button>
                     {open === 'type' && (
-                        <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-1.5 w-48 z-[100] overscroll-contain">
+                        <div className="absolute right-0 top-full mt-2 before:absolute before:-top-2 before:inset-x-0 before:h-2 before:content-[''] bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-1.5 w-48 z-[100] overscroll-contain">
                             {TYPE_OPTIONS.map((opt, idx) => (
                                 <button
                                     key={opt.label}
@@ -404,9 +417,10 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                 </div>
             )}
 
-            <div className="relative">
+            <div className="relative" onMouseLeave={closeOnLeave}>
                 <button
                     onClick={() => toggle('location')}
+                    onMouseEnter={() => openOnEnter('location')}
                     aria-expanded={open === 'location'}
                     aria-haspopup="listbox"
                     className={cn(chipBase, (filters.location || (filters.workMode && filters.workMode.length > 0)) ? chipActive : chipDefault)}
@@ -422,7 +436,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                 {open === 'location' && (() => {
                     let itemIdx = 0;
                     return (
-                        <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-72 z-[100] space-y-1.5 overscroll-contain">
+                        <div className="absolute right-0 top-full mt-2 before:absolute before:-top-2 before:inset-x-0 before:h-2 before:content-[''] bg-card border border-border rounded-xl shadow-xl animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-72 z-[100] space-y-1.5 overscroll-contain">
                             <div className="px-1">
                                 <input
                                     type="text"
@@ -526,9 +540,10 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
             {/* Govt specific dropdowns */}
             {isGovt && (
                 <>
-                    <div className="relative">
+                    <div className="relative" onMouseLeave={closeOnLeave}>
                         <button
                             onClick={() => toggle('sector')}
+                            onMouseEnter={() => openOnEnter('sector')}
                             aria-expanded={open === 'sector'}
                             className={cn(chipBase, filters.sector ? chipActive : chipDefault)}
                         >
@@ -536,7 +551,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             {filters.sector && <span className="bg-muted text-foreground rounded-md px-1.5 text-sm font-medium shrink-0 flex items-center justify-center h-5 min-w-[20px]">1</span>}
                         </button>
                         {open === 'sector' && (
-                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-52 z-[100]">
+                            <div className="absolute right-0 top-full mt-2 before:absolute before:-top-2 before:inset-x-0 before:h-2 before:content-[''] bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-52 z-[100]">
                                 {GOVT_SECTORS.map((opt, idx) => (
                                     <button
                                         key={opt}
@@ -556,9 +571,10 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             </div>
                         )}
                     </div>
-                    <div className="relative">
+                    <div className="relative" onMouseLeave={closeOnLeave}>
                         <button
                             onClick={() => toggle('qualification')}
+                            onMouseEnter={() => openOnEnter('qualification')}
                             aria-expanded={open === 'qualification'}
                             className={cn(chipBase, filters.qualification ? chipActive : chipDefault)}
                         >
@@ -566,7 +582,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             {filters.qualification && <span className="bg-muted text-foreground rounded-md px-1.5 text-sm font-medium shrink-0 flex items-center justify-center h-5 min-w-[20px]">1</span>}
                         </button>
                         {open === 'qualification' && (
-                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-52 z-[100]">
+                            <div className="absolute right-0 top-full mt-2 before:absolute before:-top-2 before:inset-x-0 before:h-2 before:content-[''] bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-52 z-[100]">
                                 {GOVT_QUALIFICATIONS.map((opt, idx) => (
                                     <button
                                         key={opt}
@@ -591,9 +607,10 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
 
             {/* When (drive date) — walk-in specific */}
             {pageType === 'WALKIN' && onDriveDateChange && (
-                <div className="relative">
+                <div className="relative" onMouseLeave={closeOnLeave}>
                     <button
                         onClick={() => toggle('driveDate')}
+                        onMouseEnter={() => openOnEnter('driveDate')}
                         aria-expanded={open === 'driveDate'}
                         className={cn(chipBase, driveDate && driveDate !== 'all' ? chipActive : chipDefault)}
                     >
@@ -601,7 +618,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                         {driveDate === 'today' ? 'Today' : driveDate === 'thisWeek' ? 'This Week' : 'When'}
                     </button>
                     {open === 'driveDate' && (
-                        <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-1.5 w-44 z-[100]">
+                        <div className="absolute right-0 top-full mt-2 before:absolute before:-top-2 before:inset-x-0 before:h-2 before:content-[''] bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-1.5 w-44 z-[100]">
                             {([
                                 { value: 'all' as const, label: 'All Dates' },
                                 { value: 'today' as const, label: 'Today' },
@@ -634,9 +651,10 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
             {!isGovt && (
                 <>
                     {/* Role dropdown */}
-                    <div className="relative">
+                    <div className="relative" onMouseLeave={closeOnLeave}>
                         <button
                             onClick={() => toggle('role')}
+                            onMouseEnter={() => openOnEnter('role')}
                             aria-expanded={open === 'role'}
                             aria-haspopup="listbox"
                             className={cn(chipBase, filters.role && filters.role.length > 0 ? chipActive : chipDefault)}
@@ -649,7 +667,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             )}
                         </button>
                         {open === 'role' && (
-                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-64 z-[100] flex flex-col gap-1 max-h-80">
+                            <div className="absolute right-0 top-full mt-2 before:absolute before:-top-2 before:inset-x-0 before:h-2 before:content-[''] bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-64 z-[100] flex flex-col gap-1 max-h-80">
                                 <div className="px-1 pb-1 pt-0.5 shrink-0">
                                     <input
                                         type="text"
@@ -691,9 +709,10 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                         )}
                     </div>
 
-                    <div className="relative">
+                    <div className="relative" onMouseLeave={closeOnLeave}>
                         <button
                             onClick={() => toggle('skills')}
+                            onMouseEnter={() => openOnEnter('skills')}
                             aria-expanded={open === 'skills'}
                             className={cn(chipBase, filters.skills && filters.skills.length > 0 ? chipActive : chipDefault)}
                         >
@@ -705,7 +724,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             )}
                         </button>
                         {open === 'skills' && (
-                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-72 min-w-[18rem] z-[100] flex flex-col gap-1 max-h-80">
+                            <div className="absolute right-0 top-full mt-2 before:absolute before:-top-2 before:inset-x-0 before:h-2 before:content-[''] bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-72 min-w-[18rem] z-[100] flex flex-col gap-1 max-h-80">
                                 <div className="px-1 pb-1 pt-0.5 shrink-0">
                                     <input
                                         type="text"
@@ -747,9 +766,10 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             </div>
                         )}
                     </div>
-                    <div className="relative">
+                    <div className="relative" onMouseLeave={closeOnLeave}>
                         <button
                             onClick={() => toggle('course')}
+                            onMouseEnter={() => openOnEnter('course')}
                             aria-expanded={open === 'course'}
                             className={cn(chipBase, filters.course ? chipActive : chipDefault)}
                         >
@@ -757,7 +777,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             {filters.course && <span className="bg-muted text-foreground rounded-md px-1.5 text-sm font-medium shrink-0 flex items-center justify-center h-5 min-w-[20px]">1</span>}
                         </button>
                         {open === 'course' && (
-                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-52 z-[100]">
+                            <div className="absolute right-0 top-full mt-2 before:absolute before:-top-2 before:inset-x-0 before:h-2 before:content-[''] bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-52 z-[100]">
                                 {CORP_COURSES.map((opt, idx) => (
                                     <button
                                         key={opt}
@@ -777,9 +797,10 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             </div>
                         )}
                     </div>
-                    <div className="relative">
+                    <div className="relative" onMouseLeave={closeOnLeave}>
                         <button
                             onClick={() => toggle('source')}
+                            onMouseEnter={() => openOnEnter('source')}
                             aria-expanded={open === 'source'}
                             className={cn(chipBase, filters.source && filters.source.length > 0 ? chipActive : chipDefault)}
                         >
@@ -791,7 +812,8 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             )}
                         </button>
                         {open === 'source' && (
-                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-52 z-[100] max-h-60 overflow-y-auto">
+                            <div className="absolute right-0 top-full mt-2 before:absolute before:-top-2 before:inset-x-0 before:h-2 before:content-[''] bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-52 z-[100]">
+                                <div className="max-h-60 overflow-y-auto overscroll-contain">
                                 {sortedSources.map(({ source: opt, count }, idx) => {
                                     const isSelected = filters.source?.includes(opt);
                                     return (
@@ -811,13 +833,15 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                         </button>
                                     );
                                 })}
+                                </div>
                             </div>
                         )}
                     </div>
                     {/* Passout year dropdown */}
-                    <div className="relative">
+                    <div className="relative" onMouseLeave={closeOnLeave}>
                         <button
                             onClick={() => toggle('year')}
+                            onMouseEnter={() => openOnEnter('year')}
                             aria-expanded={open === 'year'}
                             aria-haspopup="listbox"
                             className={cn(chipBase, filters.year !== null ? chipActive : chipDefault)}
@@ -829,7 +853,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                         {open === 'year' && (() => {
                             let itemIdx = 0;
                             return (
-                                <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-44 z-[100]">
+                                <div className="absolute right-0 top-full mt-2 before:absolute before:-top-2 before:inset-x-0 before:h-2 before:content-[''] bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-44 z-[100]">
                                     {(() => {
                                         const idx = itemIdx++;
                                         return (
@@ -874,9 +898,10 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                     </div>
 
                     {/* Company dropdown */}
-                    <div className="relative">
+                    <div className="relative" onMouseLeave={closeOnLeave}>
                         <button
                             onClick={() => toggle('company')}
+                            onMouseEnter={() => openOnEnter('company')}
                             aria-expanded={open === 'company'}
                             aria-haspopup="listbox"
                             className={cn(chipBase, filters.company && filters.company.length > 0 ? chipActive : chipDefault)}
@@ -889,7 +914,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             )}
                         </button>
                         {open === 'company' && (
-                            <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-72 min-w-[18rem] z-[100] flex flex-col gap-1 max-h-80">
+                            <div className="absolute right-0 top-full mt-2 before:absolute before:-top-2 before:inset-x-0 before:h-2 before:content-[''] bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-2 w-72 min-w-[18rem] z-[100] flex flex-col gap-1 max-h-80">
                                 <div className="px-1 pb-1 pt-0.5 shrink-0">
                                     <input
                                         type="text"

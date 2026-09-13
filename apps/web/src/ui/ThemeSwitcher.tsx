@@ -10,10 +10,34 @@ export function ThemeSwitcher({ className = '', children }: { className?: string
   const [mounted, setMounted] = React.useState(false)
   const { theme, setTheme, resolvedTheme } = useTheme()
   const [open, setOpen] = React.useState(false)
+  const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   React.useEffect(() => {
     setMounted(true)
   }, [])
+
+  React.useEffect(() => {
+    return () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current)
+    }
+  }, [])
+
+  const canHover = () =>
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia !== 'undefined' &&
+    window.matchMedia('(hover: hover) and (pointer: fine)').matches
+
+  function scheduleClose() {
+    if (closeTimer.current) clearTimeout(closeTimer.current)
+    closeTimer.current = setTimeout(() => setOpen(false), 250)
+  }
+
+  function cancelClose() {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current)
+      closeTimer.current = null
+    }
+  }
 
   async function handleThemeChange(newTheme: string) {
     setOpen(false);
@@ -36,13 +60,36 @@ export function ThemeSwitcher({ className = '', children }: { className?: string
   }
 
   return (
+    <div
+      className={children ? 'flex w-full' : 'inline-flex'}
+      onMouseEnter={() => {
+        if (canHover()) {
+          cancelClose()
+          setOpen(true)
+        }
+      }}
+      onMouseLeave={() => {
+        if (canHover()) scheduleClose()
+      }}
+    >
     <ResponsivePopover
       openPopover={open}
       setOpenPopover={setOpen}
       align="end"
-      popoverContentClassName="w-40 p-1"
+      popoverContentClassName="w-40 p-1 before:absolute before:-top-2 before:inset-x-0 before:h-2 before:content-['']"
       content={
-        <div className="flex flex-col w-full gap-1 p-1 sm:p-0">
+        <div
+          className="flex flex-col w-full gap-1 p-1 sm:p-0"
+          onMouseEnter={() => {
+            if (canHover()) {
+              cancelClose()
+              setOpen(true)
+            }
+          }}
+          onMouseLeave={() => {
+            if (canHover()) scheduleClose()
+          }}
+        >
           <button onClick={() => handleThemeChange("light")} className="flex items-center gap-2.5 px-2 py-1.5 rounded-md text-sm font-medium transition-colors hover:bg-muted text-foreground w-full text-left outline-none">
             <Sun className="h-4 w-4 opacity-70" />
             <span className="flex-1">Light</span>
@@ -73,5 +120,6 @@ export function ThemeSwitcher({ className = '', children }: { className?: string
         </button>
       )}
     </ResponsivePopover>
+    </div>
   )
 }

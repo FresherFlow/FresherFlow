@@ -4,7 +4,7 @@ export const revalidate = false;
 
 export const metadata = {
     title: 'Sign In',
-    description: 'Sign in to FresherFlow - access your personalized feed of verified jobs, internships, and walk-in drives for freshers.',
+    description: 'Sign in to FresherFlow - find off-campus jobs, internships, and walk-in drives shared by freshers.',
     robots: {
         index: false,
         follow: false,

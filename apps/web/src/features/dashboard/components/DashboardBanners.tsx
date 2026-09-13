@@ -75,7 +75,7 @@ export function ReferralLinkButton() {
 
     const shareData = {
         title: 'Join me on FresherFlow',
-        text: 'Use FresherFlow to find verified fresher jobs, internships, and walk-ins.',
+        text: 'Find jobs. Share opportunities. Help other freshers.',
         url: referralUrl,
     };
 

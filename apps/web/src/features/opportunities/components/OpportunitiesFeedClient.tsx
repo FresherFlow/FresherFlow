@@ -316,7 +316,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         '@context': 'https://schema.org',
         '@type': 'ItemList',
         'name': 'Job Opportunities Feed',
-        'description': 'A verified list of jobs, internships, and walk-ins for freshers.',
+        'description': 'Current and active openings for freshers: jobs, internships, and walk-ins shared on FresherFlow.',
         'numberOfItems': filteredOpps.length,
         'itemListElement': filteredOpps.slice(0, 10).map((opp, index) => ({
             '@type': 'ListItem',

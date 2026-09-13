@@ -2,20 +2,11 @@ import type { Metadata } from 'next';
 import { fetchCompaniesMetadata, fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { slugify } from '@fresherflow/utils/slugify';
 import { CompanySlugger } from '@/features/companies/utils/companySlugger';
-import { parseJobUrl } from '@fresherflow/parser';
+import { getAtsName } from '@/features/opportunities/utils/atsSource';
 import { Breadcrumb } from '@/ui/Breadcrumb';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 import { HeaderPortal } from '@/lib/components/HeaderPortal';
 import CompaniesDirectoryClient, { CompanyDirectoryItem } from '@/features/companies/components/CompaniesDirectoryClient';
-
-function detectAtsProvider(links: (string | null | undefined)[]): string | undefined {
-    for (const link of links) {
-        if (!link) continue;
-        const parsed = parseJobUrl(link);
-        if (parsed?.adapter) return parsed.adapter;
-    }
-    return undefined;
-}
 
 export const revalidate = false;
 
@@ -33,7 +24,9 @@ export default async function CompaniesIndexPage() {
 
     const opportunities = feed?.opportunities || [];
 
-    // Map opportunities to company slugs and collect links for ATS detection
+    // Map opportunities to company slugs.
+    // Source per opportunity uses the same getAtsName(applyLink || sourceLink || companyWebsite)
+    // as the jobs Source filter, so role counts per source agree across pages.
     const companyData: Record<string, {
         name: string;
         slug: string;
@@ -41,6 +34,7 @@ export default async function CompaniesIndexPage() {
         logoUrl?: string | null;
         website?: string | null;
         links: string[];
+        sourceRoles: Record<string, number>;
         companyStage?: string | null;
         companySize?: string | null;
         companyIndustry?: string[];
@@ -64,6 +58,7 @@ export default async function CompaniesIndexPage() {
                 logoUrl: opp.companyLogoUrl,
                 website: opp.companyWebsite,
                 links: [],
+                sourceRoles: {},
                 companyStage: opp.companyStage,
                 companySize: opp.companySize,
                 companyIndustry: opp.companyIndustry || [],
@@ -71,6 +66,8 @@ export default async function CompaniesIndexPage() {
             };
         }
         companyData[slug].count++;
+        const source = getAtsName(opp.applyLink || opp.sourceLink || opp.companyWebsite) || 'Website';
+        companyData[slug].sourceRoles[source] = (companyData[slug].sourceRoles[source] || 0) + 1;
         if (opp.companyWebsite) companyData[slug].links.push(opp.companyWebsite);
         if (opp.applyLink) companyData[slug].links.push(opp.applyLink);
         if (opp.sourceLink) companyData[slug].links.push(opp.sourceLink);
@@ -110,7 +107,9 @@ export default async function CompaniesIndexPage() {
             count: co.count,
             logoUrl: co.logoUrl,
             website: co.website,
-            atsProvider: detectAtsProvider([co.website, ...co.links]),
+            sources: Object.entries(co.sourceRoles)
+                .map(([name, roles]) => ({ name, roles }))
+                .sort((a, b) => b.roles - a.roles || a.name.localeCompare(b.name)),
             companyStage: co.companyStage,
             companySize: co.companySize,
             companyIndustry: co.companyIndustry,

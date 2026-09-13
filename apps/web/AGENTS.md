@@ -70,7 +70,7 @@ Use `server-only` boundaries for helpers that read cookies, headers, or server e
 | Opportunity feed | `src/lib/api/cdnFeed.ts` |
 | Logos | `src/ui/CompanyLogo.tsx` and CDN helpers |
 | Shared types | `packages/types` |
-| Shared business rules | `packages/domain` |
+| Shared business rules | Root [`AGENTS.md`](../../AGENTS.md) |
 
 Never add raw `fetch` calls in UI components when an API client wrapper exists.
 

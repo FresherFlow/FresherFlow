@@ -10,6 +10,7 @@ import dynamic from 'next/dynamic';
 
 const OpportunityDetailPane = dynamic(() => import('./OpportunityDetailPane').then(m => m.OpportunityDetailPane));
 import { JobCardResponsive } from '@/features/opportunities/components/JobCard';
+import { OpportunityRow } from '@/features/opportunities/components/OpportunityRow';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
 import Squares2X2Icon from '@heroicons/react/24/outline/Squares2X2Icon';
@@ -45,6 +46,7 @@ import {
 } from '@/features/opportunities/components/GovtPhaseTabs';
 import { type CategoryPageState } from '@/features/opportunities/hooks/useCategoryPageState';
 import { formatJobFeedTitle } from '@/features/opportunities/utils/formatJobFeedTitle';
+import { Drawer } from 'vaul';
 
 const MobileFilterDrawer = dynamic(() =>
     import('@/features/opportunities/components/MobileFilterDrawer').then(m => m.MobileFilterDrawer)
@@ -69,6 +71,20 @@ const TICKER_TAG_MAP: Record<string, { tag: string; color: string }> = {
     OPEN:                { tag: 'Apply Now',  color: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20' },
 };
 
+// Small human-readable freshness label from an epoch-ms CDN snapshot timestamp.
+function formatFeedAge(tsMs?: number): string {
+    if (!tsMs || !Number.isFinite(tsMs)) return '';
+    const diff = Date.now() - tsMs;
+    if (diff < 0) return 'just now';
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days === 1) return 'yesterday';
+    return `${days}d ago`;
+}
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function LiveTicker({ items }: { items: { label: string; href: string; tag: string; tagColor: string }[] }) {
@@ -127,6 +143,7 @@ export function CategoryPageView({
     mobileActiveCount, openMobileFilters, applyMobileFilters, clearAll,
     visibleCount, setVisibleCount, isJobSaved, isJobApplied, toggleSave, reload,
     customTitle, topContent, bottomContent, userLocation, driveDate, setDriveDate,
+    feedUpdatedAt, feedTotal,
     onLocationRequest, onLocationClear, locationLoading, locationRequested, locationDenied
 }: CategoryPageState & {
     onLocationRequest?: () => void;
@@ -143,6 +160,8 @@ export function CategoryPageView({
     const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const gridContainerRef = useRef<HTMLDivElement>(null);
+    const preserveListScrollRef = useRef(false);
+    const savedListScrollTopRef = useRef(0);
     const [showScrollTop, setShowScrollTop] = useState(false);
 
     const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
@@ -182,6 +201,18 @@ export function CategoryPageView({
             }
         };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Selecting a job must never move the list — if anything (remount,
+    // browser anchoring) resets the list scroll on select, put it back.
+    // Only arms on row click, so filter/search resets still work.
+    useEffect(() => {
+        if (!preserveListScrollRef.current) return;
+        preserveListScrollRef.current = false;
+        const el = gridContainerRef.current;
+        if (el && savedListScrollTopRef.current > 0) {
+            el.scrollTop = savedListScrollTopRef.current;
+        }
+    }, [selectedOpp]);
     const filterAggregates = useMemo(() => {
         const locations: Record<string, number> = {};
         const skills: Record<string, number> = {};
@@ -320,26 +351,57 @@ export function CategoryPageView({
             </div>
             
             <div className={cn("relative group w-full max-w-xl mx-auto flex-1 lg:ml-6", selectedOpp && isDesktop !== false && "hidden lg:block")}>
-                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                <Input
-                    type="text"
-                    placeholder="Search roles, companies, skills..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className="pl-9 h-9 text-xs rounded-xl bg-card border-border shadow-sm w-full focus:bg-background focus:ring-2 focus:ring-ring/30 transition-shadow duration-150 ease-out"
-                />
-                {search && (
-                    <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-full p-0.5 hover:bg-muted">
-                        <XMarkIcon className="w-3 h-3" />
-                    </button>
-                )}
-            </div>
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                        type="text"
+                        placeholder="Search roles, companies, skills..."
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        className="pl-9 h-9 text-xs rounded-xl bg-card border-border w-full"
+                    />
+                    {search && (
+                        <button
+                            onClick={() => setSearch('')}
+                            aria-label="Clear search"
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full bg-card border border-border text-muted-foreground p-0.5"
+                        >
+                            <XMarkIcon className="w-3 h-3" />
+                        </button>
+                    )}
+                </div>
         </>
     );
 
     // ── Detail pane toggle (persisted) ──────────────────────────────────────
     const [showDetail, setShowDetail] = useState(false);
+    const headerRef = useRef<HTMLDivElement>(null);
+    const feedRef = useRef<HTMLDivElement>(null);
+    // Keep the feed box exactly viewport-tall (no outer scroll), whatever height
+    // the title row / filters / active chips take up. Panes fill the box with
+    // flex heights and scroll internally — no viewport math in the panes.
+    useEffect(() => {
+        const el = headerRef.current;
+        if (!el || typeof ResizeObserver === 'undefined') return;
+        const update = () => {
+            const feedEl = feedRef.current;
+            if (feedEl) {
+                const feedRect = feedEl.getBoundingClientRect();
+                // 6px breathing room so the box's rounded bottom + shadow stay visible
+                feedEl.style.height = `calc(100dvh - ${Math.ceil(feedRect.top)}px - 6px)`;
+            }
+        };
+        update();
+        const ro = new ResizeObserver(update);
+        ro.observe(el);
+        window.addEventListener('resize', update);
+        return () => {
+            ro.disconnect();
+            window.removeEventListener('resize', update);
+        };
+    }, []);
     const [hoveredOppId, setHoveredOppId] = useState<string | null>(null);
+    // Sliding hover highlight geometry — glides between rows instead of snapping.
+    const [hoverRect, setHoverRect] = useState<{ top: number; height: number } | null>(null);
     const [mobileMapView, setMobileMapView] = useState(false);
     useEffect(() => {
         const stored = localStorage.getItem('ff:showDetail');
@@ -358,11 +420,11 @@ export function CategoryPageView({
     }, [handleCloseOpportunityPane]);
 
     return (
-        <div id="feed-scroll-container" className="w-full max-w-7xl mx-auto flex flex-col" style={{ height: 'calc(100vh - 3.5rem)' }}>
+        <div id="feed-scroll-container" ref={feedRef} className="w-full max-w-7xl mx-auto flex flex-col" style={{ height: 'calc(100dvh - 3.5rem)' }}>
             {portalTarget && headerPortalContent ? createPortal(headerPortalContent, portalTarget) : null}
 
             {/* Sticky header */}
-            <div className={cn("shrink-0 bg-background/95 border-b border-border/50 px-3 md:px-6 pt-2.5 pb-0 space-y-2", selectedOpp && "hidden lg:block")}>
+            <div ref={headerRef} className="shrink-0 bg-background/95 border-b border-border/50 px-3 md:px-6 pt-2.5 pb-0 space-y-2">
 
             {type === OpportunityType.GOVERNMENT ? (
                 /* Govt Compact Top Row: Search + Count on left, Filters on right */
@@ -411,23 +473,27 @@ export function CategoryPageView({
                 <>
                     {/* Non-govt mobile search bar — inline, full width. Desktop search is portaled to TopHeaderBar */}
                     <div className="relative group lg:hidden">
-                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
                             type="text"
                             placeholder="Search roles, companies, skills..."
                             value={search}
                             onChange={e => setSearch(e.target.value)}
-                            className="pl-9 h-9 text-xs rounded-xl bg-card border-border shadow-sm w-full focus:bg-background focus:ring-2 focus:ring-ring/30 transition-shadow duration-150 ease-out"
+                            className="pl-9 h-9 text-xs rounded-xl bg-card border-border w-full"
                         />
                         {search && (
-                            <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-full p-0.5 hover:bg-muted">
+                            <button
+                                onClick={() => setSearch('')}
+                                aria-label="Clear search"
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full bg-card border border-border text-muted-foreground p-0.5"
+                            >
                                 <XMarkIcon className="w-3 h-3" />
                             </button>
                         )}
                     </div>
 
                     {/* Title row: Title+Count LEFT | Filters RIGHT */}
-                    <div className={cn("flex items-center justify-between gap-3 pb-2.5", selectedOpp && "hidden lg:flex")}>
+                    <div className="flex items-center justify-between gap-3 pb-2.5">
                         {/* Left: Title + Count */}
                         <div className="flex items-baseline gap-1.5 min-w-0">
                             <h1 className="text-lg md:text-xl font-bold text-foreground tracking-tight leading-tight truncate">
@@ -506,7 +572,7 @@ export function CategoryPageView({
 
             {/* Active Chips */}
             {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0) || (filters.source && filters.source.length > 0) || (filters.company && filters.company.length > 0)) ? (
-                <div className={cn("flex flex-wrap items-center gap-1.5 pb-2", selectedOpp && "hidden lg:flex")}>
+                <div className="flex flex-wrap items-center gap-1.5 pb-2">
                     {search && (
                         <button onClick={() => setSearch('')} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
                             <MagnifyingGlassIcon className="w-3.5 h-3.5 shrink-0" />
@@ -601,8 +667,11 @@ export function CategoryPageView({
             ) : null}
             </div>{/* end sticky header */}
 
-            {/* Scrollable content */}
-            <div ref={scrollContainerRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-3 md:px-6 pb-2 space-y-2">
+            {/* Scrollable content — locked in split mode, panes scroll internally */}
+            <div ref={scrollContainerRef} onScroll={handleScroll} className={cn(
+                "flex-1 overflow-y-auto px-3 md:px-6 pb-2 space-y-2",
+                type !== OpportunityType.GOVERNMENT && showDetail && "lg:overflow-hidden lg:pb-0 lg:space-y-0"
+            )}>
             {/* Mobile filter drawer */}
             <Suspense fallback={null}>
                 <MobileFilterDrawer
@@ -674,13 +743,13 @@ export function CategoryPageView({
                         {[1,2,3,4,5,6].map(i => <SkeletonJobCard key={i} variant={isDesktop === false ? 'compact' : 'wide'} />)}
                     </div>
                 ) : (
-                    <div className="w-full grid gap-6 items-start grid-cols-1 lg:grid-cols-[1.1fr_1.3fr] xl:grid-cols-[45%_55%] pt-3.5">
-                        <div className="min-w-0 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-2 custom-scrollbar">
+                    <div className="w-full grid gap-6 items-start grid-cols-1 lg:grid-cols-[1.1fr_1.3fr] xl:grid-cols-[45%_55%] pt-3.5 lg:pt-0 lg:gap-0 lg:h-full lg:min-h-0">
+                        <div className="min-w-0 lg:h-full lg:min-h-0 lg:overflow-y-auto custom-scrollbar">
                             <div className="grid grid-cols-1 gap-4 md:gap-6">
                                 {[1,2,3,4,5].map(i => <SkeletonJobCard key={i} variant="compact" />)}
                             </div>
                         </div>
-                        <div className="hidden lg:flex flex-col sticky top-24 h-[calc(100vh-8rem)] bg-card border border-border/50 rounded-2xl p-6">
+                        <div className="hidden lg:flex flex-col lg:h-full lg:min-h-0 bg-card border border-border/50 rounded-2xl p-6">
                             <div className="animate-pulse rounded bg-muted h-8 w-1/2 mb-4" />
                             <div className="animate-pulse rounded bg-muted h-4 w-3/4 mb-8" />
                             <div className="space-y-4">
@@ -717,7 +786,7 @@ export function CategoryPageView({
 
                     <p className="mt-4 pt-3 border-t border-border/30 text-center text-sm text-muted-foreground">
                         Know of an opening that&apos;s missing?{" "}
-                        <a href="/submit" className="font-semibold text-primary hover:underline">
+                        <a href="/post" className="font-semibold text-primary hover:underline">
                             Submit it →
                         </a>
                     </p>
@@ -739,7 +808,7 @@ export function CategoryPageView({
                 <div className={cn(
                     "w-full grid gap-2 items-start",
                     (type !== OpportunityType.GOVERNMENT && showDetail)
-                        ? "grid-cols-1 lg:grid-cols-[1.1fr_1.3fr] xl:grid-cols-[45%_55%] [:root[data-show-detail='false']_&]:lg:grid-cols-1 [:root[data-show-detail='false']_&]:max-w-[52rem] [:root[data-show-detail='false']_&]:mx-auto"
+                        ? "grid-cols-1 lg:grid-cols-[1.1fr_1.3fr] xl:grid-cols-[45%_55%] lg:gap-0 lg:h-full lg:min-h-0 lg:bg-card lg:border lg:border-border/50 lg:rounded-2xl lg:overflow-hidden lg:shadow-sm [:root[data-show-detail='false']_&]:lg:grid-cols-1 [:root[data-show-detail='false']_&]:max-w-[52rem] [:root[data-show-detail='false']_&]:mx-auto [:root[data-show-detail='false']_&]:lg:bg-transparent [:root[data-show-detail='false']_&]:lg:border-0 [:root[data-show-detail='false']_&]:lg:shadow-none"
                         : "grid-cols-1 max-w-[52rem] mx-auto"
                 )}>
                     {/* Left Column: list grid */}
@@ -749,11 +818,49 @@ export function CategoryPageView({
                         onScroll={handleScroll}
                         className={cn(
                             "min-w-0 pt-3.5",
-                            type !== OpportunityType.GOVERNMENT && showDetail && "lg:sticky lg:top-[var(--sticky-h,8rem)] lg:h-[calc(100vh-var(--sticky-h,8rem))] lg:overflow-y-auto lg:pr-2 custom-scrollbar [:root[data-show-detail='false']_&]:lg:static [:root[data-show-detail='false']_&]:lg:h-auto [:root[data-show-detail='false']_&]:lg:overflow-y-visible [:root[data-show-detail='false']_&]:lg:pr-0"
+                            type !== OpportunityType.GOVERNMENT && showDetail && "lg:pt-0 lg:h-full lg:min-h-0 lg:overflow-y-auto custom-scrollbar [:root[data-show-detail='false']_&]:lg:h-auto [:root[data-show-detail='false']_&]:lg:overflow-y-visible"
                         )}
                     >
-                        <div className="grid grid-cols-1 gap-2">
+                        <div className={cn(
+                            "grid grid-cols-1 gap-2",
+                            type !== OpportunityType.GOVERNMENT && showDetail && "relative lg:gap-0 lg:divide-y lg:divide-border"
+                        )}>
+                            {(type !== OpportunityType.GOVERNMENT && showDetail) && (
+                                <div
+                                    aria-hidden
+                                    className="pointer-events-none absolute inset-x-0 top-0 z-0 hidden bg-muted/40 opacity-0 transition-[top,height,opacity] duration-200 ease-out lg:block"
+                                    style={{
+                                        top: hoverRect?.top ?? 0,
+                                        height: hoverRect?.height ?? 0,
+                                        opacity: hoverRect && hoveredOppId !== selectedOpp?.id ? 1 : 0,
+                                    }}
+                                />
+                            )}
                             {visibleOpps.slice(0, visibleCount).map((opp, index) => (
+                                (type !== OpportunityType.GOVERNMENT && showDetail) ? (
+                                    <OpportunityRow
+                                        key={opp.id}
+                                        opp={opp}
+                                        isSaved={isJobSaved(opp)}
+                                        isApplied={isJobApplied(opp)}
+                                        onToggleSave={() => toggleSave(opp.id)}
+                                        isSelected={Boolean(isDesktop && selectedOpp && opp.id === selectedOpp.id)}
+                                        onMouseEnter={(e) => {
+                                            const el = e.currentTarget as HTMLElement;
+                                            setHoverRect({ top: el.offsetTop, height: el.offsetHeight });
+                                            setHoveredOppId(opp.id);
+                                        }}
+                                        onMouseLeave={() => {
+                                            setHoveredOppId(null);
+                                            setHoverRect(null);
+                                        }}
+                                        onClick={() => {
+                                            savedListScrollTopRef.current = gridContainerRef.current?.scrollTop ?? 0;
+                                            preserveListScrollRef.current = true;
+                                            handleSelectOpportunity(opp);
+                                        }}
+                                    />
+                                ) : (
                                 <JobCardResponsive
                                         key={opp.id}
                                         job={{ ...opp, normalizedRole: opp.title, salary: (opp.salaryMin !== undefined && opp.salaryMax !== undefined) ? { min: opp.salaryMin, max: opp.salaryMax } : undefined } as any}
@@ -771,7 +878,7 @@ priority={index < 4}
                                     variant={
                                         (mobileGrid || (type !== OpportunityType.GOVERNMENT && showDetail))
                                             ? 'compact'
-                                             : 'wide'
+                                            : 'wide'
                                     }
                                     onClick={(e) => {
                                         if (type !== OpportunityType.GOVERNMENT && (showDetail || mobileGrid)) {
@@ -780,6 +887,7 @@ priority={index < 4}
                                         }
                                     }}
                                 />
+                                )
                             ))}
                         </div>
                         
@@ -813,7 +921,7 @@ priority={index < 4}
 
                     {/* Right Column: Map for Walk-ins / Detail Panel for Jobs (desktop) */}
                     {type !== OpportunityType.GOVERNMENT && showDetail && (
-                        <div className="hidden lg:flex flex-col sticky top-24 h-[calc(100vh-8rem)] bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm mt-3.5 [:root[data-show-detail='false']_&]:!hidden">
+                        <div className="hidden lg:flex flex-col lg:h-full lg:min-h-0 bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm mt-3.5 lg:mt-0 lg:border-0 lg:border-l lg:rounded-none lg:shadow-none [:root[data-show-detail='false']_&]:!hidden">
                             {type === OpportunityType.WALKIN ? (
                                 <WalkinMapPane
                                     opportunity={selectedOpp}
@@ -858,22 +966,33 @@ priority={index < 4}
                         </div>
                     )}
 
-                    {/* Mobile Detail Modal */}
-                    {selectedOpp && type !== OpportunityType.GOVERNMENT && (
-                        <div id="mobile-detail-modal" className={cn("lg:hidden fixed inset-0 z-[120] flex flex-col bg-background animate-in slide-in-from-bottom duration-300")}>
-                            <div className="pt-[env(safe-area-inset-top)] bg-card shrink-0" />
-                            <div className="flex-1 flex flex-col min-h-0">
-                                <Suspense fallback={<OpportunityDetailSkeleton />}>
-                                    <OpportunityDetailPane
-                                        oppId={selectedOpp.slug || selectedOpp.id}
-                                        initialData={selectedOpp}
-                                        onClose={handleCloseOpportunityPane}
-                                        isMobile={true}
-                                    />
-                                </Suspense>
-                            </div>
-                        </div>
-                    )}
+                    {/* Mobile Detail Bottom Sheet */}
+                    <Drawer.Root
+                        open={isDesktop === false && !!selectedOpp && type !== OpportunityType.GOVERNMENT}
+                        onOpenChange={(open) => { if (!open) handleCloseOpportunityPane(); }}
+                        modal={false}
+                    >
+                        <Drawer.Portal>
+                            <Drawer.Overlay className="fixed inset-0 z-[110] bg-black/50 backdrop-blur-[1px] lg:hidden" />
+                            <Drawer.Content className="fixed bottom-0 left-0 right-0 z-[120] flex flex-col h-[92dvh] rounded-t-3xl border-t border-border bg-background shadow-2xl outline-none lg:hidden overscroll-contain">
+                                <div className="flex justify-center py-2.5 shrink-0 bg-background rounded-t-3xl">
+                                    <div className="h-1.5 w-12 rounded-full bg-muted" />
+                                </div>
+                                <div className="flex-1 min-h-0 flex flex-col pb-[env(safe-area-inset-bottom)]">
+                                    {selectedOpp && (
+                                        <Suspense fallback={<OpportunityDetailSkeleton />}>
+                                            <OpportunityDetailPane
+                                                oppId={selectedOpp.slug || selectedOpp.id}
+                                                initialData={selectedOpp}
+                                                onClose={handleCloseOpportunityPane}
+                                                isMobile={true}
+                                            />
+                                        </Suspense>
+                                    )}
+                                </div>
+                            </Drawer.Content>
+                        </Drawer.Portal>
+                    </Drawer.Root>
 
                     {/* Mobile Map View Full Screen Overlay for Walkins */}
                     {type === OpportunityType.WALKIN && mobileMapView && (

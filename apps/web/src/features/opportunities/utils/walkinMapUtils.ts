@@ -194,7 +194,7 @@ export function getGoogleCalendarUrl(opp: Opportunity): string {
         '',
         `Directions: ${details?.venueLink || `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(details?.venueAddress || '')}`}`,
         '',
-        'Verified on FresherFlow: https://fresherflow.in/jobs/walkins',
+        'Shared on FresherFlow: https://fresherflow.in/jobs/walkins',
     ].filter(Boolean).join('\n');
 
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&location=${location}&details=${encodeURIComponent(descLines)}`;
@@ -274,7 +274,7 @@ export function getWhatsAppShareUrl(opp: Opportunity): string {
         lines.push(`*Contact:* ${details.contactPerson}`);
     }
     lines.push(``);
-    lines.push(`Verified on FresherFlow`);
+    lines.push(`Shared on FresherFlow`);
     lines.push(`https://fresherflow.in/jobs/walkins`);
 
     const text = encodeURIComponent(lines.join('\n'));

@@ -21,10 +21,10 @@ const BLOG_POSTS: BlogPost[] = [
         category: 'Product Launch',
         content: [
             '**Finding your first job** as a graduate is stressful enough. But today, the job search is made infinitely harder by the sheer volume of noise, duplicate listings, and redirect spam on modern web aggregators. Today, we are taking a massive leap forward by releasing the official FresherFlow Mobile App for Android.',
-            '**FresherFlow is community-first**: A job and walk-in opportunity platform designed specifically for students and recent graduates in India. We built this mobile client around the philosophy of high-performance native interactions and verified data, completely bypassing the ad-heavy redirect hops of modern job portals.',
+            '**FresherFlow is community-first**: A job and walk-in opportunity platform designed specifically for students and recent graduates in India. We built this mobile client around fast native interactions and shared openings with source links, without the ad-heavy redirect hops of modern job portals.',
             'The Android app introduces several key features engineered specifically to solve fresher pain points:',
             '1. **Share Screen with Clipboard Detection**: Found a hidden gem? Copy the URL, and opening the app will instantly detect the link from your clipboard, letting you pre-fill and share it with the community in one tap. The app automatically checks for duplicates and guides users if a role is already active.',
-            '2. **Interactive Eligibility Match Scores**: Powered by our custom MatchScoreGauge, the app instantly compares your education, skills, and batch year preferences against verified job requirements. You can see your match compatibility gauge before you even read the full details.',
+            '2. **Interactive Eligibility Match Scores**: Powered by our custom MatchScoreGauge, the app instantly compares your education, skills, and batch year preferences against the listed job requirements. You can see your match compatibility gauge before you even read the full details.',
             '3. **Kanban Career Tracker**: Keep track of every job application status directly in-app. Move roles seamlessly through different stages—from Applied, to Interviewing, to Offered, or Rejected—using our custom Status Tracker Sheets.',
             '4. **Direct-to-Career Apply**: Click apply, and the app directly slides up the official corporate application portal (Workday, Greenhouse, Lever, etc.) in a clean, non-tracking in-app browser interface. No ads, no redirect loops.',
             '**Get started today**: Download the FresherFlow mobile app now on the Google Play Store and experience early-career hiring built with clarity. (iOS app is currently in development and will be launching soon!)'
@@ -42,7 +42,7 @@ const BLOG_POSTS: BlogPost[] = [
             'This happens because traditional job search engines monetize clicks. The more times they redirect you through pages with advertisements, the more revenue they generate. Your time and energy are treated as product inventory.',
             'We believe this model is fundamentally broken and disrespectful to job seekers.',
             'At FresherFlow, our API client and scraping tools bypass this entirely. If an opportunity is listed as active, clicking the apply button opens the official corporate site in a clean browser view. We do not place ads, track cookies across sites, or collect referral commissions by redirecting you to third-party ad networks.',
-            'By keeping the path to application direct and verified, we save candidates hours of frustration every single week.'
+            'By keeping the path to application direct, with source links you can check, we save candidates hours of frustration every single week.'
         ]
     },
     {
@@ -92,7 +92,7 @@ export default function BlogPage() {
                         Behind the Scenes.
                     </h1>
                     <p className="max-w-2xl text-base md:text-lg text-muted-foreground leading-relaxed mt-2">
-                        Engineering details, product design decisions, and launch notes from the team building India&apos;s cleanest fresher platform.
+                        Engineering details, product design decisions, and launch notes from the team building a community home for freshers.
                     </p>
                 </div>
             </header>

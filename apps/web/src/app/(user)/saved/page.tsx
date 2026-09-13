@@ -154,14 +154,14 @@ function SavedJobsPageContent() {
                     <div className="space-y-2">
                         <h2 className="text-base font-bold tracking-tight text-foreground">No saved opportunities yet</h2>
                         <p className="text-muted-foreground text-xs leading-relaxed max-w-xs mx-auto">
-                            Bookmark verified opportunities from the feed to compare and apply later.
+                            Save current and active openings from the feed to compare and apply later.
                         </p>
                     </div>
                     <Link
                         href="/jobs"
                         className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold text-xs rounded-lg hover:bg-primary/90 active:scale-[0.97] transition-all duration-150 ease-out shadow-sm"
                     >
-                        Browse Verified Jobs →
+                        Find jobs shared by freshers →
                     </Link>
                 </div>
             ) : (

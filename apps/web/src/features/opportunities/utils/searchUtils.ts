@@ -4,6 +4,7 @@ const BOILERPLATE_PATTERNS = [
     /https?:\/\/\S+/gi,
     /www\.\S+/gi,
     /Verified on FresherFlow(\s*\(fresherflow\.in\))?/gi,
+    /Shared on FresherFlow(\s*\(fresherflow\.in\))?/gi,
     /fresherflow\.in/gi,
     /\b(location|work mode|degree|branch|batches|dates|venue|salary|req|apply here|eligible|eligibility):/gi,
     /\bat\b/gi,

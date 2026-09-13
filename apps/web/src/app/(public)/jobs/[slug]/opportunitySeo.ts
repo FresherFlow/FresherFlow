@@ -202,9 +202,9 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
         ? `${opportunity.allowedPassoutYears.join(', ')} graduates`
         : 'freshers';
 
-    const baseDesc = `Verified ${type.toLowerCase()} opportunity at ${company} in ${location}. Open to ${eligibility}.`;
+    const baseDesc = `Current and active ${type.toLowerCase()} opening at ${company} in ${location}. Open to ${eligibility}.`;
     const applyInfo = opportunity.applyLink ? ' Direct application link available.' : '';
-    const freshInfo = ' Browse verified job listings, internships, and walk-ins on FresherFlow.';
+    const freshInfo = ' Browse current job openings, internships, and walk-ins shared on FresherFlow.';
     const driveInfo = isCampusDrive
         ? ` Registration closes ${driveDates.regEnd ? driveDates.regEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'soon'}.`
         : '';

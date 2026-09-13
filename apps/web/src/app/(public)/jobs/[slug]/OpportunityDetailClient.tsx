@@ -39,6 +39,7 @@ import { DetailHeroSection } from './components/DetailHeroSection';
 import { DetailSidebarActions } from './components/DetailSidebarActions';
 import { ExpiredWarning } from './components/ExpiredWarning';
 import { DescriptionSection } from './components/DescriptionSection';
+import { DiscussionSection } from '@/features/opportunities/components/discussion/DiscussionSection';
 import { GovernmentJobDetailView } from './components/GovernmentJobDetailView';
 import CompanyLogo from '@/ui/CompanyLogo';
 // import { AppPromoBanner } from '@/ui/AppPromoBanner';
@@ -356,7 +357,7 @@ export default function OpportunityDetailClient({
                                     {opp.company} Careers
                                 </Link>
                                 {opp.allowedPassoutYears?.map(year => (
-                                    <Link key={year} href={`/batch/${year}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
+                                    <Link key={year} href={`/jobs/${year}-batch`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
                                         <CalendarIcon className="w-3.5 h-3.5" />
                                         {year} Batch Jobs
                                     </Link>
@@ -370,7 +371,7 @@ export default function OpportunityDetailClient({
                                 }).map(loc => {
                                     const locSlug = slugify(loc);
                                     return (
-                                        <Link key={loc} href={`/locations/${locSlug}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
+                                        <Link key={loc} href={`/jobs/${locSlug}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
                                             <MapPinIcon className="w-3.5 h-3.5" />
                                             Jobs in {loc}
                                         </Link>
@@ -382,7 +383,7 @@ export default function OpportunityDetailClient({
                                     }
                                     return true;
                                 }).slice(0, 5).map(skill => (
-                                    <Link key={skill} href={`/skills/${slugify(skill)}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
+                                    <Link key={skill} href={`/jobs/${slugify(skill)}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
                                         <TagIcon className="w-3.5 h-3.5" />
                                         <span className="capitalize">{skill}</span>{' '}Jobs
                                     </Link>
@@ -401,7 +402,7 @@ export default function OpportunityDetailClient({
                                     const CURATED_ROLES = new Set(['software-engineer', 'data-analyst', 'business-analyst', 'frontend-developer', 'test-engineer']);
                                     if (!CURATED_ROLES.has(roleSlug)) return null;
                                     return (
-                                        <Link href={`/roles/${roleSlug}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
+                                        <Link href={`/jobs/${roleSlug}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
                                             <UserIcon className="w-3.5 h-3.5" />
                                             <span className="capitalize">{opp.jobFunction}</span> Jobs
                                         </Link>
@@ -449,15 +450,16 @@ export default function OpportunityDetailClient({
                             <ComplexityCard applicationDetails={opp.applicationDetails} />
                         )}
 
-                        {/* Community Submission CTA */}
-                        <div className="mt-6 pt-4 border-t border-border/40 text-center">
-                            <p className="text-xs text-muted-foreground">
-                                Know of a similar opening?{' '}
-                                <a href="/submit" className="font-semibold text-primary hover:underline">
-                                    Submit it to help others →
-                                </a>
-                            </p>
-                        </div>
+                        <DiscussionSection
+                            opportunityIdOrSlug={opp.slug || opp.id}
+                            postedByUsername={
+                                (opp as { user?: { username?: string | null; fullName?: string | null } }).user?.username ||
+                                (opp as { referredByUsername?: string }).referredByUsername ||
+                                null
+                            }
+                            postedAt={(opp as { postedAt?: string | Date }).postedAt ?? null}
+                            sourceLink={opp.sourceLink ?? null}
+                        />
                     </div>
 
                     {/* RIGHT: Sidebar (desktop only, sticky) */}

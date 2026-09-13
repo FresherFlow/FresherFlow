@@ -110,7 +110,7 @@ export function generateJobSummaryText(job: Opportunity, shareUrl: string): stri
 
     lines.push('');
     if (shareUrl) lines.push(`Apply here: ${shareUrl}`);
-    lines.push('Verified on FresherFlow (fresherflow.in)');
+    lines.push('Shared on FresherFlow (fresherflow.in)');
 
     return lines.join('\n');
 }
