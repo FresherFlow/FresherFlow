@@ -85,7 +85,7 @@ export default function DownloadOpenGraphImage() {
                                 color: 'rgba(245, 247, 248, 0.65)',
                             }}
                         >
-                            VERIFIED JOBS & INTERNSHIPS
+                            JOBS & INTERNSHIPS FOR FRESHERS
                         </div>
 
                         <div
@@ -108,11 +108,11 @@ export default function DownloadOpenGraphImage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 18, color: 'rgba(245, 247, 248, 0.85)' }}>
                                 <span style={{ display: 'flex', width: 6, height: 6, borderRadius: 999, background: '#4ade80' }} />
-                                <span>Verified Listings Only</span>
+                                <span>Current openings, updated</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 18, color: 'rgba(245, 247, 248, 0.85)' }}>
                                 <span style={{ display: 'flex', width: 6, height: 6, borderRadius: 999, background: '#4ade80' }} />
-                                <span>Direct Apply Links • No Spam</span>
+                                <span>Direct apply links · source included</span>
                             </div>
                         </div>
                     </div>

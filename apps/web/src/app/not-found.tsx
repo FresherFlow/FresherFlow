@@ -58,7 +58,7 @@ export default function NotFoundPage() {
                                         <p className="text-sm font-bold text-foreground">Internships</p>
                                         <span className="text-[9px] font-semibold uppercase tracking-wider text-primary/70">Discover</span>
                                     </div>
-                                    <p className="mt-0.5 text-xs text-muted-foreground truncate">Verified internships filtered for fresher relevance.</p>
+                                    <p className="mt-0.5 text-xs text-muted-foreground truncate">Current internships shared and discussed by freshers.</p>
                                 </div>
                                 <ArrowRight className="h-4 w-4 text-muted-foreground transition-all duration-300 transform group-hover:translate-x-1 group-hover:text-primary" />
                             </Link>

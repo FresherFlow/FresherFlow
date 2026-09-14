@@ -1,68 +1,93 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 
 export const metadata: Metadata = {
     title: 'Terms of Service',
-    description: 'Understand the terms and guidelines for using the FresherFlow platform.',
+    description: 'The terms that govern your use of the FresherFlow platform and community.',
     alternates: {
         canonical: '/terms',
     },
 };
 
+/**
+ * Terms of Service — homepage design language: accent-dot eyebrow, Bricolage
+ * headline, ruled sections with mono numerals, sharp ghost button.
+ */
+
+const SECTIONS = [
+    {
+        n: '01',
+        title: 'Acceptance of terms',
+        body: 'By accessing or using FresherFlow, you agree to these terms. If you do not agree with any part of them, please do not use the platform.',
+    },
+    {
+        n: '02',
+        title: 'The service',
+        body: 'FresherFlow is a community platform that lists job, internship, and walk-in opportunities shared by users, with links to official employer application pages. We do not host employer application processes and we are not a recruitment agency.',
+    },
+    {
+        n: '03',
+        title: 'Community conduct',
+        body: 'Do not post fake openings, misleading salary claims, referral spam, or content that is abusive or unlawful. Listings that violate these rules are removed, and repeat offenders lose posting access.',
+    },
+    {
+        n: '04',
+        title: 'No fees for candidates',
+        body: 'FresherFlow never charges candidates. We reject paid training packages, paid interview guarantees, and any arrangement that asks freshers to pay to apply. Report any such request immediately.',
+    },
+    {
+        n: '05',
+        title: 'Accuracy of listings',
+        body: 'Openings are community-shared and carry their source. Details can change or expire — always verify on the official employer page before applying or traveling to a drive.',
+    },
+    {
+        n: '06',
+        title: 'Limitation of liability',
+        body: 'To the maximum extent permitted by law, FresherFlow is provided "as is" and shall not be liable for any indirect, incidental, or consequential damages resulting from your use of the platform.',
+    },
+] as const;
+
 export default function TermsPage() {
     return (
-        <main className="min-h-screen bg-background px-4 py-10 md:px-6">
-            <div className="max-w-3xl mx-auto space-y-8">
-                <header className="space-y-3 pb-6 border-b border-border/60">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary">Legal Documentation</p>
-                    <h1 className="text-3xl md:text-5xl font-black tracking-tight text-foreground">Terms of Service</h1>
-                    <p className="text-xs text-muted-foreground">Last updated: May 31, 2026</p>
-                </header>
+        <main className="mx-auto w-full max-w-[1120px] px-6 pb-24 pt-16">
+            <div className="flex items-center gap-2.5 font-record text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                <span className="h-[7px] w-[7px] rounded-full bg-[var(--ff-accent)]" aria-hidden />
+                Legal documentation
+            </div>
 
-                <div className="prose prose-neutral dark:prose-invert max-w-none space-y-8 text-sm md:text-base leading-relaxed text-foreground/90">
-                    <p className="text-base text-muted-foreground">
-                        Welcome to FresherFlow. These terms govern your use of the FresherFlow platform. By accessing our services, you agree to these conditions.
-                    </p>
+            <h1 className="mt-6 max-w-[18ch] font-display text-[clamp(34px,5vw,60px)] font-extrabold leading-[1.02] tracking-[-0.025em]">
+                Terms of Service
+            </h1>
+            <p className="mt-3 font-record text-[11.5px] uppercase tracking-[0.1em] text-muted-foreground">
+                Last updated · May 31, 2026
+            </p>
 
-                    <section className="space-y-3">
-                        <h2 className="text-xl font-bold text-foreground">1. Eligibility</h2>
-                        <p>
-                            FresherFlow is designed for students, fresh graduates, and entry-level job seekers. There are no age restrictions to explore opportunities or seek career resources on the platform.
-                        </p>
+            <p className="mt-6 max-w-[62ch] text-[15.5px] leading-relaxed text-muted-foreground">
+                The rules that keep FresherFlow honest: real openings, official
+                links, and a community that stays free for freshers.
+            </p>
+
+            {/* ruled sections */}
+            <div className="mt-14 border-t border-border">
+                {SECTIONS.map((s) => (
+                    <section key={s.n} className="grid gap-3 border-b border-border py-8 sm:grid-cols-[64px_220px_1fr] sm:gap-6">
+                        <div className="font-record text-[12px] font-semibold text-[var(--ff-accent)]">{s.n}</div>
+                        <h2 className="text-[16px] font-bold text-foreground">{s.title}</h2>
+                        <p className="text-[14px] leading-relaxed text-muted-foreground">{s.body}</p>
                     </section>
+                ))}
+            </div>
 
-                    <section className="space-y-3">
-                        <h2 className="text-xl font-bold text-foreground">2. User Conduct</h2>
-                        <p>
-                            You agree to use FresherFlow only for lawful purposes related to job discovery, networking, and career advancement. Prohibited activities include, but are not limited to, the submission of fraudulent job links, automated scraping of data, or attempting to compromise the security of our systems.
-                        </p>
-                    </section>
-
-                    <section className="space-y-3">
-                        <h2 className="text-xl font-bold text-foreground">3. Third-Party Links</h2>
-                        <p>
-                            FresherFlow is a discovery platform linking to external corporate career pages and job boards. We do not guarantee hiring outcomes and are not responsible for the content, privacy, or security of third-party websites. Users should perform their own due diligence before applying.
-                        </p>
-                    </section>
-
-                    <section className="space-y-3">
-                        <h2 className="text-xl font-bold text-foreground">4. Intellectual Property</h2>
-                        <p>
-                            The FresherFlow name, logo, and all original content and features are the exclusive property of the FresherFlow team. You may not reproduce or distribute any part of the service without prior written consent.
-                        </p>
-                    </section>
-
-                    <section className="space-y-3">
-                        <h2 className="text-xl font-bold text-foreground">5. Limitation of Liability</h2>
-                        <p>
-                            To the maximum extent permitted by law, FresherFlow is provided &quot;as is&quot; and shall not be liable for any indirect, incidental, or consequential damages resulting from your use of the platform.
-                        </p>
-                    </section>
-
-                    <footer className="pt-6 border-t border-border/40 text-xs md:text-sm text-muted-foreground flex flex-col sm:flex-row sm:justify-between gap-2">
-                        <span>Contact: support@fresherflow.in</span>
-                        <span>FresherFlow Platform Team</span>
-                    </footer>
-                </div>
+            <div className="mt-10 flex flex-wrap items-center justify-between gap-4">
+                <span className="font-record text-[12px] tracking-[0.06em] text-muted-foreground">
+                    Contact · support@fresherflow.in
+                </span>
+                <Link
+                    href="/privacy"
+                    className="inline-flex items-center gap-2 rounded-[2px] border border-border px-[16px] py-[9px] text-[13px] font-semibold transition-colors hover:border-foreground/40"
+                >
+                    Read the Privacy Policy →
+                </Link>
             </div>
         </main>
     );

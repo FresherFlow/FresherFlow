@@ -75,74 +75,70 @@ export default function BlogPage() {
     };
 
     return (
-        <main className="max-w-6xl mx-auto px-4 md:px-8 py-10 md:py-16 space-y-12">
-            <header className="space-y-4">
+        <main className="mx-auto w-full max-w-[1120px] px-6 pb-24 pt-16 space-y-12">
+            <header className="space-y-5">
                 <div>
-                    <Link 
-                        href="/" 
-                        className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-border/80 bg-card hover:bg-muted text-xs font-semibold text-muted-foreground hover:text-foreground transition-all active:scale-95 shadow-sm"
+                    <Link
+                        href="/"
+                        className="inline-flex items-center gap-2 rounded-[2px] border border-border px-3 py-1.5 font-record text-[11px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
                     >
                         <ArrowLeftIcon className="w-3.5 h-3.5" />
                         Back to feed
                     </Link>
                 </div>
-                <div className="space-y-2">
-                    <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary">Company Blog</p>
-                    <h1 className="text-3xl md:text-5xl font-black tracking-tight text-foreground leading-none">
-                        Behind the Scenes.
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2.5 font-record text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                        <span className="h-[7px] w-[7px] rounded-full bg-[var(--ff-accent)]" aria-hidden />
+                        Company blog
+                    </div>
+                    <h1 className="max-w-[16ch] font-display text-[clamp(34px,5vw,60px)] font-extrabold leading-[1.02] tracking-[-0.025em] text-foreground">
+                        Behind the scenes.
                     </h1>
-                    <p className="max-w-2xl text-base md:text-lg text-muted-foreground leading-relaxed mt-2">
+                    <p className="max-w-[58ch] text-[15.5px] leading-relaxed text-muted-foreground">
                         Engineering details, product design decisions, and launch notes from the team building a community home for freshers.
                     </p>
                 </div>
             </header>
 
-            <section className="space-y-6">
+            <section className="border-t border-border">
                 {BLOG_POSTS.map((post) => (
-                    <details 
+                    <details
                         key={post.id}
-                        className="group rounded-3xl border border-border hover:border-border/100 hover:shadow-sm open:border-primary/40 open:ring-1 open:ring-primary/20 transition-all duration-300 bg-card overflow-hidden"
+                        className="group border-b border-border"
                     >
-                        {/* Card Header (Always Visible) */}
-                        <summary className="p-6 md:p-8 cursor-pointer select-none space-y-4 list-none [&::-webkit-details-marker]:hidden">
-                            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground font-semibold">
-                                <span className="bg-primary/10 text-primary px-2.5 py-1 rounded-full text-[10px] tracking-wider uppercase font-bold">
-                                    {post.category}
-                                </span>
-                                <div className="flex items-center gap-1">
-                                    <CalendarIcon className="w-3.5 h-3.5" />
-                                    {post.date}
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <ClockIcon className="w-3.5 h-3.5" />
-                                    {post.readingTime}
-                                </div>
+                        {/* Row header — ruled list row, homepage register rhythm */}
+                        <summary className="cursor-pointer select-none list-none px-2 py-7 transition-[padding,background-color] hover:bg-muted/40 hover:px-4 [&::-webkit-details-marker]:hidden">
+                            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 font-record text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
+                                <span className="font-semibold text-[var(--ff-accent)]">{post.category}</span>
+                                <span>{post.date}</span>
+                                <span>{post.readingTime}</span>
                             </div>
 
-                            <div className="flex items-start justify-between gap-4">
-                                <h2 className="text-xl md:text-2xl font-black tracking-tight text-foreground group-hover:text-primary">
+                            <div className="mt-2 flex items-start justify-between gap-4">
+                                <h2 className="max-w-[30ch] font-display text-[clamp(19px,2.2vw,26px)] font-extrabold leading-[1.15] tracking-[-0.015em] text-foreground transition-colors group-hover:text-[var(--ff-accent)]">
                                     {post.title}
                                 </h2>
-                                <div className="p-1 rounded-lg border border-border bg-background text-muted-foreground shrink-0 mt-1">
-                                    <ChevronDownIcon className="w-4 h-4 transition-transform duration-200 group-open:rotate-180" />
-                                </div>
+                                <ChevronDownIcon className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180" />
                             </div>
 
-                            <p className="text-sm md:text-base text-muted-foreground leading-relaxed">
+                            <p className="mt-2 max-w-[70ch] text-[14px] leading-relaxed text-muted-foreground">
                                 {post.excerpt}
                             </p>
                         </summary>
 
-                        {/* Card Body (Detailed Content) */}
-                        <div className="px-6 pb-8 md:px-8 md:pb-10 border-t border-border/40 pt-6">
-                            <div className="prose prose-neutral dark:prose-invert max-w-none space-y-4 text-sm md:text-base leading-relaxed text-foreground/90 font-medium font-sans">
+                        {/* Expanded body */}
+                        <div className="px-2 pb-8 md:px-4">
+                            <div className="max-w-[72ch] space-y-4 border-l-2 border-[var(--ff-accent)]/40 pl-5 text-[14px] leading-relaxed text-foreground/90">
                                 {post.content.map((paragraph, index) => (
                                     <p key={index}>{renderParagraph(paragraph)}</p>
                                 ))}
                             </div>
-                            <div className="pt-6 mt-6 border-t border-border/40 flex justify-between items-center">
-                                <Link href="/app" className="text-xs font-bold text-primary hover:underline">
-                                    Try the FresherFlow App &rarr;
+                            <div className="mt-6">
+                                <Link
+                                    href="/app"
+                                    className="text-[13px] font-semibold text-foreground underline decoration-[var(--ff-accent)] decoration-2 underline-offset-4 transition-colors hover:text-[var(--ff-accent)]"
+                                >
+                                    Try the FresherFlow app →
                                 </Link>
                             </div>
                         </div>

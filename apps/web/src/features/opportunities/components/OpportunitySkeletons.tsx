@@ -72,15 +72,15 @@ export function FeedPageSkeleton({ isGovt = false }: { isGovt?: boolean }) {
                     ))}
                 </div>
             ) : (
-                <div className="w-full grid gap-6 items-start grid-cols-1 lg:grid-cols-[1.3fr_1.7fr]">
-                    <div className="min-w-0 lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:overflow-y-auto lg:pr-2 custom-scrollbar">
+                <div className="w-full grid gap-6 items-start grid-cols-1 xl:grid-cols-[1.3fr_1.7fr]">
+                    <div className="min-w-0 xl:sticky xl:top-14 xl:h-[calc(100vh-3.5rem)] xl:overflow-y-auto xl:pr-2 custom-scrollbar">
                         <div className="grid grid-cols-1 gap-4 md:gap-6">
                             {Array.from({ length: 5 }).map((_, index) => (
                                 <SkeletonJobCard key={index} variant="compact" />
                             ))}
                         </div>
                     </div>
-                    <div className="hidden lg:flex flex-col sticky top-14 h-[calc(100vh-3.5rem)] bg-card border border-border/50 rounded-2xl p-6">
+                    <div className="hidden xl:flex flex-col sticky top-14 h-[calc(100vh-3.5rem)] bg-card border border-border/50 rounded-2xl p-6">
                         <Skeleton className="h-8 w-1/2 mb-4" />
                         <Skeleton className="h-4 w-3/4 mb-8" />
                         <div className="space-y-4">

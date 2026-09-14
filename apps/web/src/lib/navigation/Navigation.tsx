@@ -36,7 +36,6 @@ export const SIDEBAR_ROUTES = [
     '/referral',
     '/resources',
     '/platforms',
-    '/submit',
 ];
 
 export const FEED_ROUTES = [

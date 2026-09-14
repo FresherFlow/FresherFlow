@@ -227,37 +227,37 @@ const founderSocialLinks = [
 export default function AboutPage() {
     return (
         <div className="w-full bg-background text-foreground">
-            {/* 1. Hero Section */}
-            <section className="max-w-4xl mx-auto px-4 md:px-6 pt-10 pb-12 md:pt-16 md:pb-16">
+            {/* 1. Hero Section — homepage language: eyebrow dot + Bricolage, no pill chip */}
+            <section className="mx-auto w-full max-w-[1120px] px-6 pt-16 pb-14">
                 <div className="space-y-5">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-muted border border-border/80 text-foreground text-xs font-mono font-medium">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                        <span>About FresherFlow</span>
+                    <div className="flex items-center gap-2.5 font-record text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                        <span className="h-[7px] w-[7px] rounded-full bg-[var(--ff-accent)]" aria-hidden />
+                        About FresherFlow
                     </div>
 
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-foreground leading-[1.12]">
+                    <h1 className="max-w-[18ch] font-display text-[clamp(34px,5vw,60px)] font-extrabold leading-[1.02] tracking-[-0.025em] text-foreground">
                         Find jobs. Share opportunities. Help other freshers.
                     </h1>
 
-                    <p className="text-base sm:text-lg md:text-xl text-muted-foreground leading-relaxed max-w-3xl">
+                    <p className="max-w-[58ch] text-[15.5px] leading-relaxed text-muted-foreground">
                         FresherFlow is a community of freshers who share opportunities, discuss hiring, and keep each other informed — so no fresher applies blind.
                     </p>
                 </div>
             </section>
 
-            {/* 2. Highlight Metrics Strip */}
-            <section className="border-y border-border bg-muted/20">
-                <div className="max-w-4xl mx-auto px-4 md:px-6 py-8 md:py-10">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
+            {/* 2. Highlight Metrics Strip — hairline grid like the stat band, but light */}
+            <section className="border-y border-border">
+                <div className="mx-auto w-full max-w-[1120px] px-6 py-10">
+                    <div className="grid grid-cols-2 gap-px border border-border bg-border md:grid-cols-4">
                         {metrics.map((item) => (
-                            <div key={item.label} className="space-y-1">
-                                <div className="text-2xl sm:text-3xl md:text-4xl font-bold font-mono tracking-tight text-foreground">
+                            <div key={item.label} className="bg-background px-6 pb-6 pt-7">
+                                <div className="font-display text-[clamp(24px,2.6vw,34px)] font-extrabold tracking-[-0.02em] text-foreground">
                                     {item.value}
                                 </div>
-                                <div className="text-sm font-semibold text-foreground">
+                                <div className="mt-2 text-[13.5px] font-semibold text-foreground">
                                     {item.label}
                                 </div>
-                                <p className="text-xs text-muted-foreground leading-snug">
+                                <p className="mt-1 font-record text-[11.5px] uppercase tracking-[0.08em] text-muted-foreground">
                                     {item.sub}
                                 </p>
                             </div>
@@ -266,11 +266,14 @@ export default function AboutPage() {
                 </div>
             </section>
 
-            {/* 3. The Origin & Problem (Story + Pull Quote) */}
-            <section className="max-w-4xl mx-auto px-4 md:px-6 py-14 md:py-20 space-y-10">
+            {/* 3. The Origin & Problem — homepage eyebrow rhythm */}
+            <section className="mx-auto w-full max-w-[1120px] px-6 py-16 space-y-10">
                 <div className="space-y-3">
-                    <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">The Origin</p>
-                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                    <div className="flex items-center gap-2.5 font-record text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                        <span className="h-[7px] w-[7px] rounded-full bg-[var(--ff-accent)]" aria-hidden />
+                        The Origin
+                    </div>
+                    <h2 className="font-display text-[clamp(26px,3.4vw,40px)] font-extrabold tracking-[-0.02em] text-foreground">
                         Why FresherFlow exists
                     </h2>
                 </div>
@@ -301,15 +304,18 @@ export default function AboutPage() {
                 </div>
             </section>
 
-            {/* 4. Our Principles */}
-            <section className="border-t border-border bg-muted/10">
-                <div className="max-w-4xl mx-auto px-4 md:px-6 py-14 md:py-20 space-y-10">
+            {/* 4. Our Principles — homepage numbered rhythm */}
+            <section className="border-t border-border">
+                <div className="mx-auto w-full max-w-[1120px] px-6 py-16 space-y-10">
                     <div className="space-y-3">
-                        <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Our Foundation</p>
-                        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                        <div className="flex items-center gap-2.5 font-record text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                            <span className="h-[7px] w-[7px] rounded-full bg-[var(--ff-accent)]" aria-hidden />
+                            Our Foundation
+                        </div>
+                        <h2 className="font-display text-[clamp(26px,3.4vw,40px)] font-extrabold tracking-[-0.02em] text-foreground">
                             Our Operating Principles
                         </h2>
-                        <p className="text-sm sm:text-base text-muted-foreground max-w-2xl">
+                        <p className="max-w-2xl text-[14.5px] text-muted-foreground">
                             Four core commitments that define every listing, feature, and architectural decision.
                         </p>
                     </div>
@@ -334,13 +340,16 @@ export default function AboutPage() {
 
             {/* 5. The Platform Ecosystem */}
             <section className="border-t border-border">
-                <div className="max-w-4xl mx-auto px-4 md:px-6 py-14 md:py-20 space-y-10">
+                <div className="mx-auto w-full max-w-[1120px] px-6 py-16 space-y-10">
                     <div className="space-y-3">
-                        <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Ecosystem</p>
-                        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                        <div className="flex items-center gap-2.5 font-record text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                            <span className="h-[7px] w-[7px] rounded-full bg-[var(--ff-accent)]" aria-hidden />
+                            Ecosystem
+                        </div>
+                        <h2 className="font-display text-[clamp(26px,3.4vw,40px)] font-extrabold tracking-[-0.02em] text-foreground">
                             Built for modern job discovery
                         </h2>
-                        <p className="text-sm sm:text-base text-muted-foreground max-w-2xl">
+                        <p className="max-w-2xl text-[14.5px] text-muted-foreground">
                             A multi-platform suite designed to help you discover, track, and apply faster.
                         </p>
                     </div>

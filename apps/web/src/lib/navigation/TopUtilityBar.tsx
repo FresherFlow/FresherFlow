@@ -31,7 +31,7 @@ export function TopUtilityBar() {
     if (isAuthRoute) return null;
 
     return (
-        <div className="hidden md:flex fixed top-0 right-0 h-14 items-center gap-2 pr-6 z-[90]">
+        <div className="hidden lg:flex fixed top-0 right-0 h-14 items-center gap-2 pr-6 z-[90]">
             <ThemeSwitcher/>
 
             {isCandidatePortfolioRoute ? (

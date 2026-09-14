@@ -66,8 +66,8 @@ export default function ProgrammaticHub({
     }, [isIntersecting, visibleCount, opportunities.length, isLoadingMore]);
 
     useEffect(() => {
-        setIsDesktop(window.innerWidth >= 1024);
-        const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
+        setIsDesktop(window.innerWidth >= 1280);
+        const handleResize = () => setIsDesktop(window.innerWidth >= 1280);
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
@@ -81,7 +81,7 @@ export default function ProgrammaticHub({
 
     useEffect(() => {
         if (!selectedOpp) return;
-        if (window.innerWidth >= 1024) return; // Only lock scroll on mobile
+        if (window.innerWidth >= 1280) return; // Only lock scroll on mobile
         document.body.style.overflow = 'hidden';
         return () => {
             document.body.style.overflow = '';
@@ -152,10 +152,10 @@ export default function ProgrammaticHub({
                     }
                 />
                 ) : (
-                    <div className="w-full grid grid-cols-1 lg:grid-cols-[1.3fr_1.7fr] gap-6 items-start">
+                    <div className="w-full grid grid-cols-1 xl:grid-cols-[1.3fr_1.7fr] gap-6 items-start">
                         
                         {/* Left Column: Grid list */}
-                        <div id="hub-grid-container" className="min-w-0 lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:overflow-y-auto lg:pr-2 custom-scrollbar">
+                        <div id="hub-grid-container" className="min-w-0 xl:sticky xl:top-14 xl:h-[calc(100vh-3.5rem)] xl:overflow-y-auto xl:pr-2 custom-scrollbar">
                             <OpportunityGrid
                                 opportunities={visibleOpportunities}
                                 isLoading={false}
@@ -179,7 +179,7 @@ export default function ProgrammaticHub({
                         </div>
 
                         {/* Right Column: Detail Panel / Empty State (Desktop only) */}
-                        <div className="hidden lg:flex flex-col sticky top-14 h-[calc(100vh-3.5rem)] bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm">
+                        <div className="hidden xl:flex flex-col sticky top-14 h-[calc(100vh-3.5rem)] bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm">
                             {selectedOpp ? (
                                 <div className="flex-1 overflow-y-auto custom-scrollbar">
                                     <OpportunityDetailPane
@@ -208,7 +208,7 @@ export default function ProgrammaticHub({
 
                         {/* Mobile Detail Modal/Drawer */}
                         {selectedOpp && isDesktop === false && (
-                            <div id="mobile-detail-modal" className="lg:hidden fixed inset-0 z-[120] flex flex-col bg-background animate-in slide-in-from-bottom duration-300">
+                            <div id="mobile-detail-modal" className="xl:hidden fixed inset-0 z-[120] flex flex-col bg-background animate-in slide-in-from-bottom duration-300">
                                 <div className="pt-[env(safe-area-inset-top)] bg-card shrink-0" />
                                 <div className="flex-1 flex flex-col min-h-0">
                                     <OpportunityDetailPane
@@ -265,7 +265,7 @@ export default function ProgrammaticHub({
 
             {/* Mobile Detail Modal/Drawer (Mobile/Tablet only) */}
             {selectedOpp && isDesktop === false && (
-                <div id="mobile-detail-modal" className="lg:hidden fixed inset-0 z-[120] flex flex-col bg-background animate-in slide-in-from-bottom duration-300">
+                <div id="mobile-detail-modal" className="xl:hidden fixed inset-0 z-[120] flex flex-col bg-background animate-in slide-in-from-bottom duration-300">
                     <div className="pt-[env(safe-area-inset-top)] bg-card shrink-0" />
                     <div className="flex-1 flex flex-col min-h-0">
                         <OpportunityDetailPane

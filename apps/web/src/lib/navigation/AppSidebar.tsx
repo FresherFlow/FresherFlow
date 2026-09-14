@@ -50,7 +50,7 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
     const [prevContext, setPrevContext] = useState('default');
     let context = 'default';
 
-    const sharedPaths = ['/companies', '/saved', '/tracker', '/resources', '/submit'];
+    const sharedPaths = ['/companies', '/saved', '/tracker', '/resources', '/contribute'];
     const isShared = sharedPaths.some(p => pathname.startsWith(p));
 
     if (
@@ -366,7 +366,7 @@ function AppSidebarInner() {
     }, []);
 
     return (
-        <aside className="hidden md:flex fixed top-0 left-0 bottom-0 z-50 w-[var(--sidebar-w,12rem)] transition-[width] duration-[600ms] ease-[cubic-bezier(0.7,0,0,1)] overflow-hidden">
+        <aside className="hidden lg:flex fixed top-0 left-0 bottom-0 z-50 w-[var(--sidebar-w,12rem)] transition-[width] duration-[600ms] ease-[cubic-bezier(0.7,0,0,1)] overflow-hidden">
             <SidebarContent pathname={pathname} searchParams={searchParams} collapsed={visuallyCollapsed} onToggleCollapse={handleToggleCollapse} hostname={hostname} />
         </aside>
     );
@@ -374,7 +374,7 @@ function AppSidebarInner() {
 
 export function AppSidebar() {
     return (
-        <React.Suspense fallback={<aside className="hidden md:flex fixed top-0 left-0 bottom-0 z-50 w-[var(--sidebar-w,12rem)] transition-[width] duration-[600ms] ease-[cubic-bezier(0.7,0,0,1)] overflow-hidden" />}>
+        <React.Suspense fallback={<aside className="hidden lg:flex fixed top-0 left-0 bottom-0 z-50 w-[var(--sidebar-w,12rem)] transition-[width] duration-[600ms] ease-[cubic-bezier(0.7,0,0,1)] overflow-hidden" />}>
             <AppSidebarInner />
         </React.Suspense>
     );

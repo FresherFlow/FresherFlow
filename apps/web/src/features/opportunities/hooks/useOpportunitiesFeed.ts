@@ -19,7 +19,8 @@ import { opportunityMatchesSearch, sanitizeSearchQuery } from '@/features/opport
 
 const WEB_STATIC_DISCOVERY = true;
 
-export { getAtsName } from '../utils/atsSource';
+import { getAtsName } from '../utils/atsSource';
+export { getAtsName };
 
 
 interface UseOpportunitiesFeedOptions {

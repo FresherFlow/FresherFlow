@@ -95,7 +95,7 @@ export default function TopNav() {
                         <div className="flex items-center gap-3 md:gap-4 relative">
                             {!isAdminRoute && (
                                 <Link
-                                    href="/post"
+                                    href="/contribute"
                                     className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-all border border-primary/20"
                                 >
                                     <span>+ Post a Job</span>

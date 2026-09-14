@@ -67,7 +67,7 @@ export function useCategoryPageState({
     // landscape phones / tablets the desktop List + Split layout, so a tap on a
     // job card navigated to the job page instead of opening the detail drawer.
     const computeIsDesktop = () =>
-      window.innerWidth >= 1024 &&
+      window.innerWidth >= 1280 &&
       !(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
     setIsDesktop(computeIsDesktop());
     const handleResize = () => setIsDesktop(computeIsDesktop());

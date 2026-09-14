@@ -60,11 +60,14 @@ export function OpportunityRow({
             onClick={onClick}
             className={cn(
                 'relative z-10 flex items-start gap-3 px-4 py-3.5 cursor-pointer transition-colors duration-200 ease-out',
-                isSelected ? 'bg-muted/70' : 'bg-transparent'
+                isSelected ? 'bg-primary/[0.08]' : 'bg-transparent'
             )}
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
         >
+            {isSelected && (
+                <span aria-hidden className="absolute left-0 top-0 bottom-0 w-[3px] bg-primary" />
+            )}
             <CompanyLogo
                 companyName={opp.company}
                 companyWebsite={opp.companyWebsite}

@@ -15,6 +15,8 @@ import { AlertsDropdown } from '@/features/notifications/components/AlertsDropdo
 import { useOfflineActionQueue } from '@/lib/api/offline/useOfflineActionQueue';
 import { getNavRoutes } from './routeConfig';
 import { useTheme } from '@/lib/providers/ThemeContext';
+import { useMarqueeHidden } from '@/lib/navigation/useMarqueeHidden';
+import { NavMegaMenu } from './NavMegaMenu';
 
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/ui/DropdownMenu';
@@ -65,34 +67,22 @@ export function DesktopNav() {
     }, [pathname]);
 
     const isLandingPage = pathname === '/';
+    // Landing rides the marquee: nav moves to top-0 when the marquee hides on scroll down
+    const marqueeHidden = useMarqueeHidden(isLandingPage);
     const isCandidatePortfolioRoute = pathname.startsWith('/u/');
 
     const handleLogout = () => { if (logout) void logout('/login'); };
 
     const initialLetter = resolvedUser ? (resolvedUser.fullName?.[0] || resolvedUser.username?.[0] || 'U').toUpperCase() : 'U';
 
+    // ONE header everywhere: same 60px height, same border, same actions.
+    // Only the landing sits under the marquee (top-7 → top-0 on scroll).
     return (
         <header className={cn(
-            "select-none",
-            isLandingPage
-                ? cn(
-                    "fixed top-0 left-0 right-0 z-[100] hidden md:flex items-center justify-center pointer-events-none",
-                    scrolled ? "pt-4 px-4" : "pt-2 px-4"
-                  )
-                : resolvedUser
-                ? "fixed top-0 left-0 right-0 w-full h-[64px] bg-background/95 backdrop-blur-md border-b border-border/40 z-[100] hidden md:flex items-center justify-center"
-                : "fixed top-0 left-0 right-0 w-full h-[64px] bg-background border-b border-border/10 z-[100] hidden md:flex items-center justify-center"
+            "select-none fixed left-0 right-0 z-[100] h-[60px] items-center bg-background border-b border-border/60 hidden lg:flex transition-[top] duration-300 ease-out",
+            isLandingPage ? (marqueeHidden ? 'top-0' : 'top-7') : 'top-0'
         )}>
-            <nav className={cn(
-                isLandingPage
-                    ? cn(
-                        'pointer-events-auto w-full flex items-center justify-between gap-4 transition-[max-width,height,background-color,border-color,box-shadow,backdrop-filter,padding,border-radius] duration-300 ease-[cubic-bezier(0.77,0,0.175,1)] px-6 shadow-none',
-                        scrolled
-                            ? 'max-w-[980px] h-[52px] rounded-2xl border border-border/40 bg-background/80 dark:bg-card/75 backdrop-blur-md shadow-[0_12px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)]'
-                            : 'max-w-7xl h-[64px] rounded-none border border-transparent bg-transparent'
-                      )
-                    : 'relative w-full max-w-7xl h-full flex items-center justify-between gap-4 px-6'
-            )}>
+            <nav className="mx-auto w-full max-w-7xl h-[60px] flex items-center justify-between gap-4 px-6">
 
                 {/* Brand Left */}
                 <Link
@@ -110,10 +100,16 @@ export function DesktopNav() {
                     </span>
                 </Link>
 
-                {/* Center Nav Links - Fluid Flex Layout */}
+                {/* Center Nav Links — left-aligned next to the brand (landing) */}
                 {!isCandidatePortfolioRoute && (
-                <div className="flex-1 flex items-center justify-center gap-1 md:gap-2 px-2 overflow-x-auto no-scrollbar">
-                    {desktopRoutes.map((route) => {
+                <div className={cn(
+                    'flex-1 flex items-center gap-1 md:gap-2 overflow-x-auto no-scrollbar',
+                    !isLandingPage && 'justify-center px-2'
+                )}>
+                    {!isAuthRoute && (
+                        <div className="mx-auto flex items-center gap-1 md:gap-2">
+                            <NavMegaMenu isLanding={isLandingPage} marqueeHidden={marqueeHidden} />
+                            {desktopRoutes.map((route) => {
                         const isActive = pathname === route.href || pathname.startsWith(`${route.href}/`);
                         return (
                             <Link
@@ -134,6 +130,8 @@ export function DesktopNav() {
                             </Link>
                         );
                     })}
+                        </div>
+                    )}
                 </div>
                 )}
 
@@ -208,12 +206,12 @@ export function DesktopNav() {
                             </DropdownMenu>
                         </div>
                     ) : (!isAuthRoute) ? (
-                        <div className="flex items-center gap-2">
-                            <Link
-                                href="/login"
-                                className="px-2.5 py-1.5 text-xs font-semibold text-foreground hover:text-primary transition-[color,transform] duration-150 ease active:scale-[0.97] shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
-                            >
-                                Log in
+                        <div className="flex items-center gap-2.5">
+                            <Link href="/login" className="ff-nav-btn">
+                                Sign in
+                            </Link>
+                            <Link href="/post" className="ff-nav-btn ff-nav-btn-primary">
+                                Post ✦
                             </Link>
                         </div>
                     ) : null}

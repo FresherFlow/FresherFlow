@@ -285,7 +285,7 @@ export default function JobCard({
                 <AutoFitBadges
                     metaItems={metaItems}
                     skills={orderedSkills}
-                    maxRows={2}
+                    maxRows={1}
                     className="relative z-20"
                 />
                 <div className="flex shrink-0 items-center gap-2">

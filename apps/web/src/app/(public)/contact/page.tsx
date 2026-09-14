@@ -9,6 +9,10 @@ export const metadata: Metadata = {
     },
 };
 
+/**
+ * Contact — homepage design language: mono eyebrow, Bricolage headline,
+ * sharp 2px-corner hairline cards, no rounded-2xl/3xl blobs.
+ */
 const contactItems = [
     {
         title: 'General support',
@@ -26,43 +30,65 @@ const contactItems = [
 
 export default function ContactPage() {
     return (
-        <main className="max-w-4xl mx-auto px-4 md:px-6 py-10 md:py-16 space-y-10">
-            <section className="space-y-4">
-                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-primary">Contact Us</p>
-                <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-foreground">Reach the FresherFlow team.</h1>
-                <p className="max-w-2xl text-base md:text-lg text-muted-foreground leading-relaxed">
-                    If something is broken, unclear, or missing, tell us. If you want to work with us, tell us that too.
-                    We would rather hear specific feedback than let users get stuck.
-                </p>
-            </section>
+        <main className="mx-auto w-full max-w-[1120px] px-6 pb-24 pt-16">
+            <div className="flex items-center gap-2.5 font-record text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                <span className="h-[7px] w-[7px] rounded-full bg-[var(--ff-accent)]" aria-hidden />
+                Contact us
+            </div>
 
-            <section className="grid gap-4 md:grid-cols-2">
+            <h1 className="mt-6 max-w-[18ch] font-display text-[clamp(34px,5vw,60px)] font-extrabold leading-[1.02] tracking-[-0.025em]">
+                Reach the FresherFlow team.
+            </h1>
+
+            <p className="mt-5 max-w-[58ch] text-[15.5px] leading-relaxed text-muted-foreground">
+                If something is broken, unclear, or missing, tell us. If you want to
+                work with us, tell us that too. We would rather hear specific feedback
+                than let users get stuck.
+            </p>
+
+            {/* contact cards — sharp hairline boxes */}
+            <div className="mt-12 grid gap-px border border-border bg-border sm:grid-cols-2">
                 {contactItems.map((item) => (
                     <a
                         key={item.title}
                         href={item.href}
-                        className="rounded-2xl border border-border bg-card p-6 space-y-3 hover:border-primary/30 transition-colors"
+                        className="group bg-card p-6 transition-colors hover:bg-muted/40"
                     >
-                        <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{item.title}</p>
-                        <p className="text-xl font-bold text-foreground break-all">{item.value}</p>
-                        <p className="text-sm text-muted-foreground leading-relaxed">{item.note}</p>
+                        <div className="font-record text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                            {item.title}
+                        </div>
+                        <div className="mt-3 break-all text-[17px] font-bold text-foreground group-hover:text-[var(--ff-accent)]">
+                            {item.value}
+                        </div>
+                        <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">{item.note}</p>
                     </a>
                 ))}
-            </section>
+            </div>
 
-            <section className="rounded-3xl border border-border bg-card p-6 md:p-8 space-y-4">
-                <h2 className="text-2xl font-bold text-foreground">Fastest ways to reach us inside the app</h2>
-                <div className="grid gap-3 md:grid-cols-2">
-                    <Link href="/feedback" className="rounded-2xl border border-border px-5 py-4 hover:border-primary/30 transition-colors">
-                        <div className="font-semibold text-foreground">Feedback page</div>
-                        <div className="text-sm text-muted-foreground mt-1">Share bugs, missing features, or product suggestions directly.</div>
+            {/* fastest paths — same hairline grid */}
+            <div className="mt-14">
+                <div className="font-record text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                    Faster inside the product
+                </div>
+                <div className="mt-4 grid gap-px border border-border bg-border sm:grid-cols-2">
+                    <Link href="/feedback" className="group bg-card px-6 py-5 transition-colors hover:bg-muted/40">
+                        <div className="text-[14.5px] font-bold text-foreground group-hover:text-[var(--ff-accent)]">
+                            Feedback page
+                        </div>
+                        <p className="mt-1.5 text-[13px] text-muted-foreground">
+                            Share bugs, missing features, or product suggestions directly.
+                        </p>
                     </Link>
-                    <Link href="/contribute" className="rounded-2xl border border-border px-5 py-4 hover:border-primary/30 transition-colors">
-                        <div className="font-semibold text-foreground">Submit a job link</div>
-                        <div className="text-sm text-muted-foreground mt-1">Send us roles you want reviewed and added to the platform.</div>
+                    <Link href="/contribute" className="group bg-card px-6 py-5 transition-colors hover:bg-muted/40">
+                        <div className="text-[14.5px] font-bold text-foreground group-hover:text-[var(--ff-accent)]">
+                            Submit a job link
+                        </div>
+                        <p className="mt-1.5 text-[13px] text-muted-foreground">
+                            Send us roles you want reviewed and added to the platform.
+                        </p>
                     </Link>
                 </div>
-            </section>
+            </div>
         </main>
     );
 }

@@ -124,7 +124,7 @@ export default function OpenGraphImage() {
                                 color: '#ffffff',
                             }}
                         >
-                            India + Remote - Verified Openings
+                            India + Remote — Current openings
                         </div>
 
                         <div
@@ -137,9 +137,9 @@ export default function OpenGraphImage() {
                                 fontWeight: 900,
                             }}
                         >
-                            <span style={{ display: 'flex' }}>Verified Jobs</span>
+                            <span style={{ display: 'flex' }}>Fresh Jobs</span>
                             <span style={{ display: 'flex', color: '#ffffff', fontWeight: 900, letterSpacing: -1.2 }}>
-                                ONLY for <span style={{ display: 'flex', marginLeft: 14, color: '#9ad8ff' }}>Freshers</span>
+                                for <span style={{ display: 'flex', marginLeft: 14, color: '#9ad8ff' }}>Freshers</span>
                             </span>
                         </div>
 
@@ -152,7 +152,7 @@ export default function OpenGraphImage() {
                                 marginTop: -4,
                             }}
                         >
-                            Daily updates - direct apply links - no fake listings
+                            Daily updates · direct apply links · shared by freshers
                         </div>
                     </div>
 

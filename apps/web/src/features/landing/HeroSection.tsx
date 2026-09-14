@@ -1,84 +1,89 @@
 import Link from 'next/link';
-import ArrowRightIcon from '@heroicons/react/24/outline/ArrowRightIcon';
-import type { Opportunity } from '@fresherflow/types';
-import { Button } from '@/ui/Button';
-import { LandingStats } from '@/features/landing/LandingStats';
-import { HeroJobCard } from './HeroJobCard';
-import { CommunityTicker, type TickerEvent } from './CommunityTicker';
-
-interface HeroSectionProps {
-    liveCount: number;
-    companiesCount: number;
-    /** The real recent opening shown as the hero's signature object. */
-    signatureJob?: Opportunity | null;
-    /** Real board events for the ticker; empty renders the honest line. */
-    events?: TickerEvent[];
-}
+import { ArrowRightIcon } from '@heroicons/react/24/outline';
 
 /**
- * The landing hero (plan 16 §16.2/§16.4/§16.8, plan 17 §17.5).
- *
- * The thesis is "show the product, do not describe it": the headline is the
- * locked tagline, and the centrepiece is a real opening in product chrome with
- * its live signal strip. The copy that used to live here ("verified", "cleanest
- * fresher job feed") made a quality claim instead of showing the product and is
- * deliberately gone.
+ * Landing hero — matches the accepted mock:
+ * LIVE note chip, 3 headline lines (one per sentence, block-level so no
+ * mid-sentence wraps), orange accent on "freshers.", two CTAs, mono meta
+ * row, BOARD 00 eyebrow. Light brand surface in both themes.
  */
-export function HeroSection({ liveCount, companiesCount, signatureJob, events = [] }: HeroSectionProps) {
-    return (
-        <section className="relative px-6 pt-14 pb-16 md:pt-20 md:pb-24">
-            {/* Board glows + grid: GPU-cheap, token-driven, dark-mode aware. */}
-            <div
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
-            >
-                <div className="absolute left-1/2 top-0 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-primary/5 blur-3xl" />
-                <div className="absolute left-1/2 top-40 h-[320px] w-[520px] -translate-x-1/2 rounded-full bg-signal-live/5 blur-3xl" />
-                <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-size-[48px_48px] opacity-60" />
-            </div>
 
-            <div className="mx-auto flex w-full max-w-3xl flex-col items-center text-center">
-                <span className="animate-fade-up inline-flex items-center gap-2 rounded-full border border-border bg-card/70 px-3 py-1.5 font-record text-[11px] uppercase tracking-[0.14em] text-muted-foreground backdrop-blur">
-                    <span className="h-1.5 w-1.5 rounded-full bg-pin" aria-hidden="true" />
-                    Jobs, powered by freshers
+interface HeroSectionProps {
+    newToday: number;
+    refreshedAt: Date | null;
+}
+
+export function HeroSection({ newToday, refreshedAt }: HeroSectionProps) {
+    const mins = refreshedAt ? Math.max(0, Math.floor((Date.now() - refreshedAt.getTime()) / 60000)) : null;
+    const age =
+        mins === null
+            ? null
+            : mins < 1
+              ? 'JUST NOW'
+              : mins < 60
+                ? `${mins}M AGO`
+                : mins < 1440
+                  ? `${Math.floor(mins / 60)}H AGO`
+                  : `${Math.floor(mins / 1440)}D AGO`;
+
+    return (
+        <section className="relative">
+            <div className="mx-auto max-w-[1120px] px-6 pb-16 pt-10">
+                <span className="ff-hero-note ff-pin-in">
+                    <span aria-hidden className="text-[var(--ff-accent)]">
+                        ●
+                    </span>{' '}
+                    <b>LIVE</b> — updated every time a job is published
                 </span>
 
-                <h1 className="animate-fade-up mt-6 font-display text-4xl font-extrabold leading-[1.05] tracking-tight text-foreground text-balance md:text-6xl">
-                    Find jobs. Share opportunities. Help other freshers.
+                <h1 className="ff-hero-h1 font-display text-[clamp(44px,7.4vw,92px)] font-extrabold leading-[0.98] tracking-[-0.03em]">
+                    <span className="line" style={{ animationDelay: '0.05s' }}>
+                        Find jobs.
+                    </span>
+                    <span className="line" style={{ animationDelay: '0.18s' }}>
+                        Share opportunities.
+                    </span>
+                    <span className="line" style={{ animationDelay: '0.34s' }}>
+                        Help other <span className="accent">freshers.</span>
+                    </span>
                 </h1>
 
-                <p className="animate-fade-up mt-5 max-w-xl text-base leading-relaxed text-muted-foreground md:text-lg">
-                    Every opening carries who shared it and what other freshers found: who applied,
-                    who reached the interview, what turned out closed.
+                <p className="ff-hero-sub">
+                    Off-campus drives, internships and walk-ins across India — shared by the community, linked straight
+                    to official pages. No dead links, no guesswork.
                 </p>
 
-                <div className="animate-fade-up mt-8 flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row">
-                    <Button variant="default" asChild className="w-full px-7 py-3 text-sm font-semibold sm:w-auto">
-                        <Link href="/jobs">
-                            Browse jobs
-                            <ArrowRightIcon className="h-4 w-4" />
-                        </Link>
-                    </Button>
-                    <Button variant="outline" asChild className="w-full px-7 py-3 text-sm font-semibold sm:w-auto">
-                        <Link href="/post">Post an opportunity</Link>
-                    </Button>
+                <div className="ff-hero-ctas">
+                    <Link
+                        href="/jobs"
+                        className="inline-flex items-center gap-2 rounded-[2px] bg-[var(--ff-accent)] px-[18px] py-[10px] text-[13.5px] font-semibold text-white transition-transform hover:-translate-y-px active:scale-[0.98]"
+                    >
+                        Browse the board <ArrowRightIcon className="h-4 w-4" />
+                    </Link>
+                    <Link
+                        href="/post"
+                        className="inline-flex items-center gap-2 rounded-[2px] border border-foreground/80 px-[18px] py-[10px] text-[13.5px] font-semibold text-foreground transition-transform hover:-translate-y-px active:scale-[0.98]"
+                    >
+                        Post an opportunity
+                    </Link>
                 </div>
 
-                {signatureJob ? (
-                    <div className="ff-pin-in mt-12 w-full flex justify-center">
-                        <HeroJobCard job={signatureJob} />
-                    </div>
-                ) : null}
-
-                <div className="mt-6 flex w-full max-w-2xl justify-center">
-                    <CommunityTicker events={events} />
+                <div className="ff-hero-meta">
+                    <span>
+                        ◆ <b>+{newToday}</b> TODAY
+                    </span>
+                    {age && (
+                        <span>
+                            ◆ REFRESHED <b>{age}</b>
+                        </span>
+                    )}
+                    <span>◆ ALL LINKS CHECKED DAILY</span>
                 </div>
 
-                <div className="mt-10 w-full max-w-2xl">
-                    <LandingStats
-                        initialLiveCount={liveCount}
-                        initialCompaniesCount={companiesCount}
-                    />
+                <div className="ff-hero-eyebrow flex items-center gap-2.5 font-record text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                    <span className="h-[7px] w-[7px] rounded-full bg-[var(--color-pin)]" aria-hidden />
+                    BOARD 00 · THE NUMBERS
+                    <span className="h-px flex-1 bg-border" aria-hidden />
                 </div>
             </div>
         </section>

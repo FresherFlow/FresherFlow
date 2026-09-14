@@ -60,7 +60,7 @@ export function PostJobForm() {
                     Posting a link keeps provenance with your account so others can trust it.
                 </p>
                 <Link
-                    href={`/login?next=${encodeURIComponent('/post')}`}
+                    href={`/login?next=${encodeURIComponent('/contribute')}`}
                     className="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-6 text-[11px] font-bold uppercase tracking-widest text-primary-foreground transition-all hover:bg-primary/90"
                 >
                     Sign in

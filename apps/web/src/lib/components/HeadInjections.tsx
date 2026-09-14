@@ -15,9 +15,6 @@ export function getHeadInjectionScripts(): string {
                 
                 var isLoggedIn = document.cookie.includes('ff_logged_in=true');
                 document.documentElement.setAttribute('data-logged-in', isLoggedIn ? 'true' : 'false');
-
-                var showDetail = localStorage.getItem('ff:showDetail');
-                document.documentElement.setAttribute('data-show-detail', showDetail === 'false' ? 'false' : 'true');
             } catch (e) {}
         })();
 

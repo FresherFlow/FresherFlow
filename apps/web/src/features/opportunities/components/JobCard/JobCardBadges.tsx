@@ -7,16 +7,16 @@ import type { MetaItem } from './JobCardMetaConfig';
 
 const KEY_BADGE_STYLES: Record<string, string> = {
     salary: 'bg-emerald-500/15 border-emerald-500/25 text-emerald-700 dark:text-emerald-300',
-    education: 'bg-emerald-500/15 border-emerald-500/25 text-emerald-700 dark:text-emerald-300',
+    education: 'bg-muted/40 text-muted-foreground border-border/50',
     mode: 'bg-orange-500/15 border-orange-500/25 text-orange-700 dark:text-orange-300',
-    ats: 'bg-violet-500/15 border-violet-500/25 text-violet-700 dark:text-violet-300',
+    ats: 'bg-muted/40 text-muted-foreground border-border/50',
 };
 
 const KEY_ICON_STYLES: Record<string, string> = {
     salary: 'text-emerald-600 dark:text-emerald-400',
-    education: 'text-emerald-600 dark:text-emerald-400',
+    education: 'text-muted-foreground',
     mode: 'text-orange-600 dark:text-orange-400',
-    ats: 'text-violet-600 dark:text-violet-400',
+    ats: 'text-muted-foreground',
 };
 
 interface JobCardBadgesProps {
@@ -42,9 +42,9 @@ export function JobCardBadges({
 
     const pill = compact
         ? 'inline-flex items-center gap-1 rounded-md border px-1.5 h-6 text-[11px] font-medium whitespace-nowrap shrink-0 min-w-0'
-        : 'inline-flex items-center gap-1.5 rounded-md border px-2.5 h-[26px] text-[13px] font-medium whitespace-nowrap shrink-0 min-w-0';
-    const icon = compact ? 'w-3 h-3 shrink-0' : 'w-3.5 h-3.5 shrink-0';
-    const text = compact ? 'truncate text-[11px]' : 'truncate text-[13px]';
+        : 'inline-flex items-center gap-1 rounded-md border px-2 h-6 text-xs font-medium whitespace-nowrap shrink-0 min-w-0';
+    const icon = compact ? 'w-3 h-3 shrink-0' : 'w-3 h-3 shrink-0';
+    const text = compact ? 'truncate text-[11px]' : 'truncate text-xs';
 
     const showSkills = measure || ready;
 
@@ -98,12 +98,12 @@ export function JobCardBadges({
 
             {showSkills && skills.map((skill) => {
                 const pillNode = (
-                    <SkillPill
-                        skill={skill}
-                        size={compact ? 'xs' : 'sm'}
-                        hideFallbackIcon={compact}
-                        className="hover:bg-muted hover:text-foreground transition-colors"
-                    />
+<SkillPill
+                            skill={skill}
+                            size={compact ? 'xs' : 'sm'}
+                            hideFallbackIcon={compact}
+                            className="h-6 px-2 text-xs gap-1 hover:bg-muted hover:text-foreground transition-colors"
+                        />
                 );
 
                 return measure ? (
@@ -130,7 +130,7 @@ export function JobCardBadges({
                     data-overflow={measure ? true : undefined}
                     className={cn(
                         'inline-flex items-center font-medium rounded-md bg-muted/40 text-muted-foreground border border-border/50 whitespace-nowrap shrink-0',
-                        compact ? 'px-1.5 h-6 text-[11px]' : 'px-2.5 h-[26px] text-[13px]',
+                        compact ? 'px-1.5 h-6 text-[11px]' : 'px-2 h-6 text-xs',
                     )}
                 >
                     +{overflow}

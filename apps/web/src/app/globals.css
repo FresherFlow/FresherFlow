@@ -407,6 +407,169 @@ html {
   100% { transform: translateX(-50%); }
 }
 
+/* ── Landing identity (HydraDB-structure study, docs/research/) ──────────
+   Selection uses the brand ink instead of the default blue. The marquee
+   track reuses the existing `ticker` keyframes. All motion is
+   transform/opacity only and disabled under reduced motion. */
+::selection {
+  background: var(--color-primary);
+  color: var(--color-primary-foreground);
+}
+
+/* Always-dark "instrument band" palette (mock: #0e1420 family).
+   Theme-independent so light AND dark mode render the mock exactly. */
+:root {
+  --ff-band-bg: #0e1420;
+  --ff-band-surface: #151d2e;
+  --ff-band-line: #2a3448;
+  --ff-band-ink: #eef1f6;
+  --ff-band-muted: #8b93a5;
+  --ff-accent: #ff571a;
+}
+
+.ff-marquee-track {
+  display: inline-flex;
+  gap: 3rem;
+  white-space: nowrap;
+  will-change: transform;
+  animation: ticker 70s linear infinite;
+}
+
+html.ff-smooth {
+  scroll-behavior: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ff-marquee-track {
+    animation: none;
+  }
+}
+
+/* ── Hero styles ───────────────────────────────────────────────────────── */
+.ff-hero-note {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--color-border);
+  background: var(--color-card);
+  padding: 6px 12px;
+  border-radius: 2px;
+  color: var(--color-muted-foreground);
+  font-family: var(--font-record);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+.ff-hero-note b {
+  color: var(--color-foreground);
+  font-weight: 600;
+}
+.ff-hero-h1 {
+  margin: 28px 0 20px;
+}
+.ff-hero-h1 .line {
+  display: block;
+  opacity: 0;
+  transform: translateY(14px);
+  animation: ff-line-in 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+}
+.ff-hero-h1 .accent {
+  color: var(--ff-accent);
+}
+@keyframes ff-line-in {
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.ff-hero-sub {
+  margin-top: 20px;
+  font-size: 17px;
+  color: var(--color-muted-foreground);
+  max-width: 54ch;
+}
+.ff-hero-ctas {
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
+  flex-wrap: wrap;
+}
+.ff-hero-meta {
+  margin-top: 44px;
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+  color: var(--color-muted-foreground);
+  font-family: var(--font-record);
+  font-size: 11.5px;
+  letter-spacing: 0.06em;
+}
+.ff-hero-meta span b {
+  color: var(--color-foreground);
+  font-weight: 600;
+}
+.ff-hero-eyebrow {
+  margin-top: 56px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ff-hero-h1 .line {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── Always-dark instrument bands (plain CSS — theme-proof) ──────────────
+   Literal values so light/dark render identically. Headings inside bands
+   get explicit light color because the global h1–h3 rules in @layer
+   components set color: var(--color-foreground) — an explicit element color
+   beats an inherited one, which made band headings invisible in light mode. */
+.ff-band {
+  background: #0e1420;
+  color: #eef1f6;
+}
+.ff-band h1,
+.ff-band h2,
+.ff-band h3 {
+  color: #eef1f6;
+}
+.ff-band-muted {
+  color: #8b93a5;
+}
+.ff-band-line {
+  border-color: #2a3448;
+}
+.ff-band-box {
+  background: #151d2e;
+  border: 1px solid #2a3448;
+}
+
+/* Nav action buttons — mock .btn / .btn-ghost / .btn-sm */
+.ff-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  border-radius: 2px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  border: 1px solid var(--color-foreground);
+  background: transparent;
+  color: var(--color-foreground);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+.ff-nav-btn:hover {
+  transform: translateY(-1px);
+}
+.ff-nav-btn:active {
+  transform: scale(0.98);
+}
+.ff-nav-btn-primary {
+  background: var(--color-foreground);
+  color: var(--color-background);
+}
+
 /* Landing page entrance animation — content visible immediately, animates in */
 @keyframes fade-up {
   from {
@@ -645,12 +808,31 @@ html {
   }
 }
 
+@keyframes ff-word-reveal {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
 .ff-pin-in {
   animation: ff-pin-in 520ms cubic-bezier(0.23, 1, 0.32, 1) both;
 }
 
+.ff-word-reveal {
+  animation: ff-word-reveal 400ms cubic-bezier(0.23, 1, 0.32, 1) both;
+  display: inline-block;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .ff-pin-in {
+  .ff-pin-in,
+  .ff-word-reveal {
     animation: none;
   }
 }

@@ -28,6 +28,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { getHeadInjectionScripts } from '@/lib/components/HeadInjections';
+import { InlineScript } from '@/lib/components/InlineScript';
 import { SITE_URL } from "@/lib/utils/runtimeConfig";
 import { cn } from "@/lib/utils/utils";
 import { AuthFormDataProvider } from '@/lib/auth/AuthFormDataContext';
@@ -117,7 +118,7 @@ export default async function RootLayout({
       <head>
         <meta charSet="utf-8" />
         <meta name="color-scheme" content="light dark" />
-        <script id="head-init-script" dangerouslySetInnerHTML={{ __html: themeScriptContent.trim() + '\n' + getHeadInjectionScripts().trim() }} />
+        <InlineScript id="head-init-script" html={themeScriptContent.trim() + '\n' + getHeadInjectionScripts().trim()} />
         <link rel="preconnect" href="https://static.cloudflareinsights.com" />
         <link rel="manifest" href="/manifest.webmanifest" id="ff-manifest-link" />
         {/* DNS prefetch and preconnect for faster initial connections */}
@@ -158,10 +159,9 @@ export default async function RootLayout({
         {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
         {enableVercelAnalytics ? <Analytics /> : null}
         {enableSpeedInsights ? <SpeedInsights /> : null}
-        <script
+        <InlineScript
           id="release-pointer-capture-patch"
-          dangerouslySetInnerHTML={{
-            __html: `
+          html={`
               if (typeof window !== 'undefined' && Element.prototype.releasePointerCapture) {
                 const originalRelease = Element.prototype.releasePointerCapture;
                 Element.prototype.releasePointerCapture = function(pointerId) {
@@ -170,8 +170,7 @@ export default async function RootLayout({
                   } catch (e) {}
                 };
               }
-            `
-          }}
+            `}
         />
         {process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_CF_BEACON_TOKEN && (
           <Script

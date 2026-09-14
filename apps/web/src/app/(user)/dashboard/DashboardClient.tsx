@@ -119,7 +119,7 @@ function DashboardStats({ savedCount, trackerCount, interviewCount, profileCompl
                 </Card>
             </div>
 
-            <div onClick={() => router.push('/submit')} className="group cursor-pointer">
+            <div onClick={() => router.push('/contribute')} className="group cursor-pointer">
                 <Card className="hover:border-primary/40 transition-all duration-150 ease-out active:scale-[0.97] hover:shadow-sm cursor-pointer border-border/60 bg-card/80 backdrop-blur-sm">
                     <CardContent className="px-3.5 py-2 flex items-center gap-2.5">
                         <div className="p-1.5 w-fit rounded-lg bg-primary/10 text-primary group-hover:scale-105 transition-transform">

@@ -72,7 +72,7 @@ export function MobileTopNav() {
         <>
                 <header
                     className={cn(
-                        "md:hidden fixed top-0 left-0 right-0 z-70 flex items-center pt-[env(safe-area-inset-top)] transition-all duration-300 select-none",
+                        "lg:hidden fixed top-0 left-0 right-0 z-70 flex items-center pt-[env(safe-area-inset-top)] transition-all duration-300 select-none",
                         scrolled
                             ? "bg-background/95 backdrop-blur-md shadow-sm"
                             : "bg-background"
@@ -135,7 +135,7 @@ export function MobileTopNav() {
             </header>
  
             {menuOpen && (
-                <div className="fixed inset-0 z-[100] md:hidden">
+                <div className="fixed inset-0 z-[100] lg:hidden">
                     {/* Backdrop */}
                     <div 
                         className="fixed inset-0 bg-black/60 animate-in fade-in duration-200"
