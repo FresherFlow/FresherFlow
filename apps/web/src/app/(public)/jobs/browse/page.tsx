@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+import { fetchFeedIndex } from '@/lib/api/cdnFeed';
 import {
     buildTaxonomyRegistry,
     TaxonomyItem,
@@ -40,7 +40,7 @@ function BoardCard({ label, href, count }: { label: string; href: string; count:
             href={href}
             className="group flex items-center justify-between gap-3 px-4 py-3.5 bg-card hover:bg-muted/50 border border-border/60 rounded-lg transition-colors"
         >
-            <span className="min-w-0 truncate text-[15px] font-medium text-foreground capitalize group-hover:text-primary transition-colors">
+            <span className="min-w-0 truncate text-base font-medium text-foreground capitalize group-hover:text-primary transition-colors">
                 {label}
             </span>
             <span className="shrink-0 whitespace-nowrap text-xs font-medium uppercase tracking-wide tabular-nums text-muted-foreground">
@@ -62,7 +62,8 @@ function DirectorySection({ title, children }: { title: string; children: React.
 }
 
 export default async function BrowseJobsPage() {
-    const feed = await fetchBootstrapFeed(false, undefined, true);
+    // Lightweight index — board directory only needs count/card fields.
+    const feed = await fetchFeedIndex(false, undefined, true);
     const registry = buildTaxonomyRegistry(feed?.opportunities || []);
 
     const roles = Array.from(registry.roles.values()).sort(byCountDesc).slice(0, 12);
@@ -107,7 +108,7 @@ export default async function BrowseJobsPage() {
             {roles.length > 0 && (
                 <DirectorySection title="By Role">
                     {roles.map(r => (
-                        <BoardCard key={r.slug} label={r.label} href={`/jobs/${r.slug}`} count={r.count} />
+                        <BoardCard key={r.slug} label={r.label} href={`/jobs/${r.slug}-jobs`} count={r.count} />
                     ))}
                 </DirectorySection>
             )}
@@ -115,7 +116,7 @@ export default async function BrowseJobsPage() {
             {cities.length > 0 && (
                 <DirectorySection title="By City">
                     {cities.map(c => (
-                        <BoardCard key={c.slug} label={c.label} href={`/jobs/${c.slug}`} count={c.count} />
+                        <BoardCard key={c.slug} label={c.label} href={`/jobs/${c.slug}-jobs`} count={c.count} />
                     ))}
                 </DirectorySection>
             )}
@@ -123,7 +124,7 @@ export default async function BrowseJobsPage() {
             {skills.length > 0 && (
                 <DirectorySection title="By Skill">
                     {skills.map(s => (
-                        <BoardCard key={s.slug} label={s.label} href={`/jobs/${s.slug}`} count={s.count} />
+                        <BoardCard key={s.slug} label={s.label} href={`/jobs/${s.slug}-jobs`} count={s.count} />
                     ))}
                 </DirectorySection>
             )}

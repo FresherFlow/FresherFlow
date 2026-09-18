@@ -176,8 +176,8 @@ function ChooseUsernameForm() {
     return (
         <div className="min-h-screen flex items-center justify-center bg-background px-4 py-12 relative overflow-hidden">
             {/* Subtle background glow */}
-            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
-            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-amber-500/5 rounded-full blur-[100px] pointer-events-none" />
+            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-warning/5 rounded-full blur-3xl pointer-events-none" />
 
             <div className="w-full max-w-md bg-card/60 border border-border backdrop-blur-xl rounded-3xl p-6 md:p-8 shadow-2xl relative z-10 space-y-6">
                 <div className="space-y-2 text-center">
@@ -212,12 +212,12 @@ function ChooseUsernameForm() {
                                     <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                                 )}
                                 {!isChecking && isAvailable === true && (
-                                    <svg className="w-6 h-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg className="w-6 h-6 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 )}
                                 {!isChecking && isAvailable === false && (
-                                    <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <svg className="w-6 h-6 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 )}
@@ -226,22 +226,22 @@ function ChooseUsernameForm() {
                     </div>
 
                     {error && (
-                        <p className="text-xs font-medium text-red-500 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">
+                        <p className="text-xs font-medium text-error bg-error/10 border border-error/20 rounded-xl px-3 py-2">
                             {error}
                         </p>
                     )}
 
                     <div className="space-y-2 text-xs font-medium text-muted-foreground pl-1">
                         <div className="flex items-center gap-2">
-                            <div className={`w-1.5 h-1.5 rounded-full ${username.length >= 3 && username.length <= 20 ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
+                            <div className={`w-1.5 h-1.5 rounded-full ${username.length >= 3 && username.length <= 20 ? 'bg-success' : 'bg-muted-foreground/30'}`} />
                             <span>3-20 characters</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className={`w-1.5 h-1.5 rounded-full ${username.length > 0 && /^[a-z0-9_]+$/.test(username) ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
+                            <div className={`w-1.5 h-1.5 rounded-full ${username.length > 0 && /^[a-z0-9_]+$/.test(username) ? 'bg-success' : 'bg-muted-foreground/30'}`} />
                             <span>Lowercase letters, numbers, and underscores</span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <div className={`w-1.5 h-1.5 rounded-full ${isAvailable === true ? 'bg-emerald-500' : 'bg-muted-foreground/30'}`} />
+                            <div className={`w-1.5 h-1.5 rounded-full ${isAvailable === true ? 'bg-success' : 'bg-muted-foreground/30'}`} />
                             <span>Unique handle</span>
                         </div>
                     </div>

@@ -51,7 +51,7 @@ export function UPageClient() {
         <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-primary/20 selection:text-primary">
             {/* 1. HERO SECTION */}
             <section className="relative overflow-hidden pt-12 pb-16 md:pt-20 md:pb-24 border-b border-border/60">
-                <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-primary/10 blur-[120px] rounded-full pointer-events-none -z-10" />
+                <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-96 bg-primary/10 blur-3xl rounded-full pointer-events-none -z-10" />
 
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-12">
                     <motion.div 
@@ -65,13 +65,13 @@ export function UPageClient() {
                             <span>The New Candidate Portfolio Standard</span>
                         </motion.div>
 
-                        <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-foreground leading-[1.12]">
+                        <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-foreground leading-tight">
                             {titleText.map((word, i) => (
                                 <motion.span
                                     key={i}
                                     custom={i}
                                     variants={textRevealVariants}
-                                    className={`inline-block mr-[0.25em] ${['Skills,', 'Projects'].includes(word) ? 'text-primary underline decoration-primary/30 decoration-wavy underline-offset-8' : ''}`}
+                                    className={`inline-block mr-1 ${['Skills,', 'Projects'].includes(word) ? 'text-primary underline decoration-primary/30 decoration-wavy underline-offset-8' : ''}`}
                                 >
                                     {word}
                                 </motion.span>
@@ -96,17 +96,17 @@ export function UPageClient() {
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
                                     placeholder="yourname"
-                                    className="block w-full pl-[135px] md:pl-[145px] pr-4 py-3.5 bg-card/60 backdrop-blur border border-border/80 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 rounded-2xl shadow-sm text-foreground font-bold text-sm md:text-base transition-all duration-200 outline-none placeholder:text-muted-foreground/40 placeholder:font-normal"
+                                    className="block w-full pl-34 md:pl-36 pr-4 py-3.5 bg-card/60 backdrop-blur border border-border/80 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 rounded-2xl shadow-sm text-foreground font-bold text-sm md:text-base transition-all duration-200 outline-none placeholder:text-muted-foreground/40 placeholder:font-normal"
                                     maxLength={30}
                                 />
                             </div>
                             <button
                                 type="submit"
-                                className="w-full sm:w-auto px-6 py-3.5 bg-primary text-primary-foreground font-bold text-sm md:text-base rounded-2xl shadow-lg hover:opacity-95 active:scale-[0.97] transition-all duration-150 ease-out flex items-center justify-center gap-2 shrink-0 disabled:opacity-70"
+                                className="w-full sm:w-auto px-6 py-3.5 bg-primary text-primary-foreground font-bold text-sm md:text-base rounded-2xl shadow-lg hover:opacity-95 active:scale-95 transition-all duration-150 ease-out flex items-center justify-center gap-2 shrink-0 disabled:opacity-70"
                                 disabled={!username.trim()}
                             >
                                 <span>Claim</span>
-                                <ArrowRightIcon className="w-4 h-4 stroke-[2.5]" />
+                                <ArrowRightIcon className="w-4 h-4 stroke-2" />
                             </button>
                         </motion.form>
 
@@ -140,7 +140,7 @@ export function UPageClient() {
                                             <h3 className="text-lg sm:text-xl font-extrabold text-foreground tracking-tight">
                                                 Krish Sharma
                                             </h3>
-                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold">
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold">
                                                 <ShieldCheckIcon className="w-3.5 h-3.5 shrink-0" />
                                                 Market Ready
                                             </span>
@@ -181,7 +181,7 @@ export function UPageClient() {
                                                     <h5 className="font-bold text-sm text-foreground truncate">
                                                         AI Opportunity Scanner
                                                     </h5>
-                                                    <span className="px-2 py-0.5 rounded-md bg-primary text-primary-foreground font-bold text-[10px] shadow-2xs">Live ↗</span>
+                                                    <span className="px-2 py-0.5 rounded-md bg-primary text-primary-foreground font-bold text-xs shadow-2xs">Live ↗</span>
                                                 </div>
                                                 <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                                                     Real-time fresher job and walk-in opportunity discovery pipeline.
@@ -198,7 +198,7 @@ export function UPageClient() {
                                                     <h5 className="font-bold text-sm text-foreground truncate">
                                                         FresherFlow Mobile App
                                                     </h5>
-                                                    <span className="px-2 py-0.5 rounded-md bg-muted text-foreground font-bold text-[10px] border border-border/60">Git Docs ↗</span>
+                                                    <span className="px-2 py-0.5 rounded-md bg-muted text-foreground font-bold text-xs border border-border/60">Git Docs ↗</span>
                                                 </div>
                                                 <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
                                                     Universal React Native Expo mobile application with MMKV caching.
@@ -229,11 +229,11 @@ export function UPageClient() {
                                         </h4>
                                         <div className="space-y-2 text-xs">
                                             <div className="p-3 rounded-xl bg-card border border-border/60 shadow-2xs">
-                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Target Opportunity Types</p>
+                                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Target Opportunity Types</p>
                                                 <p className="font-bold text-foreground pt-1">Full-Time Job, Walk-In Interview</p>
                                             </div>
                                             <div className="p-3 rounded-xl bg-card border border-border/60 shadow-2xs">
-                                                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Preferred Work Mode</p>
+                                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Preferred Work Mode</p>
                                                 <p className="font-bold text-foreground pt-1">Onsite, Hybrid, Remote</p>
                                             </div>
                                         </div>
@@ -246,9 +246,9 @@ export function UPageClient() {
                                         <div className="space-y-2 text-xs">
                                             <div className="flex items-center justify-between font-semibold">
                                                 <span className="text-foreground font-bold">B.Tech in Computer Science</span>
-                                                <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary font-bold text-[11px] tabular-nums">2026</span>
+                                                <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary font-bold text-xs tabular-nums">2026</span>
                                             </div>
-                                            <p className="text-muted-foreground text-[11px] font-medium">Visvesvaraya Technological University</p>
+                                            <p className="text-muted-foreground text-xs font-medium">Visvesvaraya Technological University</p>
                                         </div>
                                     </div>
                                 </div>

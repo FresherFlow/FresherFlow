@@ -52,7 +52,7 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
         <div className="rounded-xl border border-border/60 bg-card p-3 text-center space-y-1 shadow-sm">
             <div className="text-muted-foreground flex justify-center">{icon}</div>
             <p className="text-xl font-bold text-foreground">{value}</p>
-            <p className="text-[10px] text-muted-foreground">{label}</p>
+            <p className="text-xs text-muted-foreground">{label}</p>
         </div>
     );
 }
@@ -70,7 +70,7 @@ function BadgeCard({ badge, signups }: { badge: ReferralData['badges'][0]; signu
             </div>
             <div>
                 <p className="text-xs font-bold text-foreground">{badge.label}</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5 leading-snug">{badge.description}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{badge.description}</p>
             </div>
             {!badge.unlocked && (
                 <div className="h-1 bg-muted rounded-full overflow-hidden">
@@ -78,7 +78,7 @@ function BadgeCard({ badge, signups }: { badge: ReferralData['badges'][0]; signu
                 </div>
             )}
             {badge.unlocked && badge.earnedAt && (
-                <p className="text-[10px] text-primary font-semibold">
+                <p className="text-xs text-primary font-semibold">
                     {new Date(badge.earnedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                 </p>
             )}
@@ -94,11 +94,11 @@ function ReferralRow({ referral }: { referral: ReferralData['referrals'][0] }) {
             </div>
             <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-foreground truncate">{referral.fullName || 'User'}</p>
-                <p className="text-[11px] text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                     Joined {new Date(referral.joinedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                 </p>
             </div>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${referral.activated ? 'bg-green-500/10 text-green-600' : 'bg-muted text-muted-foreground'}`}>
+            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${referral.activated ? 'bg-success/10 text-success' : 'bg-muted text-muted-foreground'}`}>
                 {referral.activated ? 'Active' : `${referral.completionPct}%`}
             </span>
         </div>
@@ -175,7 +175,7 @@ function ReferralPageContent() {
                 </div>
 
                 {error && (
-                    <div className="mb-6 p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-500 text-sm flex items-center justify-between">
+                    <div className="mb-6 p-4 rounded-xl border border-error/20 bg-error/10 text-error text-sm flex items-center justify-between">
                         <span>Failed to load referral data. Please try again.</span>
                         <button onClick={fetchData} className="px-3 py-1.5 bg-background text-foreground rounded-lg text-xs font-semibold hover:bg-muted border border-border transition-colors">
                             Retry
@@ -183,7 +183,7 @@ function ReferralPageContent() {
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-[340px_1fr] gap-6 md:gap-8 items-start">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-start">
                     {/* LEFT: Share panel */}
                     <div className="md:sticky md:top-8 space-y-4">
                         <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm space-y-4">
@@ -204,7 +204,7 @@ function ReferralPageContent() {
                                         title="Copy link"
                                     >
                                         {copied
-                                            ? <CheckIcon className="w-4 h-4 text-emerald-500 group-hover:text-primary-foreground" />
+                                            ? <CheckIcon className="w-4 h-4 text-success group-hover:text-primary-foreground" />
                                             : <ClipboardDocumentIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary" />}
                                     </button>
                                 </div>
@@ -241,7 +241,7 @@ function ReferralPageContent() {
                                     onClick={handleCopy}
                                     className="flex-1 flex items-center justify-center gap-2 border border-border rounded-xl py-2 text-xs font-semibold hover:bg-muted transition-colors active:scale-95"
                                 >
-                                    {copied ? <CheckIcon className="w-4 h-4 text-green-500" /> : <ClipboardDocumentIcon className="w-4 h-4" />}
+                                    {copied ? <CheckIcon className="w-4 h-4 text-success" /> : <ClipboardDocumentIcon className="w-4 h-4" />}
                                     {copied ? 'Copied!' : 'Copy link'}
                                 </button>
                             </div>
@@ -264,7 +264,7 @@ function ReferralPageContent() {
                                     <StatCard icon={<BoltIcon className="w-4 h-4" />} label="Active" value={data.stats.activated} />
                                 </div>
                                 {data.stats.totalSignups === 0 && (
-                                    <p className="text-[11px] text-muted-foreground text-center pt-1">
+                                    <p className="text-xs text-muted-foreground text-center pt-1">
                                         Share your link to start tracking referrals
                                     </p>
                                 )}
@@ -275,7 +275,7 @@ function ReferralPageContent() {
                     {/* RIGHT: Badges + referral list */}
                     <div className="space-y-5">
                         <section className="space-y-2">
-                            <h2 className="text-[11px] font-bold text-muted-foreground capitalize tracking-widest px-1">Badges</h2>
+                            <h2 className="text-xs font-bold text-muted-foreground capitalize tracking-widest px-1">Badges</h2>
                             <div className="bg-card border border-border/60 rounded-2xl overflow-hidden shadow-sm">
                                 {loading ? (
                                     <div className="p-4 grid grid-cols-2 sm:grid-cols-3 gap-3 animate-pulse">
@@ -292,7 +292,7 @@ function ReferralPageContent() {
                         </section>
 
                         <section className="space-y-2">
-                            <h2 className="text-[11px] font-bold text-muted-foreground capitalize tracking-widest px-1">
+                            <h2 className="text-xs font-bold text-muted-foreground capitalize tracking-widest px-1">
                                 Your referrals{data ? ` · ${data.referrals.length}` : ''}
                             </h2>
                             <div className="bg-card border border-border/60 rounded-2xl overflow-hidden shadow-sm">

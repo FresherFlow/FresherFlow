@@ -67,7 +67,7 @@ export function extractHubRelations(opportunities: Opportunity[], exclude?: {
         .slice(0, 8)
         .map(val => ({
             label: val.label,
-            url: `/jobs/${slugify(val.label)}`
+            url: `/jobs/${slugify(val.label)}-jobs`
         }));
 
     // 3. Extract Locations
@@ -104,7 +104,7 @@ export function extractHubRelations(opportunities: Opportunity[], exclude?: {
         .slice(0, 8)
         .map(val => ({
             label: val.label,
-            url: `/jobs/${slugify(val.label)}`
+            url: `/jobs/${slugify(val.label)}-jobs`
         }));
 
     return {

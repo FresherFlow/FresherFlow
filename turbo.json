@@ -5,6 +5,22 @@
         "pnpm-lock.yaml",
         "turbo.json"
     ],
+    "cacheMaxAge": "7d",
+    "cacheMaxSize": "10GB",
+    "boundaries": {
+        "tags": {
+            "client-ui": {
+                "dependencies": {
+                    "deny": ["server-only"]
+                }
+            },
+            "server-only": {
+                "dependents": {
+                    "deny": ["client-ui"]
+                }
+            }
+        }
+    },
     "globalEnv": [
         "API_URL",
         "NEXT_PUBLIC_API_URL",
@@ -51,11 +67,7 @@
             "cache": false,
             "persistent": true
         },
-        "lint": {
-            "dependsOn": [
-                "^lint"
-            ]
-        },
+        "lint": {},
         "typecheck": {
             "dependsOn": [
                 "^build"

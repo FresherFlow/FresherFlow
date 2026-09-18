@@ -29,17 +29,23 @@ export const AdminOpportunitiesHeader = ({
 
     const actionButtons = (
         <div className="flex items-center gap-2 shrink-0">
-            <Button variant="admin" size="sm" onClick={onRefresh} className="hidden md:flex h-9 text-xs px-3 py-2 items-center gap-1.5">
-                <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} /> Refresh
-            </Button>
-            <Button variant="admin" size="sm" onClick={() => window.location.href = exportUrl} className="hidden md:flex h-9 text-xs px-3 py-2 items-center gap-1.5">
-                <DocumentTextIcon className="w-4 h-4" /> Share Link
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => router.push('/admin/opportunities?status=DRAFT')} className="hidden md:flex h-9 text-xs px-3 py-2 items-center gap-1.5 border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 hover:text-amber-800 dark:hover:text-amber-300 transition-colors">
-                <ExclamationCircleIcon className="w-4 h-4" /> Review Queue
-            </Button>
-            <Button size="sm" onClick={() => router.push('/admin/opportunities/create')} className="h-9 text-xs px-3 py-2 flex items-center gap-1.5">
-                <PlusCircleIcon className="w-4 h-4" /> New listing
+            <span className="hidden md:flex">
+                <Button variant="admin" size="sm" onClick={onRefresh}>
+                    <ArrowPathIcon className={`w-4 h-4 mr-1.5 ${isLoading ? 'animate-spin' : ''}`} /> Refresh
+                </Button>
+            </span>
+            <span className="hidden md:flex">
+                <Button variant="admin" size="sm" onClick={() => window.location.href = exportUrl}>
+                    <DocumentTextIcon className="w-4 h-4 mr-1.5" /> Share Link
+                </Button>
+            </span>
+            <span className="hidden md:flex">
+                <Button variant="outline" size="sm" onClick={() => router.push('/admin/opportunities?status=DRAFT')}>
+                    <ExclamationCircleIcon className="w-4 h-4 mr-1.5" /> Review Queue
+                </Button>
+            </span>
+            <Button size="sm" onClick={() => router.push('/admin/opportunities/create')}>
+                <PlusCircleIcon className="w-4 h-4 mr-1.5" /> New listing
             </Button>
         </div>
     );

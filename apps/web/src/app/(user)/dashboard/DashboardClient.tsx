@@ -13,7 +13,7 @@ import { SkeletonJobCard } from '@/features/opportunities/components/Opportunity
 import JobCard from '@/features/opportunities/components/JobCard';
 import CompanyLogo from '@/ui/CompanyLogo';
 import { calculateProfileCompletion } from '@fresherflow/utils';
-import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+import { fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { readFeedCache, saveFeedCache } from '@/lib/api/offline/opportunitiesFeedCache';
 import { useFirebaseTracker } from '@/features/dashboard/hooks/useFirebaseTracker';
 import { useFirebaseSaved } from '@/features/dashboard/hooks/useFirebaseSaved';
@@ -64,13 +64,13 @@ function DashboardStats({ savedCount, trackerCount, interviewCount, profileCompl
     return (
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             <div onClick={() => router.push('/saved')} className="group cursor-pointer">
-                <Card className="hover:border-primary/40 transition-all duration-150 ease-out active:scale-[0.97] hover:shadow-sm cursor-pointer border-border/60 bg-card/80 backdrop-blur-sm">
+                <Card className="active:scale-95 cursor-pointer">
                     <CardContent className="px-3.5 py-2 flex items-center gap-2.5">
-                        <div className="p-1.5 w-fit rounded-lg bg-blue-500/10 text-blue-500 group-hover:scale-105 transition-transform">
+                        <div className="p-1.5 w-fit rounded-lg bg-signal-heat/10 text-signal-heat group-hover:scale-105 transition-transform">
                             <BookmarkIcon className="w-4 h-4" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none">Saved</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider leading-none">Saved</p>
                             <p className="text-base font-black text-foreground leading-tight mt-0.5">{savedCount}</p>
                         </div>
                     </CardContent>
@@ -78,13 +78,13 @@ function DashboardStats({ savedCount, trackerCount, interviewCount, profileCompl
             </div>
 
             <div onClick={() => router.push('/tracker')} className="group cursor-pointer">
-                <Card className="hover:border-primary/40 transition-all duration-150 ease-out active:scale-[0.97] hover:shadow-sm cursor-pointer border-border/60 bg-card/80 backdrop-blur-sm">
+                <Card className="active:scale-95 cursor-pointer">
                     <CardContent className="px-3.5 py-2 flex items-center gap-2.5">
-                        <div className="p-1.5 w-fit rounded-lg bg-amber-500/10 text-amber-500 group-hover:scale-105 transition-transform">
+                        <div className="p-1.5 w-fit rounded-lg bg-warning/10 text-warning group-hover:scale-105 transition-transform">
                             <BriefcaseIcon className="w-4 h-4" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none">Applied</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider leading-none">Applied</p>
                             <p className="text-base font-black text-foreground leading-tight mt-0.5">{trackerCount}</p>
                         </div>
                     </CardContent>
@@ -92,13 +92,13 @@ function DashboardStats({ savedCount, trackerCount, interviewCount, profileCompl
             </div>
 
             <div onClick={() => router.push('/tracker?filter=interviews')} className="group cursor-pointer">
-                <Card className="hover:border-primary/40 transition-all duration-150 ease-out active:scale-[0.97] hover:shadow-sm cursor-pointer border-border/60 bg-card/80 backdrop-blur-sm">
+                <Card className="active:scale-95 cursor-pointer">
                     <CardContent className="px-3.5 py-2 flex items-center gap-2.5">
-                        <div className="p-1.5 w-fit rounded-lg bg-purple-500/10 text-purple-500 group-hover:scale-105 transition-transform">
+                        <div className="p-1.5 w-fit rounded-lg bg-brand-discord/10 text-brand-discord group-hover:scale-105 transition-transform">
                             <UserGroupIcon className="w-4 h-4" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none">Interviews</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider leading-none">Interviews</p>
                             <p className="text-base font-black text-foreground leading-tight mt-0.5">{interviewCount}</p>
                         </div>
                     </CardContent>
@@ -106,13 +106,13 @@ function DashboardStats({ savedCount, trackerCount, interviewCount, profileCompl
             </div>
 
             <div onClick={() => router.push('/profile/complete')} className="group cursor-pointer">
-                <Card className="hover:border-primary/40 transition-all duration-150 ease-out active:scale-[0.97] hover:shadow-sm cursor-pointer border-border/60 bg-card/80 backdrop-blur-sm">
+                <Card className="active:scale-95 cursor-pointer">
                     <CardContent className="px-3.5 py-2 flex items-center gap-2.5">
-                        <div className="p-1.5 w-fit rounded-lg bg-emerald-500/10 text-emerald-500 group-hover:scale-105 transition-transform">
+                        <div className="p-1.5 w-fit rounded-lg bg-success/10 text-success group-hover:scale-105 transition-transform">
                             <UserIcon className="w-4 h-4" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none">Profile</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider leading-none">Profile</p>
                             <p className="text-base font-black text-foreground leading-tight mt-0.5">{profileCompletion}%</p>
                         </div>
                     </CardContent>
@@ -120,13 +120,13 @@ function DashboardStats({ savedCount, trackerCount, interviewCount, profileCompl
             </div>
 
             <div onClick={() => router.push('/contribute')} className="group cursor-pointer">
-                <Card className="hover:border-primary/40 transition-all duration-150 ease-out active:scale-[0.97] hover:shadow-sm cursor-pointer border-border/60 bg-card/80 backdrop-blur-sm">
+                <Card className="active:scale-95 cursor-pointer">
                     <CardContent className="px-3.5 py-2 flex items-center gap-2.5">
                         <div className="p-1.5 w-fit rounded-lg bg-primary/10 text-primary group-hover:scale-105 transition-transform">
                             <RocketLaunchIcon className="w-4 h-4" />
                         </div>
                         <div>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none">Submissions</p>
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider leading-none">Submissions</p>
                             <p className="text-base font-black text-foreground leading-tight mt-0.5">{submissionsCount}</p>
                         </div>
                     </CardContent>
@@ -175,7 +175,7 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
         }
         setRecentError(null);
         try {
-            const data = await fetchBootstrapFeed();
+            const data = await fetchFeedIndex();
             if (!data || !Array.isArray(data.opportunities)) {
                 throw new Error('Failed to fetch opportunities feed');
             }
@@ -400,7 +400,7 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
                     {showSyncError && (
                         <div className="w-full max-w-xl mx-auto flex flex-col sm:flex-row items-center justify-center text-center gap-3 p-4 border border-primary/20 bg-primary/5 rounded-xl">
                             <div className="text-xs text-foreground">Data sync issues. Browse existing listings.</div>
-                            <Button variant="outline" onClick={retryAll} className="h-8 px-3 text-[10px] border-primary/30 text-primary">Retry</Button>
+                            <Button size="sm" variant="outline" onClick={retryAll}>Retry</Button>
                         </div>
                     )}
 
@@ -412,12 +412,12 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
                             placeholder="Search role, company or skill across dashboard..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-9 pr-8 h-9 text-xs rounded-xl bg-card border-border shadow-xs w-full"
+                            className="w-full"
                         />
                         {searchQuery && (
                             <button
                                 onClick={() => setSearchQuery('')}
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-all duration-150 ease-out active:scale-[0.97]"
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-all duration-150 ease-out active:scale-95"
                                 aria-label="Clear search"
                             >
                                 <XMarkIcon className="w-4 h-4" />
@@ -556,14 +556,14 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
                                             <div
                                                 key={c.name}
                                                 onClick={() => router.push(`/companies/${slugify(c.name)}`)}
-                                                className="group cursor-pointer flex items-center gap-3 p-2.5 rounded-xl border border-border/60 bg-card/60 hover:border-primary/40 hover:bg-muted/30 transition-all duration-150 ease-out active:scale-[0.98] overflow-hidden"
+                                                className="group cursor-pointer flex items-center gap-3 p-2.5 rounded-xl border border-border/60 bg-card/60 hover:border-primary/40 hover:bg-muted/30 transition-all duration-150 ease-out active:scale-95 overflow-hidden"
                                             >
-                                                <CompanyLogo companyName={c.name} companyLogoUrl={c.logoUrl} className="w-9 h-9 text-xs rounded-lg shrink-0" />
+                                                <CompanyLogo companyName={c.name} companyLogoUrl={c.logoUrl} className="w-9 h-9 shrink-0" />
                                                 <div className="min-w-0 flex-1">
                                                     <p className="text-xs font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                                                         {c.name}
                                                     </p>
-                                                    <p className="text-[10px] text-muted-foreground truncate">
+                                                    <p className="text-xs text-muted-foreground truncate">
                                                         {c.roleCount} active {c.roleCount === 1 ? 'role' : 'roles'}
                                                     </p>
                                                 </div>

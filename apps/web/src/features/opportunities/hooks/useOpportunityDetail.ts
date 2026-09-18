@@ -12,6 +12,7 @@ import { getRelatedOpportunities } from '@/features/opportunities/utils/detailUt
 import { useFirebaseTracker } from '@/features/dashboard/hooks/useFirebaseTracker';
 import { useFirebaseSaved } from '@/features/dashboard/hooks/useFirebaseSaved';
 import { readFeedCache, saveOpportunityToCache } from '@/lib/api/offline/opportunitiesFeedCache';
+import { fetchOpportunityDetail } from '@/lib/api/cdnFeed';
 import { promptLoginToast } from '@/lib/utils/toastUtils';
 
 
@@ -72,20 +73,24 @@ export function useOpportunityDetail(
         setError(null);
 
         try {
-            // CDN-first single-source-of-truth detail resolver
+            // CDN-first single-source-of-truth detail resolver.
+            // Shard first (~2.5KB) — bootstrap (~2MB) is only a fallback now.
             const { fetchBootstrapFeed, fetchExpiredFeed } = await import('@/lib/api/cdnFeed');
-            const feed = await fetchBootstrapFeed();
-            
-            let opportunity = feed?.opportunities?.find(
-                (opp) => opp.slug === id || opp.id === id
-            );
+            let opportunity = await fetchOpportunityDetail(id);
+
+            if (!opportunity) {
+                const feed = await fetchBootstrapFeed();
+                opportunity = feed?.opportunities?.find(
+                    (opp) => opp.slug === id || opp.id === id
+                ) ?? null;
+            }
 
             // Fallback: Check expired feed if not in active feed
             if (!opportunity) {
                 const expiredFeed = await fetchExpiredFeed();
                 opportunity = expiredFeed?.opportunities?.find(
                     (opp) => opp.slug === id || opp.id === id
-                );
+                ) ?? null;
             }
 
             if (!opportunity) {
@@ -131,6 +136,25 @@ export function useOpportunityDetail(
     }, [id]);
 
     const initialDataId = initialData?.id;
+    // Index-sourced items carry card fields but no description. Upgrade silently
+    // from the jobs/{id}.json shard (~2.5KB) without blocking the pane render.
+    const initialHasDescription = Boolean(initialData?.description);
+    useEffect(() => {
+        if (!initialData || initialHasDescription) return;
+        let cancelled = false;
+        void fetchOpportunityDetail(initialData.id).then((full) => {
+            if (cancelled || !full?.description) return;
+            setOpp((prev) =>
+                prev && prev.id === full.id
+                    ? { ...prev, ...full, isSaved: prev.isSaved || false }
+                    : prev
+            );
+        }).catch(() => {});
+        return () => {
+            cancelled = true;
+        };
+    }, [initialData, initialDataId, initialHasDescription]);
+
     useEffect(() => {
         if (initialData) {
             if (opp?.id !== initialData.id) {

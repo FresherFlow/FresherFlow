@@ -21,7 +21,7 @@ export function MatchScoreGauge({
     const progress = score / 100;
     const offset = circumference - progress * circumference;
 
-    const colorClass = isEligible ? "text-emerald-500" : "text-destructive";
+    const colorClass = isEligible ? "text-success" : "text-destructive";
 
     return (
         <div className={cn("relative inline-flex items-center justify-center", className)} style={{ width: size, height: size }}>

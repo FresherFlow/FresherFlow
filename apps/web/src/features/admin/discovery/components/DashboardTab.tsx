@@ -103,9 +103,9 @@ export function DashboardTab({
     : '—';
 
   const statusMeta = {
-    online: { dot: 'bg-emerald-500 animate-pulse', text: 'text-emerald-600 dark:text-emerald-400', label: 'Live' },
-    loading: { dot: 'bg-amber-500 animate-ping', text: 'text-amber-600 dark:text-amber-400', label: 'Connecting…' },
-    offline: { dot: 'bg-rose-500', text: 'text-rose-600 dark:text-rose-400', label: 'Offline' },
+    online: { dot: 'bg-success animate-pulse', text: 'text-success dark:text-success', label: 'Live' },
+    loading: { dot: 'bg-warning animate-ping', text: 'text-warning dark:text-warning', label: 'Connecting…' },
+    offline: { dot: 'bg-error', text: 'text-error dark:text-error', label: 'Offline' },
   }[engineStatus];
 
   return (
@@ -140,7 +140,7 @@ export function DashboardTab({
           </button>
           <button
             onClick={onRunAll}
-            className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
+            className="h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 active:scale-95 transition-all cursor-pointer inline-flex items-center gap-1.5 shadow-xs"
           >
             <PlayIcon className="w-3.5 h-3.5 fill-current" />
             Run crawlers
@@ -161,7 +161,7 @@ export function DashboardTab({
         <StatCard
           label="Saved"
           value={totalSaved}
-          accent="text-emerald-600 dark:text-emerald-400"
+          accent="text-success dark:text-success"
           icon={<CheckBadgeIcon className="w-4 h-4" />}
           sub={acceptRate ? `${acceptRate}% of processed kept` : 'normalized in database'}
           onClick={() => onNavigateTab('processed')}
@@ -169,7 +169,7 @@ export function DashboardTab({
         <StatCard
           label="Skipped"
           value={totalSkipped}
-          accent="text-amber-600 dark:text-amber-400"
+          accent="text-warning dark:text-warning"
           icon={<CircleStackIcon className="w-4 h-4" />}
           sub="duplicates & filtered out"
         />
@@ -194,22 +194,22 @@ export function DashboardTab({
 
         <div className="flex h-3 w-full rounded-full overflow-hidden bg-muted/60">
           <div
-            className="bg-emerald-500/80 transition-all duration-500"
+            className="bg-success/80 transition-all duration-500"
             style={{ width: `${savedShare}%` }}
           />
           <div
-            className="bg-amber-500/70 transition-all duration-500"
+            className="bg-warning/70 transition-all duration-500"
             style={{ width: `${skippedShare}%` }}
           />
         </div>
 
         <div className="mt-2.5 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-sm bg-emerald-500/80" />
+            <span className="w-2 h-2 rounded-sm bg-success/80" />
             Saved <strong className="text-foreground tabular-nums">{totalSaved.toLocaleString()}</strong>
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-sm bg-amber-500/70" />
+            <span className="w-2 h-2 rounded-sm bg-warning/70" />
             Skipped <strong className="text-foreground tabular-nums">{totalSkipped.toLocaleString()}</strong>
           </span>
           <span className="ml-auto">
@@ -270,10 +270,10 @@ export function DashboardTab({
                       className={cn(
                         'w-2 h-2 rounded-full shrink-0',
                         status === 'COMPLETED'
-                          ? 'bg-emerald-500'
+                          ? 'bg-success'
                           : status === 'RUNNING'
-                            ? 'bg-blue-500 animate-pulse'
-                            : 'bg-rose-500'
+                            ? 'bg-primary animate-pulse'
+                            : 'bg-error'
                       )}
                     />
                     <div className="min-w-0">
@@ -291,7 +291,7 @@ export function DashboardTab({
                       <strong className="text-foreground font-semibold">{found.toLocaleString()}</strong> found
                     </span>
                     <span className="text-muted-foreground">
-                      <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                      <strong className="text-success dark:text-success font-semibold">
                         {accepted.toLocaleString()}
                       </strong>{' '}
                       saved

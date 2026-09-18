@@ -45,11 +45,11 @@ export function OpportunityFilters({
             <div className="bg-card/80 rounded-2xl border border-border p-4 md:p-5 space-y-6">
                 <div>
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-[10px] font-bold text-muted-foreground capitalize tracking-[0.2em]">Location</h3>
+                        <h3 className="text-xs font-bold text-muted-foreground capitalize tracking-widest">Location</h3>
                         {selectedLoc && (
                             <button
                                 onClick={() => setSelectedLoc(null)}
-                                className="text-[10px] font-bold text-primary capitalize tracking-widest hover:underline"
+                                className="text-xs font-bold text-primary capitalize tracking-widest hover:underline"
                                 aria-label="Clear location filter"
                             >
                                 Clear
@@ -77,14 +77,14 @@ export function OpportunityFilters({
                 </div>
 
                 <div>
-                    <h3 className="text-[10px] font-bold text-muted-foreground capitalize tracking-[0.2em] mb-4">Min. Salary</h3>
+                    <h3 className="text-xs font-bold text-muted-foreground capitalize tracking-widest mb-4">Min. Salary</h3>
                     <div className="grid grid-cols-2 gap-2">
                         {SALARY_RANGES.map((range) => (
                             <button
                                 key={range.label}
                                 onClick={() => setMinSalary(range.value)}
                                 className={cn(
-                                    "px-3 py-2.5 rounded-xl border text-[11px] font-bold transition-all capitalize tracking-wider focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none",
+                                    "px-3 py-2.5 rounded-xl border text-xs font-bold transition-all capitalize tracking-wider focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none",
                                     minSalary === range.value
                                         ? "bg-primary/10 border-primary text-primary shadow-sm"
                                         : "bg-background border-border text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -97,13 +97,13 @@ export function OpportunityFilters({
                 </div>
 
                 <div>
-                    <h3 className="text-[10px] font-bold text-muted-foreground capitalize tracking-[0.2em] mb-4">Urgency</h3>
+                    <h3 className="text-xs font-bold text-muted-foreground capitalize tracking-widest mb-4">Urgency</h3>
                     <button
                         onClick={() => setClosingSoon(!closingSoon)}
                         className={cn(
                             "w-full flex items-center justify-between px-3 py-3 rounded-xl border text-xs font-semibold transition-all text-left capitalize tracking-wide focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none",
                             closingSoon
-                                ? "bg-orange-500/10 border-orange-500/30 text-orange-700 dark:text-orange-400 shadow-sm"
+                                ? "bg-signal-aging/10 border-signal-aging/30 text-error dark:text-signal-aging shadow-sm"
                                 : "bg-background border-border text-muted-foreground hover:bg-muted hover:text-foreground"
                         )}
                         aria-pressed={closingSoon}
@@ -112,12 +112,12 @@ export function OpportunityFilters({
                             <ClockIcon className="w-4 h-4" aria-hidden="true" />
                             <span>Closing Soon</span>
                         </div>
-                        {closingSoon && <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />}
+                        {closingSoon && <div className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" />}
                     </button>
                 </div>
 
                 <div>
-                    <h3 className="text-[10px] font-bold text-muted-foreground capitalize tracking-[0.2em] mb-4">Saved</h3>
+                    <h3 className="text-xs font-bold text-muted-foreground capitalize tracking-widest mb-4">Saved</h3>
                     <button
                         onClick={() => setShowOnlySaved(!showOnlySaved)}
                         className={cn(

@@ -17,7 +17,7 @@ export default function InstallAppBanner() {
     }
 
     return (
-        <div className="fixed bottom-6 inset-x-0 z-[80] px-3 md:px-6 flex justify-center">
+        <div className="fixed bottom-6 inset-x-0 z-50 px-3 md:px-6 flex justify-center">
             <div className="relative w-full max-w-[420px] rounded-[20px] border border-border bg-card p-4 shadow-lg">
                 <button 
                     onClick={dismissBanner}
@@ -38,7 +38,7 @@ export default function InstallAppBanner() {
                         />
                     </div>
                     <div className="flex flex-col">
-                        <h3 className="text-[15px] font-bold text-foreground leading-tight mb-0.5">Install FresherFlow</h3>
+                        <h3 className="text-sm font-bold text-foreground leading-tight mb-0.5">Install FresherFlow</h3>
                         <p className="text-xs leading-snug text-muted-foreground">Add to home screen for the full app experience</p>
                     </div>
                 </div>
@@ -47,7 +47,7 @@ export default function InstallAppBanner() {
                     <button
                         type="button"
                         onClick={() => void promptInstall('banner')}
-                        className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-primary hover:bg-primary/90 px-4 py-2.5 text-[14px] font-semibold text-primary-foreground transition-colors shadow-sm"
+                        className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-primary hover:bg-primary/90 px-4 py-2.5 text-sm font-semibold text-primary-foreground transition-colors shadow-sm"
                     >
                         <ArrowDownTrayIcon className="w-4 h-4 stroke-2" />
                         <span>Install App</span>
@@ -55,7 +55,7 @@ export default function InstallAppBanner() {
                     <button
                         type="button"
                         onClick={dismissBanner}
-                        className="shrink-0 rounded-xl bg-muted hover:bg-muted/80 border border-transparent px-4 py-2.5 text-[14px] font-medium text-foreground transition-colors"
+                        className="shrink-0 rounded-xl bg-muted hover:bg-muted/80 border border-transparent px-4 py-2.5 text-sm font-medium text-foreground transition-colors"
                     >
                         Not now
                     </button>

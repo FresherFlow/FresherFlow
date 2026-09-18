@@ -49,19 +49,19 @@ export function SocialStatusSection({ socialPosts, onRefresh }: SocialStatusSect
       <div className="divide-y divide-border/50">
         {socialPosts.map(post => {
           let StatusIcon = ClockIcon;
-          let statusColorStr = "text-yellow-500 bg-yellow-500/10";
+          let statusColorStr = "text-yellow-500 bg-signal-aging/10";
           if (post.status === 'PUBLISHED') {
              StatusIcon = CheckCircleIcon;
-             statusColorStr = "text-green-500 bg-green-500/10";
+             statusColorStr = "text-success bg-success/10";
           } else if (post.status === 'FAILED') {
              StatusIcon = ExclamationTriangleIcon;
-             statusColorStr = "text-red-500 bg-red-500/10";
+             statusColorStr = "text-error bg-error/10";
           } else if (post.status === 'DISABLED') {
              StatusIcon = NoSymbolIcon;
              statusColorStr = "text-muted-foreground bg-muted/30";
           } else if (post.status === 'DRY_RUN') {
              StatusIcon = CheckCircleIcon;
-             statusColorStr = "text-blue-500 bg-blue-500/10";
+             statusColorStr = "text-blue-500 bg-brand-facebook/10";
           }
 
           return (
@@ -79,7 +79,7 @@ export function SocialStatusSection({ socialPosts, onRefresh }: SocialStatusSect
                   </div>
 
                   {post.errorMessage && (
-                    <p className="text-sm text-red-500 mt-2 font-mono bg-red-500/10 p-2 rounded">
+                    <p className="text-sm text-error mt-2 font-mono bg-error/10 p-2 rounded">
                       {post.errorMessage}
                     </p>
                   )}

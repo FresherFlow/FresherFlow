@@ -69,7 +69,7 @@ export function MobileBottomTabs() {
                             }}
                             aria-current={isActive ? 'page' : undefined}
                             className={cn(
-                                'flex flex-col items-center justify-center flex-1 h-full gap-1 active:scale-[0.97] transition-all duration-150 ease-out',
+                                'flex flex-col items-center justify-center flex-1 h-full gap-1 active:scale-95 transition-all duration-150 ease-out',
                                 isActive ? 'text-primary' : 'text-muted-foreground'
                             )}
                         >

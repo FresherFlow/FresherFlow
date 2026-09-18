@@ -42,7 +42,7 @@ export function PortfolioLinksSection() {
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-base font-bold text-foreground">Projects & Portfolio</h3>
                 {!isEditing && (
-                    <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)} className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
+                    <Button variant="ghost" size="sm" onClick={() => setIsEditing(true)}>
                         {hasLinks ? <PencilSquareIcon className="w-4 h-4" /> : <PlusIcon className="w-4 h-4" />}
                     </Button>
                 )}
@@ -62,7 +62,7 @@ export function PortfolioLinksSection() {
             )}
 
             <Dialog open={isEditing} onOpenChange={setIsEditing}>
-                <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
+                <DialogContent className="max-w-xl max-h-180 overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Edit Projects & Portfolio</DialogTitle>
                     </DialogHeader>
@@ -70,8 +70,8 @@ export function PortfolioLinksSection() {
                             <Input type="url" value={portfolioUrl} onChange={(e) => setPortfolioUrl(e.target.value)} placeholder="Portfolio / Personal Website" disabled={isSubmitting} className="h-10" />
                             
                             <div className="flex justify-end gap-4 pt-2">
-                                <Button variant="outline" className="h-10 px-4" onClick={() => setIsEditing(false)} disabled={isSubmitting}>Cancel</Button>
-                                <Button className="h-10 px-4 gap-1.5" onClick={handleSave} disabled={isSubmitting}><CheckIcon className="w-3.5 h-3.5" /> Save</Button>
+                                <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} disabled={isSubmitting}>Cancel</Button>
+                                <Button size="sm" onClick={handleSave} disabled={isSubmitting}><CheckIcon className="w-3.5 h-3.5" /> Save</Button>
                             </div>
                         </div>
                 </DialogContent>

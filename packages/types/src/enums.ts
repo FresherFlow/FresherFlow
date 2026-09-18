@@ -194,3 +194,127 @@ export enum MembershipStatus {
     APPROVED = 'APPROVED',
     REJECTED = 'REJECTED'
 }
+
+// ========================================
+// COMMUNITY ENUMS (plan 09b §6.3 — must match schema.prisma exactly)
+// ========================================
+
+export enum CommentType {
+    GENERAL = 'GENERAL',
+    QUESTION = 'QUESTION',
+    EXPERIENCE = 'EXPERIENCE',
+    UPDATE = 'UPDATE',
+    CORRECTION = 'CORRECTION',
+    WARNING = 'WARNING',
+    REFERRAL = 'REFERRAL'
+}
+
+export enum CommentVoteValue {
+    UPVOTE = 'UPVOTE',
+    DOWNVOTE = 'DOWNVOTE'
+}
+
+export enum JobSignalType {
+    APPLIED = 'APPLIED',
+    INTERVIEWED = 'INTERVIEWED',
+    OFFER = 'OFFER',
+    CLOSED = 'CLOSED',
+    HELPFUL = 'HELPFUL',
+    INCORRECT = 'INCORRECT'
+}
+
+export enum JobSubmissionStatus {
+    PUBLISHED = 'PUBLISHED',
+    MERGED = 'MERGED',
+    PENDING_REVIEW = 'PENDING_REVIEW',
+    REJECTED = 'REJECTED'
+}
+
+export enum ReportReason {
+    SPAM = 'SPAM',
+    INACCURATE = 'INACCURATE',
+    EXPIRED = 'EXPIRED',
+    OFFENSIVE = 'OFFENSIVE',
+    OTHER = 'OTHER'
+}
+
+export enum ReportStatus {
+    OPEN = 'OPEN',
+    REVIEWING = 'REVIEWING',
+    RESOLVED = 'RESOLVED',
+    DISMISSED = 'DISMISSED'
+}
+
+export enum NotificationType {
+    COMMENT_REPLY = 'COMMENT_REPLY',
+    COMMENT_VOTE = 'COMMENT_VOTE',
+    JOB_SIGNAL_MILESTONE = 'JOB_SIGNAL_MILESTONE',
+    JOB_UPDATED = 'JOB_UPDATED',
+    JOB_CLOSED = 'JOB_CLOSED',
+    NEW_MATCHING_JOB = 'NEW_MATCHING_JOB',
+    EXPIRED_JOB = 'EXPIRED_JOB',
+    COMMENT_ON_EXPIRED = 'COMMENT_ON_EXPIRED'
+}
+
+export enum CommunityPostCategory {
+    DISCUSSION = 'DISCUSSION',
+    QUESTION = 'QUESTION',
+    EXPERIENCE = 'EXPERIENCE',
+    INTERVIEW_EXPERIENCE = 'INTERVIEW_EXPERIENCE',
+    HIRING_UPDATE = 'HIRING_UPDATE',
+    UPDATE = 'UPDATE',
+    REFERRAL = 'REFERRAL',
+    OTHER = 'OTHER'
+}
+
+export enum CommunityPostStatus {
+    ACTIVE = 'ACTIVE',
+    ARCHIVED = 'ARCHIVED',
+    DELETED = 'DELETED'
+}
+
+export enum InterviewResult {
+    SELECTED = 'SELECTED',
+    REJECTED = 'REJECTED',
+    WAITING = 'WAITING',
+    WITHDRAWN = 'WITHDRAWN'
+}
+
+export enum InterviewDifficulty {
+    EASY = 'EASY',
+    MEDIUM = 'MEDIUM',
+    HARD = 'HARD',
+    VERY_HARD = 'VERY_HARD'
+}
+
+export enum ApplicationStatus {
+    APPLIED = 'APPLIED',
+    ASSESSMENT_RECEIVED = 'ASSESSMENT_RECEIVED',
+    ASSESSMENT_COMPLETED = 'ASSESSMENT_COMPLETED',
+    INTERVIEW_SCHEDULED = 'INTERVIEW_SCHEDULED',
+    INTERVIEW_COMPLETED = 'INTERVIEW_COMPLETED',
+    SELECTED = 'SELECTED',
+    REJECTED = 'REJECTED',
+    WAITING = 'WAITING',
+    NO_RESPONSE = 'NO_RESPONSE'
+}
+
+export enum AreaType {
+    BATCH = 'BATCH',
+    SKILL = 'SKILL',
+    LOCATION = 'LOCATION',
+    COMPANY = 'COMPANY',
+    TOPIC = 'TOPIC',
+    CUSTOM = 'CUSTOM'
+}
+
+export enum ReferralRequestStatus {
+    OPEN = 'OPEN',
+    FULFILLED = 'FULFILLED',
+    CLOSED = 'CLOSED'
+}
+
+export enum SalaryReportType {
+    OFFER = 'OFFER',
+    CURRENT_CTC = 'CURRENT_CTC'
+}

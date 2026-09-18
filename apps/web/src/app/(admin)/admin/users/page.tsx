@@ -60,19 +60,19 @@ export default function AdminUsersPage() {
             <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
                 {/* Desktop Table View */}
                 <div className="hidden md:block overflow-x-auto border border-border/40 rounded-lg">
-                    <Table className="w-full text-sm text-left">
+                    <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="px-6 py-4 font-medium text-xs text-muted-foreground">User Profile</TableHead>
-                                <TableHead className="px-6 py-4 font-medium text-xs text-muted-foreground">Username</TableHead>
-                                <TableHead className="px-6 py-4 font-medium text-xs text-muted-foreground">Firebase UID</TableHead>
-                                <TableHead className="px-6 py-4 font-medium text-xs text-muted-foreground text-right">Joined At</TableHead>
+                                <TableHead>User Profile</TableHead>
+                                <TableHead>Username</TableHead>
+                                <TableHead>Firebase UID</TableHead>
+                                <TableHead className="text-right">Joined At</TableHead>
                             </TableRow>
                         </TableHeader>
-                        <TableBody className="divide-y divide-border">
+                        <TableBody>
                             {users.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="px-6 py-12 text-center">
+                                    <TableCell colSpan={4} className="text-center">
                                         <div className="flex flex-col items-center justify-center text-muted-foreground">
                                             <svg className="w-10 h-10 mb-3 text-muted-foreground/30" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                                             <p className="font-medium text-foreground">No registered users found.</p>
@@ -81,8 +81,8 @@ export default function AdminUsersPage() {
                                 </TableRow>
                             ) : (
                                 users.map((user) => (
-                                    <TableRow key={user.id} className="hover:bg-muted/30 transition-colors">
-                                        <TableCell className="px-6 py-4">
+                                    <TableRow key={user.id}>
+                                        <TableCell>
                                             <div className="flex items-center gap-3">
                                                 <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs uppercase border border-primary/20 shrink-0">
                                                     {(user.fullName || user.email || user.username || 'U')[0]}
@@ -91,7 +91,7 @@ export default function AdminUsersPage() {
                                                     <div className="font-semibold text-foreground tracking-tight flex items-center gap-2">
                                                         {user.fullName || <span className="italic text-muted-foreground">No Name</span>}
                                                         {user.trustLevel === 'VERIFIED' && (
-                                                            <span className="bg-emerald-500/10 text-emerald-600 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-emerald-500/20">Verified</span>
+                                                            <span className="bg-success/10 text-success text-xs px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-success/20">Verified</span>
                                                         )}
                                                     </div>
                                                     <div className="text-xs text-muted-foreground mt-0.5">
@@ -100,25 +100,27 @@ export default function AdminUsersPage() {
                                                 </div>
                                             </div>
                                         </TableCell>
-                                        <TableCell className="px-6 py-4 font-mono text-[13px] text-foreground">
+                                        <TableCell>
+                                            <span className="font-mono text-sm text-foreground">
                                             {user.username ? (
                                                 <span className="font-medium">@{user.username}</span>
                                             ) : (
                                                 <span className="text-muted-foreground italic">None</span>
                                             )}
+                                            </span>
                                         </TableCell>
-                                        <TableCell className="px-6 py-4 font-mono text-[11px] text-muted-foreground">
-                                            <div className="bg-muted px-2 py-1 rounded-md inline-block">
+                                        <TableCell>
+                                            <div className="bg-muted px-2 py-1 rounded-md inline-block font-mono text-xs text-muted-foreground">
                                                 {user.firebase_uid || user.id}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="px-6 py-4 text-xs text-muted-foreground text-right whitespace-nowrap">
+                                        <TableCell className="text-right whitespace-nowrap">
                                             {user.createdAt ? (
                                                 <div className="flex flex-col items-end">
                                                     <span className="font-medium text-foreground/80">
                                                         {new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                                                     </span>
-                                                    <span className="text-[10px] mt-0.5">
+                                                    <span className="text-xs mt-0.5">
                                                         {new Date(user.createdAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                                                     </span>
                                                 </div>
@@ -153,7 +155,7 @@ export default function AdminUsersPage() {
                                         <div className="font-semibold text-foreground tracking-tight flex items-center gap-2 truncate">
                                             <span className="truncate">{user.fullName || <span className="italic text-muted-foreground">No Name</span>}</span>
                                             {user.trustLevel === 'VERIFIED' && (
-                                                <span className="bg-emerald-500/10 text-emerald-600 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-emerald-500/20 shrink-0">Verified</span>
+                                                <span className="bg-success/10 text-success text-xs px-1.5 py-0.5 rounded font-bold uppercase tracking-wider border border-success/20 shrink-0">Verified</span>
                                             )}
                                         </div>
                                         <div className="text-xs text-muted-foreground mt-0.5 truncate">
@@ -163,7 +165,7 @@ export default function AdminUsersPage() {
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 text-xs">
                                     <div className="bg-muted/40 p-2 rounded-lg border border-border/50">
-                                        <p className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground mb-0.5">Username</p>
+                                        <p className="text-xs uppercase font-semibold tracking-wider text-muted-foreground mb-0.5">Username</p>
                                         {user.username ? (
                                             <p className="font-mono text-foreground">@{user.username}</p>
                                         ) : (
@@ -171,13 +173,13 @@ export default function AdminUsersPage() {
                                         )}
                                     </div>
                                     <div className="bg-muted/40 p-2 rounded-lg border border-border/50">
-                                        <p className="text-[10px] uppercase font-semibold tracking-wider text-muted-foreground mb-0.5">Joined</p>
+                                        <p className="text-xs uppercase font-semibold tracking-wider text-muted-foreground mb-0.5">Joined</p>
                                         <p className="text-foreground">
                                             {user.createdAt ? new Date(user.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
                                         </p>
                                     </div>
                                 </div>
-                                <div className="mt-2 text-[10px] text-muted-foreground font-mono truncate px-1">
+                                <div className="mt-2 text-xs text-muted-foreground font-mono truncate px-1">
                                     UID: {user.firebase_uid || user.id}
                                 </div>
                             </div>

@@ -9,8 +9,8 @@ export default function NotFoundPage() {
     return (
         <div className="min-h-screen bg-background text-foreground">
             <main className="relative overflow-hidden">
-                <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl flex-col justify-center px-4 py-16 md:min-h-[calc(100vh-5rem)] md:px-6">
-                    <div className="grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
+                <div className="relative mx-auto flex min-h-dvh max-w-7xl flex-col justify-center px-4 py-16 md:px-6" style={{minHeight:'calc(100vh-4rem)'}}>
+                    <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
                         <div className="space-y-6">
                             <div className="flex items-center gap-3.5">
                                 <span className="text-5xl font-black tracking-tight text-primary md:text-7xl">404</span>
@@ -36,40 +36,40 @@ export default function NotFoundPage() {
                         </div>
 
                         <div className="grid gap-3 grid-cols-1">
-                            <Link href="/jobs" className="group flex items-center gap-4 rounded-xl border border-border/70 bg-card p-3.5 transition-all duration-300 hover:border-primary/30 hover:shadow-[0_8px_20px_rgba(var(--primary-rgb),0.02)]">
+                            <Link href="/jobs" className="group flex items-center gap-4 rounded-xl border border-border/70 bg-card p-3.5 transition-all duration-300 hover:border-primary/30 hover:shadow-lg">
                                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
                                     <Briefcase className="h-5 w-5" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
                                         <p className="text-sm font-bold text-foreground">Jobs</p>
-                                        <span className="text-[9px] font-semibold uppercase tracking-wider text-primary/70">Explore</span>
+                                        <span className="text-xs font-semibold uppercase tracking-wider text-primary/70">Explore</span>
                                     </div>
                                     <p className="mt-0.5 text-xs text-muted-foreground truncate">Fresh off-campus roles with direct apply links.</p>
                                 </div>
                                 <ArrowRight className="h-4 w-4 text-muted-foreground transition-all duration-300 transform group-hover:translate-x-1 group-hover:text-primary" />
                             </Link>
-                            <Link href="/jobs/internships" className="group flex items-center gap-4 rounded-xl border border-border/70 bg-card p-3.5 transition-all duration-300 hover:border-primary/30 hover:shadow-[0_8px_20px_rgba(var(--primary-rgb),0.02)]">
+                            <Link href="/jobs/internships" className="group flex items-center gap-4 rounded-xl border border-border/70 bg-card p-3.5 transition-all duration-300 hover:border-primary/30 hover:shadow-lg">
                                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
                                     <GraduationCap className="h-5 w-5" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
                                         <p className="text-sm font-bold text-foreground">Internships</p>
-                                        <span className="text-[9px] font-semibold uppercase tracking-wider text-primary/70">Discover</span>
+                                        <span className="text-xs font-semibold uppercase tracking-wider text-primary/70">Discover</span>
                                     </div>
                                     <p className="mt-0.5 text-xs text-muted-foreground truncate">Current internships shared and discussed by freshers.</p>
                                 </div>
                                 <ArrowRight className="h-4 w-4 text-muted-foreground transition-all duration-300 transform group-hover:translate-x-1 group-hover:text-primary" />
                             </Link>
-                            <Link href="/jobs/walkins" className="group flex items-center gap-4 rounded-xl border border-border/70 bg-card p-3.5 transition-all duration-300 hover:border-primary/30 hover:shadow-[0_8px_20px_rgba(var(--primary-rgb),0.02)]">
+                            <Link href="/jobs/walkins" className="group flex items-center gap-4 rounded-xl border border-border/70 bg-card p-3.5 transition-all duration-300 hover:border-primary/30 hover:shadow-lg">
                                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
                                     <MapPin className="h-5 w-5" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
                                         <p className="text-sm font-bold text-foreground">Walk-ins</p>
-                                        <span className="text-[9px] font-semibold uppercase tracking-wider text-primary/70">Track</span>
+                                        <span className="text-xs font-semibold uppercase tracking-wider text-primary/70">Track</span>
                                     </div>
                                     <p className="mt-0.5 text-xs text-muted-foreground truncate">Upcoming drives and city-specific walk-ins.</p>
                                 </div>

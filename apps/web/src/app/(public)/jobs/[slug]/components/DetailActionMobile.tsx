@@ -52,7 +52,7 @@ export function DetailActionMobile({
                 <div className="flex gap-2">
                     <Button
                         onClick={handleApply}
-                        className="flex-1 h-12 text-sm bg-primary/70 text-primary-foreground border border-primary/60 hover:bg-primary/80 rounded-lg flex items-center justify-center gap-2 font-bold uppercase tracking-wide shadow-md"
+                       
                     >
                         Apply Now
                         <ArrowTopRightOnSquareIcon className="w-4 h-4" />

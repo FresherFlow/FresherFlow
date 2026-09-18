@@ -55,27 +55,27 @@ export function PayloadModal({
 
  return (
  <Dialog open={open} onOpenChange={(val) => { if (!val) onClose(); }}>
- <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-6 bg-card border border-border/80 rounded-xl shadow-xl">
- <DialogHeader className="pb-2 border-b border-border/40">
+ <DialogContent className="max-w-2xl max-h-96 flex flex-col">
+ <DialogHeader>
  <div className="flex items-start justify-between gap-3">
  <div className="flex items-center gap-3 min-w-0">
  {companyName && (
- <CompanyLogo companyName={companyName} className="w-10 h-10 rounded-lg shrink-0 border border-border/40" />
+ <CompanyLogo companyName={companyName} className="w-10 h-10 shrink-0" />
  )}
  <div className="min-w-0">
- <DialogTitle className="text-base font-bold text-foreground truncate leading-snug">
+ <DialogTitle>
  {title || jobTitle}
  </DialogTitle>
  {companyName && (
  <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
  <span className="font-medium text-foreground">{companyName}</span>
  {jobType && (
- <span className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-semibold tracking-wider text-muted-foreground border border-border/50">
+ <span className="px-1.5 py-0.5 rounded bg-muted text-xs font-semibold tracking-wider text-muted-foreground border border-border/50">
  {jobType}
  </span>
  )}
  {status && (
- <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[10px] font-bold tracking-wider border border-primary/20">
+ <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-xs font-bold tracking-wider border border-primary/20">
  {status.charAt(0).toUpperCase() + status.slice(1).toLowerCase().replace(/_/g, ' ')}
  </span>
  )}
@@ -129,7 +129,7 @@ export function PayloadModal({
  {/* Content Body */}
  <div className="flex-1 overflow-y-auto py-3 space-y-4 text-xs">
  {viewMode === 'json' || !isJob ? (
- <div className="p-4 bg-muted/30 rounded-lg border border-border/60 text-[11px] text-foreground">
+ <div className="p-4 bg-muted/30 rounded-lg border border-border/60 text-xs text-foreground">
  <pre className="whitespace-pre-wrap break-all">{JSON.stringify(data, null, 2)}</pre>
  </div>
  ) : (
@@ -137,7 +137,7 @@ export function PayloadModal({
  {/* Locations & Metadata Grid */}
  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
  <div className="p-3 rounded-lg bg-muted/20 border border-border/40 space-y-1">
- <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+ <span className="text-xs text-muted-foreground flex items-center gap-1">
  <MapPinIcon className="w-3.5 h-3.5 text-primary" /> Locations
  </span>
  <div className="flex gap-1.5 flex-wrap">
@@ -154,7 +154,7 @@ export function PayloadModal({
  </div>
 
  <div className="p-3 rounded-lg bg-muted/20 border border-border/40 space-y-1">
- <span className="text-[11px] text-muted-foreground">Job Status & ID</span>
+ <span className="text-xs text-muted-foreground">Job Status & ID</span>
  <div className="text-foreground font-medium truncate">
  ID: <span className="text-muted-foreground">{data.id || '-'}</span>
  </div>
@@ -163,7 +163,7 @@ export function PayloadModal({
 
  {/* Skills section */}
  <div className="p-3 rounded-lg bg-muted/20 border border-border/40 space-y-2">
- <span className="text-[11px] text-muted-foreground font-semibold">Extracted Skills</span>
+ <span className="text-xs text-muted-foreground font-semibold">Extracted Skills</span>
  <div className="flex gap-1.5 flex-wrap">
  {skills.length > 0 ? (
  skills.map((skill) => (
@@ -183,7 +183,7 @@ export function PayloadModal({
  {/* Description preview if present */}
  {data.description && (
  <div className="p-3 rounded-lg bg-muted/20 border border-border/40 space-y-1">
- <span className="text-[11px] text-muted-foreground font-semibold">Description Preview</span>
+ <span className="text-xs text-muted-foreground font-semibold">Description Preview</span>
  <p className="text-foreground leading-relaxed whitespace-pre-line max-h-48 overflow-y-auto">
  {data.description}
  </p>
@@ -201,7 +201,7 @@ export function PayloadModal({
  {onApprove && (
  <button
  onClick={() => { onApprove(data.id); onClose(); }}
- className="h-8 px-3 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+ className="h-8 px-3 rounded-md bg-success hover:bg-success text-white text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
  >
  <CheckCircleIcon className="w-3.5 h-3.5" />
  Approve & Publish
@@ -210,7 +210,7 @@ export function PayloadModal({
  {onReject && (
  <button
  onClick={() => { onReject(data.id); onClose(); }}
- className="h-8 px-3 rounded-md border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-foreground text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+ className="h-8 px-3 rounded-md border border-error/30 bg-error/10 hover:bg-error/20 text-foreground text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
  >
  <XCircleIcon className="w-3.5 h-3.5" />
  Reject

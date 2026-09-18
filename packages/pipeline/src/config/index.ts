@@ -1,46 +1,12 @@
-import fs from "node:fs";
 import path from "node:path";
 import { registerAggregatorDomains } from "../core/extractor.js";
+import { loadEnvSync, loadEnv } from "./loadEnv.js";
 
 // --- LOAD ENV ---
-export function loadEnvSync() {
-  const candidatePaths = [
-    path.join(process.cwd(), ".env"),
-    path.join(process.cwd(), "../../.env"),
-    path.join(process.cwd(), "../.env"),
-    path.join(process.cwd(), "apps/ingestion/.env"),
-    path.join(process.cwd(), "../apps/ingestion/.env"),
-    path.join(process.cwd(), "../../apps/ingestion/.env"),
-    path.join(process.cwd(), "scripts/job-discovery/.env"),
-    path.join(process.cwd(), "scripts/search/.env"),
-  ];
-
-  for (const envPath of candidatePaths) {
-    if (fs.existsSync(envPath)) {
-      try {
-        const envContent = fs.readFileSync(envPath, "utf8");
-        for (const line of envContent.split("\n")) {
-          const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
-          if (match) {
-            const key = match[1];
-            let value = (match[2] || "").trim();
-            if (value.startsWith('"') && value.endsWith('"'))
-              value = value.slice(1, -1);
-            if (value.startsWith("'") && value.endsWith("'"))
-              value = value.slice(1, -1);
-            if (process.env[key] === undefined && value !== "") {
-              process.env[key] = value;
-            }
-          }
-        }
-      } catch {
-        // Ignore env load errors on systems where file is missing
-      }
-    }
-  }
-}
+// The loader itself lives in ./loadEnv.js (no heavy imports). Re-export here so
+// existing `config/index` consumers keep working unchanged.
+export { loadEnvSync, loadEnv };
 loadEnvSync();
-export const loadEnv = loadEnvSync;
 
 // --- CONFIGURATION ---
 export const CDN_SECRET = (process.env.CDN_SIGNATURE_SECRET || "")

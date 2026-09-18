@@ -233,7 +233,7 @@ export function DataGrid<TData extends RowData>({
       <CardHeader className="flex-row items-center justify-between gap-3 px-4 py-3 sm:px-5">
         <div className="flex min-w-0 items-center gap-2">
           {typeof title === "string" ? (
-            <CardTitle className="text-[15px] font-semibold text-foreground">
+            <CardTitle className="text-sm font-semibold text-foreground">
               {title}
             </CardTitle>
           ) : (
@@ -282,9 +282,7 @@ export function DataGrid<TData extends RowData>({
             <Button
               type="button"
               variant="ghost"
-              onClick={handleClear}
-              className="h-9 shrink-0 text-xs"
-            >
+              onClick={handleClear} size="sm">
               Clear
             </Button>
           )}
@@ -362,7 +360,7 @@ function DataGridBody<TData extends RowData>({
   }
 
   return (
-    <div className="h-full w-full overflow-auto custom-scrollbar">
+    <div className="h-full w-full overflow-auto">
       <UITable>
         <DataGridHeader table={table} enableSelection={enableSelection} />
         <TableBody className="divide-y divide-border/40 text-xs">
@@ -370,7 +368,6 @@ function DataGridBody<TData extends RowData>({
             <TableRow
               key={row.id}
               data-state={row.getIsSelected() && "selected"}
-              className="hover:bg-muted/30 transition-colors"
             >
               {row.getVisibleCells().map((cell) => (
                 <TableCell

@@ -72,7 +72,7 @@ async function publishProfile() {
         const r2BucketName = process.env.R2_BUCKET_NAME;
 
         if (r2Endpoint && r2AccessKeyId && r2SecretAccessKey && r2BucketName) {
-            const s3 = getS3Client();
+            const s3 = getS3Client() as unknown as { send: (cmd: unknown) => Promise<unknown> };
             await s3.send(
                 new PutObjectCommand({
                     Bucket: r2BucketName,

@@ -64,7 +64,7 @@ export function DiscoveryHeader({
  }, []);
 
   const mobileContent = isStandalone ? (
-    <div className="border-b border-border/70 px-4 py-2 sm:px-6 flex items-center justify-between gap-3 text-xs bg-background shrink-0 min-h-[48px]">
+    <div className="border-b border-border/70 px-4 py-2 sm:px-6 flex items-center justify-between gap-3 text-xs bg-background shrink-0 min-h-12">
       <div className="flex items-center gap-3 min-w-0">
         <span className="hidden md:inline text-base font-semibold text-foreground shrink-0">{title}</span>
       </div>
@@ -84,7 +84,7 @@ export function DiscoveryHeader({
  <span
  className={cn(
  'w-1.5 h-1.5 rounded-full shrink-0',
- engineOnline === true ? 'bg-emerald-500' : 'bg-rose-500'
+ engineOnline === true ? 'bg-success' : 'bg-error'
  )}
  />
  {engineOnline === true
@@ -117,10 +117,10 @@ export function DiscoveryHeader({
 
  {hoursOld !== undefined && setHoursOld && (
  <Select value={hoursOld.toString()} onValueChange={(val) => setHoursOld(Number(val))}>
- <SelectTrigger className="h-7 px-2 w-[110px] rounded-lg bg-background border border-border/80 text-foreground text-xs focus:outline-none focus-visible:bg-muted/60 focus-visible:text-foreground cursor-pointer">
+ <SelectTrigger className="h-7 w-27.5 cursor-pointer">
  <SelectValue placeholder="Hours" />
  </SelectTrigger>
- <SelectContent className="min-w-[110px]">
+ <SelectContent className="min-w-27.5">
  <SelectItem value="24">1 Day (24h)</SelectItem>
  <SelectItem value="72">3 Days (72h)</SelectItem>
  <SelectItem value="168">7 Days (168h)</SelectItem>
@@ -136,14 +136,13 @@ export function DiscoveryHeader({
  variant="admin"
  size="sm"
  disabled={isRunningAll || isRunningAllBoards}
- className="h-7"
  >
  <RocketLaunchIcon className={cn('w-3.5 h-3.5 mr-1.5', (isRunningAll || isRunningAllBoards) && 'animate-spin')} />
  {isConfirming ? 'Confirm run all?' : 'Run crawlers'}
  <ChevronDownIcon className="w-3.5 h-3.5 opacity-70 ml-1.5" />
  </Button>
  </DropdownMenuTrigger>
- <DropdownMenuContent align="end" className="w-56 text-xs">
+ <DropdownMenuContent align="end" className="w-56">
  <DropdownMenuItem onClick={onRunAllCompanies}>
  Run all target companies (ATS)
  </DropdownMenuItem>
@@ -161,7 +160,7 @@ export function DiscoveryHeader({
  <button
  onClick={onRefreshHealth}
  title="Check Engine Health"
- className="h-7 w-7 rounded-lg border border-border/80 bg-background hover:bg-muted text-muted-foreground hover:text-foreground active:scale-[0.96] flex items-center justify-center transition-colors duration-150 ease-out cursor-pointer"
+ className="h-7 w-7 rounded-lg border border-border/80 bg-background hover:bg-muted text-muted-foreground hover:text-foreground active:scale-95 flex items-center justify-center transition-colors duration-150 ease-out cursor-pointer"
  >
  <ArrowPathIcon className="w-3.5 h-3.5" />
  </button>

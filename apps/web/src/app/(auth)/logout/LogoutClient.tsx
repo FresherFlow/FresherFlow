@@ -23,7 +23,7 @@ function LogoutContent() {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20 p-4">
-            <Card className="max-w-md w-full p-8 text-center space-y-6 animate-in fade-in zoom-in duration-500">
+            <div className="animate-in fade-in zoom-in duration-500 max-w-md w-full p-8 text-center space-y-6"><Card className="w-full">
                 <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto animate-pulse">
                     <ArrowRightOnRectangleIcon className="w-8 h-8 text-primary" />
                 </div>
@@ -34,11 +34,12 @@ function LogoutContent() {
                     </p>
                 </div>
                 <div className="flex items-center justify-center gap-2">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay:'-0.3s'}}></div>
+                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{animationDelay:'-0.15s'}}></div>
                     <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
                 </div>
             </Card>
+            </div>
         </div>
     );
 }

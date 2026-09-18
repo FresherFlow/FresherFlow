@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { fetchFeedIndex } from '@/lib/api/cdnFeed';
+import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
 import { toOpportunityCardDTO } from '@fresherflow/types';
 import { WalkInsClient } from './WalkInsClient';
 
@@ -15,9 +16,10 @@ export const metadata: Metadata = {
 };
 
 export default async function WalkInsPage() {
-    const bootstrapData = await fetchFeedIndex(false);
+    // untracked=true: server fetch without Next tagged cache (matches sibling routes)
+    const bootstrapData = await fetchFeedIndex(false, undefined, true);
     const initialData = bootstrapData ? {
-        opportunities: bootstrapData.opportunities.map(toOpportunityCardDTO) as any,
+        opportunities: bootstrapData.opportunities.slice(0, FEED_PAGE_SIZE).map(toOpportunityCardDTO) as any,
         total: bootstrapData.count,
         cachedAt: new Date(bootstrapData.generatedAt).getTime(),
     } : null;

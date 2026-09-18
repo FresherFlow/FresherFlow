@@ -79,10 +79,10 @@ export function DesktopNav() {
     // Only the landing sits under the marquee (top-7 → top-0 on scroll).
     return (
         <header className={cn(
-            "select-none fixed left-0 right-0 z-[100] h-[60px] items-center bg-background border-b border-border/60 hidden lg:flex transition-[top] duration-300 ease-out",
+            "select-none fixed left-0 right-0 z-50 h-15 items-center bg-background border-b border-border/60 hidden lg:flex transition-all duration-300 ease-out",
             isLandingPage ? (marqueeHidden ? 'top-0' : 'top-7') : 'top-0'
         )}>
-            <nav className="mx-auto w-full max-w-7xl h-[60px] flex items-center justify-between gap-4 px-6">
+            <nav className="mx-auto w-full max-w-7xl h-15 flex items-center justify-between gap-4 px-6">
 
                 {/* Brand Left */}
                 <Link
@@ -92,10 +92,10 @@ export function DesktopNav() {
                         if (pathname === targetHref) event.preventDefault();
                     }}
                     aria-label="Home"
-                    className="flex items-center gap-2.5 shrink-0 group z-10 active:scale-[0.97] transition-transform duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+                    className="flex items-center gap-2.5 shrink-0 group z-10 active:scale-95 transition-transform duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
                 >
                     <LogoImage width={28} height={28} className="w-7 h-7 object-contain" />
-                    <span className="text-[17px] font-semibold tracking-[0.01em] text-foreground leading-none">
+                    <span className="text-lg font-semibold tracking-wide text-foreground leading-none">
                         FresherFlow
                     </span>
                 </Link>
@@ -120,7 +120,7 @@ export function DesktopNav() {
                                 }}
                                 aria-current={isActive ? 'page' : undefined}
                                 className={cn(
-                                    'px-2.5 md:px-3 py-1.5 text-xs md:text-sm font-medium whitespace-nowrap transition-[color,transform] duration-150 ease active:scale-[0.97] relative shrink-0 after:absolute after:bottom-0 after:left-2.5 after:right-2.5 after:h-[2px] after:rounded-full after:bg-foreground/40 after:transition-transform after:duration-300 after:ease-[cubic-bezier(0.77,0,0.175,1)] after:origin-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded',
+                                    'px-2.5 md:px-3 py-1.5 text-xs md:text-sm font-medium whitespace-nowrap transition-all duration-150 ease-out active:scale-95 relative shrink-0 after:absolute after:bottom-0 after:left-2.5 after:right-2.5 after:h-0.5 after:rounded-full after:bg-foreground/40 after:transition-transform after:duration-300 after:ease-out after:origin-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded',
                                     isActive
                                         ? 'text-foreground after:scale-x-100'
                                         : 'text-muted-foreground hover:text-foreground after:scale-x-0'
@@ -146,14 +146,14 @@ export function DesktopNav() {
                             {resolvedUser ? (
                                 <Link
                                     href="/dashboard"
-                                    className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-[opacity,transform] duration-150 ease-out active:scale-[0.97] shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                                    className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-95 shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                 >
                                     Dashboard
                                 </Link>
                             ) : (
                                 <Link
                                     href="/register"
-                                    className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-[opacity,transform] duration-150 ease-out active:scale-[0.97] shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                                    className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-95 shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                 >
                                     Create Profile
                                 </Link>
@@ -162,7 +162,7 @@ export function DesktopNav() {
                     ) : (
                         <>
                             {resolvedUser && pendingSyncCount > 0 && (
-                                <span className="hidden lg:inline-flex items-center rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-amber-600 dark:text-amber-300">
+                                <span className="hidden lg:inline-flex items-center rounded-full border border-signal-aging/30 bg-signal-aging/10 px-2 py-0.5 text-xs font-semibold tracking-wide text-signal-aging">
                                     {pendingSyncCount} pending
                                 </span>
                             )}
@@ -173,12 +173,12 @@ export function DesktopNav() {
 
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <button aria-label="User Menu" suppressHydrationWarning className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border border-border/60 text-xs font-bold uppercase transition-[border-color,transform] duration-150 ease-out active:scale-[0.97] hover:border-primary/40 cursor-pointer focus:outline-none">
+                                    <button aria-label="User Menu" suppressHydrationWarning className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border border-border/60 text-xs font-bold uppercase transition-all duration-150 ease-out active:scale-95 hover:border-primary/40 cursor-pointer focus:outline-none">
                                         {initialLetter}
                                     </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-56">
-                                    <DropdownMenuLabel className="font-normal">
+                                    <DropdownMenuLabel>
                                         <div className="flex flex-col space-y-1">
                                             <p className="text-sm font-medium leading-none truncate">{resolvedUser.fullName || resolvedUser.username}</p>
                                             <p className="text-xs leading-none text-muted-foreground truncate">{resolvedUser.email}</p>
@@ -198,7 +198,7 @@ export function DesktopNav() {
                                         <span>Account Settings</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem className="text-red-600 dark:text-red-400 focus:bg-red-500/10 focus:text-red-600 dark:focus:bg-red-500/20 dark:focus:text-red-400 cursor-pointer font-medium" onSelect={handleLogout}>
+                                    <DropdownMenuItem className="cursor-pointer" onSelect={handleLogout}>
                                         <ArrowRightOnRectangleIcon className="mr-2 h-4 w-4" />
                                         <span>Log out</span>
                                     </DropdownMenuItem>

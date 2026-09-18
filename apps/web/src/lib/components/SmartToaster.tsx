@@ -45,7 +45,7 @@ export function SmartToaster() {
                 position="top-center"
                 reverseOrder={false}
                 gutter={8}
-                containerClassName="toaster-container"
+                containerClassName=""
                 toastOptions={{
                     className: '!p-4 !shadow-2xl text-sm font-bold antialiased',
                     duration: 4000,

@@ -12,6 +12,7 @@ import clicksRouter from './clicks';
 import similarRouter from './similar';
 import commentsRouter from './comments';
 import syncRouter from './sync';
+import mcpSubmitRouter from './mcpSubmit';
 
 const router: Router = Router();
 
@@ -21,6 +22,7 @@ router.use('/sync', syncRouter);
 router.use('/', optionalAuth, shareRouter);
 router.use('/', optionalAuth, ingestRouter);
 router.use('/', optionalAuth, submitRouter);
+router.use('/', optionalAuth, mcpSubmitRouter);
 router.use('/', optionalAuth, searchRouter);
 router.use('/', optionalAuth, similarRouter);
 router.use('/', optionalAuth, feedRouter);

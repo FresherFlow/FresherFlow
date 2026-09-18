@@ -107,7 +107,7 @@ export default function PushNotificationClient() {
                         required
                         value={message} 
                         onChange={(e) => setMessage(e.target.value)}
-                        className="w-full px-4 py-2.5 bg-background border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[100px] resize-y transition-colors text-foreground"
+                        className="w-full px-4 py-2.5 bg-background border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-25 resize-y transition-colors text-foreground"
                         placeholder="e.g. TCS is hiring for 2024 batch! Apply now..."
                         maxLength={240}
                     />

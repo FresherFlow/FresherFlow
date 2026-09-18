@@ -98,7 +98,7 @@ const SyllabusCell = ({ topics }: { topics: string[] }) => {
         // Render all topics inline, joined by commas
         const text = topics.join(', ');
         return (
-            <div className="text-sm text-muted-foreground leading-relaxed min-w-[280px] sm:min-w-[320px] md:min-w-[400px] max-w-xl py-1">
+            <div className="text-sm text-muted-foreground leading-relaxed min-w-70 sm:min-w-80 md:min-w-100 max-w-xl py-1">
                 {text}
             </div>
         );
@@ -106,7 +106,7 @@ const SyllabusCell = ({ topics }: { topics: string[] }) => {
     
     // Otherwise, render all topics as clean paragraph blocks
     return (
-        <div className="space-y-2 py-1 min-w-[280px] sm:min-w-[320px] md:min-w-[400px] max-w-xl">
+        <div className="space-y-2 py-1 min-w-70 sm:min-w-80 md:min-w-100 max-w-xl">
             {topics.map((topic, idx) => {
                 const colonIdx = topic.indexOf(':');
                 if (colonIdx > 0 && colonIdx < 35) {
@@ -234,7 +234,7 @@ const ExamCentersWidget = ({ centers }: { centers: string[] }) => {
                     <h3 className="text-sm font-semibold text-foreground">Exam Centers</h3>
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold bg-muted px-2 py-0.5 rounded text-muted-foreground">
+                    <span className="text-xs font-bold bg-muted px-2 py-0.5 rounded text-muted-foreground">
                         {centers.length} Cities
                     </span>
                     <span className="text-muted-foreground text-xs font-bold">{isOpen ? '▲' : '▼'}</span>
@@ -513,7 +513,7 @@ export function GovernmentJobDetailView({
             { accessorKey: "syllabus", header: "Syllabus", enableSorting: false },
         ];
         const subjectsData = (Array.isArray(tier.subjects) ? tier.subjects : []).map((s: any) => ({
-            subject: <div className="font-medium text-foreground text-sm min-w-[150px] md:min-w-[200px]" key="name">{s.name}</div>,
+            subject: <div className="font-medium text-foreground text-sm min-w-36 md:min-w-48" key="name">{s.name}</div>,
             questions: <span className="text-muted-foreground text-sm whitespace-nowrap" key="q">{s.questions ?? '-'}</span>,
             marks: <span className="text-muted-foreground text-sm whitespace-nowrap" key="m">{s.marks ?? '-'}</span>,
             duration: <span className="text-muted-foreground text-sm whitespace-nowrap" key="time">{s.sectionTimeMinutes ? `${s.sectionTimeMinutes} Mins` : '-'}</span>,
@@ -524,24 +524,24 @@ export function GovernmentJobDetailView({
             <div className="space-y-4 pt-2">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs border-b border-border/50 pb-4">
                     <div>
-                        <span className="text-muted-foreground block uppercase font-semibold tracking-wider text-[10px]">Mode of Exam</span>
+                        <span className="text-muted-foreground block uppercase font-semibold tracking-wider text-xs">Mode of Exam</span>
                         <span className="font-semibold text-foreground text-sm">{tier.mode || 'Computer Based Test (CBT)'}</span>
                     </div>
                     {tier.durationMinutes && (
                         <div>
-                            <span className="text-muted-foreground block uppercase font-semibold tracking-wider text-[10px]">Duration</span>
+                            <span className="text-muted-foreground block uppercase font-semibold tracking-wider text-xs">Duration</span>
                             <span className="font-semibold text-foreground text-sm">{tier.durationMinutes} Minutes</span>
                         </div>
                     )}
                     {tier.totalQuestions && (
                         <div>
-                            <span className="text-muted-foreground block uppercase font-semibold tracking-wider text-[10px]">Total Questions</span>
+                            <span className="text-muted-foreground block uppercase font-semibold tracking-wider text-xs">Total Questions</span>
                             <span className="font-semibold text-foreground text-sm">{tier.totalQuestions}</span>
                         </div>
                     )}
                     {tier.totalMarks && (
                         <div>
-                            <span className="text-muted-foreground block uppercase font-semibold tracking-wider text-[10px]">Total Marks</span>
+                            <span className="text-muted-foreground block uppercase font-semibold tracking-wider text-xs">Total Marks</span>
                             <span className="font-semibold text-foreground text-sm">{tier.totalMarks} Marks</span>
                         </div>
                     )}
@@ -687,7 +687,7 @@ export function GovernmentJobDetailView({
         }
         if (applicationStatus === 'ANSWER_KEY_RELEASED' && details.answerKeyUrl) {
             return (
-                <a href={details.answerKeyUrl} target="_blank" rel="noopener noreferrer" className={`${base} bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700`}>
+                <a href={details.answerKeyUrl} target="_blank" rel="noopener noreferrer" className={`${base} bg-brand-discord hover:bg-brand-discord text-white border-brand-discord`}>
                     🔑 View Answer Key
                     <ArrowTopRightOnSquareIcon className="w-4 h-4" />
                 </a>
@@ -695,7 +695,7 @@ export function GovernmentJobDetailView({
         }
         if (applicationStatus === 'RESULT_DECLARED' && details.resultUrl) {
             return (
-                <a href={details.resultUrl} target="_blank" rel="noopener noreferrer" className={`${base} bg-orange-500 hover:bg-orange-600 text-white border-orange-600`}>
+                <a href={details.resultUrl} target="_blank" rel="noopener noreferrer" className={`${base} bg-warning hover:bg-warning text-white border-warning`}>
                     🏆 View Result
                     <ArrowTopRightOnSquareIcon className="w-4 h-4" />
                 </a>
@@ -711,7 +711,7 @@ export function GovernmentJobDetailView({
         }
         if (applicationStatus === 'UPCOMING') {
             return (
-                <div className="w-full h-11 rounded-lg border border-blue-400/30 bg-blue-500/10 text-blue-700 dark:text-blue-300 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wider">
+                <div className="w-full h-11 rounded-lg border border-signal-heat/30 bg-signal-heat/10 text-signal-heat dark:text-signal-heat flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wider">
                     🕐 Applications Not Started Yet
                 </div>
             );
@@ -734,7 +734,7 @@ export function GovernmentJobDetailView({
             );
         }
         return (
-            <Button onClick={handleApply} className="w-full h-11 text-xs font-semibold uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm">
+            <Button size="sm" onClick={handleApply} className="w-full">
                 Apply Online
                 <ArrowTopRightOnSquareIcon className="w-4 h-4" />
             </Button>
@@ -759,8 +759,8 @@ export function GovernmentJobDetailView({
                         {/* Download Notification */}
                         {(details.notificationPdfUrl || details.officialNotificationUrl) && (
                             <div className="flex justify-between items-center p-2.5 gap-2 hover:bg-muted/10 transition-colors bg-card">
-                                <span className="font-bold text-foreground text-[11px] sm:text-xs uppercase tracking-wider">Download Notice</span>
-                                <a href={details.notificationPdfUrl || details.officialNotificationUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-[10px] uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
+                                <span className="font-bold text-foreground text-xs sm:text-xs uppercase tracking-wider">Download Notice</span>
+                                <a href={details.notificationPdfUrl || details.officialNotificationUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-xs uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
                                     Click Here <DocumentTextIcon className="w-3.5 h-3.5" />
                                 </a>
                             </div>
@@ -768,8 +768,8 @@ export function GovernmentJobDetailView({
                         {/* Download Admit Card */}
                         {details.admitCardUrl && (
                             <div className="flex justify-between items-center p-2.5 gap-2 hover:bg-muted/10 transition-colors bg-card">
-                                <span className="font-bold text-foreground text-[11px] sm:text-xs uppercase tracking-wider">Admit Card</span>
-                                <a href={details.admitCardUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-[10px] uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
+                                <span className="font-bold text-foreground text-xs sm:text-xs uppercase tracking-wider">Admit Card</span>
+                                <a href={details.admitCardUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-xs uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
                                     Click Here <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
                                 </a>
                             </div>
@@ -777,8 +777,8 @@ export function GovernmentJobDetailView({
                         {/* Check Exam Result */}
                         {details.resultUrl && (
                             <div className="flex justify-between items-center p-2.5 gap-2 hover:bg-muted/10 transition-colors bg-card">
-                                <span className="font-bold text-foreground text-[11px] sm:text-xs uppercase tracking-wider">Exam Result</span>
-                                <a href={details.resultUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-[10px] uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
+                                <span className="font-bold text-foreground text-xs sm:text-xs uppercase tracking-wider">Exam Result</span>
+                                <a href={details.resultUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-xs uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
                                     Click Here <CheckCircleIcon className="w-3.5 h-3.5" />
                                 </a>
                             </div>
@@ -786,8 +786,8 @@ export function GovernmentJobDetailView({
                         {/* View Answer Key */}
                         {details.answerKeyUrl && (
                             <div className="flex justify-between items-center p-2.5 gap-2 hover:bg-muted/10 transition-colors bg-card">
-                                <span className="font-bold text-foreground text-[11px] sm:text-xs uppercase tracking-wider">Answer Key</span>
-                                <a href={details.answerKeyUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-[10px] uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
+                                <span className="font-bold text-foreground text-xs sm:text-xs uppercase tracking-wider">Answer Key</span>
+                                <a href={details.answerKeyUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-xs uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
                                     Click Here <ClipboardDocumentCheckIcon className="w-3.5 h-3.5" />
                                 </a>
                             </div>
@@ -795,8 +795,8 @@ export function GovernmentJobDetailView({
                         {/* View Exam Syllabus */}
                         {details.syllabusUrl && (
                             <div className="flex justify-between items-center p-2.5 gap-2 hover:bg-muted/10 transition-colors bg-card">
-                                <span className="font-bold text-foreground text-[11px] sm:text-xs uppercase tracking-wider">Exam Syllabus</span>
-                                <a href={details.syllabusUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-[10px] uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
+                                <span className="font-bold text-foreground text-xs sm:text-xs uppercase tracking-wider">Exam Syllabus</span>
+                                <a href={details.syllabusUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-xs uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
                                     Click Here <AcademicCapIcon className="w-3.5 h-3.5" />
                                 </a>
                             </div>
@@ -804,8 +804,8 @@ export function GovernmentJobDetailView({
                         {/* Previous Question Papers */}
                         {details.previousPapersUrl && (
                             <div className="flex justify-between items-center p-2.5 gap-2 hover:bg-muted/10 transition-colors bg-card">
-                                <span className="font-bold text-foreground text-[11px] sm:text-xs uppercase tracking-wider">Previous Papers</span>
-                                <a href={details.previousPapersUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-[10px] uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
+                                <span className="font-bold text-foreground text-xs sm:text-xs uppercase tracking-wider">Previous Papers</span>
+                                <a href={details.previousPapersUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-xs uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
                                     Click Here <DocumentTextIcon className="w-3.5 h-3.5" />
                                 </a>
                             </div>
@@ -813,8 +813,8 @@ export function GovernmentJobDetailView({
                         {/* Official Website */}
                         {details.officialWebsiteUrl && (
                             <div className="flex justify-between items-center p-2.5 gap-2 hover:bg-muted/10 transition-colors bg-card">
-                                <span className="font-bold text-foreground text-[11px] sm:text-xs uppercase tracking-wider">Official Website</span>
-                                <a href={details.officialWebsiteUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-[10px] uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
+                                <span className="font-bold text-foreground text-xs sm:text-xs uppercase tracking-wider">Official Website</span>
+                                <a href={details.officialWebsiteUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-xs uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
                                     Click Here <GlobeAltIcon className="w-3.5 h-3.5" />
                                 </a>
                             </div>
@@ -826,14 +826,14 @@ export function GovernmentJobDetailView({
                 <div className="grid grid-cols-2 gap-2 pt-1 mt-4">
                     <button
                         onClick={handleShare}
-                        className="flex items-center justify-center gap-1.5 h-9 rounded-lg border border-border bg-muted/20 text-muted-foreground hover:bg-muted hover:text-foreground text-[10px] font-bold uppercase tracking-wider transition-colors"
+                        className="flex items-center justify-center gap-1.5 h-9 rounded-lg border border-border bg-muted/20 text-muted-foreground hover:bg-muted hover:text-foreground text-xs font-bold uppercase tracking-wider transition-colors"
                     >
                         <ShareIcon className="w-3.5 h-3.5" />
                         Share
                     </button>
                     <button
                         onClick={handleCopyLink}
-                        className="flex items-center justify-center gap-1.5 h-9 rounded-lg border border-border bg-muted/20 text-muted-foreground hover:bg-muted hover:text-foreground text-[10px] font-bold uppercase tracking-wider transition-colors"
+                        className="flex items-center justify-center gap-1.5 h-9 rounded-lg border border-border bg-muted/20 text-muted-foreground hover:bg-muted hover:text-foreground text-xs font-bold uppercase tracking-wider transition-colors"
                     >
                         <LinkIcon className="w-3.5 h-3.5" />
                         Copy Link
@@ -843,7 +843,7 @@ export function GovernmentJobDetailView({
                 {/* Progress Tracking */}
                 {user && (
                     <div className="space-y-2 pt-3 border-t border-border/50">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Track Application</p>
+                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Track Application</p>
                         <div className="grid grid-cols-2 gap-1.5">
                             {trackerOptions.map((option) => {
                                 const isActive = currentAction === option.key;
@@ -853,7 +853,7 @@ export function GovernmentJobDetailView({
                                         onClick={() => handleSetAction(option.key)}
                                         disabled={isUpdatingAction}
                                         className={cn(
-                                            "h-8 rounded text-[10px] font-bold uppercase tracking-wider transition-colors",
+                                            "h-8 rounded text-xs font-bold uppercase tracking-wider transition-colors",
                                             isActive
                                                 ? "bg-primary text-primary-foreground border border-primary"
                                                 : "bg-muted/30 border border-border/60 text-muted-foreground hover:bg-muted",
@@ -954,13 +954,13 @@ export function GovernmentJobDetailView({
                                 <div className="pt-2.5 border-t border-border/50 space-y-2 text-xs text-muted-foreground font-medium">
                                     {(feeDetails as any).notes && (
                                         <div>
-                                            <p className="font-semibold text-foreground/80 uppercase text-[9px] tracking-wider mb-0.5">Notes</p>
+                                            <p className="font-semibold text-foreground/80 uppercase text-xs tracking-wider mb-0.5">Notes</p>
                                             <p className="text-foreground/70">{cleanAsteriskPrefix((feeDetails as any).notes)}</p>
                                         </div>
                                     )}
                                     {(feeDetails as any).paymentModes && (feeDetails as any).paymentModes.length > 0 && (
                                         <div>
-                                            <p className="font-semibold text-foreground/80 uppercase text-[9px] tracking-wider mb-0.5">Payment Modes</p>
+                                            <p className="font-semibold text-foreground/80 uppercase text-xs tracking-wider mb-0.5">Payment Modes</p>
                                             <p className="text-foreground/70">{cleanAsteriskPrefix((feeDetails as any).paymentModes.join(', '))}</p>
                                         </div>
                                     )}
@@ -1056,7 +1056,7 @@ export function GovernmentJobDetailView({
                                 <div key={stageName} className="flex flex-col gap-1.5 justify-center bg-muted/5 border border-border/50 p-4 rounded-xl hover:border-primary/20 transition-colors">
                                     <div className="flex items-center justify-between gap-2.5">
                                         <div className="flex items-center gap-2.5">
-                                            <div className="w-5 h-5 flex items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary shrink-0">
+                                            <div className="w-5 h-5 flex items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary shrink-0">
                                                 {index + 1}
                                             </div>
                                             <span className="text-sm font-semibold text-foreground leading-snug">{stageName}</span>
@@ -1091,7 +1091,7 @@ export function GovernmentJobDetailView({
                                     <div className="flex items-start justify-between gap-3">
                                         <p className="font-semibold text-foreground text-sm">{test.name}</p>
                                         <span className={cn(
-                                            "text-[10px] font-semibold px-2 py-0.5 rounded border leading-none shrink-0",
+                                            "text-xs font-semibold px-2 py-0.5 rounded border leading-none shrink-0",
                                             test.mandatory
                                                 ? "bg-destructive/5 text-destructive border-destructive/20"
                                                 : "bg-muted text-muted-foreground border-border"
@@ -1099,9 +1099,9 @@ export function GovernmentJobDetailView({
                                             {test.mandatory ? 'Mandatory' : 'Optional'}
                                         </span>
                                     </div>
-                                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[11px] text-muted-foreground font-semibold">
+                                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-muted-foreground font-semibold">
                                         {test.qualifying && (
-                                            <span className="text-emerald-600 bg-emerald-500/5 px-1.5 py-0.5 rounded border border-emerald-500/10">Qualifying only</span>
+                                            <span className="text-success bg-success/5 px-1.5 py-0.5 rounded border border-success/10">Qualifying only</span>
                                         )}
                                         {test.durationMinutes && (
                                             <span>Duration: {test.durationMinutes} Mins</span>
@@ -1134,10 +1134,10 @@ export function GovernmentJobDetailView({
                 <div className="space-y-3 text-xs leading-relaxed text-muted-foreground font-medium">
                     {details.physicalStandards.applicablePosts && Array.isArray(details.physicalStandards.applicablePosts) && details.physicalStandards.applicablePosts.length > 0 && (
                         <div>
-                            <p className="font-bold text-foreground uppercase text-[10px] tracking-wider mb-1">Applicable Posts</p>
+                            <p className="font-bold text-foreground uppercase text-xs tracking-wider mb-1">Applicable Posts</p>
                             <div className="flex flex-wrap gap-1">
                                 {details.physicalStandards.applicablePosts.map((post: string, idx: number) => (
-                                    <span key={idx} className="bg-muted border border-border px-2 py-0.5 rounded font-medium text-[10px] text-foreground">
+                                    <span key={idx} className="bg-muted border border-border px-2 py-0.5 rounded font-medium text-xs text-foreground">
                                         {post}
                                     </span>
                                 ))}
@@ -1146,7 +1146,7 @@ export function GovernmentJobDetailView({
                     )}
                     {details.physicalStandards.notes && (
                         <div>
-                            <p className="font-bold text-foreground uppercase text-[10px] tracking-wider mb-0.5">Physical / Medical Notes</p>
+                            <p className="font-bold text-foreground uppercase text-xs tracking-wider mb-0.5">Physical / Medical Notes</p>
                             <p className="text-foreground/90 text-sm leading-relaxed">{details.physicalStandards.notes}</p>
                         </div>
                     )}
@@ -1181,18 +1181,18 @@ export function GovernmentJobDetailView({
                                             "inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-bold border rounded uppercase tracking-wider",
                                             listingState === 'EXPIRED'
                                                 ? "bg-destructive/5 text-destructive border-destructive/20"
-                                                : "bg-emerald-500/5 text-emerald-500 border-emerald-500/20"
+                                                : "bg-success/5 text-success border-success/20"
                                         )}>
                                             {listingState === 'EXPIRED' ? 'CLOSED' : 'OPEN'}
                                         </span>
                                     </div>
 
                                     {details.officialSourceVerified && (
-                                        <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-500/5 border border-emerald-500/10 px-2.5 py-1 rounded-lg">
+                                        <div className="flex items-center gap-1.5 text-xs font-semibold text-success bg-success/5 border border-success/10 px-2.5 py-1 rounded-lg">
                                             <CheckCircleIcon className="w-3.5 h-3.5 shrink-0" />
                                             <span>Official Verified</span>
                                             {details.sourceLastCheckedAt && (
-                                                <span className="text-[10px] text-muted-foreground font-normal ml-0.5">
+                                                <span className="text-xs text-muted-foreground font-normal ml-0.5">
                                                     ({formatDate(String(details.sourceLastCheckedAt))})
                                                 </span>
                                             )}
@@ -1258,7 +1258,7 @@ export function GovernmentJobDetailView({
                             <h3 className="text-sm font-semibold text-foreground">Quick Overview</h3>
                         </div>
                         <Table>
-                            <TableBody className="divide-y divide-border/40">
+                            <TableBody >
                                 {([
                                     ['Conducting Body', details.recruitingBody || details.organization || opp.company],
                                     ['Total Vacancies', (details as any).totalVacancies ? Number((details as any).totalVacancies).toLocaleString() : null],
@@ -1273,9 +1273,9 @@ export function GovernmentJobDetailView({
                                         : null],
                                     ['Official Website', details.officialWebsiteUrl || (opp as any).companyWebsite],
                                 ] as [string, string | null | undefined][]).filter(([, val]) => val).map(([label, value], idx) => (
-                                    <TableRow key={idx} className={idx % 2 === 0 ? 'bg-card' : 'bg-muted/20'}>
-                                        <TableCell className="px-4 py-2.5 text-xs font-medium text-muted-foreground w-[38%] align-top">{label}</TableCell>
-                                        <TableCell className="px-4 py-2.5 text-sm font-semibold text-foreground">
+                                    <TableRow key={idx} className={idx % 2 === 0 ? '' : ''}>
+                                        <TableCell >{label}</TableCell>
+                                        <TableCell >
                                             {label === 'Official Website' && value && (value as string).startsWith('http') ? (
                                                 <a href={value as string} target="_blank" rel="noreferrer" className="text-primary hover:underline">
                                                     {(() => { try { return new URL(value as string).hostname.replace('www.', ''); } catch { return value; } })()}
@@ -1298,16 +1298,16 @@ export function GovernmentJobDetailView({
 
                     {/* Key Changes / Updates Alert Callout */}
                     {keyChangesList && Array.isArray(keyChangesList) && keyChangesList.length > 0 && (
-                        <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-5 shadow-sm space-y-3">
-                            <div className="flex items-center gap-2 pb-2 border-b border-amber-500/10">
-                                <ExclamationTriangleIcon className="w-4.5 h-4.5 text-amber-500" />
-                                <h3 className="text-sm font-semibold text-amber-800">
+                        <div className="bg-warning/5 border border-warning/20 rounded-xl p-5 shadow-sm space-y-3">
+                            <div className="flex items-center gap-2 pb-2 border-b border-warning/10">
+                                <ExclamationTriangleIcon className="w-4.5 h-4.5 text-warning" />
+                                <h3 className="text-sm font-semibold text-warning">
                                     Key Updates {keyChangesYear ? `in ${keyChangesYear}` : ''}
                                 </h3>
                             </div>
-                            <ul className="list-disc list-inside space-y-2 text-sm text-amber-900/80 leading-relaxed">
+                            <ul className="list-disc list-inside space-y-2 text-sm text-warning/80 leading-relaxed">
                                 {keyChangesList.map((change: string, idx: number) => (
-                                    <li key={idx} className="marker:text-amber-500">{change}</li>
+                                    <li key={idx} className="marker:text-warning">{change}</li>
                                 ))}
                             </ul>
                         </div>
@@ -1462,7 +1462,7 @@ export function GovernmentJobDetailView({
                                                     <span className="w-10 text-sm text-muted-foreground shrink-0">{year}</span>
                                                     <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden border border-border/10">
                                                         <div 
-                                                            className="h-full bg-slate-400/70 dark:bg-slate-500/70 rounded-full transition-all duration-500 ease-out" 
+                                                            className="h-full bg-muted dark:bg-muted rounded-full transition-all duration-500 ease-out" 
                                                             style={{ width: `${Math.max(percentage, 2)}%` }}
                                                         />
                                                     </div>
@@ -1554,7 +1554,7 @@ export function GovernmentJobDetailView({
                                                     <div className="flex items-start justify-between gap-3">
                                                         <p className="font-semibold text-foreground leading-snug">{doc.name}</p>
                                                         <span className={cn(
-                                                            "text-[10px] font-semibold px-2 py-0.5 rounded border leading-none shrink-0",
+                                                            "text-xs font-semibold px-2 py-0.5 rounded border leading-none shrink-0",
                                                             doc.mandatory
                                                                 ? "bg-destructive/5 text-destructive border-destructive/20"
                                                                 : "bg-muted text-muted-foreground border-border"
@@ -1727,21 +1727,21 @@ export function GovernmentJobDetailView({
                                 <h3 className="text-base font-semibold text-foreground">Post-wise Pay Scale & Salary</h3>
                             </div>
                             <div className="border border-border rounded-lg overflow-x-auto">
-                                <Table className="whitespace-nowrap text-sm">
-                                    <TableHeader className="sticky top-0 z-10 bg-muted">
+                                <Table >
+                                    <TableHeader >
                                         <TableRow>
                                             {['Post', 'Pay Level', 'Pay Scale', 'Gross Salary'].map(h => (
-                                                <TableHead key={h} className="p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground">{h}</TableHead>
+                                                <TableHead key={h} >{h}</TableHead>
                                             ))}
                                         </TableRow>
                                     </TableHeader>
-                                    <TableBody className="divide-y divide-border/50 bg-card">
+                                    <TableBody >
                                         {(postWiseSalary as any[]).map((row: any, idx: number) => (
-                                            <TableRow key={idx} className="hover:bg-muted/20 transition-colors">
-                                                <TableCell className="p-3 font-medium text-foreground text-sm">{row.post}</TableCell>
-                                                <TableCell className="p-3 text-muted-foreground text-sm">{row.payLevel}</TableCell>
-                                                <TableCell className="p-3 text-muted-foreground text-sm">{row.payScale}</TableCell>
-                                                <TableCell className="p-3 text-muted-foreground text-sm">{row.grossSalary || '—'}</TableCell>
+                                            <TableRow key={idx}>
+                                                <TableCell >{row.post}</TableCell>
+                                                <TableCell >{row.payLevel}</TableCell>
+                                                <TableCell >{row.payScale}</TableCell>
+                                                <TableCell >{row.grossSalary || '—'}</TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
@@ -1778,21 +1778,21 @@ export function GovernmentJobDetailView({
                                             };
                                             return (
                                                 <div className="border border-border rounded-lg overflow-x-auto">
-                                                    <Table className="whitespace-nowrap text-xs">
-                                                        <TableHeader className="bg-muted">
+                                                    <Table >
+                                                        <TableHeader>
                                                             <TableRow>
-                                                                <TableHead className="p-3 font-semibold uppercase tracking-wider text-muted-foreground">Category</TableHead>
+                                                                <TableHead >Category</TableHead>
                                                                 {posts.map(p => (
-                                                                    <TableHead key={p} className="p-3 font-semibold uppercase tracking-wider text-muted-foreground">{p}</TableHead>
+                                                                    <TableHead key={p} >{p}</TableHead>
                                                                 ))}
                                                             </TableRow>
                                                         </TableHeader>
-                                                        <TableBody className="divide-y divide-border/50 bg-card">
+                                                        <TableBody >
                                                             {categories.map(cat => (
-                                                                <TableRow key={cat} className="hover:bg-muted/20">
-                                                                    <TableCell className="p-3 font-medium text-foreground">{cat}</TableCell>
+                                                                <TableRow key={cat}>
+                                                                    <TableCell >{cat}</TableCell>
                                                                     {posts.map(post => (
-                                                                        <TableCell key={post} className="p-3 text-muted-foreground tabular-nums">{getMarks(cat, post)}</TableCell>
+                                                                        <TableCell key={post} >{getMarks(cat, post)}</TableCell>
                                                                     ))}
                                                                 </TableRow>
                                                             ))}
@@ -1819,7 +1819,7 @@ export function GovernmentJobDetailView({
                                     const formattedTitle = title.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
                                     return (
                                         <div key={title} className="space-y-1">
-                                            <p className="font-bold text-foreground uppercase text-[10px] tracking-wider">{formattedTitle}</p>
+                                            <p className="font-bold text-foreground uppercase text-xs tracking-wider">{formattedTitle}</p>
                                             <p className="mt-0.5">{ruleText}</p>
                                         </div>
                                     );
@@ -1841,7 +1841,7 @@ export function GovernmentJobDetailView({
                                         <div>
                                             <p className="font-bold text-foreground text-sm">{reg.region}</p>
                                             <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-                                                <span className="font-semibold text-foreground/75 block text-[10px] uppercase tracking-wider mb-0.5">States:</span> {Array.isArray(reg.states) ? reg.states.join(', ') : reg.states || '-'}
+                                                <span className="font-semibold text-foreground/75 block text-xs uppercase tracking-wider mb-0.5">States:</span> {Array.isArray(reg.states) ? reg.states.join(', ') : reg.states || '-'}
                                             </p>
                                         </div>
                                         {reg.website && (

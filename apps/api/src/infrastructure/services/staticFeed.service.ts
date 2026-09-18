@@ -484,25 +484,30 @@ export class StaticFeedService {
                 // 3. sitemap-skills.xml
                 let skillsXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 skillsXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-                validSkills.forEach(s => skillsXml += `  <url><loc>${baseUrl}/skills/${s}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+                // Canonical board URLs under the unified /jobs namespace (doc 22 v2):
+// skills → /jobs/{slug}-jobs
+validSkills.forEach(s => skillsXml += `  <url><loc>${baseUrl}/jobs/${s}-jobs</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
                 skillsXml += '</urlset>';
 
                 // 4. sitemap-roles.xml
                 let rolesXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 rolesXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-                validRoles.forEach(r => rolesXml += `  <url><loc>${baseUrl}/roles/${r}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+                // roles → /jobs/{slug}-jobs
+validRoles.forEach(r => rolesXml += `  <url><loc>${baseUrl}/jobs/${r}-jobs</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
                 rolesXml += '</urlset>';
 
                 // 5. sitemap-locations.xml
                 let locationsXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 locationsXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-                validLocations.forEach(l => locationsXml += `  <url><loc>${baseUrl}/locations/${l}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+                // cities → /jobs/{slug}-jobs ('remote' included — it's a city board in the registry)
+validLocations.forEach(l => locationsXml += `  <url><loc>${baseUrl}/jobs/${l}-jobs</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
                 locationsXml += '</urlset>';
 
                 // 6. sitemap-batches.xml
                 let batchesXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 batchesXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-                validBatches.forEach(b => batchesXml += `  <url><loc>${baseUrl}/batch/${b}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+                // batches → /jobs/{year}-batch (years keep the -batch form, no -jobs suffix)
+validBatches.forEach(b => batchesXml += `  <url><loc>${baseUrl}/jobs/${b}-batch</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
                 batchesXml += '</urlset>';
 
                 // 7. sitemap-walkins.xml

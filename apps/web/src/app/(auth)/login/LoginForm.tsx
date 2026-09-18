@@ -190,16 +190,17 @@ function LoginContent() {
     };
 
     return (
-        <div className="flex-1 flex flex-col items-center justify-center bg-background relative overflow-hidden min-h-[calc(100vh-64px)] md:min-h-[calc(100vh-88px)] px-4 py-8">
+        <div className="flex-1 flex flex-col items-center justify-center bg-background relative overflow-hidden min-h-dvh md:min-h-dvh px-4 py-8" style={{minHeight:'calc(100vh-64px)'}}>
             <div className="w-full max-w-4xl md:grid md:grid-cols-2 md:border md:border-border/80 md:rounded-2xl md:shadow-lg md:overflow-hidden animate-in fade-in duration-200">
                 {/* Left — creative panel (desktop only) */}
                 <aside className="hidden md:flex flex-col justify-between bg-muted/40 text-foreground p-9 relative overflow-hidden border-r border-border/60">
                     <div
                         aria-hidden="true"
-                        className="absolute inset-0 bg-[linear-gradient(to_right,#4f4f4f2e_1px,transparent_1px),linear-gradient(to_bottom,#4f4f4f2e_1px,transparent_1px)] bg-[size:22px_22px] [mask-image:radial-gradient(ellipse_80%_80%_at_20%_10%,#000_60%,transparent_100%)] pointer-events-none"
+                        className="absolute inset-0 pointer-events-none"
+                        style={{backgroundImage:'linear-gradient(to right,#4f4f4f2e 1px,transparent 1px),linear-gradient(to bottom,#4f4f4f2e 1px,transparent 1px)',backgroundSize:'22px 22px',maskImage:'radial-gradient(ellipse 80% 80% at 20% 10%,#000 60%,transparent 100%)',WebkitMaskImage:'radial-gradient(ellipse 80% 80% at 20% 10%,#000 60%,transparent 100%)'}}
                     />
                     <div className="relative space-y-2">
-                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">Jobs, powered by freshers.</p>
+                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Jobs, powered by freshers.</p>
                         <h2 className="text-3xl font-bold tracking-tight leading-tight">
                             Find jobs. Share opportunities. Help other freshers.
                         </h2>
@@ -256,7 +257,7 @@ function LoginContent() {
                 {isInviteFlow && step === 'email' && (
                     <div className="rounded-xl border border-primary/25 bg-primary/5 p-3 text-center">
                         <p className="text-xs font-semibold text-primary">Candidate Referral Invite</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">Signing in from this invite unlocks direct feed access.</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Signing in from this invite unlocks direct feed access.</p>
                     </div>
                 )}
 
@@ -268,9 +269,7 @@ function LoginContent() {
                                 type="button"
                                 variant="outline"
                                 onClick={handleGoogleSignIn}
-                                disabled={(mounted && isLoading) || isProcessing}
-                                className="w-full !h-11 text-xs font-semibold !rounded-xl flex items-center justify-center gap-2.5 border-border/80 hover:bg-muted/40 active:scale-[0.98] transition-all"
-                            >
+                                disabled={(mounted && isLoading) || isProcessing} size="sm" className="w-full">
                                 {isProcessing ? (
                                     <svg className="w-4.5 h-4.5 animate-spin text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -279,19 +278,19 @@ function LoginContent() {
                                 ) : (
                                     <svg className="w-4.5 h-4.5" viewBox="0 0 24 24">
                                         <path
-                                            fill="#EA4335"
+                                            fill="var(--color-destructive)"
                                             d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.37 0 3.412 2.667 1.48 6.555l3.786 3.21z"
                                         />
                                         <path
-                                            fill="#FBBC05"
+                                            fill="var(--color-signal-aging)"
                                             d="M1.48 6.555A12.049 12.049 0 0 0 0 12c0 1.927.455 3.746 1.258 5.373l3.967-3.07a7.086 7.086 0 0 1-.225-2.303c0-1.442.434-2.776 1.18-3.885L1.48 6.555z"
                                         />
                                         <path
-                                            fill="#4285F4"
+                                            fill="var(--color-brand-facebook)"
                                             d="M12 24c3.245 0 5.973-1.076 7.964-2.912l-3.836-2.973c-1.127.755-2.564 1.203-4.128 1.203-3.18 0-5.88-2.154-6.845-5.064L1.258 17.373C3.12 21.294 7.234 24 12 24z"
                                         />
                                         <path
-                                            fill="#34A853"
+                                            fill="var(--color-signal-live)"
                                             d="M24 12c0-.864-.077-1.697-.22-2.509H12v4.8h6.732c-.29 1.549-1.164 2.863-2.477 3.745l3.836 2.973C22.336 19.167 24 15.827 24 12z"
                                         />
                                     </svg>
@@ -304,7 +303,7 @@ function LoginContent() {
                                 <div className="absolute inset-0 flex items-center">
                                     <span className="w-full border-t border-border/60" />
                                 </div>
-                                <div className="relative flex justify-center text-[10px] uppercase tracking-wider font-semibold">
+                                <div className="relative flex justify-center text-xs uppercase tracking-wider font-semibold">
                                     <span className="bg-card px-3 text-muted-foreground/60">or email code</span>
                                 </div>
                             </div>
@@ -325,9 +324,7 @@ function LoginContent() {
 
                             <Button 
                                 type="submit" 
-                                disabled={isLoading || !email} 
-                                className="w-full !h-11 text-xs font-semibold !rounded-xl active:scale-[0.98] transition-all shadow-sm"
-                            >
+                                disabled={isLoading || !email} size="sm" className="w-full">
                                 {isLoading ? <ArrowPathIcon className="w-4 h-4 animate-spin mx-auto" /> : isSignupIntent ? 'Continue to Sign Up →' : 'Continue with Email →'}
                             </Button>
                             */}
@@ -357,11 +354,11 @@ function LoginContent() {
                                 </div>
 
                                 <div className="flex justify-between items-center px-0.5 pt-1">
-                                    <p className="text-[11px] text-muted-foreground">Didn&apos;t receive it?</p>
+                                    <p className="text-xs text-muted-foreground">Didn&apos;t receive it?</p>
                                     <button 
                                         type="button" 
                                         onClick={handleSendOtp} 
-                                        className="text-[11px] font-semibold text-primary hover:underline cursor-pointer"
+                                        className="text-xs font-semibold text-primary hover:underline cursor-pointer"
                                     >
                                         Resend code
                                     </button>
@@ -369,9 +366,7 @@ function LoginContent() {
                             </div>
                             <Button 
                                 type="submit" 
-                                disabled={isLoading || otpArray.join('').length !== 6} 
-                                className="w-full !h-11 text-xs font-semibold !rounded-xl active:scale-[0.98] transition-all shadow-sm"
-                            >
+                                disabled={isLoading || otpArray.join('').length !== 6} size="sm" className="w-full">
                                 {isLoading ? <ArrowPathIcon className="w-4 h-4 animate-spin mx-auto" /> : 'Verify & Sign In →'}
                             </Button>
                         </form>
@@ -381,7 +376,7 @@ function LoginContent() {
                 {/* Footer Security Badge */}
                 <div className="pt-4 border-t border-border/50 flex flex-col items-center gap-2 text-center">
                     {/* Removed Verified Infrastructure */}
-                    <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-medium">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground font-medium">
                         <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
                         <span className="text-muted-foreground/30">•</span>
                         <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>

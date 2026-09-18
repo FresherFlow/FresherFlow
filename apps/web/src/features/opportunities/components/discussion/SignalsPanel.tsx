@@ -95,7 +95,7 @@ export function SignalsPanel({ opportunityIdOrSlug }: Props) {
                     <button
                         type="button"
                         onClick={() => void load()}
-                        className="text-[11px] font-semibold text-primary hover:underline"
+                        className="text-xs font-semibold text-primary hover:underline"
                     >
                         Retry
                     </button>
@@ -113,7 +113,7 @@ export function SignalsPanel({ opportunityIdOrSlug }: Props) {
                             disabled={busy}
                             aria-pressed={isOn}
                             className={cn(
-                                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] font-semibold transition-colors',
+                                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
                                 isOn
                                     ? 'border-primary/30 bg-primary/10 text-primary'
                                     : 'border-border bg-muted/20 text-muted-foreground hover:bg-muted/40',

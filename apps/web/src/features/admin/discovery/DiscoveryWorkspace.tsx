@@ -392,7 +392,7 @@ export function DiscoveryWorkspace() {
  {/* Dry Run Modal */}
  {dryRunModal.open && (
  <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
- <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden">
+ <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-2xl max-h-96 flex flex-col overflow-hidden">
  <div className="p-4 border-b border-border/40 flex justify-between items-center bg-card">
  <div>
  <h2 className="text-base font-bold text-foreground">
@@ -417,12 +417,12 @@ export function DiscoveryWorkspace() {
  <h3 className="font-bold text-sm text-foreground leading-tight">{job.title}</h3>
  <div className="flex gap-1.5 shrink-0">
  {job.work_mode && (
- <span className="text-[10px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded border border-border/40">
+ <span className="text-xs text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded border border-border/40">
  {job.work_mode}
  </span>
  )}
  {job.locations?.[0] && (
- <span className="text-[10px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded border border-border/40">
+ <span className="text-xs text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded border border-border/40">
  {job.locations[0]}
  </span>
  )}
@@ -438,7 +438,7 @@ export function DiscoveryWorkspace() {
  >
  Apply Link <ArrowTopRightOnSquareIcon className="w-3 h-3" />
  </a>
- <span className="text-muted-foreground text-[11px]">
+ <span className="text-muted-foreground text-xs">
  Exp: {job.experience_min}–{job.experience_max} yrs
  </span>
  </div>
@@ -448,7 +448,7 @@ export function DiscoveryWorkspace() {
  {job.required_skills.slice(0, 5).map(s => (
  <span
  key={s}
- className="bg-muted/60 text-muted-foreground text-[10px] rounded px-1.5 py-0.5 border border-border/40"
+ className="bg-muted/60 text-muted-foreground text-xs rounded px-1.5 py-0.5 border border-border/40"
  >
  {s}
  </span>

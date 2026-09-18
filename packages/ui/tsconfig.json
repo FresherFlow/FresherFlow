@@ -1,26 +1,29 @@
 {
-  "compilerOptions": {
-    "target": "es2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "declaration": true,
-    "jsx": "react-jsx",
-    "outDir": "./dist",
-    "baseUrl": "."
-  },
-  "include": [
-    "src/index.tsx",
-    "src/Badge.tsx",
-    "src/Button.tsx",
-    "src/Card.tsx",
-    "src/CompanyLogo.tsx",
-    "src/Input.tsx",
-    "src/theme.ts",
-    "src/theme/**/*.ts",
-    "src/utils/**/*.ts"
-  ]
+    "compilerOptions": {
+        "target": "es2022",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "declaration": true,
+        "jsx": "react-jsx",
+        "outDir": "./dist",
+        "baseUrl": ".",
+        "types": [
+            "node"
+        ]
+    },
+    "include": [
+        "src/index.tsx",
+        "src/Badge.tsx",
+        "src/Button.tsx",
+        "src/Card.tsx",
+        "src/CompanyLogo.tsx",
+        "src/Input.tsx",
+        "src/theme.ts",
+        "src/theme/**/*.ts",
+        "src/utils/**/*.ts"
+    ]
 }

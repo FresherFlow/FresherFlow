@@ -45,7 +45,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
     };
 
     return (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
             <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative selection:bg-primary/20">
                 <button
                     onClick={onClose}
@@ -66,7 +66,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
                         <h2 className="text-2xl font-bold text-foreground tracking-tight capitalize">
                             Welcome to Flow
                         </h2>
-                        <p className="text-[10px] text-muted-foreground capitalize font-bold tracking-[0.15em] mt-1 opacity-60">
+                        <p className="text-xs text-muted-foreground capitalize font-bold tracking-widest mt-1 opacity-60">
                             {mode === 'login' ? 'Execute Session Authentication' : 'Initialize Performance Profile'}
                         </p>
                     </div>
@@ -75,7 +75,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
 
 
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-muted-foreground capitalize tracking-widest ml-1">
+                            <label className="text-xs font-bold text-muted-foreground capitalize tracking-widest ml-1">
                                 Email Address
                             </label>
                             <Input
@@ -89,7 +89,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
                         </div>
 
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold text-muted-foreground capitalize tracking-widest ml-1">
+                            <label className="text-xs font-bold text-muted-foreground capitalize tracking-widest ml-1">
                                 Access Password
                             </label>
                             <Input
@@ -103,16 +103,14 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
                         </div>
 
                         {error && (
-                            <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-lg text-[11px] font-bold capitalize tracking-tight italic">
+                            <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-lg text-xs font-bold capitalize tracking-tight italic">
                                 ❌ {error}
                             </div>
                         )}
 
                         <Button
                             type="submit"
-                            disabled={loading}
-                            className="w-full !h-12 text-sm capitalize font-bold tracking-widest transition-all shadow-lg shadow-primary/20"
-                        >
+                            disabled={loading} size="sm" className="w-full">
                             {loading ? (
                                 <div className="flex items-center gap-2">
                                     <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />

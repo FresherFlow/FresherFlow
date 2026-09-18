@@ -17,10 +17,13 @@
     "cheerio": "^1.2.0",
     "https-proxy-agent": "^7.0.6",
     "playwright": "^1.62.1",
-    "socks-proxy-agent": "^8.0.5"
+    "socks-proxy-agent": "^8.0.5",
+    "turndown": "^7.2.4",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.14.0",
+    "@types/turndown": "^5.0.6",
     "eslint": "^9.14.0",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.66.0"

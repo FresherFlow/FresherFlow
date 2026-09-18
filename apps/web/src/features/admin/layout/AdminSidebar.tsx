@@ -119,7 +119,7 @@ export function AdminSidebar({
     ];
 
     return (
-        <aside className="hidden md:flex fixed top-0 left-0 bottom-0 z-50 w-[var(--sidebar-w,12rem)] transition-[width] duration-[600ms] ease-[cubic-bezier(0.7,0,0,1)] overflow-hidden">
+        <aside className="hidden md:flex fixed top-0 left-0 bottom-0 z-50 w-48 transition-all duration-500 ease-out overflow-hidden">
             <SidebarContent 
                 pathname={pathname} 
                 searchParams={searchParams} 

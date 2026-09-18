@@ -105,7 +105,7 @@ function CompaniesPageContent() {
                         </div>
                         <Link
                             href="/companies"
-                            className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold text-[11px] rounded-lg hover:bg-primary/90 transition-all"
+                            className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold text-xs rounded-lg hover:bg-primary/90 transition-all"
                         >
                             Browse Companies
                         </Link>
@@ -128,7 +128,7 @@ function CompaniesPageContent() {
                                             {slug.replace(/-/g, ' ')}
                                         </Link>
                                         {followedAt && (
-                                            <p className="text-[10px] text-muted-foreground">
+                                            <p className="text-xs text-muted-foreground">
                                                 Since {new Date(followedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                             </p>
                                         )}
@@ -156,7 +156,7 @@ function CompaniesPageContent() {
                     <p className="text-xs text-muted-foreground">Follow companies directly from their job listing pages.</p>
                     <Link
                         href="/companies"
-                        className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold text-[11px] rounded-lg hover:bg-primary/90 transition-all"
+                        className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold text-xs rounded-lg hover:bg-primary/90 transition-all"
                     >
                         Browse Companies
                     </Link>

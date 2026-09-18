@@ -78,17 +78,17 @@ export function ProfileVisibilityCard() {
                             <Icon className={cn('w-4 h-4 mt-0.5 shrink-0', isActive ? 'text-primary' : 'text-muted-foreground')} />
                             <div>
                                 <p className={cn('text-xs font-semibold', isActive ? 'text-primary' : 'text-foreground')}>{label}</p>
-                                <p className="text-[11px] text-muted-foreground leading-snug">{desc}</p>
+                                <p className="text-xs text-muted-foreground leading-snug">{desc}</p>
                             </div>
                             {isActive && (
-                                <span className="ml-auto text-[10px] font-bold text-primary uppercase tracking-wide shrink-0 mt-0.5">Active</span>
+                                <span className="ml-auto text-xs font-bold text-primary uppercase tracking-wide shrink-0 mt-0.5">Active</span>
                             )}
                         </button>
                     );
                 })}
             </div>
             {current === 'PUBLIC' && (
-                <p className="text-[11px] text-muted-foreground pt-1">
+                <p className="text-xs text-muted-foreground pt-1">
                     ⚠️ Only profiles with ≥50% completion are indexed by Google.
                 </p>
             )}

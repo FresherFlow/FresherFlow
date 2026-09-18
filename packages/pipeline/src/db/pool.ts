@@ -1,6 +1,6 @@
 import pg from 'pg';
 const { Pool } = pg;
-import { loadEnv } from '../config/index.js';
+import { loadEnv } from '../config/loadEnv.js';
 
 loadEnv();
 

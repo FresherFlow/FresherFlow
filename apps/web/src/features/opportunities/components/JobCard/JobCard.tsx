@@ -27,6 +27,7 @@ import { Hint } from '@/ui/Tooltip';
 import { AutoFitBadges } from './AutoFitBadges';
 import { JobCardMenu } from './JobCardMenu';
 import { buildMetaItems } from './JobCardMetaConfig';
+import { WalkinDateChip } from '@/features/opportunities/components/WalkinEventWidgets';
 import {
     getAccentBorderClass,
     getJobTypeLabel,
@@ -194,12 +195,12 @@ export default function JobCard({
             onMouseLeave={onMouseLeave}
             onClick={handleCardClick}
             className={cn(
-                'group relative bg-card text-card-foreground border border-l-[3px] rounded-xl p-3.5 flex flex-col gap-2 transition-[border-color,box-shadow,background-color] duration-150 ease-out cursor-pointer',
+                'group relative bg-card text-card-foreground border border-l-4 rounded-xl p-3.5 flex flex-col gap-2 transition-all duration-150 ease-out cursor-pointer',
                 isSelected
                     ? 'border-l-primary border-border/30 bg-primary/[0.03] shadow-xs'
                     : [accentClass, 'border-border/60 dark:border-border/40 hover:border-border dark:hover:border-border/70 hover:shadow-xs'],
                 isHovered && !isSelected && 'border-border dark:border-border/70 shadow-xs',
-                showApplied && 'border-l-emerald-500',
+                showApplied && 'border-l-brand-whatsapp',
                 isJobExpired(job) && 'opacity-60',
                 className
             )}
@@ -213,21 +214,22 @@ export default function JobCard({
                     applyLink={job.applyLink}
                     priority={priority}
                     isGovernment={isGovernment}
-                    className="!w-10 !h-10 rounded-lg shrink-0 border border-border/50 shadow-xs"
+                    className="!w-10 !h-10 shrink-0"
                 />
                 <div className="flex-1 min-w-0">
                     {/* Top row: title + posted (desktop) + actions */}
                     <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                            {/* Mobile top badges: type + posted */}
+                            {/* Mobile top badges: type + posted + next drive date */}
                             <div className="flex items-center gap-1.5 mb-1 sm:hidden">
-                                <span className="inline-flex items-center rounded-md bg-muted/60 border border-border/50 px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground shrink-0">
+                                <span className="inline-flex items-center rounded-md bg-muted/60 border border-border/50 px-1.5 py-0.5 text-xs font-semibold text-muted-foreground shrink-0">
                                     {typeLabel}
                                 </span>
+                                {isWalkin && <WalkinDateChip opp={job} className="hidden" />}
                                 {postedLabel && (
                                     <span
                                         className={cn(
-                                            'inline-flex items-center rounded-md bg-muted/40 border border-border/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground shrink-0',
+                                            'inline-flex items-center rounded-md bg-muted/40 border border-border/50 px-1.5 py-0.5 text-xs font-medium text-muted-foreground shrink-0',
                                             isFreshlyPosted(job) && 'text-primary font-semibold border-border/40'
                                         )}
                                     >
@@ -235,13 +237,13 @@ export default function JobCard({
                                     </span>
                                 )}
                             </div>
-                            <h2 className="text-[15px] font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2 sm:line-clamp-1">
+                            <h2 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2 sm:line-clamp-1">
                                 {job.normalizedRole || job.title}
                             </h2>
                             <div className="flex items-center gap-1.5 mt-1 text-sm text-muted-foreground min-w-0">
-                                <span className="font-semibold text-foreground/80 truncate max-w-[45%] shrink-0">{job.company}</span>
+                                <span className="font-semibold text-foreground/80 truncate max-w-md shrink-0">{job.company}</span>
                                 <span className="text-muted-foreground/40 shrink-0">•</span>
-                                <span className="inline-flex items-center gap-1 truncate min-w-0 max-w-[50%]">
+                                <span className="inline-flex items-center gap-1 truncate min-w-0 max-w-lg">
                                     <MapPinIcon className="w-3.5 h-3.5 shrink-0" aria-hidden />
                                     <span className="truncate">{locationInfo.shortLabel}</span>
                                 </span>
@@ -249,6 +251,7 @@ export default function JobCard({
                                 <span className="hidden sm:inline text-sm font-semibold text-muted-foreground whitespace-nowrap shrink-0">
                                     {typeLabel}
                                 </span>
+                                {isWalkin && <WalkinDateChip opp={job} className="ml-auto" />}
                             </div>
                         </div>
                         <div className="flex items-start gap-0.5 shrink-0 relative z-20 pointer-events-auto">
@@ -290,7 +293,7 @@ export default function JobCard({
                 />
                 <div className="flex shrink-0 items-center gap-2">
                     {showApplied && (
-                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 rounded text-[10px] font-bold uppercase tracking-wide border border-emerald-500/20 shrink-0">
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-success/10 text-success dark:text-success rounded text-xs font-bold uppercase tracking-wide border border-success/20 shrink-0">
                             <CheckIcon className="w-3 h-3" aria-hidden />
                             Applied
                         </span>
@@ -303,7 +306,7 @@ export default function JobCard({
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     onClick={(e) => e.stopPropagation()}
-                                    className="inline-flex items-center justify-center gap-1 px-3 h-7 text-xs font-semibold rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-300/40 hover:bg-amber-500/25 transition-colors"
+                                    className="inline-flex items-center justify-center gap-1 px-3 h-7 text-xs font-semibold rounded-md bg-warning/15 text-warning dark:text-warning border border-warning/40 hover:bg-warning/25 transition-colors"
                                 >
                                     <MapPinIcon className="w-3.5 h-3.5" aria-hidden />
                                     Directions
@@ -325,7 +328,7 @@ export default function JobCard({
                         <button
                             type="button"
                             onClick={handleApplyClick}
-                            className="inline-flex items-center justify-center gap-1.5 px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97] transition-[background-color,transform] duration-150 ease-out motion-reduce:transform-none shadow-xs"
+                            className="inline-flex items-center justify-center gap-1.5 px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all duration-150 ease-out motion-reduce:transform-none shadow-xs"
                         >
                             Apply
                             <PaperAirplaneIcon className="w-3.5 h-3.5 -rotate-45 -mt-0.5" aria-hidden />

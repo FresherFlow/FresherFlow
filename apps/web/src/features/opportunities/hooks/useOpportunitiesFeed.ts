@@ -6,7 +6,8 @@ import { Opportunity, EducationLevel } from '@fresherflow/types';
 import { useDebounce } from '@/hooks/useDebounce';
 import { useAuth } from '@/lib/auth/AuthContext';
 import toast from 'react-hot-toast';
-import { readFeedCache } from '@/lib/api/offline/opportunitiesFeedCache';
+import { readFeedCache, saveFeedCache } from '@/lib/api/offline/opportunitiesFeedCache';
+import { fetchFullFeedOnClient } from '@/lib/api/cdnFeed';
 import { calculateOpportunityMatch, isNotEligible } from '@/features/opportunities/domain/matchScore';
 import { isStaleWalkin } from '@/features/opportunities/utils/walkinMapUtils';
 export { isStaleWalkin };
@@ -100,6 +101,10 @@ export function useOpportunitiesFeed({
     const [profileIncomplete, setProfileIncomplete] = useState<{ percentage: number; message: string } | null>(null);
     const lastRequestTimestamp = useRef(0);
     const opportunitiesCountRef = useRef(opportunities.length);
+    // Holds the fully-hydrated feed (fetched post-paint via /api/public/feed) so
+    // auth/search driven re-runs of loadOpportunities never clobber the list
+    // back to the server-rendered first page (the "stuck at 20 jobs" bug).
+    const fullFeedRef = useRef<Opportunity[] | null>(null);
     const debouncedSearch = useDebounce(search, 500);
     const normalizedSearch = sanitizeSearchQuery(debouncedSearch);
     const shouldUseBackendSearch = normalizedSearch.length >= 2;
@@ -121,9 +126,13 @@ export function useOpportunitiesFeed({
                 return;
             }
 
-            const staticOpps = initialData?.opportunities || readFeedCache(cacheScope)?.opportunities || [];
+            // Prefer the hydrated full feed — never regress to the first page.
+            const staticOpps = fullFeedRef.current
+                ?? initialData?.opportunities
+                ?? readFeedCache(cacheScope)?.opportunities
+                ?? [];
             setOpportunities(staticOpps);
-            setTotalCount(initialData?.total ?? staticOpps.length);
+            setTotalCount(Math.max(staticOpps.length, initialData?.total ?? 0));
             setPage(1);
             setHasMore(false);
             setError(null);
@@ -218,6 +227,47 @@ export function useOpportunitiesFeed({
             }
         }
     }, [loadOpportunities, authLoading, user, showOnlySaved, hasOpportunities, shouldUseBackendSearch, hasInitialData]);
+
+    // Route components serialize only the first page of the feed into the HTML
+    // (view-source stays light), so when the server-trimmed list is smaller
+    // than the route total, hydrate the rest once after paint via the
+    // same-origin /api/public/feed proxy. One request per scope per session.
+    const hydratedScopeRef = useRef<string | null>(null);
+    const latestFilterStateRef = useRef({ search: '', savedOnly: false });
+    useEffect(() => {
+        latestFilterStateRef.current = { search: normalizedSearch, savedOnly: showOnlySaved };
+    }, [normalizedSearch, showOnlySaved]);
+
+    const needsHydration = !initialData || initialData.opportunities.length < (initialData.total ?? 0);
+    useEffect(() => {
+        if (!WEB_STATIC_DISCOVERY || !needsHydration) return;
+
+        const scope = type === 'GOVERNMENT' ? 'GOVERNMENT' : 'ALL';
+        if (fullFeedRef.current || hydratedScopeRef.current === scope) return;
+
+        let cancelled = false;
+        void fetchFullFeedOnClient(scope).then((feed) => {
+            if (cancelled || !feed?.opportunities?.length) return;
+            hydratedScopeRef.current = scope;
+            fullFeedRef.current = feed.opportunities;
+
+            // A search or saved-only view owns the list by now — never clobber it.
+            const latest = latestFilterStateRef.current;
+            if (latest.savedOnly || latest.search.length > 0) return;
+
+            const count = feed.count || feed.opportunities.length;
+            const generatedAt = new Date(feed.generatedAt).getTime();
+
+            setOpportunities(feed.opportunities);
+            setTotalCount(count);
+            if (Number.isFinite(generatedAt)) setCachedAt(generatedAt);
+            saveFeedCache(feed.opportunities, count, cacheScope);
+        });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [cacheScope, initialData, needsHydration, type]);
 
     const filteredOpps = useMemo(() => {
         const modeFiltered = opportunities;
@@ -454,6 +504,16 @@ export function useOpportunitiesFeed({
                 const trendA = (a as unknown as Record<string, unknown>).views || (a as unknown as Record<string, unknown>).applicationsCount || a.matchScore || 0;
                 const trendB = (b as unknown as Record<string, unknown>).views || (b as unknown as Record<string, unknown>).applicationsCount || b.matchScore || 0;
                 if ((trendB as number) !== (trendA as number)) return (trendB as number) - (trendA as number);
+            } else if (sort === 'match') {
+                // Match sort: sort by match score descending
+                const scoreA = a.matchScore ?? 0;
+                const scoreB = b.matchScore ?? 0;
+                if (scoreB !== scoreA) return scoreB - scoreA;
+
+                // Tie-breaker: newer first
+                const timeA = keysA.postedAt;
+                const timeB = keysB.postedAt;
+                if (timeB !== timeA) return timeB - timeA;
             } else {
                 // 4. Mobile Architecture: Recency priority (newer postedAt date comes first)
                 const timeA = keysA.postedAt;

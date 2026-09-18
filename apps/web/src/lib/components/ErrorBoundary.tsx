@@ -33,8 +33,8 @@ export class ErrorBoundary extends Component<Props, State> {
             }
 
             return (
-                <div className="min-h-[400px] flex flex-col items-center justify-center p-6 text-center space-y-4">
-                    <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center text-red-600 dark:text-red-400">
+                <div className="min-h-100 flex flex-col items-center justify-center p-6 text-center space-y-4">
+                    <div className="w-16 h-16 bg-destructive/10 dark:bg-destructive/20 rounded-full flex items-center justify-center text-destructive">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-8 h-8">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
                         </svg>
@@ -47,7 +47,7 @@ export class ErrorBoundary extends Component<Props, State> {
                     </div>
                     <Button
                         onClick={() => window.location.reload()}
-                        className="h-9 px-4 text-xs font-bold capitalize tracking-widest"
+                       
                     >
                         Reload page
                     </Button>

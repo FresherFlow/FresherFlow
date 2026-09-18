@@ -124,7 +124,7 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
         <TooltipProvider delayDuration={200}>
             <div className="flex flex-col h-full bg-card border-r border-border pb-4 w-full select-none">
                 {/* 1. FIXED LOGO HEADER */}
-                <div className="h-14 flex items-center px-[8px] border-b border-border mb-4 bg-card shrink-0">
+                <div className="h-14 flex items-center px-2 border-b border-border mb-4 bg-card shrink-0">
                     <Link href={logoHref} className="flex items-center gap-2 w-full min-w-0 hover:opacity-80 transition-opacity focus:outline-none">
                         <LogoImage width={28} height={28} className="w-7 h-7 object-contain shrink-0" />
                         <span className="text-lg font-bold text-foreground whitespace-nowrap truncate">{headerTitle === 'Admin Portal' ? 'Admin' : 'FresherFlow'}</span>
@@ -132,7 +132,7 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
                 </div>
 
                 {/* 2. SCROLLABLE NAV AREA */}
-                <div className="flex-1 overflow-y-auto px-2 custom-scrollbar no-scrollbar relative overflow-x-hidden">
+                <div className="flex-1 overflow-y-auto px-2 no-scrollbar relative overflow-x-hidden">
                     <AnimatePresence mode="popLayout" initial={false}>
                         <motion.div
                             key={context}
@@ -209,7 +209,7 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
                                             <ChevronRightIcon className="w-4 h-4 ml-auto text-muted-foreground/50 shrink-0" />
                                         )}
                                         {item.badge > 0 && !collapsed && (
-                                            <span className="ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                                            <span className="ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-xs font-bold text-destructive-foreground">
                                                 {item.badge > 99 ? '99+' : item.badge}
                                             </span>
                                         )}
@@ -237,7 +237,7 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
                                         )}
                                         {item.isSettingsDivider && customHeaderTitle === 'Admin Portal' && (
                                             <>
-                                                {!collapsed && <span className="px-1.5 pt-4 pb-2 text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider">Settings</span>}
+                                                {!collapsed && <span className="px-1.5 pt-4 pb-2 text-xs font-bold text-muted-foreground/70 uppercase tracking-wider">Settings</span>}
                                                 {collapsed && <div className="h-px bg-border/40 my-2 mx-1.5" />}
                                             </>
                                         )}
@@ -279,7 +279,7 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
                                     </ThemeSwitcher>
                                 </TooltipTrigger>
                                 {collapsed && (
-                                    <TooltipContent side="right" className="flex items-center gap-2">
+                                    <TooltipContent side="right" className="flex items-center">
                                         {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
                                     </TooltipContent>
                                 )}
@@ -297,14 +297,14 @@ export function SidebarContent({ pathname, searchParams, collapsed, onToggleColl
                                     <SidebarIcon className="w-5 h-5 shrink-0" />
                                     <span className="text-sm whitespace-nowrap text-left truncate">Collapse</span>
                                     {!collapsed && (
-                                        <span className="ml-auto text-[10px] text-muted-foreground bg-muted px-1 py-0.5 rounded border border-border shrink-0">Ctrl+B</span>
+                                        <span className="ml-auto text-xs text-muted-foreground bg-muted px-1 py-0.5 rounded border border-border shrink-0">Ctrl+B</span>
                                     )}
                                 </button>
                             </TooltipTrigger>
                             {collapsed && (
-                                <TooltipContent side="right" className="flex items-center gap-2">
+                                <TooltipContent side="right" className="flex items-center">
                                     <span>Expand Sidebar</span>
-                                    <span className="text-[10px] text-muted-foreground bg-muted px-1 py-0.5 rounded border border-border">Ctrl+B</span>
+                                    <span className="text-xs text-muted-foreground bg-muted px-1 py-0.5 rounded border border-border">Ctrl+B</span>
                                 </TooltipContent>
                             )}
                         </Tooltip>
@@ -366,7 +366,7 @@ function AppSidebarInner() {
     }, []);
 
     return (
-        <aside className="hidden lg:flex fixed top-0 left-0 bottom-0 z-50 w-[var(--sidebar-w,12rem)] transition-[width] duration-[600ms] ease-[cubic-bezier(0.7,0,0,1)] overflow-hidden">
+        <aside style={{ width: 'var(--sidebar-w,12rem)' }} className="hidden lg:flex fixed top-0 left-0 bottom-0 z-50 transition-all duration-300 ease-out overflow-hidden">
             <SidebarContent pathname={pathname} searchParams={searchParams} collapsed={visuallyCollapsed} onToggleCollapse={handleToggleCollapse} hostname={hostname} />
         </aside>
     );
@@ -374,7 +374,7 @@ function AppSidebarInner() {
 
 export function AppSidebar() {
     return (
-        <React.Suspense fallback={<aside className="hidden lg:flex fixed top-0 left-0 bottom-0 z-50 w-[var(--sidebar-w,12rem)] transition-[width] duration-[600ms] ease-[cubic-bezier(0.7,0,0,1)] overflow-hidden" />}>
+        <React.Suspense fallback={<aside style={{ width: 'var(--sidebar-w,12rem)' }} className="hidden lg:flex fixed top-0 left-0 bottom-0 z-50 transition-all duration-300 ease-out overflow-hidden" />}>
             <AppSidebarInner />
         </React.Suspense>
     );

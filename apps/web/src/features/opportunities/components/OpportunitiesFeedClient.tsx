@@ -3,7 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
-const PAGE_SIZE = 20;
+import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
 import { cn } from '@repo/ui/utils/cn';
 import { OpportunityDetailPane } from './OpportunityDetailPane';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
@@ -17,7 +17,7 @@ import { EmptyState } from '@/ui/EmptyState';
 import dynamic from 'next/dynamic';
 import { getOpportunityPathFromItem } from '@/features/opportunities/domain/opportunityPath';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
-import { FilterDropdownBar, type FilterBarFilters } from '@/features/opportunities/components/FilterDropdownBar';
+import { JobFilterBar, type FilterBarFilters } from '@/features/opportunities/components/JobFilterBar';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { Opportunity } from '@fresherflow/types';
 import { Breadcrumb } from '@/ui/Breadcrumb';
@@ -60,7 +60,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
     const queryParam = searchParams.get('query') || searchParams.get('q') || searchParams.get('skill') || '';
     const [search, setSearch] = useState(queryParam);
     const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
-    const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+    const [visibleCount, setVisibleCount] = useState(FEED_PAGE_SIZE);
     const leftColumnRef = useRef<HTMLDivElement>(null);
     const { targetRef: loadMoreRef, isIntersecting } = useIntersectionObserver({ threshold: 0.1, rootMargin: '400px' });
     const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -106,8 +106,8 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
     const handleCloseOpportunityPane = () => {
         const mobileModal = document.getElementById('mobile-detail-modal');
         if (mobileModal) {
-            mobileModal.classList.remove('animate-in', 'slide-in-from-bottom-[100%]');
-            mobileModal.classList.add('animate-out', 'slide-out-to-bottom-[100%]', 'duration-400', 'ease-[cubic-bezier(0.32,0.72,0,1)]');
+            mobileModal.classList.remove('animate-in', 'animate-in');
+            mobileModal.classList.add('animate-out', 'slide-out-to-bottom-[100%]', 'duration-400', 'ease-out');
         }
         setTimeout(() => {
             setSelectedOpp(null);
@@ -178,6 +178,9 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         initialData,
     });
 
+    // True while the full feed hasn't arrived yet (we have SSR slice but not all jobs)
+    const isFeedPending = !!(initialData && opportunities.length < (initialData.total ?? 0));
+
     const filterAggregates = useMemo(() => {
         const locations: Record<string, number> = {};
         const skills: Record<string, number> = {};
@@ -230,7 +233,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
 
     // Reset visible count when filters change
     useEffect(() => {
-        setVisibleCount(PAGE_SIZE);
+        setVisibleCount(FEED_PAGE_SIZE);
     }, [search, selectedType, filters.location, filters.sector, filters.qualification, filters.course, filters.year, filters.closingSoon, filters.saved, filters.source, filters.company]);
 
     // Push filtered count to TopHeaderBar
@@ -255,9 +258,9 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         if (isIntersecting && visibleCount < filteredOpps.length && !isLoadingMore) {
             setIsLoadingMore(true);
             setTimeout(() => {
-                setVisibleCount(prev => prev + PAGE_SIZE);
+                setVisibleCount(prev => prev + FEED_PAGE_SIZE);
                 setIsLoadingMore(false);
-            }, 600);
+            }, 200);
         }
     }, [isIntersecting, visibleCount, filteredOpps.length, isLoadingMore]);
 
@@ -368,7 +371,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                         placeholder="Search roles, skills, or companies..."
                         value={search}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearch(e.target.value)}
-                        className="pl-9 h-10 text-xs rounded-xl bg-card border-border shadow-sm w-full"
+                        className="h-10 w-full"
                         aria-label="Search job opportunities"
                     />
                     {search && (
@@ -387,7 +390,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                     <h1 className="sr-only">Job Opportunities Feed</h1>
 
                     {/* Count — left */}
-                    <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5 shrink-0" aria-live="polite">
+                    <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5 shrink-0" aria-live="polite">
                         <ShieldCheckIcon className="w-3.5 h-3.5 text-primary shrink-0" />
                         {filteredOpps.length > 0 ? `Showing ${filteredOpps.length} jobs` : '0 jobs'}
                     </span>
@@ -399,14 +402,14 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                             onClick={openMobileFilters}
                             aria-haspopup="dialog"
                             aria-expanded={isMobileFilterOpen}
-                            className="lg:hidden h-9 flex items-center gap-2 px-3 rounded-xl border border-border bg-card text-[10px] font-bold capitalize tracking-widest shrink-0"
+                            className="lg:hidden h-9 flex items-center gap-2 px-3 rounded-xl border border-border bg-card text-xs font-bold capitalize tracking-widest shrink-0"
                         >
                             <FunnelIcon className="w-4 h-4" />
                             {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
                         </button>
 
                         {/* Desktop filter chips */}
-                        <FilterDropdownBar
+                        <JobFilterBar
                             filters={filters}
                             setFilters={setFilters}
                             isLoggedIn={!!user}
@@ -468,9 +471,9 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                             message={profileIncomplete.message}
                         />
                     ) : (
-                        <div className="w-full grid grid-cols-1 lg:grid-cols-[1.3fr_1.7fr] gap-6 items-start">
+                        <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                             {/* Left Column: Grid list */}
-                            <div className="min-w-0 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-2 custom-scrollbar" ref={leftColumnRef}>
+                            <div className="min-w-0 lg:sticky lg:top-24 lg:h-full lg:overflow-y-auto lg:pr-2" ref={leftColumnRef}>
                                 <OpportunityGrid
                                     opportunities={pagedOpps}
                                     isLoading={isLoading}
@@ -487,7 +490,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                                         setFilters({ location: null, sector: null, qualification: null, course: null, year: null, closingSoon: false, saved: false, workMode: null, skills: [], source: [], company: [] });
                                     }}
                                 />
-                                {(visibleCount < filteredOpps.length || isLoadingMore) && (
+                                {(visibleCount < filteredOpps.length || isLoadingMore || isFeedPending) && (
                                     <div ref={loadMoreRef} className="flex justify-center pt-8 pb-4">
                                         <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
                                     </div>
@@ -495,9 +498,9 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                             </div>
 
                             {/* Right Column: Detail Panel / Empty State (Desktop only) */}
-                            <div className="hidden lg:flex flex-col sticky top-24 h-[calc(100vh-8rem)] bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm">
+                            <div className="hidden lg:flex flex-col sticky top-24 h-full bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm">
                                 {selectedOpp ? (
-                                    <div className="flex-1 overflow-y-auto custom-scrollbar">
+                                    <div className="flex-1 overflow-y-auto">
                                         <OpportunityDetailPane
                                             oppId={selectedOpp.slug || selectedOpp.id}
                                             initialData={selectedOpp}
@@ -525,9 +528,9 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
 
                             {/* Mobile Detail Modal/Drawer (Mobile/Tablet only) */}
                             {selectedOpp && isDesktop === false && (
-                                <div id="mobile-detail-modal" className="lg:hidden fixed inset-0 z-[120] flex flex-col bg-background animate-in slide-in-from-bottom-[100%] duration-400 ease-[cubic-bezier(0.32,0.72,0,1)]">
+                                <div id="mobile-detail-modal" className="lg:hidden fixed inset-0 z-50 flex flex-col bg-background animate-in animate-in duration-400 ease-out">
                                     {/* Safe area padding */}
-                                    <div className="pt-[env(safe-area-inset-top)] bg-card shrink-0" />
+                                    <div className="pt-4 bg-card shrink-0" />
                                     <div className="flex-1 flex flex-col min-h-0">
                             <OpportunityDetailPane
                                 oppId={selectedOpp.slug || selectedOpp.id}

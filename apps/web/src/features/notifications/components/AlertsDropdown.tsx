@@ -20,18 +20,18 @@ import toast from 'react-hot-toast';
 function getKindBadge(kind: AlertKind) {
     switch (kind) {
         case 'DAILY_DIGEST':
-            return { label: 'Daily Digest', color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20' };
+            return { label: 'Daily Digest', color: 'bg-brand-discord/10 text-brand-discord dark:text-brand-discord border-brand-discord/20' };
         case 'CLOSING_SOON':
-            return { label: 'Closing Soon', color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' };
+            return { label: 'Closing Soon', color: 'bg-warning/10 text-warning dark:text-warning border-warning/20' };
         case 'HIGHLIGHT':
-            return { label: 'Highlight', color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' };
+            return { label: 'Highlight', color: 'bg-success/10 text-success dark:text-success border-success/20' };
         case 'APP_UPDATE':
-            return { label: 'Update', color: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20' };
+            return { label: 'Update', color: 'bg-brand-telegram/10 text-sky-600 dark:text-sky-400 border-sky-500/20' };
         case 'EVENT_REMINDER':
-            return { label: 'Event', color: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' };
+            return { label: 'Event', color: 'bg-error/10 text-error dark:text-error border-error/20' };
         case 'NEW_JOB':
         default:
-            return { label: 'New Job', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' };
+            return { label: 'New Job', color: 'bg-brand-facebook/10 text-brand-facebook dark:text-brand-telegram border-brand-facebook/20' };
     }
 }
 
@@ -128,7 +128,7 @@ export function AlertsDropdown({ className }: { className?: string }) {
                     )}
                     aria-label="Notifications"
                 >
-                    <BellIcon className="w-[18px] h-[18px]" />
+                    <BellIcon className="w-4.5 h-4.5" />
                     {unreadCount > 0 && (
                         <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-primary rounded-full ring-2 ring-background animate-pulse" />
                     )}
@@ -137,18 +137,18 @@ export function AlertsDropdown({ className }: { className?: string }) {
 
             <DropdownMenuContent
                 align="end"
-                className="w-80 md:w-96 p-0 shadow-2xl rounded-2xl border border-border/80 bg-card overflow-hidden z-[110]"
+                className="w-80 md:w-96 overflow-hidden z-50"
             >
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 bg-muted/40">
                     <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-foreground tracking-wide">Notifications</span>
                         {unreadCount > 0 ? (
-                            <span className="px-2 py-0.5 text-[10px] font-extrabold rounded-full bg-primary/10 text-primary border border-primary/20">
+                            <span className="px-2 py-0.5 text-xs font-extrabold rounded-full bg-primary/10 text-primary border border-primary/20">
                                 {unreadCount} unread
                             </span>
                         ) : (
-                            <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-muted text-muted-foreground">
+                            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-muted text-muted-foreground">
                                 Caught up
                             </span>
                         )}
@@ -157,7 +157,7 @@ export function AlertsDropdown({ className }: { className?: string }) {
                         {unreadCount > 0 && (
                             <button
                                 onClick={handleMarkAllRead}
-                                className="text-[11px] font-semibold text-primary hover:underline px-1.5 py-0.5 rounded transition-colors cursor-pointer flex items-center gap-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                                className="text-xs font-semibold text-primary hover:underline px-1.5 py-0.5 rounded transition-colors cursor-pointer flex items-center gap-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
                             >
                                 <CheckIcon className="w-3.5 h-3.5" />
                                 <span>Mark read</span>
@@ -177,7 +177,7 @@ export function AlertsDropdown({ className }: { className?: string }) {
                 </div>
 
                 {/* Notification Feed Items */}
-                <div className="max-h-[360px] overflow-y-auto divide-y divide-border/30">
+                <div className="max-h-90 overflow-y-auto divide-y divide-border/30">
                     {loading && deliveries.length === 0 ? (
                         <div className="p-6 space-y-3">
                             {[1, 2, 3].map((i) => (
@@ -193,7 +193,7 @@ export function AlertsDropdown({ className }: { className?: string }) {
                                 <BellIcon className="w-5 h-5" />
                             </div>
                             <p className="text-xs font-bold text-foreground">No recent alerts</p>
-                            <p className="text-[11px] text-muted-foreground leading-relaxed max-w-[240px] mx-auto">
+                            <p className="text-xs text-muted-foreground leading-relaxed max-w-60 mx-auto">
                                 Customized job alerts match your preferences automatically.
                             </p>
                         </div>
@@ -224,13 +224,13 @@ export function AlertsDropdown({ className }: { className?: string }) {
                                         <div className="flex items-center justify-between gap-2">
                                             <span
                                                 className={cn(
-                                                    'text-[10px] font-bold px-1.5 py-0.5 rounded border',
+                                                    'text-xs font-bold px-1.5 py-0.5 rounded border',
                                                     badge.color
                                                 )}
                                             >
                                                 {badge.label}
                                             </span>
-                                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                                            <span className="text-xs text-muted-foreground whitespace-nowrap">
                                                 {formatTimeAgo(item.sentAt)}
                                             </span>
                                         </div>
@@ -238,7 +238,7 @@ export function AlertsDropdown({ className }: { className?: string }) {
                                         <p className="text-xs font-semibold text-foreground leading-snug line-clamp-1 group-hover:text-primary transition-colors">
                                             {title}
                                         </p>
-                                        <p className="text-[11px] text-muted-foreground truncate">{company}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{company}</p>
                                     </div>
                                 </div>
                             );
@@ -251,7 +251,7 @@ export function AlertsDropdown({ className }: { className?: string }) {
                     <Link
                         href="/alerts"
                         onClick={() => setIsOpen(false)}
-                        className="text-[11px] font-semibold text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                        className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
                     >
                         <span>View all alerts</span>
                         <ArrowRightIcon className="w-3 h-3" />
@@ -259,7 +259,7 @@ export function AlertsDropdown({ className }: { className?: string }) {
                     <Link
                         href="/settings#alerts"
                         onClick={() => setIsOpen(false)}
-                        className="text-[11px] font-semibold text-primary hover:underline flex items-center gap-1.5"
+                        className="text-xs font-semibold text-primary hover:underline flex items-center gap-1.5"
                     >
                         <Cog6ToothIcon className="w-3.5 h-3.5" />
                         <span>Alert Settings</span>

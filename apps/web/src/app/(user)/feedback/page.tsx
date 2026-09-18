@@ -166,7 +166,7 @@ function FeedbackPageContent() {
                     <>
                         {sent ? (
                             <div className="rounded-3xl border border-border bg-card p-10 text-center space-y-4 shadow-sm">
-                                <div className="w-14 h-14 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto">
+                                <div className="w-14 h-14 bg-success/10 text-success rounded-full flex items-center justify-center mx-auto">
                                     <CheckCircleIcon className="w-8 h-8" />
                                 </div>
                                 <h2 className="text-xl font-bold text-foreground">Feedback received!</h2>
@@ -211,14 +211,14 @@ function FeedbackPageContent() {
                                                     <Icon className="w-4 h-4" />
                                                     <span className="text-xs font-bold tracking-tight">{option.label}</span>
                                                 </div>
-                                                <p className="text-[10px] text-muted-foreground mt-1">{option.description}</p>
+                                                <p className="text-xs text-muted-foreground mt-1">{option.description}</p>
                                             </button>
                                         );
                                     })}
                                 </div>
 
                                 <div className="bg-card border border-border/70 rounded-2xl p-4 space-y-2.5">
-                                    <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Overall Rating</p>
+                                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Overall Rating</p>
                                     <div className="flex gap-2 flex-wrap">
                                         {[1, 2, 3, 4, 5].map((value) => (
                                             <button
@@ -237,7 +237,7 @@ function FeedbackPageContent() {
                                         <button
                                             type="button"
                                             onClick={() => setRating(null)}
-                                            className="h-9 px-3 rounded-xl border border-border text-[10px] font-semibold text-muted-foreground hover:border-primary/50 cursor-pointer"
+                                            className="h-9 px-3 rounded-xl border border-border text-xs font-semibold text-muted-foreground hover:border-primary/50 cursor-pointer"
                                         >
                                             Skip
                                         </button>
@@ -246,7 +246,7 @@ function FeedbackPageContent() {
 
                                 <div className="bg-card border border-border/70 rounded-2xl p-4 space-y-2.5">
                                     <div>
-                                        <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Your Note</p>
+                                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Your Note</p>
                                         <p className="text-xs text-muted-foreground">Be specific. It helps us ship fixes faster.</p>
                                     </div>
                                     <textarea
@@ -288,19 +288,19 @@ function FeedbackPageContent() {
                                     >
                                         <div className="flex items-center justify-between gap-3">
                                             <div className="flex items-center gap-2">
-                                                <span className="px-2.5 py-0.5 rounded-full bg-muted text-foreground text-[10px] font-bold uppercase tracking-wider">
+                                                <span className="px-2.5 py-0.5 rounded-full bg-muted text-foreground text-xs font-bold uppercase tracking-wider">
                                                     {item.type}
                                                 </span>
-                                                <span className="text-[11px] text-muted-foreground">{item.createdAt}</span>
+                                                <span className="text-xs text-muted-foreground">{item.createdAt}</span>
                                             </div>
 
                                             <span
-                                                className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                                                className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full border ${
                                                     item.status === 'RESOLVED'
-                                                        ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                                                        ? 'bg-success/10 text-success border-success/20'
                                                         : item.status === 'REVIEWED'
-                                                        ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20'
-                                                        : 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                                                        ? 'bg-brand-discord/10 text-brand-discord border-brand-discord/20'
+                                                        : 'bg-warning/10 text-warning border-warning/20'
                                                 }`}
                                             >
                                                 {item.status === 'RESOLVED' ? (

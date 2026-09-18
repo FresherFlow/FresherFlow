@@ -59,14 +59,14 @@ export function OpportunityRow({
         <div
             onClick={onClick}
             className={cn(
-                'relative z-10 flex items-start gap-3 px-4 py-3.5 cursor-pointer transition-colors duration-200 ease-out',
+                'relative z-10 flex items-start gap-3 rounded-xl px-4 py-3.5 cursor-pointer transition-colors duration-200 ease-out',
                 isSelected ? 'bg-primary/[0.08]' : 'bg-transparent'
             )}
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}
         >
             {isSelected && (
-                <span aria-hidden className="absolute left-0 top-0 bottom-0 w-[3px] bg-primary" />
+                <span aria-hidden className="absolute left-1.5 top-2 bottom-2 w-0.75 rounded-full bg-primary" />
             )}
             <CompanyLogo
                 companyName={opp.company}
@@ -74,7 +74,7 @@ export function OpportunityRow({
                 companyLogoUrl={opp.companyLogoUrl}
                 applyLink={opp.applyLink}
                 isGovernment={isGovernment}
-                className="w-10 h-10 rounded-lg object-contain shrink-0"
+                className="w-10 h-10 object-contain shrink-0"
             />
             <button
                 type="button"
@@ -87,18 +87,18 @@ export function OpportunityRow({
                 aria-current={isSelected ? 'true' : undefined}
                 className="min-w-0 flex-1 cursor-pointer text-left rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-                <span className="block text-[15px] font-semibold leading-snug text-foreground line-clamp-2">
+                <span className="block text-sm font-semibold leading-snug text-foreground line-clamp-2">
                     {opp.title}
                 </span>
                 <span className="mt-0.5 block truncate text-sm text-muted-foreground">
                     {opp.company}
                 </span>
                 {meta && (
-                    <span className="mt-0.5 block truncate text-[13px] text-muted-foreground">
+                    <span className="mt-0.5 block truncate text-sm text-muted-foreground">
                         {meta}
                     </span>
                 )}
-                <span className="mt-0.5 block text-[13px] text-muted-foreground">
+                <span className="mt-0.5 block text-sm text-muted-foreground">
                     {posted}
                     {isApplied ? ' · Applied' : ''}
                 </span>

@@ -4,6 +4,21 @@ packages:
   - 'firebase/functions'
   - 'scripts/*'
 
+allowBuilds:
+  '@firebase/util': false
+  '@google/genai': false
+  '@prisma/client': false
+  '@prisma/engines': false
+  '@sentry/cli': false
+  bcrypt: false
+  esbuild: false
+  msgpackr-extract: false
+  prisma: false
+  protobufjs: false
+  unrs-resolver: false
+
+linkWorkspacePackages: true
+
 overrides:
   tar: "^7.5.7"
   react-native-safe-area-context: "~5.6.2"
@@ -20,3 +35,5 @@ overrides:
   prisma: "6.19.3"
   "@prisma/client": "6.19.3"
   chalk: "4.1.2"
+
+preferWorkspacePackages: true

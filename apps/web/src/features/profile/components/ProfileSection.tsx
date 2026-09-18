@@ -44,7 +44,7 @@ export function CompactSection({
                 .stagger-item:nth-of-type(8) { animation-delay: 350ms; }
             `}</style>
             <section className={cn(
-                'bg-card rounded-2xl border transition-all duration-200 flex flex-col relative shadow-2xs stagger-item',
+                'bg-card rounded-2xl border transition-all duration-200 flex flex-col relative shadow-2xs',
                 isEditing ? 'border-primary/40 ring-1 ring-primary/10' : 'border-border/60 hover:border-border/80'
             )}>
             <div className="flex items-center justify-between px-5 py-4 bg-muted/20 border-b border-border/40 rounded-t-2xl">

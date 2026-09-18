@@ -80,12 +80,12 @@ export function DetailHeroSection({
         <div className={cn(
             "relative overflow-hidden",
             isGovernmentJob
-                ? "rounded-2xl border border-border bg-[linear-gradient(180deg,#f5f9ff_0%,#ffffff_58%)] p-5 md:p-6"
+                ? "rounded-2xl border border-border bg-card p-5 md:p-6"
                 : "bg-transparent p-0"
         )}>
             {isGovernmentJob && (
                 <>
-                    <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,_rgba(20,89,176,0.16),_transparent_55%),linear-gradient(135deg,_rgba(12,56,120,0.96),_rgba(31,95,180,0.92))]" />
+                    <div className="absolute inset-x-0 top-0 h-24 bg-primary" />
                     <div className="absolute -top-12 right-0 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
                 </>
             )}
@@ -96,21 +96,21 @@ export function DetailHeroSection({
                         {isCampusDrive ? 'Hiring Drive' : opp.type === 'INTERNSHIP' ? 'Internship' : opp.type === 'WALKIN' ? 'Walk-in' : 'Job'}
                     </span>
                     {opp.governmentJobDetails && (
-                        <span className="px-2 py-0.5 text-xs font-semibold rounded-md bg-orange-50 dark:bg-orange-500/10 border border-orange-200/50 dark:border-orange-500/20 text-orange-700 dark:text-orange-400">
+                        <span className="px-2 py-0.5 text-xs font-semibold rounded-md bg-surface-warm dark:bg-warning/10 border border-border/50 dark:border-warning/20 text-warning dark:text-warning">
                             Govt Job
                         </span>
                     )}
                     {listingState === 'EXPIRED' ? (
                         <span className="flex items-center gap-1 px-2 py-0.5 bg-destructive/5 border border-destructive/10 text-destructive text-xs font-semibold rounded-md">
-                            <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Expired
+                            <span className="w-1.5 h-1.5 rounded-full bg-error" /> Expired
                         </span>
                     ) : listingState === 'CLOSING_SOON' ? (
-                        <span className="flex items-center gap-1 px-2 py-0.5 bg-orange-500/10 border border-orange-500/20 text-orange-700 dark:text-amber-400 text-xs font-semibold rounded-md">
-                            <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" /> Closing soon
+                        <span className="flex items-center gap-1 px-2 py-0.5 bg-warning/10 border border-warning/20 text-warning dark:text-warning text-xs font-semibold rounded-md">
+                            <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse" /> Closing soon
                         </span>
                     ) : listingState === 'ACTIVE' ? (
-                        <span className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold rounded-md">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <span className="flex items-center gap-1.5 px-2 py-0.5 bg-success/10 border border-success/20 text-success dark:text-success text-xs font-semibold rounded-md">
+                            <span className="w-1.5 h-1.5 rounded-full bg-success" />
                             Active
                         </span>
                     ) : (
@@ -146,7 +146,7 @@ export function DetailHeroSection({
                 {/* Title + Company */}
                 <div className="space-y-2">
                     {isGovernmentJob && (
-                        <p className="text-xs font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                             {govDetails?.recruitingBody || govDetails?.organization || opp.company}
                         </p>
                     )}
@@ -166,7 +166,7 @@ export function DetailHeroSection({
                             applyLink={opp.applyLink}
                             isGovernment={isGovernmentJob}
                             priority={true}
-                            className="w-8 h-8 md:w-9 md:h-9 rounded-lg"
+                            className="w-8 h-8 md:w-9 md:h-9"
                         />
                         <div className="min-w-0">
                             <Link href={`/companies/${(opp as any).companySlug || getCompanySlug((opp as any).companyWebsite, opp.company)}`} className="text-sm md:text-base font-semibold text-foreground hover:text-primary transition-colors">
@@ -188,16 +188,16 @@ export function DetailHeroSection({
                 {isGovernmentJob && (
                     <div className="grid grid-cols-3 gap-2 pt-1">
                         <div className="rounded-xl border border-border bg-card/90 px-3 py-3">
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Vacancies</p>
+                            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Vacancies</p>
                             <p className="mt-0.5 text-2xl font-extrabold text-foreground">{govDetails?.vacancyCount ?? 'NA'}</p>
                         </div>
                         <div className="rounded-xl border border-border bg-card/90 px-3 py-3">
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Opens</p>
+                            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Opens</p>
                             <p className="mt-0.5 text-sm font-bold text-foreground">{applicationStart || '—'}</p>
                         </div>
-                        <div className="rounded-xl border border-rose-200 bg-rose-50/90 px-3 py-3">
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-rose-600">Last Date</p>
-                            <p className="mt-0.5 text-sm font-bold text-rose-900">{applicationEnd || formatDeadline(opp) || '—'}</p>
+                        <div className="rounded-xl border border-error bg-error/90 px-3 py-3">
+                            <p className="text-xs font-bold uppercase tracking-wider text-error">Last Date</p>
+                            <p className="mt-0.5 text-sm font-bold text-error">{applicationEnd || formatDeadline(opp) || '—'}</p>
                         </div>
                     </div>
                 )}

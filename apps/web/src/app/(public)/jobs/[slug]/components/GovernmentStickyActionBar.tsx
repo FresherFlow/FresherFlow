@@ -25,7 +25,7 @@ export function GovernmentStickyActionBar({
 }: GovernmentStickyActionBarProps) {
     return (
         <div className="sticky bottom-4 z-40">
-            <div className="rounded-2xl border border-border bg-card/95 backdrop-blur px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.14)]">
+            <div className="rounded-2xl border border-border bg-card/95 backdrop-blur px-4 py-4 shadow-lg">
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                     <div>
                         <h4 className="text-base font-bold tracking-tight text-foreground">Ready to apply?</h4>
@@ -37,7 +37,7 @@ export function GovernmentStickyActionBar({
                             className={cn(
                                 "inline-flex items-center justify-center gap-2 rounded-xl border px-5 py-3 text-sm font-bold transition-all",
                                 opp.isSaved
-                                    ? "border-blue-200 bg-blue-50 text-blue-800"
+                                    ? "border-border bg-card text-signal-heat"
                                     : "border-border bg-card text-foreground hover:bg-muted"
                             )}
                         >
@@ -45,16 +45,16 @@ export function GovernmentStickyActionBar({
                             {opp.isSaved ? 'Saved' : 'Save'}
                         </button>
                         {hasApplyLink ? (
-                            <Button
+                            <Button size="sm"
                                 onClick={handleApply}
-                                className="inline-flex h-auto items-center justify-center gap-2 rounded-xl bg-[linear-gradient(135deg,#0f4ca3_0%,#1e67c7_100%)] px-6 py-3 text-sm font-extrabold uppercase tracking-[0.12em] text-white shadow-lg shadow-blue-900/15 hover:opacity-95"
+                               
                             >
                                 Apply Now
                                 <ArrowTopRightOnSquareIcon className="h-4 w-4" />
                             </Button>
                         ) : (
                             <Link href={loginFromDetailHref}>
-                                <Button className="rounded-xl px-6 py-3 text-sm font-extrabold uppercase tracking-[0.12em]">
+                                <Button size="sm">
                                     Sign in to continue
                                 </Button>
                             </Link>

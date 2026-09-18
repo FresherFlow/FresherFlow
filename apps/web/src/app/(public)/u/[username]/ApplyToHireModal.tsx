@@ -54,11 +54,11 @@ export default function ApplyToHireModal({ username, candidateName, isOpen, onCl
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto border-border/80 rounded-3xl p-6 md:p-8 shadow-2xl">
+            <DialogContent className="max-w-lg max-h-200 overflow-y-auto">
 
                 {isSuccess ? (
                     <div className="py-8 text-center space-y-4">
-                        <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto">
+                        <div className="w-16 h-16 bg-success/10 text-success rounded-full flex items-center justify-center mx-auto">
                             <CheckCircleIcon className="w-10 h-10" />
                         </div>
                         <h2 className="text-2xl font-bold text-foreground">Interest Sent!</h2>
@@ -78,10 +78,10 @@ export default function ApplyToHireModal({ username, candidateName, isOpen, onCl
                     </div>
                 ) : (
                     <>
-                        <DialogHeader className="space-y-1.5 text-left">
+                        <DialogHeader className="text-left">
                             <div className="flex items-center gap-2">
                                 <SparklesIcon className="w-5 h-5 text-primary" />
-                                <DialogTitle className="text-xl font-bold tracking-tight text-foreground">Apply to Hire {candidateName}</DialogTitle>
+                                <DialogTitle>Apply to Hire {candidateName}</DialogTitle>
                             </div>
                             <p className="text-xs text-muted-foreground">
                                 Express hiring interest directly to @{username}. No phone or email is shared until the candidate accepts.
@@ -115,7 +115,7 @@ export default function ApplyToHireModal({ username, candidateName, isOpen, onCl
                                     maxLength={300}
                                     className="w-full bg-background border border-border rounded-xl px-3.5 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
                                 />
-                                <p className="text-[10px] text-muted-foreground text-right">{message.length}/300</p>
+                                <p className="text-xs text-muted-foreground text-right">{message.length}/300</p>
                             </div>
 
                             <div className="pt-2 flex items-center justify-end gap-3">

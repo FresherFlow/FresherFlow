@@ -5,7 +5,7 @@ import { Suspense } from 'react';
 import OpportunityDetailClient from '../../jobs/[slug]/OpportunityDetailClient';
 import { OpportunityDetailSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
 import { getOpportunityPath } from '@/features/opportunities/domain/opportunityPath';
-import { fetchBootstrapFeed, fetchGovernmentFeed } from '@/lib/api/cdnFeed';
+import { fetchFeedIndex, fetchGovernmentFeed } from '@/lib/api/cdnFeed';
 import { OpportunityType } from '@fresherflow/types';
 import { getRelatedOpportunities } from '@/features/opportunities/utils/detailUtils';
 import {
@@ -29,13 +29,13 @@ function isInvalidSlug(slug: string): boolean {
 
 export async function generateStaticParams() {
     try {
-        const [feed, bootstrapFeed] = await Promise.all([
+        const [feed, feedIndex] = await Promise.all([
             fetchGovernmentFeed(false, undefined, true),
-            fetchBootstrapFeed(false, undefined, true),
+            fetchFeedIndex(false, undefined, true),
         ]);
         const opps = [
             ...(feed?.opportunities || []),
-            ...(bootstrapFeed?.opportunities?.filter(o => o.type === OpportunityType.GOVERNMENT || Boolean(o.governmentJobDetails)) || [])
+            ...(feedIndex?.opportunities?.filter(o => o.type === OpportunityType.GOVERNMENT || Boolean(o.governmentJobDetails)) || [])
         ];
         const slugs = new Set<string>();
         opps.forEach(opp => {

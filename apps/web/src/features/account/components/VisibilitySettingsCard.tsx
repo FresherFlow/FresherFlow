@@ -94,12 +94,12 @@ export function VisibilitySettingsCard() {
                                         {label}
                                     </p>
                                     {isActive && (
-                                        <span className="flex items-center gap-1 text-[10px] font-bold text-primary uppercase tracking-wider">
+                                        <span className="flex items-center gap-1 text-xs font-bold text-primary uppercase tracking-wider">
                                             <CheckIcon className="w-3 h-3" /> Active
                                         </span>
                                     )}
                                 </div>
-                                <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{desc}</p>
+                                <p className="text-xs text-muted-foreground leading-snug mt-0.5">{desc}</p>
                             </div>
                         </button>
                     );
@@ -107,7 +107,7 @@ export function VisibilitySettingsCard() {
             </div>
 
             {current === 'PUBLIC' && (
-                <p className="text-[11px] text-muted-foreground bg-muted/40 p-2.5 rounded-lg border border-border/30">
+                <p className="text-xs text-muted-foreground bg-muted/40 p-2.5 rounded-lg border border-border/30">
                     ℹ️ Profiles below 50% completion are not indexed by Google.
                 </p>
             )}

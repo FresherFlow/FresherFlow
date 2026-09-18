@@ -29,7 +29,7 @@ export function EmptyState({
 
     return (
         <div className={`${padding} text-center rounded-2xl ${cardClasses} animate-in fade-in slide-in-from-bottom-4 zoom-in-[0.97] duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]`}>
-            <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 text-muted-foreground animate-in zoom-in-50 duration-500 delay-100 ease-[cubic-bezier(0.34,1.56,0.64,1)] fill-mode-both">
+            <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 text-muted-foreground animate-in zoom-in-50 duration-500 delay-100 ease-[cubic-bezier(0.34,1.56,0.64,1)]" style={{animationFillMode:'both'}}>
                 <Icon className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-bold text-foreground tracking-tight">{title}</h3>

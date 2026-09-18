@@ -26,16 +26,28 @@ import {
     LinkIcon,
     UserGroupIcon,
     ShareIcon,
-    GlobeAltIcon
+    GlobeAltIcon,
+    TrophyIcon
 } from '@heroicons/react/24/outline';
 import {
     TrainFront,
     Building
 } from 'lucide-react';
 
+export const COMMUNITY_NAV_ITEMS = [
+    { name: 'Feed', href: '/community', icon: UserGroupIcon },
+    { name: 'Areas', href: '/community/areas', icon: BookOpenIcon },
+    { name: 'Leaderboard', href: '/community/leaderboard', icon: TrophyIcon },
+    { name: 'Share a Job', href: '/contribute', icon: PlusCircleIcon },
+    { name: 'Jobs', href: '/jobs', icon: BriefcaseIcon },
+    { name: 'Companies', href: '/companies', icon: BuildingOfficeIcon },
+    { name: 'Resources', href: '/resources', icon: BookOpenIcon },
+];
+
 export const DEFAULT_NAV_ITEMS = [
     { name: 'Home', href: '/dashboard', icon: HomeIcon },
     { name: 'Jobs', href: '/jobs', icon: BriefcaseIcon, hasSubmenu: true },
+    { name: 'Community', href: '/community', icon: UserGroupIcon },
     { name: 'Government', href: '/govt', icon: BuildingLibraryIcon, hasSubmenu: true },
     { name: 'Companies', href: '/companies', icon: BuildingOfficeIcon },
     { name: 'Resources', href: '/resources', icon: BookOpenIcon },

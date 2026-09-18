@@ -75,26 +75,26 @@ export default function BlogPage() {
     };
 
     return (
-        <main className="mx-auto w-full max-w-[1120px] px-6 pb-24 pt-16 space-y-12">
+        <main className="mx-auto w-full max-w-280 px-6 pb-24 pt-16 space-y-12">
             <header className="space-y-5">
                 <div>
                     <Link
                         href="/"
-                        className="inline-flex items-center gap-2 rounded-[2px] border border-border px-3 py-1.5 font-record text-[11px] uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
+                        className="inline-flex items-center gap-2 rounded-sm border border-border px-3 py-1.5 font-record text-xs uppercase tracking-widest text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
                     >
                         <ArrowLeftIcon className="w-3.5 h-3.5" />
                         Back to feed
                     </Link>
                 </div>
                 <div className="space-y-3">
-                    <div className="flex items-center gap-2.5 font-record text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                        <span className="h-[7px] w-[7px] rounded-full bg-[var(--ff-accent)]" aria-hidden />
+                    <div className="flex items-center gap-2.5 font-record text-xs uppercase tracking-widest text-muted-foreground">
+                        <span className="h-1.75 w-1.75 rounded-full bg-warning" aria-hidden />
                         Company blog
                     </div>
-                    <h1 className="max-w-[16ch] font-display text-[clamp(34px,5vw,60px)] font-extrabold leading-[1.02] tracking-[-0.025em] text-foreground">
+                    <h1 className="max-w-xs font-display text-4xl font-extrabold leading-none tracking-tight text-foreground">
                         Behind the scenes.
                     </h1>
-                    <p className="max-w-[58ch] text-[15.5px] leading-relaxed text-muted-foreground">
+                    <p className="max-w-prose text-base leading-relaxed text-muted-foreground">
                         Engineering details, product design decisions, and launch notes from the team building a community home for freshers.
                     </p>
                 </div>
@@ -107,28 +107,28 @@ export default function BlogPage() {
                         className="group border-b border-border"
                     >
                         {/* Row header — ruled list row, homepage register rhythm */}
-                        <summary className="cursor-pointer select-none list-none px-2 py-7 transition-[padding,background-color] hover:bg-muted/40 hover:px-4 [&::-webkit-details-marker]:hidden">
-                            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 font-record text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-                                <span className="font-semibold text-[var(--ff-accent)]">{post.category}</span>
+                        <summary className="cursor-pointer select-none list-none px-2 py-7 transition-all hover:bg-muted/40 hover:px-4 [&::-webkit-details-marker]:hidden">
+                            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 font-record text-xs uppercase tracking-widest text-muted-foreground">
+                                <span className="font-semibold text-warning">{post.category}</span>
                                 <span>{post.date}</span>
                                 <span>{post.readingTime}</span>
                             </div>
 
                             <div className="mt-2 flex items-start justify-between gap-4">
-                                <h2 className="max-w-[30ch] font-display text-[clamp(19px,2.2vw,26px)] font-extrabold leading-[1.15] tracking-[-0.015em] text-foreground transition-colors group-hover:text-[var(--ff-accent)]">
+                                <h2 className="max-w-sm font-display text-xl font-extrabold leading-tight tracking-tight text-foreground transition-colors group-hover:text-warning">
                                     {post.title}
                                 </h2>
                                 <ChevronDownIcon className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-open:rotate-180" />
                             </div>
 
-                            <p className="mt-2 max-w-[70ch] text-[14px] leading-relaxed text-muted-foreground">
+                            <p className="mt-2 max-w-prose text-sm leading-relaxed text-muted-foreground">
                                 {post.excerpt}
                             </p>
                         </summary>
 
                         {/* Expanded body */}
                         <div className="px-2 pb-8 md:px-4">
-                            <div className="max-w-[72ch] space-y-4 border-l-2 border-[var(--ff-accent)]/40 pl-5 text-[14px] leading-relaxed text-foreground/90">
+                            <div className="max-w-prose space-y-4 border-l-2 border-warning/40 pl-5 text-sm leading-relaxed text-foreground/90">
                                 {post.content.map((paragraph, index) => (
                                     <p key={index}>{renderParagraph(paragraph)}</p>
                                 ))}
@@ -136,7 +136,7 @@ export default function BlogPage() {
                             <div className="mt-6">
                                 <Link
                                     href="/app"
-                                    className="text-[13px] font-semibold text-foreground underline decoration-[var(--ff-accent)] decoration-2 underline-offset-4 transition-colors hover:text-[var(--ff-accent)]"
+                                    className="text-sm font-semibold text-foreground underline decoration-warning decoration-2 underline-offset-4 transition-colors hover:text-warning"
                                 >
                                     Try the FresherFlow app →
                                 </Link>

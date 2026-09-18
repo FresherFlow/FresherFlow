@@ -27,16 +27,16 @@ export function ProfileReadinessRequired({ percentage, message }: ProfileReadine
                     <div className="flex items-center justify-center gap-6">
                         <div className="text-center">
                             <div className="text-3xl font-bold text-primary">{percentage}%</div>
-                            <div className="text-[10px] text-muted-foreground font-bold capitalize tracking-[0.15em] mt-1">Current</div>
+                            <div className="text-xs text-muted-foreground font-bold capitalize tracking-widest mt-1">Current</div>
                         </div>
                         <div className="w-px h-10 bg-border" />
                         <div className="text-center">
                             <div className="text-3xl font-bold text-foreground">100%</div>
-                            <div className="text-[10px] text-muted-foreground font-bold capitalize tracking-[0.15em] mt-1">Goal</div>
+                            <div className="text-xs text-muted-foreground font-bold capitalize tracking-widest mt-1">Goal</div>
                         </div>
                     </div>
                 </div>
-                <Button onClick={() => router.push('/profile')} className="h-12 px-8 text-sm font-bold capitalize tracking-widest">
+                <Button size="sm" onClick={() => router.push('/profile')}>
                     Complete Profile
                     <ChevronRightIcon className="w-4 h-4 ml-2" />
                 </Button>

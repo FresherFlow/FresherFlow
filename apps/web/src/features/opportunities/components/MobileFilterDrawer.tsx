@@ -205,7 +205,7 @@ export function MobileFilterDrawer({
         <Drawer.Root open={isOpen} onOpenChange={(open) => !open && onClose()} modal={false}>
             <Drawer.Portal>
                 <Drawer.Overlay className="fixed inset-0 z-50 bg-transparent lg:hidden" />
-                <Drawer.Content className="fixed bottom-0 pb-[env(safe-area-inset-bottom)] left-0 right-0 z-50 flex flex-col max-h-[85vh] rounded-t-3xl border-t border-border bg-background shadow-2xl lg:hidden overscroll-contain">
+                <Drawer.Content className="fixed bottom-0 pb-4 left-0 right-0 z-50 flex flex-col max-h-96 rounded-t-3xl border-t border-border bg-background shadow-2xl lg:hidden overscroll-contain">
                     <div className="flex justify-center py-3 sticky top-0 z-20 bg-background rounded-t-3xl">
                         <div className="h-1.5 w-12 rounded-full bg-muted" />
                     </div>
@@ -266,7 +266,7 @@ export function MobileFilterDrawer({
 
                                 {filteredLocations.length > 0 && (
                                     <div className="space-y-1.5">
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">Locations</p>
+                                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/70">Locations</p>
                                         <div className="flex flex-wrap gap-2">
                                             {filteredLocations.map(({ loc, count }) => (
                                                 <Pill
@@ -463,7 +463,7 @@ export function MobileFilterDrawer({
                                                 setDraftSkills(newSkills);
                                             }}
                                         >
-                                            <SkillPill skill={skill} className="bg-transparent border-none p-0 h-auto text-inherit shadow-none" />
+                                            <SkillPill skill={skill} className="h-auto" />
                                             <span className="ml-1 opacity-75">({count})</span>
                                         </Pill>
                                     )})}
@@ -485,7 +485,7 @@ export function MobileFilterDrawer({
                         >
                             Clear
                         </button>
-                        <Button className="h-12 rounded-xl text-sm font-semibold" onClick={onApply}>
+                        <Button onClick={onApply} size="sm">
                             Apply filters
                         </Button>
                     </div>

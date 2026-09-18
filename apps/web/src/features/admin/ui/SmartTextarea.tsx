@@ -36,7 +36,7 @@ const SmartTextarea = React.forwardRef<HTMLTextAreaElement, SmartTextareaProps>(
                     id={inputId}
                     value={value}
                     required={required}
-                    className={cn(!isEmpty && "border-transparent bg-muted/20 focus:border-primary focus:bg-background", className)}
+                    className={cn(!isEmpty && "", className)}
                     {...props}
                 />
             </Field>

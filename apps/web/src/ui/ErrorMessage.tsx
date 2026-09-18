@@ -49,9 +49,7 @@ export function ErrorMessage({
                 {onRetry && (
                     <Button
                         onClick={onRetry}
-                        variant="outline"
-                        className="h-9 px-6 text-[10px] font-bold capitalize tracking-widest gap-2"
-                    >
+                        variant="outline" size="sm">
                         <ArrowPathIcon className="w-3.5 h-3.5" />
                         Try again
                     </Button>
@@ -78,9 +76,7 @@ export function ErrorMessage({
 
             {onRetry && (
                 <Button
-                    onClick={onRetry}
-                    className="h-11 px-8 rounded-xl text-xs font-bold capitalize tracking-widest group"
-                >
+                    onClick={onRetry} size="sm">
                     <ArrowPathIcon className="w-4 h-4 mr-2 group-active:rotate-180 transition-transform duration-500" />
                     Attempt Recovery
                 </Button>

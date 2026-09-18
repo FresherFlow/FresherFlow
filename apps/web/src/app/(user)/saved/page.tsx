@@ -10,7 +10,7 @@ import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import FunnelIcon from '@heroicons/react/24/outline/FunnelIcon';
 import JobCard from '@/features/opportunities/components/JobCard';
-import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+import { fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { readFeedCache, getOpportunityFromCache } from '@/lib/api/offline/opportunitiesFeedCache';
 import { UsernameGate } from '@/lib/components/ProfileGate';
 import { SkeletonJobCard } from '@/features/opportunities/components/OpportunitySkeletons';
@@ -29,7 +29,8 @@ function SavedJobsPageContent() {
     useEffect(() => {
         async function loadFeed() {
             try {
-                const feed = await fetchBootstrapFeed();
+                // Card-only view — lightweight index instead of the 2MB bootstrap.
+                const feed = await fetchFeedIndex();
                 if (feed?.opportunities) {
                     const cached = readFeedCache()?.opportunities || [];
                     const mergedMap = new Map<string, Opportunity>();
@@ -94,7 +95,7 @@ function SavedJobsPageContent() {
         <div className="w-full max-w-7xl mx-auto px-3 md:px-6 py-4 md:py-8 space-y-4 md:space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border/40">
                 <div className="space-y-1">
-                    <button type="button" onClick={() => router.back()} className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-primary active:scale-[0.97] transition-all duration-150 ease-out cursor-pointer">
+                    <button type="button" onClick={() => router.back()} className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-primary active:scale-95 transition-all duration-150 ease-out cursor-pointer">
                         <ArrowLeftIcon className="w-3.5 h-3.5" />
                         Back
                     </button>
@@ -108,7 +109,7 @@ function SavedJobsPageContent() {
 
                 {/* Filters */}
                 <div className="flex items-center gap-3">
-                    <div className="relative min-w-[220px] sm:min-w-[280px]">
+                    <div className="relative min-w-55 sm:min-w-70">
                         <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <input
                             type="text"
@@ -121,16 +122,16 @@ function SavedJobsPageContent() {
                     
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-9 gap-2 bg-card/60 border-border/60 backdrop-blur-xl shadow-sm hover:bg-accent/50 active:scale-[0.97] transition-all duration-150 ease-out font-medium">
+                            <Button variant="outline" size="sm">
                                 <FunnelIcon className="h-4 w-4" />
                                 {sortBy === 'recent' ? 'Most Recent' : 'A-Z'}
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setSortBy('recent')} className={sortBy === 'recent' ? 'bg-primary/10 text-primary font-medium' : ''}>
+                            <DropdownMenuItem onClick={() => setSortBy('recent')} className={sortBy === 'recent' ? '  ' : ''}>
                                 Most Recent
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setSortBy('az')} className={sortBy === 'az' ? 'bg-primary/10 text-primary font-medium' : ''}>
+                            <DropdownMenuItem onClick={() => setSortBy('az')} className={sortBy === 'az' ? '  ' : ''}>
                                 Alphabetical (A-Z)
                             </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -159,7 +160,7 @@ function SavedJobsPageContent() {
                     </div>
                     <Link
                         href="/jobs"
-                        className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold text-xs rounded-lg hover:bg-primary/90 active:scale-[0.97] transition-all duration-150 ease-out shadow-sm"
+                        className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold text-xs rounded-lg hover:bg-primary/90 active:scale-95 transition-all duration-150 ease-out shadow-sm"
                     >
                         Find jobs shared by freshers →
                     </Link>
@@ -170,7 +171,7 @@ function SavedJobsPageContent() {
                         <div 
                             key={opp.id} 
                             role="listitem" 
-                            className="animate-in fade-in-0 zoom-in-95 duration-200 fill-mode-both"
+                            className="animate-in fade-in-0 zoom-in-95 duration-200"
                             style={{ animationDelay: `${Math.min(index * 50, 250)}ms` }}
                         >
                             <JobCard
@@ -182,7 +183,7 @@ function SavedJobsPageContent() {
                                 jobId={opp.id}
                                 isSaved={true}
                                 onToggleSave={() => toggleSavedJob(opp.id)}
-                                className="bg-card/60 border-border/60 backdrop-blur-xl shadow-md hover:shadow-lg hover:border-primary/40 active:scale-[0.97] transition-all duration-150 ease-out"
+                                className="bg-card/60 border-border/60 backdrop-blur-xl shadow-md hover:shadow-lg hover:border-primary/40 active:scale-95 transition-all duration-150 ease-out"
                             />
                         </div>
                     ))}

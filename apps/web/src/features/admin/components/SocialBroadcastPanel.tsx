@@ -51,7 +51,7 @@ export default function SocialBroadcastPanel() {
 
     return (
         <Card className="max-w-4xl">
-            <CardHeader className="space-y-4">
+            <CardHeader>
                 <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div>
                         <CardTitle>Social Posts History</CardTitle>
@@ -59,7 +59,7 @@ export default function SocialBroadcastPanel() {
                             Monitor X, LinkedIn, and Facebook posts. Retry failures inline.
                         </CardDescription>
                     </div>
-                    <Button variant="outline" size="icon" onClick={load} aria-label="Refresh logs">
+                    <Button variant="outline" size="sm" onClick={load} aria-label="Refresh logs">
                         <RefreshCw className="h-4 w-4" />
                     </Button>
                 </div>
@@ -106,23 +106,23 @@ export default function SocialBroadcastPanel() {
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
-                                    <Badge variant="secondary" className="bg-muted text-xs font-semibold capitalize">{item.platform}</Badge>
-                                    <Badge variant={item.status === 'FAILED' ? 'destructive' : item.status === 'PUBLISHED' ? 'default' : 'outline'} className="text-[10px] tracking-wide">
+                                    <Badge variant="secondary">{item.platform}</Badge>
+                                    <Badge variant={item.status === 'FAILED' ? 'destructive' : item.status === 'PUBLISHED' ? 'default' : 'outline'}>
                                         {item.status.replace("_", " ")}
                                     </Badge>
                                 </div>
                             </div>
 
                             {item.errorMessage && (
-                                <div className="mt-3 mb-2 p-2 rounded bg-destructive/10 text-destructive text-[11px] font-mono break-all">
+                                <div className="mt-3 mb-2 p-2 rounded bg-destructive/10 text-destructive text-xs font-mono break-all">
                                     {item.errorMessage}
                                 </div>
                             )}
 
                             {!!item.payload && typeof item.payload === 'object' && !!(item.payload as Record<string, unknown>).text && (
                                 <div className="mt-3 p-3 rounded bg-muted/30 border border-border/50">
-                                     <p className="text-[10px] font-semibold text-muted-foreground capitalize mb-1">Generated Text</p>
-                                     <p className="text-[11px] text-foreground whitespace-pre-wrap italic">
+                                     <p className="text-xs font-semibold text-muted-foreground capitalize mb-1">Generated Text</p>
+                                     <p className="text-xs text-foreground whitespace-pre-wrap italic">
                                          {String((item.payload as Record<string, unknown>).text)}
                                      </p>
                                 </div>
@@ -130,12 +130,12 @@ export default function SocialBroadcastPanel() {
 
                             <div className="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-border/50">
                                 <div className="space-y-0.5">
-                                    <p className="text-[11px] text-muted-foreground">
+                                    <p className="text-xs text-muted-foreground">
                                         {item.publishedAt
                                             ? `Published: ${new Date(item.publishedAt).toLocaleString()}`
                                             : `Attempted: ${new Date(item.createdAt).toLocaleString()}`}
                                     </p>
-                                    <p className="text-[11px] text-muted-foreground/70">
+                                    <p className="text-xs text-muted-foreground/70">
                                         Retries: {item.retryCount} • Ext ID: {item.externalPostId || "N/A"}
                                     </p>
                                 </div>
@@ -143,7 +143,6 @@ export default function SocialBroadcastPanel() {
                                 {(item.status === "FAILED" || item.status === "DISABLED") && (
                                     <Button
                                         size="sm"
-                                        className="h-8 shadow-sm text-xs"
                                         onClick={() => onRetry(item.id)}
                                         disabled={retryingId === item.id}
                                     >

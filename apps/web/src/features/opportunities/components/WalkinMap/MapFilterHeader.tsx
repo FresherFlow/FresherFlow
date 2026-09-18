@@ -47,7 +47,7 @@ export function MapFilterHeader({
         <div className="absolute top-3 left-3 right-14 z-20 flex items-center gap-1.5 overflow-x-auto no-scrollbar pointer-events-auto">
             {/* City name label */}
             {cityName && cityName !== 'India' && (
-                <span className="px-2.5 py-1.5 rounded-full text-[11px] font-semibold text-muted-foreground bg-background/80 backdrop-blur-md shrink-0 hidden sm:inline-flex items-center gap-1">
+                <span className="px-2.5 py-1.5 rounded-full text-xs font-semibold text-muted-foreground bg-background/80 backdrop-blur-md shrink-0 hidden sm:inline-flex items-center gap-1">
                     <BuildingOffice2Icon className="w-3 h-3" />
                     {cityName}
                 </span>
@@ -110,12 +110,12 @@ export function MapFilterHeader({
                         <button
                             type="button"
                             onClick={onLocationClear}
-                            className="px-2.5 py-1.5 rounded-full text-xs font-medium bg-sky-500/10 text-sky-700 dark:text-sky-300 border border-sky-300/30 backdrop-blur-md flex items-center gap-1 cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-full text-xs font-medium bg-brand-telegram/10 text-brand-linkedin dark:text-brand-telegram border border-border/30 backdrop-blur-md flex items-center gap-1 cursor-pointer"
                             title="Clear location"
                         >
                             <SignalIcon className="w-3 h-3" />
                             <span className="hidden sm:inline">Located</span>
-                            <XMarkIcon className="w-3 h-3 text-sky-500/60" />
+                            <XMarkIcon className="w-3 h-3 text-brand-telegram/60" />
                         </button>
                     ) : (
                         <button

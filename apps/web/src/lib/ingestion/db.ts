@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { pool, hasDb } from '@fresherflow/pipeline';
+import { pool, hasDb } from '@fresherflow/pipeline/db/pool';
 
 export const hasIngestionDb = hasDb;
 

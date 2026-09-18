@@ -36,7 +36,7 @@ export const BlurImage = memo((props: ImageProps) => {
       src={src}
       alt={props.alt || "Image"}
       className={cn(
-        loading ? "blur-[2px]" : "blur-0", 
+        loading ? "blur-[2px]" : "blur-none", 
         "transition-[filter] duration-300 ease-in-out",
         props.className
       )}

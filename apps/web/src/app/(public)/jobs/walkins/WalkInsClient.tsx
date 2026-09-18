@@ -1,8 +1,10 @@
 'use client';
 
+import { useMemo } from 'react';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 import CategoryPage from '@/features/opportunities/components/CategoryPage';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { WalkinEventBoard } from '@/features/opportunities/components/WalkinEventBoard';
 
 interface WalkInsClientProps {
     initialData: {
@@ -19,10 +21,20 @@ export function WalkInsClient({ initialData }: WalkInsClientProps) {
         ? { latitude, longitude }
         : null;
 
+    // The event board renders above the feed via CategoryPage's topContent slot.
+    // Calendar/List/Map switching is owned by CategoryPageView's view switcher —
+    // one control surface, no floating buttons colliding with filters.
+    const topContent = useMemo(() => {
+        const opps = initialData?.opportunities ?? [];
+        if (opps.length === 0) return null;
+        return <WalkinEventBoard opportunities={opps} />;
+    }, [initialData]);
+
     return (
         <CategoryPage
             type={OpportunityType.WALKIN}
             initialData={initialData}
+            topContent={topContent}
             userLocation={userLocation}
             onLocationRequest={requestLocation}
             onLocationClear={clearLocation}

@@ -6,7 +6,7 @@ import { Badge } from "@/ui/Badge";
 
 export default function AdminSettingsPage() {
     return (
-        <div className="p-4 md:p-8 pt-16 md:pt-8 space-y-6 flex-1 min-h-0 overflow-y-auto custom-scrollbar pb-28 md:pb-8">
+        <div className="p-4 md:p-8 pt-16 md:pt-8 space-y-6 flex-1 min-h-0 overflow-y-auto pb-28 md:pb-8">
             <div className="flex flex-col gap-1">
                 <h1 className="text-2xl font-semibold tracking-tight text-foreground">Admin settings</h1>
                 <p className="text-muted-foreground">
@@ -20,7 +20,7 @@ export default function AdminSettingsPage() {
                     <div className="space-y-1.5">
                         <div className="flex items-center gap-2">
                             <h2 className="text-xl font-bold tracking-tight">Two-factor authentication</h2>
-                            <Badge variant="outline" className="border-emerald-500/50 text-emerald-500 text-[9px] font-bold tracking-wider uppercase">TOTP</Badge>
+                            <Badge variant="outline">TOTP</Badge>
                         </div>
                         <p className="text-xs text-muted-foreground leading-normal max-w-md">
                             Secure your admin account using dynamic time-based one-time passcodes from apps like Google Authenticator or Authy.
@@ -34,7 +34,7 @@ export default function AdminSettingsPage() {
                     <div className="space-y-1.5">
                         <div className="flex items-center gap-2">
                             <h2 className="text-xl font-bold tracking-tight">Passkeys</h2>
-                            <Badge variant="outline" className="border-indigo-500/50 text-indigo-500 text-[9px] font-bold tracking-wider uppercase">FIDO2</Badge>
+                            <Badge variant="outline">FIDO2</Badge>
                         </div>
                         <p className="text-xs text-muted-foreground leading-normal max-w-md">
                             Log in securely using biometric authentication (Face ID, Touch ID, Windows Hello) or physical security keys.

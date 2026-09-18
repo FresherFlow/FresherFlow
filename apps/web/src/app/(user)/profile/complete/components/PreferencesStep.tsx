@@ -74,7 +74,7 @@ export const PreferencesStep = ({
                     <div className="flex flex-wrap gap-2 mt-1">
                         {OPPORTUNITY_TYPES.map(t => (
                             <button key={t} onClick={() => setInterestedIn(toggleItem(interestedIn, t))}
-                                className={cn('px-5 h-10 rounded-xl border text-[14px] font-semibold tracking-normal transition-all duration-200 capitalize',
+                                className={cn('px-5 h-10 rounded-xl border text-sm font-semibold tracking-normal transition-all duration-200 capitalize',
                                     interestedIn.includes(t) ? 'bg-primary/10 text-primary border-primary/30' : 'bg-muted/50 border-border text-muted-foreground hover:bg-muted font-medium')}
                             >{t === 'WALKIN' ? 'Walk-in' : t.toLowerCase()}</button>
                         ))}
@@ -85,7 +85,7 @@ export const PreferencesStep = ({
                     <div className="flex flex-wrap gap-2 mt-1">
                         {WORK_MODES.map(t => (
                             <button key={t} onClick={() => setWorkModes(toggleItem(workModes, t))}
-                                className={cn('px-5 h-10 rounded-xl border text-[14px] font-semibold tracking-normal transition-all duration-200 capitalize',
+                                className={cn('px-5 h-10 rounded-xl border text-sm font-semibold tracking-normal transition-all duration-200 capitalize',
                                     workModes.includes(t) ? 'bg-primary/10 text-primary border-primary/30' : 'bg-muted/50 border-border text-muted-foreground hover:bg-muted font-medium')}
                             >{t.toLowerCase()}</button>
                         ))}
@@ -112,7 +112,7 @@ export const PreferencesStep = ({
                             }}
                         />
                         <button
-                            className="h-10 px-5 bg-secondary border border-border rounded-xl text-[14px] font-semibold hover:border-primary/40 transition-all shrink-0"
+                            className="h-10 px-5 bg-secondary border border-border rounded-xl text-sm font-semibold hover:border-primary/40 transition-all shrink-0"
                             onClick={() => { if (cityInput.trim()) { setPreferredCities(toggleItem(preferredCities, cityInput.trim())); setCityInput(''); setCityOpen(false); } }}>
                             Add
                         </button>
@@ -131,7 +131,7 @@ export const PreferencesStep = ({
                 {preferredCities.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                         {preferredCities.map(c => (
-                            <span key={c} className="bg-secondary border border-border text-foreground px-3 py-1 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 shadow-none">
+                            <span key={c} className="bg-secondary border border-border text-foreground px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-none">
                                 {c}
                                 <XMarkIcon onClick={() => setPreferredCities(preferredCities.filter(x => x !== c))} className="w-3 h-3 cursor-pointer opacity-50 hover:opacity-100 transition-opacity" />
                             </span>
@@ -174,17 +174,17 @@ export const PreferencesStep = ({
                                     id={`prefs-step-option-${idx}`}
                                     onMouseDown={() => addSkillValue(skill)}
                                     className={cn('w-full text-left px-4 py-2.5 text-sm font-medium transition-colors first:rounded-t-xl last:rounded-b-xl flex items-center', skillHighlight === idx ? 'bg-primary/15 text-foreground' : 'hover:bg-muted')}
-                                ><SkillPill skill={skill} className="bg-transparent border-transparent shadow-none pointer-events-none p-0" /></button>
+                                ><SkillPill skill={skill} className="pointer-events-none" /></button>
                             ))}
                         </div>
                     )}
                 </div>
-                <p className="text-[13px] text-muted-foreground mt-1.5">Type to search or press Enter to add.</p>
+                <p className="text-sm text-muted-foreground mt-1.5">Type to search or press Enter to add.</p>
                 {skills.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                         {skills.map(s => (
-                            <div key={s} className="bg-secondary border border-border pr-2 py-0.5 rounded-lg text-[12px] font-semibold flex items-center gap-1 capitalize">
-                                <SkillPill skill={s} size="xs" className="bg-transparent border-transparent shadow-none py-0 pl-2 pr-1 text-foreground" />
+                            <div key={s} className="bg-secondary border border-border pr-2 py-0.5 rounded-lg text-xs font-semibold flex items-center gap-1 capitalize">
+                                <SkillPill skill={s} size="xs" />
                                 <XMarkIcon onClick={() => removeSkill(s)} className="w-3.5 h-3.5 cursor-pointer opacity-50 hover:opacity-100 transition-opacity" />
                             </div>
                         ))}
@@ -193,7 +193,7 @@ export const PreferencesStep = ({
             </Field>
 
             <div className="flex justify-end gap-3 pt-6 border-t border-border/40">
-                <button onClick={onSkip} className="px-6 h-11 text-[14px] font-semibold text-muted-foreground hover:text-foreground transition-colors">
+                <button onClick={onSkip} className="px-6 h-11 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
                     Skip This
                 </button>
                 <button
@@ -211,7 +211,7 @@ export const PreferencesStep = ({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="space-y-1.5 w-full">
-            <label className="text-[14px] font-bold text-muted-foreground tracking-normal">{label}</label>
+            <label className="text-sm font-bold text-muted-foreground tracking-normal">{label}</label>
             {children}
         </div>
     );

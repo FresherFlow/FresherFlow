@@ -17,12 +17,12 @@ export function DryRunModal({ open, result, onClose, onInspectJob }: DryRunModal
 
  return (
  <Dialog open={open} onOpenChange={(val) => { if (!val) onClose(); }}>
- <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-6 bg-card border border-border">
+ <DialogContent className="max-w-3xl max-h-96 flex flex-col">
  <DialogHeader>
- <DialogTitle className="text-sm font-bold flex items-center justify-between">
+ <DialogTitle className="flex items-center justify-between">
  <div className="flex items-center gap-2">
  <span>Dry Run Preview — {result.company}</span>
- <span className="bg-muted text-muted-foreground text-[10px] px-2 py-0.5 rounded border border-border/40">
+ <span className="bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded border border-border/40">
  {result.ats}
  </span>
  </div>
@@ -49,7 +49,7 @@ export function DryRunModal({ open, result, onClose, onInspectJob }: DryRunModal
  <p className="text-xs text-muted-foreground mt-0.5">{job.company}</p>
  </div>
  {job.work_mode && (
- <span className="bg-muted text-muted-foreground text-[10px] px-2 py-0.5 rounded border border-border/40">
+ <span className="bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded border border-border/40">
  {job.work_mode}
  </span>
  )}
@@ -71,7 +71,7 @@ export function DryRunModal({ open, result, onClose, onInspectJob }: DryRunModal
  <SkillPill
  key={sIdx}
  skill={skill}
- className="rounded-md bg-muted/60 text-[10px] text-muted-foreground border border-border/30"
+
  />
  ))}
  </div>

@@ -9,7 +9,7 @@ import { CategoryPageView } from '@/features/opportunities/components/CategoryPa
 interface CategoryPageProps {
     type: OpportunityType | null;
     initialData?: { opportunities: Opportunity[]; total: number; cachedAt?: number } | null;
-    initialFilters?: Partial<import('@/features/opportunities/components/FilterDropdownBar').FilterBarFilters>;
+    initialFilters?: Partial<import('@/features/opportunities/components/JobFilterBar').FilterBarFilters>;
     canonicalRedirect?: boolean;
     customTitle?: string;
     topContent?: React.ReactNode;

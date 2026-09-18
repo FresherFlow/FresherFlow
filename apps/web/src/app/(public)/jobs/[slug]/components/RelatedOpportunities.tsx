@@ -54,7 +54,7 @@ export function RelatedOpportunities({ relatedOpps, isLoadingRelated }: RelatedO
                                     companyLogoUrl={item.companyLogoUrl}
                                     applyLink={item.applyLink}
                                     isGovernment={item.type === 'GOVERNMENT' || Boolean(item.governmentJobDetails)}
-                                    className="w-9 h-9 rounded-lg shrink-0 mt-0.5"
+                                    className="w-9 h-9 shrink-0 mt-0.5"
                                 />
                                 <div className="min-w-0 flex-1">
                                     <p className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">

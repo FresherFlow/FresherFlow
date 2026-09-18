@@ -124,7 +124,7 @@ export function ReferralLinkButton() {
         <div className="inline-flex items-center gap-1.5">
             <button
                 onClick={handleShare}
-                className="inline-flex items-center gap-1.5 text-[11px] font-bold capitalize tracking-widest text-muted-foreground hover:text-primary transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs font-bold capitalize tracking-widest text-muted-foreground hover:text-primary transition-colors"
                 title="Share your invite link"
             >
                 {shared ? (
@@ -141,7 +141,7 @@ export function ReferralLinkButton() {
             </button>
             <button
                 onClick={handleCopy}
-                className="inline-flex items-center gap-1.5 text-[11px] font-bold capitalize tracking-widest text-muted-foreground hover:text-primary transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs font-bold capitalize tracking-widest text-muted-foreground hover:text-primary transition-colors"
                 title="Copy your invite link"
             >
                 {copied ? (

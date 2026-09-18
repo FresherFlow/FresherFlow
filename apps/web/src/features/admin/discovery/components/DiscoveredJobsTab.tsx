@@ -154,12 +154,12 @@ export function DiscoveredJobsTab() {
           const job = row.original;
           return (
             <div className="flex flex-col gap-1.5">
-              <span className="font-semibold text-foreground max-w-[240px] block truncate" title={job.title}>
+              <span className="font-semibold text-foreground max-w-60 block truncate" title={job.title}>
                 {job.title}
               </span>
               <div className="flex items-center gap-2 min-w-0">
-                <CompanyLogo companyName={job.company} className="w-4 h-4 rounded shrink-0" />
-                <span className="text-muted-foreground text-[11px] truncate max-w-[200px]">
+                <CompanyLogo companyName={job.company} className="w-4 h-4 shrink-0" />
+                <span className="text-muted-foreground text-xs truncate max-w-50">
                   {job.company}
                 </span>
               </div>
@@ -174,7 +174,7 @@ export function DiscoveredJobsTab() {
         cell: ({ row }) => (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <MapPinIcon className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate max-w-[140px]">{row.original.location || 'Not specified'}</span>
+            <span className="truncate max-w-35">{row.original.location || 'Not specified'}</span>
           </div>
         ),
       },
@@ -185,7 +185,7 @@ export function DiscoveredJobsTab() {
         cell: ({ row }) => {
           const applyUrl = row.original.applyLink || row.original.apply_link || '#';
           return (
-            <span className="bg-muted/60 border border-border/40 text-muted-foreground px-2 py-0.5 rounded text-[11px]">
+            <span className="bg-muted/60 border border-border/40 text-muted-foreground px-2 py-0.5 rounded text-xs">
               {detectAtsFromUrl(applyUrl)}
             </span>
           );
@@ -201,11 +201,11 @@ export function DiscoveredJobsTab() {
           return (
             <span
               className={cn(
-                'px-2 py-0.5 rounded-full text-xs font-bold border inline-block min-w-[42px]',
+                'px-2 py-0.5 rounded-full text-xs font-bold border inline-block min-w-10.5',
                 score >= 85
-                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                  ? 'bg-success/10 text-success dark:text-success border-success/30'
                   : score >= 70
-                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                  ? 'bg-warning/10 text-warning dark:text-warning border-warning/30'
                   : 'bg-muted/60 text-muted-foreground border-border/40'
               )}
             >
@@ -248,7 +248,7 @@ export function DiscoveredJobsTab() {
                   <EllipsisHorizontalIcon className="w-5 h-5" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40 text-xs">
+              <DropdownMenuContent align="end" className="w-40">
                 <DropdownMenuItem asChild>
                   <a href={applyUrl} target="_blank" rel="noreferrer" className="flex items-center cursor-pointer w-full">
                     <ArrowTopRightOnSquareIcon className="w-4 h-4 mr-2" /> Apply Link
@@ -260,11 +260,11 @@ export function DiscoveredJobsTab() {
 
                 <DropdownMenuSeparator />
 
-                <DropdownMenuItem onClick={() => handleProcessRequest([job.id])} className="cursor-pointer text-blue-600 dark:text-blue-400 focus:bg-blue-500/10 focus:text-blue-600">
+                <DropdownMenuItem onClick={() => handleProcessRequest([job.id])} className="cursor-pointer">
                   <PlayIcon className="w-4 h-4 mr-2" /> Process Job
                 </DropdownMenuItem>
 
-                <DropdownMenuItem onClick={() => handleDeleteRequest([job.id])} className="cursor-pointer text-red-600 dark:text-red-400 focus:bg-red-500/10 focus:text-red-600">
+                <DropdownMenuItem onClick={() => handleDeleteRequest([job.id])} className="cursor-pointer">
                   <TrashIcon className="w-4 h-4 mr-2" /> Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -288,7 +288,7 @@ export function DiscoveredJobsTab() {
           <div className="flex items-center gap-1.5">
             <FunnelIcon className="w-4 h-4 text-muted-foreground" />
             <Select value={atsFilter} onValueChange={setAtsFilter}>
-              <SelectTrigger className="h-9 text-xs py-1 min-w-[120px] w-auto border-border/80 bg-card cursor-pointer">
+              <SelectTrigger className="h-9 min-w-30 w-auto cursor-pointer">
                 <SelectValue placeholder="All ATS" />
               </SelectTrigger>
               <SelectContent>
@@ -311,14 +311,14 @@ export function DiscoveredJobsTab() {
             <>
               <button
                 onClick={() => handleProcessRequest(selectedIds)}
-                className="h-9 px-3 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 border border-blue-500/20 text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
+                className="h-9 px-3 rounded-md bg-brand-facebook/10 text-brand-facebook dark:text-brand-telegram hover:bg-brand-facebook/20 border border-brand-facebook/20 text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
               >
                 <PlayIcon className="w-3.5 h-3.5" />
                 Process Selected ({ctx.selectedCount})
               </button>
               <button
                 onClick={() => handleDeleteRequest(selectedIds)}
-                className="h-9 px-3 rounded-md bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 border border-red-500/20 text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
+                className="h-9 px-3 rounded-md bg-error/10 text-error dark:text-error hover:bg-error/20 border border-error/20 text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
               >
                 <TrashIcon className="w-3.5 h-3.5" />
                 Delete Selected ({ctx.selectedCount})
@@ -358,14 +358,14 @@ export function DiscoveredJobsTab() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog({ open: false, ids: [] })}>
-        <DialogContent className="bg-card border-border text-foreground">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription className="text-muted-foreground">
+            <DialogDescription>
               Are you sure you want to delete {deleteDialog.ids.length} job(s)? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="mt-4 gap-2">
+          <DialogFooter className="mt-4">
             <button
               onClick={() => setDeleteDialog({ open: false, ids: [] })}
               className="px-4 py-2 rounded-md text-sm font-medium border border-border/80 hover:bg-muted text-foreground cursor-pointer"
@@ -374,7 +374,7 @@ export function DiscoveredJobsTab() {
             </button>
             <button
               onClick={confirmDelete}
-              className="px-4 py-2 rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700 cursor-pointer"
+              className="px-4 py-2 rounded-md text-sm font-medium bg-error text-white hover:bg-error cursor-pointer"
             >
               Delete
             </button>

@@ -68,24 +68,24 @@ export const EducationStep = ({
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
                 <div>
                     <h2 className="text-lg font-semibold text-foreground">Education Details</h2>
-                    <p className="text-[13px] text-muted-foreground mt-1">Unlock eligible-matched opportunities.</p>
+                    <p className="text-sm text-muted-foreground mt-1">Unlock eligible-matched opportunities.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <span className="text-[12px] font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded">Verified</span>
-                    <span className="text-[13px] font-medium text-foreground/80">{email}</span>
+                    <span className="text-xs font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded">Verified</span>
+                    <span className="text-sm font-medium text-foreground/80">{email}</span>
                 </div>
             </div>
 
             {/* Main Info Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <Field label="Full Name">
-                    <Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="e.g. Rahul Sharma" className="h-9 text-[14px]" />
+                    <Input value={fullName} onChange={e => setFullName(e.target.value)} placeholder="e.g. Rahul Sharma" className="h-9" />
                 </Field>
                 <Field label="10th Passout Year">
-                    <Input inputMode="numeric" maxLength={4} value={tenthYear} onChange={e => setTenthYear(e.target.value.replace(/\D/g, ''))} placeholder="YYYY" className="h-9 text-[14px]" />
+                    <Input inputMode="numeric" maxLength={4} value={tenthYear} onChange={e => setTenthYear(e.target.value.replace(/\D/g, ''))} placeholder="YYYY" className="h-9" />
                 </Field>
                 <Field label="12th Passout Year">
-                    <Input inputMode="numeric" maxLength={4} value={twelfthYear} onChange={e => setTwelfthYear(e.target.value.replace(/\D/g, ''))} placeholder="YYYY" className="h-9 text-[14px]" />
+                    <Input inputMode="numeric" maxLength={4} value={twelfthYear} onChange={e => setTwelfthYear(e.target.value.replace(/\D/g, ''))} placeholder="YYYY" className="h-9" />
                 </Field>
             </div>
 
@@ -96,7 +96,7 @@ export const EducationStep = ({
                         <div className="flex flex-wrap gap-2">
                             {EDUCATION_LEVELS.map(level => (
                                 <button key={level} type="button" onClick={() => setEducationLevel(level)}
-                                    className={cn('px-5 h-10 rounded-xl border text-[14px] font-medium transition-all duration-200',
+                                    className={cn('px-5 h-10 rounded-xl border text-sm font-medium transition-all duration-200',
                                         educationLevel === level ? 'bg-primary/10 text-primary border-primary/30' : 'bg-secondary border-border text-muted-foreground hover:border-primary/40')}
                                 >
                                     {level === 'DEGREE' ? 'UG' : level}
@@ -104,20 +104,20 @@ export const EducationStep = ({
                             ))}
                         </div>
                     </Field>
-                    <Field label="Graduation Passout Year" className="max-w-[200px]">
-                        <Input inputMode="numeric" maxLength={4} value={gradYear} onChange={e => setGradYear(e.target.value.replace(/\D/g, ''))} placeholder="YYYY" className="h-9 text-[14px]" />
+                    <Field label="Graduation Passout Year" className="max-w-48">
+                        <Input inputMode="numeric" maxLength={4} value={gradYear} onChange={e => setGradYear(e.target.value.replace(/\D/g, ''))} placeholder="YYYY" className="h-9" />
                     </Field>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Field label="Course">
-                        <Select value={gradCourse} onChange={e => { setGradCourse(e.target.value); setGradSpecialization(''); }} disabled={!educationLevel} className="h-9 text-sm">
+                        <Select value={gradCourse} onChange={e => { setGradCourse(e.target.value); setGradSpecialization(''); }} disabled={!educationLevel} className="h-9">
                             <option value="">Select…</option>
                             {educationLevel && (educationLevel === 'DIPLOMA' ? DIPLOMA_DEGREES : educationLevel === 'DEGREE' ? UG_DEGREES : PG_DEGREES).map(d => <option key={d}>{d}</option>)}
                         </Select>
                     </Field>
                     <Field label="Specialization">
-                        <Select value={gradSpecialization} onChange={e => setGradSpecialization(e.target.value)} disabled={!gradCourse} className="h-9 text-sm">
+                        <Select value={gradSpecialization} onChange={e => setGradSpecialization(e.target.value)} disabled={!gradCourse} className="h-9">
                             <option value="">Select…</option>
                             {getSpecializations(gradCourse).map((s: string) => <option key={s}>{s}</option>)}
                         </Select>
@@ -135,19 +135,19 @@ export const EducationStep = ({
             {hasPG && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in slide-in-from-top-2 duration-300">
                     <Field label="PG Course">
-                        <Select value={pgCourse} onChange={e => { setPgCourse(e.target.value); setPgSpecialization(''); }} className="h-9 text-sm">
+                        <Select value={pgCourse} onChange={e => { setPgCourse(e.target.value); setPgSpecialization(''); }} className="h-9">
                             <option value="">Select…</option>
                             {PG_DEGREES.map(d => <option key={d}>{d}</option>)}
                         </Select>
                     </Field>
                     <Field label="PG Specialization">
-                        <Select value={pgSpecialization} onChange={e => setPgSpecialization(e.target.value)} disabled={!pgCourse} className="h-9 text-sm">
+                        <Select value={pgSpecialization} onChange={e => setPgSpecialization(e.target.value)} disabled={!pgCourse} className="h-9">
                             <option value="">Select…</option>
                             {getSpecializations(pgCourse).map((s: string) => <option key={s}>{s}</option>)}
                         </Select>
                     </Field>
                     <Field label="PG Passout Year">
-                        <Input inputMode="numeric" maxLength={4} value={pgYear} onChange={e => setPgYear(e.target.value.replace(/\D/g, ''))} placeholder="YYYY" className="h-9 text-sm" />
+                        <Input inputMode="numeric" maxLength={4} value={pgYear} onChange={e => setPgYear(e.target.value.replace(/\D/g, ''))} placeholder="YYYY" className="h-9" />
                     </Field>
                 </div>
             )}
@@ -168,7 +168,7 @@ export const EducationStep = ({
 function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
     return (
         <div className={cn("space-y-1.5 w-full", className)}>
-            <label className="text-[14px] font-bold text-muted-foreground">{label}</label>
+            <label className="text-sm font-bold text-muted-foreground">{label}</label>
             {children}
         </div>
     );

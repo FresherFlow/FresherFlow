@@ -38,6 +38,7 @@ import { GovernmentJobDetailView } from '@/app/(public)/jobs/[slug]/components/G
 // Hooks
 import { useOpportunityDetail } from '@/features/opportunities/hooks/useOpportunityDetail';
 import { useOpportunityDerivedState } from '@/features/opportunities/hooks/useOpportunityDerivedState';
+import { WalkinTrustStrip } from '@/features/opportunities/components/WalkinTrustStrip';
 import { parseOpportunityLocation, getGroupedLocations } from '@/features/opportunities/domain/opportunityDisplay';
 import { getOpportunityPathFromItem } from '@/features/opportunities/domain/opportunityPath';
 import { isNotEligible } from '@/features/opportunities/domain/matchScore';
@@ -140,13 +141,13 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                         companyLogoUrl={opp.companyLogoUrl}
                         applyLink={opp.applyLink}
                         isGovernment={isGovernmentJob}
-                        className="w-10 h-10 rounded-lg object-contain shrink-0"
+                        className="w-10 h-10 object-contain shrink-0"
                     />
                     <div className="min-w-0 flex-1">
                         <span className="text-xs font-medium text-muted-foreground block truncate leading-none">
                             {opp.company}
                         </span>
-                        <h2 className="text-[15px] font-bold text-foreground mt-1 leading-snug line-clamp-2" title={opp.title}>
+                        <h2 className="text-sm font-bold text-foreground mt-1 leading-snug line-clamp-2" title={opp.title}>
                             {opp.title}
                         </h2>
                     </div>
@@ -157,7 +158,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                         onClick={() => void handleToggleSave()}
                         aria-pressed={isOppSaved}
                         className={cn(
-                            'h-9 px-3.5 rounded-lg border text-[13px] font-bold flex items-center justify-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                            'h-9 px-3.5 rounded-lg border text-sm font-bold flex items-center justify-center gap-1.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
                             isOppSaved
                                 ? 'border-primary/40 bg-primary/10 text-primary'
                                 : 'border-border bg-background text-foreground hover:bg-muted'
@@ -174,7 +175,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                         <button
                             type="button"
                             onClick={handleApply}
-                            className="h-9 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.99] text-[13px] font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            className="h-9 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 text-sm font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                             Apply
                             <ArrowTopRightOnSquareIcon className="w-4 h-4" />
@@ -186,7 +187,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                             value={typeof window !== 'undefined' ? `${window.location.origin}${getOpportunityPathFromItem(opp)}` : ''}
                             icon={LinkIcon}
                             iconClassName="w-4 h-4"
-                            className="p-1.5 !h-auto !w-auto rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors hidden sm:flex focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                            className="hidden sm:flex"
                         />
                     </Hint>
                     <Hint label="Open full page" side="top" avoidCollisions={false}>
@@ -231,32 +232,32 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                     />
                 ) : (
                     <div className="space-y-4">
-                        {opp.expiresAt && ds.isExpired(opp) && <ExpiredWarning />}
+                        {opp.expiresAt && ds.isExpired(opp) && <ExpiredWarning opportunityId={opp.id} opportunityTitle={opp.title} />}
 
                         {/* Compact header: badges + location + meta — all in one tight block */}
                         <div className="space-y-3">
                             {/* Badges row */}
                             <div className="flex flex-wrap items-center gap-1.5">
-                                <span className="px-2 py-0.5 text-[11px] font-bold rounded bg-muted text-foreground">
+                                <span className="px-2 py-0.5 text-xs font-bold rounded bg-muted text-foreground">
                                     {ds.isCampusDrive ? 'Hiring drive' : opp.type === 'INTERNSHIP' ? 'Internship' : opp.type === 'WALKIN' ? 'Walk-in' : 'Job'}
                                 </span>
                                 {ds.listingState === 'ACTIVE' ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold rounded">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Active
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-success/10 text-success dark:text-success text-xs font-bold rounded">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" /> Active
                                     </span>
                                 ) : ds.listingState === 'EXPIRED' ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-destructive/10 text-destructive text-[11px] font-bold rounded">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-red-500" /> Expired
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-destructive/10 text-destructive text-xs font-bold rounded">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-error" /> Expired
                                     </span>
                                 ) : ds.listingState === 'CLOSING_SOON' ? (
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-orange-500/10 text-orange-600 dark:text-orange-400 text-[11px] font-bold rounded">
-                                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" /> Closing soon
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-signal-aging/10 text-destructive dark:text-signal-aging text-xs font-bold rounded">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-signal-aging animate-pulse" /> Closing soon
                                     </span>
                                 ) : null}
                                 {getGroupedLocations(opp.locations).length > 0 && (
                                     <span className="inline-flex items-center gap-1 text-muted-foreground">
                                         <MapPinIcon className="w-3 h-3" />
-                                        <span className="text-[11px] font-medium">{getGroupedLocations(opp.locations).join(', ')}</span>
+                                        <span className="text-xs font-medium">{getGroupedLocations(opp.locations).join(', ')}</span>
                                     </span>
                                 )}
                             </div>
@@ -271,7 +272,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                                     ...(opp.postedAt && getPostedLabel(opp.postedAt) ? [{ icon: CalendarIcon, value: `Posted ${getPostedLabel(opp.postedAt)}` }] : []),
                                 ] as const).map((item) => (
                                     <div key={item.value} className="flex items-center gap-2.5">
-                                        <item.icon className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
+                                        <item.icon className="w-4.5 h-4.5 text-muted-foreground shrink-0" />
                                         <span className="text-sm font-semibold text-foreground">{item.value}</span>
                                     </div>
                                 ))}
@@ -281,8 +282,8 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                                     const deadline = ds.formatDeadline(opp);
                                     return (
                                         <div className="flex items-center gap-2.5">
-                                            <CalendarIcon className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
-                                            <span className={cn('text-sm font-semibold', exp ? 'text-rose-600' : cs ? 'text-orange-600' : 'text-foreground')}>
+                                            <CalendarIcon className="w-4.5 h-4.5 text-muted-foreground shrink-0" />
+                                            <span className={cn('text-sm font-semibold', exp ? 'text-error' : cs ? 'text-destructive' : 'text-foreground')}>
                                                 {exp ? `Closed (${deadline})` : `Deadline ${deadline || 'Not set'}`}
                                             </span>
                                         </div>
@@ -293,7 +294,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                             {/* Track Progress */}
                             {user && (
                                 <div className="flex items-center gap-2 pt-0.5">
-                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">Progress</span>
+                                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Progress</span>
                                     <div className="flex gap-1">
                                         {ds.trackerOptions.map((option) => {
                                             const isActive = ds.currentAction === option.key;
@@ -303,7 +304,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                                                     onClick={() => handleSetAction(option.key)}
                                                     disabled={isUpdatingAction}
                                                     className={cn(
-                                                        "h-6 px-2.5 rounded text-[10px] font-bold transition-colors duration-150",
+                                                        "h-6 px-2.5 rounded text-xs font-bold transition-colors duration-150",
                                                         isActive
                                                             ? "bg-foreground text-background"
                                                             : "bg-muted text-muted-foreground hover:text-foreground",
@@ -345,6 +346,10 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                             <WalkInDetailsCard walkInDetails={opp.walkInDetails} />
                         )}
 
+                        {opp.type === 'WALKIN' && (
+                            <WalkinTrustStrip opportunityIdOrSlug={opp.slug || opp.id} />
+                        )}
+
                         {ds.isCampusDrive && (
                             <DetailCampusDriveInfo
                                 driveMeta={ds.driveMeta}
@@ -362,7 +367,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                             <div className="bg-card p-4 border border-primary/20 rounded-xl space-y-2">
                                 <h4 className="text-xs font-bold text-primary">Admin Control</h4>
                                 <Link href={`/opportunities/edit/${opp.id}`} className="block">
-                                    <Button variant="outline" className="w-full text-xs font-bold h-8 hover:bg-primary/5">
+                                    <Button variant="outline" size="sm" className="w-full">
                                         Edit Opportunity
                                     </Button>
                                 </Link>
@@ -395,16 +400,16 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                                                         companyLogoUrl={item.companyLogoUrl}
                                                         applyLink={item.applyLink}
                                                         isGovernment={item.type === 'GOVERNMENT' || Boolean(item.governmentJobDetails)}
-                                                        className="w-8 h-8 rounded-lg shrink-0 mt-0.5"
+                                                        className="w-8 h-8 shrink-0 mt-0.5"
                                                     />
                                                     <div className="min-w-0">
                                                         <p className="text-xs font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
                                                             {item.title}
                                                         </p>
-                                                        <p className="text-[11px] font-semibold text-muted-foreground mt-0.5 truncate">{item.company}</p>
+                                                        <p className="text-xs font-semibold text-muted-foreground mt-0.5 truncate">{item.company}</p>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/30 text-[10px] text-muted-foreground">
+                                                <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/30 text-xs text-muted-foreground">
                                                     <span className="flex items-center gap-1">
                                                         <svg className="w-3 h-3 text-muted-foreground/75" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
                                                         {locLabel}
@@ -423,7 +428,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
 
             {/* Sticky Bottom Apply Bar on Mobile */}
             {isMobile && ds.hasApplyLink && (
-                <div className="shrink-0 border-t border-border bg-card/95 backdrop-blur px-4 py-3.5 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-[0_-8px_24px_rgba(0,0,0,0.06)] flex items-center gap-2.5">
+                <div className="shrink-0 border-t border-border bg-card/95 backdrop-blur px-4 py-3.5 pb-3 shadow-sm flex items-center gap-2.5">
                     <div className="flex-1">
                         {ds.listingState === 'EXPIRED' ? (
                             <button
@@ -436,7 +441,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                         ) : (
                             <button
                                 onClick={handleApply}
-                                className="w-full h-12 text-sm bg-primary text-primary-foreground hover:bg-primary/95 active:scale-[0.99] rounded-xl flex items-center justify-center gap-2 font-bold shadow-md hover:shadow-lg transition-all"
+                                className="w-full h-12 text-sm bg-primary text-primary-foreground hover:bg-primary/95 active:scale-95 rounded-xl flex items-center justify-center gap-2 font-bold shadow-md hover:shadow-lg transition-all"
                             >
                                 {isGovernmentJob ? 'Apply on Official Portal' : 'Apply on Website'}
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -450,7 +455,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                         value={typeof window !== 'undefined' ? `${window.location.origin}${getOpportunityPathFromItem(opp)}` : ''}
                         icon={LinkIcon}
                         iconClassName="w-5 h-5"
-                        className="shrink-0 w-12 h-12 !p-0 rounded-xl border border-border bg-muted/20 text-muted-foreground flex items-center justify-center hover:bg-muted/40 hover:text-foreground active:scale-[0.98] transition-all"
+                        className="shrink-0 w-12 h-12 flex items-center justify-center active:scale-95"
                     />
                 </div>
             )}

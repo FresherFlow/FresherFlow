@@ -27,9 +27,9 @@ interface PageTagLinksProps {
 function resolveTagLink(item: string | TagLink, prefix: string): TagLink {
     if (typeof item === 'string') {
         // Taxonomy v2: one /jobs namespace (doc 22 §22.3) — prefix param is
-        // ignored, both dimensions resolve under /jobs/{slug}.
+        // ignored, both dimensions resolve under /jobs/{slug}-jobs.
         void prefix;
-        return { label: item, url: `/jobs/${slugify(item)}` };
+        return { label: item, url: `/jobs/${slugify(item)}-jobs` };
     }
     return item;
 }

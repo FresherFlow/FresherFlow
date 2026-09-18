@@ -134,7 +134,7 @@ export function MapCanvas({
     };
 
     return (
-        <div className="relative flex-1 w-full h-full min-h-[400px] overflow-hidden bg-background">
+        <div className="relative flex-1 w-full h-full min-h-100 overflow-hidden bg-background">
             {/* 0ms GPU-accelerated Dark Mode CSS Filter */}
             <style jsx global>{`
                 .leaflet-container {

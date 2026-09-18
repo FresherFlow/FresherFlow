@@ -17,13 +17,13 @@ export function AdminOverviewSkeleton() {
                 ))}
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                <Skeleton className="h-28 w-full rounded-lg" />
-                <Skeleton className="h-28 w-full rounded-lg" />
+                <Skeleton className="h-28 w-full" />
+                <Skeleton className="h-28 w-full" />
             </div>
             <div className="bg-card rounded-lg border border-border p-4 md:p-5 space-y-3">
                 <Skeleton className="h-5 w-32" />
                 {Array.from({ length: 5 }).map((_, index) => (
-                    <Skeleton key={index} className="h-12 w-full rounded-md" />
+                    <Skeleton key={index} className="h-12 w-full" />
                 ))}
             </div>
         </div>
@@ -37,7 +37,7 @@ export function AdminAnalyticsSkeleton() {
                 <Skeleton className="h-8 w-36" />
                 <Skeleton className="h-4 w-52" />
             </div>
-            <Skeleton className="h-24 w-full rounded-xl" />
+            <Skeleton className="h-24 w-full" />
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-6">
                 {Array.from({ length: 5 }).map((_, index) => (
                     <div key={index} className="bg-card/50 rounded-xl border border-border/50 p-3 md:p-5 space-y-2">
@@ -69,7 +69,7 @@ export function AdminFeedbackSkeleton() {
                         <Skeleton className="h-7 w-40" />
                         <Skeleton className="h-4 w-36" />
                     </div>
-                    <Skeleton className="h-8 w-24 rounded-md" />
+                    <Skeleton className="h-8 w-24" />
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
                     {Array.from({ length: 3 }).map((_, index) => (
@@ -84,9 +84,9 @@ export function AdminFeedbackSkeleton() {
                 <div key={index} className="bg-card rounded-lg border border-border p-4 md:p-5 space-y-3">
                     <Skeleton className="h-5 w-2/3" />
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        <Skeleton className="h-20 w-full rounded-lg" />
-                        <Skeleton className="h-20 w-full rounded-lg" />
-                        <Skeleton className="h-20 w-full rounded-lg" />
+                        <Skeleton className="h-20 w-full" />
+                        <Skeleton className="h-20 w-full" />
+                        <Skeleton className="h-20 w-full" />
                     </div>
                 </div>
             ))}
@@ -103,7 +103,7 @@ export function AdminOpportunitiesSkeleton() {
                         <Skeleton className="h-5 w-3/4" />
                         <Skeleton className="h-4 w-1/2" />
                         <Skeleton className="h-4 w-2/3" />
-                        <Skeleton className="h-9 w-full rounded-md" />
+                        <Skeleton className="h-9 w-full" />
                     </div>
                 ))}
             </div>

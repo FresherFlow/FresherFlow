@@ -52,13 +52,13 @@ export default function CompanyFollowButton({ companySlug, companyName }: Props)
             type="button"
             onClick={handleToggleFollow}
             disabled={isUpdating}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-[transform,background-color,border-color,box-shadow,color] duration-200 ease-out active:scale-[0.97] cursor-pointer flex items-center justify-center min-w-[140px] ${
+            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 ease-out active:scale-95 cursor-pointer flex items-center justify-center min-w-35 ${
                 isFollowing
                     ? 'bg-muted text-foreground border border-border hover:bg-muted/80'
                     : 'bg-primary text-primary-foreground hover:opacity-90 shadow-md shadow-primary/20'
             }`}
         >
-            <div className={`flex items-center gap-1.5 transition-[filter,opacity] duration-200 ease-in-out ${isUpdating ? 'blur-[2px] opacity-70' : 'blur-0 opacity-100'}`}>
+            <div className={`flex items-center gap-1.5 transition-all duration-200 ease-in-out ${isUpdating ? 'blur-sm opacity-70' : 'blur-none opacity-100'}`}>
                 {isUpdating ? (
                     <>
                         <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -66,7 +66,7 @@ export default function CompanyFollowButton({ companySlug, companyName }: Props)
                     </>
                 ) : isFollowing ? (
                     <>
-                        <CheckIcon className="w-3.5 h-3.5 text-emerald-500" />
+                        <CheckIcon className="w-3.5 h-3.5 text-success" />
                         <span>Following</span>
                     </>
                 ) : (

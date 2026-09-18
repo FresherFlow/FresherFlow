@@ -28,7 +28,7 @@ const CANONICAL_SKILLS = [
   'VueJS'
 ];
 
-const chipBase = 'h-8 px-3 rounded-lg text-[13px] font-medium flex items-center gap-1.5 transition-all whitespace-nowrap select-none cursor-pointer';
+const chipBase = 'h-8 px-3 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-all whitespace-nowrap select-none cursor-pointer';
 const chipDefault = 'bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground';
 const chipActive = 'bg-muted text-foreground font-semibold';
 
@@ -109,7 +109,7 @@ export function ResourcePageView({ feed }: { feed: ResourcesFeed }) {
                     placeholder="Search resources, guides, materials..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    className="pl-9 h-9 text-xs rounded-xl bg-card border-border shadow-sm w-full focus:bg-background"
+                    className="h-9 w-full"
                 />
                 {search && (
                     <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-full p-0.5 hover:bg-muted">
@@ -139,7 +139,7 @@ export function ResourcePageView({ feed }: { feed: ResourcesFeed }) {
                         placeholder="Search resources, guides, materials..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        className="pl-9 h-9 text-xs rounded-xl bg-card border-border shadow-sm w-full focus:bg-background"
+                        className="h-9 w-full"
                     />
                     {search && (
                         <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-full p-0.5 hover:bg-muted">
@@ -168,14 +168,14 @@ export function ResourcePageView({ feed }: { feed: ResourcesFeed }) {
                                     <AcademicCapIcon className="w-3.5 h-3.5" />
                                     Skills
                                     {activeSkills.length > 0 && (
-                                        <span className="bg-primary/20 text-primary rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none shrink-0 ml-1">
+                                        <span className="bg-primary/20 text-primary rounded-full px-1.5 py-0.5 text-xs font-bold leading-none shrink-0 ml-1">
                                             {activeSkills.length}
                                         </span>
                                     )}
                                     <ChevronDownIcon className={cn('w-3 h-3 transition-transform', isSkillsOpen && 'rotate-180')} />
                                 </button>
                                 {isSkillsOpen && (
-                                    <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-56 z-[100] flex flex-col gap-1 max-h-80">
+                                    <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-56 z-50 flex flex-col gap-1 max-h-80">
                                         <div className="px-1 pb-1 pt-0.5 shrink-0">
                                             <input
                                                 type="text"
@@ -196,12 +196,12 @@ export function ResourcePageView({ feed }: { feed: ResourcesFeed }) {
                                                         key={opt}
                                                         onClick={() => toggleSkill(opt)}
                                                         className={cn(
-                                                            'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all flex items-center gap-2',
+                                                            'w-full text-left px-3 py-2 rounded-lg text-xs font-medium transition-all flex items-center gap-2',
                                                             'text-foreground hover:bg-muted/60'
                                                         )}
                                                     >
                                                         <input type="checkbox" checked={isSelected} readOnly className="w-4 h-4 rounded border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
-                                                        <SkillPill skill={opt} className="bg-transparent border-none p-0 h-auto text-inherit shadow-none" />
+                                                        <SkillPill skill={opt} className="h-auto" />
                                                     </button>
                                                 )})}
                                             {CANONICAL_SKILLS.filter(s => s.toLowerCase().includes(skillSearch.toLowerCase())).length === 0 && (
@@ -226,9 +226,9 @@ export function ResourcePageView({ feed }: { feed: ResourcesFeed }) {
                         </button>
                     )}
                     {activeSkills.map(s => (
-                        <button key={s} onClick={() => toggleSkill(s)} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] font-medium hover:bg-indigo-100 transition-colors cursor-pointer outline-none">
-                            <SkillPill skill={s} className="bg-transparent border-none p-0 h-auto text-inherit shadow-none" />
-                            <XMarkIcon className="w-3.5 h-3.5 text-indigo-700 ml-1" />
+                        <button key={s} onClick={() => toggleSkill(s)} className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1 rounded-full bg-secondary text-brand-discord border border-muted text-xs font-medium hover:bg-secondary transition-colors cursor-pointer outline-none">
+                            <SkillPill skill={s} className="h-auto" />
+                            <XMarkIcon className="w-3.5 h-3.5 text-brand-discord ml-1" />
                         </button>
                     ))}
                     {(search || activeSkills.length > 0) && (
@@ -249,7 +249,7 @@ export function ResourcePageView({ feed }: { feed: ResourcesFeed }) {
                     <EmptyState
                         title="No resources found"
                         description={search.trim() || activeSkills.length > 0 ? "Try removing some filters or search keywords." : undefined}
-                        action={search.trim() || activeSkills.length > 0 ? <Button variant="outline" onClick={() => { setSearch(''); setActiveSkills([]); }} className="h-11 px-6 text-sm font-bold capitalize tracking-widest">Clear all filters</Button> : undefined}
+                        action={search.trim() || activeSkills.length > 0 ? <Button size="sm" variant="outline" onClick={() => { setSearch(''); setActiveSkills([]); }}>Clear all filters</Button> : undefined}
                     />
                 ) : (
                     <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">

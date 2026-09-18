@@ -55,16 +55,16 @@ export function AddTargetModal({
 
  return (
  <Dialog open={open} onOpenChange={(val) => { if (!val) onClose(); }}>
- <DialogContent className="max-w-md bg-card border border-border p-6">
+ <DialogContent className="max-w-md">
  <DialogHeader>
- <DialogTitle className="text-sm font-bold">Add & Run On-Demand Target</DialogTitle>
+ <DialogTitle>Add & Run On-Demand Target</DialogTitle>
  </DialogHeader>
 
  <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 py-2 text-xs">
  <Field label="ATS Provider Engine" error={errors.ats?.message} required labelClassName="">
  <Select
  {...register('ats')}
- className="text-xs"
+
  >
  <option value="" disabled hidden>Select ATS Provider...</option>
  {adapters.map((p) => (
@@ -79,7 +79,7 @@ export function AddTargetModal({
  <Input
  {...register('company')}
  placeholder="e.g. Razorpay"
- className="text-xs"
+
  />
  </Field>
 
@@ -87,7 +87,7 @@ export function AddTargetModal({
  <Input
  {...register('slug')}
  placeholder="e.g. razorpaysoftwareprivatelimited"
- className="text-xs"
+
  />
  </Field>
 

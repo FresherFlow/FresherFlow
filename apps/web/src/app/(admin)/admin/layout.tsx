@@ -179,10 +179,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <TopHeaderBar />
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background md:bg-muted/10 md:pl-[var(--sidebar-w,12rem)] transition-[padding-left] duration-[600ms] ease-[cubic-bezier(0.7,0,0,1)]">
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background md:bg-muted/10 md:pl-48 transition-all duration-500 ease-out">
                 <MobileTopNav />
 
-                <main className="flex-1 h-full min-w-0 min-h-0 flex flex-col overflow-hidden pt-[calc(3.5rem+env(safe-area-inset-top))] md:pt-[4.5rem] md:px-4 md:pb-4">
+                <main className="flex-1 h-full min-w-0 min-h-0 flex flex-col overflow-hidden pt-14 md:pt-18 md:px-4 md:pb-4">
                     <div className="w-full h-full flex-1 min-h-0 relative flex flex-col overflow-hidden">
                         {children}
                     </div>

@@ -44,7 +44,7 @@ export function JobBoardsTab({
       <div className="flex items-center gap-3 min-w-0">
        <CompanyLogo
         companyName={board.providerName}
-        className="w-8 h-8 rounded-lg border border-border/60 bg-card shadow-xs shrink-0"
+        className="w-8 h-8 shrink-0"
        />
        <div className="min-w-0">
         <h3 className="text-xs font-bold text-foreground truncate">{board.providerName}</h3>

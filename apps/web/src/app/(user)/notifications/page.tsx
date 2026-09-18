@@ -141,7 +141,7 @@ function NotificationsPageContent() {
                 <p className="text-muted-foreground text-xs">Please try again.</p>
                 <button
                     onClick={() => void load()}
-                    className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold capitalize tracking-widest text-[11px] rounded-lg hover:bg-primary/90 transition-all"
+                    className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold capitalize tracking-widest text-xs rounded-lg hover:bg-primary/90 transition-all"
                 >
                     Retry
                 </button>
@@ -191,7 +191,7 @@ function NotificationsPageContent() {
                     </div>
                     <Link
                         href="/jobs"
-                        className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold capitalize tracking-widest text-[11px] rounded-lg hover:bg-primary/90 transition-all shadow"
+                        className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold capitalize tracking-widest text-xs rounded-lg hover:bg-primary/90 transition-all shadow"
                     >
                         Browse jobs
                     </Link>
@@ -200,7 +200,7 @@ function NotificationsPageContent() {
                 <div className="space-y-6">
                     {groups.map(group => (
                         <div key={group.label} className="space-y-1.5">
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">
                                 {group.label}
                             </p>
                             <div className="bg-card border border-border/60 rounded-2xl overflow-hidden divide-y divide-border/40">
@@ -233,7 +233,7 @@ function NotificationsPageContent() {
                                                 <p className="text-xs text-muted-foreground">{notif.opportunityTitle}</p>
                                             )}
                                         </div>
-                                        <p className="text-[10px] text-muted-foreground shrink-0 mt-0.5">
+                                        <p className="text-xs text-muted-foreground shrink-0 mt-0.5">
                                             {new Date(notif.receivedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                                         </p>
                                     </div>

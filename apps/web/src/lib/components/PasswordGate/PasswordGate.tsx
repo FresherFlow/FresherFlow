@@ -54,7 +54,7 @@ export default function PasswordGate({ title = 'Secure Portal', cookieName }: Pr
                         className="w-full bg-background border border-border px-4 py-3 text-sm focus:outline-none focus:border-primary transition-all"
                     />
                 </div>
-                {error && <p className="text-xs text-red-500">Incorrect username or password</p>}
+                {error && <p className="text-xs text-destructive">Incorrect username or password</p>}
                 <button
                     type="submit"
                     disabled={!user || !pw || loading}

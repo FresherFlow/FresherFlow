@@ -33,7 +33,7 @@ export function MapBottomDriveCard({
             <div className="absolute bottom-3 left-3 right-3 z-20 pointer-events-auto">
                 <div className="px-4 py-2.5 bg-background/95 dark:bg-card/95 backdrop-blur-xl border border-border/60 shadow-sm rounded-xl flex items-center justify-between gap-3 text-sm">
                     <div className="flex items-center gap-2 text-foreground font-medium">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                        <span className="w-2 h-2 rounded-full bg-success shrink-0" />
                         <span className="font-semibold">{totalDrives}</span>
                         <span className="text-muted-foreground">drives in {cityName}</span>
                     </div>
@@ -62,12 +62,12 @@ export function MapBottomDriveCard({
                         <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm font-bold text-foreground">{opportunity.company}</span>
                             {d?.techCluster && (
-                                <span className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground font-medium">
                                     {d.techCluster}
                                 </span>
                             )}
                         </div>
-                        <h3 className="text-[13px] font-semibold text-foreground leading-snug line-clamp-1 mt-0.5">
+                        <h3 className="text-sm font-semibold text-foreground leading-snug line-clamp-1 mt-0.5">
                             {opportunity.normalizedRole || opportunity.title}
                         </h3>
                         {d?.venueAddress && (
@@ -92,7 +92,7 @@ export function MapBottomDriveCard({
                             <span>{d.timeRange || d.reportingTime}</span>
                         )}
                         {transit?.station && (
-                            <span className="text-violet-600 dark:text-violet-400">
+                            <span className="text-brand-discord dark:text-brand-discord">
                                 {transit.station}
                                 {transit.walkDistance && ` · ${transit.walkDistance}`}
                             </span>

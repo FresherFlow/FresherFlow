@@ -117,7 +117,7 @@ export default function TelegramBroadcastPanel() {
 
     return (
         <Card className="max-w-4xl">
-            <CardHeader className="space-y-3">
+            <CardHeader>
                 <div className="flex items-center justify-between gap-3 flex-wrap">
                     <div>
                         <CardTitle>Telegram broadcasts</CardTitle>
@@ -154,7 +154,7 @@ export default function TelegramBroadcastPanel() {
                         >
                             All
                         </Button>
-                        <Button variant="outline" size="icon" onClick={load} aria-label="Refresh logs">
+                        <Button variant="outline" size="sm" onClick={load} aria-label="Refresh logs">
                             <RefreshCw className="h-4 w-4" />
                         </Button>
                     </div>
@@ -191,24 +191,24 @@ export default function TelegramBroadcastPanel() {
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                     <div className="rounded-lg border p-2">
-                        <p className="text-[10px] font-bold capitalize tracking-wider text-muted-foreground">Sent</p>
+                        <p className="text-xs font-bold capitalize tracking-wider text-muted-foreground">Sent</p>
                         <p className="text-lg font-bold text-foreground">{summary.sent}</p>
                     </div>
                     <div className="rounded-lg border p-2">
-                        <p className="text-[10px] font-bold capitalize tracking-wider text-muted-foreground">Failed</p>
-                        <p className="text-lg font-bold text-red-600 dark:text-red-400">{summary.failed}</p>
+                        <p className="text-xs font-bold capitalize tracking-wider text-muted-foreground">Failed</p>
+                        <p className="text-lg font-bold text-error dark:text-error">{summary.failed}</p>
                     </div>
                     <div className="rounded-lg border p-2">
-                        <p className="text-[10px] font-bold capitalize tracking-wider text-muted-foreground">Skipped</p>
-                        <p className="text-lg font-bold text-amber-600 dark:text-amber-400">{summary.skipped}</p>
+                        <p className="text-xs font-bold capitalize tracking-wider text-muted-foreground">Skipped</p>
+                        <p className="text-lg font-bold text-warning dark:text-warning">{summary.skipped}</p>
                     </div>
                 </div>
                 <div className="rounded-lg border p-2">
-                    <p className="text-[10px] font-bold capitalize tracking-wider text-muted-foreground">Delivery success rate ({windowFilter})</p>
+                    <p className="text-xs font-bold capitalize tracking-wider text-muted-foreground">Delivery success rate ({windowFilter})</p>
                     <p className="text-lg font-bold text-foreground">{successRate}%</p>
                 </div>
                 <div className="rounded-lg border p-3 space-y-2">
-                    <p className="text-[10px] font-bold capitalize tracking-wider text-muted-foreground">
+                    <p className="text-xs font-bold capitalize tracking-wider text-muted-foreground">
                         Top posts {windowFilter === "7d" ? "this week" : `(${windowFilter})`}
                     </p>
                     {topPosts.length === 0 ? (
@@ -221,11 +221,11 @@ export default function TelegramBroadcastPanel() {
                                         <p className="text-xs font-semibold text-foreground truncate">
                                             {index + 1}. {post.title}
                                         </p>
-                                        <p className="text-[10px] text-muted-foreground truncate">{post.company}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{post.company}</p>
                                     </div>
                                     <div className="shrink-0 flex items-center gap-2">
                                         <Badge variant="outline">{post.sends}x</Badge>
-                                        <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => window.open(`/${post.slug}`, '_blank')}>
+                                        <Button size="sm" variant="outline" onClick={() => window.open(`/${post.slug}`, '_blank')}>
                                             Open
                                         </Button>
                                     </div>
@@ -257,7 +257,7 @@ export default function TelegramBroadcastPanel() {
                                 <Badge variant="outline">{item.status}</Badge>
                             </div>
                             {item.errorMessage ? (
-                                <p className="text-xs text-red-600 dark:text-red-400">{item.errorMessage}</p>
+                                <p className="text-xs text-error dark:text-error">{item.errorMessage}</p>
                             ) : null}
                             <div className="flex items-center justify-between gap-3">
                                 <p className="text-xs text-muted-foreground">

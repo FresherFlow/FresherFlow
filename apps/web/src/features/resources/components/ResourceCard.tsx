@@ -29,9 +29,9 @@ export function getDomainInfo(urlStr: string) {
 
 export function getColorByUrl(url: string, type?: string) {
     const { host, pathname } = getDomainInfo(url);
-    if (type === 'YOUTUBE' || host === 'youtube.com' || host.endsWith('.youtube.com') || host === 'youtu.be') return 'text-red-500 bg-red-500/10';
-    if (type === 'PDF' || pathname.endsWith('.pdf')) return 'text-orange-500 bg-orange-500/10';
-    if (type === 'ROADMAP' || host === 'roadmap.sh' || host.endsWith('.roadmap.sh')) return 'text-blue-500 bg-blue-500/10';
+    if (type === 'YOUTUBE' || host === 'youtube.com' || host.endsWith('.youtube.com') || host === 'youtu.be') return 'text-error bg-error/10';
+    if (type === 'PDF' || pathname.endsWith('.pdf')) return 'text-orange-500 bg-signal-aging/10';
+    if (type === 'ROADMAP' || host === 'roadmap.sh' || host.endsWith('.roadmap.sh')) return 'text-blue-500 bg-brand-facebook/10';
     if (
         type === 'FOLDER' ||
         type === 'FILE' ||
@@ -40,7 +40,7 @@ export function getColorByUrl(url: string, type?: string) {
         host.split('.').includes('onedrive') ||
         host === 'box.com' || host.endsWith('.box.com') ||
         host.split('.').includes('sharepoint')
-    ) return 'text-emerald-500 bg-emerald-500/10';
+    ) return 'text-success bg-success/10';
     
     return 'text-primary bg-primary/10';
 }
@@ -167,18 +167,18 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ collection, isSaved,
                 <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                            <h2 className="text-[15px] font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug">
+                            <h2 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug">
                                 {collection.title}
                             </h2>
                             {hasMultipleItems && (
-                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold text-muted-foreground bg-muted border border-border/50 shrink-0 leading-none">
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-semibold text-muted-foreground bg-muted border border-border/50 shrink-0 leading-none">
                                     {collection.items.length} Items
                                 </span>
                             )}
                         </div>
                         {collection.company && (
                             <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-0.5 truncate">
-                                <span className="font-semibold text-foreground/80 truncate shrink-0 max-w-[120px] md:max-w-none">
+                                <span className="font-semibold text-foreground/80 truncate shrink-0 max-w-30 md:max-w-none">
                                     {collection.company}
                                 </span>
                             </div>
@@ -209,17 +209,17 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ collection, isSaved,
 
                 {/* Skills Row */}
                 {(collection.skills && collection.skills.length > 0) && (
-                    <div className="flex items-center gap-1.5 mt-1 mb-2 max-w-[85%] md:max-w-none overflow-hidden whitespace-nowrap md:flex-wrap md:whitespace-normal md:overflow-visible">
+                    <div className="flex items-center gap-1.5 mt-1 mb-2 max-w-3xl md:max-w-none overflow-hidden whitespace-nowrap md:flex-wrap md:whitespace-normal md:overflow-visible">
                         {collection.skills.slice(0, visibleCount).map(skill => (
                             <SkillPill
                                 key={skill}
                                 skill={skill.charAt(0).toUpperCase() + skill.slice(1)}
                                 size="sm"
-                                className="py-0.5 text-xs shrink-0"
+                                className="shrink-0"
                             />
                         ))}
                         {collection.skills.length > visibleCount && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold text-muted-foreground bg-muted border border-border/50 shrink-0">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold text-muted-foreground bg-muted border border-border/50 shrink-0">
                                 +{collection.skills.length - visibleCount}
                             </span>
                         )}
@@ -233,7 +233,7 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ collection, isSaved,
                             ref={itemsContainerRef}
                             className={cn(
                                 "flex flex-wrap gap-2 items-start",
-                                !isExpanded && showChevron ? "max-h-[32px] md:max-h-[72px] overflow-hidden" : ""
+                                !isExpanded && showChevron ? "max-h-8 md:max-h-18 overflow-hidden" : ""
                             )}
                         >
                             {collection.items?.map((item, idx) => (
@@ -248,7 +248,7 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ collection, isSaved,
                                     }}
                                     className="group/btn inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/80 text-foreground hover:text-primary transition-colors cursor-pointer"
                                 >
-                                    <span className="truncate max-w-[200px]">{item.title || `Resource ${idx + 1}`}</span>
+                                    <span className="truncate max-w-50">{item.title || `Resource ${idx + 1}`}</span>
                                     <div className="w-0 overflow-hidden opacity-0 group-hover/btn:w-3.5 group-hover/btn:ml-1 group-hover/btn:opacity-100 transition-all duration-200">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
                                     </div>
@@ -259,7 +259,7 @@ export const ResourceCard: React.FC<ResourceCardProps> = ({ collection, isSaved,
                             <div className="absolute right-0 top-0 md:top-auto md:bottom-0 flex justify-end">
                                 <button
                                     onClick={() => setIsExpanded(!isExpanded)}
-                                    className="inline-flex items-center justify-center w-[32px] h-[32px] rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
+                                    className="inline-flex items-center justify-center w-8 h-8 rounded-lg border border-border/60 bg-muted/20 hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors"
                                     aria-label={isExpanded ? "Show less items" : "Show more items"}
                                 >
                                     <ChevronDownIcon className={cn("w-4 h-4 transition-transform", isExpanded && "rotate-180")} />

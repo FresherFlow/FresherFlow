@@ -27,12 +27,12 @@ export function ApplyLinkSection({
                 <SmartInput
                     label={`Source URL ${showUrlError ? '*' : ''}`}
                     value={sourceLink}
-                    labelClassName={showUrlError ? 'text-destructive' : ''}
+                    labelClassName={showUrlError ? '' : ''}
                     type="url"
                     onChange={(e) => setSourceLink(e.target.value)}
                     className={
                         showUrlError
-                            ? 'border-destructive focus:border-destructive'
+                            ? ''
                             : ''
                     }
                     placeholder="https://company.com/jobs/... (listing page)"
@@ -40,12 +40,12 @@ export function ApplyLinkSection({
                 <SmartInput
                     label={`Apply URL ${showUrlError ? '*' : ''}`}
                     value={applyLink}
-                    labelClassName={showUrlError ? 'text-destructive' : ''}
+                    labelClassName={showUrlError ? '' : ''}
                     type="url"
                     onChange={(e) => setApplyLink(e.target.value)}
                     className={
                         showUrlError
-                            ? 'border-destructive focus:border-destructive'
+                            ? ''
                             : ''
                     }
                     placeholder="https://careers.company.com/... (application page)"

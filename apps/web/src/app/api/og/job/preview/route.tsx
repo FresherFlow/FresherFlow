@@ -44,7 +44,7 @@ function renderCard(mode: 'job' | 'drive') {
 
       <div style={{ display:'flex', alignItems:'center', gap:16 }}>
         <div style={{ display:'flex', borderRadius:12, padding:'16px 28px', background:badge.bg, border:`1px solid ${badge.border}`, fontSize:24, fontWeight:700, letterSpacing:'0.07em', color:badge.color }}>{type}</div>
-        <div style={{ display:'flex', borderRadius:12, padding:'16px 28px', background:'rgba(245,247,248,0.07)', border:'1px solid rgba(245,247,248,0.11)', fontSize:24, fontWeight:600, color:'rgba(245,247,248,0.65)' }}>📍 {location}</div>
+        <div style={{ display:'flex', borderRadius:12, padding:'16px 28px', background:'rgba(245,247,248,0.07)', border:'1px solid rgba(245,247,248,0.11)', fontSize:24, fontWeight:600, color:'rgba(245,247,248,0.65)' }}>{location}</div>
         {urgency && <div style={{ display:'flex', borderRadius:12, padding:'16px 28px', background:'rgba(239,68,68,0.16)', border:'1px solid rgba(239,68,68,0.35)', fontSize:24, fontWeight:700, color:'#fca5a5' }}>{urgency}</div>}
         <div style={{ display:'flex', alignItems:'center', gap:10, marginLeft:'auto' }}>
           <div style={{ width:12, height:12, borderRadius:999, background:'#4ade80', display:'flex' }} />

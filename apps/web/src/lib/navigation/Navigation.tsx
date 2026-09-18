@@ -36,6 +36,10 @@ export const SIDEBAR_ROUTES = [
     '/referral',
     '/resources',
     '/platforms',
+    '/community',
+    '/community/areas',
+    '/community/areas/[slug]',
+    '/community/leaderboard',
 ];
 
 export const FEED_ROUTES = [

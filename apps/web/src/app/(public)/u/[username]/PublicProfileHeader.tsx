@@ -13,7 +13,7 @@ export function PublicProfileHeader() {
                 {/* Brand Logo & Public Badge */}
                 <div className="flex items-center gap-3">
                     <Link href="/" className="flex items-center gap-2 group">
-                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary via-primary/80 to-indigo-600 flex items-center justify-center text-primary-foreground font-extrabold text-sm shadow-md shadow-primary/20 group-hover:scale-105 transition-transform">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary via-primary/80 to-brand-discord flex items-center justify-center text-primary-foreground font-extrabold text-sm shadow-md shadow-primary/20 group-hover:scale-105 transition-transform">
                             F
                         </div>
                         <span className="font-extrabold text-base md:text-lg tracking-tight text-foreground">
@@ -21,7 +21,7 @@ export function PublicProfileHeader() {
                         </span>
                     </Link>
 
-                    <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-[11px] font-bold border border-primary/20">
+                    <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20">
                         <SparklesIcon className="w-3 h-3" /> Candidate Portfolio
                     </span>
                 </div>

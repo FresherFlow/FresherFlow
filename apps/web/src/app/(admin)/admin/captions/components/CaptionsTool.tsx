@@ -23,15 +23,15 @@ import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import Link from 'next/link';
 
 function TelegramBrandIcon({ className }: { className?: string }) {
-    return <svg viewBox="0 0 24 24" fill="#2CA5E0" className={className}><path d="M9.036 15.803 8.87 19.5c.45 0 .646-.194.88-.427l2.112-2.018 4.38 3.207c.803.444 1.37.21 1.586-.743L20.8 5.59c.316-1.237-.447-1.72-1.227-1.43L2.59 10.72c-1.159.45-1.141 1.098-.197 1.39l4.344 1.356L16.824 7.15c.475-.29.91-.129.555.16L9.036 15.803z" /></svg>;
+    return <svg viewBox="0 0 24 24" fill="var(--color-brand-telegram)" className={className}><path d="M9.036 15.803 8.87 19.5c.45 0 .646-.194.88-.427l2.112-2.018 4.38 3.207c.803.444 1.37.21 1.586-.743L20.8 5.59c.316-1.237-.447-1.72-1.227-1.43L2.59 10.72c-1.159.45-1.141 1.098-.197 1.39l4.344 1.356L16.824 7.15c.475-.29.91-.129.555.16L9.036 15.803z" /></svg>;
 }
 
 function WhatsAppBrandIcon({ className }: { className?: string }) {
-    return <svg viewBox="0 0 24 24" fill="#25D366" className={className}><path d="M20.52 3.48A11.88 11.88 0 0 0 12.06 0C5.49 0 .15 5.34.15 11.91c0 2.1.55 4.15 1.6 5.97L0 24l6.32-1.66a11.83 11.83 0 0 0 5.73 1.46h.01c6.57 0 11.91-5.34 11.91-11.91 0-3.18-1.24-6.17-3.45-8.4zM12.06 21.7h-.01a9.79 9.79 0 0 1-4.98-1.36l-.36-.22-3.75.99.99-3.65-.24-.37a9.79 9.79 0 0 1-1.51-5.2c0-5.4 4.39-9.79 9.8-9.79 2.61 0 5.06 1.01 6.9 2.86a9.72 9.72 0 0 1 2.88 6.92c0 5.4-4.4 9.8-9.72 9.8zm5.37-7.35c-.29-.15-1.7-.84-1.97-.93-.26-.1-.45-.15-.64.15-.19.29-.74.93-.9 1.12-.17.2-.33.22-.62.08-.29-.15-1.22-.45-2.33-1.43-.86-.77-1.43-1.72-1.6-2-.17-.29-.02-.44.13-.59.13-.13.29-.34.44-.5.15-.17.2-.29.3-.49.1-.2.05-.37-.03-.52-.08-.15-.64-1.55-.88-2.13-.23-.55-.47-.48-.64-.49h-.54c-.2 0-.52.07-.79.37-.27.3-1.03 1.01-1.03 2.45s1.06 2.83 1.2 3.02c.15.2 2.08 3.18 5.04 4.46.7.3 1.25.49 1.68.63.7.22 1.34.19 1.84.11.56-.08 1.7-.7 1.95-1.38.24-.67.24-1.25.17-1.37-.08-.12-.27-.2-.56-.34z" /></svg>;
+    return <svg viewBox="0 0 24 24" fill="var(--color-brand-whatsapp)" className={className}><path d="M20.52 3.48A11.88 11.88 0 0 0 12.06 0C5.49 0 .15 5.34.15 11.91c0 2.1.55 4.15 1.6 5.97L0 24l6.32-1.66a11.83 11.83 0 0 0 5.73 1.46h.01c6.57 0 11.91-5.34 11.91-11.91 0-3.18-1.24-6.17-3.45-8.4zM12.06 21.7h-.01a9.79 9.79 0 0 1-4.98-1.36l-.36-.22-3.75.99.99-3.65-.24-.37a9.79 9.79 0 0 1-1.51-5.2c0-5.4 4.39-9.79 9.8-9.79 2.61 0 5.06 1.01 6.9 2.86a9.72 9.72 0 0 1 2.88 6.92c0 5.4-4.4 9.8-9.72 9.8zm5.37-7.35c-.29-.15-1.7-.84-1.97-.93-.26-.1-.45-.15-.64.15-.19.29-.74.93-.9 1.12-.17.2-.33.22-.62.08-.29-.15-1.22-.45-2.33-1.43-.86-.77-1.43-1.72-1.6-2-.17-.29-.02-.44.13-.59.13-.13.29-.34.44-.5.15-.17.2-.29.3-.49.1-.2.05-.37-.03-.52-.08-.15-.64-1.55-.88-2.13-.23-.55-.47-.48-.64-.49h-.54c-.2 0-.52.07-.79.37-.27.3-1.03 1.01-1.03 2.45s1.06 2.83 1.2 3.02c.15.2 2.08 3.18 5.04 4.46.7.3 1.25.49 1.68.63.7.22 1.34.19 1.84.11.56-.08 1.7-.7 1.95-1.38.24-.67.24-1.25.17-1.37-.08-.12-.27-.2-.56-.34z" /></svg>;
 }
 
 function LinkedInBrandIcon({ className }: { className?: string }) {
-    return <svg viewBox="0 0 24 24" fill="#0A66C2" className={className}><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5.001A2.5 2.5 0 0 1 4.98 3.5zM3 8.98h3.96V21H3V8.98zm7.02 0h3.8v1.64h.05c.53-1 1.82-2.06 3.75-2.06 4 0 4.74 2.64 4.74 6.08V21h-3.96v-5.6c0-1.34-.03-3.06-1.86-3.06-1.86 0-2.15 1.45-2.15 2.96V21h-3.97V8.98z" /></svg>;
+    return <svg viewBox="0 0 24 24" fill="var(--color-brand-linkedin)" className={className}><path d="M4.98 3.5a2.5 2.5 0 1 1 0 5.001A2.5 2.5 0 0 1 4.98 3.5zM3 8.98h3.96V21H3V8.98zm7.02 0h3.8v1.64h.05c.53-1 1.82-2.06 3.75-2.06 4 0 4.74 2.64 4.74 6.08V21h-3.96v-5.6c0-1.34-.03-3.06-1.86-3.06-1.86 0-2.15 1.45-2.15 2.96V21h-3.97V8.98z" /></svg>;
 }
 
 function XBrandIcon({ className }: { className?: string }) {
@@ -122,17 +122,17 @@ function PillDropdown({ value, options, onChange, label, className }: {
 
     return (
         <div ref={ref} className="relative inline-block">
-            {label && <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block mb-1 font-sans">{label}</span>}
+            {label && <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider block mb-1 font-sans">{label}</span>}
             <button
                 onClick={() => setOpen(o => !o)}
                 onKeyDown={handleKeyDown}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-muted/80 border border-border text-sm font-semibold text-foreground transition-all justify-between ${className || 'min-w-[3.5rem]'}`}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-muted/80 border border-border text-sm font-semibold text-foreground transition-all justify-between ${className || 'min-w-14'}`}
             >
                 <span>{value}</span>
                 <ChevronDownIcon className={`w-3 h-3 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
             </button>
             {open && (
-                <div className="absolute top-full left-0 mt-1 z-[60] bg-card border border-border rounded-xl shadow-xl overflow-hidden min-w-full">
+                <div className="absolute top-full left-0 mt-1 z-50 bg-card border border-border rounded-xl shadow-xl overflow-hidden min-w-full">
                     <div ref={listRef} className="max-h-48 overflow-y-auto">
                         {options.map((opt, idx) => (
                             <button
@@ -806,17 +806,17 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                     Social Captions Generator
                                 </h1>
                                 <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                    <p className="text-[11px] text-muted-foreground">
+                                    <p className="text-xs text-muted-foreground">
                                         Generate &amp; send captions to Telegram, X, LinkedIn.
                                     </p>
                                     {/* Inline worker status */}
-                                    <span className="flex items-center gap-1 text-[10px] font-medium">
+                                    <span className="flex items-center gap-1 text-xs font-medium">
                                         {statusLoading
                                             ? <ArrowPathIcon className="w-3 h-3 animate-spin text-muted-foreground" />
                                             : workerOnline
-                                            ? <SignalIcon className="w-3 h-3 text-emerald-500" />
-                                            : <SignalSlashIcon className="w-3 h-3 text-red-400" />}
-                                        <span className={workerOnline ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}>
+                                            ? <SignalIcon className="w-3 h-3 text-success" />
+                                            : <SignalSlashIcon className="w-3 h-3 text-error" />}
+                                        <span className={workerOnline ? 'text-success dark:text-success' : 'text-muted-foreground'}>
                                             {statusLoading ? 'checking…' : workerOnline ? `worker online${workerUptime ? ` · ${formatUptime(workerUptime)}` : ''}` : 'worker offline'}
                                         </span>
                                         <button onClick={() => { void checkWorkerHealth(); }} className="text-muted-foreground hover:text-foreground" title="Refresh">
@@ -851,7 +851,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                             </button>
                         </div>
 
-                        <div className="flex-1 sm:max-h-[580px] overflow-y-auto pr-1">
+                        <div className="flex-1 sm:max-h-144 overflow-y-auto pr-1">
                             {sortedCategories.length === 0 ? (
                                 <p className="text-center text-xs text-muted-foreground py-8">No opportunities found matching search.</p>
                             ) : (
@@ -859,7 +859,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                     <div key={category} className="pb-5 space-y-2">
                                         <h4 
                                             onClick={() => toggleCollapseCategory(category)}
-                                            className="sticky top-0 bg-surface-warm dark:bg-card z-10 py-1.5 text-[10px] font-bold uppercase tracking-wider text-primary border-b border-border flex items-center justify-between cursor-pointer select-none hover:text-primary/80"
+                                            className="sticky top-0 bg-surface-warm dark:bg-card z-10 py-1.5 text-xs font-bold uppercase tracking-wider text-primary border-b border-border flex items-center justify-between cursor-pointer select-none hover:text-primary/80"
                                         >
                                             <span className="flex items-center gap-1">
                                                 {collapsedCategories[category] ? (
@@ -874,7 +874,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                                     e.stopPropagation();
                                                     toggleSelectDateGroup(category);
                                                 }}
-                                                className="text-[9px] font-bold text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                                                className="text-xs font-bold text-muted-foreground hover:text-primary transition-colors cursor-pointer"
                                             >
                                                 {isDateGroupSelected(category) ? 'Deselect Group' : 'Select Group'}
                                             </button>
@@ -908,13 +908,13 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                                                 companyWebsite={opp.companyWebsite}
                                                                 companyLogoUrl={opp.companyLogoUrl}
                                                                 applyLink={opp.applyLink}
-                                                                className="w-10 h-10 shrink-0 rounded-xl border border-border mt-0.5"
+                                                                className="w-10 h-10 shrink-0 mt-0.5"
                                                             />
                                                             <div className="flex-1 min-w-0">
                                                                 <div className="flex items-start justify-between gap-2">
                                                                     <div className="min-w-0">
                                                                         <p className="text-xs font-bold text-foreground truncate">{opp.company}</p>
-                                                                        <p className="text-[11px] text-muted-foreground truncate">{opp.title}</p>
+                                                                        <p className="text-xs text-muted-foreground truncate">{opp.title}</p>
                                                                     </div>
                                                                     <input
                                                                         type="checkbox"
@@ -946,14 +946,14 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                                                                 const hKey = `${opp.id}_${timeNum}`;
 
                                                                                 return (
-                                                                                    <div key={timeNum} className="relative shrink-0 schedule-badge-container">
+                                                                                    <div key={timeNum} className="relative shrink-0">
                                                                                         {/* Combined Badge Button */}
                                                                                         <button
                                                                                             onClick={(e) => {
                                                                                                 e.stopPropagation();
                                                                                                 setCancelHoverPost(prev => prev === hKey ? null : hKey);
                                                                                             }}
-                                                                                            className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-lg border transition-all ${
+                                                                                            className={`flex items-center gap-1.5 text-xs font-bold px-2 py-0.5 rounded-lg border transition-all ${
                                                                                                 cancelHoverPost === hKey
                                                                                                 ? 'bg-muted border-border text-foreground shadow-sm'
                                                                                                 : 'bg-muted/60 border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground'
@@ -969,7 +969,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                                                                                     return <ClockIcon key={p} className="w-3.5 h-3.5 text-muted-foreground shrink-0" />;
                                                                                                 })}
                                                                                             </div>
-                                                                                            <span className="font-bold text-[10px] tracking-tight">{displayTime}</span>
+                                                                                            <span className="font-bold text-xs tracking-tight">{displayTime}</span>
                                                                                         </button>
 
                                                                                         {/* Combined Cancel Hover Popover Card */}
@@ -979,7 +979,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                                                                                 onClick={e => e.stopPropagation()}
                                                                                             >
                                                                                                 <div className="flex items-center justify-between pb-1.5 border-b border-border/50 mb-2 pr-5">
-                                                                                                    <span className="text-[10px] font-bold text-foreground uppercase tracking-wider">Scheduled Posts</span>
+                                                                                                    <span className="text-xs font-bold text-foreground uppercase tracking-wider">Scheduled Posts</span>
                                                                                                     <button 
                                                                                                         onClick={() => setCancelHoverPost(null)}
                                                                                                         className="absolute top-2 right-2 p-1 rounded-full hover:bg-muted text-muted-foreground transition-colors"
@@ -987,14 +987,14 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                                                                                         <XMarkIcon className="w-3.5 h-3.5" />
                                                                                                     </button>
                                                                                                 </div>
-                                                                                                <div className="text-[11px] text-muted-foreground mb-1.5">
+                                                                                                <div className="text-xs text-muted-foreground mb-1.5">
                                                                                                     Time: <span className="font-bold text-foreground">{timeStr}</span>
                                                                                                 </div>
                                                                                                 
                                                                                                 <div className="space-y-1 max-h-32 overflow-y-auto pr-0.5">
                                                                                                     {items.map(item => (
                                                                                                         <div key={item.platform} className="flex items-center justify-between bg-muted/40 rounded-lg px-2 py-1.5 border border-border/30">
-                                                                                                            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-foreground">
+                                                                                                            <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                                                                                                                 {item.platform === 'telegram' && <TelegramBrandIcon className="w-3 h-3 shrink-0" />}
                                                                                                                 {(item.platform === 'x' || item.platform === 'twitter') && <XBrandIcon className="w-3 h-3 shrink-0" />}
                                                                                                                 {item.platform === 'linkedin' && <LinkedInBrandIcon className="w-3 h-3 shrink-0" />}
@@ -1008,7 +1008,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                                                                                                         setCancelHoverPost(null);
                                                                                                                     }
                                                                                                                 }}
-                                                                                                                className="p-1 rounded text-red-500 hover:bg-red-500/10 transition-colors shrink-0"
+                                                                                                                className="p-1 rounded text-error hover:bg-error/10 transition-colors shrink-0"
                                                                                                                 title="Cancel schedule"
                                                                                                             >
                                                                                                                 <TrashIcon className="w-3.5 h-3.5" />
@@ -1028,19 +1028,19 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                                                     {activeOppId === opp.id && (
                                                                         <div className="flex items-center gap-2 md:gap-3 shrink-0 animate-in fade-in duration-200" onClick={(e) => e.stopPropagation()}>
                                                                             <button onClick={() => copyToClipboard(formatSingleCaption(opp, 'whatsapp'), `wa_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={formatSingleCaption(opp, 'whatsapp')}>
-                                                                                {copiedStates[`wa_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <WhatsAppBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
+                                                                                {copiedStates[`wa_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-success" /> : <WhatsAppBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
                                                                             </button>
                                                                             <button onClick={() => copyToClipboard(formatSingleCaption(opp, 'telegram'), `tg_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={formatSingleCaption(opp, 'telegram')}>
-                                                                                {copiedStates[`tg_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <TelegramBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
+                                                                                {copiedStates[`tg_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-success" /> : <TelegramBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
                                                                             </button>
                                                                             <button onClick={() => copyToClipboard(formatSingleCaption(opp, 'twitter'), `tw_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={formatSingleCaption(opp, 'twitter')}>
-                                                                                {copiedStates[`tw_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <XBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
+                                                                                {copiedStates[`tw_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-success" /> : <XBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
                                                                             </button>
                                                                             <button onClick={() => copyToClipboard(formatSingleCaption(opp, 'linkedin'), `li_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={formatSingleCaption(opp, 'linkedin')}>
-                                                                                {copiedStates[`li_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <LinkedInBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
+                                                                                {copiedStates[`li_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-success" /> : <LinkedInBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
                                                                             </button>
                                                                             <button onClick={() => copyToClipboard(getOpportunityUrl(opp), `link_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={getOpportunityUrl(opp)}>
-                                                                                {copiedStates[`link_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <LinkIcon className="w-4 h-4 md:w-5 md:h-5" />}
+                                                                                {copiedStates[`link_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-success" /> : <LinkIcon className="w-4 h-4 md:w-5 md:h-5" />}
                                                                             </button>
                                                                             {isAdmin && (
                                                                                 <Link 
@@ -1080,11 +1080,11 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                             companyWebsite={activeOpportunity!.companyWebsite}
                                             companyLogoUrl={activeOpportunity!.companyLogoUrl}
                                             applyLink={activeOpportunity!.applyLink}
-                                            className="w-10 h-10 rounded-lg border border-border shadow-sm flex-shrink-0"
+                                            className="w-10 h-10 shrink-0"
                                         />
                                         <div className="flex-1 min-w-0">
                                             <h3 className="text-sm font-bold text-foreground leading-tight truncate">{activeOpportunity!.company}</h3>
-                                            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{activeOpportunity!.title}</p>
+                                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{activeOpportunity!.title}</p>
                                         </div>
                                     </div>
 
@@ -1093,7 +1093,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                         <div className="flex rounded-xl border border-border/80 overflow-hidden bg-background p-0.5 h-8 shrink-0">
                                             <button
                                                 onClick={() => { setIsScheduleActive(false); setIsTimePickerOpen(false); }}
-                                                className={`flex-1 text-[11px] font-bold rounded-lg transition-all ${
+                                                className={`flex-1 text-xs font-bold rounded-lg transition-all ${
                                                     !isScheduleActive 
                                                     ? 'bg-primary text-primary-foreground shadow-sm' 
                                                     : 'text-muted-foreground hover:bg-muted/10 hover:text-foreground'
@@ -1103,7 +1103,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                             </button>
                                             <button
                                                 onClick={() => { setIsScheduleActive(true); }}
-                                                className={`flex-1 text-[11px] font-bold rounded-lg transition-all ${
+                                                className={`flex-1 text-xs font-bold rounded-lg transition-all ${
                                                     isScheduleActive 
                                                     ? 'bg-primary text-primary-foreground shadow-sm' 
                                                     : 'text-muted-foreground hover:bg-muted/10 hover:text-foreground'
@@ -1118,7 +1118,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                             <div className="relative">
                                                 <button
                                                     onClick={() => setIsTimePickerOpen(v => !v)}
-                                                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border transition-all text-[11px] font-semibold ${
+                                                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border transition-all text-xs font-semibold ${
                                                         isTimePickerOpen
                                                         ? 'border-primary/60 bg-primary/5 text-primary'
                                                         : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'
@@ -1136,7 +1136,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                 </div>
 
                                 <div>
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-center mb-1 shrink-0">
+                                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground text-center mb-1 shrink-0">
                                         {isScheduleActive ? 'Schedule to Platform' : 'Publish to Platform'}
                                     </p>
 
@@ -1162,15 +1162,15 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                                         <button
                                                             key={p}
                                                             onClick={() => cancelSchedule(activeOpportunity!.id, p, existingSched.jobId || '')}
-                                                            className="flex items-center justify-between py-2 px-3 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all shadow-sm"
+                                                            className="flex items-center justify-between py-2 px-3 rounded-xl border border-error/30 bg-error/10 hover:bg-error/20 text-error transition-all shadow-sm"
                                                             title={`Cancel scheduled ${label} post`}
                                                         >
                                                             <div className="flex items-center gap-2.5">
                                                                 {icon}
                                                                 <span className="text-xs font-bold">{label}</span>
-                                                                <span className="text-[10px] opacity-70">{new Date(existingSched.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                                <span className="text-xs opacity-70">{new Date(existingSched.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                             </div>
-                                                            <div className="flex items-center gap-1.5 text-[11px] font-semibold">
+                                                            <div className="flex items-center gap-1.5 text-xs font-semibold">
                                                                 <TrashIcon className="w-3.5 h-3.5" />
                                                                 Cancel
                                                             </div>
@@ -1191,8 +1191,8 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                                         }}
                                                         className={`flex items-center justify-between py-2 px-3 rounded-xl border transition-all ${
                                                             !canSend ? 'border-border bg-muted/20 opacity-50 cursor-not-allowed'
-                                                            : status === 'sent' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 shadow-sm'
-                                                            : status === 'error' ? 'border-red-500/30 bg-red-500/10 text-red-500 shadow-sm'
+                                                            : status === 'sent' ? 'border-success/30 bg-success/10 text-success shadow-sm'
+                                                            : status === 'error' ? 'border-error/30 bg-error/10 text-error shadow-sm'
                                                             : 'border-border bg-surface-warm dark:bg-card hover:bg-muted/50 hover:border-primary/30 shadow-sm group'
                                                         }`}
                                                         title={!canSend ? 'Platform not configured' : isScheduleActive ? `Schedule to ${label}` : `Publish directly to ${label}`}
@@ -1203,16 +1203,16 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                                         </div>
                                                         <div className="flex items-center gap-2">
                                                             {p === 'x' && cap.length > 280 && (
-                                                                <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-md">
+                                                                <span className="text-xs font-bold text-warning bg-warning/10 px-1.5 py-0.5 rounded-md">
                                                                     {cap.length}/280
                                                                 </span>
                                                             )}
-                                                            <span className={`text-[11px] font-semibold flex items-center gap-1 ${
+                                                            <span className={`text-xs font-semibold flex items-center gap-1 ${
                                                                 !canSend ? 'text-muted-foreground' : 'text-primary opacity-80 group-hover:opacity-100'
                                                             }`}>
                                                                 {status === 'sending' ? <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
-                                                                    : status === 'sent' ? <CheckCircleIcon className="w-3.5 h-3.5 text-green-500" />
-                                                                    : status === 'error' ? <ExclamationTriangleIcon className="w-3.5 h-3.5 text-red-500" />
+                                                                    : status === 'sent' ? <CheckCircleIcon className="w-3.5 h-3.5 text-success" />
+                                                                    : status === 'error' ? <ExclamationTriangleIcon className="w-3.5 h-3.5 text-error" />
                                                                     : isScheduleActive ? <ClockIcon className="w-3.5 h-3.5" />
                                                                     : <PaperAirplaneIcon className="w-3.5 h-3.5" />}
                                                                 {!canSend ? 'Offline' : status === 'sent' ? 'Sent' : status === 'error' ? 'Retry' : status === 'sending' ? 'Sending…' : isScheduleActive ? 'Schedule' : 'Send'}
@@ -1254,7 +1254,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                                         disabled={activeTargets.length === 0 || masterSending}
                                                         onClick={executeAll}
                                                         className={`w-full flex items-center justify-center gap-2 py-2 mt-1 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                                                            masterSent ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-600'
+                                                            masterSent ? 'bg-success/10 border border-success/30 text-success'
                                                             : 'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-md'
                                                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                                                     >
@@ -1281,7 +1281,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                             <div className="flex items-center justify-between border-b border-border pb-2">
                                 <div>
                                     <h3 className="text-sm font-bold text-foreground">{"Today's Bulk Job Updates"}</h3>
-                                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                                    <p className="text-xs text-muted-foreground mt-0.5">
                                         Selected: <span className="font-semibold text-foreground">{selectedOppIds.length} job(s)</span>
                                     </p>
                                 </div>
@@ -1335,7 +1335,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                                 disabled={!platforms.telegram || sending || selectedOppIds.length === 0}
                                                 onClick={publishBulkToTg}
                                                 className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                                                    isSent ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-600'
+                                                    isSent ? 'bg-success/10 border border-success/30 text-success'
                                                     : 'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-md'
                                                 } disabled:opacity-50 disabled:cursor-not-allowed`}
                                             >
@@ -1384,11 +1384,11 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                 companyWebsite={activeOpportunity!.companyWebsite}
                                 companyLogoUrl={activeOpportunity!.companyLogoUrl}
                                 applyLink={activeOpportunity!.applyLink}
-                                className="w-9 h-9 rounded-xl border border-border shrink-0"
+                                className="w-9 h-9 shrink-0"
                             />
                             <div className="min-w-0 flex-1">
                                 <h3 className="text-sm font-bold text-foreground truncate">{activeOpportunity!.company}</h3>
-                                <p className="text-[10px] text-muted-foreground truncate">{activeOpportunity!.title}</p>
+                                <p className="text-xs text-muted-foreground truncate">{activeOpportunity!.title}</p>
                             </div>
                             <button onClick={() => setIsSingleModalOpen(false)} className="p-1.5 rounded-lg bg-muted text-muted-foreground">
                                 <CheckIcon className="w-4 h-4" />
@@ -1401,7 +1401,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                 <div className="flex rounded-xl border border-border/80 overflow-hidden bg-background p-0.5 h-8">
                                     <button
                                         onClick={() => setIsScheduleActive(false)}
-                                        className={`flex-1 text-[11px] font-bold rounded-lg transition-all ${
+                                        className={`flex-1 text-xs font-bold rounded-lg transition-all ${
                                             !isScheduleActive 
                                             ? 'bg-primary text-primary-foreground shadow-sm' 
                                             : 'text-muted-foreground hover:bg-muted/10 hover:text-foreground'
@@ -1411,7 +1411,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                     </button>
                                     <button
                                         onClick={() => setIsScheduleActive(true)}
-                                        className={`flex-1 text-[11px] font-bold rounded-lg transition-all ${
+                                        className={`flex-1 text-xs font-bold rounded-lg transition-all ${
                                             isScheduleActive 
                                             ? 'bg-primary text-primary-foreground shadow-sm' 
                                             : 'text-muted-foreground hover:bg-muted/10 hover:text-foreground'
@@ -1425,7 +1425,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                     <div className="relative">
                                         <button
                                             onClick={() => setIsTimePickerOpen(v => !v)}
-                                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border transition-all text-[11px] font-semibold ${
+                                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border transition-all text-xs font-semibold ${
                                                 isTimePickerOpen
                                                 ? 'border-primary/60 bg-primary/5 text-primary'
                                                 : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'
@@ -1469,13 +1469,13 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                         className="p-2 rounded-xl bg-muted/50 hover:bg-muted text-muted-foreground transition-colors"
                                         title={`Copy ${label}`}
                                     >
-                                        {copiedStates[copyKey] ? <CheckIcon className="w-4 h-4 text-green-500" /> : <ClipboardIcon className="w-4 h-4" />}
+                                        {copiedStates[copyKey] ? <CheckIcon className="w-4 h-4 text-success" /> : <ClipboardIcon className="w-4 h-4" />}
                                     </button>
                                     {canSend && (
                                         isAlreadyScheduled ? (
                                             <button
                                                 onClick={() => cancelSchedule(activeOpportunity!.id, sendP!, existingSched.jobId || '')}
-                                                className="flex items-center justify-center p-2 rounded-xl text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-500 px-3 transition-all"
+                                                className="flex items-center justify-center p-2 rounded-xl text-xs font-semibold bg-error/10 hover:bg-error/20 text-error px-3 transition-all"
                                                 title={`Cancel scheduled ${label} post`}
                                             >
                                                 <TrashIcon className="w-3.5 h-3.5 mr-1" />
@@ -1492,15 +1492,15 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                                     }
                                                 }}
                                                 className={`flex items-center justify-center p-2 rounded-xl text-xs font-semibold transition-all ${
-                                                    status === 'sent' ? 'bg-emerald-500/10 text-emerald-600 px-3'
-                                                    : status === 'error' ? 'bg-red-500/10 text-red-500 px-3'
+                                                    status === 'sent' ? 'bg-success/10 text-success px-3'
+                                                    : status === 'error' ? 'bg-error/10 text-error px-3'
                                                     : 'bg-primary text-primary-foreground hover:bg-primary/90'
                                                 } disabled:opacity-60`}
                                                 title={isScheduleActive ? 'Schedule post' : 'Send to platform'}
                                             >
                                                 {status === 'sending' ? <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
-                                                    : status === 'sent' ? <CheckCircleIcon className="w-3.5 h-3.5 text-green-500" />
-                                                    : status === 'error' ? <ExclamationTriangleIcon className="w-3.5 h-3.5 text-red-500" />
+                                                    : status === 'sent' ? <CheckCircleIcon className="w-3.5 h-3.5 text-success" />
+                                                    : status === 'error' ? <ExclamationTriangleIcon className="w-3.5 h-3.5 text-error" />
                                                     : isScheduleActive ? <ClockIcon className="w-3.5 h-3.5 text-primary-foreground" />
                                                     : <PaperAirplaneIcon className="w-3.5 h-3.5 text-primary-foreground" />}
                                                 {status === 'sent' ? <span className="ml-1">Sent</span> : status === 'error' ? <span className="ml-1">Retry</span> : null}
@@ -1535,7 +1535,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                     disabled={activeTargets.length === 0 || masterSending}
                                     onClick={publishToAll}
                                     className={`w-full flex items-center justify-center gap-2 py-3 mt-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                                        masterSent ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-600'
+                                        masterSent ? 'bg-success/10 border border-success/30 text-success'
                                         : 'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-md'
                                     } disabled:opacity-50 disabled:cursor-not-allowed`}
                                 >
@@ -1565,13 +1565,13 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                         <div className="flex items-center justify-between pb-3 border-b border-border">
                             <div>
                                 <h3 className="text-sm font-bold text-foreground">Bulk Job Updates</h3>
-                                <p className="text-[10px] text-muted-foreground mt-0.5">Selected: <span className="font-semibold text-foreground">{selectedOppIds.length} job(s)</span></p>
+                                <p className="text-xs text-muted-foreground mt-0.5">Selected: <span className="font-semibold text-foreground">{selectedOppIds.length} job(s)</span></p>
                             </div>
                             <button
                                 onClick={() => copyToClipboard(formatBulkCaption(), 'bulk_m')}
                                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted hover:bg-muted/80 border border-border text-xs font-semibold"
                             >
-                                {copiedStates['bulk_m'] ? <><CheckIcon className="h-3.5 w-3.5 text-green-500" /> Copied</> : <><ClipboardIcon className="h-3.5 w-3.5" /> Copy</>}
+                                {copiedStates['bulk_m'] ? <><CheckIcon className="h-3.5 w-3.5 text-success" /> Copied</> : <><ClipboardIcon className="h-3.5 w-3.5" /> Copy</>}
                             </button>
                         </div>
 
@@ -1594,7 +1594,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                             disabled={!platforms.telegram || sending || selectedOppIds.length === 0}
                                             onClick={publishBulkToTg}
                                             className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold transition-all shadow-sm ${
-                                                isSent ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-600'
+                                                isSent ? 'bg-success/10 border border-success/30 text-success'
                                                 : 'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-md'
                                             } disabled:opacity-50 disabled:cursor-not-allowed`}
                                         >
@@ -1626,7 +1626,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
 
             {/* Center-screen Global Time Picker Modal */}
             {isTimePickerOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     {/* Backdrop */}
                     <div 
                         className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm transition-opacity" 
@@ -1647,7 +1647,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                         {/* Title & Info */}
                         <div className="space-y-1">
                             <p className="text-xs font-bold text-foreground uppercase tracking-wider">Schedule Time</p>
-                            <p className="text-[12px] text-muted-foreground font-medium">
+                            <p className="text-xs text-muted-foreground font-medium">
                                 {new Date(scheduledAt).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' })}
                             </p>
                         </div>
@@ -1671,7 +1671,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
                                     else if (day.label === 'Tomorrow') setScheduleDay('tomorrow');
                                     else setScheduleDay(day.value);
                                 }}
-                                className="min-w-[6.5rem]"
+                                className="min-w-26"
                             />
                             <PillDropdown 
                                 label="Hour" 

@@ -19,7 +19,7 @@ export const PLATFORM_CATEGORIES: { key: PlatformCategory | 'All'; label: string
     { key: 'Government', label: 'Government' },
 ];
 
-const chipBase = 'h-8 px-3 rounded-lg text-[13px] font-medium flex items-center gap-1.5 transition-all whitespace-nowrap select-none cursor-pointer border';
+const chipBase = 'h-8 px-3 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-all whitespace-nowrap select-none cursor-pointer border';
 const chipDefault = 'bg-card text-muted-foreground hover:text-foreground hover:border-border border-border/60';
 const chipActive = 'bg-muted text-foreground font-semibold border-border';
 
@@ -79,7 +79,7 @@ export function PlatformsPageView({ resources, lastUpdated, title, description, 
                         placeholder="Search platforms, tools, tags..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        className="pl-9 h-10 text-sm rounded-xl bg-card border-border shadow-sm w-full"
+                        className="h-10 w-full"
                     />
                     {search && (
                         <button

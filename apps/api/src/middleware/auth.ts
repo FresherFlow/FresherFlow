@@ -265,3 +265,39 @@ export function requireRole(allowedRoles: ('USER' | 'ADMIN')[]) {
     };
 }
 
+/**
+ * Permission-based authorization middleware.
+ * Grants access if the authenticated user has the required permission
+ * through any of their AccessRole mappings.
+ *
+ * Usage: requirePermission("opportunity.publish")
+ */
+export function requirePermission(requiredKey: string) {
+    return async (req: express.Request, res: Response, next: NextFunction) => {
+        const userId = req.userId || req.adminId;
+
+        if (!userId) {
+            return next(new AppError('Authentication required', 401));
+        }
+
+        try {
+            const rows = await prisma.$queryRaw<{ key: string }[]>`
+                SELECT DISTINCT p."key" AS "key"
+                FROM "Permission" p
+                JOIN "AccessRolePermission" arp ON arp."permissionId" = p.id
+                JOIN "UserAccessRole" uar ON uar."roleId" = arp."roleId"
+                WHERE uar."userId" = ${userId}
+            `;
+
+            if (!rows.some(r => r.key === requiredKey)) {
+                return next(new AppError('Forbidden: Insufficient permissions', 403));
+            }
+
+            next();
+        } catch (error) {
+            logger.error('[requirePermission] Permission check failed:', error);
+            return next(new AppError('Database is temporarily unavailable. Please try again shortly.', 503));
+        }
+    };
+}
+

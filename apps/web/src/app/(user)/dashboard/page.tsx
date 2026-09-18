@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import DashboardClient from './DashboardClient';
-import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+import { fetchFeedIndex } from '@/lib/api/cdnFeed';
 
 export const metadata: Metadata = {
     title: 'Dashboard',
@@ -9,11 +9,12 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
-    const bootstrapData = await fetchBootstrapFeed();
-    const initialData = bootstrapData ? {
-        opportunities: bootstrapData.opportunities,
-        total: bootstrapData.opportunities.length,
-        cachedAt: new Date(bootstrapData.generatedAt).getTime(),
+    // Lightweight feed-index: dashboard only renders card fields, not descriptions.
+    const feedIndexData = await fetchFeedIndex();
+    const initialData = feedIndexData ? {
+        opportunities: feedIndexData.opportunities,
+        total: feedIndexData.opportunities.length,
+        cachedAt: new Date(feedIndexData.generatedAt).getTime(),
     } : null;
     return <DashboardClient initialData={initialData} />;
 }

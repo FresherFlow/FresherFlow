@@ -94,7 +94,7 @@ export function EligibilitySection({
                             {allowedDegrees.map(deg => (
                                 <span key={deg} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-primary text-primary-foreground">
                                     {getDegreeBadgeLabel(deg)}
-                                    <button type="button" onClick={() => handleDegreeToggle(deg)} className="hover:text-red-200 ml-0.5">×</button>
+                                    <button type="button" onClick={() => handleDegreeToggle(deg)} className="hover:text-error ml-0.5">×</button>
                                 </span>
                             ))}
                         </div>
@@ -215,7 +215,7 @@ export function EligibilitySection({
                 value={requiredSkills}
                 onChange={(e) => setRequiredSkills(e.target.value)}
                 rows={4}
-                className="pt-2"
+               
                 placeholder="E.g. React, Node.js, strong communication skills..."
             />
         </div>

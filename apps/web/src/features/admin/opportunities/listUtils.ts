@@ -32,8 +32,8 @@ export const formatLinkHealth = (health?: string) => {
 };
 
 export const linkHealthClass = (health?: string) => {
-    if (health === 'HEALTHY') return 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-emerald-500/20';
-    if (health === 'RETRYING') return 'bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-amber-500/20';
+    if (health === 'HEALTHY') return 'bg-success/10 text-success dark:text-success ring-success/20';
+    if (health === 'RETRYING') return 'bg-warning/10 text-warning dark:text-warning ring-warning/20';
     if (health === 'BROKEN') return 'bg-destructive/10 text-destructive ring-destructive/20';
     return 'bg-muted text-muted-foreground ring-border/40';
 };
@@ -62,9 +62,9 @@ export const getStatusLabel = (opp: Opportunity & { expiredAt?: string | Date | 
 export const getStatusBadgeClass = (opp: Opportunity & { expiredAt?: string | Date | null; deletedAt?: string | Date | null }) => {
     const label = getStatusLabel(opp);
     if (label === 'DELETED') return 'bg-transparent text-muted-foreground ring-border/40';
-    if (label === 'EXPIRED') return 'bg-transparent text-amber-600 dark:text-amber-400 ring-amber-500/20';
+    if (label === 'EXPIRED') return 'bg-transparent text-warning dark:text-warning ring-warning/20';
     if (label === 'ARCHIVED') return 'bg-transparent text-destructive ring-destructive/20';
-    if (label === 'LIVE') return 'bg-transparent text-emerald-600 dark:text-emerald-400 ring-emerald-500/20';
+    if (label === 'LIVE') return 'bg-transparent text-success dark:text-success ring-success/20';
     return 'bg-transparent text-muted-foreground ring-border/40';
 };
 

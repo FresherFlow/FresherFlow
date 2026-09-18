@@ -271,7 +271,7 @@ export class UrlParser {
         const scripts: string[] = [];
 
         const $ = cheerio.load(htmlStr);
-        $('script[type="application/ld+json"]').each((_, el) => {
+        $('script[type="application/ld+json"]').each((_: number, el: any) => {
             scripts.push($(el).html() || '');
         });
 

@@ -39,9 +39,9 @@ export function DetailTimeline({ timelineEvents, upcomingTimelineEvents }: Detai
                                     {event._dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                 </span>
                             </div>
-                            <p className="mt-1 text-[13px] font-bold text-foreground/70">{event.eventType.replace('_', ' ')}</p>
+                            <p className="mt-1 text-sm font-bold text-foreground/70">{event.eventType.replace('_', ' ')}</p>
                             {event.notes ? (
-                                <p className="mt-1 text-[15px] md:text-base text-foreground leading-relaxed whitespace-pre-wrap font-medium">{event.notes}</p>
+                                <p className="mt-1 text-base md:text-base text-foreground leading-relaxed whitespace-pre-wrap font-medium">{event.notes}</p>
                             ) : null}
                             {event.sourceLink ? (
                                 <a

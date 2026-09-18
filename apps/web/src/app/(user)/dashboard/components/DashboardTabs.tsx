@@ -21,18 +21,18 @@ export const DashboardTabs = ({
     latestBadgeCount
 }: DashboardTabsProps) => {
     return (
-        <div className="">
+        <div>
             {/* Mobile tabs */}
             <div className="md:hidden flex items-center gap-1 overflow-x-auto no-scrollbar">
                 {tabs.map(s => (
                     <button
                         key={s.key}
                         onClick={() => setActiveTab(s.key)}
-                        className={`relative whitespace-nowrap px-3 py-2 text-[12px] font-semibold transition-all duration-150 ease-out active:scale-[0.97] ${activeTab === s.key ? 'text-foreground' : 'text-muted-foreground'} flex items-center gap-1.5`}
+                        className={`relative whitespace-nowrap px-3 py-2 text-xs font-semibold transition-all duration-150 ease-out active:scale-95 ${activeTab === s.key ? 'text-foreground' : 'text-muted-foreground'} flex items-center gap-1.5`}
                     >
                         {s.title}
                         {s.key === 'latest' && latestBadgeCount > 0 && (
-                            <span className="inline-flex min-w-4 h-4 px-1 rounded-full bg-primary/15 border border-primary/30 text-[9px] leading-4 font-bold text-primary">
+                            <span className="inline-flex min-w-4 h-4 px-1 rounded-full bg-primary/15 border border-primary/30 text-xs leading-4 font-bold text-primary">
                                 {latestBadgeCount > 99 ? '99+' : latestBadgeCount}
                             </span>
                         )}
@@ -46,11 +46,11 @@ export const DashboardTabs = ({
                     <button
                         key={`dt-${s.key}`}
                         onClick={() => setActiveTab(s.key)}
-                        className={`relative pb-3 text-sm font-semibold transition-all duration-150 ease-out active:scale-[0.97] ${activeTab === s.key ? 'text-primary' : 'text-muted-foreground hover:text-foreground'} flex items-center gap-1.5`}
+                        className={`relative pb-3 text-sm font-semibold transition-all duration-150 ease-out active:scale-95 ${activeTab === s.key ? 'text-primary' : 'text-muted-foreground hover:text-foreground'} flex items-center gap-1.5`}
                     >
                         {s.title}
                         {s.key === 'latest' && latestBadgeCount > 0 && (
-                            <span className="inline-flex min-w-4 h-4 px-1 rounded-full bg-primary/15 border border-primary/30 text-[9px] leading-4 font-bold text-primary normal-case tracking-normal">
+                            <span className="inline-flex min-w-4 h-4 px-1 rounded-full bg-primary/15 border border-primary/30 text-xs leading-4 font-bold text-primary normal-case tracking-normal">
                                 {latestBadgeCount > 99 ? '99+' : latestBadgeCount}
                             </span>
                         )}

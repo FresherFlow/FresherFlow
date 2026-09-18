@@ -74,9 +74,9 @@ export function ProfileStrengthCard({
                 {checklist.map((item) => (
                     <li key={item.label} className="flex items-center gap-2 text-xs">
                         {item.done ? (
-                            <CheckCircleIcon className="w-4 h-4 text-emerald-500 shrink-0" />
+                            <CheckCircleIcon className="w-4 h-4 text-success shrink-0" />
                         ) : (
-                            <ExclamationCircleIcon className="w-4 h-4 text-amber-500 shrink-0" />
+                            <ExclamationCircleIcon className="w-4 h-4 text-warning shrink-0" />
                         )}
                         <span className={item.done ? 'text-muted-foreground line-through' : 'text-foreground font-medium'}>
                             {item.label}

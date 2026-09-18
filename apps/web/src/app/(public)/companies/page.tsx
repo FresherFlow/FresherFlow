@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { fetchCompaniesMetadata, fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+import { fetchCompaniesMetadata, fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { slugify } from '@fresherflow/utils/slugify';
 import { CompanySlugger } from '@/features/companies/utils/companySlugger';
 import { getAtsName } from '@/features/opportunities/utils/atsSource';
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 export default async function CompaniesIndexPage() {
     const [companyList, feed] = await Promise.all([
         fetchCompaniesMetadata(),
-        fetchBootstrapFeed(false, undefined, true),
+        fetchFeedIndex(false, undefined, true),
     ]);
 
     const opportunities = feed?.opportunities || [];

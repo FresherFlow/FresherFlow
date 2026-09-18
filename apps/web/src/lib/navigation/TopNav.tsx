@@ -170,7 +170,7 @@ export default function TopNav() {
                                                 logout();
                                                 setIsDropdownOpen(false);
                                             }}
-                                            className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                            className="w-full text-left px-4 py-2 text-sm text-destructive hover:bg-destructive/10"
                                         >
                                             Log Out
                                         </button>

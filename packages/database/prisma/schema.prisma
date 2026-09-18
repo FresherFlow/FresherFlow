@@ -3,12 +3,12 @@
 // Code Review Score: 10/10 ✅
 
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["fullTextSearchPostgres"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ============================================================================
@@ -45,6 +45,24 @@ enum OpportunityStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum RoleType {
+  SUPER_ADMIN
+  MODERATOR
+}
+
+enum ActorType {
+  USER
+  SYSTEM
+  WORKER
+  API
 }
 
 enum GovernmentApplicationStatus {
@@ -279,13 +297,14 @@ model User {
   referredAt       DateTime?
   trustScore       Float          @default(0.0)
   trustLevel       UserTrustLevel @default(NEW)
-  isAnonymous      Boolean        @default(false)
-  anon_id          String?        @unique
-  lastLogin        DateTime?
-  createdAt        DateTime       @default(now())
+   isAnonymous      Boolean        @default(false)
+   anon_id          String?        @unique
+   lastLogin        DateTime?
+   createdAt        DateTime       @default(now())
+   status           UserStatus     @default(ACTIVE)
 
-  // Relations
-  profile            Profile?
+   // Relations
+   profile            Profile?
   actions            UserAction[]
   feedback           ListingFeedback[]
   appFeedback        AppFeedback[]
@@ -294,18 +313,26 @@ model User {
   alertDeliveries    AlertDelivery[]
   alertDispatchLogs AlertDispatchLog[]
   pushSubscription   PushSubscription?
-  platformEvents     PlatformEvent[]
-  ingestionSources   IngestionSource[]
-  referredBy         User?                @relation("UserReferrals", fields: [referredByUserId], references: [id], onDelete: SetNull)
-  referrals          User[]               @relation("UserReferrals")
-  earnedReferralBadges ReferralBadgeGrant[]
+   platformEvents     PlatformEvent[]
+   ingestionSources   IngestionSource[]
+   referredBy         User?                @relation("UserReferrals", fields: [referredByUserId], references: [id], onDelete: SetNull)
+   referrals          User[]               @relation("UserReferrals")
+   earnedReferralBadges ReferralBadgeGrant[]
+   userRoles          UserAccessRole[]
 
-  // Admin Relations (only for role=ADMIN)
+   // Admin Relations (only for role=ADMIN)
   postedOpportunities Opportunity[]
   rawContributions   RawOpportunity[]     @relation("UserRawContributions")
   auditLogs           AdminAudit[]
   authenticators      Authenticator[]
   comments           OpportunityComment[]
+  commentVotes       CommentVote[]
+  jobSignals         JobSignal[]
+  jobSubmissions     JobSubmission[]          @relation("JobSubmissions")
+  reports            Report[]                 @relation("ReportsFiled")
+  resolvedReports    Report[]                 @relation("ReportsResolved")
+  notifications      Notification[]           @relation("NotificationsReceived")
+  sentNotifications  Notification[]           @relation("NotificationsActed")
   follows            UserFollow[]
   savedCandidates    SavedCandidate[]     @relation("RecruiterSaved")
   savedByRecruiters  SavedCandidate[]     @relation("SavedByRecruiter")
@@ -326,9 +353,22 @@ model User {
   // Tokens
   refreshTokens      RefreshToken[]
 
-  deviceTokens       DeviceToken[]
+    deviceTokens       DeviceToken[]
+    communityPosts     CommunityPost[]
+    communityPostComments CommunityPostComment[]
+    communityPostVotes CommunityPostVote[]
+    interviewExperiences InterviewExperience[]
+    interviewExperienceVotes InterviewExperienceVote[]
+    applicationUpdates ApplicationUpdate[]
+    areas              Area[]
+    areaMembers        AreaMember[]
+    savedSearches      SavedSearch[]
+    referralRequests   ReferralRequest[]  @relation("ReferralRequestAuthor")
+    referralResponses  ReferralResponse[] @relation("ReferralResponseAuthor")
+    salaryReports      SalaryReport[]
+    salaryReportMarks  SalaryReportHelpful[]
 
-  @@index([referredByUserId])
+   @@index([referredByUserId])
 }
 
 model RefreshToken {
@@ -465,9 +505,63 @@ model AdminAudit {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
-  @@index([action])
-  @@index([createdAt])
+   @@index([userId])
+   @@index([action])
+   @@index([createdAt])
+}
+
+// ============================================================================
+// RBAC MODELS
+// ============================================================================
+// IMPORTANT: The legacy 'Role' enum (USER / ADMIN) is for authentication only.
+// All authorization checks use AccessRole + Permission via the database mapping.
+// Do NOT use the 'Role' enum for access control.
+
+model AccessRole {
+    id            String              @id @default(uuid())
+    name          RoleType            @unique
+    displayName   String              @unique
+    description   String?
+    isSystem      Boolean             @default(false)
+    createdAt     DateTime            @default(now())
+    updatedAt     DateTime            @updatedAt
+
+    permissions   AccessRolePermission[]
+    userRoles     UserAccessRole[]
+}
+
+model Permission {
+    id          String              @id @default(uuid())
+    key         String              @unique
+    description String
+    category    String
+    createdAt   DateTime            @default(now())
+
+    roles       AccessRolePermission[]
+}
+
+model AccessRolePermission {
+    roleId      String
+    permissionId String
+
+    role       AccessRole  @relation(fields: [roleId], references: [id], onDelete: Cascade)
+    permission Permission  @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+    @@id([roleId, permissionId])
+    @@index([permissionId])
+}
+
+model UserAccessRole {
+    userId      String
+    roleId      String
+    assignedAt  DateTime     @default(now())
+    assignedBy  String?
+
+    user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+    role AccessRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+    @@id([userId, roleId])
+    @@index([roleId])
 }
 
 // ============================================================================
@@ -567,9 +661,16 @@ model Opportunity {
   platformEvents PlatformEvent[]
   socialPosts SocialPost[]
   comments    OpportunityComment[]
-  companyId   String?
+  jobSignals  JobSignal[]
+  submissions JobSubmission[]
+   reports     Report[]
+   notifications Notification[]
+   companyId   String?
+   interviewExperiences InterviewExperience[]
+   applicationUpdates ApplicationUpdate[]
+   salaryReports  SalaryReport[]
 
-  // Performance Search optimization
+   // Performance Search optimization
   search_vector  Unsupported("tsvector")? @default(dbgenerated("''::tsvector"))
 
   // DB-level filtering indexes
@@ -1106,18 +1207,198 @@ model DomainReputation {
 }
 
 model OpportunityComment {
-  id            String      @id @default(cuid())
-  opportunityId String
-  userId        String
-  text          String      @db.VarChar(500)
-  createdAt     DateTime    @default(now())
-  deletedAt     DateTime?
+  id              String      @id @default(cuid())
+  opportunityId   String
+  userId          String
+  parentCommentId String?
+  commentType     CommentType @default(GENERAL)
+  text            String      @db.VarChar(500)
+  upvotes         Int         @default(0)
+  downvotes       Int         @default(0)
+  createdAt       DateTime    @default(now())
+  editedAt        DateTime?
+  deletedAt       DateTime?
 
-  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
-  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opportunity   Opportunity          @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent        OpportunityComment?  @relation("CommentReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+  replies       OpportunityComment[] @relation("CommentReplies")
+  votes         CommentVote[]
+  reports       Report[]
+  notifications Notification[]
 
   @@index([opportunityId, createdAt])
   @@index([userId])
+  @@index([parentCommentId])
+}
+
+// ============================================================================
+// COMMUNITY MODELS (plan 09b §6.2 — additive, tranche 1)
+// CommunityPost / PostVote arrive with tranche 2.
+// ============================================================================
+
+enum CommentType {
+  GENERAL
+  QUESTION
+  EXPERIENCE
+  UPDATE
+  CORRECTION
+  WARNING
+  REFERRAL
+}
+
+enum CommentVoteValue {
+  UPVOTE
+  DOWNVOTE
+}
+
+enum JobSignalType {
+  APPLIED
+  INTERVIEWED
+  OFFER
+  CLOSED
+  HELPFUL
+  INCORRECT
+}
+
+enum JobSubmissionStatus {
+  PUBLISHED
+  MERGED
+  PENDING_REVIEW
+  REJECTED
+}
+
+enum ReportReason {
+  SPAM
+  INACCURATE
+  EXPIRED
+  OFFENSIVE
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWING
+  RESOLVED
+  DISMISSED
+}
+
+enum CommunityPostCategory {
+  DISCUSSION
+  QUESTION
+  EXPERIENCE
+  INTERVIEW_EXPERIENCE
+  HIRING_UPDATE
+  UPDATE
+  REFERRAL
+  OTHER
+}
+
+enum CommunityPostStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
+enum NotificationType {
+  COMMENT_REPLY
+  COMMENT_VOTE
+  JOB_SIGNAL_MILESTONE
+  JOB_UPDATED
+  JOB_CLOSED
+  NEW_MATCHING_JOB
+  EXPIRED_JOB
+  COMMENT_ON_EXPIRED
+}
+
+model CommentVote {
+  id        String           @id @default(cuid())
+  commentId String
+  userId    String
+  value     CommentVoteValue
+  createdAt DateTime         @default(now())
+
+  comment OpportunityComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@index([userId])
+}
+
+model JobSignal {
+  id            String        @id @default(cuid())
+  opportunityId String
+  userId        String
+  signalType    JobSignalType
+  createdAt     DateTime      @default(now())
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([opportunityId, userId, signalType])
+  @@index([opportunityId, signalType])
+}
+
+model JobSubmission {
+  id            String              @id @default(cuid())
+  sourceUrl     String
+  applyUrl      String?
+  title         String
+  company       String?
+  description   String?             @db.Text
+  extractedData Json?
+  status        JobSubmissionStatus @default(PUBLISHED)
+  submittedById String
+  opportunityId String?
+  createdAt     DateTime            @default(now())
+
+  submittedBy User         @relation("JobSubmissions", fields: [submittedById], references: [id], onDelete: Cascade)
+  opportunity Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+
+  @@index([sourceUrl])
+  @@index([submittedById])
+}
+
+model Report {
+  id            String       @id @default(cuid())
+  reporterId    String
+  opportunityId String?
+  commentId     String?
+  reason        ReportReason
+  message       String?      @db.VarChar(1000)
+  status        ReportStatus @default(OPEN)
+  resolvedById  String?
+  resolvedAt    DateTime?
+  createdAt     DateTime     @default(now())
+
+   reporter    User                @relation("ReportsFiled", fields: [reporterId], references: [id], onDelete: Cascade)
+   resolvedBy  User?               @relation("ReportsResolved", fields: [resolvedById], references: [id], onDelete: SetNull)
+   opportunity Opportunity?        @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+   comment     OpportunityComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+   communityPosts CommunityPost[]
+   communityPostComments CommunityPostComment[]
+
+  @@index([status, createdAt])
+  @@index([reporterId])
+}
+
+model Notification {
+  id            String           @id @default(cuid())
+  userId        String
+  type          NotificationType
+  actorId       String?
+  opportunityId String?
+  commentId     String?
+  payload       Json?
+  readAt        DateTime?
+  createdAt     DateTime         @default(now())
+
+  user        User                @relation("NotificationsReceived", fields: [userId], references: [id], onDelete: Cascade)
+  actor       User?               @relation("NotificationsActed", fields: [actorId], references: [id], onDelete: SetNull)
+  opportunity Opportunity?        @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  comment     OpportunityComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
 }
 
 model ResourceCollection {
@@ -1329,7 +1610,337 @@ model CompanyTarget {
   lastRunAt    DateTime?
   lastJobCount Int?
   createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  updatedAt    DateTime @updatedAt
 
   @@unique([ats, slug])
+}
+
+// ============================================================================
+// COMMUNITY POST MODELS
+// ============================================================================
+
+model CommunityPost {
+  id              String                @id @default(cuid())
+  authorId        String
+  author          User                  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  title           String
+  body            String                @db.Text
+  category        CommunityPostCategory @default(DISCUSSION)
+  tags            String[]              @default([])
+  isAnonymous     Boolean               @default(false)
+  anonId          String?
+  likesCount      Int                   @default(0)
+  commentsCount   Int                   @default(0)
+  status          CommunityPostStatus   @default(ACTIVE)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  expiredAt       DateTime?
+  sourceOpportunityId String?
+  areaId          String?
+
+  area            Area?               @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  comments        CommunityPostComment[]
+  votes           CommunityPostVote[]
+  reports         Report[]
+
+  @@index([createdAt])
+  @@index([category])
+  @@index([status])
+  @@index([authorId])
+  @@index([sourceOpportunityId])
+  @@index([areaId])
+}
+
+model CommunityPostComment {
+  id          String                @id @default(cuid())
+  postId      String
+  post        CommunityPost         @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User                  @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parentId    String?
+  parent      CommunityPostComment? @relation("CommentReplies", fields: [parentId], references: [id])
+  body        String                @db.Text
+  isAnonymous Boolean               @default(false)
+  anonId      String?
+  likesCount  Int                   @default(0)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  deletedAt   DateTime?
+
+  replies     CommunityPostComment[] @relation("CommentReplies")
+  votes       CommunityPostVote[]
+  reports     Report[]
+
+  @@index([postId, createdAt])
+  @@index([parentId])
+  @@index([authorId])
+}
+
+model CommunityPostVote {
+  id        String   @id @default(cuid())
+  postId    String?
+  commentId String?
+  userId    String
+  value     Int      // 1 or -1
+  createdAt DateTime @default(now())
+
+  post    CommunityPost?        @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment CommunityPostComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@unique([commentId, userId])
+  @@index([userId])
+}
+
+// ============================================================================
+// PHASE 2: STRUCTURED COMMUNITY ENTITIES
+// ============================================================================
+
+enum InterviewResult {
+  SELECTED
+  REJECTED
+  WAITING
+  WITHDRAWN
+}
+
+enum InterviewDifficulty {
+  EASY
+  MEDIUM
+  HARD
+  VERY_HARD
+}
+
+enum ApplicationStatus {
+  APPLIED
+  ASSESSMENT_RECEIVED
+  ASSESSMENT_COMPLETED
+  INTERVIEW_SCHEDULED
+  INTERVIEW_COMPLETED
+  SELECTED
+  REJECTED
+  WAITING
+  NO_RESPONSE
+}
+
+model InterviewExperience {
+  id              String              @id @default(cuid())
+  opportunityId   String
+  authorId        String
+  role            String              @db.VarChar(200)
+  batch           Int?
+  rounds          Json                // [{ name, questions[], notes }]
+  difficulty      InterviewDifficulty?
+  result          InterviewResult?
+  interviewDate   DateTime?
+  overallNotes    String?             @db.Text
+  upvotes         Int                 @default(0)
+  downvotes       Int                 @default(0)
+    status          CommunityPostStatus @default(ACTIVE)
+    createdAt       DateTime            @default(now())
+    updatedAt       DateTime            @updatedAt
+
+    opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+    author      User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+    votes       InterviewExperienceVote[]
+
+  @@index([opportunityId, createdAt])
+  @@index([authorId])
+  @@index([result])
+}
+
+model InterviewExperienceVote {
+  id                    String @id @default(cuid())
+  interviewExperienceId String
+  userId                String
+  value                 Int    // 1 or -1
+  createdAt             DateTime @default(now())
+
+  interviewExperience InterviewExperience @relation(fields: [interviewExperienceId], references: [id], onDelete: Cascade)
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([interviewExperienceId, userId])
+  @@index([userId])
+}
+
+model ApplicationUpdate {
+  id            String              @id @default(cuid())
+  opportunityId String
+  authorId      String
+  status        ApplicationStatus
+  description   String?             @db.Text
+  evidenceUrl   String?             @db.VarChar(2000)
+  createdAt     DateTime            @default(now())
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  author      User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId, createdAt])
+  @@index([authorId])
+  @@index([status])
+}
+
+// ============================================================================
+// PHASE 3: AREAS (Persistent Communities)
+// ============================================================================
+
+enum AreaType {
+  BATCH
+  SKILL
+  LOCATION
+  COMPANY
+  TOPIC
+  CUSTOM
+}
+
+model Area {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String   @db.VarChar(100)
+  description String?  @db.Text
+  icon        String?  @db.VarChar(10)
+  type        AreaType @default(CUSTOM)
+  memberCount Int      @default(0)
+  postCount   Int      @default(0)
+  jobCount    Int      @default(0)
+  isPublic    Boolean  @default(true)
+  status      CommunityPostStatus @default(ACTIVE)
+  createdByUserId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User?         @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  members   AreaMember[]
+  posts     CommunityPost[]
+
+  @@index([slug])
+  @@index([type])
+  @@index([memberCount(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+}
+
+model AreaMember {
+  id        String   @id @default(cuid())
+  areaId    String
+  userId    String
+  role      String   @default("MEMBER") // MEMBER, MODERATOR, ADMIN
+  joinedAt  DateTime @default(now())
+
+  area Area @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([areaId, userId])
+  @@index([userId])
+}
+
+// ============================================================================
+// FRESHER NEEDS: Saved searches, referrals board, offer transparency
+// ============================================================================
+
+enum ReferralRequestStatus {
+  OPEN
+  FULFILLED
+  CLOSED
+}
+
+model SavedSearch {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String   @db.VarChar(100)
+  // Serialized filter combo (type, city, batch, tags, minSalary, feedType, ...)
+  filters     Json
+  alertEnabled Boolean @default(true)
+  lastMatchedAt DateTime?
+  lastNotifiedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([alertEnabled, lastNotifiedAt])
+}
+
+model ReferralRequest {
+  id          String   @id @default(cuid())
+  authorId    String
+  company     String   @db.VarChar(120)
+  role        String?  @db.VarChar(120)
+  batch       Int?
+  city        String?  @db.VarChar(80)
+  note        String?  @db.VarChar(1000)
+  status      ReferralRequestStatus @default(OPEN)
+  responseCount Int    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  author    User              @relation("ReferralRequestAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  responses ReferralResponse[]
+
+  @@index([company])
+  @@index([status, createdAt(sort: Desc)])
+  @@index([authorId])
+}
+
+model ReferralResponse {
+  id              String   @id @default(cuid())
+  requestId       String
+  responderId     String
+  message         String?  @db.VarChar(1000)
+  contactHandle   String?  @db.VarChar(200) // email / LinkedIn / Telegram handle shared by responder
+  createdAt       DateTime @default(now())
+
+  request ReferralRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  responder User          @relation("ReferralResponseAuthor", fields: [responderId], references: [id], onDelete: Cascade)
+
+  @@unique([requestId, responderId])
+  @@index([responderId])
+}
+
+enum SalaryReportType {
+  OFFER
+  CURRENT_CTC
+}
+
+model SalaryReport {
+  id           String   @id @default(cuid())
+  authorId     String
+  opportunityId String?
+  company      String   @db.VarChar(120)
+  role         String   @db.VarChar(120)
+  batch        Int?
+  city         String?  @db.VarChar(80)
+  reportType   SalaryReportType @default(OFFER)
+  ctcFixed     Int?     // Fixed pay in INR thousands (e.g. 350 = 3.5 LPA)
+  ctcVariable  Int?     // Variable/bonus in INR thousands
+  ctcTotal     Int?     // Stated CTC in INR thousands
+  inHandMonthly Int?    // Take-home per month in INR
+  joinBonus    Int?     // One-time joining bonus in INR thousands
+  bondMonths   Int?     // Service agreement length
+  notes        String?  @db.VarChar(1000)
+  helpfulCount Int      @default(0)
+  status       CommunityPostStatus @default(ACTIVE)
+  createdAt    DateTime @default(now())
+
+  opportunity Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+  author      User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  helpfulMarks SalaryReportHelpful[]
+
+  @@index([company])
+  @@index([opportunityId])
+  @@index([authorId])
+  @@index([status, createdAt(sort: Desc)])
+}
+
+model SalaryReportHelpful {
+  id             String @id @default(cuid())
+  salaryReportId String
+  userId         String
+  createdAt      DateTime @default(now())
+
+  report SalaryReport @relation(fields: [salaryReportId], references: [id], onDelete: Cascade)
+  user   User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([salaryReportId, userId])
+  @@index([userId])
 }

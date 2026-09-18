@@ -10,7 +10,7 @@ This file is for AI coding agents working in `apps/api`. Read the root `AGENTS.m
 | Framework | Express |
 | Language | TypeScript, strict mode |
 | Database | PostgreSQL through Prisma in `packages/database` |
-| Cache | Redis through `packages/redis` |
+| Cache | Redis, see the Redis client row in root [`AGENTS.md`](../../AGENTS.md) |
 | Queues | BullMQ through `packages/queue` |
 | Auth | JWT and Firebase token verification |
 
@@ -25,7 +25,7 @@ This file is for AI coding agents working in `apps/api`. Read the root `AGENTS.m
 | Cron | `src/cron/` | Scheduled idempotent jobs |
 | Worker | `src/worker.ts` | BullMQ processors |
 
-Routes and controllers do not contain business rules. Shared business rules belong in `packages/domain`. Database queries belong in infrastructure services.
+Routes and controllers do not contain business rules. Shared business rules follow the source of truth in root [`AGENTS.md`](../../AGENTS.md). Database queries belong in infrastructure services.
 
 ## Middleware order
 

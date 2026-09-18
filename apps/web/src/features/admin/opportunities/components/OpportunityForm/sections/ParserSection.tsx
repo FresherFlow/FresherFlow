@@ -96,7 +96,7 @@ export function ParserSection({
                             >
                                 {copiedType === 'job' ? (
                                     <>
-                                        <CheckIcon className="w-3.5 h-3.5 text-emerald-500" />
+                                        <CheckIcon className="w-3.5 h-3.5 text-success" />
                                         <span>Copied!</span>
                                     </>
                                 ) : (
@@ -113,7 +113,7 @@ export function ParserSection({
                             >
                                 {copiedType === 'internship' ? (
                                     <>
-                                        <CheckIcon className="w-3.5 h-3.5 text-emerald-500" />
+                                        <CheckIcon className="w-3.5 h-3.5 text-success" />
                                         <span>Copied!</span>
                                     </>
                                 ) : (
@@ -130,7 +130,7 @@ export function ParserSection({
                             >
                                 {copiedType === 'walkin' ? (
                                     <>
-                                        <CheckIcon className="w-3.5 h-3.5 text-emerald-500" />
+                                        <CheckIcon className="w-3.5 h-3.5 text-success" />
                                         <span>Copied!</span>
                                     </>
                                 ) : (
@@ -148,7 +148,7 @@ export function ParserSection({
                                 >
                                     {copiedType === 'govt' ? (
                                         <>
-                                            <CheckIcon className="w-3.5 h-3.5 text-emerald-500" />
+                                            <CheckIcon className="w-3.5 h-3.5 text-success" />
                                             <span>Copied!</span>
                                         </>
                                     ) : (
@@ -203,7 +203,7 @@ export function ParserSection({
                                         <div className="text-muted-foreground">
                                             Present: {jsonReport.present.join(', ') || 'none'}
                                         </div>
-                                        <div className={jsonReport.missing.length > 0 ? 'text-amber-600 dark:text-amber-400 font-semibold' : 'text-emerald-600 dark:text-emerald-400 font-semibold'}>
+                                        <div className={jsonReport.missing.length > 0 ? 'text-warning dark:text-warning font-semibold' : 'text-success dark:text-success font-semibold'}>
                                             {jsonReport.missing.length > 0
                                                 ? `Missing required: ${jsonReport.missing.join(', ')}`
                                                 : 'All required fields found'}

@@ -2,6 +2,10 @@
 
 This file is for AI coding agents working in the FresherFlow monorepo. Read the app-level `AGENTS.md` before touching app code.
 
+## Start here
+
+[`company/README.md`](./company/README.md) is the company map: the front door for agents in this repo. It routes to decisions, people, projects, policies, skills, workers, and reviewed corrections without duplicating them. Read it before proposing any structural change.
+
 | Area | Guide |
 |---|---|
 | Web | `apps/web/AGENTS.md` |
@@ -42,6 +46,7 @@ FresherFlow is a production job and walk-in opportunity platform.
 | Mobile | Expo, React Native, TypeScript, MMKV |
 | Admin mobile | Expo, React Native, internal admin operations |
 | API | Node.js, Express, Zod, Prisma, Redis, BullMQ |
+| MCP | Node.js, Express, MCP Streamable HTTP, read-only tools over the API |
 | Database | PostgreSQL via Prisma |
 | Storage | Cloudflare R2 and CDN |
 | Automation | Job discovery and processor scripts |
@@ -63,6 +68,23 @@ Use `pnpm`. Do not use `npm` or `yarn`.
 | Mobile feed cache | `apps/mobile/src/utils/cache/syncModule.ts` and MMKV |
 | Queue contracts | `packages/queue` |
 | Redis clients | `packages/redis` |
+
+### One home per fact
+
+This file is the only home for repo-wide facts. The table above names the owning source for each concern.
+
+- A fact that applies to more than one app is stated once, here.
+- An app guide or script guide states only what is specific to it, and links here for the rest, using a relative path such as `../../AGENTS.md`.
+- Never restate a repo-wide rule in an app guide. If the same rule appears in two guides, keep it here and delete the copy.
+- A rule that must never be missed belongs in this file, because app and script guides are not always loaded. Only root `AGENTS.md` and `CLAUDE.md` are reliably in context.
+
+When a repo-wide fact changes, only this file needs editing. To prove it is not restated elsewhere:
+
+```bash
+grep -rn "<the phrase you changed>" AGENTS.md apps/*/AGENTS.md scripts/*/AGENTS.md
+```
+
+The command must return this file only.
 
 ## App boundaries
 
@@ -162,6 +184,16 @@ Additional checks:
 | Mobile UI | Verify cold start, warm start, navigation, loading, error, and empty states |
 | Feed pipeline | Run dry-run or test mode before production upload |
 | Docs only | Run a targeted search for mojibake and forbidden punctuation |
+
+### Turborepo workflow
+
+- Before editing `packages/*` or other cross-cutting files, check the blast radius first:
+
+```bash
+npx turbo query affected --packages --base main
+```
+
+- Architecture boundaries are mechanically checked (advisory, not CI-blocking) with `npx turbo boundaries`. Tag rules live in root `turbo.json` under `boundaries.tags`: packages tagged `client-ui` (mobile, admin-mobile, ui, frontend-core) must not depend on packages tagged `server-only` (`@fresherflow/database`, `@fresherflow/queue`), and vice versa (`server-only` must not be imported by `client-ui`). Per-package tags are declared in each package's own `turbo.json`. `types`, `constants`, `utils`, and `api-client` are deliberately untagged: they are shared-neutral and both sides legitimately depend on them. It also reports imports of undeclared dependencies; known findings exist in `apps/web` and `dist/` output noise — treat new src-level findings as regressions.
 
 ## Dirty worktree policy
 

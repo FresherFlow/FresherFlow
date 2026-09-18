@@ -60,10 +60,10 @@ export const AdminOpportunityPreviewModal = ({ show, opportunityId, onClose }: A
     if (!show) return null;
 
     return (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-6 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="absolute inset-0 cursor-default" onClick={onClose} />
 
-            <div className="relative w-full max-w-3xl h-[90vh] md:h-[85vh] bg-card rounded-2xl border border-border shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 z-10">
+            <div className="relative w-full max-w-3xl bg-card rounded-2xl border border-border shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 z-10" style={{ height: '90vh' }}>
 
                 {isLoading ? (
                     <div className="flex flex-col items-center justify-center h-full space-y-4">
@@ -90,7 +90,7 @@ export const AdminOpportunityPreviewModal = ({ show, opportunityId, onClose }: A
                                     companyLogoUrl={opp.companyLogoUrl}
                                     applyLink={opp.applyLink}
                                     isGovernment={Boolean(opp.governmentJobDetails)}
-                                    className="w-10 h-10 rounded-xl object-contain shrink-0"
+                                    className="w-10 h-10 object-contain shrink-0"
                                 />
                                 <div className="min-w-0 flex-1">
                                     <span className="text-xs font-semibold text-muted-foreground block truncate">{opp.company}</span>
@@ -131,16 +131,16 @@ export const AdminOpportunityPreviewModal = ({ show, opportunityId, onClose }: A
                                     {opp.type === 'INTERNSHIP' ? 'Internship' : opp.type === 'WALKIN' ? 'Walk-in' : opp.type === 'GOVERNMENT' ? 'Govt Job' : 'Job'}
                                 </span>
                                 <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold rounded-md border ${
-                                    opp.status === 'PUBLISHED' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
-                                    opp.status === 'DRAFT' ? 'bg-amber-50 border-amber-200 text-amber-700' :
-                                    opp.status === 'ARCHIVED' ? 'bg-red-50 border-red-200 text-red-700' :
-                                    'bg-stone-50 border-stone-200 text-stone-600'
+                                    opp.status === 'PUBLISHED' ? 'bg-success border-success text-success' :
+                                    opp.status === 'DRAFT' ? 'bg-warning border-warning text-warning' :
+                                    opp.status === 'ARCHIVED' ? 'bg-error border-error text-error' :
+                                    'bg-card border-border text-muted-foreground'
                                 }`}>
                                     <span className={`w-1.5 h-1.5 rounded-full ${
-                                        opp.status === 'PUBLISHED' ? 'bg-emerald-500' : 
-                                        opp.status === 'DRAFT' ? 'bg-amber-500' : 
-                                        opp.status === 'ARCHIVED' ? 'bg-red-500' :
-                                        'bg-stone-400'
+                                        opp.status === 'PUBLISHED' ? 'bg-success' : 
+                                        opp.status === 'DRAFT' ? 'bg-warning' : 
+                                        opp.status === 'ARCHIVED' ? 'bg-error' :
+                                        'bg-border'
                                     }`} />
                                     {opp.status}
                                 </span>
@@ -157,7 +157,7 @@ export const AdminOpportunityPreviewModal = ({ show, opportunityId, onClose }: A
                                 <div className="bg-muted/10 border border-border/40 rounded-xl p-3 flex items-start gap-2.5">
                                     <BriefcaseIcon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                                     <div>
-                                        <p className="text-[10px] font-bold text-muted-foreground tracking-wide">Experience</p>
+                                        <p className="text-xs font-bold text-muted-foreground tracking-wide">Experience</p>
                                         <p className="text-xs font-semibold text-foreground mt-1">
                                             {opp.experienceMax ? `${opp.experienceMin || 0}–${opp.experienceMax}y` : 'Fresher'}
                                         </p>
@@ -166,24 +166,24 @@ export const AdminOpportunityPreviewModal = ({ show, opportunityId, onClose }: A
                                 <div className="bg-muted/10 border border-border/40 rounded-xl p-3 flex items-start gap-2.5">
                                     <CurrencyRupeeIcon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                                     <div>
-                                        <p className="text-[10px] font-bold text-muted-foreground tracking-wide">Salary / Stipend</p>
+                                        <p className="text-xs font-bold text-muted-foreground tracking-wide">Salary / Stipend</p>
                                         <p className="text-xs font-semibold text-foreground mt-1 truncate">{opp.stipend || getOpportunityDisplaySalary(opp) || 'Competitive'}</p>
                                     </div>
                                 </div>
                                 {opp.postedAt && (
                                     <div className="bg-muted/10 border border-border/40 rounded-xl p-3 flex items-start gap-2.5">
-                                        <CalendarIcon className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                                        <CalendarIcon className="w-4 h-4 text-success shrink-0 mt-0.5" />
                                         <div>
-                                            <p className="text-[10px] font-bold text-muted-foreground tracking-wide">Posted</p>
+                                            <p className="text-xs font-bold text-muted-foreground tracking-wide">Posted</p>
                                             <p className="text-xs font-semibold text-foreground mt-1">{new Date(opp.postedAt).toLocaleString()}</p>
                                         </div>
                                     </div>
                                 )}
                                 {opp.expiresAt && (
                                     <div className="bg-muted/10 border border-border/40 rounded-xl p-3 flex items-start gap-2.5">
-                                        <CalendarIcon className="w-4 h-4 text-orange-500 shrink-0 mt-0.5" />
+                                        <CalendarIcon className="w-4 h-4 text-signal-aging shrink-0 mt-0.5" />
                                         <div>
-                                            <p className="text-[10px] font-bold text-muted-foreground tracking-wide">Expires</p>
+                                            <p className="text-xs font-bold text-muted-foreground tracking-wide">Expires</p>
                                             <p className="text-xs font-semibold text-foreground mt-1">{new Date(opp.expiresAt).toLocaleString()}</p>
                                         </div>
                                     </div>
@@ -193,11 +193,11 @@ export const AdminOpportunityPreviewModal = ({ show, opportunityId, onClose }: A
                             {/* Additional Metadata Badges */}
                             {(opp.workMode || opp.employmentType || opp.jobFunction || (opp.tags && opp.tags.length > 0)) && (
                                 <div className="flex flex-wrap gap-2">
-                                    {opp.workMode && <span className="px-2 py-1 bg-accent/10 border border-accent/20 rounded-md text-[10px] font-semibold text-accent-foreground uppercase">{opp.workMode}</span>}
-                                    {opp.employmentType && <span className="px-2 py-1 bg-accent/10 border border-accent/20 rounded-md text-[10px] font-semibold text-accent-foreground uppercase">{opp.employmentType}</span>}
-                                    {opp.jobFunction && <span className="px-2 py-1 bg-accent/10 border border-accent/20 rounded-md text-[10px] font-semibold text-accent-foreground uppercase">{opp.jobFunction}</span>}
+                                    {opp.workMode && <span className="px-2 py-1 bg-accent/10 border border-accent/20 rounded-md text-xs font-semibold text-accent-foreground uppercase">{opp.workMode}</span>}
+                                    {opp.employmentType && <span className="px-2 py-1 bg-accent/10 border border-accent/20 rounded-md text-xs font-semibold text-accent-foreground uppercase">{opp.employmentType}</span>}
+                                    {opp.jobFunction && <span className="px-2 py-1 bg-accent/10 border border-accent/20 rounded-md text-xs font-semibold text-accent-foreground uppercase">{opp.jobFunction}</span>}
                                     {opp.tags?.map(tag => (
-                                        <span key={tag} className="px-2 py-1 bg-muted border border-border rounded-md text-[10px] font-medium text-muted-foreground">#{tag}</span>
+                                        <span key={tag} className="px-2 py-1 bg-muted border border-border rounded-md text-xs font-medium text-muted-foreground">#{tag}</span>
                                     ))}
                                 </div>
                             )}
@@ -236,13 +236,13 @@ export const AdminOpportunityPreviewModal = ({ show, opportunityId, onClose }: A
                                     <div className="grid grid-cols-2 gap-2">
                                         {opp.allowedDegrees && opp.allowedDegrees.length > 0 && (
                                             <div className="bg-muted/10 border border-border/40 rounded-xl p-3">
-                                                <p className="text-[10px] font-bold text-muted-foreground tracking-wide">Degrees</p>
+                                                <p className="text-xs font-bold text-muted-foreground tracking-wide">Degrees</p>
                                                 <p className="text-xs font-semibold text-foreground mt-1 truncate">{opp.allowedDegrees.join(', ')}</p>
                                             </div>
                                         )}
                                         {opp.allowedPassoutYears && opp.allowedPassoutYears.length > 0 && (
                                             <div className="bg-muted/10 border border-border/40 rounded-xl p-3">
-                                                <p className="text-[10px] font-bold text-muted-foreground tracking-wide">Batch</p>
+                                                <p className="text-xs font-bold text-muted-foreground tracking-wide">Batch</p>
                                                 <p className="text-xs font-semibold text-foreground mt-1 truncate">
                                                     {[...opp.allowedPassoutYears].sort().join(', ')}
                                                 </p>
@@ -250,10 +250,10 @@ export const AdminOpportunityPreviewModal = ({ show, opportunityId, onClose }: A
                                         )}
                                         {opp.requiredSkills && opp.requiredSkills.length > 0 && (
                                             <div className="bg-muted/10 border border-border/40 rounded-xl p-3 col-span-2">
-                                                <p className="text-[10px] font-bold text-muted-foreground tracking-wide">Skills</p>
+                                                <p className="text-xs font-bold text-muted-foreground tracking-wide">Skills</p>
                                                 <div className="flex flex-wrap gap-1 mt-1.5">
                                                     {opp.requiredSkills.map(s => (
-                                                        <span key={s} className="text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded">{s}</span>
+                                                        <span key={s} className="text-xs font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded">{s}</span>
                                                     ))}
                                                 </div>
                                             </div>
@@ -278,7 +278,7 @@ export const AdminOpportunityPreviewModal = ({ show, opportunityId, onClose }: A
                                             .filter(([k, v]) => v !== null && v !== '' && !['id', 'opportunityId', 'createdAt', 'updatedAt'].includes(k))
                                             .map(([key, value]) => (
                                                 <div key={key} className="bg-muted/10 border border-border/40 rounded-xl p-3 flex flex-col justify-center">
-                                                    <p className="text-[10px] font-bold text-muted-foreground tracking-wide uppercase truncate">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
+                                                    <p className="text-xs font-bold text-muted-foreground tracking-wide uppercase truncate">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
                                                     <p className="text-xs font-semibold text-foreground mt-1 truncate">
                                                         {typeof value === 'object' ? JSON.stringify(value) : String(value)}
                                                     </p>
@@ -295,7 +295,7 @@ export const AdminOpportunityPreviewModal = ({ show, opportunityId, onClose }: A
                                     <div className="grid grid-cols-2 gap-2">
                                         {Object.entries(opp.applicationDetails).map(([key, value]) => (
                                             <div key={key} className="bg-muted/10 border border-border/40 rounded-xl p-3 flex flex-col justify-center">
-                                                <p className="text-[10px] font-bold text-muted-foreground tracking-wide uppercase truncate">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
+                                                <p className="text-xs font-bold text-muted-foreground tracking-wide uppercase truncate">{key.replace(/([A-Z])/g, ' $1').trim()}</p>
                                                 <p className="text-xs font-semibold text-foreground mt-1 truncate">
                                                     {typeof value === 'object' ? JSON.stringify(value) : String(value)}
                                                 </p>

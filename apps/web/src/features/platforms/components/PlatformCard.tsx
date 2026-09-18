@@ -32,7 +32,7 @@ export function PlatformCard({ platform }: PlatformCardProps) {
                     companyName={platform.name}
                     applyLink={platform.url}
                     companyLogoUrl={platform.companyLogoUrl}
-                    className="w-9 h-9 md:w-10 md:h-10 rounded-lg shrink-0"
+                    className="w-9 h-9 md:w-10 md:h-10 shrink-0"
                 />
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
@@ -40,19 +40,19 @@ export function PlatformCard({ platform }: PlatformCardProps) {
                             href={platform.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-[15px] font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug"
+                            className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1 leading-snug"
                         >
                             {platform.name}
                         </a>
                         {platform.isRecommended && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide text-primary bg-primary/10 border border-primary/20 shrink-0">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide text-primary bg-primary/10 border border-primary/20 shrink-0">
                                 <Star className="w-2.5 h-2.5 fill-current" />
                                 Recommended
                             </span>
                         )}
                     </div>
                     {platform.type && (
-                        <div className="text-[11px] font-medium text-muted-foreground mt-0.5 truncate">
+                        <div className="text-xs font-medium text-muted-foreground mt-0.5 truncate">
                             {platform.type}
                         </div>
                     )}
@@ -63,7 +63,7 @@ export function PlatformCard({ platform }: PlatformCardProps) {
                     rel="noopener noreferrer"
                     aria-label={`Visit ${platform.name}`}
                     className={cn(
-                        'inline-flex items-center gap-1 px-3 h-7 rounded-lg text-[11px] font-semibold shrink-0',
+                        'inline-flex items-center gap-1 px-3 h-7 rounded-lg text-xs font-semibold shrink-0',
                         'bg-primary text-primary-foreground hover:bg-primary/90 transition-all duration-200',
                         'md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100'
                     )}
@@ -74,7 +74,7 @@ export function PlatformCard({ platform }: PlatformCardProps) {
             </div>
 
             {/* Description */}
-            <p className="text-xs md:text-[13px] text-muted-foreground leading-relaxed mt-2.5 line-clamp-2">
+            <p className="text-xs md:text-sm text-muted-foreground leading-relaxed mt-2.5 line-clamp-2">
                 {platform.description}
             </p>
 
@@ -84,7 +84,7 @@ export function PlatformCard({ platform }: PlatformCardProps) {
                     {majorTags.slice(0, 4).map(tag => (
                         <span
                             key={tag}
-                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-primary/10 text-primary border border-primary/15"
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold bg-primary/10 text-primary border border-primary/15"
                         >
                             {tag}
                         </span>
@@ -92,7 +92,7 @@ export function PlatformCard({ platform }: PlatformCardProps) {
                     {regionTags.slice(0, 3).map(tag => (
                         <span
                             key={tag}
-                            className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium text-muted-foreground bg-muted/40 border border-border/50"
+                            className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium text-muted-foreground bg-muted/40 border border-border/50"
                         >
                             {tag}
                         </span>

@@ -1,11 +1,11 @@
 'use client';
 
 import { UserAuthProvider as AuthProvider } from "./UserAuthContext";
-import { usePathname } from "next/navigation";
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
 
 export function ConditionalAuthProvider({ children }: { children: ReactNode }) {
-    const pathname = usePathname();
+    const [pathname, setPathname] = useState(typeof window !== 'undefined' ? window.location.pathname : '');
+    useEffect(() => { setPathname(window.location.pathname); }, []);
     const adminHost = (process.env.NEXT_PUBLIC_ADMIN_WEB_HOST || '').toLowerCase();
     const isAdminHost = typeof window !== 'undefined' && window.location.hostname.toLowerCase() === adminHost;
     const isAdminRoute = pathname?.startsWith('/admin') || isAdminHost;

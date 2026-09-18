@@ -6,16 +6,16 @@ import { SkillPill } from '@/ui/SkillPill';
 import type { MetaItem } from './JobCardMetaConfig';
 
 const KEY_BADGE_STYLES: Record<string, string> = {
-    salary: 'bg-emerald-500/15 border-emerald-500/25 text-emerald-700 dark:text-emerald-300',
+    salary: 'bg-success/15 border-success/25 text-success dark:text-success',
     education: 'bg-muted/40 text-muted-foreground border-border/50',
-    mode: 'bg-orange-500/15 border-orange-500/25 text-orange-700 dark:text-orange-300',
+    mode: 'bg-signal-aging/15 border-orange-500/25 text-error dark:text-orange-300',
     ats: 'bg-muted/40 text-muted-foreground border-border/50',
 };
 
 const KEY_ICON_STYLES: Record<string, string> = {
-    salary: 'text-emerald-600 dark:text-emerald-400',
+    salary: 'text-success dark:text-success',
     education: 'text-muted-foreground',
-    mode: 'text-orange-600 dark:text-orange-400',
+    mode: 'text-destructive dark:text-signal-aging',
     ats: 'text-muted-foreground',
 };
 
@@ -41,10 +41,10 @@ export function JobCardBadges({
     const router = useRouter();
 
     const pill = compact
-        ? 'inline-flex items-center gap-1 rounded-md border px-1.5 h-6 text-[11px] font-medium whitespace-nowrap shrink-0 min-w-0'
+        ? 'inline-flex items-center gap-1 rounded-md border px-1.5 h-6 text-xs font-medium whitespace-nowrap shrink-0 min-w-0'
         : 'inline-flex items-center gap-1 rounded-md border px-2 h-6 text-xs font-medium whitespace-nowrap shrink-0 min-w-0';
     const icon = compact ? 'w-3 h-3 shrink-0' : 'w-3 h-3 shrink-0';
-    const text = compact ? 'truncate text-[11px]' : 'truncate text-xs';
+    const text = compact ? 'truncate text-xs' : 'truncate text-xs';
 
     const showSkills = measure || ready;
 
@@ -52,12 +52,12 @@ export function JobCardBadges({
         const keyStyle = item.key ? KEY_BADGE_STYLES[item.key] : undefined;
 
         const badgeStyle = item.urgent
-            ? 'bg-amber-500/15 border-amber-500/25 text-amber-700 dark:text-amber-300'
+            ? 'bg-warning/15 border-warning/25 text-warning dark:text-warning'
             : item.fresh
               ? 'bg-primary/15 border-primary/25 text-primary'
               : (keyStyle ?? 'bg-muted/40 text-muted-foreground border-border/50');
         const iconStyle = item.urgent
-            ? 'text-amber-600 dark:text-amber-400'
+            ? 'text-warning dark:text-warning'
             : item.fresh
               ? 'text-primary'
               : (item.key && KEY_ICON_STYLES[item.key]) || 'text-muted-foreground';
@@ -76,8 +76,8 @@ export function JobCardBadges({
                     className={cn(
                         text,
                         item.key === 'education' || item.key === 'venue'
-                            ? 'max-w-[180px] sm:max-w-[240px]'
-                            : 'max-w-[140px] sm:max-w-[180px]',
+                            ? 'max-w-45 sm:max-w-60'
+                            : 'max-w-35 sm:max-w-45',
                     )}
                 >
                     {item.value}
@@ -102,7 +102,7 @@ export function JobCardBadges({
                             skill={skill}
                             size={compact ? 'xs' : 'sm'}
                             hideFallbackIcon={compact}
-                            className="h-6 px-2 text-xs gap-1 hover:bg-muted hover:text-foreground transition-colors"
+                            className="h-6"
                         />
                 );
 
@@ -130,7 +130,7 @@ export function JobCardBadges({
                     data-overflow={measure ? true : undefined}
                     className={cn(
                         'inline-flex items-center font-medium rounded-md bg-muted/40 text-muted-foreground border border-border/50 whitespace-nowrap shrink-0',
-                        compact ? 'px-1.5 h-6 text-[11px]' : 'px-2 h-6 text-xs',
+                        compact ? 'px-1.5 h-6 text-xs' : 'px-2 h-6 text-xs',
                     )}
                 >
                     +{overflow}

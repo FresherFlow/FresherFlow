@@ -231,11 +231,11 @@ export function ProcessedJobsTab() {
           const job = row.original;
           return (
             <div className="flex flex-col gap-1.5">
-              <span className="font-semibold text-foreground max-w-[220px] block truncate" title={job.title}>
+              <span className="font-semibold text-foreground max-w-55 block truncate" title={job.title}>
                 {job.title}
               </span>
               <div className="flex items-center min-w-0">
-                <span className="text-muted-foreground text-[11px] truncate max-w-[200px]">{job.company}</span>
+                <span className="text-muted-foreground text-xs truncate max-w-50">{job.company}</span>
               </div>
             </div>
           );
@@ -250,7 +250,7 @@ export function ProcessedJobsTab() {
           const job = row.original;
           const applyUrl = job.applyLink || job.apply_link || "#";
           return (
-            <span className="bg-muted/60 border border-border/40 text-muted-foreground px-2 py-0.5 rounded text-[11px]">
+            <span className="bg-muted/60 border border-border/40 text-muted-foreground px-2 py-0.5 rounded text-xs">
               {detectAtsFromUrl(applyUrl)}
             </span>
           );
@@ -266,10 +266,10 @@ export function ProcessedJobsTab() {
           return (
             <span
               className={cn(
-                "px-2 py-0.5 rounded text-[11px] font-bold border inline-block ",
+                "px-2 py-0.5 rounded text-xs font-bold border inline-block ",
                 jobType === "INTERNSHIP"
-                  ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30"
-                  : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
+                  ? "bg-brand-discord/10 text-brand-discord dark:text-brand-discord border-brand-discord/30"
+                  : "bg-brand-facebook/10 text-brand-facebook dark:text-brand-telegram border-brand-facebook/30"
               )}
             >
               {jobType}
@@ -285,7 +285,7 @@ export function ProcessedJobsTab() {
         cell: ({ row }) => {
           const workMode = row.original.workMode || row.original.work_mode || "-";
           return (
-            <span className="bg-muted/60 border border-border/40 text-muted-foreground px-2 py-0.5 rounded text-[11px]">
+            <span className="bg-muted/60 border border-border/40 text-muted-foreground px-2 py-0.5 rounded text-xs">
               {workMode}
             </span>
           );
@@ -309,14 +309,14 @@ export function ProcessedJobsTab() {
           const first3Skills = skills.slice(0, 3);
           const extraSkillsCount = skills.length - 3;
           return (
-            <div className="flex gap-1 flex-nowrap items-center overflow-hidden max-w-[200px]">
+            <div className="flex gap-1 flex-nowrap items-center overflow-hidden max-w-50">
               {first3Skills.map((skill) => (
-                <span key={skill} className="px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground border border-border/40 text-[11px] truncate max-w-[100px]">
+                <span key={skill} className="px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground border border-border/40 text-xs truncate max-w-25">
                   {skill}
                 </span>
               ))}
               {extraSkillsCount > 0 && (
-                <span className="px-1.5 py-0.5 rounded bg-muted/40 text-muted-foreground/80 text-[10px]">
+                <span className="px-1.5 py-0.5 rounded bg-muted/40 text-muted-foreground/80 text-xs">
                   +{extraSkillsCount}
                 </span>
               )}
@@ -370,7 +370,7 @@ export function ProcessedJobsTab() {
                   <EllipsisHorizontalIcon className="w-5 h-5" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40 text-xs">
+              <DropdownMenuContent align="end" className="w-40">
                 <DropdownMenuItem asChild>
                   <a href={applyUrl} target="_blank" rel="noreferrer" className="flex items-center cursor-pointer w-full">
                     <ArrowTopRightOnSquareIcon className="w-4 h-4 mr-2" /> Apply Link
@@ -382,10 +382,10 @@ export function ProcessedJobsTab() {
 
                 {job.status === "PENDING_REVIEW" && (
                   <>
-                    <DropdownMenuItem onClick={() => handleApprove(job.id)} className="cursor-pointer text-emerald-600 dark:text-emerald-400">
+                    <DropdownMenuItem onClick={() => handleApprove(job.id)} className="cursor-pointer">
                       <CheckCircleIcon className="w-4 h-4 mr-2" /> Approve & Publish
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleReject(job.id)} className="cursor-pointer text-red-600 dark:text-red-400">
+                    <DropdownMenuItem onClick={() => handleReject(job.id)} className="cursor-pointer">
                       <XCircleIcon className="w-4 h-4 mr-2" /> Reject
                     </DropdownMenuItem>
                   </>
@@ -393,7 +393,7 @@ export function ProcessedJobsTab() {
 
                 <DropdownMenuSeparator />
 
-                <DropdownMenuItem onClick={() => handleDeleteRequest([job.id])} className="cursor-pointer text-red-600 dark:text-red-400 focus:bg-red-500/10 focus:text-red-600">
+                <DropdownMenuItem onClick={() => handleDeleteRequest([job.id])} className="cursor-pointer">
                   <TrashIcon className="w-4 h-4 mr-2" /> Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -430,7 +430,7 @@ export function ProcessedJobsTab() {
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5">
             <Select value={atsFilter} onValueChange={setAtsFilter}>
-              <SelectTrigger className="h-9 text-xs py-1 min-w-[120px] w-auto border-border/80 bg-card cursor-pointer">
+              <SelectTrigger className="h-9 min-w-30 w-auto cursor-pointer">
                 <SelectValue placeholder="All ATS" />
               </SelectTrigger>
               <SelectContent>
@@ -453,14 +453,14 @@ export function ProcessedJobsTab() {
             <>
               <button
                 onClick={() => handlePushSelected(selectedIds)}
-                className="h-9 px-3 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
+                className="h-9 px-3 rounded-md bg-success/10 text-success dark:text-success hover:bg-success/20 border border-success/20 text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
               >
                 <CloudArrowUpIcon className="w-3.5 h-3.5" />
                 Push to DB ({ctx.selectedCount})
               </button>
               <button
                 onClick={() => handleDeleteRequest(selectedIds)}
-                className="h-9 px-3 rounded-md bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/20 border border-red-500/20 text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
+                className="h-9 px-3 rounded-md bg-error/10 text-error dark:text-error hover:bg-error/20 border border-error/20 text-xs font-semibold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
               >
                 <TrashIcon className="w-3.5 h-3.5" />
                 Delete Selected ({ctx.selectedCount})
@@ -499,18 +499,18 @@ export function ProcessedJobsTab() {
 
       {/* Delete Dialog */}
       <Dialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog({ open: false, ids: [] })}>
-        <DialogContent className="bg-card border-border text-foreground">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
-            <DialogDescription className="text-muted-foreground">
+            <DialogDescription>
               Are you sure you want to delete {deleteDialog.ids.length} job(s)? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="mt-4 gap-2">
+          <DialogFooter className="mt-4">
             <button onClick={() => setDeleteDialog({ open: false, ids: [] })} className="px-4 py-2 rounded-md text-sm font-medium border border-border/80 hover:bg-muted text-foreground cursor-pointer">
               Cancel
             </button>
-            <button onClick={confirmDelete} className="px-4 py-2 rounded-md text-sm font-medium bg-red-600 text-white hover:bg-red-700 cursor-pointer">
+            <button onClick={confirmDelete} className="px-4 py-2 rounded-md text-sm font-medium bg-error text-white hover:bg-error cursor-pointer">
               Delete
             </button>
           </DialogFooter>
@@ -519,13 +519,13 @@ export function ProcessedJobsTab() {
 
       {/* Verify Modal (shows full JSON of the job) */}
       <Dialog open={Boolean(verifyModalJob)} onOpenChange={(open) => !open && setVerifyModalJob(null)}>
-        <DialogContent className="bg-card border-border text-foreground max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogContent className="max-w-3xl max-h-96 flex flex-col overflow-hidden">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-base font-bold">
+            <DialogTitle className="flex items-center">
               <EyeIcon className="w-5 h-5 text-primary" />
               Preview Processed Job Payload — {verifyModalJob?.title}
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
+            <DialogDescription>
               Job ID: {verifyModalJob?.id} · Company: {verifyModalJob?.company}
             </DialogDescription>
           </DialogHeader>
@@ -545,7 +545,7 @@ export function ProcessedJobsTab() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
+          <DialogFooter>
             <button onClick={() => verifyModalJob && copyJobJson(verifyModalJob)} className="px-4 py-2 rounded-md text-sm font-medium border border-border/80 hover:bg-muted text-foreground flex items-center gap-1.5 cursor-pointer">
               <ClipboardDocumentIcon className="w-3.5 h-3.5" />
               Copy JSON

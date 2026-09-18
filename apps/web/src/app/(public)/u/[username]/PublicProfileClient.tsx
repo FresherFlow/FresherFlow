@@ -239,7 +239,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                         <div className="pt-2">
                             <Link
                                 href="/"
-                                className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground font-bold rounded-xl text-xs hover:opacity-95 active:scale-[0.97] transition-all duration-150 ease-out shadow-xs"
+                                className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground font-bold rounded-xl text-xs hover:opacity-95 active:scale-95 transition-all duration-150 ease-out shadow-xs"
                             >
                                 <ArrowLeftIcon className="w-4 h-4" />
                                 <span>Back to Home</span>
@@ -334,7 +334,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
             {/* Main Workspace Container with Physical Entrance Animation */}
             <div className={cn(
                 "flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-8 md:py-12 space-y-8 md:space-y-12 transition-all duration-300 ease-out",
-                mounted ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-[0.98]"
+                mounted ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-95"
             )}>
                 {/* HERO HEADER CARD */}
                 <div className="bg-card border border-border/60 rounded-2xl p-5 md:p-6 shadow-xs space-y-4 relative overflow-hidden">
@@ -394,7 +394,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                             {isOwnProfile && (
                                 <Link
                                     href="/profile"
-                                    className="flex-1 sm:flex-initial px-3.5 py-2 bg-primary text-primary-foreground font-bold text-xs rounded-xl hover:opacity-95 active:scale-[0.97] transition-all duration-150 ease-out flex items-center justify-center gap-1.5 shadow-xs"
+                                    className="flex-1 sm:flex-initial px-3.5 py-2 bg-primary text-primary-foreground font-bold text-xs rounded-xl hover:opacity-95 active:scale-95 transition-all duration-150 ease-out flex items-center justify-center gap-1.5 shadow-xs"
                                 >
                                     <PencilSquareIcon className="w-3.5 h-3.5 shrink-0" />
                                     <span>Edit Profile</span>
@@ -404,7 +404,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                             <button
                                 type="button"
                                 onClick={handleShare}
-                                className="px-3.5 py-2 bg-card text-foreground font-semibold text-xs rounded-xl border border-border/60 hover:border-border hover:bg-muted/60 active:scale-[0.97] transition-all duration-150 ease-out flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                                className="px-3.5 py-2 bg-card text-foreground font-semibold text-xs rounded-xl border border-border/60 hover:border-border hover:bg-muted/60 active:scale-95 transition-all duration-150 ease-out flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
                                 title="Share Candidate Profile"
                             >
                                 <ShareIcon className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
@@ -414,7 +414,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                             <button
                                 type="button"
                                 onClick={handleCopyLink}
-                                className="px-3.5 py-2 bg-card text-foreground font-semibold text-xs rounded-xl border border-border/60 hover:border-border hover:bg-muted/60 active:scale-[0.97] transition-all duration-150 ease-out flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
+                                className="px-3.5 py-2 bg-card text-foreground font-semibold text-xs rounded-xl border border-border/60 hover:border-border hover:bg-muted/60 active:scale-95 transition-all duration-150 ease-out flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
                                 title="Copy Profile Link"
                             >
                                 {isCopied ? (
@@ -428,7 +428,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                 <button
                                     type="button"
                                     onClick={() => setIsApplyModalOpen(true)}
-                                    className="px-4 py-2 bg-primary text-primary-foreground font-bold text-xs rounded-xl hover:opacity-95 active:scale-[0.97] transition-all duration-150 ease-out flex items-center justify-center gap-2 shadow-sm"
+                                    className="px-4 py-2 bg-primary text-primary-foreground font-bold text-xs rounded-xl hover:opacity-95 active:scale-95 transition-all duration-150 ease-out flex items-center justify-center gap-2 shadow-sm"
                                 >
                                     <UserIcon className="w-3.5 h-3.5 shrink-0" />
                                     <span>Apply to Hire</span>
@@ -462,7 +462,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                     <button
                                         type="button"
                                         onClick={() => setShowFullAbout(!showFullAbout)}
-                                        className="text-xs font-bold text-primary hover:underline active:scale-[0.97] transition-all duration-150 ease-out cursor-pointer pt-0.5 inline-block"
+                                        className="text-xs font-bold text-primary hover:underline active:scale-95 transition-all duration-150 ease-out cursor-pointer pt-0.5 inline-block"
                                     >
                                         {showFullAbout ? 'Show less' : 'Read more'}
                                     </button>
@@ -499,7 +499,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                         return (
                                             <div
                                                 key={proj.id || proj.title}
-                                                className="group relative bg-muted/20 hover:bg-muted/40 border border-border/60 hover:border-border rounded-xl p-4 space-y-3.5 transition-all duration-150 ease-out active:scale-[0.98] flex flex-col justify-between"
+                                                className="group relative bg-muted/20 hover:bg-muted/40 border border-border/60 hover:border-border rounded-xl p-4 space-y-3.5 transition-all duration-150 ease-out active:scale-95 flex flex-col justify-between"
                                             >
                                                 <div className="space-y-2">
                                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -513,7 +513,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                                                     href={proj.liveUrl?.startsWith('http') ? proj.liveUrl : `https://${proj.liveUrl}`}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
-                                                                    className="px-2.5 py-1 text-xs rounded-lg shrink-0 bg-primary text-primary-foreground hover:opacity-95 active:scale-[0.97] transition-all duration-150 ease-out font-bold inline-flex items-center justify-center gap-1 shadow-2xs"
+                                                                    className="px-2.5 py-1 text-xs rounded-lg shrink-0 bg-primary text-primary-foreground hover:opacity-95 active:scale-95 transition-all duration-150 ease-out font-bold inline-flex items-center justify-center gap-1 shadow-2xs"
                                                                 >
                                                                     <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
                                                                     <span>Live Demo →</span>
@@ -524,7 +524,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                                                     href={proj.githubUrl?.startsWith('http') ? proj.githubUrl : `https://${proj.githubUrl}`}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
-                                                                    className="px-2.5 py-1 text-xs rounded-lg shrink-0 text-muted-foreground hover:text-foreground bg-card hover:bg-accent border border-border/60 active:scale-[0.97] transition-all duration-150 ease-out font-semibold inline-flex items-center justify-center gap-1 shadow-2xs"
+                                                                    className="px-2.5 py-1 text-xs rounded-lg shrink-0 text-muted-foreground hover:text-foreground bg-card hover:bg-accent border border-border/60 active:scale-95 transition-all duration-150 ease-out font-semibold inline-flex items-center justify-center gap-1 shadow-2xs"
                                                                 >
                                                                     <GithubSvgIcon className="w-3.5 h-3.5" />
                                                                     <span>Git Docs →</span>
@@ -546,7 +546,6 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                                             <SkillPill
                                                                 key={idx}
                                                                 skill={skill}
-                                                                className="bg-card text-foreground font-semibold text-[11px] rounded-md border border-border/60"
                                                             />
                                                         ))}
                                                     </div>
@@ -563,7 +562,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                         return (
                                             <div
                                                 key={repo.id || repo.name}
-                                                className="group relative bg-muted/20 hover:bg-muted/40 border border-border/60 hover:border-border rounded-xl p-4 space-y-3.5 transition-all duration-150 ease-out active:scale-[0.98] flex flex-col justify-between"
+                                                className="group relative bg-muted/20 hover:bg-muted/40 border border-border/60 hover:border-border rounded-xl p-4 space-y-3.5 transition-all duration-150 ease-out active:scale-95 flex flex-col justify-between"
                                             >
                                                 <div className="space-y-2">
                                                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -582,7 +581,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                                                     href={repo.homepage?.startsWith('http') ? repo.homepage : `https://${repo.homepage}`}
                                                                     target="_blank"
                                                                     rel="noopener noreferrer"
-                                                                    className="px-2.5 py-1 text-xs rounded-lg shrink-0 bg-primary text-primary-foreground hover:opacity-95 active:scale-[0.97] transition-all duration-150 ease-out font-bold inline-flex items-center justify-center gap-1 shadow-2xs"
+                                                                    className="px-2.5 py-1 text-xs rounded-lg shrink-0 bg-primary text-primary-foreground hover:opacity-95 active:scale-95 transition-all duration-150 ease-out font-bold inline-flex items-center justify-center gap-1 shadow-2xs"
                                                                 >
                                                                     <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
                                                                     <span>Live Demo →</span>
@@ -592,7 +591,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                                                 href={repo.html_url}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="px-2.5 py-1 text-xs rounded-lg shrink-0 text-muted-foreground hover:text-foreground bg-card hover:bg-accent border border-border/60 active:scale-[0.97] transition-all duration-150 ease-out font-semibold inline-flex items-center justify-center gap-1 shadow-2xs"
+                                                                className="px-2.5 py-1 text-xs rounded-lg shrink-0 text-muted-foreground hover:text-foreground bg-card hover:bg-accent border border-border/60 active:scale-95 transition-all duration-150 ease-out font-semibold inline-flex items-center justify-center gap-1 shadow-2xs"
                                                             >
                                                                 <GithubSvgIcon className="w-3.5 h-3.5" />
                                                                 <span>GitHub →</span>
@@ -612,17 +611,17 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
 
                                                 <div className="flex items-center gap-2.5 pt-1 flex-wrap text-xs">
                                                     {repo.language && (
-                                                        <span className="inline-flex items-center px-2 py-0.5 bg-card text-foreground font-semibold text-[11px] rounded-md border border-border/60">
+                                                        <span className="inline-flex items-center px-2 py-0.5 bg-card text-foreground font-semibold text-xs rounded-md border border-border/60">
                                                             {repo.language}
                                                         </span>
                                                     )}
                                                     {typeof repo.stargazers_count === 'number' && repo.stargazers_count > 0 && (
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary font-bold text-[11px] rounded-md border border-primary/20 tabular-nums">
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary font-bold text-xs rounded-md border border-primary/20 tabular-nums">
                                                             <StarSolidIcon className="w-3 h-3 text-primary" /> {repo.stargazers_count}
                                                         </span>
                                                     )}
                                                     {timeAgo && (
-                                                        <span className="text-[11px] font-medium text-muted-foreground">
+                                                        <span className="text-xs font-medium text-muted-foreground">
                                                             {timeAgo}
                                                         </span>
                                                     )}
@@ -647,7 +646,6 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                         <SkillPill
                                             key={skill}
                                             skill={skill}
-                                            className="bg-muted/30 border border-border/60 hover:border-border text-foreground font-semibold text-xs rounded-xl hover:bg-muted/60 transition-all duration-150 ease-out cursor-default"
                                         />
                                     ))}
 
@@ -655,7 +653,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                         <button
                                             type="button"
                                             onClick={() => setShowAllSkills(true)}
-                                            className="inline-flex items-center px-3 py-1.5 bg-secondary text-secondary-foreground hover:bg-muted font-bold text-xs rounded-xl border border-border/60 active:scale-[0.97] transition-all duration-150 ease-out cursor-pointer tabular-nums"
+                                            className="inline-flex items-center px-3 py-1.5 bg-secondary text-secondary-foreground hover:bg-muted font-bold text-xs rounded-xl border border-border/60 active:scale-95 transition-all duration-150 ease-out cursor-pointer tabular-nums"
                                         >
                                             +{hiddenSkillsCount} more
                                         </button>
@@ -665,7 +663,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                         <button
                                             type="button"
                                             onClick={() => setShowAllSkills(false)}
-                                            className="inline-flex items-center px-3 py-1.5 text-muted-foreground hover:text-foreground font-medium text-xs rounded-xl active:scale-[0.97] transition-all duration-150 ease-out cursor-pointer"
+                                            className="inline-flex items-center px-3 py-1.5 text-muted-foreground hover:text-foreground font-medium text-xs rounded-xl active:scale-95 transition-all duration-150 ease-out cursor-pointer"
                                         >
                                             Show less
                                         </button>
@@ -686,7 +684,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                     {/* Post Graduation */}
                                     {profile.pgCourse && (
                                         <div className="relative group">
-                                            <div className="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-background border-2 border-primary ring-4 ring-primary/10 transition-transform duration-150 ease-out group-hover:scale-110" />
+                                            <div className="absolute -left-8 top-1 w-4 h-4 rounded-full bg-background border-2 border-primary ring-4 ring-primary/10 transition-transform duration-150 ease-out group-hover:scale-110" />
                                             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                                                 <div className="space-y-1">
                                                     <h3 className="text-base font-bold text-foreground tracking-tight leading-snug">
@@ -697,7 +695,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                                     </p>
                                                     {profile.pgSpecialization && (
                                                         <div className="pt-1">
-                                                            <span className="inline-flex items-center px-2.5 py-0.5 bg-muted text-foreground font-semibold text-[11px] rounded-md border border-border/50">
+                                                            <span className="inline-flex items-center px-2.5 py-0.5 bg-muted text-foreground font-semibold text-xs rounded-md border border-border/50">
                                                                 {profile.pgSpecialization}
                                                             </span>
                                                         </div>
@@ -716,7 +714,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                     {/* Graduation */}
                                     {(profile.gradCourse || profile.educationLevel) && (
                                         <div className="relative group">
-                                            <div className="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-background border-2 border-primary ring-4 ring-primary/10 transition-transform duration-150 ease-out group-hover:scale-110" />
+                                            <div className="absolute -left-8 top-1 w-4 h-4 rounded-full bg-background border-2 border-primary ring-4 ring-primary/10 transition-transform duration-150 ease-out group-hover:scale-110" />
                                             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                                                 <div className="space-y-1">
                                                     <h3 className="text-base font-bold text-foreground tracking-tight leading-snug">
@@ -727,7 +725,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                                     </p>
                                                     {profile.gradSpecialization && (
                                                         <div className="pt-1">
-                                                            <span className="inline-flex items-center px-2.5 py-0.5 bg-muted text-foreground font-semibold text-[11px] rounded-md border border-border/50">
+                                                            <span className="inline-flex items-center px-2.5 py-0.5 bg-muted text-foreground font-semibold text-xs rounded-md border border-border/50">
                                                                 {profile.gradSpecialization}
                                                             </span>
                                                         </div>
@@ -746,7 +744,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                     {/* Secondary / Senior Secondary */}
                                     {profile.twelfthYear && (
                                         <div className="relative group">
-                                            <div className="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-background border-2 border-primary ring-4 ring-primary/10 transition-transform duration-150 ease-out group-hover:scale-110" />
+                                            <div className="absolute -left-8 top-1 w-4 h-4 rounded-full bg-background border-2 border-primary ring-4 ring-primary/10 transition-transform duration-150 ease-out group-hover:scale-110" />
                                             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                                                 <div className="space-y-1">
                                                     <h3 className="text-base font-bold text-foreground tracking-tight leading-snug">
@@ -756,7 +754,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                                         Higher Secondary School Certificate
                                                     </p>
                                                     <div className="pt-1">
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 bg-muted text-foreground font-semibold text-[11px] rounded-md border border-border/50">
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 bg-muted text-foreground font-semibold text-xs rounded-md border border-border/50">
                                                             HSC / Senior Secondary
                                                         </span>
                                                     </div>
@@ -771,7 +769,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
 
                                     {profile.tenthYear && (
                                         <div className="relative group">
-                                            <div className="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-background border-2 border-primary ring-4 ring-primary/10 transition-transform duration-150 ease-out group-hover:scale-110" />
+                                            <div className="absolute -left-8 top-1 w-4 h-4 rounded-full bg-background border-2 border-primary ring-4 ring-primary/10 transition-transform duration-150 ease-out group-hover:scale-110" />
                                             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                                                 <div className="space-y-1">
                                                     <h3 className="text-base font-bold text-foreground tracking-tight leading-snug">
@@ -781,7 +779,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                                         Secondary School Certificate
                                                     </p>
                                                     <div className="pt-1">
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 bg-muted text-foreground font-semibold text-[11px] rounded-md border border-border/50">
+                                                        <span className="inline-flex items-center px-2.5 py-0.5 bg-muted text-foreground font-semibold text-xs rounded-md border border-border/50">
                                                             SSC / High School
                                                         </span>
                                                     </div>
@@ -809,7 +807,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                         <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/40 transition-colors duration-150 ease-out">
                                             <ClockIcon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                                             <div>
-                                                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-bold">Availability</p>
+                                                <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Availability</p>
                                                 <p className="font-bold text-foreground pt-0.5">
                                                     {formatAvailability(profile.availability)}
                                                 </p>
@@ -821,7 +819,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                         <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/40 transition-colors duration-150 ease-out">
                                             <UserGroupIcon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                                             <div>
-                                                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-bold">Target Roles</p>
+                                                <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Target Roles</p>
                                                 <p className="font-semibold text-foreground pt-0.5">
                                                     {profile.preferredRoles.join(', ')}
                                                 </p>
@@ -833,7 +831,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                         <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/40 transition-colors duration-150 ease-out">
                                             <MapPinIcon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                                             <div>
-                                                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-bold">Target Cities</p>
+                                                <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Target Cities</p>
                                                 <p className="font-semibold text-foreground pt-0.5">
                                                     {profile.preferredCities.join(', ')}
                                                 </p>
@@ -845,10 +843,10 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                         <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/40 transition-colors duration-150 ease-out">
                                             <BuildingOffice2Icon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                                             <div>
-                                                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-bold">Work Modes</p>
+                                                <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Work Modes</p>
                                                 <div className="flex flex-wrap gap-1.5 mt-1.5">
                                                     {profile.workModes.map(mode => (
-                                                        <span key={mode} className="px-2 py-0.5 bg-card text-foreground font-semibold text-[11px] rounded-md border border-border/60">
+                                                        <span key={mode} className="px-2 py-0.5 bg-card text-foreground font-semibold text-xs rounded-md border border-border/60">
                                                             {formatWorkMode(mode)}
                                                         </span>
                                                     ))}
@@ -861,10 +859,10 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                         <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/40 transition-colors duration-150 ease-out sm:col-span-2 lg:col-span-1">
                                             <BookmarkSquareIcon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                                             <div>
-                                                <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-bold">Interested In</p>
+                                                <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Interested In</p>
                                                 <div className="flex flex-wrap gap-1.5 mt-1.5">
                                                     {profile.interestedIn.map(item => (
-                                                        <span key={item} className="px-2 py-0.5 bg-card text-foreground font-semibold text-[11px] rounded-md border border-border/60">
+                                                        <span key={item} className="px-2 py-0.5 bg-card text-foreground font-semibold text-xs rounded-md border border-border/60">
                                                             {formatOpportunityType(item)}
                                                         </span>
                                                     ))}
@@ -890,7 +888,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                             href={profile.githubUrl.startsWith('http') ? profile.githubUrl : `https://${profile.githubUrl}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/60 hover:border-primary/40 hover:bg-muted/40 active:scale-[0.98] transition-all duration-150 ease-out group text-foreground font-bold"
+                                            className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/60 hover:border-primary/40 hover:bg-muted/40 active:scale-95 transition-all duration-150 ease-out group text-foreground font-bold"
                                         >
                                             <div className="flex items-center gap-2.5 overflow-hidden">
                                                 <GithubSvgIcon className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0 transition-colors" />
@@ -905,7 +903,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                             href={profile.linkedinUrl.startsWith('http') ? profile.linkedinUrl : `https://${profile.linkedinUrl}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/60 hover:border-primary/40 hover:bg-muted/40 active:scale-[0.98] transition-all duration-150 ease-out group text-foreground font-bold"
+                                            className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/60 hover:border-primary/40 hover:bg-muted/40 active:scale-95 transition-all duration-150 ease-out group text-foreground font-bold"
                                         >
                                             <div className="flex items-center gap-2.5 overflow-hidden">
                                                 <LinkedinSvgIcon className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0 transition-colors" />
@@ -920,7 +918,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                             href={profile.portfolioUrl.startsWith('http') ? profile.portfolioUrl : `https://${profile.portfolioUrl}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/60 hover:border-primary/40 hover:bg-muted/40 active:scale-[0.98] transition-all duration-150 ease-out group text-foreground font-bold"
+                                            className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/60 hover:border-primary/40 hover:bg-muted/40 active:scale-95 transition-all duration-150 ease-out group text-foreground font-bold"
                                         >
                                             <div className="flex items-center gap-2.5 overflow-hidden">
                                                 <GlobeAltIcon className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0 transition-colors" />
@@ -935,7 +933,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                             href={profile.resumeUrl.startsWith('http') ? profile.resumeUrl : `https://${profile.resumeUrl}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/60 hover:border-primary/40 hover:bg-muted/40 active:scale-[0.98] transition-all duration-150 ease-out group text-foreground font-bold"
+                                            className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/60 hover:border-primary/40 hover:bg-muted/40 active:scale-95 transition-all duration-150 ease-out group text-foreground font-bold"
                                         >
                                             <div className="flex items-center gap-2.5 overflow-hidden">
                                                 <DocumentTextIcon className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0 transition-colors" />

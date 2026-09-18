@@ -64,7 +64,7 @@ export const SmartSelect = React.forwardRef<HTMLButtonElement, SmartSelectProps>
                 <SelectTrigger
                     ref={ref}
                     id={inputId}
-                    className={cn(!value && "text-muted-foreground/50", className)}
+                    className={cn(!value && "", className)}
                     {...props}
                 >
                     <SelectValue placeholder={placeholder} />

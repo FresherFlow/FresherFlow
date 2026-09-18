@@ -15,6 +15,20 @@ export interface Contributor {
     };
 }
 
+export interface LeaderboardEntry {
+    id: string;
+    username: string | null;
+    fullName: string | null;
+    avatarUrl: string | null;
+    trustLevel: string;
+    stats: {
+        submissions: number;
+        comments: number;
+        signals: number;
+        score: number;
+    };
+}
+
 export const contributorsApi = {
     list: (userId: string, page = 1) =>
         apiClient<{
@@ -24,4 +38,10 @@ export const contributorsApi = {
             total: number;
             hasMore: boolean;
         }>(`/api/public/contributors/${userId}/opportunities?page=${page}`),
+
+    leaderboard: (limit = 20) =>
+        apiClient<{
+            leaderboard: LeaderboardEntry[];
+            total: number;
+        }>(`/api/contributors/leaderboard?limit=${limit}`),
 };

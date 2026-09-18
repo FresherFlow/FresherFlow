@@ -60,7 +60,7 @@ export const SkillsSection = ({
                     </span>
                 </div>
                 {!isEditing ? (
-                    <Button variant="ghost" size="sm" onClick={onToggleEdit} className="h-8 px-2.5 gap-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer">
+                    <Button variant="ghost" size="sm" onClick={onToggleEdit}>
                         {hasSkills ? <><PencilSquareIcon className="w-3.5 h-3.5" />Edit</> : <><PlusIcon className="w-3.5 h-3.5" />Add</>}
                     </Button>
                 ) : (
@@ -75,7 +75,7 @@ export const SkillsSection = ({
                 hasSkills ? (
                     <div className="flex flex-wrap gap-2">
                         {profile?.skills?.map(s => (
-                            <SkillPill key={s} skill={s} className="px-3 py-1 border border-border/70 bg-muted/40" />
+                            <SkillPill key={s} skill={s} />
                         ))}
                     </div>
                 ) : (
@@ -84,7 +84,7 @@ export const SkillsSection = ({
                         className="py-8 text-center border border-dashed border-border/80 rounded-xl bg-muted/20 hover:bg-muted/40 hover:border-primary/40 transition-all cursor-pointer"
                     >
                         <p className="text-xs font-semibold text-muted-foreground">No skills added yet</p>
-                        <p className="text-[11px] text-muted-foreground/70 mt-1">Click to add your skills</p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">Click to add your skills</p>
                     </div>
                 )
             )}
@@ -116,7 +116,6 @@ export const SkillsSection = ({
                             onChange={e => setSkillInput(e.target.value)}
                             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomSkill(); } }}
                             placeholder="Search or type a skill…"
-                            className="pl-9 h-9 text-sm"
                             disabled={saving || skills.length >= MAX_SKILLS}
                             autoFocus
                         />
@@ -125,7 +124,7 @@ export const SkillsSection = ({
                                 type="button"
                                 onClick={addCustomSkill}
                                 disabled={saving || skills.length >= MAX_SKILLS}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded-md cursor-pointer"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2 py-0.5 rounded-md cursor-pointer"
                             >
                                 Add
                             </button>
@@ -135,7 +134,7 @@ export const SkillsSection = ({
                     {/* Skill grid */}
                     {filteredSkillOptions.length > 0 ? (
                         <div>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
                                 {skillInput ? 'Matching' : 'Suggested'}
                             </p>
                             <div className="flex flex-wrap gap-2 max-h-52 overflow-y-auto">

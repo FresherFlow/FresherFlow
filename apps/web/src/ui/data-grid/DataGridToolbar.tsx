@@ -99,14 +99,14 @@ export function DataGridFacetFilter({
           <Icon className="w-4 h-4 shrink-0" />
           <span className="hidden sm:inline">{label}</span>
           {active && (
-            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-xs font-bold text-primary-foreground">
               {selected.length}
             </span>
           )}
         </button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-56 p-2">
-        <div className="max-h-64 overflow-y-auto custom-scrollbar">
+        <div className="max-h-64 overflow-y-auto">
           {options.length === 0 && (
             <p className="px-2 py-3 text-xs text-muted-foreground text-center">
               No options available
@@ -139,7 +139,7 @@ export function DataGridFacetFilter({
                 </span>
                 <span className="truncate flex-1">{option.label}</span>
                 {typeof option.count === "number" && (
-                  <span className="text-[10px] font-semibold text-muted-foreground tabular-nums">
+                  <span className="text-xs font-semibold text-muted-foreground tabular-nums">
                     {option.count}
                   </span>
                 )}
@@ -199,17 +199,17 @@ export function DataGridColumnVisibility<TData extends RowData>({
           <ViewColumnsIcon className="w-4 h-4 shrink-0" />
           <span className="hidden sm:inline">Columns</span>
           {hasHidden && (
-            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/10 px-1 text-[10px] font-bold text-primary">
+            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary/10 px-1 text-xs font-bold text-primary">
               {visibleCount}
             </span>
           )}
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-52 p-2">
-        <p className="px-2 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+        <p className="px-2 py-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground/70">
           Toggle columns
         </p>
-        <div className="max-h-64 overflow-y-auto custom-scrollbar">
+        <div className="max-h-64 overflow-y-auto">
           {hideableColumns.map((column) => {
             const label =
               column.columnDef.meta?.headerTitle ??

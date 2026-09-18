@@ -40,9 +40,9 @@ export const CompletionMobileHeader = ({
                                             : done ? 'bg-primary/10 border-primary text-primary'
                                                 : 'bg-muted border-border text-muted-foreground',
                                     )}>
-                                        {done && !active ? <CheckCircleIcon className="w-3 h-3" /> : <s.icon className={cn("w-3 h-3", active && "stroke-[1.5]")} />}
+                                        {done && !active ? <CheckCircleIcon className="w-3 h-3" /> : <s.icon className={cn("w-3 h-3", active && "stroke-2")} />}
                                     </div>
-                                    <span className={cn('text-[10px] font-bold capitalize tracking-widest leading-none whitespace-nowrap truncate max-w-[80px]', active ? 'text-primary' : 'text-muted-foreground')}>
+                                    <span className={cn('text-xs font-bold capitalize tracking-widest leading-none whitespace-nowrap truncate max-w-20', active ? 'text-primary' : 'text-muted-foreground')}>
                                         {s.label}
                                     </span>
                                 </button>

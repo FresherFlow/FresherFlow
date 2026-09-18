@@ -7,9 +7,10 @@ import ClipboardDocumentCheckIcon from '@heroicons/react/24/outline/ClipboardDoc
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import BookmarkSolidIcon from '@heroicons/react/24/solid/BookmarkIcon';
 import EllipsisVerticalIcon from '@heroicons/react/24/outline/EllipsisVerticalIcon';
+import CalendarDaysIcon from '@heroicons/react/24/outline/CalendarDaysIcon';
 import toast from 'react-hot-toast';
 import { isCampusDriveOpportunity } from '@/lib/utils/driveTimeline';
-import { getWhatsAppShareUrl } from '@/features/opportunities/utils/walkinMapUtils';
+import { getWhatsAppShareUrl, getGoogleCalendarUrl } from '@/features/opportunities/utils/walkinMapUtils';
 import { generateJobSummaryText } from './jobCardUtils';
 import {
     DropdownMenu,
@@ -41,6 +42,18 @@ export function JobCardMenu({ job, shareUrl, isJobSaved, onSaveClick }: JobCardM
                 </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 z-50">
+                {(job.type === 'WALKIN' || Boolean(job.walkInDetails)) && (
+                    <DropdownMenuItem
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(getGoogleCalendarUrl(job), '_blank');
+                        }}
+                        className="cursor-pointer"
+                    >
+                        <CalendarDaysIcon className="w-3.5 h-3.5 mr-2 text-warning dark:text-warning" />
+                        Add to Calendar
+                    </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                     onClick={(e) => {
                         e.stopPropagation();
@@ -50,9 +63,9 @@ export function JobCardMenu({ job, shareUrl, isJobSaved, onSaveClick }: JobCardM
                                 : `https://api.whatsapp.com/send?text=${encodeURIComponent(generateJobSummaryText(job, shareUrl))}`;
                         window.open(waUrl, '_blank');
                     }}
-                    className="cursor-pointer text-xs"
+                    className="cursor-pointer"
                 >
-                    <ChatBubbleOvalLeftEllipsisIcon className="w-3.5 h-3.5 mr-2 text-emerald-600 dark:text-emerald-400" />
+                    <ChatBubbleOvalLeftEllipsisIcon className="w-3.5 h-3.5 mr-2 text-success dark:text-success" />
                     Share on WhatsApp
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -61,7 +74,7 @@ export function JobCardMenu({ job, shareUrl, isJobSaved, onSaveClick }: JobCardM
                         navigator.clipboard.writeText(generateJobSummaryText(job, shareUrl));
                         toast.success('Summary copied to clipboard');
                     }}
-                    className="cursor-pointer text-xs"
+                    className="cursor-pointer"
                 >
                     <ClipboardDocumentCheckIcon className="w-3.5 h-3.5 mr-2 text-foreground/70" />
                     Copy Summary
@@ -74,12 +87,12 @@ export function JobCardMenu({ job, shareUrl, isJobSaved, onSaveClick }: JobCardM
                             toast.success('Link copied to clipboard');
                         }
                     }}
-                    className="cursor-pointer text-xs"
+                    className="cursor-pointer"
                 >
                     <LinkIcon className="w-3.5 h-3.5 mr-2 text-foreground/70" />
                     Copy Link
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onSaveClick} className="cursor-pointer text-xs">
+                <DropdownMenuItem onClick={onSaveClick} className="cursor-pointer">
                     {isJobSaved ? (
                         <BookmarkSolidIcon className="w-3.5 h-3.5 mr-2 text-primary" />
                     ) : (

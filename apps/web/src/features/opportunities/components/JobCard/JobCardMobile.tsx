@@ -146,7 +146,7 @@ export function JobCardMobile({
     return (
         <div
             className={cn(
-                'group relative bg-card text-card-foreground border border-l-[3px] rounded-xl p-2.5 flex flex-col gap-2 transition-[border-color,box-shadow,background-color] duration-150 ease-out cursor-pointer',
+                'group relative bg-card text-card-foreground border border-l-4 rounded-xl p-2.5 flex flex-col gap-2 transition-all duration-150 ease-out cursor-pointer',
                 accentClass,
                 'border-border/60 dark:border-border/40 hover:border-border dark:hover:border-border/70',
                 isJobExpired(job) && 'opacity-60',
@@ -162,10 +162,10 @@ export function JobCardMobile({
                     applyLink={job.applyLink}
                     priority={priority}
                     isGovernment={isGovernment}
-                    className="!w-9 !h-9 rounded-lg shrink-0 border border-border/50 shadow-xs"
+                    className="!w-9 !h-9 shrink-0"
                 />
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground leading-none mb-0.5">
+                    <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground leading-none mb-0.5">
                         <span className="uppercase tracking-wide">{typeLabel}</span>
                         {postedLabel && (
                             <>
@@ -176,18 +176,18 @@ export function JobCardMobile({
                         {showApplied && (
                             <>
                                 <span className="text-muted-foreground/40">•</span>
-                                <span className="inline-flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400">
+                                <span className="inline-flex items-center gap-0.5 text-success dark:text-success">
                                     <CheckIcon className="w-3 h-3" aria-hidden />
                                     Applied
                                 </span>
                             </>
                         )}
                     </div>
-                    <h2 className="text-[14px] font-semibold text-foreground leading-snug line-clamp-2">
+                    <h2 className="text-sm font-semibold text-foreground leading-snug line-clamp-2">
                         {job.normalizedRole || job.title}
                     </h2>
-                    <div className="flex items-center gap-1.5 mt-0.5 text-[13px] text-muted-foreground min-w-0">
-                        <span className="font-semibold text-foreground/80 truncate max-w-[45%] shrink-0">
+                    <div className="flex items-center gap-1.5 mt-0.5 text-sm text-muted-foreground min-w-0">
+                        <span className="font-semibold text-foreground/80 truncate max-w-md shrink-0">
                             {job.company}
                         </span>
                         <span className="text-muted-foreground/40 shrink-0">•</span>
@@ -223,7 +223,7 @@ export function JobCardMobile({
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         onClick={(e) => e.stopPropagation()}
-                                        className="inline-flex items-center justify-center gap-1 px-2.5 h-6 text-[11px] font-semibold rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-300/40 hover:bg-amber-500/25 transition-colors"
+                                        className="inline-flex items-center justify-center gap-1 px-2.5 h-6 text-xs font-semibold rounded-md bg-warning/15 text-warning dark:text-warning border border-warning/40 hover:bg-warning/25 transition-colors"
                                     >
                                         <MapPinIcon className="w-3 h-3" aria-hidden />
                                         Directions
@@ -236,7 +236,7 @@ export function JobCardMobile({
                                         if (onClick) onClick(e as unknown as React.MouseEvent<HTMLAnchorElement>);
                                         else router.push(getOpportunityPathFromItem(job));
                                     }}
-                                    className="inline-flex items-center justify-center px-2.5 h-6 text-[11px] font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-xs"
+                                    className="inline-flex items-center justify-center px-2.5 h-6 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-xs"
                                 >
                                     View drive
                                 </button>
@@ -245,7 +245,7 @@ export function JobCardMobile({
                             <button
                                 type="button"
                                 onClick={handleApplyClick}
-                                className="inline-flex items-center justify-center gap-1.5 px-3 h-6 text-[11px] font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97] transition-[background-color,transform] duration-150 ease-out motion-reduce:transform-none shadow-xs"
+                                className="inline-flex items-center justify-center gap-1.5 px-3 h-6 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all duration-150 ease-out motion-reduce:transform-none shadow-xs"
                             >
                                 Apply
                                 <PaperAirplaneIcon className="w-3 h-3 -rotate-45 -mt-0.5" aria-hidden />
@@ -263,7 +263,7 @@ export function JobCardMobile({
                                 if (onClick) onClick(e as unknown as React.MouseEvent<HTMLAnchorElement>);
                                 else router.push(getOpportunityPathFromItem(job));
                             }}
-                            className="inline-flex items-center justify-center px-2.5 h-6 text-[11px] font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-xs"
+                            className="inline-flex items-center justify-center px-2.5 h-6 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-xs"
                         >
                             View drive
                         </button>
@@ -271,7 +271,7 @@ export function JobCardMobile({
                         <button
                             type="button"
                             onClick={handleApplyClick}
-                            className="inline-flex items-center justify-center gap-1.5 px-3 h-6 text-[11px] font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 active:scale-[0.97] transition-[background-color,transform] duration-150 ease-out motion-reduce:transform-none shadow-xs"
+                            className="inline-flex items-center justify-center gap-1.5 px-3 h-6 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all duration-150 ease-out motion-reduce:transform-none shadow-xs"
                         >
                             Apply
                             <PaperAirplaneIcon className="w-3 h-3 -rotate-45 -mt-0.5" aria-hidden />

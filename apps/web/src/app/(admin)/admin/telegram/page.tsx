@@ -25,7 +25,7 @@ export default function AdminTelegramPage() {
             {/* <div className="pt-6 border-t"> */}
             {/*     <SocialBroadcastPanel /> */}
             {/* </div> */}
-            <div className="bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 dark:text-yellow-400 p-4 rounded-lg">
+            <div className="bg-warning/10 border border-warning/20 text-warning dark:text-warning p-4 rounded-lg">
                 Broadcast panels are temporarily offline/disabled.
             </div>
         </div>

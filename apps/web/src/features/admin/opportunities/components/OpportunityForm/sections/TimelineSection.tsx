@@ -155,7 +155,7 @@ export function TimelineSection({
                                         type="button"
                                         onClick={() => handleDeleteTimelineEvent(event.id)}
                                         disabled={timelineBusyId === event.id}
-                                        className="inline-flex h-9 items-center justify-center rounded-md border border-rose-300 bg-rose-50 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
+                                        className="inline-flex h-9 items-center justify-center rounded-md border border-error bg-error px-3 text-sm font-semibold text-error hover:bg-error disabled:opacity-60"
                                     >
                                         Delete
                                     </button>

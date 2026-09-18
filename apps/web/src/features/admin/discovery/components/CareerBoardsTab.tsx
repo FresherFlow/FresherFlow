@@ -39,26 +39,26 @@ export function CareerBoardsTab({
 
       {/* Table View */}
       <div className="border border-border/60 rounded-xl bg-card/60 backdrop-blur-md overflow-hidden shadow-xs flex flex-col flex-1 min-h-0">
-        <div className="overflow-auto flex-1 min-h-0 custom-scrollbar">
-          <Table className="w-full text-left border-collapse">
-            <TableHeader className="sticky top-0 z-10 bg-muted/80 backdrop-blur-md shadow-xs">
-              <TableRow className="border-b border-border/60 text-xs font-semibold tracking-wider text-muted-foreground">
-                <TableHead className="py-3 px-4 font-medium">Provider</TableHead>
-                <TableHead className="py-3 px-4 font-medium">Features</TableHead>
-                <TableHead className="py-3 px-4 text-right font-medium">Actions</TableHead>
+        <div className="overflow-auto flex-1 min-h-0">
+          <Table>
+            <TableHeader className="sticky top-0 z-10">
+              <TableRow>
+                <TableHead>Provider</TableHead>
+                <TableHead>Features</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody className="divide-y divide-border/40 text-xs">
+            <TableBody>
               {paginatedBoards.map(board => {
                 const isRunning = runningBoardId === board.provider;
 
                 return (
-                  <TableRow key={board.provider} className="hover:bg-muted/30 active:bg-muted/30 transition-colors">
-                    <TableCell className="py-3 px-4">
+                  <TableRow key={board.provider}>
+                    <TableCell>
                       <div className="flex items-center gap-3 min-w-0">
                         <CompanyLogo
                           companyName={board.providerName}
-                          className="w-7 h-7 rounded-md border border-border/60 bg-card shadow-xs shrink-0"
+                          className="w-7 h-7 shrink-0"
                         />
                         <div className="min-w-0">
                           <h3 className="text-xs font-bold text-foreground truncate">{board.providerName}</h3>
@@ -67,19 +67,19 @@ export function CareerBoardsTab({
                       </div>
                     </TableCell>
 
-                    <TableCell className="py-3 px-4">
+                    <TableCell>
                       {board.hasDetailFetcher ? (
-                        <span className="bg-muted/50 text-muted-foreground text-[11px] border border-border/40 px-1.5 py-0.5 rounded">
+                        <span className="bg-muted/50 text-muted-foreground text-xs border border-border/40 px-1.5 py-0.5 rounded">
                           Detail Fetcher ✓
                         </span>
                       ) : <span />}
                     </TableCell>
 
-                    <TableCell className="py-3 px-4 text-right">
+                    <TableCell className="text-right">
                       <button
                         onClick={() => onRunBoard(board)}
                         disabled={isRunning}
-                        className="h-7 px-3 rounded-md bg-muted/40 border border-border/80 text-foreground hover:bg-muted text-xs font-medium transition-all duration-150 active:scale-[0.96] cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-xs ml-auto"
+                        className="h-7 px-3 rounded-md bg-muted/40 border border-border/80 text-foreground hover:bg-muted text-xs font-medium transition-all duration-150 active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-xs ml-auto"
                       >
                         <BoltIcon className={cn("w-3 h-3", isRunning &&"animate-spin")} />
                         <span>{isRunning ? 'Scraping Board...' : 'Scrape Board'}</span>

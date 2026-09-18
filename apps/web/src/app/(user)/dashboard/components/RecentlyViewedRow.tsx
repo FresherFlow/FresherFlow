@@ -76,19 +76,19 @@ export const RecentlyViewedRow: React.FC<RecentlyViewedRowProps> = ({ fallbackCo
                         key={item.name}
                         href={item.href || `/companies/${slugify(item.name)}`}
                         onClick={() => handleItemClick(item)}
-                        className="group flex items-center gap-3 p-2 rounded-xl border border-border/60 bg-card/60 hover:border-primary/40 hover:bg-muted/30 transition-all duration-150 ease-out active:scale-[0.98] overflow-hidden"
+                        className="group flex items-center gap-3 p-2 rounded-xl border border-border/60 bg-card/60 hover:border-primary/40 hover:bg-muted/30 transition-all duration-150 ease-out active:scale-95 overflow-hidden"
                     >
                         <CompanyLogo
                             companyName={item.name}
                             companyLogoUrl={item.logoUrl}
-                            className="w-9 h-9 text-xs rounded-lg shrink-0"
+                            className="w-9 h-9 shrink-0"
                         />
                         <div className="min-w-0 flex-1 pr-1">
                             <p className="text-xs font-semibold text-foreground truncate group-hover:text-primary transition-colors">
                                 {item.name}
                             </p>
                             {item.roleCount !== undefined && item.roleCount > 0 && (
-                                <p className="text-[10px] text-muted-foreground truncate">
+                                <p className="text-xs text-muted-foreground truncate">
                                     {item.roleCount} active {item.roleCount === 1 ? 'role' : 'roles'}
                                 </p>
                             )}

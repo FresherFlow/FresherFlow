@@ -7,8 +7,8 @@ export const getStatusBadgeClass = (opp: Opportunity & { expiredAt?: string | Da
     const label = getStatusLabel(opp);
     if (label === 'DELETED') return 'bg-slate-100 text-slate-700 ring-slate-300';
     if (label === 'EXPIRED') return 'bg-orange-50 text-orange-700 ring-orange-600/10';
-    if (label === 'ARCHIVED') return 'bg-rose-50 text-rose-700 ring-rose-600/10';
-    if (label === 'LIVE') return 'bg-emerald-50 text-emerald-700 ring-emerald-600/20';
+    if (label === 'ARCHIVED') return 'bg-error text-error ring-error/10';
+    if (label === 'LIVE') return 'bg-success text-success ring-success/20';
     return 'bg-slate-50 text-slate-600 ring-slate-500/10';
 };
 

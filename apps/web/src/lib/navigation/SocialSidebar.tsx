@@ -72,7 +72,7 @@ export function SocialSidebar() {
     const [open, setOpen] = useState(false);
 
     return (
-        <div className="hidden lg:flex fixed right-3.5 top-1/2 -translate-y-1/2 z-[65] flex-col items-center gap-1.5 rounded-xl border border-border/30 bg-card/25 hover:bg-card/90 backdrop-blur-md px-1.5 py-2 hover:border-border/60 hover:shadow-lg hover:shadow-black/10 transition-all duration-300">
+        <div className="hidden lg:flex fixed right-3.5 top-1/2 -translate-y-1/2 z-50 flex-col items-center gap-1.5 rounded-xl border border-border/30 bg-card/25 hover:bg-card/90 backdrop-blur-md px-1.5 py-2 hover:border-border/60 hover:shadow-lg hover:shadow-black/10 transition-all duration-300">
             {!open ? (
                 <button
                     onClick={() => setOpen(true)}

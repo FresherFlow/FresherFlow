@@ -22,10 +22,10 @@ export const CompletionSidebar = ({
 }: CompletionSidebarProps) => {
     return (
         <aside className="hidden lg:flex flex-col gap-6 px-4 py-10 sticky top-0 h-screen overflow-hidden">
-            <div className="flex flex-col gap-8 bg-card border border-border rounded-[32px] p-8 shadow-sm">
+            <div className="flex flex-col gap-8 bg-card border border-border rounded-3xl p-8 shadow-sm">
                 <div>
                     <h1 className="text-xl font-bold tracking-tight text-foreground">Profile Setup</h1>
-                    <p className="text-[13px] text-muted-foreground font-medium mt-0.5 tracking-normal">2 Simple Steps • 2 Mins</p>
+                    <p className="text-sm text-muted-foreground font-medium mt-0.5 tracking-normal">2 Simple Steps • 2 Mins</p>
                 </div>
 
                 <div className="space-y-4">
@@ -58,21 +58,21 @@ export const CompletionSidebar = ({
                                                 : "bg-card border-border text-muted-foreground"
                                     )}>
                                         {done && !active ? (
-                                            <CheckCircleIcon className="w-5 h-5 stroke-[2.5]" />
+                                            <CheckCircleIcon className="w-5 h-5 stroke-2" />
                                         ) : (
-                                            <s.icon className={cn("w-5 h-5", active && "stroke-[2.5]")} />
+                                            <s.icon className={cn("w-5 h-5", active && "stroke-2")} />
                                         )}
                                     </div>
 
                                     <div className="text-left">
                                         <p className={cn(
-                                            "text-[14px] font-bold tracking-normal",
+                                            "text-sm font-bold tracking-normal",
                                             active ? "text-foreground" : "text-muted-foreground"
                                         )}>
                                             {s.label}
                                         </p>
                                         {active && (
-                                            <p className="text-[13px] text-primary/70 font-medium">In Progress</p>
+                                            <p className="text-sm text-primary/70 font-medium">In Progress</p>
                                         )}
                                     </div>
                                 </button>
@@ -83,8 +83,8 @@ export const CompletionSidebar = ({
 
                 <div className="pt-6 border-t border-border/40">
                     <div className="flex justify-between items-center mb-2">
-                        <span className="text-[14px] font-semibold text-muted-foreground tracking-normal">Profile Score</span>
-                        <span className="text-[14px] font-bold text-foreground">{completion}%</span>
+                        <span className="text-sm font-semibold text-muted-foreground tracking-normal">Profile Score</span>
+                        <span className="text-sm font-bold text-foreground">{completion}%</span>
                     </div>
                     <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
                         <div
@@ -94,7 +94,7 @@ export const CompletionSidebar = ({
                     </div>
                 </div>
 
-                <Link href="/logout" className="text-[14px] font-semibold tracking-normal text-muted-foreground hover:text-foreground transition-colors mt-auto pt-4 text-center">
+                <Link href="/logout" className="text-sm font-semibold tracking-normal text-muted-foreground hover:text-foreground transition-colors mt-auto pt-4 text-center">
                     Logout From Account
                 </Link>
             </div>

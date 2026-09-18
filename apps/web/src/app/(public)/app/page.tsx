@@ -37,13 +37,13 @@ export default function DownloadPage() {
     return (
         <div className="w-full flex-1 pt-3 pb-2 px-4 sm:px-5 md:pt-4 md:pb-4 md:px-8 space-y-12 md:space-y-14 max-w-6xl mx-auto selection:bg-primary/20">
             {/* Hero Section */}
-            <div className="flex flex-col lg:grid lg:grid-cols-[1.18fr_0.82fr] gap-6 lg:gap-8 items-center">
+            <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 lg:gap-8 items-center">
                 {/* Content Column */}
                 <div className="flex flex-col space-y-6 md:space-y-7 w-full">
                     {/* 1. Headline */}
                     <div className="space-y-4 order-1">
                         <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-card/60 backdrop-blur shadow-sm">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                            <span className="text-xs font-bold uppercase tracking-widest text-primary">
                                 Verified Opportunities. Instant Alerts.
                             </span>
                         </div>
@@ -63,22 +63,22 @@ export default function DownloadPage() {
                         <div className="flex items-center gap-2.5 p-2.5 rounded-xl border border-border/50 bg-card/25">
                             <CheckBadgeIcon className="w-4 h-4 text-success shrink-0" />
                             <div className="flex flex-col leading-tight">
-                                <span className="text-[11px] font-bold text-foreground">Manually Reviewed</span>
-                                <span className="text-[9px] text-muted-foreground mt-0.5">Verified Sources Only</span>
+                                <span className="text-xs font-bold text-foreground">Manually Reviewed</span>
+                                <span className="text-xs text-muted-foreground mt-0.5">Verified Sources Only</span>
                             </div>
                         </div>
                         <div className="flex items-center gap-2.5 p-2.5 rounded-xl border border-border/50 bg-card/25">
                             <ShieldCheckIcon className="w-4 h-4 text-primary shrink-0" />
                             <div className="flex flex-col leading-tight">
-                                <span className="text-[11px] font-bold text-foreground">Official Apply Links</span>
-                                <span className="text-[9px] text-muted-foreground mt-0.5">No Redirect Spam</span>
+                                <span className="text-xs font-bold text-foreground">Official Apply Links</span>
+                                <span className="text-xs text-muted-foreground mt-0.5">No Redirect Spam</span>
                             </div>
                         </div>
                         <div className="flex items-center gap-2.5 p-2.5 rounded-xl border border-border/50 bg-card/25 col-span-2 sm:col-span-1">
                             <ClockIcon className="w-4 h-4 text-primary shrink-0" />
                             <div className="flex flex-col leading-tight">
-                                <span className="text-[11px] font-bold text-foreground">Updated Daily</span>
-                                <span className="text-[9px] text-muted-foreground mt-0.5">Expired Posts Removed</span>
+                                <span className="text-xs font-bold text-foreground">Updated Daily</span>
+                                <span className="text-xs text-muted-foreground mt-0.5">Expired Posts Removed</span>
                             </div>
                         </div>
                     </div>
@@ -96,7 +96,7 @@ export default function DownloadPage() {
                                 variant="default"
                                 size="sm"
                                 asChild
-                                className="w-full sm:w-auto px-5 py-3 text-[12px] uppercase font-bold tracking-widest !shadow-none hover:scale-[1.02] active:scale-[0.98] border border-primary/20 shrink-0"
+                                className="w-full"
                             >
                                 <a href={APP_LINKS.androidDownload}>
                                     <ArrowDownTrayIcon className="w-4 h-4" />
@@ -107,7 +107,7 @@ export default function DownloadPage() {
                                 variant="outline"
                                 size="sm"
                                 disabled
-                                className="w-full sm:w-auto px-5 py-3 text-[12px] uppercase font-semibold tracking-widest cursor-not-allowed !shadow-none shrink-0"
+                                className="w-full"
                             >
                                 <DevicePhoneMobileIcon className="w-4 h-4 text-foreground/75" />
                                 iOS Coming Soon
@@ -116,7 +116,7 @@ export default function DownloadPage() {
 
                         {/* Universal APK Helper Text Block (12px before helper text) */}
                         <div className="mt-2.5 pl-1.5 select-none leading-normal text-left">
-                            <p className="text-[11px] text-muted-foreground/90">
+                            <p className="text-xs text-muted-foreground/90">
                                 Older or 32-bit device?<br />
                                 <a
                                     href="https://github.com/MukeshCheekatla/FresherFlow/releases/latest/download/FresherFlow-universal.apk"
@@ -130,7 +130,7 @@ export default function DownloadPage() {
 
                         {/* Version Text Block (6px before version text) */}
                         <div className="mt-1.5 pl-1.5">
-                            <span className="text-[9px] text-muted-foreground/35 tracking-wider uppercase font-bold">
+                            <span className="text-xs text-muted-foreground/35 tracking-wider uppercase font-bold">
                                 Version {APP_LINKS.currentVersion}
                             </span>
                         </div>

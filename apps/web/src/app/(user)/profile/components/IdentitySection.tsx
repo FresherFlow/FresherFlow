@@ -43,11 +43,11 @@ export const IdentitySection = ({
                             </h2>
                             <p className="text-sm text-muted-foreground flex items-center gap-2">
                                 {email || 'No email available'}
-                                {email && <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">Verified</Badge>}
+                                {email && <Badge variant="secondary">Verified</Badge>}
                             </p>
                         </div>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={onToggleEdit} className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
+                    <Button variant="ghost" size="sm" onClick={onToggleEdit}>
                         <PencilSquareIcon className="w-4 h-4" />
                     </Button>
                 </div>
@@ -68,12 +68,12 @@ export const IdentitySection = ({
                             type="email"
                             value={email || ''}
                             disabled
-                            className="bg-muted opacity-70"
+                           
                         />
                     </div>
                     <div className="flex justify-end gap-2">
                         <Button variant="outline" size="sm" onClick={onToggleEdit} disabled={saving}>Cancel</Button>
-                        <Button size="sm" onClick={onSave} disabled={saving} className="gap-1.5">
+                        <Button size="sm" onClick={onSave} disabled={saving}>
                             <CheckIcon className="w-3.5 h-3.5" /> Save
                         </Button>
                     </div>

@@ -52,7 +52,7 @@ export const AlertDialog = ({
         <Dialog open={show} onOpenChange={(open) => { if (!open) onCancel(); }}>
             <DialogContent className="max-w-sm sm:max-w-sm">
                 <DialogHeader className="flex flex-col items-center text-center">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${type === 'danger' ? 'bg-destructive/10 text-destructive' : 'bg-amber-500/10 text-amber-500'}`}>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${type === 'danger' ? 'bg-destructive/10 text-destructive' : 'bg-warning/10 text-warning'}`}>
                         <ExclamationTriangleIcon className="w-6 h-6" />
                     </div>
                     <DialogTitle className="text-lg font-semibold text-foreground mb-2">

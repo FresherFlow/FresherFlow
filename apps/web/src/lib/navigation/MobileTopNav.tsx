@@ -72,7 +72,7 @@ export function MobileTopNav() {
         <>
                 <header
                     className={cn(
-                        "lg:hidden fixed top-0 left-0 right-0 z-70 flex items-center pt-[env(safe-area-inset-top)] transition-all duration-300 select-none",
+                        "lg:hidden fixed top-0 left-0 right-0 z-70 flex items-center pt-4 transition-all duration-300 select-none",
                         scrolled
                             ? "bg-background/95 backdrop-blur-md shadow-sm"
                             : "bg-background"
@@ -87,10 +87,10 @@ export function MobileTopNav() {
                             const targetHref = resolvedUser && !isAuthRoute ? '/dashboard' : '/';
                             if (pathname === targetHref) event.preventDefault();
                         }}
-                        className="flex items-center gap-2 min-w-0 active:scale-[0.97] transition-transform duration-150 ease-out"
+                        className="flex items-center gap-2 min-w-0 active:scale-95 transition-transform duration-150 ease-out"
                     >
                         <LogoImage width={24} height={24} className="w-6 h-6 object-contain shrink-0" />
-                        <span className="text-[16px] font-semibold tracking-[0.01em] text-foreground/95 truncate leading-none">
+                        <span className="text-base font-semibold tracking-wide text-foreground/95 truncate leading-none">
                             {mobileTitle}
                         </span>
                     </Link>
@@ -102,14 +102,14 @@ export function MobileTopNav() {
                                 {resolvedUser ? (
                                     <Link
                                         href="/dashboard"
-                                        className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-[0.97] shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                                        className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-95 shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                     >
                                         Dashboard
                                     </Link>
                                 ) : (
                                     <Link
                                         href="/register"
-                                        className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-[0.97] shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                                        className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-95 shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                     >
                                         Create Profile
                                     </Link>
@@ -121,7 +121,7 @@ export function MobileTopNav() {
                                     <AlertsDropdown />
                                 )}
                                 {!isAuthRoute && (
-                                    <button onClick={() => setMenuOpen(true)} className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all duration-150 ease-out active:scale-[0.97]" aria-label="Open menu">
+                                    <button onClick={() => setMenuOpen(true)} className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all duration-150 ease-out active:scale-95" aria-label="Open menu">
                                         <div className="relative">
                                             <Bars3Icon className="w-5 h-5" />
                                             {resolvedUser && unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-primary rounded-full ring-1 ring-background" />}
@@ -135,7 +135,7 @@ export function MobileTopNav() {
             </header>
  
             {menuOpen && (
-                <div className="fixed inset-0 z-[100] lg:hidden">
+                <div className="fixed inset-0 z-50 lg:hidden">
                     {/* Backdrop */}
                     <div 
                         className="fixed inset-0 bg-black/60 animate-in fade-in duration-200"
@@ -144,7 +144,7 @@ export function MobileTopNav() {
                     />
                     
                     {/* Sidebar Drawer */}
-                    <div className="fixed inset-y-0 left-0 w-[80%] max-w-[300px] bg-background shadow-2xl animate-in slide-in-from-left duration-300 ease-out">
+                    <div className="fixed inset-y-0 left-0 w-4/5 max-w-75 bg-background shadow-2xl animate-in slide-in-from-left duration-300 ease-out">
                         <MobileNavMenu 
                             user={user || null} 
                             unreadCount={unreadCount} 

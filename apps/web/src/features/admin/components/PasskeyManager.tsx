@@ -90,7 +90,7 @@ export default function PasskeyManager() {
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="flex items-center gap-2">
+                        <CardTitle className="flex items-center">
                             <Key className="h-5 w-5 text-primary" />
                             Passkeys
                         </CardTitle>
@@ -135,9 +135,9 @@ export default function PasskeyManager() {
                                 </div>
                                 <Button
                                     variant="ghost"
-                                    size="icon"
+                                    size="sm"
                                     onClick={() => handleDelete(key.id)}
-                                    className="text-muted-foreground hover:text-destructive"
+                                   
                                 >
                                     <Trash2 className="h-4 w-4" />
                                 </Button>

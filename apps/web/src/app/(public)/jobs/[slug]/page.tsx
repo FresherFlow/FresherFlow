@@ -15,14 +15,15 @@ import {
     getTypeHubPath,
     ExtendedOpportunity
 } from './opportunitySeo';
-import { fetchBootstrapFeed, fetchGovernmentFeed, fetchFeedIndex } from '@/lib/api/cdnFeed';
+import { fetchGovernmentFeed, fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { getRelatedOpportunities, getValidDirectoryLinks } from '@/features/opportunities/utils/detailUtils';
 import {
     buildTaxonomyRegistry,
     resolveTaxonomySlug,
+    resolveLegacyBoardSlug,
+    boardCanonicalSlug,
     matchTaxonomy,
     assertRegistryJobSlugCollision,
-    normalizeTaxonomySlug,
     TaxonomyRegistry,
 } from '@/features/opportunities/lib/taxonomyRegistry';
 import { TopicBoardPage } from '@/features/opportunities/components/TopicBoardPage';
@@ -69,7 +70,7 @@ function getJobSlugs(
 /** One feed pass builds the board registry; registry slugs ∩ job slugs = ∅ asserted at build. */
 async function loadTaxonomyRegistry(): Promise<TaxonomyRegistry | null> {
     try {
-        const feed = await fetchBootstrapFeed(false, undefined, true);
+        const feed = await fetchFeedIndex(false, undefined, true);
         const registry = buildTaxonomyRegistry(feed?.opportunities || []);
         assertRegistryJobSlugCollision(registry, getJobSlugs(feed));
         return registry;
@@ -122,7 +123,7 @@ export const dynamicParams = true;
 export async function generateStaticParams() {
     try {
         const [feed, govtFeed] = await Promise.all([
-            fetchBootstrapFeed(false, undefined, true),
+            fetchFeedIndex(false, undefined, true),
             fetchGovernmentFeed(false, undefined, true),
         ]);
 
@@ -153,6 +154,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
 
     // Taxonomy boards resolve BEFORE job detail — one /jobs namespace.
+    // Canonical board URLs carry the `-jobs` suffix (combos excepted).
     const registry = await loadTaxonomyRegistry();
     const resolved = registry ? resolveTaxonomySlug(registry, slugOrId) : null;
     if (resolved) {
@@ -163,7 +165,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         return {
             title,
             description,
-            alternates: { canonical: `${base}/jobs/${normalizeTaxonomySlug(slugOrId)}` },
+            alternates: { canonical: `${base}/jobs/${boardCanonicalSlug(resolved)}` },
             openGraph: {
                 title,
                 description,
@@ -199,10 +201,19 @@ export default async function OpportunityDetailPage({ params }: Props) {
     }
 
     // ── Taxonomy board branch (doc 22 §22.3) — registry hit renders the board ──
+    // Legacy unsuffixed board URLs 308 to the canonical `-jobs` form.
     const registry = await loadTaxonomyRegistry();
     const resolved = registry ? resolveTaxonomySlug(registry, slugOrId) : null;
+    if (!resolved && registry) {
+        const legacyCanonical = resolveLegacyBoardSlug(registry, slugOrId);
+        if (legacyCanonical) {
+            logRouteResult('/[slug] (board legacy)', '308');
+            permanentRedirect(`/jobs/${legacyCanonical}`);
+        }
+    }
     if (resolved) {
-        const feed = await fetchBootstrapFeed(false, undefined, true);
+        // Board pages render card data only — lightweight index suffices.
+        const feed = await fetchFeedIndex(false, undefined, true);
         const allJobs = feed?.opportunities || [];
         const boardJobs = allJobs.filter(opp => matchTaxonomy(opp, resolved));
 

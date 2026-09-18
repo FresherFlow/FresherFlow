@@ -156,7 +156,7 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                     <div className="space-y-5">
                         <div className="flex items-center gap-2 mb-2">
                             <span className="flex items-center justify-center w-5 h-5 rounded-md bg-primary/10 text-primary text-xs font-bold">1</span>
-                            <h4 className="text-[14px] font-semibold text-foreground">Basic Info & Classification</h4>
+                            <h4 className="text-sm font-semibold text-foreground">Basic Info & Classification</h4>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Field label="Department" value={props.department} onChange={props.setDepartment} placeholder="e.g. Central Government" />
@@ -220,7 +220,7 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                                     id="officialSourceVerified"
                                     checked={props.officialSourceVerified}
                                     onChange={(e) => props.setOfficialSourceVerified(e.target.checked)}
-                                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                    className="h-4 w-4 rounded border-muted text-primary focus:ring-primary"
                                 />
                                 <label htmlFor="officialSourceVerified" className="text-sm font-medium text-foreground">
                                     Official Source Verified
@@ -232,8 +232,8 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                     {/* Section 2: Vacancy Details */}
                     <div className="space-y-5 pt-4 border-t border-border/40">
                         <div className="flex items-center gap-2 mb-2">
-                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-blue-500/10 text-blue-600 text-xs font-bold">2</span>
-                            <h4 className="text-[14px] font-semibold text-foreground">Vacancy Details</h4>
+                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-brand-facebook/10 text-brand-facebook text-xs font-bold">2</span>
+                            <h4 className="text-sm font-semibold text-foreground">Vacancy Details</h4>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="md:col-span-2">
@@ -252,8 +252,8 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                     {/* Section 4: Eligibility & Qualifications */}
                     <div className="space-y-5 pt-4 border-t border-border/40">
                         <div className="flex items-center gap-2 mb-2">
-                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-yellow-500/10 text-yellow-600 text-xs font-bold">4</span>
-                            <h4 className="text-[14px] font-semibold text-foreground">Eligibility & Qualifications</h4>
+                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-signal-aging/10 text-signal-aging text-xs font-bold">4</span>
+                            <h4 className="text-sm font-semibold text-foreground">Eligibility & Qualifications</h4>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Field label="Age Min" type="number" value={props.ageMin} onChange={props.setAgeMin} placeholder="18" />
@@ -273,8 +273,8 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                     {/* Section 6: Fees */}
                     <div className="space-y-5 pt-4 border-t border-border/40">
                         <div className="flex items-center gap-2 mb-2">
-                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-orange-500/10 text-orange-600 text-xs font-bold">6</span>
-                            <h4 className="text-[14px] font-semibold text-foreground">Application Fees</h4>
+                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-signal-aging/10 text-destructive text-xs font-bold">6</span>
+                            <h4 className="text-sm font-semibold text-foreground">Application Fees</h4>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="md:col-span-2">
@@ -291,8 +291,8 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                     {/* Section 3: Key Dates */}
                     <div className="space-y-5 pt-4 border-t border-border/40 lg:pt-0 lg:border-t-0">
                         <div className="flex items-center gap-2 mb-2">
-                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-green-500/10 text-green-600 text-xs font-bold">3</span>
-                            <h4 className="text-[14px] font-semibold text-foreground">Key Dates</h4>
+                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-success/10 text-success text-xs font-bold">3</span>
+                            <h4 className="text-sm font-semibold text-foreground">Key Dates</h4>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Field label="Notification Date" value={props.notificationIssuedDate} onChange={props.setNotificationIssuedDate} placeholder="2026-05-21" />
@@ -307,8 +307,8 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                     {/* Section 5: Exam & Selection Process */}
                     <div className="space-y-5 pt-4 border-t border-border/40">
                         <div className="flex items-center gap-2 mb-2">
-                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-purple-500/10 text-purple-600 text-xs font-bold">5</span>
-                            <h4 className="text-[14px] font-semibold text-foreground">Exam & Selection Process</h4>
+                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-brand-discord/10 text-brand-discord text-xs font-bold">5</span>
+                            <h4 className="text-sm font-semibold text-foreground">Exam & Selection Process</h4>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Field label="Application Mode" value={props.applicationMode} onChange={props.setApplicationMode} placeholder="e.g. Online" />
@@ -327,8 +327,8 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                     {/* Section 7: Documents, Links & Extra */}
                     <div className="space-y-5 pt-4 border-t border-border/40">
                         <div className="flex items-center gap-2 mb-2">
-                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-teal-500/10 text-teal-600 text-xs font-bold">7</span>
-                            <h4 className="text-[14px] font-semibold text-foreground">Links, Documents & Extra</h4>
+                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-signal-live/10 text-signal-live text-xs font-bold">7</span>
+                            <h4 className="text-sm font-semibold text-foreground">Links, Documents & Extra</h4>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Field label="Official Website" type="url" value={props.officialWebsiteUrl} onChange={props.setOfficialWebsiteUrl} placeholder="https://..." />

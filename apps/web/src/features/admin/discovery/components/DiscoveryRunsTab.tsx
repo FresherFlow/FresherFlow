@@ -20,7 +20,7 @@ export function DiscoveryRunsTab({ runs, onTriggerRun }: DiscoveryRunsTabProps) 
     header: 'Run ID',
     enableSorting: true,
     cell: ({ row }) => (
-     <span className="font-bold text-foreground block truncate max-w-[140px]" title={row.original.id}>
+     <span className="font-bold text-foreground block truncate max-w-35" title={row.original.id}>
       {row.original.id}
      </span>
     ),
@@ -35,12 +35,12 @@ export function DiscoveryRunsTab({ runs, onTriggerRun }: DiscoveryRunsTabProps) 
      return (
       <span
        className={cn(
-        'px-2 py-0.5 rounded text-[11px] font-bold border inline-block',
+        'px-2 py-0.5 rounded text-xs font-bold border inline-block',
         status === 'COMPLETED'
-         ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+         ? 'bg-success/10 text-success dark:text-success border-success/30'
          : status === 'RUNNING'
-         ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30 animate-pulse'
-         : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30'
+         ? 'bg-brand-facebook/10 text-brand-facebook dark:text-brand-telegram border-brand-facebook/30 animate-pulse'
+         : 'bg-error/10 text-error dark:text-error border-error/30'
        )}
       >
        {status.charAt(0).toUpperCase() + status.slice(1).toLowerCase().replace(/_/g, ' ')}
@@ -106,7 +106,7 @@ export function DiscoveryRunsTab({ runs, onTriggerRun }: DiscoveryRunsTabProps) 
     enableSorting: true,
     meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
     cell: ({ row }) => (
-     <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+     <span className="text-success dark:text-success font-bold">
       {row.original.accepted ?? 0}
      </span>
     ),
@@ -120,7 +120,7 @@ export function DiscoveryRunsTab({ runs, onTriggerRun }: DiscoveryRunsTabProps) 
     cell: ({ row }) => {
      const reviewRequired = row.original.reviewRequired ?? row.original.review_required ?? 0;
      return (
-      <span className={reviewRequired > 0 ? 'text-amber-600 dark:text-amber-400 font-bold' : 'text-muted-foreground'}>
+      <span className={reviewRequired > 0 ? 'text-warning dark:text-warning font-bold' : 'text-muted-foreground'}>
        {reviewRequired}
       </span>
      );
@@ -143,7 +143,7 @@ export function DiscoveryRunsTab({ runs, onTriggerRun }: DiscoveryRunsTabProps) 
     cell: ({ row }) => {
      const failed = row.original.failed ?? 0;
      return (
-      <span className={failed > 0 ? 'text-red-600 dark:text-red-400 font-bold' : 'text-muted-foreground'}>
+      <span className={failed > 0 ? 'text-error dark:text-error font-bold' : 'text-muted-foreground'}>
        {failed}
       </span>
      );
@@ -178,7 +178,7 @@ export function DiscoveryRunsTab({ runs, onTriggerRun }: DiscoveryRunsTabProps) 
     actions={() => (
      <button
       onClick={onTriggerRun}
-      className="h-9 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold transition-all duration-150 active:scale-[0.96] shadow-xs flex items-center gap-2 cursor-pointer shrink-0"
+      className="h-9 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold transition-all duration-150 active:scale-95 shadow-xs flex items-center gap-2 cursor-pointer shrink-0"
      >
       <PlayIcon className="w-3.5 h-3.5 fill-current" />
       <span>Trigger New Run</span>

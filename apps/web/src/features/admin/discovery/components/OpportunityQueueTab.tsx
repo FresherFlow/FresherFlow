@@ -54,7 +54,7 @@ export function OpportunityQueueTab({
  {activeHash === 'queue' && opportunities.length > 0 && onPublishAll && (
  <button
  onClick={onPublishAll}
- className="h-7 px-3 rounded-md text-xs font-medium bg-muted/40 border border-border/80 text-foreground hover:bg-muted transition-all duration-100 ease-out active:scale-[0.96] shadow-xs cursor-pointer"
+ className="h-7 px-3 rounded-md text-xs font-medium bg-muted/40 border border-border/80 text-foreground hover:bg-muted transition-all duration-100 ease-out active:scale-95 shadow-xs cursor-pointer"
  >
  Publish All
  </button>
@@ -76,29 +76,28 @@ export function OpportunityQueueTab({
  </div>
  ) : (
  <div className="border border-border/60 rounded-xl bg-card/60 backdrop-blur-md overflow-hidden shadow-xs flex flex-col flex-1 min-h-0">
- <div className="overflow-auto flex-1 min-h-0 custom-scrollbar">
- <Table className="w-full text-left border-collapse">
- <TableHeader className="sticky top-0 z-10 bg-muted/80 backdrop-blur-md shadow-xs">
- <TableRow className="border-b border-border/60 text-xs font-semibold tracking-wider text-muted-foreground">
- <TableHead className="py-3 px-4 font-medium">Role / Company</TableHead>
- <TableHead className="py-3 px-4 font-medium">Links</TableHead>
- <TableHead className="py-3 px-4 text-right font-medium">Actions</TableHead>
+ <div className="overflow-auto flex-1 min-h-0">
+ <Table>
+ <TableHeader className="sticky top-0 z-10">
+ <TableRow>
+ <TableHead>Role / Company</TableHead>
+ <TableHead>Links</TableHead>
+ <TableHead className="text-right">Actions</TableHead>
  </TableRow>
  </TableHeader>
- <TableBody className="divide-y divide-border/40 text-xs">
+ <TableBody>
  {paginatedOpportunities.map((job, index) => (
  <TableRow
  key={job.id}
- className="hover:bg-muted/30 transition-colors duration-150 ease-out animate-in fade-in slide-in-from-bottom-2"
  style={{ animationDelay: `${index * 30}ms`, animationFillMode: 'both' }}
  >
- <TableCell className="py-3 px-4">
+ <TableCell>
  <div className="flex items-center gap-3 min-w-0">
  <CompanyLogo
  companyName={job.company}
  companyLogoUrl={job.companyLogoUrl}
  applyLink={job.applyLink}
- className="w-8 h-8 rounded-md border border-border/60 bg-card shadow-xs shrink-0"
+ className="w-8 h-8 shrink-0"
  />
  <div className="min-w-0">
  <div className="flex items-center gap-2 flex-wrap">
@@ -112,7 +111,7 @@ export function OpportunityQueueTab({
  </div>
  </TableCell>
 
- <TableCell className="py-3 px-4">
+ <TableCell>
  <div className="flex items-center gap-2">
  <button
  onClick={() => onInspectPayload(job)}
@@ -133,14 +132,14 @@ export function OpportunityQueueTab({
  </div>
  </TableCell>
 
- <TableCell className="py-3 px-4 text-right">
+ <TableCell className="text-right">
  <div className="flex items-center justify-end gap-2 shrink-0">
  {activeHash === 'queue' && (
  <>
  <button
  onClick={() => onPublish(job.id)}
  disabled={isActionLoading === job.id}
- className="h-7 px-3 rounded-md bg-muted/40 border border-border/80 text-foreground hover:bg-muted text-xs font-medium transition-all duration-100 ease-out active:scale-[0.96] shadow-xs cursor-pointer disabled:opacity-50"
+ className="h-7 px-3 rounded-md bg-muted/40 border border-border/80 text-foreground hover:bg-muted text-xs font-medium transition-all duration-100 ease-out active:scale-95 shadow-xs cursor-pointer disabled:opacity-50"
  >
  Publish
  </button>
@@ -148,14 +147,14 @@ export function OpportunityQueueTab({
  onClick={() => onReject(job.id)}
  disabled={isActionLoading === job.id}
  title="Archive"
- className="h-7 w-7 flex items-center justify-center rounded-md border border-border/60 bg-muted/40 hover:bg-destructive/10 text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-transform duration-100 ease-out active:scale-[0.96] cursor-pointer disabled:opacity-50"
+ className="h-7 w-7 flex items-center justify-center rounded-md border border-border/60 bg-muted/40 hover:bg-destructive/10 text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-transform duration-100 ease-out active:scale-95 cursor-pointer disabled:opacity-50"
  >
  <span className="text-lg leading-none mb-0.5">×</span>
  </button>
  </>
  )}
  {activeHash === 'verified' && (
- <span className="text-xs font-semibold text-foreground px-2 py-0.5 bg-emerald-500/10 rounded border border-emerald-500/20">
+ <span className="text-xs font-semibold text-foreground px-2 py-0.5 bg-success/10 rounded border border-success/20">
  Published
  </span>
  )}

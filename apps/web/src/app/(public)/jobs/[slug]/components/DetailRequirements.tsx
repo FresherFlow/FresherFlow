@@ -37,8 +37,8 @@ export function RequirementsBox({ opp, educationDetails, userProfileSkills = [],
                                         <span className={cn(
                                             "ml-2 text-xs font-semibold px-1.5 py-0.5 rounded",
                                             opp.allowedPassoutYears.map(Number).includes(Number(userProfile.gradYear))
-                                                ? "bg-emerald-500/10 text-emerald-600"
-                                                : "bg-rose-500/10 text-rose-600"
+                                                ? "bg-success/10 text-success"
+                                                : "bg-error/10 text-error"
                                         )}>
                                             {opp.allowedPassoutYears.map(Number).includes(Number(userProfile.gradYear)) ? '✓ Eligible' : '✕ Mismatch'}
                                         </span>
@@ -56,8 +56,8 @@ export function RequirementsBox({ opp, educationDetails, userProfileSkills = [],
                                         <span className={cn(
                                             "ml-2 text-xs font-semibold px-1.5 py-0.5 rounded",
                                             educationDetails.courses.toLowerCase().includes(userProfile.degree.toLowerCase())
-                                                ? "bg-emerald-500/10 text-emerald-600"
-                                                : "bg-rose-500/10 text-rose-600"
+                                                ? "bg-success/10 text-success"
+                                                : "bg-error/10 text-error"
                                         )}>
                                             {educationDetails.courses.toLowerCase().includes(userProfile.degree.toLowerCase()) ? '✓ Match' : '✕ Mismatch'}
                                         </span>
@@ -94,8 +94,8 @@ export function RequirementsBox({ opp, educationDetails, userProfileSkills = [],
                                     skill={s}
                                     size="sm"
                                     className={cn(
-                                        "text-xs",
-                                        isMatched && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                        "",
+                                        isMatched && "   "
                                     )}
                                 />
                             );

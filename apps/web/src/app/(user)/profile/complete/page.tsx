@@ -132,7 +132,7 @@ export default function ProfileCompletePage() {
 
     return (
         <AuthGate>
-        <div className="max-w-7xl mx-auto min-h-screen lg:grid lg:grid-cols-[280px_1fr]">
+        <div className="max-w-7xl mx-auto min-h-screen lg:grid lg:grid-cols-2">
 
                 <CompletionSidebar
                     steps={STEPS}
@@ -154,7 +154,7 @@ export default function ProfileCompletePage() {
                         currentIdx={currentIdx}
                     />
 
-                    <div className="w-full max-w-4xl bg-card border border-border shadow-sm rounded-3xl p-6 md:p-10 flex flex-col lg:min-h-[70vh] lg:justify-center">
+                    <div className="w-full max-w-4xl bg-card border border-border shadow-sm rounded-3xl p-6 md:p-10 flex flex-col lg:min-h-140 lg:justify-center">
 
                         {currentStep === 'education' && (
                             <EducationStep

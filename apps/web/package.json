@@ -40,6 +40,7 @@
     "@radix-ui/react-tabs": "^1.1.21",
     "@radix-ui/react-tooltip": "^1.2.16",
     "@sentry/core": "^10.69.0",
+    "@simplewebauthn/browser": "^13.3.0",
     "@sentry/nextjs": "^10.69.0",
     "@sentry/node": "^10.69.0",
     "@tailwindcss/postcss": "^4.0.0",

@@ -61,6 +61,7 @@
     "@types/node-cron": "^3.0.11",
     "axios": "^1.19.0",
     "bcrypt": "^6.0.0",
+    "bullmq": "^5.79.2",
     "chalk": "^6.0.0",
     "compromise": "^14.16.0",
     "cookie-parser": "^1.4.7",

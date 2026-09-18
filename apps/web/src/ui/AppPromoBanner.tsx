@@ -11,12 +11,12 @@ export function AppPromoBanner() {
                 </div>
                 <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-foreground">Get Instant Job Updates</p>
-                    <p className="text-[11px] text-muted-foreground leading-tight">Download our mobile app to track applications on the go.</p>
+                    <p className="text-xs text-muted-foreground leading-tight">Download our mobile app to track applications on the go.</p>
                 </div>
             </div>
             <Link
                 href="/app"
-                className="shrink-0 h-8 px-3 rounded-lg bg-primary text-primary-foreground text-[11px] font-bold flex items-center justify-center hover:opacity-90 transition-opacity"
+                className="shrink-0 h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center hover:opacity-90 transition-opacity"
             >
                 Install App
             </Link>

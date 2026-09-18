@@ -3,7 +3,7 @@ import { Suspense } from 'react';
 import CategoryPage from '@/features/opportunities/components/CategoryPage';
 import { FeedPageSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
 import { fetchFeedIndex } from '@/lib/api/cdnFeed';
-import { toOpportunityCardDTO } from '@fresherflow/types';
+import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
 
 // On-demand revalidation via /api/revalidate — called when jobs are published/expired.
 export const revalidate = false;
@@ -37,11 +37,26 @@ export const metadata: Metadata = {
 };
 
 export default async function JobsPage() {
-    const bootstrapData = await fetchFeedIndex(false);
-    const initialData = bootstrapData ? {
-        opportunities: bootstrapData.opportunities.map(toOpportunityCardDTO) as any,
-        total: bootstrapData.count,
-        cachedAt: new Date(bootstrapData.generatedAt).getTime(),
+    // Single page of the bootstrap feed (not the whole thing): the
+    // split-view detail pane renders the job description from its list item
+    // and never refetches when initialData exists. The remaining feed is
+    // hydrated post-paint by useOpportunitiesFeed from the public CDN asset,
+    // so this route's HTML no longer dumps the entire dataset into view-source.
+    //
+    // LOCKS: keep in sync with public/worker CORS + cache policy decisions
+    // (docs/work/TASKS.md). The DTO map keeps the payload shape identical to
+    // sibling routes and lets the pane fetch a single full detail on demand
+    // instead of needing all descriptions inlined.
+    // Lightweight feed-index (~565KB raw / ~100KB gzip vs ~2MB bootstrap):
+    // card-rendering fields only. Detail pane upgrades descriptions on demand
+    // via jobs/{id}.json shards through useOpportunityDetail.
+    const feedIndexData = await fetchFeedIndex(false, undefined, true);
+    const opportunities = feedIndexData?.opportunities || [];
+    const initialData = opportunities.length ? {
+        opportunities: opportunities.slice(0, FEED_PAGE_SIZE),
+        total: feedIndexData?.count ?? opportunities.length,
+        cachedAt: new Date(feedIndexData?.generatedAt || Date.now()).getTime(),
+        partial: (feedIndexData?.count ?? opportunities.length) > FEED_PAGE_SIZE,
     } : null;
 
     return <CategoryPage type={null} initialData={initialData} />;

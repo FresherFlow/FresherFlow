@@ -54,6 +54,29 @@ services:
           name: fresherflow-redis
           property: connectionString
 
+  # ── MCP (read-only AI interface, no database access) ────────────────────────
+  - type: web
+    name: fresherflow-mcp
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: npm ci && npx turbo run build --filter=fresherflow-mcp
+    startCommand: npm run start --workspace=apps/mcp
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 20
+      - key: FRESHERFLOW_API_URL
+        sync: false          # public API base URL, e.g. https://api.fresherflow.in
+      - key: PUBLIC_SITE_URL
+        value: https://fresherflow.in
+    buildFilter:
+      paths:
+        - apps/mcp/**
+        - package.json
+
   # ── REDIS ────────────────────────────────────────────────────────────────────
   - type: redis
     name: fresherflow-redis

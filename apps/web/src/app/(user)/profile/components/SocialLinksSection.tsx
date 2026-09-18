@@ -320,7 +320,7 @@ export function SocialLinksSection() {
                 <div className="flex justify-between items-center mb-4">
                     <h3 className="text-base font-bold text-foreground">Links</h3>
                     {!isEditing && (
-                        <Button variant="ghost" size="sm" onClick={handleOpenEdit} className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
+                        <Button variant="ghost" size="sm" onClick={handleOpenEdit}>
                             {hasLinks ? <PencilSquareIcon className="w-4 h-4" /> : <PlusIcon className="w-4 h-4" />}
                         </Button>
                     )}
@@ -338,7 +338,7 @@ export function SocialLinksSection() {
                             >
                                 <div className="flex items-center gap-2.5 min-w-0">
                                     {link.type === 'LinkedIn' ? (
-                                        <svg className="w-4 h-4 shrink-0 fill-current text-blue-600 dark:text-blue-400" viewBox="0 0 24 24">
+                                        <svg className="w-4 h-4 shrink-0 fill-current text-signal-heat dark:text-signal-heat" viewBox="0 0 24 24">
                                             <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
                                         </svg>
                                     ) : link.type === 'GitHub' ? (
@@ -346,7 +346,7 @@ export function SocialLinksSection() {
                                             <path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.1-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/>
                                         </svg>
                                     ) : link.type === 'Resume' ? (
-                                        <DocumentTextIcon className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                        <DocumentTextIcon className="w-4 h-4 shrink-0 text-success dark:text-success" />
                                     ) : (
                                         <LinkIcon className="w-4 h-4 shrink-0 text-primary" />
                                     )}
@@ -370,7 +370,7 @@ export function SocialLinksSection() {
                             variant="outline"
                             size="sm"
                             onClick={handleOpenPinModal}
-                            className="h-7 px-2.5 text-[11px] font-semibold text-primary border-primary/30 hover:bg-primary/5"
+                           
                         >
                             Select Repositories to Pin
                         </Button>
@@ -386,10 +386,10 @@ export function SocialLinksSection() {
                                     <div className="min-w-0 pr-2">
                                         <p className="font-bold text-foreground truncate">{repo.name}</p>
                                         {repo.language && (
-                                            <p className="text-[10px] text-muted-foreground">{repo.language}</p>
+                                            <p className="text-xs text-muted-foreground">{repo.language}</p>
                                         )}
                                     </div>
-                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 bg-card rounded border border-border/50 shrink-0 text-muted-foreground">Pinned</span>
+                                    <span className="text-xs font-semibold px-1.5 py-0.5 bg-card rounded border border-border/50 shrink-0 text-muted-foreground">Pinned</span>
                                 </div>
                             ))}
                         </div>
@@ -401,7 +401,7 @@ export function SocialLinksSection() {
 
             {/* EDIT LINKS MODAL */}
             <Dialog open={isEditing} onOpenChange={setIsEditing}>
-                <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl max-h-180 overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Edit Links</DialogTitle>
                         <p className="text-xs text-muted-foreground">Add up to {MAX_LINKS} external links (Resume, Portfolio, GitHub, LinkedIn, Other)</p>
@@ -413,7 +413,7 @@ export function SocialLinksSection() {
                                         value={item.type}
                                         onChange={(e) => handleTypeChange(index, e.target.value as LinkType)}
                                         disabled={isSubmitting}
-                                        className="h-10 text-xs px-3 font-semibold bg-card border-border rounded-lg shrink-0 w-auto"
+                                        className="shrink-0"
                                     >
                                         {LINK_TYPES.map((t) => (
                                             <option key={t} value={t}>
@@ -427,7 +427,7 @@ export function SocialLinksSection() {
                                         onChange={(e) => handleUrlChange(index, e.target.value)}
                                         placeholder={getPlaceholder(item.type)}
                                         disabled={isSubmitting}
-                                        className="h-10 flex-1 text-sm"
+                                        className="h-10 flex-1"
                                     />
                                     {linksList.length > 1 && (
                                         <Button
@@ -436,7 +436,6 @@ export function SocialLinksSection() {
                                             size="sm"
                                             onClick={() => handleRemoveLink(index)}
                                             disabled={isSubmitting}
-                                            className="h-10 w-10 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
                                             title="Remove link"
                                         >
                                             <TrashIcon className="w-4 h-4" />
@@ -452,15 +451,15 @@ export function SocialLinksSection() {
                                     size="sm"
                                     onClick={handleAddLink}
                                     disabled={isSubmitting}
-                                    className="h-9 px-3 text-xs font-semibold gap-1.5 text-primary border-primary/30 hover:bg-primary/5"
+                                   
                                 >
                                     <PlusIcon className="w-3.5 h-3.5" /> Add Link ({linksList.length}/{MAX_LINKS})
                                 </Button>
                             )}
 
                             <div className="flex justify-end gap-4 pt-2 border-t border-border/40">
-                                <Button variant="outline" className="h-10 px-4" onClick={() => setIsEditing(false)} disabled={isSubmitting}>Cancel</Button>
-                                <Button className="h-10 px-4 gap-1.5" onClick={handleSave} disabled={isSubmitting}><CheckIcon className="w-3.5 h-3.5" /> Save</Button>
+                                <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} disabled={isSubmitting}>Cancel</Button>
+                                <Button size="sm" onClick={handleSave} disabled={isSubmitting}><CheckIcon className="w-3.5 h-3.5" /> Save</Button>
                             </div>
                         </div>
                 </DialogContent>
@@ -468,7 +467,7 @@ export function SocialLinksSection() {
 
             {/* PINNED REPOSITORIES SELECTION MODAL */}
             <Dialog open={isPinModalOpen} onOpenChange={setIsPinModalOpen}>
-                <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+                <DialogContent className="max-w-lg max-h-180 flex flex-col">
                     <DialogHeader>
                         <DialogTitle>Select Repositories to Pin</DialogTitle>
                         <p className="text-xs text-muted-foreground">Select up to 3 repositories to feature on your public profile</p>
@@ -486,7 +485,7 @@ export function SocialLinksSection() {
                                     onChange={(e) => setCustomRepoInput(e.target.value)}
                                     placeholder="https://github.com/org/repo or org/repo"
                                     disabled={isAddingCustomRepo}
-                                    className="h-9 flex-1 text-xs"
+                                    className="h-9 flex-1"
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
                                             e.preventDefault();
@@ -499,7 +498,7 @@ export function SocialLinksSection() {
                                     size="sm"
                                     onClick={handleAddCustomRepo}
                                     disabled={isAddingCustomRepo || !customRepoInput.trim()}
-                                    className="h-9 px-3 text-xs font-semibold shrink-0"
+                                   
                                 >
                                     {isAddingCustomRepo ? 'Adding...' : 'Add Repo'}
                                 </Button>
@@ -536,7 +535,7 @@ export function SocialLinksSection() {
                                                 <div className="flex items-center justify-between gap-2">
                                                     <p className="font-bold text-sm text-foreground truncate">{repo.name}</p>
                                                     {repo.language && (
-                                                        <span className="px-2 py-0.5 text-[10px] font-semibold bg-card rounded border border-border/50 shrink-0">
+                                                        <span className="px-2 py-0.5 text-xs font-semibold bg-card rounded border border-border/50 shrink-0">
                                                             {repo.language}
                                                         </span>
                                                     )}

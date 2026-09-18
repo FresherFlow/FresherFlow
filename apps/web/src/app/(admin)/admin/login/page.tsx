@@ -167,9 +167,9 @@ export default function AdminLoginPage() {
                         <ShieldCheckIcon className="w-10 h-10 text-primary" />
                     </div>
                     <h1 className="text-2xl font-bold tracking-tight capitalize text-foreground">Admin Portal</h1>
-                    <p className="text-[10px] text-muted-foreground capitalize font-bold tracking-widest opacity-60">Passkey or Authenticator</p>
+                    <p className="text-xs text-muted-foreground capitalize font-bold tracking-widest opacity-60">Passkey or Authenticator</p>
                     {!adminEmailConfigured && (
-                        <p className="text-[9px] text-muted-foreground capitalize tracking-widest opacity-50">
+                        <p className="text-xs text-muted-foreground capitalize tracking-widest opacity-50">
                             Admin email not configured in client env
                         </p>
                     )}
@@ -187,14 +187,14 @@ export default function AdminLoginPage() {
                         <span className="text-base font-bold capitalize tracking-widest">
                             {isLoading ? 'Verifying...' : 'Quick Access'}
                         </span>
-                        <span className="text-[10px] opacity-70 mt-1 font-bold">Touch ID / Face ID / USB key</span>
+                        <span className="text-xs opacity-70 mt-1 font-bold">Touch ID / Face ID / USB key</span>
                     </button>
 
                     {/* Secondary/Initial Creation */}
                     {showOtherOptions && (
                         <form onSubmit={handleRegisterNewPasskey} className="p-6 bg-muted/30 border border-border space-y-4">
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-bold capitalize tracking-widest text-muted-foreground ml-1">
+                                <label className="text-xs font-bold capitalize tracking-widest text-muted-foreground ml-1">
                                     Register New Device
                                 </label>
                                 <input
@@ -206,7 +206,7 @@ export default function AdminLoginPage() {
                                 />
                             </div>
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-bold capitalize tracking-widest text-muted-foreground ml-1">
+                                <label className="text-xs font-bold capitalize tracking-widest text-muted-foreground ml-1">
                                     Bootstrap Secret (If Required)
                                 </label>
                                 <input
@@ -220,7 +220,8 @@ export default function AdminLoginPage() {
                             <Button
                                 type="submit"
                                 disabled={isLoading}
-                                className="w-full h-11 text-[10px] font-bold capitalize tracking-widest"
+                                size="sm"
+                                className="w-full"
                             >
                                 Create Passkey
                             </Button>
@@ -230,7 +231,7 @@ export default function AdminLoginPage() {
                     <form onSubmit={handleTotpLogin} className="p-6 bg-muted/30 border border-border space-y-4">
                         {!adminEmailConfigured && (
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-bold capitalize tracking-widest text-muted-foreground ml-1">
+                                <label className="text-xs font-bold capitalize tracking-widest text-muted-foreground ml-1">
                                     Admin Email
                                 </label>
                                 <input
@@ -243,7 +244,7 @@ export default function AdminLoginPage() {
                             </div>
                         )}
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold capitalize tracking-widest text-muted-foreground ml-1">
+                            <label className="text-xs font-bold capitalize tracking-widest text-muted-foreground ml-1">
                                 Authenticator Code
                             </label>
                             <input
@@ -254,33 +255,34 @@ export default function AdminLoginPage() {
                                 placeholder="123456"
                                 value={totpCode}
                                 onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                className="w-full bg-background border border-border px-4 py-3 text-sm focus:outline-none focus:border-primary transition-all tracking-[0.2em]"
+                                className="w-full bg-background border border-border px-4 py-3 text-sm focus:outline-none focus:border-primary transition-all tracking-widest"
                             />
                         </div>
                         <Button
                             type="submit"
                             disabled={isLoading || totpCode.length !== 6}
-                            className="w-full h-11 text-[10px] font-bold capitalize tracking-widest"
+                            size="sm"
+                            className="w-full"
                         >
                             Login with Authenticator
                         </Button>
-                        <p className="text-[10px] text-muted-foreground capitalize tracking-wider">
+                        <p className="text-xs text-muted-foreground capitalize tracking-wider">
                             Alternative path: use authenticator instead of passkey.
                         </p>
                     </form>
 
                     <button
                         onClick={() => setShowOtherOptions(!showOtherOptions)}
-                        className="w-full py-2 text-[10px] font-bold text-muted-foreground hover:text-foreground capitalize tracking-widest transition-colors flex items-center justify-center gap-2"
+                        className="w-full py-2 text-xs font-bold text-muted-foreground hover:text-foreground capitalize tracking-widest transition-colors flex items-center justify-center gap-2"
                     >
-                        <div className="h-[1px] flex-1 bg-border/50" />
+                        <div className="h-px flex-1 bg-border/50" />
                         <span>{showOtherOptions ? 'Hide Options' : 'Other Options'}</span>
-                        <div className="h-[1px] flex-1 bg-border/50" />
+                        <div className="h-px flex-1 bg-border/50" />
                     </button>
                 </div>
 
                 <div className="pt-4 text-center">
-                    <p className="text-[9px] text-muted-foreground capitalize tracking-wider font-bold opacity-40 leading-relaxed">
+                    <p className="text-xs text-muted-foreground capitalize tracking-wider font-bold opacity-40 leading-relaxed">
                         Authorized Personnel Only<br />
                         Access attempts are monitored and logged.
                     </p>

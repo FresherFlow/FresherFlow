@@ -3,6 +3,7 @@ import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { logger } from '@fresherflow/utils';
 import TelegramService from '../infrastructure/services/telegram.service';
 import { StaticFeedService } from '../infrastructure/services/staticFeed.service';
+import { expireJobNotifyEngagedUsers } from '../infrastructure/services/community.service';
 
 function formatDateKeyInTimezone(date: Date, timezone: string): string {
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -49,6 +50,21 @@ export async function runExpiryCycle() {
                 expiredAt: nowUTC
             }
         });
+
+        // Notify engaged users about expired jobs
+        if (expiredJobsResult.count > 0) {
+            const expiredOpps = await prisma.opportunity.findMany({
+                where: {
+                    type: { in: [OpportunityType.JOB, OpportunityType.INTERNSHIP] },
+                    status: OpportunityStatus.PUBLISHED,
+                    expiredAt: { not: null }
+                },
+                select: { id: true }
+            });
+            for (const opp of expiredOpps) {
+                await expireJobNotifyEngagedUsers(opp.id).catch(() => {});
+            }
+        }
 
         // 2. EXPIRE WALK-INS
         const activeWalkIns = await prisma.opportunity.findMany({

@@ -110,6 +110,20 @@ export async function handleOpportunityPublished(
   //   StaticFeedService.scheduleRefresh();
   // });
 
+  // 6b. Per-job shard upload (atomic ~2.5KB object) — keeps /jobs/[slug] and
+  // split-view detail panes resolvable from the CDN edge without falling back
+  // to the full bootstrap feed. Fire-and-forget, same policy as OG images.
+  import('./staticFeed.service')
+    .then(({ StaticFeedService }) =>
+      StaticFeedService.uploadSingleJob(opportunity as unknown as Record<string, unknown>)
+    )
+    .catch((err) => {
+      logger.error('[publish] Job shard upload failed', {
+        opportunityId: opportunity.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    });
+
   // 7. Append new opportunity metadata to R2 CDN files
   MetadataService.appendOpportunityMetadata(opportunity).catch((err) => {
     logger.error('[publish] Failed to append opportunity metadata to R2', {

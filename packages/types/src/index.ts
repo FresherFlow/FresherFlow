@@ -30,7 +30,19 @@ import {
     RawOpportunityStatus,
     OrganizationType,
     OrgRole,
-    MembershipStatus
+    MembershipStatus,
+    CommentType,
+    CommentVoteValue,
+    JobSignalType,
+    NotificationType,
+    CommunityPostCategory,
+    CommunityPostStatus,
+    InterviewResult,
+    InterviewDifficulty,
+    ApplicationStatus,
+    AreaType,
+    ReferralRequestStatus,
+    SalaryReportType
 } from './enums.js';
 
 export * from './enums.js';
@@ -1031,6 +1043,8 @@ export interface OpportunityCardDTO {
     postedAt: Date | string;
     expiresAt?: Date | string | null;
     shareCount?: number;
+    /** Walk-in event details — required by walk-in cards, date boards, and calendars. */
+    walkInDetails?: GroupedWalkInDetails;
     governmentJobDetails?: {
         jobCategory?: string[];
         totalVacancies?: number;
@@ -1075,6 +1089,25 @@ export function toOpportunityCardDTO(opp: Opportunity): OpportunityCardDTO {
         postedAt: opp.postedAt,
         expiresAt: opp.expiresAt,
         shareCount: opp.shareCount,
+        walkInDetails: opp.walkInDetails ? {
+            dates: opp.walkInDetails.dates || [],
+            dateRange: opp.walkInDetails.dateRange,
+            timeRange: opp.walkInDetails.timeRange,
+            venueAddress: opp.walkInDetails.venueAddress,
+            venueLink: opp.walkInDetails.venueLink,
+            latitude: opp.walkInDetails.latitude,
+            longitude: opp.walkInDetails.longitude,
+            clusterName: opp.walkInDetails.techCluster,
+            city: undefined,
+            reportingTime: opp.walkInDetails.reportingTime,
+            requiredDocuments: opp.walkInDetails.requiredDocuments || [],
+            contactPerson: opp.walkInDetails.contactPerson,
+            contactPhone: opp.walkInDetails.contactPhone,
+            expiryDate: opp.walkInDetails.expiryDate ? String(opp.walkInDetails.expiryDate) : undefined,
+            landmark: opp.walkInDetails.landmark,
+            transitInfo: opp.walkInDetails.transitInfo,
+            selectionProcess: opp.walkInDetails.selectionProcess,
+        } : undefined,
         governmentJobDetails: opp.governmentJobDetails ? {
             jobCategory: opp.governmentJobDetails.jobCategory,
             totalVacancies: opp.governmentJobDetails.vacancyCount,
@@ -1286,5 +1319,351 @@ export interface CompanyGroupedResponse {
     timestamp: number;
 }
 
+// ========================================
+// COMMUNITY (plan 09b section 6.3 / docs 23-24)
+// ========================================
+
+export interface CommunityCommentUser {
+    id: string;
+    fullName?: string | null;
+    username?: string | null;
+    avatarUrl?: string | null;
+}
+
+export interface CommunityComment {
+    id: string;
+    text: string;
+    commentType: CommentType;
+    upvotes: number;
+    downvotes: number;
+    createdAt: string;
+    editedAt?: string | null;
+    user: CommunityCommentUser;
+    myVote: CommentVoteValue | null;
+    replies: CommunityComment[];
+}
+
+export interface CommentListResult {
+    comments: CommunityComment[];
+    total: number;
+}
+
+export interface CommentVoteResult {
+    upvotes: number;
+    downvotes: number;
+    myVote: CommentVoteValue | null;
+}
+
+export type SignalSummaryMap = Record<JobSignalType, number>;
+
+export interface SignalState {
+    summary: SignalSummaryMap;
+    mySignals: JobSignalType[];
+}
+
+export interface SubmitJobResult {
+    id: string;
+    slug: string;
+    existing?: boolean;
+}
+
+export interface ReportResult {
+    id: string;
+    deduped?: boolean;
+}
+
+export interface CommunityNotification {
+    id: string;
+    type: NotificationType;
+    actor?: CommunityCommentUser | null;
+    opportunity?: { id: string; slug: string; title: string } | null;
+    commentId?: string | null;
+    payload?: { excerpt?: string } | null;
+    readAt: string | null;
+    createdAt: string;
+}
+
+export interface NotificationListResult {
+    notifications: CommunityNotification[];
+    unreadCount: number;
+}
+
+export interface UserActivityResult {
+    user: CommunityCommentUser;
+    counts: { comments: number; signals: number; submissions: number };
+    comments: Array<{
+        id: string;
+        text: string;
+        commentType: CommentType;
+        opportunityId: string;
+        createdAt: string;
+        opportunity: { id: string; slug: string; title: string } | null;
+    }>;
+}
+
+// ========================================
+// COMMUNITY POST TYPES
+// ========================================
+
+export interface CommunityPostUser {
+    id: string;
+    fullName?: string | null;
+    username?: string | null;
+    avatarUrl?: string | null;
+}
+
+export interface CommunityPost {
+    id: string;
+    title: string;
+    body: string;
+    category: CommunityPostCategory;
+    tags: string[];
+    isAnonymous: boolean;
+    anonId?: string | null;
+    likesCount: number;
+    commentsCount: number;
+    status: CommunityPostStatus;
+    createdAt: string;
+    updatedAt: string;
+    expiredAt?: string | null;
+    sourceOpportunityId?: string | null;
+    author: CommunityPostUser;
+    comments: CommunityPostComment[];
+    votes: CommunityPostVote[];
+}
+
+export interface CommunityPostComment {
+    id: string;
+    postId: string;
+    body: string;
+    isAnonymous: boolean;
+    anonId?: string | null;
+    likesCount: number;
+    createdAt: string;
+    updatedAt: string;
+    deletedAt?: string | null;
+    author: CommunityPostUser;
+    parent?: CommunityPostComment;
+    replies: CommunityPostComment[];
+    votes: CommunityPostVote[];
+}
+
+export interface CommunityPostVote {
+    id: string;
+    postId?: string | null;
+    commentId?: string | null;
+    userId: string;
+    value: number;
+    createdAt: string;
+}
+
+export interface CommunityFeedResult {
+    posts: CommunityPost[];
+    total: number;
+    page: number;
+    limit: number;
+    hasMore: boolean;
+}
+
+export interface CommunityPostResult {
+    post: CommunityPost;
+    comments: CommunityPostComment[];
+    totalComments: number;
+}
+
+// ============================================================================
+// PHASE 2: STRUCTURED COMMUNITY ENTITIES
+// ============================================================================
+
+export interface InterviewRound {
+    name: string;
+    questions: string[];
+    notes?: string;
+}
+
+export interface InterviewExperience {
+    id: string;
+    opportunityId: string;
+    authorId: string;
+    role: string;
+    batch?: number | null;
+    rounds: InterviewRound[];
+    difficulty?: InterviewDifficulty | null;
+    result?: InterviewResult | null;
+    interviewDate?: string | null;
+    overallNotes?: string | null;
+    upvotes: number;
+    downvotes: number;
+    createdAt: string;
+    updatedAt: string;
+    author: CommunityPostUser;
+    opportunity?: { id: string; slug: string; title: string; company: string } | null;
+    myVote?: number | null;
+}
+
+export interface InterviewExperienceListResult {
+    experiences: InterviewExperience[];
+    total: number;
+    summary: {
+        total: number;
+        selected: number;
+        rejected: number;
+        waiting: number;
+        avgDifficulty: string | null;
+    };
+}
+
+export interface ApplicationUpdate {
+    id: string;
+    opportunityId: string;
+    authorId: string;
+    status: ApplicationStatus;
+    description?: string | null;
+    evidenceUrl?: string | null;
+    createdAt: string;
+    author: CommunityPostUser;
+    opportunity?: { id: string; slug: string; title: string; company: string } | null;
+}
+
+export interface ApplicationUpdateListResult {
+    updates: ApplicationUpdate[];
+    total: number;
+    summary: Record<ApplicationStatus, number>;
+}
+
+// ============================================================================
+// PHASE 3: AREAS (Persistent Communities)
+// ============================================================================
+
+export interface Area {
+    id: string;
+    slug: string;
+    name: string;
+    description?: string | null;
+    icon?: string | null;
+    type: AreaType;
+    memberCount: number;
+    postCount: number;
+    jobCount: number;
+    isPublic: boolean;
+    createdAt: string;
+    updatedAt: string;
+    createdBy?: CommunityPostUser | null;
+    isMember?: boolean;
+    memberRole?: string | null;
+}
+
+export interface AreaListResult {
+    areas: Area[];
+    total: number;
+    page: number;
+    limit: number;
+    hasMore: boolean;
+}
+
+export interface AreaDetailResult {
+    area: Area;
+    recentPosts: CommunityPost[];
+    members: Array<{
+        user: CommunityPostUser;
+        role: string;
+        joinedAt: string;
+    }>;
+}
+
+// ============================================================================
+// FRESHER NEEDS: Saved searches, referral board, offer transparency
+// ============================================================================
+
+export interface SavedSearchFilters {
+    type?: string;
+    feedType?: string;
+    city?: string;
+    tag?: string;
+    company?: string;
+    minSalary?: number;
+    maxSalary?: number;
+    batch?: number;
+    closingSoon?: boolean;
+}
+export interface SavedSearch {
+    id: string;
+    userId: string;
+    name: string;
+    filters: SavedSearchFilters;
+    alertEnabled: boolean;
+    lastMatchedAt?: string | null;
+    lastNotifiedAt?: string | null;
+    createdAt: string;
+    updatedAt: string;
+    newMatchCount?: number;
+}
+
+export interface ReferralRequestItem {
+    id: string;
+    authorId: string;
+    company: string;
+    role?: string | null;
+    batch?: number | null;
+    city?: string | null;
+    note?: string | null;
+    status: ReferralRequestStatus;
+    responseCount: number;
+    createdAt: string;
+    author: CommunityPostUser;
+    responses?: Array<{
+        id: string;
+        message?: string | null;
+        contactHandle?: string | null;
+        createdAt: string;
+        responder: CommunityPostUser;
+    }> | null;
+}
+
+export interface ReferralRequestListResult {
+    requests: ReferralRequestItem[];
+    total: number;
+    page: number;
+    limit: number;
+    hasMore: boolean;
+}
+
+export interface SalaryReportItem {
+    id: string;
+    opportunityId?: string | null;
+    company: string;
+    role: string;
+    batch?: number | null;
+    city?: string | null;
+    reportType: SalaryReportType;
+    ctcFixed?: number | null;
+    ctcVariable?: number | null;
+    ctcTotal?: number | null;
+    inHandMonthly?: number | null;
+    joinBonus?: number | null;
+    bondMonths?: number | null;
+    notes?: string | null;
+    helpfulCount: number;
+    createdAt: string;
+    author: CommunityPostUser;
+    opportunity?: { id: string; slug: string; title: string } | null;
+    markedHelpful?: boolean;
+}
+
+export interface SalaryReportListResult {
+    reports: SalaryReportItem[];
+    total: number;
+    page: number;
+    limit: number;
+    hasMore: boolean;
+    stats: {
+        count: number;
+        avgTotal: number | null;
+        minTotal: number | null;
+        maxTotal: number | null;
+        avgInHand: number | null;
+        avgBond: number | null;
+    };
+}
 export * from './schemas.js';
 

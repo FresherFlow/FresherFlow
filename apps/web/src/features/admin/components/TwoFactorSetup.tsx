@@ -91,8 +91,8 @@ export default function TwoFactorSetup() {
             <CardHeader>
                 <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="flex items-center gap-2">
-                            <ShieldCheck className={`h-5 w-5 ${isEnabled ? "text-green-500" : "text-muted-foreground"}`} />
+                        <CardTitle className="flex items-center">
+                            <ShieldCheck className={`h-5 w-5 ${isEnabled ? "text-success" : "text-muted-foreground"}`} />
                             Two-Factor Authentication
                         </CardTitle>
                         <CardDescription>
@@ -103,14 +103,14 @@ export default function TwoFactorSetup() {
             </CardHeader>
             <CardContent>
                 {isEnabled ? (
-                    <div className="flex items-center justify-between p-4 border rounded-lg bg-green-500/10 border-green-500/20">
+                    <div className="flex items-center justify-between p-4 border rounded-lg bg-success/10 border-success/20">
                         <div className="flex items-center gap-3">
-                            <div className="bg-green-500/20 p-2 rounded-full">
-                                <ShieldCheck className="h-5 w-5 text-green-600" />
+                            <div className="bg-success/20 p-2 rounded-full">
+                                <ShieldCheck className="h-5 w-5 text-success" />
                             </div>
                             <div>
-                                <p className="font-medium text-sm text-green-700">2FA is enabled</p>
-                                <p className="text-xs text-green-600/80">Your account is protected.</p>
+                                <p className="font-medium text-sm text-success">2FA is enabled</p>
+                                <p className="text-xs text-success/80">Your account is protected.</p>
                             </div>
                         </div>
                         <Button
@@ -153,7 +153,7 @@ export default function TwoFactorSetup() {
                                             className="mb-4"
                                         />
                                     )}
-                                    <p className="text-xs text-center text-muted-foreground break-all max-w-[200px]">
+                                    <p className="text-xs text-center text-muted-foreground break-all max-w-50">
                                         Secret: <span className="font-mono select-all">{secret}</span>
                                     </p>
                                 </div>
@@ -166,16 +166,16 @@ export default function TwoFactorSetup() {
                                             value={verificationCode}
                                             onChange={(e) => setVerificationCode(e.target.value)}
                                             maxLength={6}
-                                            className="font-mono tracking-widest text-center text-lg"
+                                            className="text-center"
                                         />
-                                        <Button onClick={handleVerify} disabled={submitting || verificationCode.length !== 6}>
+                                        <Button onClick={handleVerify} disabled={submitting || verificationCode.length !== 6} size="sm">
                                             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Verify"}
                                         </Button>
                                     </div>
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        className="w-full text-muted-foreground"
+                                        className="w-full"
                                         onClick={() => setSetupStep("initial")}
                                     >
                                         Cancel

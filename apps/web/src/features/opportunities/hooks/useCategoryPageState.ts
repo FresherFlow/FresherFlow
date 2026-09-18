@@ -3,7 +3,7 @@ import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { Opportunity, OpportunityType } from "@fresherflow/types";
 import { useOpportunitiesFeed } from "@/features/opportunities/hooks/useOpportunitiesFeed";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { type FilterBarFilters } from "@/features/opportunities/components/FilterDropdownBar";
+import { type FilterBarFilters } from "@/features/opportunities/components/JobFilterBar";
 import {
   GOVT_PHASE_STATUSES,
   GOVT_CATEGORIES,
@@ -18,8 +18,7 @@ import {
   type WalkinDrivePeriod,
 } from "@/features/opportunities/utils/walkinMapUtils";
 import { sanitizeSearchQuery } from "@/features/opportunities/utils/searchUtils";
-
-const PAGE_SIZE = 20;
+import { FEED_PAGE_SIZE } from "@/lib/utils/feedPageSize";
 
 export interface UseCategoryPageStateProps {
   type: OpportunityType | null;
@@ -458,7 +457,7 @@ export function useCategoryPageState({
   });
 
   useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
+    setVisibleCount(FEED_PAGE_SIZE);
   }, [type]);
 
   const phaseCounts = useMemo(() => {

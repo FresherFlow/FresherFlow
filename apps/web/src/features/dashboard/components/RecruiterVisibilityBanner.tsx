@@ -37,14 +37,14 @@ export function RecruiterVisibilityBanner() {
     return (
         <div className="rounded-2xl border border-border/60 bg-card p-4 shadow-sm flex flex-col gap-3 transition-all hover:border-primary/30">
             <div className="flex items-start gap-3">
-                <div className={`p-2.5 rounded-xl shrink-0 ${isOpenToRecruiters ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-muted/60 text-muted-foreground'}`}>
+                <div className={`p-2.5 rounded-xl shrink-0 ${isOpenToRecruiters ? 'bg-success/10 text-success dark:text-success' : 'bg-muted/60 text-muted-foreground'}`}>
                     {isOpenToRecruiters ? <EyeIcon className="w-5 h-5" /> : <EyeSlashIcon className="w-5 h-5" />}
                 </div>
                 <div className="space-y-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-sm font-bold text-foreground">Public Portfolio Visibility</h3>
                         {isOpenToRecruiters && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                            <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-success/10 text-success border border-success/20">
                                 <SparklesIcon className="w-3 h-3" /> Active
                             </span>
                         )}

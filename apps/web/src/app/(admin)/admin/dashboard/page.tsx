@@ -273,13 +273,13 @@ export default function AdminDashboardHome() {
     ];
 
     return (
-        <div className="p-4 md:p-6 lg:p-8 pt-16 md:pt-6 lg:pt-8 space-y-6 flex-1 min-h-0 overflow-y-auto pb-28 md:pb-8 animate-in fade-in duration-500 text-foreground w-full font-sans antialiased custom-scrollbar relative z-0">
+        <div className="p-4 md:p-6 lg:p-8 pt-16 md:pt-6 lg:pt-8 space-y-6 flex-1 min-h-0 overflow-y-auto pb-28 md:pb-8 animate-in fade-in duration-500 text-foreground w-full font-sans antialiased relative z-0">
             {/* Header */}
             <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5 md:border-none md:pb-0">
                 <div className="flex items-center gap-3 md:hidden">
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground">Admin overview</h1>
-                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground font-medium px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground font-medium px-2.5 py-1 rounded-full bg-success/10 border border-success/20">
+                        <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                         Live telemetry connected
                     </span>
                 </div>
@@ -288,19 +288,19 @@ export default function AdminDashboardHome() {
                     createPortal(
                         <>
                             <div className="text-lg font-semibold text-foreground truncate">Admin Overview</div>
-                            <div className="flex items-center gap-2 ml-auto shrink-0 animate-in fade-in zoom-in duration-300 fill-mode-both">
-                                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground font-medium px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 mr-2">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <div className="flex items-center gap-2 ml-auto shrink-0 animate-in fade-in zoom-in duration-300">
+                                <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground font-medium px-2.5 py-1 rounded-full bg-success/10 border border-success/20 mr-2">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                                     Live telemetry
                                 </span>
-                                <Button variant="admin" size="sm" className="text-xs px-3.5 py-2 h-auto flex items-center gap-1.5" asChild>
-                                    <Link href="/admin/opportunities/create">
+                                <Button variant="admin" size="sm" asChild>
+                                    <Link href="/admin/opportunities/create" className="flex items-center gap-1.5">
                                         <BriefcaseIcon className="w-4 h-4" />
                                         <span>Create Listing</span>
                                     </Link>
                                 </Button>
-                                <Button variant="admin" size="sm" className="text-xs px-3.5 py-2 h-auto flex items-center gap-1.5" asChild>
-                                    <Link href="/admin/feedback">
+                                <Button variant="admin" size="sm" asChild>
+                                    <Link href="/admin/feedback" className="flex items-center gap-1.5">
                                         Moderate Reports
                                     </Link>
                                 </Button>
@@ -311,14 +311,14 @@ export default function AdminDashboardHome() {
                 )}
 
                 <div className="flex items-center gap-2 md:hidden">
-                    <Button variant="admin" size="sm" className="text-xs px-3.5 py-2 h-auto flex items-center gap-1.5" asChild>
-                        <Link href="/admin/opportunities/create">
+                    <Button variant="admin" size="sm" asChild>
+                        <Link href="/admin/opportunities/create" className="flex items-center gap-1.5">
                             <BriefcaseIcon className="w-4 h-4" />
                             <span>Create Listing</span>
                         </Link>
                     </Button>
-                    <Button variant="admin" size="sm" className="text-xs px-3.5 py-2 h-auto flex items-center gap-1.5" asChild>
-                        <Link href="/admin/feedback">
+                    <Button variant="admin" size="sm" asChild>
+                        <Link href="/admin/feedback" className="flex items-center gap-1.5">
                             Moderate Reports
                         </Link>
                     </Button>
@@ -336,7 +336,7 @@ export default function AdminDashboardHome() {
                             href={card.href} 
                             key={card.label} 
                             style={{ animationDelay: `${index * 50}ms` }}
-                            className="group relative bg-card text-card-foreground border border-border shadow-sm rounded-xl p-3.5 md:p-5 hover:border-border/80 transition-all duration-[250ms] ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.98] flex flex-col justify-between min-h-[140px] cursor-pointer animate-in fade-in slide-in-from-bottom-4 fill-mode-backwards"
+                            className="group relative bg-card text-card-foreground border border-border shadow-sm rounded-xl p-3.5 md:p-5 hover:border-border/80 transition-all duration-200 ease-out active:scale-95 min-h-35 cursor-pointer animate-in fade-in slide-in-from-bottom-4"
                         >
                             <div className="flex items-center justify-between gap-2 mb-3">
                                 <div className="flex items-center gap-2">
@@ -349,24 +349,24 @@ export default function AdminDashboardHome() {
                                 {isVisible ? (
                                     <div className="flex flex-col">
                                         <p className="text-xl md:text-3xl font-bold tracking-tight font-mono text-foreground">{card.value.toLocaleString()}</p>
-                                        <span className="text-[10px] md:text-[11px] text-muted-foreground mt-1 line-clamp-1">{card.description}</span>
+                                        <span className="text-xs md:text-xs text-muted-foreground mt-1 line-clamp-1">{card.description}</span>
                                     </div>
                                 ) : (
                                     <div className="flex flex-col w-full h-full justify-end animate-in fade-in duration-300">
                                         <div className="flex items-center justify-between w-full">
-                                            <p className="text-xl md:text-3xl font-bold tracking-tight opacity-20 select-none font-mono blur-[2px]">000</p>
+                                            <p className="text-xl md:text-3xl font-bold tracking-tight opacity-20 select-none font-mono blur-xs">000</p>
                                             <button
                                                 onClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
                                                     revealMetric(card.key);
                                                 }}
-                                                className="text-xs font-semibold px-3 py-1 rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-all duration-150 active:scale-[0.97]"
+                                                className="text-xs font-semibold px-3 py-1 rounded-md border border-border bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-all duration-150 active:scale-95"
                                             >
                                                 Show
                                             </button>
                                         </div>
-                                        <span className="text-[10px] md:text-[11px] text-muted-foreground mt-1 hidden sm:block line-clamp-1">{card.description}</span>
+                                        <span className="text-xs md:text-xs text-muted-foreground mt-1 hidden sm:block line-clamp-1">{card.description}</span>
                                     </div>
                                 )}
                             </div>
@@ -387,16 +387,16 @@ export default function AdminDashboardHome() {
 
                         <div className="grid grid-cols-2 gap-3 py-2">
                             <div className="rounded-lg border border-border p-3 bg-muted/30">
-                                <p className="text-[10px] font-medium text-muted-foreground mb-1 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Cached Jobs</p>
+                                <p className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-success"></span> Cached Jobs</p>
                                 <p className="text-xl font-bold tracking-tight font-mono">
                                     {cdnStats.loading ? <span className="animate-pulse">---</span> : cdnStats.error ? 'Error' : cdnStats.jobCount !== null ? cdnStats.jobCount.toLocaleString() : 'N/A'}
                                 </p>
                             </div>
                             <div className="rounded-lg border border-border p-3 bg-muted/30">
-                                <p className="text-[10px] font-medium text-muted-foreground mb-1 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Timestamp</p>
+                                <p className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-warning"></span> Timestamp</p>
                                 <div className="text-xs font-semibold truncate mt-1" title={cdnStats.lastUpdated || 'N/A'}>
                                     {cdnStats.loading ? <span className="animate-pulse">---</span> : cdnStats.error ? 'Error' : cdnStats.lastUpdated ? cdnStats.lastUpdated.split(',')[0] : 'N/A'}
-                                    <span className="block text-[9px] font-normal text-muted-foreground mt-0.5">
+                                    <span className="block text-xs font-normal text-muted-foreground mt-0.5">
                                         {cdnStats.loading ? '' : cdnStats.error ? '' : cdnStats.lastUpdated ? cdnStats.lastUpdated.split(',')[1] : ''}
                                     </span>
                                 </div>
@@ -404,10 +404,10 @@ export default function AdminDashboardHome() {
                         </div>
                     </div>
 
-                    <div className="border-t border-border pt-4 mt-6 text-[11px] text-muted-foreground space-y-2 font-mono">
+                    <div className="border-t border-border pt-4 mt-6 text-xs text-muted-foreground space-y-2 font-mono">
                         <div className="flex justify-between items-center"><span className="opacity-70">Worker Host</span><span>{new URL(CDN_URL).hostname}</span></div>
                         <div className="flex justify-between items-center"><span className="opacity-70">Cache Control</span><span>immutable</span></div>
-                        <div className="flex justify-between items-center"><span className="opacity-70">CDN Gateway</span><span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Cloudflare Edge</span></div>
+                        <div className="flex justify-between items-center"><span className="opacity-70">CDN Gateway</span><span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-success"></span>Cloudflare Edge</span></div>
                     </div>
                 </div>
 
@@ -425,13 +425,15 @@ export default function AdminDashboardHome() {
                                 size="sm"
                                 onClick={() => handleRegenerate('all')}
                                 disabled={regenerating}
-                                className="w-full flex items-center justify-between gap-1.5 py-2.5 h-auto text-left"
+                                className="w-full"
                             >
+                                <span className="flex w-full items-center justify-between gap-1.5 text-left">
                                 <div className="flex flex-col items-start text-left">
                                     <span>Regenerate All Feeds</span>
-                                    <span className="text-[9px] font-normal opacity-80 mt-0.5">Rebuild static API for mobile</span>
+                                    <span className="text-xs font-normal opacity-80 mt-0.5">Rebuild static API for mobile</span>
                                 </div>
                                 <span className="shrink-0">{regenerating ? <span className="animate-spin"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg></span> : <CloudIcon className="w-4 h-4" />}</span>
+                                </span>
                             </Button>
 
                             <Button
@@ -439,13 +441,15 @@ export default function AdminDashboardHome() {
                                 size="sm"
                                 onClick={handleRevalidateWebsiteCache}
                                 disabled={regenerating}
-                                className="w-full flex items-center justify-between gap-1.5 py-2.5 h-auto text-left"
+                                className="w-full"
                             >
+                                <span className="flex w-full items-center justify-between gap-1.5 text-left">
                                 <div className="flex flex-col items-start text-left">
                                     <span>Refresh Cache</span>
-                                    <span className="text-[9px] font-normal opacity-80 mt-0.5">Clear Next.js server cache</span>
+                                    <span className="text-xs font-normal opacity-80 mt-0.5">Clear Next.js server cache</span>
                                 </div>
                                 <SignalIcon className="w-4 h-4 shrink-0" />
+                                </span>
                             </Button>
                         </div>
 
@@ -453,7 +457,6 @@ export default function AdminDashboardHome() {
                                 <Button
                                     variant="admin"
                                     size="sm"
-                                    className="text-xs px-3.5 py-2 h-auto flex items-center justify-center gap-1.5"
                                     onClick={() => handleRegenerate('bootstrap')}
                                     disabled={regenerating}
                                 >
@@ -462,7 +465,6 @@ export default function AdminDashboardHome() {
                                 <Button
                                     variant="admin"
                                     size="sm"
-                                    className="text-xs px-3.5 py-2 h-auto flex items-center justify-center gap-1.5"
                                     onClick={() => handleRegenerate('govt')}
                                     disabled={regenerating}
                                 >
@@ -471,7 +473,6 @@ export default function AdminDashboardHome() {
                                 <Button
                                     variant="admin"
                                     size="sm"
-                                    className="text-xs px-3.5 py-2 h-auto flex items-center justify-center gap-1.5"
                                     onClick={() => handleRegenerate('resources')}
                                     disabled={regenerating}
                                 >
@@ -480,7 +481,6 @@ export default function AdminDashboardHome() {
                                 <Button
                                     variant="admin"
                                     size="sm"
-                                    className="text-xs px-3.5 py-2 h-auto flex items-center justify-center gap-1.5"
                                     onClick={() => handleRegenerate('sitemap')}
                                     disabled={regenerating}
                                 >
@@ -489,15 +489,15 @@ export default function AdminDashboardHome() {
                             </div>
 
                         {regenStatus && (
-                            <p className={`text-[11px] p-2 rounded border font-mono ${regenStatus.type === 'success' ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20' : 'text-destructive bg-destructive/10 border-destructive/20'}`}>
+                            <p className={`text-xs p-2 rounded border font-mono ${regenStatus.type === 'success' ? 'text-success bg-success/10 border-success/20' : 'text-destructive bg-destructive/10 border-destructive/20'}`}>
                                 {regenStatus.message}
                             </p>
                         )}
                     </div>
 
-                    <div className="border-t border-border pt-4 mt-6 text-[11px] text-muted-foreground space-y-2 font-mono">
+                    <div className="border-t border-border pt-4 mt-6 text-xs text-muted-foreground space-y-2 font-mono">
                         <div className="flex justify-between items-center"><span className="opacity-70">Relational DB</span><span>PostgreSQL</span></div>
-                        <div className="flex justify-between items-center"><span className="opacity-70">Realtime Layer</span><span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>Firebase</span></div>
+                        <div className="flex justify-between items-center"><span className="opacity-70">Realtime Layer</span><span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-success"></span>Firebase</span></div>
                     </div>
                 </div>
             </div>

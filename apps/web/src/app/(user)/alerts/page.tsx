@@ -108,7 +108,7 @@ function ToggleRow({
             >
                 <span
                     className={`block h-5 w-5 rounded-full transition-transform absolute top-1 ${value
-                        ? 'translate-x-[22px] bg-primary-foreground'
+                        ? 'translate-x-5 bg-primary-foreground'
                         : 'translate-x-1 bg-card border border-border'
                         }`}
                 />
@@ -264,7 +264,7 @@ function AlertSettingsContent() {
 
             {/* Channels */}
             <section className="space-y-1">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Channels</p>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">Channels</p>
                 <div className="bg-card border border-border/60 rounded-2xl px-4 divide-y divide-border/40">
                     <ToggleRow
                         label="Private Jobs"
@@ -285,7 +285,7 @@ function AlertSettingsContent() {
 
             {/* Preferences */}
             <section className="space-y-1">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Preferences</p>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">Preferences</p>
                 <div className="bg-card border border-border/60 rounded-2xl px-4 divide-y divide-border/40">
                     <ToggleRow
                         label="Closing Soon Alerts"
@@ -299,7 +299,7 @@ function AlertSettingsContent() {
 
             {/* Eligibility & Target Filters */}
             <section className="space-y-1">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Eligibility & Target Filters</p>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">Eligibility & Target Filters</p>
                 <div className="bg-card border border-border/60 rounded-2xl p-4 space-y-5">
                     {/* Batch Years */}
                     <div className="space-y-2">
@@ -322,7 +322,7 @@ function AlertSettingsContent() {
                                                 : [...current, year];
                                             update({ batchYears: next });
                                         }}
-                                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ease-out active:scale-[0.97] ${
+                                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ease-out active:scale-95 ${
                                             isSelected
                                                 ? 'bg-primary text-primary-foreground border-primary'
                                                 : 'bg-muted/30 text-muted-foreground border-border/60 hover:bg-muted/60 hover:text-foreground'
@@ -356,7 +356,7 @@ function AlertSettingsContent() {
                                                 : [...current, mode.value];
                                             update({ workModes: next });
                                         }}
-                                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ease-out active:scale-[0.97] ${
+                                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ease-out active:scale-95 ${
                                             isSelected
                                                 ? 'bg-primary text-primary-foreground border-primary'
                                                 : 'bg-muted/30 text-muted-foreground border-border/60 hover:bg-muted/60 hover:text-foreground'
@@ -390,7 +390,7 @@ function AlertSettingsContent() {
                                                 : [...current, jt.value];
                                             update({ jobTypes: next });
                                         }}
-                                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ease-out active:scale-[0.97] ${
+                                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ease-out active:scale-95 ${
                                             isSelected
                                                 ? 'bg-primary text-primary-foreground border-primary'
                                                 : 'bg-muted/30 text-muted-foreground border-border/60 hover:bg-muted/60 hover:text-foreground'
@@ -437,7 +437,7 @@ function AlertSettingsContent() {
                                                 : [...current, loc];
                                             update({ locations: next });
                                         }}
-                                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ease-out active:scale-[0.97] ${
+                                        className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-150 ease-out active:scale-95 ${
                                             isSelected
                                                 ? 'bg-primary text-primary-foreground border-primary'
                                                 : 'bg-muted/30 text-muted-foreground border-border/60 hover:bg-muted/60 hover:text-foreground'
@@ -454,7 +454,7 @@ function AlertSettingsContent() {
 
             {/* Min relevance score */}
             <section className="space-y-1">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1">Advanced</p>
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-1">Advanced</p>
                 <div className="bg-card border border-border/60 rounded-2xl p-4 space-y-3">
                     <div>
                         <p className="text-sm font-semibold text-foreground">Min Relevance Score</p>
@@ -480,7 +480,7 @@ function AlertSettingsContent() {
                 </div>
             </section>
 
-            <p className="text-[11px] text-muted-foreground text-center pb-4">
+            <p className="text-xs text-muted-foreground text-center pb-4">
                 Alert preferences sync instantly to your account across devices.
             </p>
         </div>

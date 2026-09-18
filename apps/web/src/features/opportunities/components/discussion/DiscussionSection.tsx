@@ -11,6 +11,8 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { cn } from '@repo/ui/utils/cn';
 import { SignalsPanel } from './SignalsPanel';
 import { ProvenanceStrip } from './ProvenanceStrip';
+import { InterviewExperiences } from './InterviewExperiences';
+import { ApplicationUpdates } from './ApplicationUpdates';
 
 const COMMENT_TYPES: { key: CommentType; label: string }[] = [
     { key: CommentType.GENERAL, label: 'General' },
@@ -28,6 +30,14 @@ const REPORT_REASONS: { key: ReportReason; label: string }[] = [
     { key: ReportReason.OTHER, label: 'Other' },
 ];
 
+type Tab = 'community' | 'interviews' | 'updates';
+
+const TABS: { key: Tab; label: string }[] = [
+    { key: 'community', label: 'Community' },
+    { key: 'interviews', label: 'Interviews' },
+    { key: 'updates', label: 'Updates' },
+];
+
 type Props = {
     opportunityIdOrSlug: string;
     postedByUsername?: string | null;
@@ -43,6 +53,7 @@ export function DiscussionSection({
 }: Props) {
     const pathname = usePathname();
     const { user } = useAuth();
+    const [activeTab, setActiveTab] = useState<Tab>('community');
     const [data, setData] = useState<CommentListResult>({ comments: [], total: 0 });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -52,6 +63,7 @@ export function DiscussionSection({
     const [posting, setPosting] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
     const [reportTarget, setReportTarget] = useState<string | null>(null);
+    const [showJobReport, setShowJobReport] = useState(false);
 
     const loginHref = `/login?next=${encodeURIComponent(pathname || `/jobs/${opportunityIdOrSlug}`)}`;
 
@@ -123,13 +135,21 @@ export function DiscussionSection({
         }
     };
 
+    const reportJob = async (reason: ReportReason) => {
+        try {
+            await communityApi.createReport(opportunityIdOrSlug, { reason });
+        } finally {
+            setShowJobReport(false);
+        }
+    };
+
     const renderComment = (comment: CommunityComment) => (
         <div key={comment.id} className="space-y-1.5">
             <div className="flex items-center gap-2 text-xs">
                 <span className="font-semibold text-foreground">
                     @{comment.user.username || comment.user.fullName || 'user'}
                 </span>
-                <span className="rounded-full bg-muted/40 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                <span className="rounded-full bg-muted/40 px-2 py-0.5 text-xs font-semibold text-muted-foreground">
                     {comment.commentType}
                 </span>
                 <span className="text-muted-foreground">
@@ -137,7 +157,7 @@ export function DiscussionSection({
                 </span>
             </div>
             <p className="text-sm text-foreground whitespace-pre-wrap break-words">{comment.text}</p>
-            <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                 <button
                     type="button"
                     onClick={() => void vote(comment.id, CommentVoteValue.UPVOTE)}
@@ -187,7 +207,7 @@ export function DiscussionSection({
                             key={reason.key}
                             type="button"
                             onClick={() => void report(comment.id, reason.key)}
-                            className="rounded-full border border-border px-2.5 py-1 text-[10px] font-semibold text-muted-foreground hover:bg-muted/40"
+                            className="rounded-full border border-border px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted/40"
                         >
                             {reason.label}
                         </button>
@@ -212,89 +232,149 @@ export function DiscussionSection({
 
             <SignalsPanel opportunityIdOrSlug={opportunityIdOrSlug} />
 
-            <div className="space-y-3">
-                <h3 className="text-sm font-bold text-foreground tracking-tight">
-                    Discussion{data.total > 0 ? ` (${data.total})` : ''}
-                </h3>
-
-                {user ? (
-                    <div className="space-y-2">
-                        {replyTo && (
-                            <p className="text-[11px] text-muted-foreground">
-                                Replying to a comment.{' '}
-                                <button type="button" onClick={() => setReplyTo(null)} className="font-semibold text-primary hover:underline">
-                                    Cancel
-                                </button>
-                            </p>
-                        )}
+            {/* ── Report Job ── */}
+            {user && (
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setShowJobReport(!showJobReport)}
+                        className="text-xs font-semibold text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                        Report this job
+                    </button>
+                    {showJobReport && (
                         <div className="flex flex-wrap gap-1.5">
-                            {COMMENT_TYPES.map(type => (
+                            {REPORT_REASONS.map(reason => (
                                 <button
-                                    key={type.key}
+                                    key={reason.key}
                                     type="button"
-                                    onClick={() => setCommentType(type.key)}
-                                    className={cn(
-                                        'rounded-full border px-2.5 py-1 text-[10px] font-semibold transition-colors',
-                                        commentType === type.key
-                                            ? 'border-primary/30 bg-primary/10 text-primary'
-                                            : 'border-border text-muted-foreground hover:bg-muted/40'
-                                    )}
+                                    onClick={() => void reportJob(reason.key)}
+                                    className="rounded-full border border-border px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                                 >
-                                    {type.label}
+                                    {reason.label}
                                 </button>
                             ))}
                         </div>
-                        <textarea
-                            value={text}
-                            onChange={e => setText(e.target.value)}
-                            rows={3}
-                            maxLength={500}
-                            placeholder="Share what you know about this opening…"
-                            className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                        />
-                        {formError && <p className="text-[11px] text-destructive">{formError}</p>}
-                        <div className="flex items-center justify-between">
-                            <span className="text-[10px] text-muted-foreground">{text.length}/500</span>
-                            <button
-                                type="button"
-                                onClick={() => void submit()}
-                                disabled={posting || text.trim().length === 0}
-                                className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-4 text-[11px] font-bold uppercase tracking-widest text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50"
-                            >
-                                {posting ? 'Posting…' : replyTo ? 'Reply' : 'Post'}
+                    )}
+                </div>
+            )}
+
+            {/* ── Tabs ── */}
+            <div className="flex gap-1 rounded-xl bg-muted/30 p-1">
+                {TABS.map((tab) => (
+                    <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setActiveTab(tab.key)}
+                        className={cn(
+                            'flex-1 rounded-lg px-3 py-2 text-xs font-bold transition-colors',
+                            activeTab === tab.key
+                                ? 'bg-card text-foreground shadow-sm'
+                                : 'text-muted-foreground hover:text-foreground'
+                        )}
+                    >
+                        {tab.label}
+                        {tab.key === 'community' && data.total > 0 && (
+                            <span className="ml-1 text-muted-foreground">({data.total})</span>
+                        )}
+                    </button>
+                ))}
+            </div>
+
+            {/* ── Tab Content ── */}
+            {activeTab === 'community' && (
+                <div className="space-y-3">
+                    <h3 className="text-sm font-bold text-foreground tracking-tight">
+                        Discussion{data.total > 0 ? ` (${data.total})` : ''}
+                    </h3>
+
+                    {user ? (
+                        <div className="space-y-2">
+                            {replyTo && (
+                                <p className="text-xs text-muted-foreground">
+                                    Replying to a comment.{' '}
+                                    <button type="button" onClick={() => setReplyTo(null)} className="font-semibold text-primary hover:underline">
+                                        Cancel
+                                    </button>
+                                </p>
+                            )}
+                            <div className="flex flex-wrap gap-1.5">
+                                {COMMENT_TYPES.map(type => (
+                                    <button
+                                        key={type.key}
+                                        type="button"
+                                        onClick={() => setCommentType(type.key)}
+                                        className={cn(
+                                            'rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors',
+                                            commentType === type.key
+                                                ? 'border-primary/30 bg-primary/10 text-primary'
+                                                : 'border-border text-muted-foreground hover:bg-muted/40'
+                                        )}
+                                    >
+                                        {type.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <textarea
+                                value={text}
+                                onChange={e => setText(e.target.value)}
+                                rows={3}
+                                maxLength={500}
+                                placeholder="Share what you know about this opening…"
+                                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            />
+                            {formError && <p className="text-xs text-destructive">{formError}</p>}
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground">{text.length}/500</span>
+                                <button
+                                    type="button"
+                                    onClick={() => void submit()}
+                                    disabled={posting || text.trim().length === 0}
+                                    className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50"
+                                >
+                                    {posting ? 'Posting…' : replyTo ? 'Reply' : 'Post'}
+                                </button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="rounded-xl border border-dashed border-border bg-card px-4 py-3 text-xs text-muted-foreground">
+                            <Link href={loginHref} className="font-semibold text-primary hover:underline">
+                                Sign in
+                            </Link>{' '}
+                            to join the discussion.
+                        </div>
+                    )}
+
+                    {loading ? (
+                        <div className="space-y-3">
+                            {[1, 2].map(i => (
+                                <div key={i} className="h-16 animate-pulse rounded-xl bg-muted/40" />
+                            ))}
+                        </div>
+                    ) : error ? (
+                        <div className="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-xs text-muted-foreground">
+                            Could not load the discussion.{' '}
+                            <button type="button" onClick={() => void load()} className="font-semibold text-primary hover:underline">
+                                Retry
                             </button>
                         </div>
-                    </div>
-                ) : (
-                    <div className="rounded-xl border border-dashed border-border bg-card px-4 py-3 text-xs text-muted-foreground">
-                        <Link href={loginHref} className="font-semibold text-primary hover:underline">
-                            Sign in
-                        </Link>{' '}
-                        to join the discussion.
-                    </div>
-                )}
+                    ) : data.comments.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-xs text-muted-foreground">
+                            Be the first to discuss this job.
+                        </div>
+                    ) : (
+                        <div className="space-y-4">{data.comments.map(renderComment)}</div>
+                    )}
+                </div>
+            )}
 
-                {loading ? (
-                    <div className="space-y-3">
-                        {[1, 2].map(i => (
-                            <div key={i} className="h-16 animate-pulse rounded-xl bg-muted/40" />
-                        ))}
-                    </div>
-                ) : error ? (
-                    <div className="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-xs text-muted-foreground">
-                        Could not load the discussion.{' '}
-                        <button type="button" onClick={() => void load()} className="font-semibold text-primary hover:underline">
-                            Retry
-                        </button>
-                    </div>
-                ) : data.comments.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-xs text-muted-foreground">
-                        Be the first to discuss this job.
-                    </div>
-                ) : (
-                    <div className="space-y-4">{data.comments.map(renderComment)}</div>
-                )}
-            </div>
+            {activeTab === 'interviews' && (
+                <InterviewExperiences opportunityIdOrSlug={opportunityIdOrSlug} />
+            )}
+
+            {activeTab === 'updates' && (
+                <ApplicationUpdates opportunityIdOrSlug={opportunityIdOrSlug} />
+            )}
         </section>
     );
 }

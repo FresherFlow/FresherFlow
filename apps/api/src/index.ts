@@ -71,6 +71,15 @@ import organizationsRoutes from './routes/organizations';
 import recruiterCandidatesRoutes from './routes/recruiterCandidates';
 import candidateInterestsRoutes from './routes/candidateInterests';
 import candidateProjectsRoutes from './routes/candidateProjects';
+import communityJobsRouter from './routes/community/jobs';
+import communityNotificationsRouter from './routes/community/notifications';
+import communityUsersRouter from './routes/community/users';
+import communityPostsRouter from './routes/community/communityPosts';
+import communityInterviewsRouter from './routes/community/interviews';
+import communityUpdatesRouter from './routes/community/updates';
+import communityAreasRouter from './routes/community/areas';
+import fresherNeedsRouter from './routes/fresherNeeds';
+import ingestRouter from './routes/ingest';
 
 const app: Application = express();
 let isAppReady = false;
@@ -450,6 +459,15 @@ if (isUserMode) {
     app.use('/api/recruiter', recruiterCandidatesRoutes);
     app.use('/api/interests', candidateInterestsRoutes);
     app.use('/api/candidate/projects', candidateProjectsRoutes);
+    app.use('/api/jobs', communityJobsRouter);
+    app.use('/api/notifications', communityNotificationsRouter);
+    app.use('/api/users', communityUsersRouter);
+    app.use('/api/community', communityPostsRouter);
+    app.use('/api/interviews', communityInterviewsRouter);
+    app.use('/api/updates', communityUpdatesRouter);
+    app.use('/api/areas', communityAreasRouter);
+    app.use('/api', fresherNeedsRouter);
+    app.use('/api/ingest', ingestRouter);
 }
 
 if (isAdminMode) {

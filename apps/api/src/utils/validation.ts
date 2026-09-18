@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { OpportunityType, OpportunityStatus, WorkMode, EducationLevel, Availability, ActionType, FeedbackReason, SalaryPeriod, AppFeedbackType, ReservationCategory, Gender } from '@fresherflow/types';
+import { OpportunityType, OpportunityStatus, WorkMode, EducationLevel, Availability, ActionType, FeedbackReason, SalaryPeriod, AppFeedbackType, ReservationCategory, Gender, CommentType, CommentVoteValue, JobSignalType, ReportReason } from '@fresherflow/types';
 
 const governmentApplicationFeeSchema = z.object({
     general: z.number().nonnegative().optional(),
@@ -397,3 +397,211 @@ export const contributionSchema = z.object({
 }).refine(data => data.url || data.referral, {
     message: "Either a URL or a referral must be provided"
 });
+
+// Community schemas (plan 23 §4)
+export const commentCreateSchema = z.object({
+    text: z.string().trim().min(1, 'Comment text is required').max(500, 'Comment text must be at most 500 characters'),
+    commentType: z.nativeEnum(CommentType).optional().default(CommentType.GENERAL),
+    parentCommentId: z.string().min(1).max(64).optional(),
+});
+
+
+export const commentVoteSchema = z.object({
+    value: z.nativeEnum(CommentVoteValue),
+});
+
+export const signalToggleSchema = z.object({
+    signalType: z.nativeEnum(JobSignalType),
+});
+
+export const submitJobSchema = z.object({
+    sourceUrl: z.string().trim().url('A valid source URL is required').max(2000),
+    applyUrl: z.string().trim().url('A valid apply URL is required').max(2000).optional(),
+    title: z.string().trim().min(1, 'Title is required').max(200),
+    company: z.string().trim().max(200).optional(),
+    description: z.string().trim().max(20000).optional(),
+    // Optional detail fields (progressive disclosure on /contribute)
+    companyWebsite: z
+        .union([z.string().trim().url('Enter a valid URL'), z.literal('')])
+        .optional(),
+    companyLogoUrl: z
+        .union([z.string().trim().url('Enter a valid URL'), z.literal('')])
+        .nullable()
+        .optional(),
+    type: z.nativeEnum(OpportunityType).optional(),
+    locations: z.array(z.string().trim().min(1).max(120)).max(15).optional(),
+    workMode: z.nativeEnum(WorkMode).nullable().optional(),
+    salaryRange: z.string().trim().max(60).nullable().optional(),
+    salaryMin: z.number().int().min(0).nullable().optional(),
+    salaryMax: z.number().int().min(0).nullable().optional(),
+    salaryPeriod: z.nativeEnum(SalaryPeriod).optional(),
+    stipend: z.string().trim().max(120).nullable().optional(),
+    employmentType: z.string().trim().max(80).nullable().optional(),
+    experienceMin: z.number().min(0).max(30).nullable().optional(),
+    experienceMax: z.number().min(0).max(30).nullable().optional(),
+    requiredSkills: z.array(z.string().trim().min(1).max(60)).max(30).optional(),
+    tags: z.array(z.string().trim().min(1).max(60)).max(20).optional(),
+    allowedDegrees: z.array(z.nativeEnum(EducationLevel)).optional(),
+    allowedCourses: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
+    allowedSpecializations: z.array(z.string().trim().min(1).max(120)).max(20).optional(),
+    allowedPassoutYears: z.array(z.number().int().min(1990).max(2100)).max(15).optional(),
+    jobFunction: z.string().trim().max(120).nullable().optional(),
+    incentives: z.string().trim().max(500).nullable().optional(),
+    selectionProcess: z.string().trim().max(5000).nullable().optional(),
+    notesHighlights: z.string().trim().max(5000).nullable().optional(),
+    expiresAt: z.string().trim().max(64).nullable().optional(),
+    applicationDetails: applicationDetailsSchema.nullable().optional(),
+    // Walk-in details (only used when type is WALKIN)
+    dates: z.array(z.string().trim().min(1).max(64)).max(10).optional(),
+    dateRange: z.string().trim().max(120).nullable().optional(),
+    timeRange: z.string().trim().max(120).nullable().optional(),
+    venueAddress: z.string().trim().max(2000).nullable().optional(),
+    venueLink: z.union([z.string().trim().url('Enter a valid URL'), z.literal('')]).nullable().optional(),
+    reportingTime: z.string().trim().max(120).nullable().optional(),
+    // Guest attribution (optional when not logged in)
+    contact: z.string().trim().max(200).nullable().optional(),
+    submitterName: z.string().trim().max(120).nullable().optional(),
+    // Honeypot - must stay empty
+    website: z.string().max(0, 'Invalid submission').optional(),
+});
+
+export const ingestJobSchema = opportunitySubmitSchema
+    .extend({
+        sourceUrl: z.string().trim().url('A valid source URL is required').max(2000).optional(),
+        applyUrl: z.string().trim().url('A valid apply URL is required').max(2000).optional(),
+        tags: z.array(z.string().trim().min(1).max(60)).max(20).optional().default([]),
+        notesHighlights: z.string().trim().max(5000).nullable().optional(),
+        idempotencyKey: z.string().trim().min(1).max(128).optional(),
+        contact: z.string().trim().max(200).nullable().optional(),
+        submitterName: z.string().trim().max(120).nullable().optional(),
+    })
+    .superRefine((data, ctx) => {
+        const source = data.sourceLink || data.sourceUrl;
+        const apply = data.applyLink || data.applyUrl;
+        if (!source && !apply) {
+            ctx.addIssue({ code: 'custom', path: ['sourceLink'], message: 'At least one of sourceLink (or sourceUrl) or applyLink (or applyUrl) is required' });
+        }
+    });
+
+export type IngestJobInput = z.infer<typeof ingestJobSchema>;
+
+export const reportCreateSchema = z.object({
+    reason: z.nativeEnum(ReportReason),
+    message: z.string().trim().max(1000).optional(),
+});
+
+/**
+ * MCP submission schema (plan 23 §9).
+ * Anonymous, strictly-typed, no arbitrary-object payload. Every field is
+ * validated and length-capped so ChatGPT cannot flood or shape the DB.
+ * URL fields are treated as DATA only — the server never fetches them.
+ */
+export const mcpSubmitOpportunitySchema = z.object({
+    title: z.string().trim().min(1, 'title is required').max(200),
+    companyName: z.string().trim().min(1, 'companyName is required').max(200),
+    jobUrl: z.string().trim().url('jobUrl must be a valid https URL').max(2000)
+        .refine((u) => u.startsWith('https://'), 'jobUrl must use https'),
+    location: z.string().trim().max(120).optional(),
+    employmentType: z.string().trim().max(80).optional(),
+    salary: z.string().trim().max(60).optional(),
+    description: z.string().trim().max(5000).optional(),
+    eligibility: z.string().trim().max(2000).optional(),
+    sourceUrl: z.string().trim().url('sourceUrl must be a valid URL').max(2000).optional(),
+    contactEmail: z.string().trim().email('contactEmail must be valid').max(200).optional(),
+}).superRefine((data, ctx) => {
+    if (data.sourceUrl && !data.sourceUrl.startsWith('https://')) {
+        ctx.addIssue({ code: 'custom', path: ['sourceUrl'], message: 'sourceUrl must use https' });
+    }
+    // Never trust the URL as a server-side fetch target — it is stored only.
+});
+
+export type McpSubmitOpportunityInput = z.infer<typeof mcpSubmitOpportunitySchema>;
+
+export const notificationReadSchema = z.object({
+    ids: z.array(z.string().min(1).max(64)).max(200).optional(),
+});
+
+// Community Post vote schema (value must be 1 or -1)
+export const communityPostVoteSchema = z.object({
+    value: z.number().int().refine((v) => v === 1 || v === -1, {
+        message: 'Vote value must be 1 (upvote) or -1 (downvote)',
+    }),
+});
+
+// Community Post comment create schema
+export const communityPostCommentCreateSchema = z.object({
+    body: z.string().trim().min(1, 'Comment body is required').max(500, 'Comment must be at most 500 characters'),
+    parentId: z.string().min(1).max(64).optional(),
+});
+
+// Community Post comment vote schema
+export const communityPostCommentVoteSchema = z.object({
+    value: z.number().int().refine((v) => v === 1 || v === -1, {
+        message: 'Vote value must be 1 (upvote) or -1 (downvote)',
+    }),
+});
+
+// ============================================================================
+// FRESHER NEEDS: Saved searches, referral board, offer transparency
+// ============================================================================
+
+export const savedSearchCreateSchema = z.object({
+    name: z.string().trim().min(1, 'Name is required').max(100),
+    filters: z.object({
+        type: z.enum(['JOB', 'INTERNSHIP', 'WALKIN', 'GOVERNMENT']).optional(),
+        feedType: z.enum(['all', 'trending', 'remote', 'walkins', 'internships', '2026']).optional(),
+        city: z.string().trim().max(80).optional(),
+        tag: z.string().trim().max(80).optional(),
+        company: z.string().trim().max(120).optional(),
+        minSalary: z.number().int().min(0).max(200).optional(),
+        maxSalary: z.number().int().min(0).max(200).optional(),
+        batch: z.number().int().min(2020).max(2035).optional(),
+        closingSoon: z.boolean().optional(),
+    }).refine(
+        (f) => Object.values(f).some((v) => v !== undefined),
+        { message: 'At least one filter is required' }
+    ),
+    alertEnabled: z.boolean().optional(),
+});
+
+export const savedSearchUpdateSchema = z.object({
+    name: z.string().trim().min(1).max(100).optional(),
+    alertEnabled: z.boolean().optional(),
+});
+
+export const referralRequestCreateSchema = z.object({
+    company: z.string().trim().min(1, 'Company is required').max(120),
+    role: z.string().trim().max(120).optional(),
+    batch: z.number().int().min(2020).max(2035).optional(),
+    city: z.string().trim().max(80).optional(),
+    note: z.string().trim().max(1000).optional(),
+});
+
+export const referralResponseCreateSchema = z.object({
+    message: z.string().trim().max(1000).optional(),
+    contactHandle: z.string().trim().max(200).optional(),
+}).refine(
+    (d) => (d.message && d.message.length > 0) || (d.contactHandle && d.contactHandle.length > 0),
+    { message: 'Include a message or a contact handle' }
+);
+
+export const referralRequestStatusSchema = z.object({
+    status: z.enum(['OPEN', 'FULFILLED', 'CLOSED']),
+});
+
+export const salaryReportCreateSchema = z.object({
+    opportunityId: z.string().min(1).max(64).optional(),
+    company: z.string().trim().min(1, 'Company is required').max(120),
+    role: z.string().trim().min(1, 'Role is required').max(120),
+    batch: z.number().int().min(2020).max(2035).optional(),
+    city: z.string().trim().max(80).optional(),
+    reportType: z.enum(['OFFER', 'CURRENT_CTC']).optional(),
+    ctcFixed: z.number().int().min(0).max(100000).optional(),
+    ctcVariable: z.number().int().min(0).max(100000).optional(),
+    ctcTotal: z.number().int().min(0).max(100000).optional(),
+    inHandMonthly: z.number().int().min(0).max(1000000).optional(),
+    joinBonus: z.number().int().min(0).max(100000).optional(),
+    bondMonths: z.number().int().min(0).max(60).optional(),
+    notes: z.string().trim().max(1000).optional(),
+});
+

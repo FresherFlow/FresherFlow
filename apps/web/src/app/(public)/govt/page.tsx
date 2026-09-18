@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import CategoryPage from '@/features/opportunities/components/CategoryPage';
-import { fetchGovernmentFeed, fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+import { fetchGovernmentFeed, fetchFeedIndex } from '@/lib/api/cdnFeed';
+import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
 import { toOpportunityCardDTO, OpportunityType } from '@fresherflow/types';
 
 // On-demand revalidation via /api/revalidate — called when jobs are published/expired.
@@ -37,21 +38,22 @@ export const metadata: Metadata = {
 export default async function GovernmentJobsPage() {
     let govtData = await fetchGovernmentFeed(false, undefined, true);
     if (!govtData || !govtData.opportunities || govtData.opportunities.length === 0) {
-        const bootstrapData = await fetchBootstrapFeed(false, undefined, true);
-        if (bootstrapData && bootstrapData.opportunities) {
-            const govtOpps = bootstrapData.opportunities.filter(
+        // Lightweight feed-index fallback (governmentJobDetails included in index fields)
+        const feedIndexData = await fetchFeedIndex(false, undefined, true);
+        if (feedIndexData && feedIndexData.opportunities) {
+            const govtOpps = feedIndexData.opportunities.filter(
                 (o) => o.type === OpportunityType.GOVERNMENT || Boolean(o.governmentJobDetails)
             );
             govtData = {
                 opportunities: govtOpps,
                 count: govtOpps.length,
-                generatedAt: bootstrapData.generatedAt,
+                generatedAt: feedIndexData.generatedAt,
             };
         }
     }
 
     const initialData = govtData ? {
-        opportunities: govtData.opportunities.map(toOpportunityCardDTO) as any,
+        opportunities: govtData.opportunities.slice(0, FEED_PAGE_SIZE).map(toOpportunityCardDTO) as any,
         total: govtData.opportunities.length,
         cachedAt: new Date(govtData.generatedAt || Date.now()).getTime(),
     } : null;

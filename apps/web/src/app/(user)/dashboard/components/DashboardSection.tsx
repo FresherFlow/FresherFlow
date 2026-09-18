@@ -41,7 +41,7 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({
                                 {title}
                             </h2>
                             {count !== undefined && count > 0 && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-muted text-muted-foreground">
                                     {count}
                                 </span>
                             )}

@@ -86,18 +86,18 @@ export function AtsAdaptersTab({
       <div className="flex flex-wrap gap-1.5">
        <span
         className={cn(
-         'text-[11px] font-semibold px-2 py-0.5 rounded border',
+         'text-xs font-semibold px-2 py-0.5 rounded border',
          typeBadge === 'Job board'
-          ? 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
+          ? 'bg-brand-discord/10 text-brand-discord dark:text-brand-discord border-brand-discord/20'
           : typeBadge === 'Company direct'
-          ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20'
-          : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+          ? 'bg-brand-facebook/10 text-brand-facebook dark:text-brand-telegram border-brand-facebook/20'
+          : 'bg-success/10 text-success dark:text-success border-success/20'
         )}
        >
         {typeBadge}
        </span>
        {adapter.hasDetailFetcher && (
-        <span className="bg-muted/60 text-muted-foreground text-[11px] border border-border/40 px-1.5 py-0.5 rounded">
+        <span className="bg-muted/60 text-muted-foreground text-xs border border-border/40 px-1.5 py-0.5 rounded">
          Detail Fetcher ✓
         </span>
        )}

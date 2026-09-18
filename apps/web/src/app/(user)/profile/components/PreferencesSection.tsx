@@ -79,7 +79,7 @@ export const PreferencesSection = ({
             <div className="flex justify-between items-center mb-4">
                 <h3 className="text-base font-bold text-foreground">Career Preferences</h3>
                 {!isEditing && (
-                    <Button variant="ghost" size="sm" onClick={onToggleEdit} className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
+                    <Button variant="ghost" size="sm" onClick={onToggleEdit}>
                         {hasPrefs ? <PencilSquareIcon className="w-4 h-4" /> : <PlusIcon className="w-4 h-4" />}
                     </Button>
                 )}
@@ -159,7 +159,7 @@ export const PreferencesSection = ({
                         <div className="relative flex gap-2" ref={cityRef}>
                             <Input
                                 value={cityInput}
-                                className="h-9 text-sm"
+                                className="h-9"
                                 onChange={e => { setCityInput(e.target.value); setCityHighlight(-1); setCityOpen(true); }}
                                 onFocus={() => { setCityOpen(true); setCityHighlight(-1); }}
                                 onKeyDown={e => {
@@ -175,7 +175,7 @@ export const PreferencesSection = ({
                                 disabled={saving}
                                 placeholder="Search city..."
                             />
-                            <Button onClick={() => { const res = addCity(); if (res.ok) setCityOpen(false); }} type="button" disabled={saving} variant="outline" className="h-9 w-9 shrink-0 p-0"><PlusIcon className="w-4 h-4" /></Button>
+                            <Button size="sm" onClick={() => { const res = addCity(); if (res.ok) setCityOpen(false); }} type="button" disabled={saving} variant="outline"><PlusIcon className="w-4 h-4" /></Button>
                             {cityOpen && effectiveCityOptions.length > 0 && (
                                 <div className="absolute z-20 left-0 right-10 top-full mt-1 bg-card border border-border rounded-xl shadow-lg max-h-40 overflow-y-auto p-1">
                                     {effectiveCityOptions.map((city, idx) => (

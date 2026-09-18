@@ -91,33 +91,33 @@ const SOCIALS: Array<{ label: string; Icon: (p: { className?: string }) => React
 
 export function SiteFooter() {
     return (
-        <footer className="bg-[#070a10] text-[#eef1f6]">
+        <footer className="bg-background text-foreground">
             <div className="mx-auto w-full max-w-7xl px-6 pb-8 pt-14">
                 <div className="flex flex-col gap-10 lg:flex-row lg:gap-12">
                     {/* LEFT — brand + link columns */}
                     <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-3">
                             <LogoImage width={32} height={32} className="h-8 w-8" />
-                            <span className="font-display text-[28px] font-extrabold leading-none tracking-[-0.02em]">
+                            <span className="font-display text-2xl font-extrabold leading-none tracking-tight">
                                 FresherFlow
                             </span>
                         </div>
-                        <p className="mt-3 font-record text-[12.5px] tracking-[0.1em] text-[#8b93a5]">
+                        <p className="mt-3 font-record text-xs tracking-widest text-muted-foreground">
                             JOBS, POWERED BY FRESHERS.
                         </p>
 
-                        <div className="my-8 h-px bg-[#1a2230]" aria-hidden />
+                        <div className="my-8 h-px bg-card" aria-hidden />
 
                         <div className="flex flex-wrap gap-x-12 gap-y-10">
                             {GROUPS.map((g) => (
                                 <div key={g.title}>
-                                    <div className="text-[15px] font-bold text-[#eef1f6]">{g.title}</div>
+                                    <div className="text-sm font-bold text-foreground">{g.title}</div>
                                     <ul className="mt-4 flex flex-col gap-2.5">
                                         {g.links.map((l) => (
                                             <li key={l.href + l.label}>
                                                 <Link
                                                     href={l.href}
-                                                    className="text-[13.5px] text-[#a9b0bd] transition-colors hover:text-white"
+                                                    className="text-sm text-muted-foreground transition-colors hover:text-white"
                                                 >
                                                     {l.label}
                                                 </Link>
@@ -130,7 +130,7 @@ export function SiteFooter() {
                     </div>
 
                     {/* RIGHT — same rail, same spot: socials VERTICAL, icon + name per line */}
-                    <div className="flex w-full shrink-0 flex-col border-[#1a2230] lg:w-[300px] lg:border-l lg:pl-10">
+                    <div className="flex w-full shrink-0 flex-col border-border lg:w-75 lg:border-l lg:pl-10">
                         <nav aria-label="Social links" className="flex flex-col items-start gap-3">
                             {SOCIALS.map(({ label, Icon, href }) => (
                                 <a
@@ -138,10 +138,10 @@ export function SiteFooter() {
                                     href={href}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 text-[#a9b0bd] transition-colors hover:text-white"
+                                    className="inline-flex items-center gap-2 text-muted-foreground transition-colors hover:text-white"
                                 >
-                                    <Icon className="h-[18px] w-[18px]" />
-                                    <span className="font-record text-[12.5px]">{label}</span>
+                                    <Icon className="h-4.5 w-4.5" />
+                                    <span className="font-record text-xs">{label}</span>
                                 </a>
                             ))}
                         </nav>
@@ -150,7 +150,7 @@ export function SiteFooter() {
                 </div>
 
                 {/* bottom line — EST + MADE IN INDIA, © (single occurrence) */}
-                <div className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-[#1a2230] pt-6 font-record text-[11.5px] tracking-[0.08em] text-[#8b93a5]">
+                <div className="mt-12 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6 font-record text-xs tracking-widest text-muted-foreground">
                     <span>EST. 2026 · MADE IN INDIA</span>
                     <span>© 2026 FresherFlow</span>
                 </div>

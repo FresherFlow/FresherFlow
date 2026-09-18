@@ -62,7 +62,7 @@ export function ComplexityCard({ applicationDetails }: ComplexityCardProps) {
                             </div>
                         )}
                         <span className="text-border/60">•</span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-muted text-muted-foreground border border-border/30 shrink-0">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider bg-muted text-muted-foreground border border-border/30 shrink-0">
                             {isAssessment ? 'Assessment' : 'Form Details'}
                         </span>
                     </div>

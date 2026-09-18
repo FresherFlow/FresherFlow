@@ -93,7 +93,7 @@ const IconBtn = ({ onClick, title, className, children }: {
     <button
         onClick={onClick}
         title={title}
-        className={`p-1.5 rounded-md transition-colors duration-100 active:scale-[0.93] ${className ?? 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+        className={`p-1.5 rounded-md transition-colors duration-100 active:scale-95 ${className ?? 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
     >
         {children}
     </button>
@@ -116,7 +116,7 @@ const RowActions = ({ opp, onPreview, copySocialCaption, handleStatusUpdate, han
                     target="_blank"
                     rel="noopener noreferrer"
                     title="Open link"
-                    className="p-1.5 rounded-md text-blue-500 hover:bg-blue-500/10 transition-colors"
+                    className="p-1.5 rounded-md text-signal-heat hover:bg-signal-heat/10 transition-colors"
                 >
                     <ArrowTopRightOnSquareIcon className="w-4 h-4" />
                 </a>
@@ -134,7 +134,7 @@ const RowActions = ({ opp, onPreview, copySocialCaption, handleStatusUpdate, han
 
             {isDraft && (
                 <>
-                    <IconBtn onClick={() => handleStatusUpdate(opp.id, 'PUBLISHED')} title="Publish" className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10">
+                    <IconBtn onClick={() => handleStatusUpdate(opp.id, 'PUBLISHED')} title="Publish" className="text-success dark:text-success hover:bg-success/10">
                         <CheckCircleIcon className="w-4 h-4" />
                     </IconBtn>
                     <IconBtn onClick={() => handleRejectDraft(opp.id, opp.title)} title="Reject" className="text-destructive hover:bg-destructive/10">
@@ -148,7 +148,7 @@ const RowActions = ({ opp, onPreview, copySocialCaption, handleStatusUpdate, han
                 </IconBtn>
             )}
             {isDeleted && (
-                <IconBtn onClick={() => handleRestore(opp.id)} title="Restore" className="text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10">
+                <IconBtn onClick={() => handleRestore(opp.id)} title="Restore" className="text-success dark:text-success hover:bg-success/10">
                     <ArrowPathIcon className="w-4 h-4" />
                 </IconBtn>
             )}
@@ -168,7 +168,7 @@ const Checkbox = ({ checked, onClick, disabled }: { checked: boolean; onClick: (
         onClick={disabled ? undefined : onClick}
         className={`w-4 h-4 rounded border transition-colors flex items-center justify-center shrink-0 ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${checked ? 'bg-primary border-primary' : 'border-muted-foreground/30 hover:border-primary'}`}
     >
-        {checked && <div className="w-2 h-2 bg-primary-foreground rounded-[1px]" />}
+        {checked && <div className="w-2 h-2 bg-primary-foreground rounded-xs" />}
     </div>
 );
 
@@ -229,18 +229,18 @@ const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSel
                             companyLogoUrl={opp.companyLogoUrl}
                             applyLink={opp.applyLink}
                             isGovernment={opp.type === 'GOVERNMENT' || Boolean(opp.governmentJobDetails)}
-                            className="w-8 h-8 rounded-md shrink-0"
+                            className="w-8 h-8 shrink-0"
                         />
                         <div className="min-w-0">
                             <button
                                 onClick={() => actions.onPreview(opp.id)}
-                                className="font-medium text-foreground hover:text-primary hover:underline text-left leading-snug truncate max-w-[280px] block"
+                                className="font-medium text-foreground hover:text-primary hover:underline text-left leading-snug truncate max-w-70 block"
                             >
                                 {opp.title}
                             </button>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="text-xs text-muted-foreground truncate max-w-[160px]">{opp.company}</span>
-                                <span className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted border border-border text-muted-foreground">{opp.type}</span>
+                                <span className="text-xs text-muted-foreground truncate max-w-40">{opp.company}</span>
+                                <span className="text-xs uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted border border-border text-muted-foreground">{opp.type}</span>
                             </div>
                         </div>
                     </div>
@@ -256,7 +256,7 @@ const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSel
                     <div className="space-y-1 text-xs text-muted-foreground">
                         <div className="flex items-center gap-1.5">
                             <MapPinIcon className="w-3 h-3 shrink-0" />
-                            <span className="truncate max-w-[180px]">{opp.locations?.join(', ') || '—'}</span>
+                            <span className="truncate max-w-44">{opp.locations?.join(', ') || '—'}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <CalendarIcon className="w-3 h-3 shrink-0" />
@@ -272,7 +272,7 @@ const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSel
             cell: ({ row }) => {
                 const opp = row.original;
                 return (
-                    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold ring-1 ring-inset ${getStatusBadgeClass(opp)}`}>
+                    <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold ring-1 ring-inset ${getStatusBadgeClass(opp)}`}>
                         {getStatusLabel(opp)}
                     </span>
                 );
@@ -284,7 +284,7 @@ const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSel
             cell: ({ row }) => {
                 const opp = row.original;
                 const ats = getAtsName(opp.applyLink || (opp as any).sourceLink);
-                if (ats) return <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted border border-border text-[10px] font-medium text-muted-foreground tracking-wide">{ats}</span>;
+                if (ats) return <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted border border-border text-xs font-medium text-muted-foreground tracking-wide">{ats}</span>;
                 return <span className="text-muted-foreground text-xs">—</span>;
             }
         },
@@ -305,7 +305,7 @@ const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSel
 
     return (
         <div className="hidden md:flex flex-col flex-1 min-h-0 bg-card rounded-xl border border-border/40 overflow-hidden">
-            <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto custom-scrollbar overscroll-contain">
+            <div className="flex-1 min-h-0 overflow-x-auto overflow-y-auto overscroll-contain">
                 <DataTable 
                     columns={columns} 
                     data={opportunities} 
@@ -321,7 +321,7 @@ const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSel
 // ─── Mobile Cards ─────────────────────────────────────────────────────────────
 const MobileCards = ({ opportunities, selectedIds, toggleSelect, ...actions }: Props) => (
     <div className="md:hidden flex flex-col flex-1 min-h-0 overflow-hidden">
-        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar overscroll-contain flex flex-col gap-2.5 pb-4 pr-1">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain flex flex-col gap-2.5 pb-4 pr-1">
         {opportunities.map((opp) => {
             const isSelected = selectedIds.includes(opp.id);
             return (
@@ -338,7 +338,7 @@ const MobileCards = ({ opportunities, selectedIds, toggleSelect, ...actions }: P
                             companyLogoUrl={opp.companyLogoUrl}
                             applyLink={opp.applyLink}
                             isGovernment={opp.type === 'GOVERNMENT' || Boolean(opp.governmentJobDetails)}
-                            className="w-9 h-9 rounded-lg shrink-0"
+                            className="w-9 h-9 shrink-0"
                         />
                         <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2">
@@ -348,16 +348,16 @@ const MobileCards = ({ opportunities, selectedIds, toggleSelect, ...actions }: P
                                 >
                                     {opp.title}
                                 </button>
-                                <span className={`shrink-0 inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold ring-1 ring-inset ${getStatusBadgeClass(opp)}`}>
+                                <span className={`shrink-0 inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-bold ring-1 ring-inset ${getStatusBadgeClass(opp)}`}>
                                     {getStatusLabel(opp)}
                                 </span>
                             </div>
                             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                                 <span className="text-xs text-muted-foreground">{opp.company}</span>
-                                <span className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted border border-border text-muted-foreground">{opp.type}</span>
+                                <span className="text-xs uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted border border-border text-muted-foreground">{opp.type}</span>
                                 {(() => {
                                     const ats = getAtsName(opp.applyLink || (opp as any).sourceLink);
-                                    if (ats) return <span className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted border border-border text-muted-foreground">{ats}</span>;
+                                    if (ats) return <span className="text-xs uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted border border-border text-muted-foreground">{ats}</span>;
                                     return null;
                                 })()}
                             </div>
@@ -365,7 +365,7 @@ const MobileCards = ({ opportunities, selectedIds, toggleSelect, ...actions }: P
                     </div>
 
                     {/* Meta */}
-                    <div className="px-3 pb-2 flex items-center gap-3 text-[11px] text-muted-foreground">
+                    <div className="px-3 pb-2 flex items-center gap-3 text-xs text-muted-foreground">
                         {opp.locations?.length > 0 && (
                             <span className="flex items-center gap-1 truncate">
                                 <MapPinIcon className="w-3 h-3 shrink-0" />

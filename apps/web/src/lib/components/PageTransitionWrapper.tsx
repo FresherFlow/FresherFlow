@@ -54,7 +54,7 @@ export function PageTransitionWrapper({ children }: PageTransitionWrapperProps) 
           `}</style>
           <div
             key={`sweep-anim-${sweepKey}`}
-            className="fixed inset-0 z-[200] pointer-events-none bg-background shadow-[0_0_100px_rgba(0,0,0,0.2)] border-l-[12px] border-t-[12px] border-primary/20"
+            className="fixed inset-0 z-50 pointer-events-none bg-background shadow-xl border-l-8 border-t-8 border-primary/20"
             style={{
               transformOrigin: 'top left',
               background: 'linear-gradient(135deg, hsl(var(--background)) 0%, hsl(var(--muted)) 60%, hsl(var(--accent)/0.1) 100%)',

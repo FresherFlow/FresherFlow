@@ -147,7 +147,7 @@ export const EducationSection = ({
             <div className="flex justify-between items-center mb-5">
                 <h3 className="text-base font-bold text-foreground">Education</h3>
                 {!isEditing && (
-                    <Button variant="ghost" size="sm" onClick={onToggleEdit} className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground">
+                    <Button variant="ghost" size="sm" onClick={onToggleEdit}>
                         <PencilSquareIcon className="w-4 h-4" />
                     </Button>
                 )}
@@ -157,11 +157,11 @@ export const EducationSection = ({
                 <div className="space-y-4 border-l-2 border-muted pl-4 ml-2">
                     {timelineItems.map((item, idx) => (
                         <div key={idx} className="relative">
-                            <div className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-primary ring-4 ring-card" />
+                            <div className="absolute -left-5 top-1.5 w-2.5 h-2.5 rounded-full bg-primary ring-4 ring-card" />
                             <div className="flex justify-between items-start gap-2">
                                 <div>
                                     <div className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                        {item.title} <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{item.b}</Badge>
+                                        {item.title} <Badge variant="secondary">{item.b}</Badge>
                                     </div>
                                     {item.sub && <p className="text-xs text-muted-foreground">{item.sub}</p>}
                                 </div>
@@ -173,7 +173,7 @@ export const EducationSection = ({
             ) : null}
 
             <Dialog open={isEditing} onOpenChange={(open) => { if (!open) onToggleEdit(); }}>
-                <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+                <DialogContent className="max-w-3xl max-h-180 overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Edit Education</DialogTitle>
                     </DialogHeader>
@@ -211,7 +211,7 @@ export const EducationSection = ({
                                             onFocus={() => setShowCollegeDropdown(true)}
                                             placeholder="Type to search college (e.g. CBIT, IIT, JNTU)..."
                                             disabled={saving}
-                                            className="h-10 text-sm"
+                                            className="h-10"
                                         />
 
                                         {showCollegeDropdown && (collegeState || collegeName.trim().length >= 2) && (
@@ -227,7 +227,7 @@ export const EducationSection = ({
                                                             className="w-full text-left p-2.5 rounded-lg hover:bg-muted/70 transition-colors flex flex-col gap-0.5"
                                                         >
                                                             <span className="font-bold text-xs text-foreground leading-snug">{col.name}</span>
-                                                            <span className="text-[10px] text-muted-foreground font-medium">
+                                                            <span className="text-xs text-muted-foreground font-medium">
                                                                 {[col.district, col.type, col.state].filter(Boolean).join(' • ')}
                                                             </span>
                                                         </button>
@@ -278,8 +278,8 @@ export const EducationSection = ({
                             </div>
 
                             <div className="flex justify-end gap-4 pt-2 border-t border-border/40">
-                                <Button variant="outline" className="h-10 px-4" onClick={onToggleEdit} disabled={saving}>Cancel</Button>
-                                <Button className="h-10 px-4 gap-1.5" onClick={onSave} disabled={saving}><CheckIcon className="w-3.5 h-3.5" /> Save</Button>
+                                <Button size="sm" variant="outline" onClick={onToggleEdit} disabled={saving}>Cancel</Button>
+                                <Button size="sm" onClick={onSave} disabled={saving}><CheckIcon className="w-3.5 h-3.5" /> Save</Button>
                             </div>
                         </div>
                 </DialogContent>

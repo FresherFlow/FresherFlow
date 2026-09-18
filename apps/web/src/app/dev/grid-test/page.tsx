@@ -70,13 +70,12 @@ export default function GridTestPage() {
           const s = row.original.status;
           return (
             <Badge
-              variant="outline"
-              className={
+              variant={
                 s === "Active"
-                  ? "text-emerald-600 dark:text-emerald-400"
+                  ? "success"
                   : s === "Pending"
-                    ? "text-amber-600 dark:text-amber-400"
-                    : "text-purple-600 dark:text-purple-400"
+                    ? "warning"
+                    : "discord"
               }
             >
               {s}

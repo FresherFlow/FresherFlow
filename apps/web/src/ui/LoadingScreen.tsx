@@ -40,7 +40,7 @@ export default function LoadingScreen({
     return (
         <div className={cn(
             "flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm",
-            fullScreen ? "fixed inset-0 z-[100]" : "absolute inset-0 z-40 min-h-[400px]",
+            fullScreen ? "fixed inset-0 z-50" : "absolute inset-0 z-40 min-h-[400px]",
             className
         )}>
             <div className="relative flex items-center justify-center mb-5">
@@ -53,7 +53,7 @@ export default function LoadingScreen({
             {displayMessage && (
                 <div className="text-center space-y-1">
                     <p className="text-sm font-semibold text-foreground tracking-tight">{displayMessage}</p>
-                    <p className="text-[11px] text-muted-foreground font-mono">FresherFlow</p>
+                    <p className="text-xs text-muted-foreground font-mono">FresherFlow</p>
                 </div>
             )}
         </div>

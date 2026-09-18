@@ -124,7 +124,7 @@ export default function AccountHubPage() {
                             <h1 className="text-lg md:text-xl font-bold tracking-tight text-foreground">
                                 Account & Settings
                             </h1>
-                            <p className="text-[11px] text-muted-foreground">
+                            <p className="text-xs text-muted-foreground">
                                 Manage your candidate profile, applications, and platform preferences.
                             </p>
                         </div>
@@ -136,7 +136,7 @@ export default function AccountHubPage() {
                         <div className="lg:col-span-8 space-y-4">
                             {/* Section 1: Your Activity */}
                             <div className="space-y-2">
-                                <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-1">
+                                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">
                                     Your Activity
                                 </h2>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -158,7 +158,7 @@ export default function AccountHubPage() {
                                                         </h3>
                                                         <ArrowRightIcon className="w-3 h-3 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
                                                     </div>
-                                                    <p className="text-[10px] text-muted-foreground leading-tight line-clamp-1 mt-0.5">
+                                                    <p className="text-xs text-muted-foreground leading-tight line-clamp-1 mt-0.5">
                                                         {item.description}
                                                     </p>
                                                 </div>
@@ -170,7 +170,7 @@ export default function AccountHubPage() {
 
                             {/* Section 2: Platform & Community */}
                             <div className="space-y-2">
-                                <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground px-1">
+                                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1">
                                     Platform & Community
                                 </h2>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
@@ -192,7 +192,7 @@ export default function AccountHubPage() {
                                                         </h3>
                                                         <ArrowRightIcon className="w-3 h-3 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
                                                     </div>
-                                                    <p className="text-[10px] text-muted-foreground leading-tight line-clamp-1 mt-0.5">
+                                                    <p className="text-xs text-muted-foreground leading-tight line-clamp-1 mt-0.5">
                                                         {item.description}
                                                     </p>
                                                 </div>
@@ -224,11 +224,11 @@ export default function AccountHubPage() {
                                             <h2 className="text-sm font-bold text-foreground truncate">
                                                 {user?.fullName || `@${user?.username}`}
                                             </h2>
-                                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold">
+                                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
                                                 <CheckBadgeIcon className="w-3 h-3" /> Candidate
                                             </span>
                                         </div>
-                                        <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                                        <p className="text-xs text-muted-foreground truncate mt-0.5">
                                             {user?.email || (user?.username ? `@${user.username}` : '')}
                                         </p>
                                     </div>
@@ -244,7 +244,7 @@ export default function AccountHubPage() {
 
                                 {/* Profile Completion */}
                                 <div className="pt-2.5 border-t border-border/40 space-y-1.5">
-                                    <div className="flex justify-between items-center text-[11px] font-medium">
+                                    <div className="flex justify-between items-center text-xs font-medium">
                                         <span className="text-muted-foreground">Profile Completion</span>
                                         <span className="text-primary font-bold">
                                             {completionPct === 100 ? '100%' : `${completionPct}%`}

@@ -78,7 +78,7 @@ export function AutoFitBadges({
                 ref={stripRef}
                 aria-hidden
                 data-measure-strip
-                className="pointer-events-none absolute left-[-9999px] top-0 invisible flex items-center gap-2"
+                className="pointer-events-none absolute sr-only top-0 invisible flex items-center gap-2"
             >
                 <JobCardBadges metaItems={metaItems} skills={skills} overflow={overflow} measure />
             </div>

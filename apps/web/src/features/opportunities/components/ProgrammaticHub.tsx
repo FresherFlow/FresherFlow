@@ -152,10 +152,10 @@ export default function ProgrammaticHub({
                     }
                 />
                 ) : (
-                    <div className="w-full grid grid-cols-1 xl:grid-cols-[1.3fr_1.7fr] gap-6 items-start">
+                    <div className="w-full grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
                         
                         {/* Left Column: Grid list */}
-                        <div id="hub-grid-container" className="min-w-0 xl:sticky xl:top-14 xl:h-[calc(100vh-3.5rem)] xl:overflow-y-auto xl:pr-2 custom-scrollbar">
+                        <div id="hub-grid-container" className="min-w-0 xl:sticky xl:top-14 xl:h-full xl:overflow-y-auto xl:pr-2">
                             <OpportunityGrid
                                 opportunities={visibleOpportunities}
                                 isLoading={false}
@@ -179,9 +179,9 @@ export default function ProgrammaticHub({
                         </div>
 
                         {/* Right Column: Detail Panel / Empty State (Desktop only) */}
-                        <div className="hidden xl:flex flex-col sticky top-14 h-[calc(100vh-3.5rem)] bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm">
+                        <div className="hidden xl:flex flex-col sticky top-14 h-full bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm">
                             {selectedOpp ? (
-                                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                                <div className="flex-1 overflow-y-auto">
                                     <OpportunityDetailPane
                                         oppId={selectedOpp.slug || selectedOpp.id}
                                         initialData={selectedOpp}
@@ -208,8 +208,8 @@ export default function ProgrammaticHub({
 
                         {/* Mobile Detail Modal/Drawer */}
                         {selectedOpp && isDesktop === false && (
-                            <div id="mobile-detail-modal" className="xl:hidden fixed inset-0 z-[120] flex flex-col bg-background animate-in slide-in-from-bottom duration-300">
-                                <div className="pt-[env(safe-area-inset-top)] bg-card shrink-0" />
+                            <div id="mobile-detail-modal" className="xl:hidden fixed inset-0 z-50 flex flex-col bg-background animate-in slide-in-from-bottom duration-300">
+                                <div className="pt-4 bg-card shrink-0" />
                                 <div className="flex-1 flex flex-col min-h-0">
                                     <OpportunityDetailPane
                                         oppId={selectedOpp.slug || selectedOpp.id}
@@ -238,7 +238,7 @@ export default function ProgrammaticHub({
                                         companyName={company.name}
                                         companyLogoUrl={company.logoUrl}
                                         companyWebsite={company.website}
-                                        className="w-5 h-5 rounded"
+                                        className="w-5 h-5"
                                     />
                                     <span className="text-xs font-semibold text-foreground">{company.name}</span>
                                 </Link>
@@ -265,8 +265,8 @@ export default function ProgrammaticHub({
 
             {/* Mobile Detail Modal/Drawer (Mobile/Tablet only) */}
             {selectedOpp && isDesktop === false && (
-                <div id="mobile-detail-modal" className="xl:hidden fixed inset-0 z-[120] flex flex-col bg-background animate-in slide-in-from-bottom duration-300">
-                    <div className="pt-[env(safe-area-inset-top)] bg-card shrink-0" />
+                <div id="mobile-detail-modal" className="xl:hidden fixed inset-0 z-50 flex flex-col bg-background animate-in slide-in-from-bottom duration-300">
+                    <div className="pt-4 bg-card shrink-0" />
                     <div className="flex-1 flex flex-col min-h-0">
                         <OpportunityDetailPane
                             oppId={selectedOpp.slug || selectedOpp.id}

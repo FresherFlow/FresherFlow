@@ -97,25 +97,25 @@ export default function AdminAlertsPage() {
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-6 rounded-lg border bg-card p-4">
         <label className="text-sm space-y-1">
           <span className="text-muted-foreground">Status</span>
-          <Select className="h-9 w-full text-xs px-2 py-1 bg-card border-border" value={status} onChange={(e) => setStatus(e.target.value as DispatchStatus | 'ALL')}>
+          <Select className="w-full" value={status} onChange={(e) => setStatus(e.target.value as DispatchStatus | 'ALL')}>
             {STATUS_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
           </Select>
         </label>
         <label className="text-sm space-y-1">
           <span className="text-muted-foreground">Kind</span>
-          <Select className="h-9 w-full text-xs px-2 py-1 bg-card border-border" value={kind} onChange={(e) => setKind(e.target.value as DispatchKind | 'ALL')}>
+          <Select className="w-full" value={kind} onChange={(e) => setKind(e.target.value as DispatchKind | 'ALL')}>
             {KIND_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
           </Select>
         </label>
         <label className="text-sm space-y-1">
           <span className="text-muted-foreground">Channel</span>
-          <Select className="h-9 w-full text-xs px-2 py-1 bg-card border-border" value={channel} onChange={(e) => setChannel(e.target.value as DispatchChannel | 'ALL')}>
+          <Select className="w-full" value={channel} onChange={(e) => setChannel(e.target.value as DispatchChannel | 'ALL')}>
             {CHANNEL_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
           </Select>
         </label>
         <label className="text-sm space-y-1">
           <span className="text-muted-foreground">Reason</span>
-          <Select className="h-9 w-full text-xs px-2 py-1 bg-card border-border" value={reason} onChange={(e) => setReason(e.target.value as DispatchReason | 'ALL')}>
+          <Select className="w-full" value={reason} onChange={(e) => setReason(e.target.value as DispatchReason | 'ALL')}>
             {REASON_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
           </Select>
         </label>
@@ -166,7 +166,7 @@ export default function AdminAlertsPage() {
         ) : null}
         {!loading && !error && (data?.logs.length || 0) > 0 ? (
           <div className="overflow-x-auto border border-border/40 rounded-lg">
-            <Table className="w-full text-sm">
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Time</TableHead>
@@ -180,13 +180,13 @@ export default function AdminAlertsPage() {
               </TableHeader>
               <TableBody>
                 {data?.logs.map((row) => (
-                  <TableRow key={row.id} className="hover:bg-muted/30 transition-colors">
+                  <TableRow key={row.id}>
                     <TableCell className="whitespace-nowrap">{new Date(row.createdAt).toLocaleString('en-IN')}</TableCell>
                     <TableCell>{row.status}</TableCell>
                     <TableCell>{row.kind} {row.channel ? `/${row.channel}` : ''}</TableCell>
                     <TableCell>{row.reason || '-'}</TableCell>
                     <TableCell>{row.user?.email || '-'}</TableCell>
-                    <TableCell className="max-w-[260px] truncate" title={row.opportunity?.title || ''}>{row.opportunity?.title || '-'}</TableCell>
+                    <TableCell className="max-w-64" title={row.opportunity?.title || ''}><span className="block truncate">{row.opportunity?.title || '-'}</span></TableCell>
                     <TableCell>
                       {row.errorMessage ? (
                         <button

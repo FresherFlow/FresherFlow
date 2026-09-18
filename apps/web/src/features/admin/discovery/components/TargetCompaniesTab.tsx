@@ -81,9 +81,9 @@ export function TargetCompaniesTab({
             <div className="flex items-center gap-3 min-w-0">
               <CompanyLogo
                 companyName={companyStr}
-                className="w-8 h-8 rounded-lg border border-border/60 bg-card shadow-xs shrink-0"
+                className="w-8 h-8 shrink-0"
               />
-              <span className="font-semibold text-foreground truncate max-w-[200px]" title={companyStr}>
+              <span className="font-semibold text-foreground truncate max-w-50" title={companyStr}>
                 {companyStr}
               </span>
             </div>
@@ -132,10 +132,10 @@ export function TargetCompaniesTab({
                   className={cn(
                     'w-1.5 h-1.5 rounded-full',
                     result.status === 'OK'
-                      ? 'bg-emerald-500'
+                      ? 'bg-success'
                       : result.status === 'TIMEOUT'
-                      ? 'bg-amber-500'
-                      : 'bg-red-500'
+                      ? 'bg-warning'
+                      : 'bg-error'
                   )}
                 />
                 <span>
@@ -169,7 +169,7 @@ export function TargetCompaniesTab({
                   <EllipsisHorizontalIcon className="w-5 h-5" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40 text-xs">
+              <DropdownMenuContent align="end" className="w-40">
                 <DropdownMenuItem
                   onClick={() => onRunTarget(target, false)}
                   disabled={isRunning}

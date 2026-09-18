@@ -32,20 +32,20 @@ function ProfilePageSkeleton() {
     return (
         <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 py-8 md:py-12 space-y-8 animate-pulse">
             <div className="space-y-3">
-                <Skeleton className="h-10 w-64 rounded-xl" />
-                <Skeleton className="h-5 w-96 rounded-lg" />
+                <Skeleton className="h-10 w-64" />
+                <Skeleton className="h-5 w-96" />
             </div>
 
             <div className="space-y-6">
                 {Array.from({ length: 6 }).map((_, i) => (
                     <div key={i} className="bg-card rounded-2xl border border-border/40 p-6 space-y-5">
                         <div className="flex justify-between items-center pb-4">
-                            <Skeleton className="h-6 w-48 rounded-md" />
-                            <Skeleton className="h-8 w-16 rounded-full" />
+                            <Skeleton className="h-6 w-48" />
+                            <Skeleton className="h-8 w-16" />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            <Skeleton className="h-12 w-full rounded-xl" />
-                            <Skeleton className="h-12 w-full rounded-xl" />
+                            <Skeleton className="h-12 w-full" />
+                            <Skeleton className="h-12 w-full" />
                         </div>
                     </div>
                 ))}

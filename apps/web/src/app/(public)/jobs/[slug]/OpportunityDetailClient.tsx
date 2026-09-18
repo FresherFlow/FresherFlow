@@ -130,7 +130,7 @@ export default function OpportunityDetailClient({
 
         if (isClean404) {
             return (
-                <div className="min-h-[70vh] flex flex-col items-center justify-center p-4 md:p-8 text-center space-y-6">
+                <div className="min-h-140 flex flex-col items-center justify-center p-4 md:p-8 text-center space-y-6">
                     <div className="flex items-center gap-3">
                         <span className="text-5xl font-black tracking-tight text-primary md:text-6xl">404</span>
                         <div className="h-8 w-px bg-border md:h-10" />
@@ -146,12 +146,12 @@ export default function OpportunityDetailClient({
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
                         <Link href="/jobs">
-                            <Button className="min-w-40 h-11 rounded-full">
+                            <Button size="sm">
                                 Browse Opportunities
                             </Button>
                         </Link>
                         <Link href="/jobs">
-                            <Button variant="outline" className="min-w-40 h-11 rounded-full">
+                            <Button size="sm" variant="outline">
                                 Go to Dashboard
                             </Button>
                         </Link>
@@ -168,13 +168,13 @@ export default function OpportunityDetailClient({
 
         // Technical / network error
         return (
-            <div className="min-h-[60vh] flex flex-col items-center justify-center p-4 space-y-4">
+            <div className="min-h-120 flex flex-col items-center justify-center p-4 space-y-4">
                 <div className="p-4 bg-destructive/10 rounded-full">
                     <ExclamationTriangleIcon className="w-8 h-8 text-destructive" />
                 </div>
                 <h2 className="text-xl font-bold text-foreground">Failed to load opportunity</h2>
                 <p className="text-muted-foreground text-center max-w-md">{error}</p>
-                <Button onClick={() => void loadOpportunity()} className="flex items-center gap-2">
+                <Button onClick={() => void loadOpportunity()}>
                     <ClockIcon className="w-4 h-4" />
                     Retry Loading
                 </Button>
@@ -229,7 +229,7 @@ export default function OpportunityDetailClient({
         <div className="min-h-screen selection:bg-primary/20 bg-background text-foreground">
             {/* Scroll-Reactive Header on Mobile */}
             <div className={cn(
-                "md:hidden fixed top-0 left-0 right-0 z-80 bg-background/95 backdrop-blur-md border-b border-border/40 px-4 flex items-center justify-between transition-all duration-300 transform pt-[env(safe-area-inset-top)]",
+                "md:hidden fixed top-0 left-0 right-0 z-80 bg-background/95 backdrop-blur-md border-b border-border/40 px-4 flex items-center justify-between transition-all duration-300 transform pt-0",
                 showStickyHeader 
                     ? "translate-y-0 opacity-100" 
                     : "-translate-y-full opacity-0 pointer-events-none"
@@ -252,10 +252,10 @@ export default function OpportunityDetailClient({
                         companyLogoUrl={opp.companyLogoUrl}
                         applyLink={opp.applyLink}
                         isGovernment={isGovernmentJob}
-                        className="w-9 h-9 rounded-lg object-contain shrink-0"
+                        className="w-9 h-9 shrink-0"
                     />
                     <div className="min-w-0 flex-1">
-                        <span className="text-[11px] font-bold text-muted-foreground block truncate leading-none">
+                        <span className="text-xs font-bold text-muted-foreground block truncate leading-none">
                             {opp.company}
                         </span>
                         <h2 className="text-xs font-bold text-foreground mt-0.5 leading-none truncate" title={opp.title}>
@@ -285,11 +285,11 @@ export default function OpportunityDetailClient({
                         {opp.type === 'INTERNSHIP' ? 'Internships' : opp.type === 'WALKIN' ? 'Walk-ins' : 'Jobs'}
                     </Link>
                     <span className="text-muted-foreground/40">/</span>
-                    <Link href={`/companies/${(opp as any).companySlug || getCompanySlug((opp as any).companyWebsite, opp.company)}`} className="hover:text-primary transition-colors truncate max-w-[120px]">
+                    <Link href={`/companies/${(opp as any).companySlug || getCompanySlug((opp as any).companyWebsite, opp.company)}`} className="hover:text-primary transition-colors truncate max-w-30">
                         {opp.company}
                     </Link>
                     <span className="text-muted-foreground/40">/</span>
-                    <span className="text-foreground font-semibold truncate max-w-[200px]" title={opp.title}>{opp.title}</span>
+                    <span className="text-foreground font-semibold truncate max-w-48" title={opp.title}>{opp.title}</span>
                 </nav>
 
                 {/* Two-column: Content (left) + Sidebar (right) */}
@@ -314,7 +314,7 @@ export default function OpportunityDetailClient({
                             handleCopyLink={handleCopyLink}
                         />
 
-                        {opp.expiresAt && ds.isExpired(opp) && <ExpiredWarning />}
+                        {opp.expiresAt && ds.isExpired(opp) && <ExpiredWarning opportunityId={opp.id} opportunityTitle={opp.title} />}
 
                         {/* Mobile-Only Sidebar boxes */}
                         <div className="lg:hidden space-y-4">
@@ -371,7 +371,7 @@ export default function OpportunityDetailClient({
                                 }).map(loc => {
                                     const locSlug = slugify(loc);
                                     return (
-                                        <Link key={loc} href={`/jobs/${locSlug}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
+                                        <Link key={loc} href={`/jobs/${locSlug}-jobs`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
                                             <MapPinIcon className="w-3.5 h-3.5" />
                                             Jobs in {loc}
                                         </Link>
@@ -383,7 +383,7 @@ export default function OpportunityDetailClient({
                                     }
                                     return true;
                                 }).slice(0, 5).map(skill => (
-                                    <Link key={skill} href={`/jobs/${slugify(skill)}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
+                                    <Link key={skill} href={`/jobs/${slugify(skill)}-jobs`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
                                         <TagIcon className="w-3.5 h-3.5" />
                                         <span className="capitalize">{skill}</span>{' '}Jobs
                                     </Link>
@@ -402,7 +402,7 @@ export default function OpportunityDetailClient({
                                     const CURATED_ROLES = new Set(['software-engineer', 'data-analyst', 'business-analyst', 'frontend-developer', 'test-engineer']);
                                     if (!CURATED_ROLES.has(roleSlug)) return null;
                                     return (
-                                        <Link href={`/jobs/${roleSlug}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
+                                        <Link href={`/jobs/${roleSlug}-jobs`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
                                             <UserIcon className="w-3.5 h-3.5" />
                                             <span className="capitalize">{opp.jobFunction}</span> Jobs
                                         </Link>
@@ -424,7 +424,7 @@ export default function OpportunityDetailClient({
                                                 onClick={() => handleSetAction(option.key)}
                                                 disabled={isUpdatingAction}
                                                 className={cn(
-                                                    "h-8 rounded-lg border text-[11px] font-bold transition-all",
+                                                    "h-8 rounded-lg border text-xs font-bold transition-all",
                                                     isActive ? "bg-primary/10 text-primary border-primary/20" : "bg-muted/20 border-border text-muted-foreground hover:bg-muted/40",
                                                     isUpdatingAction && "opacity-50 cursor-not-allowed"
                                                 )}
@@ -441,7 +441,7 @@ export default function OpportunityDetailClient({
                             <div className="lg:hidden bg-card p-4 border border-primary/20 rounded-xl space-y-2">
                                 <h4 className="text-xs font-bold text-primary">Admin Control</h4>
                                 <Link href={`/opportunities/edit/${opp.id}`} className="block">
-                                    <Button variant="outline" className="w-full text-xs font-bold h-8 hover:bg-primary/5">Edit Opportunity</Button>
+                                    <Button size="sm" variant="outline" className="w-full">Edit Opportunity</Button>
                                 </Link>
                             </div>
                         )}
@@ -501,7 +501,7 @@ export default function OpportunityDetailClient({
 
             {/* Sticky Bottom Apply Bar on Mobile */}
             {ds.hasApplyLink && (
-                <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur px-4 py-3.5 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-[0_-8px_24px_rgba(0,0,0,0.06)] flex items-center gap-2.5">
+                <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur px-4 py-3.5 pb-3 shadow-sm flex items-center gap-2.5">
                     <div className="flex-1">
                         {ds.listingState === 'EXPIRED' ? (
                             <button
@@ -514,7 +514,7 @@ export default function OpportunityDetailClient({
                         ) : (
                             <button
                                 onClick={handleApply}
-                                className="w-full h-12 text-sm bg-primary text-primary-foreground hover:bg-primary/95 active:scale-[0.99] rounded-xl flex items-center justify-center gap-2 font-bold shadow-md hover:shadow-lg transition-all"
+                                className="w-full h-12 text-sm bg-primary text-primary-foreground hover:bg-primary/95 active:scale-95 rounded-xl flex items-center justify-center gap-2 font-bold shadow-md hover:shadow-lg transition-all"
                             >
                                 {isGovernmentJob ? 'Apply on Official Portal' : 'Apply on Website'}
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -528,7 +528,7 @@ export default function OpportunityDetailClient({
                         value={typeof window !== 'undefined' ? window.location.href : ''}
                         icon={LinkIcon}
                         iconClassName="w-5 h-5"
-                        className="shrink-0 w-12 h-12 !p-0 rounded-xl border border-border bg-muted/20 text-muted-foreground flex items-center justify-center hover:bg-muted/40 hover:text-foreground active:scale-[0.98] transition-all"
+                        
                     />
                 </div>
             )}

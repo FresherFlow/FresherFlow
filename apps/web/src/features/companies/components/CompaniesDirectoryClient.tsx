@@ -99,7 +99,7 @@ export default function CompaniesDirectoryClient({ companies, totalJobs }: Compa
                             placeholder="Search companies..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-10 pr-10 h-11 bg-card"
+                            className="h-11"
                         />
                         {searchQuery && (
                             <button
@@ -132,7 +132,7 @@ export default function CompaniesDirectoryClient({ companies, totalJobs }: Compa
                                             : 'border-border/60 hover:bg-muted/50'
                                     }`}
                                 >
-                                    <div className="text-[15px] font-medium text-foreground">{ind.name}</div>
+                                    <div className="text-sm font-medium text-foreground">{ind.name}</div>
                                     <div className="mt-0.5 text-xs font-medium uppercase tracking-wide tabular-nums text-muted-foreground">
                                         {ind.companies.length} {ind.companies.length === 1 ? 'company' : 'companies'} - {ind.roles.toLocaleString('en-IN')} {ind.roles === 1 ? 'role' : 'roles'}
                                     </div>
@@ -144,7 +144,7 @@ export default function CompaniesDirectoryClient({ companies, totalJobs }: Compa
                                                     companyName={co.name}
                                                     companyLogoUrl={co.logoUrl}
                                                     companyWebsite={co.website}
-                                                    className="!w-6 !h-6 rounded-full border border-border bg-card shrink-0"
+                                                    className="!w-6 !h-6 shrink-0"
                                                 />
                                             ))}
                                         </div>
@@ -194,9 +194,9 @@ export default function CompaniesDirectoryClient({ companies, totalJobs }: Compa
                                     companyName={co.name}
                                     companyLogoUrl={co.logoUrl}
                                     companyWebsite={co.website}
-                                    className="!w-9 !h-9 rounded-lg border border-border/50 shrink-0"
+                                    className="!w-9 !h-9 shrink-0"
                                 />
-                                <span className="min-w-0 truncate text-[15px] font-medium text-foreground group-hover:text-primary transition-colors">
+                                <span className="min-w-0 truncate text-sm font-medium text-foreground group-hover:text-primary transition-colors">
                                     {co.name}
                                 </span>
                                 <span className="ml-auto shrink-0 whitespace-nowrap text-xs font-medium uppercase tracking-wide tabular-nums text-muted-foreground">

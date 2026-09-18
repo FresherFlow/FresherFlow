@@ -63,7 +63,7 @@ export function DetailCampusDriveInfo({ driveMeta, hasApplyLink, handleApply }: 
                                     <div className="mt-2 space-y-1.5">
                                         {rows.map((row: DriveSalaryRow) => (
                                             <div key={`${row.cadre}-${row.experience}`} className="rounded-md border border-border/70 bg-background/30 px-2 py-1.5">
-                                                <p className="text-[13px] font-bold text-foreground/70">{row.experience}</p>
+                                                <p className="text-sm font-bold text-foreground/70">{row.experience}</p>
                                                 <div className="mt-0.5 flex items-center justify-between gap-2 text-sm font-semibold text-foreground">
                                                     <span>UG: {formatLpaValue(row.ug)}</span>
                                                     <span>PG: {formatLpaValue(row.pg)}</span>
@@ -84,7 +84,7 @@ export function DetailCampusDriveInfo({ driveMeta, hasApplyLink, handleApply }: 
                     <h3 className="text-sm md:text-base font-bold text-foreground/80 tracking-tight pb-2">Selection Process</h3>
                     <div className="flex flex-wrap items-center gap-2">
                         {driveMeta.selectionSteps.map((step: string, index: number) => (
-                            <span key={step} className="inline-flex items-center rounded-md border border-border bg-muted/20 px-2.5 py-1.5 text-[12px] font-semibold text-foreground">
+                            <span key={step} className="inline-flex items-center rounded-md border border-border bg-muted/20 px-2.5 py-1.5 text-xs font-semibold text-foreground">
                                 {index + 1}. {step}
                             </span>
                         ))}
@@ -101,9 +101,9 @@ export function DetailCampusDriveInfo({ driveMeta, hasApplyLink, handleApply }: 
                         ))}
                     </ol>
                     {hasApplyLink && (
-                        <Button
+                        <Button size="sm"
                             onClick={handleApply}
-                            className="w-full md:w-auto h-10 text-xs bg-primary/80 text-primary-foreground border border-primary/60 hover:bg-primary rounded-lg font-bold uppercase tracking-widest"
+                            className="w-full"
                         >
                             Apply on Official Website
                         </Button>

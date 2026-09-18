@@ -92,7 +92,7 @@ export function HeadlineSection({ isEditingExternal, onCloseExternal }: Headline
             )}
 
             <Dialog open={isEditing} onOpenChange={setIsEditing}>
-                <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl max-h-180 overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>Edit Identity, Headline & Bio</DialogTitle>
                     </DialogHeader>
@@ -108,7 +108,7 @@ export function HeadlineSection({ isEditingExternal, onCloseExternal }: Headline
                                             onChange={(e) => setFirstName(e.target.value)}
                                             placeholder="First Name"
                                             disabled={isSubmitting}
-                                            className="h-10 text-sm"
+                                            className="h-10"
                                         />
                                     </div>
                                     <div>
@@ -118,7 +118,7 @@ export function HeadlineSection({ isEditingExternal, onCloseExternal }: Headline
                                             onChange={(e) => setLastName(e.target.value)}
                                             placeholder="Last Name"
                                             disabled={isSubmitting}
-                                            className="h-10 text-sm"
+                                            className="h-10"
                                         />
                                     </div>
                                 </div>
@@ -133,7 +133,7 @@ export function HeadlineSection({ isEditingExternal, onCloseExternal }: Headline
                                     onChange={(e) => setAvatarUrl(e.target.value)}
                                     placeholder="https://example.com/my-avatar.png"
                                     disabled={isSubmitting}
-                                    className="h-10 text-sm"
+                                    className="h-10"
                                 />
                             </div>
 
@@ -146,7 +146,7 @@ export function HeadlineSection({ isEditingExternal, onCloseExternal }: Headline
                                     onChange={(e) => setHeadline(e.target.value)}
                                     placeholder="e.g. Full Stack Developer | Final Year CS Undergrad"
                                     disabled={isSubmitting}
-                                    className="h-10 text-sm"
+                                    className="h-10"
                                 />
                             </div>
 
@@ -168,8 +168,8 @@ export function HeadlineSection({ isEditingExternal, onCloseExternal }: Headline
                             </div>
                             
                             <div className="flex justify-end gap-4 pt-1">
-                                <Button variant="outline" className="h-10 px-4 text-xs font-medium" onClick={() => setIsEditing(false)} disabled={isSubmitting}>Cancel</Button>
-                                <Button className="h-10 px-4 gap-1.5 text-xs font-medium" onClick={handleSave} disabled={isSubmitting}>
+                                <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} disabled={isSubmitting}>Cancel</Button>
+                                <Button size="sm" onClick={handleSave} disabled={isSubmitting}>
                                     <CheckIcon className="w-3.5 h-3.5" /> Save Changes
                                 </Button>
                             </div>

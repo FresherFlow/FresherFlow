@@ -86,7 +86,7 @@ export const AdminOpportunitiesMobileList = ({
                                         isSelected ? 'bg-primary border-primary' : 'border-border hover:border-primary'
                                     }`}
                                 >
-                                    {isSelected && <div className="w-2 h-2 bg-primary-foreground rounded-[1px]" />}
+                                    {isSelected && <div className="w-2 h-2 bg-primary-foreground rounded-xs" />}
                                 </div>
 
                                 {/* Logo */}
@@ -96,7 +96,7 @@ export const AdminOpportunitiesMobileList = ({
                                     companyLogoUrl={opp.companyLogoUrl}
                                     applyLink={opp.applyLink}
                                     isGovernment={opp.type === 'GOVERNMENT' || Boolean(opp.governmentJobDetails)}
-                                    className="w-9 h-9 rounded-lg shrink-0"
+                                    className="w-9 h-9 shrink-0"
                                 />
 
                                 {/* Title + company + status */}
@@ -108,13 +108,13 @@ export const AdminOpportunitiesMobileList = ({
                                         >
                                             {opp.title}
                                         </button>
-                                        <span className={`shrink-0 inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold ring-1 ring-inset ${getStatusBadgeClass(opp)}`}>
+                                        <span className={`shrink-0 inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-bold ring-1 ring-inset ${getStatusBadgeClass(opp)}`}>
                                             {getStatusLabel(opp)}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                                         <span className="text-xs text-muted-foreground">{opp.company}</span>
-                                        <span className="text-[9px] capitalize tracking-wide px-1.5 py-0.5 rounded bg-muted/60 border border-border text-muted-foreground">
+                                        <span className="text-xs capitalize tracking-wide px-1.5 py-0.5 rounded bg-muted/60 border border-border text-muted-foreground">
                                             {opp.type}
                                         </span>
                                     </div>
@@ -122,7 +122,7 @@ export const AdminOpportunitiesMobileList = ({
                             </div>
 
                             {/* Meta row */}
-                            <div className="px-3 pb-2 flex items-center gap-3 text-[11px] text-muted-foreground">
+                            <div className="px-3 pb-2 flex items-center gap-3 text-xs text-muted-foreground">
                                 {opp.locations?.length > 0 && (
                                     <span className="flex items-center gap-1 truncate">
                                         <MapPinIcon className="w-3 h-3 shrink-0" />
@@ -153,7 +153,7 @@ export const AdminOpportunitiesMobileList = ({
                                             href={(opp.applyLink || opp.sourceLink) as string}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-blue-500/20 bg-blue-500/5 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                                            className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-signal-heat/20 bg-signal-heat/5 text-signal-heat dark:text-signal-heat hover:bg-signal-heat/10 hover:text-signal-heat dark:hover:text-signal-heat transition-colors"
                                             title="Open apply link"
                                         >
                                             <ArrowTopRightOnSquareIcon className="w-4 h-4" />
@@ -181,14 +181,14 @@ export const AdminOpportunitiesMobileList = ({
                                         <>
                                             <button
                                                 onClick={() => handleStatusUpdate(opp.id, 'PUBLISHED')}
-                                                className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                                                className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-success/20 bg-success/10 text-xs font-semibold text-success dark:text-success hover:bg-success/20 transition-colors"
                                             >
                                                 <CheckCircleIcon className="w-3.5 h-3.5" />
                                                 Publish
                                             </button>
                                             <button
                                                 onClick={() => handleRejectDraft(opp.id, opp.title)}
-                                                className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-destructive/20 bg-destructive/10 text-[11px] font-semibold text-destructive hover:bg-destructive/20 transition-colors"
+                                                className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-destructive/20 bg-destructive/10 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-colors"
                                             >
                                                 <XCircleIcon className="w-3.5 h-3.5" />
                                                 Reject
@@ -198,7 +198,7 @@ export const AdminOpportunitiesMobileList = ({
                                     {isPublishedOrExpired && (
                                         <button
                                             onClick={() => handleExpire(opp.id, opp.title, opp.status)}
-                                            className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 text-[11px] font-semibold text-foreground hover:bg-accent transition-colors"
+                                            className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 text-xs font-semibold text-foreground hover:bg-accent transition-colors"
                                         >
                                             <ClockIcon className="w-3.5 h-3.5 text-muted-foreground" />
                                             Set Status
@@ -207,7 +207,7 @@ export const AdminOpportunitiesMobileList = ({
                                     {isDeleted && (
                                         <button
                                             onClick={() => handleRestore(opp.id)}
-                                            className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                                            className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-success/20 bg-success/10 text-xs font-semibold text-success dark:text-success hover:bg-success/20 transition-colors"
                                         >
                                             <ArrowPathIcon className="w-3.5 h-3.5" />
                                             Restore
@@ -215,14 +215,14 @@ export const AdminOpportunitiesMobileList = ({
                                     )}
                                     <button
                                         onClick={() => handleDelete(opp.id, opp.title)}
-                                        className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-destructive/20 bg-destructive/10 text-[11px] font-semibold text-destructive hover:bg-destructive/20 transition-colors"
+                                        className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-destructive/20 bg-destructive/10 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-colors"
                                     >
                                         <TrashIcon className="w-3.5 h-3.5" />
                                         Archive
                                     </button>
                                     <button
                                         onClick={() => handleHardDelete(opp.id, opp.title)}
-                                        className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-destructive/30 bg-destructive/15 text-[11px] font-semibold text-destructive hover:bg-destructive/25 transition-colors"
+                                        className="h-7 px-3 inline-flex items-center gap-1 rounded-md border border-destructive/30 bg-destructive/15 text-xs font-semibold text-destructive hover:bg-destructive/25 transition-colors"
                                     >
                                         <XCircleIcon className="w-3.5 h-3.5" />
                                         Delete
@@ -236,7 +236,7 @@ export const AdminOpportunitiesMobileList = ({
                 {/* Pagination */}
                 {opportunities.length > 0 && (
                     <div className="flex items-center justify-between pt-4 mt-2 border-t border-border/40 pb-4 px-1 sm:px-2">
-                        <div className="text-[11px] text-muted-foreground">
+                        <div className="text-xs text-muted-foreground">
                             Showing <span className="font-medium text-foreground">{(page - 1) * pageSize + 1}</span> to <span className="font-medium text-foreground">{Math.min(page * pageSize, totalCount)}</span> of <span className="font-medium text-foreground">{totalCount}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -248,7 +248,7 @@ export const AdminOpportunitiesMobileList = ({
                                 <ChevronLeftIcon className="w-3.5 h-3.5 mr-1" />
                                 Prev
                             </button>
-                            <span className="text-xs font-semibold text-foreground min-w-[50px] text-center">
+                            <span className="text-xs font-semibold text-foreground min-w-12 text-center">
                                 {page} / {effectiveTotalPages}
                             </span>
                             <button

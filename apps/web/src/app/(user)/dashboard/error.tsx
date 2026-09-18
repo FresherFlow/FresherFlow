@@ -8,7 +8,7 @@ export default function DashboardError({ error, reset }: { error: Error; reset: 
     }, [error]);
 
     return (
-        <div className="min-h-[60vh] flex items-center justify-center p-6">
+        <div className="min-h-120 flex items-center justify-center p-6">
             <div className="max-w-md w-full space-y-4 text-center bg-card border border-border rounded-xl p-6 shadow-sm">
                 <h2 className="text-lg font-bold tracking-tight">Dashboard failed to load</h2>
                 <p className="text-sm text-muted-foreground">

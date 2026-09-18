@@ -356,10 +356,10 @@ export default function FeedbackPage() {
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground">Community moderation</h1>
                     <p className="text-sm text-muted-foreground mt-1 hidden md:flex items-center gap-2 flex-wrap">
                         <span>Monitor active user reports, app feedback, and live opportunity comments.</span>
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-bold bg-success/10 text-success border border-success/20">
                             <span className="relative flex h-1.5 w-1.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75" />
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-success" />
                             </span>
                             {isFbAuthenticating 
                                 ? 'Connecting...' 
@@ -406,7 +406,7 @@ export default function FeedbackPage() {
             {isLoading ? (
                 <AdminFeedbackSkeleton />
             ) : (
-                <div className="flex-1 min-h-0 overflow-y-auto pr-1 custom-scrollbar pb-8">
+                <div className="flex-1 min-h-0 overflow-y-auto pr-1 pb-8">
                     {/* ─── TAB 1: OPPORTUNITY REPORTS ──────────────────────────────── */}
                     {activeTab === 'opportunity-reports' && (
                         <div className="space-y-4">
@@ -427,9 +427,9 @@ export default function FeedbackPage() {
                                                         <p className="text-xs text-muted-foreground mt-0.5">{report.opportunity?.company}</p>
                                                     </div>
                                                     <span className={cn(
-                                                        'text-[9px] font-bold px-2 py-0.5 rounded-md border uppercase shrink-0 tracking-wider',
-                                                        report.reason === 'LINK_BROKEN' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
-                                                        report.reason === 'EXPIRED' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                                        'text-xs font-bold px-2 py-0.5 rounded-md border uppercase shrink-0 tracking-wider',
+                                                        report.reason === 'LINK_BROKEN' ? 'bg-error/10 text-error border-error/20' :
+                                                        report.reason === 'EXPIRED' ? 'bg-warning/10 text-warning border-warning/20' :
                                                         'bg-muted text-muted-foreground border-border'
                                                     )}>
                                                         {report.reason.replace('_', ' ')}
@@ -442,27 +442,27 @@ export default function FeedbackPage() {
                                                     </div>
                                                     <div className="min-w-0">
                                                         <p className="text-xs font-semibold truncate">{report.user?.fullName || report.user?.username || 'Anonymous User'}</p>
-                                                        <p className="text-[10px] text-muted-foreground truncate">{report.user?.email || 'No email registered'}</p>
+                                                        <p className="text-xs text-muted-foreground truncate">{report.user?.email || 'No email registered'}</p>
                                                     </div>
                                                 </div>
                                             </div>
 
                                             <div className="bg-muted/30 px-5 py-3.5 border-t border-border flex items-center justify-between text-xs">
-                                                <span className="text-muted-foreground flex items-center gap-1.5 text-[10px]">
+                                                <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
                                                     <ClockIcon className="w-3.5 h-3.5" />
                                                     {new Date(report.createdAt).toLocaleString()}
                                                 </span>
                                                 <div className="flex gap-2">
                                                     <Link
                                                         href={`/admin/opportunities/edit/${report.opportunity?.slug || report.jobId}`}
-                                                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-secondary/20 px-3 font-semibold text-[11px] transition-colors hover:bg-muted"
+                                                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-secondary/20 px-3 font-semibold text-xs transition-colors hover:bg-muted"
                                                     >
                                                         <PencilSquareIcon className="w-3.5 h-3.5" />
                                                         Edit
                                                     </Link>
                                                     <button
                                                         onClick={() => handleDeleteReport(report.userId, report.jobId)}
-                                                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-rose-500/20 bg-rose-500/5 px-3 font-semibold text-[11px] text-rose-500 hover:bg-rose-500/10 transition-colors"
+                                                        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-error/20 bg-error/5 px-3 font-semibold text-xs text-error hover:bg-error/10 transition-colors"
                                                     >
                                                         <TrashIcon className="w-3.5 h-3.5" />
                                                         Dismiss
@@ -491,10 +491,10 @@ export default function FeedbackPage() {
                                         <div key={item.id} className="rounded-2xl border border-border bg-card p-5 shadow-sm flex flex-col justify-between gap-4">
                                             <div className="space-y-3">
                                                 <div className="flex items-center justify-between gap-2">
-                                                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-md border border-border bg-muted text-muted-foreground uppercase tracking-wider">
+                                                    <span className="text-xs font-bold px-2 py-0.5 rounded-md border border-border bg-muted text-muted-foreground uppercase tracking-wider">
                                                         {item.type}
                                                     </span>
-                                                    <span className="text-[10px] text-muted-foreground">
+                                                    <span className="text-xs text-muted-foreground">
                                                         {new Date(item.createdAt).toLocaleDateString()}
                                                     </span>
                                                 </div>
@@ -507,20 +507,20 @@ export default function FeedbackPage() {
                                                         <UserIcon className="w-3.5 h-3.5" />
                                                     </div>
                                                     <div className="min-w-0">
-                                                        <p className="text-[10px] font-semibold truncate leading-none">{item.user?.fullName || 'Anonymous'}</p>
-                                                        <p className="text-[9px] text-muted-foreground truncate mt-0.5">{item.user?.email || 'Anonymous Guest'}</p>
+                                                        <p className="text-xs font-semibold truncate leading-none">{item.user?.fullName || 'Anonymous'}</p>
+                                                        <p className="text-xs text-muted-foreground truncate mt-0.5">{item.user?.email || 'Anonymous Guest'}</p>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2 shrink-0">
                                                     {item.rating !== undefined && (
-                                                        <div className="flex items-center gap-0.5 text-amber-500 mr-1">
+                                                        <div className="flex items-center gap-0.5 text-warning mr-1">
                                                             <StarIcon className="w-3.5 h-3.5 fill-current" />
                                                             <span className="text-xs font-bold">{item.rating}/5</span>
                                                         </div>
                                                     )}
                                                     <button
                                                         onClick={() => handleDeleteAppFeedback(item.userId, item.id)}
-                                                        className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-md transition-colors"
+                                                        className="p-1.5 text-error hover:bg-error rounded-md transition-colors"
                                                         title="Delete Feedback"
                                                     >
                                                         <TrashIcon className="w-3.5 h-3.5" />
@@ -552,14 +552,14 @@ export default function FeedbackPage() {
                                                     <span className="text-xs font-bold text-foreground truncate">
                                                         {comment.user.fullName || `@${comment.user.username}` || 'Anonymous User'}
                                                     </span>
-                                                    <span className="text-[10px] text-muted-foreground">
+                                                    <span className="text-xs text-muted-foreground">
                                                         on {comment.opportunity?.company} — &ldquo;{comment.opportunity?.title}&rdquo;
                                                     </span>
                                                 </div>
                                                 <p className="text-xs text-foreground leading-normal bg-muted/30 border border-border/40 p-3 rounded-xl max-w-2xl">
                                                     {comment.text}
                                                 </p>
-                                                <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground">
+                                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                                     <ClockIcon className="w-3 h-3" />
                                                     {new Date(comment.createdAt).toLocaleString()}
                                                 </div>
@@ -567,7 +567,7 @@ export default function FeedbackPage() {
 
                                             <button
                                                 onClick={() => handleDeleteComment(comment.jobId, comment.id)}
-                                                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-rose-500/20 bg-rose-500/5 px-3 font-semibold text-[11px] text-rose-500 hover:bg-rose-500/10 active:scale-95 shrink-0 self-end sm:self-start"
+                                                className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-error/20 bg-error/5 px-3 font-semibold text-xs text-error hover:bg-error/10 active:scale-95 shrink-0 self-end sm:self-start"
                                             >
                                                 <TrashIcon className="w-3.5 h-3.5" />
                                                 Delete
@@ -585,8 +585,8 @@ export default function FeedbackPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-6 space-y-4">
-                            <div className="flex items-center gap-3 text-rose-500">
-                                <div className="p-2 bg-rose-500/10 rounded-xl">
+                            <div className="flex items-center gap-3 text-error">
+                                <div className="p-2 bg-error/10 rounded-xl">
                                     <ExclamationTriangleIcon className="w-6 h-6" />
                                 </div>
                                 <h3 className="text-lg font-bold text-foreground">{confirmState.title}</h3>
@@ -613,7 +613,7 @@ export default function FeedbackPage() {
                                     }
                                 }}
                                 disabled={confirmState.isLoading}
-                                className="h-9 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                                className="h-9 px-4 rounded-xl bg-error hover:bg-error text-white text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
                             >
                                 {confirmState.isLoading ? (
                                     <>

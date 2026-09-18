@@ -74,6 +74,10 @@
   --color-brand-facebook: oklch(58.9% 0.203 258);      /* #1877F2 */
   --color-brand-company-blue: oklch(46.0% 0.129 250);  /* #005a9c */
 
+  /* ── Landing accent (brand orange #ff571a = --ff-accent) ──────── */
+  --color-ff-accent: oklch(64.8% 0.22 32);              /* #ff571a — hero CTA, marquee, section dots */
+  --color-logo-bg: oklch(16% 0.02 260);                 /* #0e1420 — logo tile, fixed in light & dark */
+
   /* ── Surface colors ──────────────────────────────────────────── */
   --color-surface-warm: oklch(96.7% 0.007 97);          /* #F5F4EF — CaptionsTool warm gray */
 
@@ -882,4 +886,78 @@ html.ff-smooth {
 @keyframes slide-up-fade {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
+}
+/* ── Layout & stacking utilities ─────────────────────────
+   Named utilities for layout/stacking values that have no Tailwind scale
+   equivalent. Declared here so components reference a utility instead of an
+   arbitrary value (see apps/web/DESIGN_SYSTEM.md and the shadcn/no-arbitrary-values
+   lint rule). Values are intentionally bespoke layout primitives. */
+@utility ff-reading-col {
+  max-width: 52rem;
+}
+
+@utility ff-detail-split {
+  grid-template-columns: 45% 55%;
+}
+
+@utility ff-pane-transition {
+  transition-property: top, height, opacity;
+}
+
+@utility ff-blur-hairline {
+  -webkit-backdrop-filter: blur(1px);
+  backdrop-filter: blur(1px);
+}
+
+@utility ff-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@utility ff-dvh-92 {
+  height: 92dvh;
+}
+
+@utility ff-bottom-fab {
+  bottom: 5.5rem;
+}
+
+@utility ff-min-w-2ch {
+  min-width: 2ch;
+}
+
+/* Custom z-index scale (Tailwind default caps at z-50) */
+@utility z-fab {
+  z-index: 60;
+}
+
+@utility z-fab-raised {
+  z-index: 61;
+}
+
+@utility z-sheet {
+  z-index: 70;
+}
+
+@utility z-overlay {
+  z-index: 100;
+}
+
+@utility z-modal {
+  z-index: 110;
+}
+
+@utility z-modal-raised {
+  z-index: 120;
+}
+/* Press feedback scale (Tailwind has no scale-97/98 step) */
+@utility active-press {
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+@utility active-press-soft {
+  &:active {
+    transform: scale(0.98);
+  }
 }

@@ -37,12 +37,14 @@
     "@fresherflow/utils": "workspace:*",
     "@types/turndown": "^5.0.6",
     "axios": "^1.19.0",
+    "cheerio": "^1.2.0",
     "compromise": "^14.16.0",
     "natural": "^8.1.1",
     "turndown": "^7.2.4"
   },
   "devDependencies": {
-    "@types/node": "^22.10.2",
+    "@types/cheerio": "^1.0.0",
+    "@types/node": "^22.20.1",
     "eslint": "^9.14.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.9.0",

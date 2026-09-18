@@ -19,9 +19,9 @@ export function EligibilitySnapshotCard({
 }: EligibilitySnapshotCardProps) {
     const statusClasses =
         statusTone === 'ok'
-            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            ? 'bg-success text-success border-success'
             : statusTone === 'warn'
-                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                ? 'bg-warning text-warning border-warning'
                 : 'bg-muted text-foreground border-border';
 
     return (
@@ -39,7 +39,7 @@ export function EligibilitySnapshotCard({
                         <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">What You Need To Fix</p>
                         <ul className="mt-1.5 space-y-1.5">
                             {mustFix.map((item) => (
-                                <li key={item} className="text-sm font-semibold text-amber-700 leading-relaxed">
+                                <li key={item} className="text-sm font-semibold text-warning leading-relaxed">
                                     {item}
                                 </li>
                             ))}
@@ -48,7 +48,7 @@ export function EligibilitySnapshotCard({
                 ) : (
                     <div>
                         <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Eligibility</p>
-                        <p className="mt-1 text-sm font-semibold text-emerald-700">You meet the hard eligibility checks.</p>
+                        <p className="mt-1 text-sm font-semibold text-success">You meet the hard eligibility checks.</p>
                     </div>
                 )}
 
@@ -63,7 +63,7 @@ export function EligibilitySnapshotCard({
                                             key={skill}
                                             skill={skill}
                                             size="sm"
-                                            className="bg-emerald-50 border-emerald-200 text-emerald-700"
+                                           
                                         />
                                     ))}
                                 </div>
@@ -78,7 +78,7 @@ export function EligibilitySnapshotCard({
                                             key={skill}
                                             skill={skill}
                                             size="sm"
-                                            className="bg-muted/60 border-border text-foreground"
+                                           
                                         />
                                     ))}
                                 </div>

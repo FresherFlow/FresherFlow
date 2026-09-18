@@ -8,11 +8,13 @@ import CompanyLogo from '@/ui/CompanyLogo';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
 import { toOpportunityCardDTO } from '@fresherflow/types';
+import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
 import { getCompanyDescription } from '@/features/companies/utils/companyContent';
-import { fetchCompanyShard, fetchCompaniesMetadata, fetchBootstrapFeed, fetchFeedIndex } from '@/lib/api/cdnFeed';
+import { fetchCompanyShard, fetchCompaniesMetadata, fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { CompanySlugger } from '@/features/companies/utils/companySlugger';
 import CompanyFollowButton from '@/features/companies/components/CompanyFollowButton';
 import { PageTagLinks } from '@/ui/PageTagLinks';
+import { CompanyHubClient } from '@/features/community/components/CompanyHubIntel';
 import { getValidDirectoryLinks } from '@/features/opportunities/utils/detailUtils';
 import { VALID_LOCATIONS } from '@/features/opportunities/utils/locationUtils';
 import { cn } from '@repo/ui/utils/cn';
@@ -85,7 +87,7 @@ export async function generateStaticParams() {
         const slugger = new CompanySlugger(directory);
 
         // Only pre-build companies with at least 1 active job.
-        const feed = await fetchBootstrapFeed(false, undefined, true);
+        const feed = await fetchFeedIndex(false, undefined, true);
         const activeCompanySlugs = new Set(
             (feed?.opportunities || [])
                 .map((o: any) => slugger.getSlug(o))
@@ -240,6 +242,18 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         }
     }
 
+    // Fallback: company shards are not uploaded to R2 yet (producer disabled),
+    // so derive this company's jobs from the lightweight feed index using the
+    // same slugger logic as generateStaticParams.
+    if (companyJobs.length === 0 && feedIndex?.opportunities?.length) {
+        const slugger = new CompanySlugger(companyDirectory || []);
+        const derived = feedIndex.opportunities.filter((o: any) => slugger.getSlug(o) === targetSlug);
+        if (derived.length > 0) {
+            companyJobs = derived;
+            feed = { opportunities: derived, count: derived.length, generatedAt: (feedIndex as any).generatedAt };
+        }
+    }
+
     if (companyJobs.length === 0) {
         logRouteResult('/companies/[slug]', '404');
         notFound();
@@ -335,15 +349,15 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                     companyLogoUrl={firstJob?.companyLogoUrl}
                     applyLink={firstJob?.applyLink}
                     isGovernment={firstJob?.type === 'GOVERNMENT' || Boolean(firstJob?.governmentJobDetails)}
-                    className="w-16 h-16 rounded-xl shrink-0 border border-border/40 bg-background p-1 object-contain"
+                    className="w-16 h-16 shrink-0"
                 />
                 <div className="flex-1 text-center sm:text-left space-y-1.5 min-w-0">
                     <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2">
                         <h2 className="text-xl font-bold tracking-tight text-foreground">{companyName}</h2>
                         <div className={cn(
-                            "px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+                            "px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border",
                             companyJobs.length > 0 
-                                ? "bg-green-500/10 text-green-600 border-green-500/20" 
+                                ? "bg-success/10 text-success border-success/20" 
                                 : "bg-muted text-muted-foreground border-border"
                         )}>
                             {companyJobs.length > 0 ? "Actively Hiring" : "No Open Roles"}
@@ -401,6 +415,9 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                 )}
             </section>
 
+            {/* Community Intelligence (client-fetched, hidden when empty) */}
+            <CompanyHubClient companyName={companyName} />
+
             {/* Hiring Intelligence */}
             <div className="space-y-4">
                 <h2 className="text-xl font-bold tracking-tight text-foreground">Hiring Intelligence</h2>
@@ -410,7 +427,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                         <div className="flex items-center gap-2">
                             <div className="text-sm font-medium text-foreground">{getAtsProvider(firstJob?.applyLink)}</div>
                             {getAtsProvider(firstJob?.applyLink) !== 'Custom / In-house' && (
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary uppercase tracking-wider">
+                                <span className="px-1.5 py-0.5 rounded text-xs font-bold bg-primary/10 text-primary uppercase tracking-wider">
                                     Direct Source
                                 </span>
                             )}
@@ -489,7 +506,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
             <CategoryPage
                 type={null}
                 initialData={{
-                    opportunities: companyJobs.map(toOpportunityCardDTO) as any,
+                    opportunities: companyJobs.slice(0, FEED_PAGE_SIZE).map(toOpportunityCardDTO) as any,
                     total: companyJobs.length,
                     cachedAt: (feed as any)?.generatedAt ? new Date((feed as any).generatedAt).getTime() : Date.now(),
                 }}

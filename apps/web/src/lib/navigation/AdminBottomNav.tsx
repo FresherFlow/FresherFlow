@@ -55,8 +55,8 @@ export default function AdminBottomNav() {
     if (isFormPage) return null;
 
     return (
-        <nav className={cn(
-            "fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden transition-all duration-300 pb-safe",
+        <nav style={{paddingBottom:"max(0.5rem, env(safe-area-inset-bottom))"}} className={cn(
+            "fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden transition-all duration-300 pb-2",
             "translate-y-0 opacity-100"
         )}>
             <div className="flex justify-around items-center h-16 px-2">
@@ -84,7 +84,7 @@ export default function AdminBottomNav() {
                             key={item.label}
                             href={item.href}
                             className={cn(
-                                "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-all duration-300 grouping",
+                                "flex flex-col items-center justify-center flex-1 h-full gap-1 transition-all duration-300",
                                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
                             )}
                         >
@@ -92,10 +92,10 @@ export default function AdminBottomNav() {
                                 "p-1 rounded-xl transition-all",
                                 isActive && "bg-primary/10"
                             )}>
-                                <item.icon className={cn("w-6 h-6", isActive && "fill-primary/20 value-icon")} strokeWidth={isActive ? 2 : 1.5} />
+                                <item.icon className={cn("w-6 h-6", isActive && "fill-primary/20")} strokeWidth={isActive ? 2 : 1.5} />
                             </div>
                             <span className={cn(
-                                "text-[10px] font-medium transition-all",
+                                "text-xs font-medium transition-all",
                                 isActive ? "font-semibold" : "font-normal"
                             )}>
                                 {item.label}

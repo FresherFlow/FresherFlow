@@ -121,14 +121,14 @@ export function NavMegaMenu({
 
             {/* hover bridge — invisible corridor from trigger to panel */}
             <div
-                className={`fixed left-0 right-0 z-[94] ${open ? 'pointer-events-auto' : 'pointer-events-none'}`}
+                className={`fixed left-0 right-0 z-50 ${open ? 'pointer-events-auto' : 'pointer-events-none'}`}
                 style={{ top: panelTop - 12, height: 12 }}
                 aria-hidden
             />
 
             {/* Panel — flush under the header bar, never covering it */}
             <div
-                className={`fixed left-0 right-0 z-[95] border-b border-border bg-background shadow-lg shadow-black/[0.06] transition-[opacity,transform] duration-150 ease-out ${
+                className={`fixed left-0 right-0 z-50 border-b border-border bg-background shadow-lg shadow-black/[0.06] transition-all duration-150 ease-out ${
                     open ? 'pointer-events-auto translate-y-0 opacity-100' : 'pointer-events-none -translate-y-1 opacity-0'
                 }`}
                 style={{ top: panelTop }}
@@ -136,7 +136,7 @@ export function NavMegaMenu({
                 <div className="mx-auto grid w-full max-w-7xl gap-8 px-6 py-8 md:grid-cols-5">
                     {/* Boards */}
                     <div>
-                        <div className="font-record text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                        <div className="font-record text-xs uppercase tracking-widest text-muted-foreground">
                             Boards
                         </div>
                         <ul className="mt-3 flex flex-col gap-1">
@@ -145,10 +145,10 @@ export function NavMegaMenu({
                                     <Link
                                         href={b.href}
                                         onClick={close}
-                                        className="block rounded-[2px] px-2 py-1.5 transition-colors hover:bg-muted/60"
+                                        className="block rounded-xs px-2 py-1.5 transition-colors hover:bg-muted/60"
                                     >
-                                        <div className="text-[13.5px] font-semibold text-foreground">{b.label}</div>
-                                        <div className="text-[11.5px] text-muted-foreground">{b.note}</div>
+                                        <div className="text-sm font-semibold text-foreground">{b.label}</div>
+                                        <div className="text-xs text-muted-foreground">{b.note}</div>
                                     </Link>
                                 </li>
                             ))}
@@ -157,16 +157,16 @@ export function NavMegaMenu({
 
                     {/* Locations — vertical list */}
                     <div>
-                        <div className="font-record text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                        <div className="font-record text-xs uppercase tracking-widest text-muted-foreground">
                             Locations
                         </div>
                         <ul className="mt-3 flex flex-col gap-0.5">
                             {LOCATIONS.map((c) => (
                                 <li key={c.slug}>
                                     <Link
-                                        href={`/jobs/${c.slug}`}
+                                        href={`/jobs/${c.slug}-jobs`}
                                         onClick={close}
-                                        className="block rounded-[2px] px-2 py-1 text-[13px] text-foreground transition-colors hover:bg-muted/60 hover:text-[var(--ff-accent)]"
+                                        className="block rounded-xs px-2 py-1 text-sm text-foreground transition-colors hover:bg-muted/60 hover:text-ff-accent"
                                     >
                                         {c.label}
                                     </Link>
@@ -176,7 +176,7 @@ export function NavMegaMenu({
                         <Link
                             href="/jobs/browse"
                             onClick={close}
-                            className="mt-3 inline-block text-[12px] font-semibold text-muted-foreground underline decoration-[var(--ff-accent)] decoration-2 underline-offset-4 transition-colors hover:text-foreground"
+                            className="mt-3 inline-block text-xs font-semibold text-muted-foreground underline decoration-ff-accent decoration-2 underline-offset-4 transition-colors hover:text-foreground"
                         >
                             All locations →
                         </Link>
@@ -184,16 +184,16 @@ export function NavMegaMenu({
 
                     {/* Skills — vertical list */}
                     <div>
-                        <div className="font-record text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                        <div className="font-record text-xs uppercase tracking-widest text-muted-foreground">
                             Top skills
                         </div>
                         <ul className="mt-3 flex flex-col gap-0.5">
                             {SKILLS.map((s) => (
                                 <li key={s.slug}>
                                     <Link
-                                        href={`/jobs/${s.slug}`}
+                                        href={`/jobs/${s.slug}-jobs`}
                                         onClick={close}
-                                        className="block rounded-[2px] px-2 py-1 text-[13px] text-foreground transition-colors hover:bg-muted/60 hover:text-[var(--ff-accent)]"
+                                        className="block rounded-xs px-2 py-1 text-sm text-foreground transition-colors hover:bg-muted/60 hover:text-ff-accent"
                                     >
                                         {s.label}
                                     </Link>
@@ -203,7 +203,7 @@ export function NavMegaMenu({
                         <Link
                             href="/jobs/browse"
                             onClick={close}
-                            className="mt-3 inline-block text-[12px] font-semibold text-muted-foreground underline decoration-[var(--ff-accent)] decoration-2 underline-offset-4 transition-colors hover:text-foreground"
+                            className="mt-3 inline-block text-xs font-semibold text-muted-foreground underline decoration-ff-accent decoration-2 underline-offset-4 transition-colors hover:text-foreground"
                         >
                             All skills →
                         </Link>
@@ -211,7 +211,7 @@ export function NavMegaMenu({
 
                     {/* Batches — one area, vertical */}
                     <div>
-                        <div className="font-record text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                        <div className="font-record text-xs uppercase tracking-widest text-muted-foreground">
                             Batches
                         </div>
                         <ul className="mt-3 flex flex-col gap-0.5">
@@ -220,7 +220,7 @@ export function NavMegaMenu({
                                     <Link
                                         href={`/jobs/${b.slug}`}
                                         onClick={close}
-                                        className="block rounded-[2px] px-2 py-1 text-[13px] text-foreground transition-colors hover:bg-muted/60 hover:text-[var(--ff-accent)]"
+                                        className="block rounded-xs px-2 py-1 text-sm text-foreground transition-colors hover:bg-muted/60 hover:text-ff-accent"
                                     >
                                         {b.label}
                                     </Link>
@@ -230,7 +230,7 @@ export function NavMegaMenu({
                         <Link
                             href="/jobs/browse"
                             onClick={close}
-                            className="mt-3 inline-block text-[12px] font-semibold text-muted-foreground underline decoration-[var(--ff-accent)] decoration-2 underline-offset-4 transition-colors hover:text-foreground"
+                            className="mt-3 inline-block text-xs font-semibold text-muted-foreground underline decoration-ff-accent decoration-2 underline-offset-4 transition-colors hover:text-foreground"
                         >
                             All batches →
                         </Link>
@@ -238,16 +238,16 @@ export function NavMegaMenu({
 
                     {/* Roles */}
                     <div>
-                        <div className="font-record text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                        <div className="font-record text-xs uppercase tracking-widest text-muted-foreground">
                             Popular roles
                         </div>
                         <ul className="mt-3 flex flex-col gap-0.5">
                             {ROLES.map((r) => (
                                 <li key={r.slug}>
                                     <Link
-                                        href={`/jobs/${r.slug}`}
+                                        href={`/jobs/${r.slug}-jobs`}
                                         onClick={close}
-                                        className="block rounded-[2px] px-2 py-1 text-[13px] text-foreground transition-colors hover:bg-muted/60 hover:text-[var(--ff-accent)]"
+                                        className="block rounded-xs px-2 py-1 text-sm text-foreground transition-colors hover:bg-muted/60 hover:text-ff-accent"
                                     >
                                         {r.label}
                                     </Link>
@@ -257,7 +257,7 @@ export function NavMegaMenu({
                         <Link
                             href="/jobs/browse"
                             onClick={close}
-                            className="mt-3 inline-block text-[12px] font-semibold text-muted-foreground underline decoration-[var(--ff-accent)] decoration-2 underline-offset-4 transition-colors hover:text-foreground"
+                            className="mt-3 inline-block text-xs font-semibold text-muted-foreground underline decoration-ff-accent decoration-2 underline-offset-4 transition-colors hover:text-foreground"
                         >
                             All roles →
                         </Link>

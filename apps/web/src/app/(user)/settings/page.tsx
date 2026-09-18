@@ -98,28 +98,28 @@ function SettingsPageContent() {
                 <div className="bg-card border border-border/70 rounded-2xl p-5 shadow-xs space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/40">
                         <div>
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">
+                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block">
                                 Email Address
                             </span>
                             <span className="text-sm font-semibold text-foreground font-mono mt-0.5 block">
                                 {maskedEmail}
                             </span>
                         </div>
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-muted text-muted-foreground text-[11px] font-medium self-start sm:self-auto">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-muted text-muted-foreground text-xs font-medium self-start sm:self-auto">
                             Passwordless / OTP Verified
                         </span>
                     </div>
 
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block">
+                            <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block">
                                 Candidate Handle
                             </span>
                             <div className="flex items-center gap-1.5 mt-0.5">
                                 <span className="text-sm font-bold text-foreground">
                                     @{user?.username || 'candidate'}
                                 </span>
-                                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold border border-primary/20">
+                                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20">
                                     <CheckBadgeIcon className="w-3 h-3" /> Candidate
                                 </span>
                             </div>
@@ -184,11 +184,11 @@ function SettingsPageContent() {
                     <DialogHeader>
                         <div className="flex items-center gap-2 text-destructive mb-1">
                             <ExclamationTriangleIcon className="w-5 h-5 shrink-0" />
-                            <DialogTitle className="text-destructive font-bold text-base">
+                            <DialogTitle>
                                 Delete Candidate Account
                             </DialogTitle>
                         </div>
-                        <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
+                        <DialogDescription>
                             This action is permanent and cannot be undone. All your saved opportunities, profile data, and application tracker records will be removed.
                         </DialogDescription>
                     </DialogHeader>
@@ -206,7 +206,7 @@ function SettingsPageContent() {
                         />
                     </div>
 
-                    <DialogFooter className="gap-2 sm:gap-0">
+                    <DialogFooter>
                         <button
                             type="button"
                             onClick={() => {

@@ -97,7 +97,7 @@ export function SkillPill({ skill, className, size = 'sm', hideFallbackIcon = fa
     <span
       className={cn(
         'inline-flex items-center gap-1.5 rounded-md border font-medium whitespace-nowrap',
-        size === 'xs' ? 'h-5 px-1.5 text-[10px]' : 'h-[26px] px-2.5 text-[13px]',
+        size === 'xs' ? 'h-5 px-1.5 text-xs' : 'h-[26px] px-2.5 text-sm',
         hasIcon
           ? 'border-transparent bg-muted/40 text-foreground/80'
           : 'border-border/50 bg-muted/40 text-muted-foreground',

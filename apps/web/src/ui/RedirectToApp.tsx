@@ -18,7 +18,7 @@ export default function RedirectToApp({ title = "Feature moved to Mobile", messa
                     </p>
                 </div>
                 <div className="pt-4 flex flex-col gap-3">
-                    <Button variant="default" size="sm" asChild className="w-full justify-center text-xs capitalize tracking-widest">
+                    <Button variant="default" size="sm" asChild className="w-full">
                         <Link href="/jobs">
                             Get the Mobile App
                         </Link>
@@ -30,7 +30,7 @@ export default function RedirectToApp({ title = "Feature moved to Mobile", messa
                         Back to Home
                     </Link>
                 </div>
-                <p className="pt-6 text-[10px] text-muted-foreground uppercase tracking-widest leading-loose">
+                <p className="pt-6 text-xs text-muted-foreground uppercase tracking-widest leading-loose">
                     Official Discovery Layer • Mobile Optimized
                 </p>
             </div>

@@ -149,7 +149,7 @@ function MobileNavMenuInner({ user, unreadCount, pendingSyncCount, onClose }: Mo
                 href={item.href}
                 onClick={onClose}
                 className={cn(
-                    "relative flex items-center gap-3.5 px-3 py-3 rounded-lg text-sm transition-all duration-150 ease-out active:scale-[0.97] group overflow-hidden",
+                    "relative flex items-center gap-3.5 px-3 py-3 rounded-lg text-sm transition-all duration-150 ease-out active:scale-95 group overflow-hidden",
                     isActive
                         ? "bg-foreground/10 text-foreground font-semibold"
                         : "text-muted-foreground hover:bg-muted/50 hover:text-foreground font-medium"
@@ -168,14 +168,14 @@ function MobileNavMenuInner({ user, unreadCount, pendingSyncCount, onClose }: Mo
                 )}
                 {isAlerts && unreadCount > 0 && (
                     <span className={cn(
-                        "ml-auto inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-bold leading-none",
+                        "ml-auto inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs font-bold leading-none",
                         isActive ? "bg-primary-foreground text-primary" : "bg-primary text-primary-foreground"
                     )}>
                         {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                 )}
                 {isAlerts && pendingSyncCount > 0 && (
-                    <span className="ml-auto inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-amber-500 text-white text-[10px] font-bold leading-none shadow-sm">
+                    <span className="ml-auto inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-signal-aging text-foreground text-xs font-bold leading-none shadow-sm">
                         {pendingSyncCount > 99 ? '99+' : pendingSyncCount}
                     </span>
                 )}
@@ -198,7 +198,7 @@ function MobileNavMenuInner({ user, unreadCount, pendingSyncCount, onClose }: Mo
                         aria-label="Close menu" 
                         className="relative p-4 -mr-4 -my-4 group focus:outline-none"
                     >
-                        <div className="flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground group-hover:bg-muted/50 group-hover:text-foreground transition-all duration-150 ease-out group-active:scale-[0.90]">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full text-muted-foreground group-hover:bg-muted/50 group-hover:text-foreground transition-all duration-150 ease-out group-active:scale-95">
                             <XMarkIcon className="w-5 h-5" />
                         </div>
                     </button>
@@ -211,7 +211,7 @@ function MobileNavMenuInner({ user, unreadCount, pendingSyncCount, onClose }: Mo
                             <Link
                                 href={homeHref}
                                 onClick={onClose}
-                                className="flex items-center gap-3.5 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-150 ease-out active:scale-[0.97] group text-muted-foreground hover:bg-muted/50 hover:text-foreground mb-1"
+                                className="flex items-center gap-3.5 px-3 py-3 rounded-lg text-sm font-medium transition-all duration-150 ease-out active:scale-95 group text-muted-foreground hover:bg-muted/50 hover:text-foreground mb-1"
                             >
                                 <ChevronLeftIcon className="w-5 h-5 transition-colors text-muted-foreground group-hover:text-foreground" />
                                 <span className="font-semibold tracking-tight">
@@ -246,7 +246,7 @@ function MobileNavMenuInner({ user, unreadCount, pendingSyncCount, onClose }: Mo
                                             promptInstall('navbar');
                                             onClose();
                                         }}
-                                        className="flex items-center gap-3.5 w-full px-3 py-3 rounded-lg text-sm font-medium text-primary hover:bg-primary/5 transition-all duration-150 ease-out active:scale-[0.97]"
+                                        className="flex items-center gap-3.5 w-full px-3 py-3 rounded-lg text-sm font-medium text-primary hover:bg-primary/5 transition-all duration-150 ease-out active:scale-95"
                                     >
                                         <ArrowDownTrayIcon className="w-5 h-5 text-primary" />
                                         <span>Install Web App</span>
@@ -256,7 +256,7 @@ function MobileNavMenuInner({ user, unreadCount, pendingSyncCount, onClose }: Mo
                                     <Link
                                         href="/app"
                                         onClick={onClose}
-                                        className="flex items-center gap-3.5 w-full px-3 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all duration-150 ease-out active:scale-[0.97]"
+                                        className="flex items-center gap-3.5 w-full px-3 py-3 rounded-lg text-sm font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all duration-150 ease-out active:scale-95"
                                     >
                                         <DevicePhoneMobileIcon className="w-5 h-5 text-muted-foreground" />
                                         <span>Get Android App</span>
@@ -265,11 +265,11 @@ function MobileNavMenuInner({ user, unreadCount, pendingSyncCount, onClose }: Mo
                             </div>
 
                             <div className="pt-2">
-                                <p className="px-3 pb-2 text-[12px] font-bold text-muted-foreground opacity-70">Connect</p>
+                                <p className="px-3 pb-2 text-xs font-bold text-muted-foreground opacity-70">Connect</p>
                                 <div className="flex items-center justify-between px-3 gap-1">
                                     {socialLinks.map((s) => (
                                         <a key={s.href} href={s.href} target="_blank" rel="noopener noreferrer"
-                                            className="h-8 w-8 rounded-lg border border-divider bg-muted/30 flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:border-transparent transition-all duration-150 ease-out active:scale-[0.90] hover:shadow-sm shrink-0"
+                                            className="h-8 w-8 rounded-lg border border-border bg-muted/30 flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:border-transparent transition-all duration-150 ease-out active:scale-95 hover:shadow-sm shrink-0"
                                             aria-label={s.label}>
                                             <s.Icon className="w-3.5 h-3.5" />
                                         </a>
@@ -282,7 +282,7 @@ function MobileNavMenuInner({ user, unreadCount, pendingSyncCount, onClose }: Mo
                     {user && !isAdmin && (
                         <div className="pt-4 mt-4 border-t border-border/40">
                             <button onClick={() => { if (logout) void logout('/login'); onClose(); }}
-                                className="flex items-center gap-3.5 w-full px-3 py-3 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-all duration-150 ease-out active:scale-[0.97]" aria-label="Sign Out">
+                                className="flex items-center gap-3.5 w-full px-3 py-3 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-all duration-150 ease-out active:scale-95" aria-label="Sign Out">
                                 <ArrowRightOnRectangleIcon className="w-5 h-5" />
                                 <span>Sign out</span>
                             </button>
@@ -292,7 +292,7 @@ function MobileNavMenuInner({ user, unreadCount, pendingSyncCount, onClose }: Mo
                     <div className="pt-4 mt-4 border-t border-border/40 space-y-1">
                         <ThemeSwitcher className="w-full">
                             <button
-                                className="flex items-center gap-3.5 w-full px-3 py-3 rounded-lg text-sm font-medium transition-all duration-150 ease-out active:scale-[0.97] group text-muted-foreground hover:bg-muted/50 hover:text-foreground" aria-label="Toggle Theme">
+                                className="flex items-center gap-3.5 w-full px-3 py-3 rounded-lg text-sm font-medium transition-all duration-150 ease-out active:scale-95 group text-muted-foreground hover:bg-muted/50 hover:text-foreground" aria-label="Toggle Theme">
                                 {theme === 'dark' ? (
                                     <SunIcon size={20} strokeWidth={1.5} className="transition-colors text-muted-foreground group-hover:text-foreground" />
                                 ) : (

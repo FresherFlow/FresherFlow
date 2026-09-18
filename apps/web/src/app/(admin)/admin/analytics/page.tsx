@@ -59,9 +59,9 @@ export default function AdminAnalyticsPage() {
     if (loading) return <AdminAnalyticsSkeleton />;
 
     return (
-        <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-6 text-center max-w-2xl mx-auto my-12">
-            <h2 className="text-lg font-semibold text-yellow-800 dark:text-yellow-400">Analytics temporarily offline/disabled</h2>
-            <p className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+        <div className="rounded-xl border border-warning/20 bg-warning/10 p-6 text-center max-w-2xl mx-auto my-12">
+            <h2 className="text-lg font-semibold text-warning dark:text-warning">Analytics temporarily offline/disabled</h2>
+            <p className="mt-2 text-sm text-warning dark:text-warning">
                 To optimize backend resources, Postgres-based heavy analytics have been suspended. Authentication, health checks, and standard opportunity operations remain fully functional.
             </p>
         </div>

@@ -25,13 +25,13 @@ export const Field = React.forwardRef<HTMLDivElement, FieldProps>(
                     </label>
                 )}
                 {description && (
-                    <div className="text-[12px] text-muted-foreground/70 mb-1.5">
+                    <div className="text-xs text-muted-foreground/70 mb-1.5">
                         {description}
                     </div>
                 )}
                 {children}
                 {error && (
-                    <div className="text-[12px] text-destructive mt-1.5">
+                    <div className="text-xs text-destructive mt-1.5">
                         {error}
                     </div>
                 )}

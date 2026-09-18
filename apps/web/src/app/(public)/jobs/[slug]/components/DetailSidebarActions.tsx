@@ -73,7 +73,7 @@ export function DetailSidebarActions({
                 {hasApplyLink && listingState !== 'EXPIRED' ? (
                     <Button
                         onClick={handleApply}
-                        className="flex-1 h-10 text-sm font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all active:scale-[0.98]"
+                       
                     >
                         Apply
                         <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
@@ -107,7 +107,7 @@ export function DetailSidebarActions({
                     value={typeof window !== 'undefined' ? window.location.href : ''}
                     icon={LinkIcon}
                     iconClassName="w-4 h-4"
-                    className="h-10 w-10 !p-0 rounded-lg border border-border text-muted-foreground hover:bg-muted hover:text-foreground flex items-center justify-center transition-all shrink-0"
+                    
                 />
             </div>
 
@@ -200,7 +200,7 @@ export function DetailSidebarActions({
                     href="/contribute"
                     className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
-                    <span className="w-4 h-4 rounded border border-dashed border-current flex items-center justify-center text-[10px] leading-none">+</span>
+                    <span className="w-4 h-4 rounded border border-dashed border-current flex items-center justify-center text-xs leading-none">+</span>
                     Know about a job opening? Submit it
                 </Link>
             </div>
@@ -209,7 +209,7 @@ export function DetailSidebarActions({
             {user?.role === 'ADMIN' && (
                 <div className="pt-3 border-t border-border/40">
                     <Link href={`/opportunities/edit/${opp.id}`} className="block">
-                        <Button variant="outline" className="w-full text-xs font-semibold h-8">
+                        <Button size="sm" variant="outline" className="w-full">
                             Edit
                         </Button>
                     </Link>

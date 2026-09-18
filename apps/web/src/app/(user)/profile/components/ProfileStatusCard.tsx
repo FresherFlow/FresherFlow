@@ -23,10 +23,10 @@ export const ProfileStatusCard = ({ pct, username, className }: ProfileStatusCar
             <div className="flex items-center gap-4 mb-4">
                 <div className="relative w-14 h-14 flex items-center justify-center shrink-0">
                     <svg className="w-full h-full transform -rotate-90">
-                        <circle cx="28" cy="28" r={radius} className="stroke-muted/50 fill-none" strokeWidth="4" />
+                        <circle cx="28" cy="28" r={radius} className="stroke-muted/50 fill-transparent" strokeWidth="4" />
                         <circle
                             cx="28" cy="28" r={radius}
-                            className={cn("fill-none transition-all duration-1000", isComplete ? "stroke-primary" : "stroke-primary/70")}
+                            className={cn("fill-transparent transition-all duration-1000", isComplete ? "stroke-primary" : "stroke-primary/70")}
                             strokeWidth="4" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} strokeLinecap="round"
                         />
                     </svg>
@@ -40,7 +40,7 @@ export const ProfileStatusCard = ({ pct, username, className }: ProfileStatusCar
                 </div>
             </div>
             {username && (
-                <Button variant="secondary" size="sm" className="w-full h-9" onClick={() => window.open(`/u/${username}`, '_blank')}>
+                <Button variant="secondary" size="sm" className="w-full" onClick={() => window.open(`/u/${username}`, '_blank')}>
                     View Profile <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5 ml-1.5" />
                 </Button>
             )}

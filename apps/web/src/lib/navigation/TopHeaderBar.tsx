@@ -51,7 +51,7 @@ function TopHeaderBarContent() {
     );
     return (
         <div 
-            className="hidden lg:flex fixed top-0 right-0 h-14 items-center border-b border-border/40 bg-background/95 backdrop-blur-sm z-[80] pr-6 px-5 transition-[left] duration-[600ms] ease-[cubic-bezier(0.7,0,0,1)]"
+            className="hidden lg:flex fixed top-0 right-0 h-14 items-center border-b border-border/40 bg-background/95 backdrop-blur-sm z-40 pr-6 px-5 transition-all duration-300 ease-out"
             style={{ left: 'var(--sidebar-w, 12rem)' }}
         >
             {/* The portal target. Hidden when empty. Serves as a peer. */}
@@ -89,7 +89,7 @@ function TopHeaderBarContent() {
 
 export function TopHeaderBar() {
     return (
-        <Suspense fallback={<div className="hidden lg:block fixed top-0 right-0 h-14 z-[80] transition-[left] duration-[600ms] ease-[cubic-bezier(0.7,0,0,1)]" style={{ left: 'var(--sidebar-w, 12rem)' }} />}>
+        <Suspense fallback={<div className="hidden lg:block fixed top-0 right-0 h-14 z-40 transition-all duration-300 ease-out" style={{ left: 'var(--sidebar-w, 12rem)' }} />}>
             <TopHeaderBarContent />
         </Suspense>
     );
