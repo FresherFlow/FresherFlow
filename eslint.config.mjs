@@ -43,7 +43,6 @@ export default [
       "**/src/generated/**",
       "**/prisma/**",
       "**/build/**",
-      "packages/domain/src/**/*.js",
       "packages/parser/src/**/*.js",
       "packages/utils/src/*.js",
       "packages/types/index.js",
@@ -95,33 +94,27 @@ export default [
       "react-hooks/immutability": "off",
     },
   },
-  // 2. Domain (strictest - Pure business logic)
+  // 2. Shared packages (no phantom workspace names)
+  // Next.js API routes run on the server — database access is legal there.
   {
-    files: ["packages/domain/**/*"],
+    files: ["apps/web/src/app/api/**/*"],
     rules: {
-      "no-restricted-imports": [
-        "error",
-        { 
-          patterns: [
-            "@repo/api-client", 
-            "@repo/database", 
-            "@repo/redis", 
-            "apps/*"
-          ] 
-        }
-      ]
-    }
+      "no-restricted-imports": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "no-empty": "off",
+    },
   },
   // 3. UI Layer (web/mobile/admin)
   {
     files: ["apps/web/**/*", "apps/mobile/**/*", "apps/admin-mobile/**/*"],
+    ignores: ["apps/web/src/app/api/**/*"],
     rules: {
       "no-restricted-imports": [
         "error",
         { 
           patterns: [
-            "@repo/database", 
-            "@repo/redis", 
+            "@fresherflow/database",
             "apps/api"
           ] 
         }

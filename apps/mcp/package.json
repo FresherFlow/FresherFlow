@@ -21,7 +21,7 @@
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^26.1.2",
-    "eslint": "^9.14.0",
+    "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.8",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",

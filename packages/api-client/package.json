@@ -10,12 +10,12 @@
   },
   "dependencies": {
     "@fresherflow/types": "^1.0.0",
+    "@simplewebauthn/browser": "^13.0.0",
     "axios": "^1.19.0",
-    "superjson": "^2.2.6",
-    "@simplewebauthn/browser": "^13.0.0"
+    "superjson": "^2.2.6"
   },
   "devDependencies": {
-    "eslint": "^9.14.0",
+    "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.8",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.66.0"

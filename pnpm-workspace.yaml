@@ -7,33 +7,45 @@ packages:
 allowBuilds:
   '@firebase/util': false
   '@google/genai': false
-  '@prisma/client': false
-  '@prisma/engines': false
-  '@sentry/cli': false
-  bcrypt: false
-  esbuild: false
-  msgpackr-extract: false
-  prisma: false
-  protobufjs: false
-  unrs-resolver: false
+  '@prisma/client': true
+  '@prisma/engines': true
+  '@sentry/cli': true
+  bcrypt: true
+  esbuild: true
+  msgpackr-extract: true
+  prisma: true
+  protobufjs: true
+  unrs-resolver: true
 
 linkWorkspacePackages: true
+
+# Expo requires a hoisted node_modules layout for pnpm monorepos.
+# pnpm 12 reads settings from this file; the legacy .npmrc key is ignored.
+nodeLinker: hoisted
 
 overrides:
   tar: "^7.5.7"
   react-native-safe-area-context: "~5.6.2"
-  react-dom: "19.1.0"
-  uuid: "^10.0.0"
-  glob: "^11.0.0"
-  whatwg-encoding: "^3.1.1"
-  abab: "^2.0.6"
-  domexception: "^4.0.0"
   eslint: "9.14.0"
+  # Keep @eslint/js in lockstep with the pinned eslint core. A newer
+  # @eslint/js recommended set references core rules that 9.14.0 lacks
+  # (e.g. no-unassigned-vars), which crashes every lint run.
+  "@eslint/js": "9.14.0"
   "@babel/core": "7.25.2"
+  "@prisma/adapter-pg": "7.10.0"
   typescript: "5.7.3"
   jest: "29.7.0"
-  prisma: "6.19.3"
-  "@prisma/client": "6.19.3"
+  prisma: "7.10.0"
+  "@prisma/client": "7.10.0"
   chalk: "4.1.2"
+  # Pin deprecated transitive deps to current majors — do NOT bump to latest.
+  # These exist only to silence pnpm WARN noise; versions match today's lockfile.
+  uuid: "10.0.0"
+  glob: "11.1.0"
+  abab: "2.0.6"
+  domexception: "4.0.0"
+  whatwg-encoding: "3.1.1"
+  node-domexception: "1.0.0"
+  cron-parser: "4.9.0"
 
 preferWorkspacePackages: true

@@ -71,6 +71,10 @@
         "typecheck": {
             "dependsOn": [
                 "^build"
+            ],
+            "outputs": [
+                ".tsbuildinfo",
+                "**/*.tsbuildinfo"
             ]
         },
         "test": {
