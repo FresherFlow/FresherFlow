@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { UsernameGate } from '@/lib/components/ProfileGate';
+import { UsernameGate } from '@/features/auth/components/ProfileGate';
 
 import {
     UserIcon,

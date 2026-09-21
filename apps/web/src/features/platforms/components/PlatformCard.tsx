@@ -1,8 +1,8 @@
 'use client';
 
-import { cn } from '@/lib/utils/utils';
+import { cn } from "@/ui/cn";
 import { ExternalLink, Star } from 'lucide-react';
-import CompanyLogo from '@/ui/CompanyLogo';
+import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import type { InternshipPlatform } from '@/features/platforms/types';
 
 const REGION_TAGS = new Set([

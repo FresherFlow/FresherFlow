@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { NavigationWrapper } from '@/lib/components/NavigationWrapper';
+import { NavigationWrapper } from '@/features/navigation/NavigationWrapper';
 
 
 export default function AccountLayout({ children }: { children: ReactNode }) {

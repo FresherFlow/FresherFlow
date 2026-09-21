@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/ui/Select"
-import { cn } from "@/lib/utils/utils"
+import { cn } from "@/ui/cn"
 
 export interface DataGridPaginationProps {
   pageIndex: number

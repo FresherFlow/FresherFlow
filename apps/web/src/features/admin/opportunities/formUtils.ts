@@ -2,7 +2,7 @@ import { buildShareUrl, type SharePlatform } from '@/lib/utils/share';
 export type { SharePlatform };
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
-import { getOpportunityPath } from '@/features/opportunities/domain/opportunityPath';
+import { getOpportunityPath } from '@/features/jobs/domain/opportunityPath';
 import {
     normalizeCourseName,
     normalizeSpecializationName,

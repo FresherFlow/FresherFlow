@@ -9,7 +9,7 @@ import {
   CpuChipIcon,
   PlayIcon,
 } from '@heroicons/react/24/outline';
-import { cn } from '@/lib/utils/utils';
+import { cn } from "@/ui/cn";
 import { formatDistanceToNow } from 'date-fns';
 import { DiscoveryRun, TelemetryStats } from '../types';
 import { EmptyState } from '@/ui/EmptyState';

@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { Suspense } from 'react';
-import CategoryPage from '@/features/opportunities/components/CategoryPage';
-import { FeedPageSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
+import CategoryPage from '@/features/jobs/components/CategoryPage';
+import { FeedPageSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
 import { fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
 

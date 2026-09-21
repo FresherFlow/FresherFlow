@@ -13,7 +13,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from '@/ui/DropdownMenu';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/ui/Select';
-import CompanyLogo from '@/ui/CompanyLogo';
+import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import {
   Dialog,
   DialogContent,
@@ -22,7 +22,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/ui/Dialog';
-import { cn } from '@/lib/utils/utils';
+import { cn } from "@/ui/cn";
 import { DiscoveredJob } from '../types';
 import { PayloadModal } from '../modals/PayloadModal';
 import { toast } from 'react-hot-toast';

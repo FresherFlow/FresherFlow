@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { UsernameGate } from '@/lib/components/ProfileGate';
+import { UsernameGate } from '@/features/auth/components/ProfileGate';
 import toast from 'react-hot-toast';
 import {
     ArrowLeftIcon,

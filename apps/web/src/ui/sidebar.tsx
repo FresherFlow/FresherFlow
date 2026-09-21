@@ -5,11 +5,11 @@ import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 import { PanelLeft } from "lucide-react"
 
-import { useIsMobile } from "@/hooks/use-mobile"
-import { cn } from "@/lib/utils/utils"
+import { useIsMobile } from "@/hooks/useIsMobile"
+import { cn } from "@/ui/cn"
 import { Button } from "@/ui/Button"
 import { Input } from "@/ui/Input"
-import { Separator } from "@/ui/separator"
+import { Separator } from "@/ui/Separator"
 import {
   Sheet,
   SheetContent,
@@ -27,7 +27,7 @@ import {
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "16rem"
+const SIDEBAR_WIDTH = "12rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
@@ -225,6 +225,7 @@ const Sidebar = React.forwardRef<
     return (
       <div
         ref={ref}
+        suppressHydrationWarning
         className="group peer hidden text-sidebar-foreground md:block"
         data-state={state}
         data-collapsible={state === "collapsed" ? collapsible : ""}

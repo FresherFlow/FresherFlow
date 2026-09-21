@@ -1,11 +1,11 @@
 "use client";
 
-import { cn } from "@/lib/utils/utils";
+import { cn } from "@/ui/cn";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { PropsWithChildren, ReactNode, WheelEventHandler } from "react";
 import { createPortal } from "react-dom";
 import { Drawer } from "vaul";
-import { useMediaQuery } from "../hooks/use-media-query";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 export type ResponsivePopoverProps = PropsWithChildren<{
   content: ReactNode | string;

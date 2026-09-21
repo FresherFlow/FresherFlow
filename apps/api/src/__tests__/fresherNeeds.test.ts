@@ -55,8 +55,14 @@ const prismaMock = {
     },
 };
 
+// Supports both transaction forms the services use: the interactive callback
+// form and the array/batch form.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-(prismaMock as any).$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(prismaMock));
+(prismaMock as any).$transaction = vi.fn(async (arg: unknown) =>
+    typeof arg === 'function'
+        ? (arg as (tx: unknown) => unknown)(prismaMock)
+        : Promise.all(arg as Array<unknown>)
+);
 
 vi.mock('@fresherflow/database', () => ({
     prisma: prismaMock,

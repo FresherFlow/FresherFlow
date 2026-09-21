@@ -6,16 +6,16 @@ import { useRouter } from 'next/navigation';
 import { AdminOpportunitiesSkeleton } from '@/features/admin/components/AdminSkeletons';
 
 // Hooks
-import { useAdminOpportunities } from './hooks/useAdminOpportunities';
-import { useAdminOpportunityActions } from './hooks/useAdminOpportunityActions';
+import { useAdminOpportunities } from '@/features/admin/opportunities/hooks/useAdminOpportunities';
+import { useAdminOpportunityActions } from '@/features/admin/opportunities/hooks/useAdminOpportunityActions';
 
 // Components
-import { AdminOpportunitiesHeader } from './components/AdminOpportunitiesHeader';
-import { AdminOpportunitiesFilters } from './components/AdminOpportunitiesFilters';
-import { AdminOpportunitiesTable } from './components/AdminOpportunitiesTable';
+import { AdminOpportunitiesHeader } from '@/features/admin/opportunities/components/list/AdminOpportunitiesHeader';
+import { AdminOpportunitiesFilters } from '@/features/admin/opportunities/components/list/AdminOpportunitiesFilters';
+import { AdminOpportunitiesTable } from '@/features/admin/opportunities/components/list/AdminOpportunitiesTable';
 
 import { AlertDialog } from "@/ui/AlertDialog";
-import { AdminOpportunityPreviewModal } from './components/AdminOpportunityPreviewModal';
+import { AdminOpportunityPreviewModal } from '@/features/admin/opportunities/components/list/AdminOpportunityPreviewModal';
 
 export default function AdminOpportunitiesPage() {
     return (

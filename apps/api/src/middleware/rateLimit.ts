@@ -6,6 +6,12 @@ import { logger } from '@fresherflow/utils';
 // In-memory fallback store
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
+/** Clears the in-memory fallback counters. Test-only helper so suites that make
+ *  many writes from one IP do not leak rate-limit state into later cases. */
+export function resetRateLimitStoreForTests() {
+    rateLimitStore.clear();
+}
+
 function isRedisEnabled() {
     return process.env.REDIS_ENABLED !== 'false';
 }

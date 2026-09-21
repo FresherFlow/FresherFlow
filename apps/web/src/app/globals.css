@@ -63,7 +63,17 @@
 
   /* ── Dropdown hover ──────────────────────────────────────────── */
   --color-dropdown-hover: oklch(88.9% 0.014 248);      /* Same as muted */
-  --color-dropdown-hover-text: oklch(20.6% 0.039 266); /* Same as foreground */
+  --color-dropdown-hover-text: oklch(20.6% 0.039 266);
+
+  /* Sidebar tokens (shadcn) */
+  --color-sidebar: oklch(100% 0.000 90);
+  --color-sidebar-foreground: oklch(20.6% 0.039 266);
+  --color-sidebar-primary: oklch(20.6% 0.039 266);
+  --color-sidebar-primary-foreground: oklch(100% 0.000 90);
+  --color-sidebar-accent: oklch(96.1% 0.004 248);
+  --color-sidebar-accent-foreground: oklch(20.6% 0.039 266);
+  --color-sidebar-border: oklch(80.4% 0.023 255);
+  --color-sidebar-ring: oklch(20.6% 0.039 266); /* Same as foreground */
 
   /* ── Brand / third-party colors ──────────────────────────────── */
   --color-brand-telegram: oklch(66.2% 0.133 236);      /* #229ED9 */
@@ -178,6 +188,15 @@
 
     --color-dropdown-hover: oklch(24.0% 0.007 220);
     --color-dropdown-hover-text: oklch(97.7% 0.003 229);
+
+    --color-sidebar: oklch(17.1% 0.004 220);
+    --color-sidebar-foreground: oklch(97.7% 0.003 229);
+    --color-sidebar-primary: oklch(97.7% 0.003 229);
+    --color-sidebar-primary-foreground: oklch(10.3% 0.007 196);
+    --color-sidebar-accent: oklch(24.0% 0.007 220);
+    --color-sidebar-accent-foreground: oklch(97.7% 0.003 229);
+    --color-sidebar-border: oklch(26.2% 0.008 220);
+    --color-sidebar-ring: oklch(97.7% 0.003 229);
 
     --logo-image: url('/logo-white-optimized.png?v=3');
   }
@@ -393,6 +412,17 @@ html[data-sidebar="collapsed"] .sidebar-expanded-only {
 }
 html[data-sidebar="expanded"] .sidebar-collapsed-only {
   display: none !important;
+}
+/* Pre-paint collapse: center brand/logo and team icon when collapsed so the
+   first paint matches the hydrated collapsed layout (no jump from left to center). */
+html[data-sidebar="collapsed"] .sidebar-brand {
+  justify-content: center !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+html[data-sidebar="collapsed"] .sidebar-team-icon {
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 
 /* Hidden Scrollbar - Scroll functionality preserved */

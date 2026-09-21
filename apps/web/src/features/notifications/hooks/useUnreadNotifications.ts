@@ -3,17 +3,21 @@
 import { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { alertsApi } from '@/lib/api/client';
 import { AuthContext } from '@/lib/auth/AuthContext';
+import {
+    ALERTS_UPDATED_EVENT,
+    CACHE_TTL,
+    broadcastUnreadCount,
+    isCacheFresh,
+    readCache,
+    readRawCache,
+    subscribeUnreadCount,
+    unreadCountState,
+    writeCache,
+} from '@/lib/cache/unreadCount';
 import toast from 'react-hot-toast';
 
-const CACHE_KEY = 'ff_unread_count_cache';
-const CACHE_TTL = Number(process.env.NEXT_PUBLIC_ALERTS_CACHE_TTL_MS || 15 * 60 * 1000);
 const SEEN_TOAST_ALERTS_KEY = 'ff_seen_toast_alerts';
-const ALERTS_UPDATED_EVENT = 'ff-alerts-updated';
 const FOCUS_REFRESH_COOLDOWN_MS = Number(process.env.NEXT_PUBLIC_ALERTS_FOCUS_COOLDOWN_MS || 120000);
-const sharedListeners = new Set<(count: number) => void>();
-let sharedUnreadCount = 0;
-let sharedLastSuccessfulFetchAt = 0;
-let sharedFetchPromise: Promise<number> | null = null;
 
 function isLogoutInProgress() {
     if (typeof window === 'undefined') return false;
@@ -23,43 +27,6 @@ function isLogoutInProgress() {
 function hasActiveSessionCookie() {
     if (typeof document === 'undefined') return false;
     return document.cookie.includes('ff_logged_in=true');
-}
-
-function readCache(): { count: number; at: number } | null {
-    if (typeof window === 'undefined') return null;
-    try {
-        const raw = localStorage.getItem(CACHE_KEY);
-        if (!raw) return null;
-        const parsed = JSON.parse(raw) as { count: number; at: number };
-        if (Date.now() - parsed.at > CACHE_TTL) return null;
-        return parsed;
-    } catch {
-        return null;
-    }
-}
-
-function readRawCache(): { count: number; at: number } | null {
-    if (typeof window === 'undefined') return null;
-    try {
-        const raw = localStorage.getItem(CACHE_KEY);
-        if (!raw) return null;
-        return JSON.parse(raw) as { count: number; at: number };
-    } catch {
-        return null;
-    }
-}
-
-function writeCache(count: number) {
-    if (typeof window === 'undefined') return;
-    try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ count, at: Date.now() }));
-    } catch {
-        // ignore quota issues
-    }
-}
-
-function isCacheFresh(at: number) {
-    return Date.now() - at < CACHE_TTL;
 }
 
 function readSeenIds(): string[] {
@@ -83,45 +50,22 @@ function writeSeenIds(ids: string[]) {
     }
 }
 
-function broadcastUnreadCount(count: number) {
-    sharedUnreadCount = count;
-    sharedListeners.forEach((listener) => listener(count));
-}
-
-function subscribeUnreadCount(listener: (count: number) => void) {
-    sharedListeners.add(listener);
-    return () => {
-        sharedListeners.delete(listener);
-    };
-}
-
-export function clearUnreadCache() {
-    if (typeof window === 'undefined') return;
-    try {
-        localStorage.removeItem(CACHE_KEY);
-    } catch {
-        // ignore quota issues
-    }
-    sharedLastSuccessfulFetchAt = 0;
-    broadcastUnreadCount(0);
-}
-
 export function useUnreadNotifications() {
     const authContext = useContext(AuthContext);
     const user = authContext?.user;
 
     const [unreadCount, setUnreadCount] = useState<number>(() => {
         const cached = readCache();
-        const initialCount = cached?.count ?? sharedUnreadCount;
+        const initialCount = cached?.count ?? unreadCountState.count;
         if (cached) {
-            sharedUnreadCount = cached.count;
-            sharedLastSuccessfulFetchAt = cached.at;
+            unreadCountState.count = cached.count;
+            unreadCountState.lastSuccessfulFetchAt = cached.at;
         }
         return initialCount;
     });
     const lastFocusRefreshAtRef = useRef(0);
     const focusRefreshInFlightRef = useRef(false);
-    const lastSuccessfulFetchAtRef = useRef(readRawCache()?.at ?? sharedLastSuccessfulFetchAt);
+    const lastSuccessfulFetchAtRef = useRef(readRawCache()?.at ?? unreadCountState.lastSuccessfulFetchAt);
 
     const fetchCount = useCallback(async (options?: { force?: boolean }) => {
         if (!user || isLogoutInProgress() || !hasActiveSessionCookie()) {
@@ -129,23 +73,23 @@ export function useUnreadNotifications() {
             return;
         }
         const force = options?.force === true;
-        const freshestFetchAt = Math.max(lastSuccessfulFetchAtRef.current, sharedLastSuccessfulFetchAt);
+        const freshestFetchAt = Math.max(lastSuccessfulFetchAtRef.current, unreadCountState.lastSuccessfulFetchAt);
         if (!force && isCacheFresh(freshestFetchAt)) {
             const cached = readCache();
             if (cached) {
                 lastSuccessfulFetchAtRef.current = cached.at;
-                sharedLastSuccessfulFetchAt = cached.at;
+                unreadCountState.lastSuccessfulFetchAt = cached.at;
                 broadcastUnreadCount(cached.count);
                 return;
             }
         }
 
         try {
-            if (!force && sharedFetchPromise) {
-                await sharedFetchPromise;
+            if (!force && unreadCountState.fetchPromise) {
+                await unreadCountState.fetchPromise;
                 return;
             }
-            sharedFetchPromise = (async () => {
+            unreadCountState.fetchPromise = (async () => {
                 try {
                     const data = await alertsApi.getUnreadCount() as { count?: number };
                     return typeof data?.count === 'number' ? data.count : 0;
@@ -153,19 +97,19 @@ export function useUnreadNotifications() {
                     return 0;
                 }
             })();
-            const count = await sharedFetchPromise;
+            const count = await unreadCountState.fetchPromise;
             if (isLogoutInProgress() || !hasActiveSessionCookie()) {
                 broadcastUnreadCount(0);
                 return;
             }
             writeCache(count);
             lastSuccessfulFetchAtRef.current = Date.now();
-            sharedLastSuccessfulFetchAt = lastSuccessfulFetchAtRef.current;
+            unreadCountState.lastSuccessfulFetchAt = lastSuccessfulFetchAtRef.current;
             broadcastUnreadCount(count);
         } catch {
             // silent fail, keep stale value
         } finally {
-            sharedFetchPromise = null;
+            unreadCountState.fetchPromise = null;
         }
     }, [user]);
 
@@ -214,7 +158,7 @@ export function useUnreadNotifications() {
         if (cached) {
             broadcastUnreadCount(cached.count);
             lastSuccessfulFetchAtRef.current = cached.at;
-            sharedLastSuccessfulFetchAt = cached.at;
+            unreadCountState.lastSuccessfulFetchAt = cached.at;
         } else {
             setTimeout(() => {
                 void fetchCount({ force: true });
@@ -273,4 +217,3 @@ export function useUnreadNotifications() {
 
     return { unreadCount, refresh: () => fetchCount({ force: true }) };
 }
-

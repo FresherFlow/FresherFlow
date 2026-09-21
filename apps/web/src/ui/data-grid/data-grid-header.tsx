@@ -11,7 +11,7 @@ import {
 
 import { Button } from "@/ui/Button"
 import { TableHead, TableHeader, TableRow } from "@/ui/Table"
-import { cn } from "@/lib/utils/utils"
+import { cn } from "@/ui/cn"
 
 interface DataGridHeaderProps<TData extends RowData> {
   table: Table<StockFeatures, TData>

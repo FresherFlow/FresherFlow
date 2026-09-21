@@ -1,7 +1,7 @@
 'use client';
 
 import { ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
-import { cn } from '@/lib/utils/utils';
+import { cn } from "@/ui/cn";
 import { Button } from './Button';
 
 interface ErrorMessageProps {

@@ -16,7 +16,7 @@ import {
     GOVERNMENT_FEED_URL,
     CDN_URL
 } from '@/lib/utils/runtimeConfig';
-import { readFeedCache } from '@/lib/api/offline/opportunitiesFeedCache';
+import { readFeedCache } from '@/lib/cache/opportunitiesFeedCache';
 export interface BootstrapFeedResponse {
     opportunities: Opportunity[];
     count: number;

@@ -24,32 +24,32 @@ const CATEGORY_LABELS: Record<string, string> = Object.fromEntries(
     CATEGORIES.map((c) => [c.value, c.label])
 );
 
-// ─── Vote Button ─────────────────────────────────────────────────────────────
+// ─── Helpful Button ──────────────────────────────────────────────────────────
 
-function VoteButton({
-    upvotes,
-    myVote,
-    onVote,
+function HelpfulButton({
+    helpfulCount,
+    isHelpful,
+    onToggle,
 }: {
-    upvotes: number;
-    myVote: number | null;
-    onVote: (value: number) => Promise<{ upvotes: number; myVote: number | null }>;
+    helpfulCount: number;
+    isHelpful: boolean;
+    onToggle: () => Promise<{ helpfulCount: number; isHelpful: boolean }>;
 }) {
-    const [optimistic, setOptimistic] = useState<{ count: number; vote: number | null } | null>(null);
+    const [optimistic, setOptimistic] = useState<{ count: number; marked: boolean } | null>(null);
     const [voting, setVoting] = useState(false);
-    const display = optimistic ?? { count: upvotes, vote: myVote };
+    const display = optimistic ?? { count: helpfulCount, marked: isHelpful };
 
-    const handleVote = async (value: number) => {
+    const handleToggle = async () => {
         if (voting) return;
         setVoting(true);
         const prev = display;
         setOptimistic({
-            count: prev.vote === value ? prev.count - 1 : prev.vote ? prev.count : prev.count + 1,
-            vote: prev.vote === value ? null : value,
+            count: prev.marked ? Math.max(0, prev.count - 1) : prev.count + 1,
+            marked: !prev.marked,
         });
         try {
-            const result = await onVote(value);
-            setOptimistic({ count: result.upvotes, vote: result.myVote });
+            const result = await onToggle();
+            setOptimistic({ count: result.helpfulCount, marked: result.isHelpful });
         } catch {
             setOptimistic(null);
         } finally {
@@ -58,35 +58,22 @@ function VoteButton({
     };
 
     return (
-        <div className="flex items-center gap-1">
-            <button
-                type="button"
-                onClick={() => void handleVote(1)}
-                className={cn(
-                    'rounded-md px-2 py-1 text-xs font-bold transition-colors',
-                    display.vote === 1
-                        ? 'bg-primary/15 text-primary'
-                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-                )}
-            >
-                ▲
-            </button>
-            <span className="ff-min-w-2ch text-center text-xs font-semibold tabular-nums text-foreground">
-                {display.count}
-            </span>
-            <button
-                type="button"
-                onClick={() => void handleVote(-1)}
-                className={cn(
-                    'rounded-md px-2 py-1 text-xs font-bold transition-colors',
-                    display.vote === -1
-                        ? 'bg-destructive/15 text-destructive'
-                        : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-                )}
-            >
-                ▼
-            </button>
-        </div>
+        <button
+            type="button"
+            onClick={() => void handleToggle()}
+            className={cn(
+                'inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-semibold transition-colors',
+                display.marked
+                    ? 'bg-primary/15 text-primary'
+                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+            )}
+        >
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill={display.marked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+            Helpful
+            <span className="tabular-nums font-bold">{display.count}</span>
+        </button>
     );
 }
 
@@ -135,8 +122,8 @@ function CommentThread({
         }
     };
 
-    const handleCommentVote = async (commentId: string, value: number) => {
-        return communityApi.voteCommunityPostComment(postId, commentId, value);
+    const handleCommentHelpful = async (commentId: string) => {
+        return communityApi.voteCommunityPostComment(postId, commentId);
     };
 
     return (
@@ -155,13 +142,13 @@ function CommentThread({
                         <p className="mt-0.5 text-sm text-foreground whitespace-pre-wrap break-words">{c.body}</p>
                         <div className="mt-1 flex items-center gap-3">
                             {user ? (
-                                <VoteButton
-                                    upvotes={c.likesCount}
-                                    myVote={(c.votes?.[0]?.value ?? null) as number | null}
-                                    onVote={(v) => handleCommentVote(c.id, v)}
+                                <HelpfulButton
+                                    helpfulCount={c.likesCount}
+                                    isHelpful={((c.votes?.[0]?.value ?? null) as number | null) === 1}
+                                    onToggle={() => handleCommentHelpful(c.id)}
                                 />
                             ) : (
-                                <span className="text-xs text-muted-foreground">▲ {c.likesCount}</span>
+                                <span className="text-xs text-muted-foreground">{c.likesCount} helpful</span>
                             )}
                             {user && (
                                 <button
@@ -227,8 +214,8 @@ function PostCard({ post: initial }: { post: CommunityPost }) {
     const [showComments, setShowComments] = useState(false);
     const [comments, setComments] = useState<CommunityPostComment[]>(initial.comments ?? []);
 
-    const handleVote = async (value: number) => {
-        return communityApi.voteCommunityPost(post.id, value);
+    const handleHelpful = async () => {
+        return communityApi.voteCommunityPost(post.id);
     };
 
     const handleCommentAdded = (comment: CommunityPostComment) => {
@@ -277,9 +264,13 @@ function PostCard({ post: initial }: { post: CommunityPost }) {
 
             <div className="flex items-center gap-4">
                 {user ? (
-                    <VoteButton upvotes={post.likesCount} myVote={(post.votes?.[0]?.value ?? null) as number | null} onVote={handleVote} />
+                    <HelpfulButton
+                        helpfulCount={post.likesCount}
+                        isHelpful={((post.votes?.[0]?.value ?? null) as number | null) === 1}
+                        onToggle={handleHelpful}
+                    />
                 ) : (
-                    <span className="text-xs text-muted-foreground">▲ {post.likesCount}</span>
+                    <span className="text-xs text-muted-foreground">{post.likesCount} helpful</span>
                 )}
                 <button
                     type="button"
@@ -453,7 +444,7 @@ export function CommunityFeedClient() {
                             value={newPostTags}
                             onChange={(e) => setNewPostTags(e.target.value)}
                             placeholder="Tags (comma-separated)"
-                            className="flex-1 min-w-[200px] rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                            className="flex-1 min-w-50 rounded-xl border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                         />
                     </div>
                     <button
@@ -484,7 +475,7 @@ export function CommunityFeedClient() {
                         onClick={() => setSearchQuery('')}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
-                        ✕
+                        
                     </button>
                 )}
             </div>
@@ -609,7 +600,7 @@ export function CommunityFeedClient() {
                                 type="button"
                                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                                 disabled={page <= 1}
-                                className="rounded-lg px-4 py-2.5 min-h-[44px] text-xs font-semibold text-muted-foreground hover:bg-muted/60 disabled:opacity-40"
+                                className="rounded-lg px-4 py-2.5 min-h-11 text-xs font-semibold text-muted-foreground hover:bg-muted/60 disabled:opacity-40"
                             >
                                 ← Previous
                             </button>
@@ -620,7 +611,7 @@ export function CommunityFeedClient() {
                                 type="button"
                                 onClick={() => setPage((p) => p + 1)}
                                 disabled={!hasMore}
-                                className="rounded-lg px-4 py-2.5 min-h-[44px] text-xs font-semibold text-muted-foreground hover:bg-muted/60 disabled:opacity-40"
+                                className="rounded-lg px-4 py-2.5 min-h-11 text-xs font-semibold text-muted-foreground hover:bg-muted/60 disabled:opacity-40"
                             >
                                 Next →
                             </button>

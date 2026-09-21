@@ -3,16 +3,16 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
-import CompanyLogo from '@/ui/CompanyLogo';
+import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { EmptyState } from '@/ui/EmptyState';
 import { Button } from '@/ui/Button';
 import { Skeleton } from '@/ui/Skeleton';
-import { getOpportunityPathFromItem } from '@/features/opportunities/domain/opportunityPath';
+import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
 import {
     getWalkinDates,
     WALKIN_BUCKETS,
     type WalkinDateBucket,
-} from '@/features/opportunities/utils/walkinEventUtils';
+} from '@/features/jobs/utils/walkinEventUtils';
 import { cn } from '@repo/ui/utils/cn';
 
 /**
@@ -176,7 +176,7 @@ export function WalkinCalendar({
                         className="h-9 w-9 rounded-lg border border-border bg-card text-foreground hover:bg-muted transition-colors active:scale-[0.97] duration-150 ease-out"
                         aria-label="Next month"
                     >
-                        →
+                        ·
                     </button>
                 </div>
             </div>
@@ -243,7 +243,7 @@ export function WalkinCalendar({
 
             {/* Bucket legend */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-1">
-                {WALKIN_BUCKETS.map((b) => (
+                {WALKIN_BUCKETS.map((b: WalkinDateBucket) => (
                     <span key={b.key} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                         <span className={cn('w-2.5 h-2.5 rounded-full', BUCKET_STYLES[b.key])} />
                         {b.label}

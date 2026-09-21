@@ -46,7 +46,7 @@ import {
   TableCell,
   TableRow,
 } from "@/ui/Table"
-import { cn } from "@/lib/utils/utils"
+import { cn } from "@/ui/cn"
 import { Button } from "@/ui/Button"
 import { DataGridHeader } from "./data-grid-header"
 import { DataGridPagination } from "./data-grid-pagination"

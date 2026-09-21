@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { PlayIcon, CodeBracketIcon, EllipsisHorizontalIcon } from '@heroicons/react/24/outline';
-import CompanyLogo from '@/ui/CompanyLogo';
+import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/ui/DropdownMenu';
 import { COMPANY_PROVIDERS } from '../DiscoveryWorkspace';
 import { IngestionTarget, RunResult } from '../types';

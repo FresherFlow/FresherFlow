@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { ArrowLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { UsernameGate } from '@/lib/components/ProfileGate';
+import { UsernameGate } from '@/features/auth/components/ProfileGate';
 import toast from 'react-hot-toast';
 import { database } from '@/lib/api/firebase';
 import { ref, get, update as updateRtdb } from 'firebase/database';

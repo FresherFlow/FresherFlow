@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { UsernameGate } from '@/lib/components/ProfileGate';
+import { UsernameGate } from '@/features/auth/components/ProfileGate';
 import { useState, useEffect, useRef } from 'react';
 import { useProfileForm } from '@/features/profile/hooks/useProfileForm';
 import toast from 'react-hot-toast';
@@ -15,15 +15,15 @@ import { CheckBadgeIcon, PencilSquareIcon, UserIcon, AcademicCapIcon, WrenchScre
 import { cn } from '@/ui/cn';
 
 // Section Components
-import { HeadlineSection } from './components/HeadlineSection';
-import { SocialLinksSection } from './components/SocialLinksSection';
-import { EducationSection } from './components/EducationSection';
-import { SkillsSection } from './components/SkillsSection';
-import { PreferencesSection } from './components/PreferencesSection';
-import { ProfileStrengthCard } from './components/ProfileStrengthCard';
+import { HeadlineSection } from '@/features/profile/components/sections/HeadlineSection';
+import { SocialLinksSection } from '@/features/profile/components/sections/SocialLinksSection';
+import { EducationSection } from '@/features/profile/components/sections/EducationSection';
+import { SkillsSection } from '@/features/profile/components/sections/SkillsSection';
+import { PreferencesSection } from '@/features/profile/components/sections/PreferencesSection';
+import { ProfileStrengthCard } from '@/features/profile/components/sections/ProfileStrengthCard';
 
 // Hooks
-import { useProfileUpdateHandlers } from './hooks/useProfileUpdateHandlers';
+import { useProfileUpdateHandlers } from '@/features/profile/hooks/useProfileUpdateHandlers';
 
 
 
@@ -98,6 +98,9 @@ export default function ProfilePage() {
         addSkillFromInput,
         addCityFromInput,
         togglePreferredCity,
+        expectedCtc, setExpectedCtc,
+        resumeUrl, setResumeUrl,
+        willingToRelocate, setWillingToRelocate,
     } = useProfileForm(5);
 
     const formState = {
@@ -197,7 +200,38 @@ export default function ProfilePage() {
 
                         {/* Right Content Panel (9 cols on lg) */}
                         <div className="lg:col-span-9 space-y-6">
-                            
+
+                            {/* Public profile share banner — the growth loop entry point */}
+                            {user?.username && (
+                                <div className="rounded-2xl border border-primary/30 bg-primary/5 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-semibold text-foreground">Your public profile is live</p>
+                                        <p className="text-xs text-muted-foreground truncate">fresherflow.in/u/{user.username}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <a
+                                            href={`/u/${user.username}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            <Button variant="outline" size="sm">View page</Button>
+                                        </a>
+                                        <Button
+                                            size="sm"
+                                            onClick={() => {
+                                                const url = `https://fresherflow.in/u/${user.username}`;
+                                                const text = `Made my fresher profile — fresherflow.in/u/${user.username}. 2 minutes, make yours.`;
+                                                const wa = `https://wa.me/?text=${encodeURIComponent(text)}`;
+                                                window.open(wa, '_blank', 'noopener');
+                                                void url;
+                                            }}
+                                        >
+                                            Share on WhatsApp
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Mobile View: Render all sections as a vertical stack */}
                             <div className="lg:hidden space-y-6">
                                 <div className="bg-card rounded-2xl border border-border/60 shadow-sm p-5 space-y-4">
@@ -265,6 +299,9 @@ export default function ProfilePage() {
                                     onToggleEdit={() => setEditingSection(editingSection === 'skills' ? null : 'skills')}
                                     onSave={handleReadinessUpdate}
                                     saving={saving === 'skills'}
+                                    expectedCtc={expectedCtc} setExpectedCtc={setExpectedCtc}
+                                    resumeUrl={resumeUrl} setResumeUrl={setResumeUrl}
+                                    willingToRelocate={willingToRelocate} setWillingToRelocate={setWillingToRelocate}
                                 />
 
                                 <PreferencesSection
@@ -357,6 +394,9 @@ export default function ProfilePage() {
                                             onToggleEdit={() => setEditingSection(editingSection === 'skills' ? null : 'skills')}
                                             onSave={handleReadinessUpdate}
                                             saving={saving === 'skills'}
+                                            expectedCtc={expectedCtc} setExpectedCtc={setExpectedCtc}
+                                            resumeUrl={resumeUrl} setResumeUrl={setResumeUrl}
+                                            willingToRelocate={willingToRelocate} setWillingToRelocate={setWillingToRelocate}
                                         />
                                     </div>
                                 )}

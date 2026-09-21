@@ -3,17 +3,17 @@
 import { cn } from '@repo/ui/utils/cn';
 import { useMemo, useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useFeedHeader } from '@/lib/context/FeedHeaderContext';
+import { useFeedHeader } from '@/lib/providers/FeedHeaderProvider';
 import { ResourcesFeed, ResourceSector } from '@fresherflow/types';
 import { ResourceCard } from '@/features/resources/components/ResourceCard';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 import ChevronDownIcon from '@heroicons/react/24/outline/ChevronDownIcon';
-import { Breadcrumb } from '@/ui/Breadcrumb';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/ui/Breadcrumb';
 import { Input } from '@/ui/Input';
 import { EmptyState } from '@/ui/EmptyState';
-import { SkillPill } from '@/ui/SkillPill';
+import { SkillPill } from '@/features/jobs/components/SkillPill';
 import { Button } from '@/ui/Button';
 
 const CANONICAL_SKILLS = [
@@ -96,10 +96,17 @@ export function ResourcePageView({ feed }: { feed: ResourcesFeed }) {
     const headerPortalContent = (
         <>
             <div className="flex items-center lg:flex">
-                <Breadcrumb items={[
-                    { label: 'Home', href: '/' },
-                    { label: 'Prep Resources', href: '#' }
-                ]} />
+                <Breadcrumb>
+                    <BreadcrumbList>
+                        <BreadcrumbItem>
+                            <BreadcrumbLink href="/">Home</BreadcrumbLink>
+                        </BreadcrumbItem>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem>
+                            <BreadcrumbPage>Prep Resources</BreadcrumbPage>
+                        </BreadcrumbItem>
+                    </BreadcrumbList>
+                </Breadcrumb>
             </div>
             
             <div className="relative group w-full max-w-xl mx-auto flex-1 lg:ml-6 hidden lg:block">

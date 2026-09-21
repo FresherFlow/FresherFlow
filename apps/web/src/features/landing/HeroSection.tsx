@@ -31,7 +31,7 @@ export function HeroSection({ newToday, refreshedAt }: HeroSectionProps) {
             <div className="mx-auto max-w-[1120px] px-6 pb-16 pt-10">
                 <span className="ff-hero-note ff-pin-in">
                     <span aria-hidden className="text-[var(--ff-accent)]">
-                        ●
+                        ·
                     </span>{' '}
                     <b>LIVE</b> — updated every time a job is published
                 </span>
@@ -70,14 +70,14 @@ export function HeroSection({ newToday, refreshedAt }: HeroSectionProps) {
 
                 <div className="ff-hero-meta">
                     <span>
-                        ◆ <b>+{newToday}</b> TODAY
+                        · <b>+{newToday}</b> TODAY
                     </span>
                     {age && (
                         <span>
-                            ◆ REFRESHED <b>{age}</b>
+                            · REFRESHED <b>{age}</b>
                         </span>
                     )}
-                    <span>◆ ALL LINKS CHECKED DAILY</span>
+                    <span>· ALL LINKS CHECKED DAILY</span>
                 </div>
 
                 <div className="ff-hero-eyebrow flex items-center gap-2.5 font-record text-[11px] uppercase tracking-[0.14em] text-muted-foreground">

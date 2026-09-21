@@ -40,7 +40,7 @@ import {
     InterviewResult,
     InterviewDifficulty,
     ApplicationStatus,
-    AreaType,
+    RoomType,
     ReferralRequestStatus,
     SalaryReportType
 } from './enums.js';
@@ -114,6 +114,9 @@ export interface Profile {
     avatarUrl?: string | null;
     githubPinnedRepos?: any | null;
     openToRecruiters?: boolean | null;
+    expectedCtc?: number | null;
+    resumeUrl?: string | null;
+    willingToRelocate?: boolean | null;
     profilePublic?: boolean | null;
     profilePublishedAt?: Date | string | null;
     visibility?: 'PUBLIC' | 'UNLISTED' | 'PRIVATE' | null;
@@ -1348,6 +1351,9 @@ export interface CommentListResult {
     total: number;
 }
 
+/** Batched comment totals for feed cards: { opportunityId: visibleCommentCount }. */
+export type CommentCountMap = Record<string, number>;
+
 export interface CommentVoteResult {
     upvotes: number;
     downvotes: number;
@@ -1365,6 +1371,29 @@ export interface SubmitJobResult {
     id: string;
     slug: string;
     existing?: boolean;
+    /** Lifecycle status of the created submission: PUBLISHED for live listing,
+     *  PENDING_REVIEW when the submission awaits moderation. */
+    status?: string | null;
+}
+
+export type SubmissionViewState = 'PENDING' | 'LIVE' | 'REJECTED' | 'MERGED';
+
+export interface MySubmissionItem {
+    id: string;
+    sourceLink: string;
+    title: string;
+    company: string | null;
+    status: string;
+    viewState: SubmissionViewState;
+    createdAt: string;
+    mappedOpportunityId: string | null;
+    slug: string | null;
+    mergedTargetSlug: string | null;
+    rejectionReason: string | null;
+}
+
+export interface MySubmissionsResult {
+    submissions: MySubmissionItem[];
 }
 
 export interface ReportResult {
@@ -1532,43 +1561,47 @@ export interface ApplicationUpdateListResult {
 }
 
 // ============================================================================
-// PHASE 3: AREAS (Persistent Communities)
+// PHASE 3: ROOMS (Persistent Communities)
 // ============================================================================
 
-export interface Area {
+export interface Room {
     id: string;
     slug: string;
     name: string;
     description?: string | null;
     icon?: string | null;
-    type: AreaType;
+    type: RoomType;
     memberCount: number;
     postCount: number;
     jobCount: number;
     isPublic: boolean;
+    status?: string;
     createdAt: string;
     updatedAt: string;
     createdBy?: CommunityPostUser | null;
     isMember?: boolean;
     memberRole?: string | null;
+    lastActiveThisWeek?: boolean;
 }
 
-export interface AreaListResult {
-    areas: Area[];
+export interface RoomListResult {
+    rooms: Room[];
     total: number;
     page: number;
     limit: number;
     hasMore: boolean;
 }
 
-export interface AreaDetailResult {
-    area: Area;
+export interface RoomDetailResult {
+    room: Room;
     recentPosts: CommunityPost[];
     members: Array<{
         user: CommunityPostUser;
         role: string;
         joinedAt: string;
+        activeThisWeek?: boolean;
     }>;
+    activeThisWeekUserIds: string[];
 }
 
 // ============================================================================

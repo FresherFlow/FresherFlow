@@ -40,6 +40,7 @@ const createCommunityPostSchema = z.object({
     category: z.nativeEnum(CommunityPostCategory).optional().default(CommunityPostCategory.DISCUSSION),
     tags: z.array(z.string().min(1).max(60)).max(10).optional().default([]),
     sourceOpportunityId: z.string().optional(),
+    roomId: z.string().min(1).max(64).optional(),
 });
 
 // ========================================
@@ -113,8 +114,8 @@ router.post(
     asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
         const userId = requireMember(req, next);
         if (!userId) return;
-        const { title, body, category, tags, sourceOpportunityId } = req.body as {
-            title: string; body: string; category: CommunityPostCategory; tags: string[]; sourceOpportunityId?: string;
+        const { title, body, category, tags, sourceOpportunityId, roomId } = req.body as {
+            title: string; body: string; category: CommunityPostCategory; tags: string[]; sourceOpportunityId?: string; roomId?: string;
         };
         const post = await createCommunityPost({
             authorId: userId,
@@ -123,6 +124,7 @@ router.post(
             category,
             tags,
             sourceOpportunityId,
+            roomId,
         });
         return res.status(201).json(post);
     })
@@ -140,8 +142,7 @@ router.post(
     asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
         const userId = requireMember(req, next);
         if (!userId) return;
-        const { value } = req.body as { value: number };
-        const result = await voteCommunityPost({ postId: String(req.params.id), userId, value });
+        const result = await voteCommunityPost({ postId: String(req.params.id), userId });
         return res.json(result);
     })
 );
@@ -181,11 +182,9 @@ router.post(
     asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
         const userId = requireMember(req, next);
         if (!userId) return;
-        const { value } = req.body as { value: number };
         const result = await voteCommunityPostComment({
             commentId: String(req.params.commentId),
             userId,
-            value,
         });
         return res.json(result);
     })

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { CpuChipIcon, CodeBracketIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/ui/Table';
 import { PaginationControls } from '@/ui/data-table/DataTablePagination';
-import CompanyLogo from '@/ui/CompanyLogo';
+import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { Opportunity, HashTab } from '../types';
 
 interface OpportunityQueueTabProps {
@@ -149,7 +149,7 @@ export function OpportunityQueueTab({
  title="Archive"
  className="h-7 w-7 flex items-center justify-center rounded-md border border-border/60 bg-muted/40 hover:bg-destructive/10 text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-transform duration-100 ease-out active:scale-95 cursor-pointer disabled:opacity-50"
  >
- <span className="text-lg leading-none mb-0.5">×</span>
+ <span className="text-lg leading-none mb-0.5">–</span>
  </button>
  </>
  )}

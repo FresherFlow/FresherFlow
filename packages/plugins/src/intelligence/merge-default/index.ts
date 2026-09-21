@@ -3,4 +3,4 @@ export {
   MergeDefaultService,
 } from './merge-default.service.js';
 export { SITE_CATEGORY_DEFAULTS } from './site-category-defaults.js';
-export { MergeCategory, MergeDefaultOptions, FieldWithProvenance } from './types.js';
+export type { MergeCategory, MergeDefaultOptions, FieldWithProvenance } from './types.js';

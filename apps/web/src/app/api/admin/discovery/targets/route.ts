@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRateLimit } from '@/lib/api/rateLimit';
-import { loadDefaultTargets } from '@/lib/ingestion/targets';
+import { loadDefaultTargets } from '@/lib/server/ingestion/targets';
 
 export const dynamic = 'force-dynamic';
 

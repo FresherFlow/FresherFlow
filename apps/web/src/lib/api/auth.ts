@@ -5,7 +5,7 @@ import type {
     PublicKeyCredentialRequestOptionsJSON,
     AuthenticationResponseJSON
 } from '@simplewebauthn/browser';
-import { apiClient } from './_core';
+import { apiClient } from './core';
 
 // Auth API calls
 export const authApi = {

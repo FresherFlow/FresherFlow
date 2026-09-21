@@ -3,7 +3,7 @@
 import * as React from "react"
 
 import { Badge } from "@/ui/Badge"
-import { cn } from "@/lib/utils/utils"
+import { cn } from "@/ui/cn"
 import {
   Select,
   SelectContent,

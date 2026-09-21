@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/api/admin';
 import { useFirebaseAdmin } from '@/features/admin/hooks/useFirebaseAdmin';
-import LoadingScreen from '@/ui/LoadingScreen';
+import LoadingScreen from '@/features/shell/LoadingScreen';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/ui/Table';
 
 interface UserData {

@@ -5,27 +5,27 @@ import {
     buildTaxonomyRegistry,
     TaxonomyItem,
     yearBoardSlug,
-} from '@/features/opportunities/lib/taxonomyRegistry';
+} from '@/features/jobs/domain/taxonomy';
 
 // On-demand revalidation via /api/revalidate — same policy as the feed routes.
 export const revalidate = false;
 
 export const metadata: Metadata = {
     title: 'Browse All Job Boards | Jobs by Role, City, Skill & Batch',
-    description: 'Every FresherFlow job board in one directory: roles, cities, skills, batch years and role×city boards — all built from the live feed.',
+    description: 'Every FresherFlow job board in one directory: roles, cities, skills, batch years and role–city boards — all built from the live feed.',
     alternates: {
         canonical: '/jobs/browse',
     },
     openGraph: {
         title: 'Browse All Job Boards | FresherFlow',
-        description: 'Every FresherFlow job board in one directory: roles, cities, skills, batch years and role×city boards.',
+        description: 'Every FresherFlow job board in one directory: roles, cities, skills, batch years and role–city boards.',
         type: 'website',
         images: [{ url: '/main.png', width: 1200, height: 630, alt: 'FresherFlow job boards directory' }],
     },
     twitter: {
         card: 'summary_large_image',
         title: 'Browse All Job Boards | FresherFlow',
-        description: 'Every FresherFlow job board in one directory: roles, cities, skills, batch years and role×city boards.',
+        description: 'Every FresherFlow job board in one directory: roles, cities, skills, batch years and role–city boards.',
         images: ['/main.png'],
     },
 };
@@ -82,7 +82,7 @@ export default async function BrowseJobsPage() {
                 </h1>
                 <p className="text-base text-muted-foreground font-medium max-w-2xl">
                     Every board in one directory — roles, cities, skills, batch years and combined
-                    role×city pages, all generated from the live feed.
+                    role–city pages, all generated from the live feed.
                 </p>
             </header>
 
@@ -93,7 +93,7 @@ export default async function BrowseJobsPage() {
             )}
 
             {combos.length > 0 && (
-                <DirectorySection title="Role × City Boards">
+                <DirectorySection title="Role – City Boards">
                     {combos.map(c => (
                         <BoardCard
                             key={`${c.roleSlug}-in-${c.citySlug}`}

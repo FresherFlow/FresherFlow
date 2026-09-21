@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 import { ConditionalAuthProvider } from "@/lib/providers/ConditionalAuthProvider";
-import { SmartToaster } from '@/lib/components/SmartToaster';
+import { SmartToaster } from '@/features/shell/SmartToaster';
 import { ScrollToTop } from '@/ui/ScrollToTop';
 import { ThemeProvider } from "@/lib/providers/ThemeContext";
 import { InstallPromptProvider } from "@/lib/providers/InstallPromptContext";
@@ -10,12 +10,12 @@ import { InstallPromptProvider } from "@/lib/providers/InstallPromptContext";
 // WEB PIVOT: keep these imports disabled until web app mode returns.
 // import ServiceWorkerRegister from "@/lib/providers/ServiceWorkerRegister";
 // import PushNotificationProvider from "@/lib/providers/PushNotificationProvider";
-import { themeScriptContent } from '@/lib/components/ThemeScript';
+import { themeScriptContent } from '@/features/shell/ThemeScript';
 // import OfflineNotification from "@/ui/OfflineNotification";
 import dynamic from "next/dynamic";
 import { Inter, Geist, Bricolage_Grotesque, IBM_Plex_Mono } from "next/font/google";
 
-const InstallAppBanner = dynamic(() => import("@/ui/InstallAppBanner"));
+const InstallAppBanner = dynamic(() => import("@/features/shell/InstallAppBanner"));
 
 const inter = Inter({
   subsets: ['latin'],
@@ -23,16 +23,16 @@ const inter = Inter({
   variable: '--font-inter',
 });
 
-import { PageTransitionWrapper } from '@/lib/components/PageTransitionWrapper';
+import { PageTransitionWrapper } from '@/features/shell/PageTransitionWrapper';
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@next/third-parties/google";
-import { getHeadInjectionScripts } from '@/lib/components/HeadInjections';
-import { InlineScript } from '@/lib/components/InlineScript';
+import { getHeadInjectionScripts } from '@/features/shell/HeadInjections';
+import { InlineScript } from '@/features/shell/InlineScript';
 import { SITE_URL } from "@/lib/utils/runtimeConfig";
-import { cn } from "@/lib/utils/utils";
+import { cn } from "@/ui/cn";
 import { AuthFormDataProvider } from '@/lib/auth/AuthFormDataContext';
-import { ErrorBoundary } from '@/lib/components/ErrorBoundary';
+import { ErrorBoundary } from '@/features/shell/ErrorBoundary';
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans', display: 'swap' });
 

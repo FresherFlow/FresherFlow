@@ -1,5 +1,5 @@
 import * as React from "react";
-import { cn } from "@/lib/utils/utils";
+import { cn } from "@/ui/cn";
 
 /**
  * Material Design Compliant Select

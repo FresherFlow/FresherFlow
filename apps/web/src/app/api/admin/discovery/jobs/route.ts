@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRateLimit } from '@/lib/api/rateLimit';
-import { hasIngestionDb, queryRows, execute, ingestionDbError } from '@/lib/ingestion/db';
+import { hasIngestionDb, queryRows, execute, ingestionDbError } from '@/lib/server/ingestion/db';
 
 export const dynamic = 'force-dynamic';
 

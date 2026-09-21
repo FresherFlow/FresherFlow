@@ -85,6 +85,9 @@ export const googleAuthSchema = z.object({
 // Profile Schemas
 export const profileUpdateSchema = z.object({
     fullName: z.string().optional(),
+    expectedCtc: z.number().int().min(0).max(200, 'CTC expectation must be between 0 and 200 LPA').nullable().optional(),
+    resumeUrl: z.string().url().max(2000).nullable().optional().or(z.literal('')),
+    willingToRelocate: z.boolean().nullable().optional(),
     headline: z.string().nullable().optional(),
     about: z.string().nullable().optional(),
     githubUrl: z.string().url().nullable().optional().or(z.literal('')),
@@ -165,7 +168,23 @@ export const preferencesSchema = z.object({
 
 export const readinessSchema = z.object({
     availability: z.nativeEnum(Availability),
-    skills: z.array(z.string()).min(1, 'Add at least one skill')
+    skills: z.array(z.string()).min(1, 'Add at least one skill'),
+    expectedCtc: z.number().int().min(0).max(200, 'CTC expectation must be between 0 and 200 LPA').nullable().optional(),
+    resumeUrl: z.string().url().max(2000).nullable().optional().or(z.literal('')),
+    willingToRelocate: z.boolean().nullable().optional()
+});
+
+export const introRequestSchema = z.object({
+    candidateId: z.string().min(1),
+    message: z.string().max(1000).optional(),
+    recruiterName: z.string().min(1).max(120).optional(),
+    recruiterCompany: z.string().min(1).max(120).optional(),
+    recruiterEmail: z.string().email().optional(),
+    recruiterPhone: z.string().max(20).optional()
+});
+
+export const publicProfileViewSchema = z.object({
+    viewerSession: z.string().max(100).optional()
 });
 
 const applicationDetailsSchema = z.object({
@@ -521,12 +540,8 @@ export const notificationReadSchema = z.object({
     ids: z.array(z.string().min(1).max(64)).max(200).optional(),
 });
 
-// Community Post vote schema (value must be 1 or -1)
-export const communityPostVoteSchema = z.object({
-    value: z.number().int().refine((v) => v === 1 || v === -1, {
-        message: 'Vote value must be 1 (upvote) or -1 (downvote)',
-    }),
-});
+// Community Post helpful-mark schema (toggle — no body needed)
+export const communityPostVoteSchema = z.object({}).strip();
 
 // Community Post comment create schema
 export const communityPostCommentCreateSchema = z.object({
@@ -534,12 +549,8 @@ export const communityPostCommentCreateSchema = z.object({
     parentId: z.string().min(1).max(64).optional(),
 });
 
-// Community Post comment vote schema
-export const communityPostCommentVoteSchema = z.object({
-    value: z.number().int().refine((v) => v === 1 || v === -1, {
-        message: 'Vote value must be 1 (upvote) or -1 (downvote)',
-    }),
-});
+// Community Post comment helpful-mark schema (toggle — no body needed)
+export const communityPostCommentVoteSchema = z.object({}).strip();
 
 // ============================================================================
 // FRESHER NEEDS: Saved searches, referral board, offer transparency

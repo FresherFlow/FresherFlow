@@ -7,7 +7,7 @@ import { profileApi } from '@/lib/api/profile';
 import { usernameApi } from '@fresherflow/api-client';
 import { CDN_URL } from '@/lib/utils/runtimeConfig';
 import { signProtectedCdnUrl } from '@/lib/api/cdnFeed';
-import { AuthGate } from '@/lib/components/ProfileGate';
+import { AuthGate } from '@/features/auth/components/ProfileGate';
 import toast from 'react-hot-toast';
 
 // Simple debounce helper

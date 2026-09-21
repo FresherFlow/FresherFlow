@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { Suspense } from 'react';
-import PushNotificationClient from './components/PushNotificationClient';
+import PushNotificationClient from '@/features/admin/components/PushNotificationClient';
 
 
 

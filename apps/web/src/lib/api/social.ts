@@ -1,5 +1,5 @@
 import { ActionType } from '@fresherflow/types';
-import { apiClient } from './_core';
+import { apiClient } from './core';
 
 
 export const growthApi = {

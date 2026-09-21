@@ -8,7 +8,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ============================================================================
@@ -336,6 +335,8 @@ model User {
   follows            UserFollow[]
   savedCandidates    SavedCandidate[]     @relation("RecruiterSaved")
   savedByRecruiters  SavedCandidate[]     @relation("SavedByRecruiter")
+  sentIntroRequests  IntroRequest[]       @relation("IntroRequestsSent")
+  receivedIntroRequests IntroRequest[]    @relation("IntroRequestsReceived")
   profileViews       ProfileView[]        @relation("ProfileViewed")
   recruiterViews     ProfileView[]        @relation("RecruiterViews")
   organizationMemberships OrganizationMembership[]
@@ -360,8 +361,8 @@ model User {
     interviewExperiences InterviewExperience[]
     interviewExperienceVotes InterviewExperienceVote[]
     applicationUpdates ApplicationUpdate[]
-    areas              Area[]
-    areaMembers        AreaMember[]
+    rooms              Room[]
+    roomMembers        RoomMember[]
     savedSearches      SavedSearch[]
     referralRequests   ReferralRequest[]  @relation("ReferralRequestAuthor")
     referralResponses  ReferralResponse[] @relation("ReferralResponseAuthor")
@@ -470,6 +471,11 @@ model Profile {
   isPwBD         Boolean?             @default(false)
   isExServicemen Boolean?             @default(false)
   homeState      String?
+
+  // Recruiter-facing fields (profile pages v1)
+  expectedCtc        Int? // Annual CTC expectation in LPA
+  resumeUrl          String? // Uploaded or linked resume URL
+  willingToRelocate  Boolean @default(true)
 
   // Derived & Identity Fields
   headline         String?
@@ -1309,6 +1315,8 @@ enum NotificationType {
   NEW_MATCHING_JOB
   EXPIRED_JOB
   COMMENT_ON_EXPIRED
+  ROOM_HELPFUL
+  INTRO_REQUEST
 }
 
 model CommentVote {
@@ -1347,7 +1355,7 @@ model JobSubmission {
   company       String?
   description   String?             @db.Text
   extractedData Json?
-  status        JobSubmissionStatus @default(PUBLISHED)
+  status        JobSubmissionStatus @default(PENDING_REVIEW)
   submittedById String
   opportunityId String?
   createdAt     DateTime            @default(now())
@@ -1439,6 +1447,40 @@ model ResourceItem {
 enum ResourceSector {
   PRIVATE
   GOVERNMENT
+}
+
+/// Recruiter intro request on a public profile (profile pages v1)
+model IntroRequest {
+  id              String   @id @default(cuid())
+  recruiterId     String? // null for anonymous (pre-registration) recruiters
+  candidateId     String
+  message         String?  @db.VarChar(1000)
+  status          IntroRequestStatus @default(PENDING)
+  createdAt       DateTime @default(now())
+
+  recruiter User? @relation("IntroRequestsSent", fields: [recruiterId], references: [id], onDelete: SetNull)
+  candidate User @relation("IntroRequestsReceived", fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@unique([recruiterId, candidateId])
+  @@index([candidateId, createdAt])
+  @@index([recruiterId, createdAt])
+}
+
+/// Unique-view counter for public /u/ pages (no FK by design — anonymous viewers)
+model PublicProfileView {
+  id        String   @id @default(cuid())
+  profileId String // Profile.userId of the owner
+  viewerKey String // "u:<userId>" for signed-in viewers, "s:<sessionId>" / "ip:<hash>" otherwise
+  viewedAt  DateTime @default(now())
+
+  @@unique([profileId, viewerKey])
+  @@index([profileId])
+}
+
+enum IntroRequestStatus {
+  PENDING
+  CONTACTED
+  ARCHIVED
 }
 
 model SavedCandidate {
@@ -1636,9 +1678,9 @@ model CommunityPost {
   updatedAt       DateTime              @updatedAt
   expiredAt       DateTime?
   sourceOpportunityId String?
-  areaId          String?
+  roomId          String?
 
-  area            Area?               @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  room            Room?               @relation(fields: [roomId], references: [id], onDelete: SetNull)
   comments        CommunityPostComment[]
   votes           CommunityPostVote[]
   reports         Report[]
@@ -1648,7 +1690,7 @@ model CommunityPost {
   @@index([status])
   @@index([authorId])
   @@index([sourceOpportunityId])
-  @@index([areaId])
+  @@index([roomId])
 }
 
 model CommunityPostComment {
@@ -1781,10 +1823,10 @@ model ApplicationUpdate {
 }
 
 // ============================================================================
-// PHASE 3: AREAS (Persistent Communities)
+// PHASE 3: ROOMS (Persistent Communities)
 // ============================================================================
 
-enum AreaType {
+enum RoomType {
   BATCH
   SKILL
   LOCATION
@@ -1793,13 +1835,13 @@ enum AreaType {
   CUSTOM
 }
 
-model Area {
+model Room {
   id          String   @id @default(cuid())
   slug        String   @unique
   name        String   @db.VarChar(100)
   description String?  @db.Text
   icon        String?  @db.VarChar(10)
-  type        AreaType @default(CUSTOM)
+  type        RoomType @default(CUSTOM)
   memberCount Int      @default(0)
   postCount   Int      @default(0)
   jobCount    Int      @default(0)
@@ -1810,27 +1852,31 @@ model Area {
   updatedAt   DateTime @updatedAt
 
   createdBy User?         @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
-  members   AreaMember[]
+  members   RoomMember[]
   posts     CommunityPost[]
 
   @@index([slug])
   @@index([type])
   @@index([memberCount(sort: Desc)])
   @@index([createdAt(sort: Desc)])
+
+  @@map("areas")
 }
 
-model AreaMember {
+model RoomMember {
   id        String   @id @default(cuid())
-  areaId    String
+  roomId    String
   userId    String
   role      String   @default("MEMBER") // MEMBER, MODERATOR, ADMIN
   joinedAt  DateTime @default(now())
 
-  area Area @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([areaId, userId])
+  @@unique([roomId, userId])
   @@index([userId])
+
+  @@map("area_members")
 }
 
 // ============================================================================

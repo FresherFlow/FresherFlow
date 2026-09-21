@@ -1,9 +1,9 @@
 "use client";
-import { cn } from "@/lib/utils/utils";
+import { cn } from "@/ui/cn";
 import { VariantProps, cva } from "class-variance-authority";
 import { LucideIcon, Copy, Check } from "lucide-react";
 import toast from "react-hot-toast";
-import { useCopyToClipboard } from "../hooks/use-copy-to-clipboard";
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 
 const copyButtonVariants = cva(
   "relative group rounded-full p-1.5 transition-all duration-75",

@@ -1,230 +1,53 @@
-export const revalidate = 300; // ISR: re-render every 5min (CDN serves; Render never touched)
-
-import type { Metadata } from 'next';
-import { cache } from 'react';
-import { CDN_URL } from '@/lib/utils/runtimeConfig';
-import Link from 'next/link';
+import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { UserIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
-import PublicProfileClient from './PublicProfileClient';
+import PublicProfileClient, { type PublicProfile } from '@/features/profiles/components/PublicProfileClient';
+import { serverApiClient } from '@/lib/api/server-client';
 
-type Props = {
+export const revalidate = 60;
+
+interface PageProps {
     params: Promise<{ username: string }>;
-};
-
-type CandidateProject = {
-    id: string;
-    title: string;
-    description: string;
-    skills: string[];
-    githubUrl?: string;
-    liveUrl?: string;
-};
-
-type PublicProfileData = {
-    user: {
-        id?: string;
-        fullName: string | null;
-        username: string;
-        createdAt: string;
-    };
-    profile: {
-        headline: string | null;
-        about: string | null;
-        skills: string[];
-        gradCourse: string | null;
-        gradSpecialization: string | null;
-        gradYear: number | null;
-        educationLevel: string | null;
-        pgCourse?: string | null;
-        pgSpecialization?: string | null;
-        pgYear?: number | null;
-        tenthYear?: number | null;
-        twelfthYear?: number | null;
-        githubUrl: string | null;
-        linkedinUrl: string | null;
-        portfolioUrl: string | null;
-        resumeUrl?: string | null;
-        otherLinks?: { label: string; url: string; type: string }[];
-        availability: string | null;
-        preferredCities: string[];
-        workModes: string[];
-        interestedIn?: string[];
-        preferredRoles?: string[];
-        openToRecruiters: boolean;
-        openToRelocate?: boolean;
-        completionPercentage?: number | null;
-        homeState?: string | null;
-        visibility?: 'PUBLIC' | 'UNLISTED' | 'PRIVATE' | string | null;
-        projects?: CandidateProject[];
-        githubPinnedRepos?: any;
-    };
-};
-
-function getApiBaseUrl(): string {
-    const envUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_USER_API_URL;
-    if (envUrl) return envUrl.replace(/\/+$/, '');
-    if (process.env.NODE_ENV === 'development') return 'http://localhost:5000';
-    return 'https://api.fresherflow.in';
 }
 
-function getCdnBaseUrl(): string {
-    return CDN_URL.replace(/\/+$/, '');
-}
-
-const _fetchPublicProfile = async (username: string): Promise<PublicProfileData | null> => {
-    // 1. Try CDN first — Cloudflare serves this, zero Render/API hits
+async function getProfile(username: string): Promise<PublicProfile | null> {
     try {
-        const cdnUrl = `${getCdnBaseUrl()}/profiles/${username}.json`;
-        const cdnRes = await fetch(cdnUrl, { next: { revalidate: 300 } });
-        if (cdnRes.ok) {
-            const json = await cdnRes.json();
-            return json.data || json;
-        }
-    } catch {
-        // CDN miss or unavailable — fall through to API
-    }
-
-    // 2. Fallback: hit the API (for profiles not yet written to R2)
-    try {
-        const baseUrl = getApiBaseUrl();
-        const res = await fetch(`${baseUrl}/api/profile/public/${username}`, {
-            next: { revalidate: 60 },
-        });
-        if (!res.ok) return null;
-        const json = await res.json();
-        return json.data || json;
+        const res = await serverApiClient<{ success: boolean; data: PublicProfile }>(
+            `/api/public/profiles/${encodeURIComponent(username.toLowerCase())}`,
+        );
+        return res?.data ?? null;
     } catch {
         return null;
     }
-};
-
-const fetchPublicProfile = cache(_fetchPublicProfile);
-
-function isProfileIndexable(profile: PublicProfileData['profile'], user: PublicProfileData['user']): boolean {
-    if (profile.visibility !== 'PUBLIC') return false;
-    
-    const hasName = !!user.fullName?.trim();
-    const hasHeadline = !!profile.headline?.trim();
-    const hasEnoughSkills = Array.isArray(profile.skills) && profile.skills.length >= 3;
-    const hasAbout = !!profile.about?.trim();
-    const hasContent = (Array.isArray(profile.projects) && profile.projects.length > 0) || 
-                       !!profile.gradCourse || !!profile.pgCourse || !!profile.educationLevel;
-    
-    return hasName && hasHeadline && hasEnoughSkills && hasAbout && hasContent;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const { username } = await params;
-    const data = await fetchPublicProfile(username);
-    
-    if (!data || data.profile.visibility === 'PRIVATE') {
-        return {
-            title: 'Candidate Profile Not Found',
-            robots: { index: false, follow: false },
-        };
+    const profile = await getProfile(username);
+    if (!profile) {
+        return { title: 'Profile not found — FresherFlow' };
     }
-
-    const isNoIndex = !isProfileIndexable(data.profile, data.user);
-
-    const name = data.user.fullName || 'Candidate';
-    const headline = data.profile.headline || 'Software Engineer';
-    const qual = [data.profile.gradCourse, data.profile.gradYear].filter(Boolean).join(' • ');
-    const topSkills = data.profile.skills?.length ? `Skills: ${data.profile.skills.slice(0, 4).join(' • ')}` : '';
-    const description = [headline, qual, topSkills, 'FresherFlow Candidate Profile'].filter(Boolean).join(' | ');
-
-    // Root layout template (%s | FresherFlow) appends "| FresherFlow" automatically
-    const title = `${name} – ${headline}`;
-
+    const name = profile.fullName || username;
+    const headline = profile.headline || `${profile.degree || 'Fresher'} · ${profile.gradYear ?? ''}`.trim();
     return {
-        title,
-        description,
-        robots: isNoIndex
-            ? { index: false, follow: false }
-            : { index: true, follow: true },
-        alternates: { canonical: `https://fresherflow.in/u/${username}` },
+        title: `${name} — Fresher Profile`,
+        description: headline
+            ? `${headline} · Skills: ${(profile.skills || []).slice(0, 5).join(', ')}`
+            : `View ${name}'s fresher profile on FresherFlow.`,
         openGraph: {
-            title,
-            description,
+            title: `${name} — Fresher Profile`,
+            description: headline || undefined,
             type: 'profile',
-            username,
-            url: `https://fresherflow.in/u/${username}`,
-            siteName: 'FresherFlow',
-        },
-        twitter: {
-            card: 'summary_large_image',
-            title,
-            description,
         },
     };
 }
 
-export default async function PublicProfilePage({ params }: Props) {
+export default async function PublicProfilePage({ params }: PageProps) {
     const { username } = await params;
-    const data = await fetchPublicProfile(username);
+    const profile = await getProfile(username);
 
-    if (!data) {
-        return (
-            <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
-                <div className="flex-1 py-16 px-4 flex items-center justify-center">
-                    <div className="max-w-md w-full bg-card border border-border rounded-3xl p-8 text-center space-y-4 shadow-sm">
-                        <div className="w-16 h-16 bg-muted text-muted-foreground font-bold text-2xl rounded-2xl flex items-center justify-center mx-auto border border-border/50">
-                            <UserIcon className="w-8 h-8" />
-                        </div>
-                        <h1 className="text-2xl font-extrabold tracking-tight text-foreground">Candidate Profile Not Found</h1>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                            No public candidate profile exists for <span className="font-semibold text-foreground">@{username}</span>.
-                        </p>
-                        <div className="pt-2">
-                            <Link
-                                href="/"
-                                className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-bold rounded-xl text-xs hover:opacity-90 transition-opacity shadow-sm"
-                            >
-                                <ArrowLeftIcon className="w-4 h-4" />
-                                <span>Back to Home</span>
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if (data.profile.visibility === 'PRIVATE') {
+    if (!profile) {
         notFound();
     }
 
-    const name = data.user.fullName || 'Candidate';
-    const headline = data.profile.headline || 'Software Engineer';
-    const canonicalUrl = `https://fresherflow.in/u/${username}`;
-    const socialLinks = [data.profile.githubUrl, data.profile.linkedinUrl, data.profile.portfolioUrl]
-        .filter((url): url is string => typeof url === 'string' && url.trim().length > 0)
-        .map(url => url.startsWith('http') ? url : `https://${url}`);
-
-    const personJsonLd = {
-        '@context': 'https://schema.org',
-        '@type': 'Person',
-        name,
-        jobTitle: headline,
-        url: canonicalUrl,
-        sameAs: socialLinks.length > 0 ? socialLinks : undefined,
-        knowsAbout: data.profile.skills || [],
-        description: data.profile.about || headline,
-        ...(data.profile.gradCourse ? {
-            alumniOf: {
-                '@type': 'EducationalOrganization',
-                name: data.profile.gradCourse,
-            }
-        } : {})
-    };
-
-    return (
-        <>
-            <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}
-            />
-            <PublicProfileClient data={data} />
-        </>
-    );
+    return <PublicProfileClient profile={profile} />;
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { cn } from '@/lib/utils/utils';
+import { cn } from "@/ui/cn";
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { Star } from 'lucide-react';
 import { Input } from '@/ui/Input';

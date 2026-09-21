@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { useFirebaseTracker } from '@/features/dashboard/hooks/useFirebaseTracker';
 import { useSavedJobs } from '@/features/dashboard/hooks/useSavedJobs';
 import { fetchFeedIndex } from '@/lib/api/cdnFeed';
-import { readFeedCache, getOpportunityFromCache } from '@/lib/api/offline/opportunitiesFeedCache';
+import { readFeedCache, getOpportunityFromCache } from '@/lib/cache/opportunitiesFeedCache';
 import { ActionType } from '@fresherflow/types';
 import type { Opportunity } from '@fresherflow/types';
 import Link from 'next/link';
@@ -19,13 +19,13 @@ import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import { CheckIcon, CurrencyRupeeIcon, DocumentTextIcon } from '@heroicons/react/24/solid';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/ui/Table';
 import ChevronDownIcon from '@heroicons/react/24/outline/ChevronDownIcon';
-import { UsernameGate } from '@/lib/components/ProfileGate';
+import { UsernameGate } from '@/features/auth/components/ProfileGate';
 import toast from 'react-hot-toast';
-import { cn } from '@/lib/utils/utils';
+import { cn } from "@/ui/cn";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/ui/Dialog';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/ui/DropdownMenu';
-import CompanyLogo from '@/ui/CompanyLogo';
-import { getOpportunityDisplaySalary, parseOpportunityLocation } from '@/features/opportunities/domain/opportunityDisplay';
+import CompanyLogo from '@/features/companies/components/CompanyLogo';
+import { getOpportunityDisplaySalary, parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
 
 // Primary Status Tabs
 type TrackerTabKey = 'ALL' | 'SAVED' | 'APPLIED' | 'INTERVIEWED' | 'SELECTED' | 'REJECTED' | 'PLANNED';

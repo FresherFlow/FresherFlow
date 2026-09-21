@@ -1,7 +1,6 @@
 
 export { LivenessHttpService } from './liveness-http.service.js';
 export {
-  HeuristicOutcome,
   classifyBody,
   classifyHttpStatus,
   hasExpiredUrlMarker,
@@ -10,6 +9,7 @@ export {
   matchesExpiredText,
   matchesListingPage,
 } from './liveness-heuristics.js';
+export type { HeuristicOutcome } from './liveness-heuristics.js';
 export {
   DEFAULT_BATCH_CONCURRENCY,
   DEFAULT_MIN_CONTENT_LENGTH,

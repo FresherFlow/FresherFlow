@@ -5,7 +5,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { UsernameGate } from '@/lib/components/ProfileGate';
+import { UsernameGate } from '@/features/auth/components/ProfileGate';
 import { referralApi } from '@/lib/api/client';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 import {
@@ -302,7 +302,7 @@ function ReferralPageContent() {
                                     </div>
                                 ) : !data || data.referrals.length === 0 ? (
                                     <div className="py-12 text-center space-y-2">
-                                        <p className="text-2xl">👋</p>
+                                        <p className="text-2xl"></p>
                                         <p className="text-sm font-medium text-foreground">No referrals yet</p>
                                         <p className="text-xs text-muted-foreground">Share your link to get started</p>
                                     </div>

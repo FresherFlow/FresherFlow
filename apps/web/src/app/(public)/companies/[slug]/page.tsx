@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import { permanentRedirect, notFound } from 'next/navigation';
 import { logRouteResult } from '@/lib/observability';
 import { Suspense } from 'react';
-import CategoryPage from '@/features/opportunities/components/CategoryPage';
-import { FeedPageSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
-import CompanyLogo from '@/ui/CompanyLogo';
+import CategoryPage from '@/features/jobs/components/CategoryPage';
+import { FeedPageSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
+import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
 import { toOpportunityCardDTO } from '@fresherflow/types';
@@ -13,10 +13,10 @@ import { getCompanyDescription } from '@/features/companies/utils/companyContent
 import { fetchCompanyShard, fetchCompaniesMetadata, fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { CompanySlugger } from '@/features/companies/utils/companySlugger';
 import CompanyFollowButton from '@/features/companies/components/CompanyFollowButton';
-import { PageTagLinks } from '@/ui/PageTagLinks';
+import { PageTagLinks } from '@/features/jobs/components/PageTagLinks';
 import { CompanyHubClient } from '@/features/community/components/CompanyHubIntel';
-import { getValidDirectoryLinks } from '@/features/opportunities/utils/detailUtils';
-import { VALID_LOCATIONS } from '@/features/opportunities/utils/locationUtils';
+import { getValidDirectoryLinks } from '@/features/jobs/utils/detailUtils';
+import { VALID_LOCATIONS } from '@/features/jobs/utils/locationUtils';
 import { cn } from '@repo/ui/utils/cn';
 
 export const revalidate = false;

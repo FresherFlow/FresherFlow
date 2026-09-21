@@ -6,7 +6,7 @@ import {
   execute,
   ingestionDbError,
   PROCESSED_JOB_COLUMNS
-} from '@/lib/ingestion/db';
+} from '@/lib/server/ingestion/db';
 
 export const dynamic = 'force-dynamic';
 

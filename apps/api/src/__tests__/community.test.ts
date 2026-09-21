@@ -9,11 +9,13 @@ process.env.REDIS_ENABLED = 'false';
 const prismaMock = {
     opportunity: {
         findFirst: vi.fn(),
+        findMany: vi.fn(),
         create: vi.fn(),
     },
     opportunityComment: {
         findMany: vi.fn(),
         findFirst: vi.fn(),
+        groupBy: vi.fn(),
         create: vi.fn(),
         update: vi.fn(),
     },
@@ -106,6 +108,7 @@ vi.mock('@fresherflow/database', () => ({
         JOB_UPDATED: 'JOB_UPDATED',
         JOB_CLOSED: 'JOB_CLOSED',
         NEW_MATCHING_JOB: 'NEW_MATCHING_JOB',
+        ROOM_HELPFUL: 'ROOM_HELPFUL',
     },
     ReportReason: {
         SPAM: 'SPAM',
@@ -154,9 +157,13 @@ vi.mock('../middleware/auth', () => ({
         req.isAnonymous = req.headers['x-test-anon'] === 'true';
         next();
     },
+    requireAdmin: (_req: Request, _res: Response, next: NextFunction) => {
+        next();
+    },
 }));
 
 let app: express.Application;
+let resetRateLimitStoreForTests: () => void;
 
 const AUTH = { 'x-test-user': 'user-1' };
 const ANON = { 'x-test-user': 'anon-1', 'x-test-anon': 'true' };
@@ -166,6 +173,9 @@ function author(id: string) {
 }
 
 beforeAll(async () => {
+    // Import after vi.mock so the mocked @fresherflow/database factory is in place.
+    ({ resetRateLimitStoreForTests } = await import('../middleware/rateLimit'));
+
     const [jobs, notifications, users, communityPosts] = await Promise.all([
         import('../routes/community/jobs'),
         import('../routes/community/notifications'),
@@ -186,6 +196,10 @@ beforeAll(async () => {
 
 beforeEach(() => {
     vi.clearAllMocks();
+    // Rate-limit counters are keyed by IP in the in-memory fallback, so every
+    // case in this suite shares one bucket. Reset it so write-heavy cases do not
+    // leak 429s into unrelated assertions.
+    resetRateLimitStoreForTests();
     prismaMock.opportunity.findFirst.mockResolvedValue({ id: 'opp-1', slug: 'acme-engineer', title: 'Engineer', company: 'Acme', postedByUserId: 'admin' });
     prismaMock.commentVote.findMany.mockResolvedValue([]);
     prismaMock.jobSignal.findMany.mockResolvedValue([]);
@@ -202,6 +216,43 @@ beforeEach(() => {
     prismaMock.communityPostVote.findMany.mockResolvedValue([]);
     prismaMock.communityPostVote.findUnique.mockResolvedValue(null);
     prismaMock.communityPostVote.groupBy.mockResolvedValue([]);
+    // Comment-counts endpoint defaults
+    prismaMock.opportunity.findMany.mockResolvedValue([]);
+    prismaMock.opportunityComment.groupBy.mockResolvedValue([]);
+});
+
+describe('GET /api/jobs/comment-counts', () => {
+    it('returns batched counts keyed by the requested slug/id', async () => {
+        prismaMock.opportunity.findMany.mockResolvedValue([
+            { id: 'opp-1', slug: 'acme-engineer' },
+            { id: 'opp-2', slug: 'beta-engineer' },
+        ]);
+        prismaMock.opportunityComment.groupBy.mockResolvedValue([
+            { opportunityId: 'opp-1', _count: { _all: 4 } },
+            { opportunityId: 'opp-2', _count: { _all: 1 } },
+        ]);
+
+        const res = await request(app).get('/api/jobs/comment-counts?ids=acme-engineer,opp-2');
+
+        expect(res.status).toBe(200);
+        expect(res.body.counts).toEqual({ 'acme-engineer': 4, 'opp-2': 1 });
+    });
+
+    it('omits opportunities with zero visible comments', async () => {
+        prismaMock.opportunity.findMany.mockResolvedValue([{ id: 'opp-1', slug: 'acme-engineer' }]);
+        prismaMock.opportunityComment.groupBy.mockResolvedValue([]);
+
+        const res = await request(app).get('/api/jobs/comment-counts?ids=acme-engineer');
+
+        expect(res.status).toBe(200);
+        expect(res.body.counts).toEqual({});
+    });
+
+    it('returns empty counts for an empty ids param', async () => {
+        const res = await request(app).get('/api/jobs/comment-counts?ids=');
+        expect(res.status).toBe(200);
+        expect(res.body.counts).toEqual({});
+    });
 });
 
 describe('GET /api/jobs/:id/comments', () => {
@@ -345,11 +396,11 @@ describe('POST /api/jobs/submit', () => {
             .set(AUTH)
             .send({ sourceUrl: 'https://example.com/job', title: 'Engineer' });
         expect(res.status).toBe(200);
-        expect(res.body).toEqual({ existing: true, id: 'opp-9', slug: 'existing-job' });
+        expect(res.body).toEqual({ existing: true, id: 'opp-9', slug: 'existing-job', status: 'PUBLISHED' });
         expect(prismaMock.opportunity.create).not.toHaveBeenCalled();
     });
 
-    it('creates a published opportunity and records provenance', async () => {
+    it('creates a pending opportunity and records provenance', async () => {
         prismaMock.opportunity.findFirst.mockResolvedValue(null);
         prismaMock.jobSubmission.findFirst.mockResolvedValue(null);
         prismaMock.user.findUnique.mockResolvedValue({ id: 'user-1' });
@@ -362,8 +413,12 @@ describe('POST /api/jobs/submit', () => {
             .send({ sourceUrl: 'https://example.com/job', title: 'Engineer', company: 'Acme' });
 
         expect(res.status).toBe(201);
-        expect(res.body).toEqual({ existing: false, id: 'opp-new', slug: 'acme-engineer' });
+        expect(res.body).toEqual({ existing: false, id: 'opp-new', slug: 'acme-engineer', status: 'PENDING_REVIEW' });
         expect(prismaMock.jobSubmission.create).toHaveBeenCalled();
+        // Web shares must never auto-publish.
+        expect(prismaMock.opportunity.create).toHaveBeenCalledWith(
+            expect.objectContaining({ data: expect.objectContaining({ status: 'DRAFT' }) })
+        );
     });
 
     it('allows guests without auth and attributes to a community user', async () => {
@@ -378,7 +433,7 @@ describe('POST /api/jobs/submit', () => {
             .send({ sourceUrl: 'https://example.com/guest-job', title: 'Engineer', contact: 'guest@example.com' });
 
         expect(res.status).toBe(201);
-        expect(res.body).toEqual({ existing: false, id: 'opp-guest', slug: 'acme-engineer' });
+        expect(res.body).toEqual({ existing: false, id: 'opp-guest', slug: 'acme-engineer', status: 'PENDING_REVIEW' });
         expect(prismaMock.opportunity.create).toHaveBeenCalledWith(
             expect.objectContaining({ data: expect.objectContaining({ postedByUserId: 'community-bot' }) })
         );
@@ -575,16 +630,8 @@ describe('POST /api/community/:id/vote', () => {
         expect(res.status).toBe(401);
     });
 
-    it('returns 400 for invalid vote value (not 1 or -1)', async () => {
-        const res = await request(app)
-            .post('/api/community/post-1/vote')
-            .set(AUTH)
-            .send({ value: 5 });
-        expect(res.status).toBe(400);
-    });
-
-    it('toggles vote and returns counts', async () => {
-        prismaMock.communityPost.findUnique.mockResolvedValue({ id: 'post-1' });
+    it('marks helpful and returns counts', async () => {
+        prismaMock.communityPost.findUnique.mockResolvedValue({ id: 'post-1', authorId: 'user-2', title: 'Hello', likesCount: 2 });
         prismaMock.communityPostVote.findUnique.mockResolvedValue(null);
         prismaMock.communityPostVote.groupBy.mockResolvedValue([
             { value: 1, _count: { _all: 3 } },
@@ -594,11 +641,33 @@ describe('POST /api/community/:id/vote', () => {
         const res = await request(app)
             .post('/api/community/post-1/vote')
             .set(AUTH)
-            .send({ value: 1 });
+            .send({});
 
         expect(res.status).toBe(200);
-        expect(res.body.upvotes).toBe(3);
-        expect(res.body.myVote).toBe(1);
+        expect(res.body.helpfulCount).toBe(3);
+        expect(res.body.isHelpful).toBe(true);
+        expect(prismaMock.communityPostVote.create).toHaveBeenCalledWith({
+            data: { postId: 'post-1', userId: 'user-1', value: 1 },
+        });
+    });
+
+    it('un-marks helpful on second click (toggle off)', async () => {
+        prismaMock.communityPost.findUnique.mockResolvedValue({ id: 'post-1', authorId: 'user-2', title: 'Hello', likesCount: 3 });
+        prismaMock.communityPostVote.findUnique.mockResolvedValue({ id: 'v1' });
+        prismaMock.communityPostVote.groupBy.mockResolvedValue([
+            { value: 1, _count: { _all: 2 } },
+        ]);
+        prismaMock.communityPost.update.mockResolvedValue({});
+
+        const res = await request(app)
+            .post('/api/community/post-1/vote')
+            .set(AUTH)
+            .send({});
+
+        expect(res.status).toBe(200);
+        expect(res.body.helpfulCount).toBe(2);
+        expect(res.body.isHelpful).toBe(false);
+        expect(prismaMock.communityPostVote.delete).toHaveBeenCalledWith({ where: { id: 'v1' } });
     });
 
     it('returns 404 for non-existent post', async () => {
@@ -640,7 +709,7 @@ describe('POST /api/community/:id/comments', () => {
 
     it('notifies parent author on reply', async () => {
         prismaMock.communityPost.findUnique.mockResolvedValue({ id: 'post-1', commentsCount: 1 });
-        prismaMock.communityPostComment.findFirst.mockResolvedValue({ id: 'parent', userId: 'user-2' });
+        prismaMock.communityPostComment.findFirst.mockResolvedValue({ id: 'parent', authorId: 'user-2' });
         prismaMock.communityPostComment.create.mockResolvedValue({
             id: 'c-reply', body: 'Agreed!', isAnonymous: false, anonId: null,
             likesCount: 0, createdAt: new Date(), updatedAt: new Date(),
@@ -702,16 +771,8 @@ describe('POST /api/community/:id/comments/:commentId/vote', () => {
         expect(res.status).toBe(401);
     });
 
-    it('returns 400 for invalid vote value', async () => {
-        const res = await request(app)
-            .post('/api/community/post-1/comments/c1/vote')
-            .set(AUTH)
-            .send({ value: 3 });
-        expect(res.status).toBe(400);
-    });
-
-    it('toggles vote on comment and returns counts', async () => {
-        prismaMock.communityPostComment.findUnique.mockResolvedValue({ id: 'c1' });
+    it('marks comment helpful and returns counts', async () => {
+        prismaMock.communityPostComment.findUnique.mockResolvedValue({ id: 'c1', postId: 'post-1', authorId: 'user-2', body: 'hey', likesCount: 1 });
         prismaMock.communityPostVote.findUnique.mockResolvedValue(null);
         prismaMock.communityPostVote.groupBy.mockResolvedValue([
             { value: 1, _count: { _all: 2 } },
@@ -721,11 +782,11 @@ describe('POST /api/community/:id/comments/:commentId/vote', () => {
         const res = await request(app)
             .post('/api/community/post-1/comments/c1/vote')
             .set(AUTH)
-            .send({ value: 1 });
+            .send({});
 
         expect(res.status).toBe(200);
-        expect(res.body.upvotes).toBe(2);
-        expect(res.body.myVote).toBe(1);
+        expect(res.body.helpfulCount).toBe(2);
+        expect(res.body.isHelpful).toBe(true);
     });
 });
 
@@ -781,7 +842,7 @@ describe('GET /api/community/feed search + tags', () => {
             expect.objectContaining({
                 where: expect.objectContaining({
                     category: 'QUESTION',
-                    tags: { has: 'react' },
+                    tags: { hasEvery: ['react'] },
                     OR: expect.arrayContaining([
                         expect.objectContaining({ title: expect.objectContaining({ contains: 'job' }) }),
                     ]),

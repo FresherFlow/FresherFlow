@@ -24,8 +24,10 @@ type ProfileLike = {
   about?: string | null;
   githubUrl?: string | null;
   linkedinUrl?: string | null;
-  portfolioUrl?: string | null;
-  openToRecruiters?: boolean | null;
+  portfolioUrl?: string | null;    openToRecruiters?: boolean | null;
+    expectedCtc?: number | null;
+    resumeUrl?: string | null;
+    willingToRelocate?: boolean | null;
 };
 
 export function useProfileForm(cityLimit = 5) {
@@ -56,6 +58,9 @@ export function useProfileForm(cityLimit = 5) {
   const [skills, setSkills] = useState<string[]>([]);
   const [cityInput, setCityInput] = useState('');
   const [skillInput, setSkillInput] = useState('');
+  const [expectedCtc, setExpectedCtc] = useState('');
+  const [resumeUrl, setResumeUrl] = useState('');
+  const [willingToRelocate, setWillingToRelocate] = useState(true);
 
   const filteredSkillOptions = useMemo(
     () =>
@@ -89,6 +94,9 @@ export function useProfileForm(cityLimit = 5) {
     setLinkedinUrl(profile.linkedinUrl || '');
     setPortfolioUrl(profile.portfolioUrl || '');
     setOpenToRecruiters(Boolean(profile.openToRecruiters));
+    setExpectedCtc(profile.expectedCtc != null ? String(profile.expectedCtc) : '');
+    setResumeUrl(profile.resumeUrl || '');
+    setWillingToRelocate(profile.willingToRelocate !== false);
     setEducationLevel(profile.educationLevel || '');
     setTenthYear(profile.tenthYear?.toString() || '');
     setTwelfthYear(profile.twelfthYear?.toString() || '');
@@ -220,6 +228,12 @@ export function useProfileForm(cityLimit = 5) {
     addSkillFromInput,
     addCityFromInput,
     togglePreferredCity,
+    expectedCtc,
+    setExpectedCtc,
+    resumeUrl,
+    setResumeUrl,
+    willingToRelocate,
+    setWillingToRelocate,
   };
 }
 

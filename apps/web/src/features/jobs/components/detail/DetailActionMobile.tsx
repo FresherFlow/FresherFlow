@@ -1,0 +1,108 @@
+import { type Opportunity, type User } from '@fresherflow/types';
+import { TimelineEventView } from '@/features/jobs/utils/detailUtils';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/ui/Button';
+import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
+import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
+import { cn } from '@/ui/cn';
+import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
+import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
+import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
+import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
+
+interface DetailActionMobileProps {
+    user: User | null;
+    opp: Opportunity;
+    isCampusDrive: boolean;
+    timelineEvents: TimelineEventView[];
+    hasApplyLink: boolean;
+    handleApply: () => void;
+    handleToggleSave: () => void;
+    handleShare: () => void;
+    handleCopyLink: () => void;
+    jumpToTimeline: () => void;
+    loginFromDetailHref: string;
+    router: ReturnType<typeof useRouter>;
+}
+
+export function DetailActionMobile({
+    user,
+    opp,
+    isCampusDrive,
+    timelineEvents,
+    hasApplyLink,
+    handleApply,
+    handleToggleSave,
+    handleShare,
+    handleCopyLink,
+    jumpToTimeline,
+}: DetailActionMobileProps) {
+    return (
+        <div className="lg:hidden bg-card p-4 rounded-xl border border-border shadow-sm space-y-3">
+            {isCampusDrive && timelineEvents.length > 0 && (
+                <button
+                    onClick={jumpToTimeline}
+                    className="w-full flex items-center justify-center gap-2 h-12 rounded-lg border border-primary/25 bg-primary/5 text-primary hover:bg-primary/10 transition-all text-xs font-bold uppercase tracking-wide"
+                >
+                    <ClockIcon className="w-4 h-4" />
+                    Track Updates
+                </button>
+            )}
+            {hasApplyLink ? (
+                <div className="flex gap-2">
+                    <Button
+                        onClick={handleApply}
+                       
+                    >
+                        Apply Now
+                        <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                    </Button>
+                    <button
+                        onClick={handleToggleSave}
+                        className={cn(
+                            "w-12 h-12 rounded-lg border flex items-center justify-center transition-all shrink-0",
+                            opp.isSaved
+                                ? "bg-primary/10 border-primary/20 text-primary shadow-sm"
+                                : "bg-background border-border text-muted-foreground hover:border-primary/30"
+                        )}
+                        aria-label={opp.isSaved ? "Remove from saved" : "Save opportunity"}
+                    >
+                        {opp.isSaved ? <BookmarkSolidIcon className="w-4 h-4" /> : <BookmarkIcon className="w-4 h-4" />}
+                    </button>
+                </div>
+            ) : (
+                <button
+                    onClick={handleToggleSave}
+                    className={cn(
+                        "w-full h-12 rounded-lg border flex items-center justify-center gap-2 font-bold text-xs uppercase tracking-wider transition-all",
+                        opp.isSaved
+                            ? "bg-primary/10 border-primary/20 text-primary shadow-sm"
+                            : "bg-background border-border text-muted-foreground hover:border-primary/30"
+                    )}
+                >
+                    {opp.isSaved ? <BookmarkSolidIcon className="w-4 h-4" /> : <BookmarkIcon className="w-4 h-4" />}
+                    {opp.isSaved ? 'Saved' : 'Save Opportunity'}
+                </button>
+            )}
+
+             {!user && (
+                <div className="grid grid-cols-2 gap-2">
+                    <button
+                        onClick={handleShare}
+                        className="flex items-center justify-center gap-2 h-12 rounded-lg border border-border bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-primary transition-all text-xs font-bold uppercase tracking-wide"
+                    >
+                        <ShareIcon className="w-4 h-4" />
+                        Share
+                    </button>
+                    <button
+                        onClick={handleCopyLink}
+                        className="flex items-center justify-center gap-2 h-12 rounded-lg border border-border bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-primary transition-all text-xs font-bold uppercase tracking-wide"
+                    >
+                        <LinkIcon className="w-4 h-4" />
+                        Copy Link
+                    </button>
+                </div>
+             )}
+        </div>
+    );
+}

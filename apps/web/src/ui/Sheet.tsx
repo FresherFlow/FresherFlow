@@ -5,7 +5,7 @@ import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { cva, type VariantProps } from "class-variance-authority"
 import { X } from "lucide-react"
 
-import { cn } from "@/lib/utils/utils"
+import { cn } from "@/ui/cn"
 
 const Sheet = SheetPrimitive.Root
 
@@ -42,9 +42,15 @@ const sheetVariants = cva(
         right:
           "inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:translate-x-full data-[state=open]:translate-x-0 starting:translate-x-full sm:max-w-sm",
       },
+      nav: {
+        // Full-bleed navigation drawer: own header/close inside, no panel padding.
+        true: "w-[18rem] max-w-[85vw] gap-0 p-0 sm:max-w-[18rem] [&>button]:hidden",
+        false: "",
+      },
     },
     defaultVariants: {
       side: "right",
+      nav: false,
     },
   }
 )
@@ -56,12 +62,12 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
+>(({ side = "right", nav = false, className, children, ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay />
     <SheetPrimitive.Content
       ref={ref}
-      className={cn(sheetVariants({ side }), className)}
+      className={cn(sheetVariants({ side, nav }), className)}
       {...props}
     >
       <SheetPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity [@media(hover:hover)_and_(pointer:fine)]:hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">

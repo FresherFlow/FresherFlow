@@ -9,11 +9,11 @@ import Link from 'next/link';
 import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import FunnelIcon from '@heroicons/react/24/outline/FunnelIcon';
-import JobCard from '@/features/opportunities/components/JobCard';
+import JobCard from '@/features/jobs/components/JobCard';
 import { fetchFeedIndex } from '@/lib/api/cdnFeed';
-import { readFeedCache, getOpportunityFromCache } from '@/lib/api/offline/opportunitiesFeedCache';
-import { UsernameGate } from '@/lib/components/ProfileGate';
-import { SkeletonJobCard } from '@/features/opportunities/components/OpportunitySkeletons';
+import { readFeedCache, getOpportunityFromCache } from '@/lib/cache/opportunitiesFeedCache';
+import { UsernameGate } from '@/features/auth/components/ProfileGate';
+import { SkeletonJobCard } from '@/features/jobs/components/OpportunitySkeletons';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import { Button } from '@/ui/Button';
 

@@ -2,9 +2,9 @@
 
 import { useMemo } from 'react';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
-import CategoryPage from '@/features/opportunities/components/CategoryPage';
+import CategoryPage from '@/features/jobs/components/CategoryPage';
 import { useGeolocation } from '@/hooks/useGeolocation';
-import { WalkinEventBoard } from '@/features/opportunities/components/WalkinEventBoard';
+import { WalkinEventBoard } from '@/features/jobs/components/WalkinEventBoard';
 
 interface WalkInsClientProps {
     initialData: {

@@ -37,7 +37,7 @@ export async function collectGitHubHiring(options: {
 
       if (!resp.ok) continue;
 
-      const data = await resp.json();
+      const data: any = await resp.json();
       const items = Array.isArray(data?.items) ? data.items : [];
 
       for (const item of items) {

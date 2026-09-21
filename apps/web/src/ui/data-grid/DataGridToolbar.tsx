@@ -12,7 +12,7 @@ import {
 import type { RowData, StockFeatures, Table as ReactTable } from "@tanstack/react-table"
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/ui/Popover"
-import { cn } from "@/lib/utils/utils"
+import { cn } from "@/ui/cn"
 
 const TOOLBAR_TRIGGER_STYLES =
   "h-9 px-3 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
@@ -78,7 +78,7 @@ export function DataGridFacetFilter({
   options: DataGridFacetOption[]
   selected: string[]
   onChange: (selected: string[]) => void
-  icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>
+  icon?: React.ComponentType<React.ComponentProps<typeof FunnelIcon>>
   className?: string
 }) {
   const active = selected.length > 0

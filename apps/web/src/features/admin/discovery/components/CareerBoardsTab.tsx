@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { BoltIcon } from '@heroicons/react/24/outline';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/ui/Table';
 import { PaginationControls } from '@/ui/data-table/DataTablePagination';
-import CompanyLogo from '@/ui/CompanyLogo';
+import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { PluginEntry } from '../types';
 import { cn } from '@repo/ui/utils/cn';
 
@@ -70,7 +70,7 @@ export function CareerBoardsTab({
                     <TableCell>
                       {board.hasDetailFetcher ? (
                         <span className="bg-muted/50 text-muted-foreground text-xs border border-border/40 px-1.5 py-0.5 rounded">
-                          Detail Fetcher ✓
+                          Detail Fetcher 
                         </span>
                       ) : <span />}
                     </TableCell>

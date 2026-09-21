@@ -168,16 +168,16 @@ export function ReferralBoardClient() {
                             <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <h3 className="truncate text-sm font-semibold text-foreground">{req.company}</h3>
-                                    <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase', STATUS_STYLES[req.status] ?? '')}>
+                                    <span className={cn('rounded-full px-2 py-0.5 text-xs font-semibold uppercase', STATUS_STYLES[req.status] ?? '')}>
                                         {req.status}
                                     </span>
-                                    {req.batch ? <span className="text-[11px] text-muted-foreground">{req.batch} batch</span> : null}
-                                    {req.city ? <span className="text-[11px] text-muted-foreground">· {req.city}</span> : null}
+                                    {req.batch ? <span className="text-xs text-muted-foreground">{req.batch} batch</span> : null}
+                                    {req.city ? <span className="text-xs text-muted-foreground">· {req.city}</span> : null}
                                 </div>
                                 {req.role ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{req.role}</p> : null}
                                 {req.note ? <p className="mt-2 text-sm text-foreground/90">{req.note}</p> : null}
                             </div>
-                            <span className="shrink-0 text-[11px] text-muted-foreground">{timeAgo(req.createdAt)}</span>
+                            <span className="shrink-0 text-xs text-muted-foreground">{timeAgo(req.createdAt)}</span>
                         </div>
 
                         <div className="mt-3 flex items-center justify-between">
@@ -196,14 +196,14 @@ export function ReferralBoardClient() {
                                             onClick={() => void updateStatus(req.id, ReferralRequestStatus.FULFILLED)}
                                             className="rounded-lg px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors"
                                         >
-                                            ✓ Fulfilled
+                                             Fulfilled
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => void updateStatus(req.id, ReferralRequestStatus.CLOSED)}
                                             className="rounded-lg px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted/40 transition-colors"
                                         >
-                                            ✕ Close
+                                             Close
                                         </button>
                                     </>
                                 )}
@@ -224,7 +224,7 @@ export function ReferralBoardClient() {
                                     <div key={resp.id} className="rounded-xl bg-muted/30 p-3">
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs font-semibold text-foreground">@{resp.responder.username ?? 'anon'}</span>
-                                            <span className="text-[10px] text-muted-foreground">{timeAgo(resp.createdAt)}</span>
+                                            <span className="text-xs text-muted-foreground">{timeAgo(resp.createdAt)}</span>
                                         </div>
                                         {resp.message ? <p className="mt-1 text-sm text-foreground/90">{resp.message}</p> : null}
                                         {resp.contactHandle ? (

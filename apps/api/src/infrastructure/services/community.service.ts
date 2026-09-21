@@ -319,6 +319,45 @@ export async function listComments(opportunityId: string, viewer: CommunityViewe
     return { comments: roots, total: rows.length };
 }
 
+/**
+ * Batched comment counts for feed cards.
+ * Two queries total (resolve ids, then one groupBy) — no per-card requests.
+ * Feed ids may be slugs or DB ids, so resolve them to canonical rows first.
+ * Returns { opportunityId: count } only for ids that have ≥1 visible comment.
+ */
+export async function getCommentCounts(opportunityIds: string[]): Promise<Record<string, number>> {
+    const uniqueIds = Array.from(new Set(opportunityIds.filter((id) => id && id.length <= MAX_ID_LENGTH)));
+    if (uniqueIds.length === 0) return {};
+    if (uniqueIds.length > 200) {
+        throw new AppError('Too many opportunity ids (max 200)', 400);
+    }
+
+    // Resolve requested slug-or-id values to canonical opportunity rows.
+    const rows = await prisma.opportunity.findMany({
+        where: { OR: [{ id: { in: uniqueIds } }, { slug: { in: uniqueIds } }], deletedAt: null },
+        select: { id: true, slug: true },
+    });
+    if (rows.length === 0) return {};
+
+    const grouped = await prisma.opportunityComment.groupBy({
+        by: ['opportunityId'],
+        where: { opportunityId: { in: rows.map((r) => r.id) }, deletedAt: null },
+        _count: { _all: true },
+    });
+    const countsByCanonicalId = new Map<string, number>();
+    for (const row of grouped) {
+        countsByCanonicalId.set(row.opportunityId, row._count._all);
+    }
+
+    const counts: Record<string, number> = {};
+    for (const requestedId of uniqueIds) {
+        const row = rows.find((r) => r.id === requestedId || r.slug === requestedId);
+        const count = row ? countsByCanonicalId.get(row.id) : undefined;
+        if (count && count > 0) counts[requestedId] = count;
+    }
+    return counts;
+}
+
 export async function postComment(input: {
     opportunityId: string;
     userId: string;
@@ -690,6 +729,28 @@ export async function submitJob(input: SubmitJobInput) {
         select: { opportunityId: true, opportunity: { select: { id: true, slug: true } } },
     });
     if (existingSubmission?.opportunity) {
+        // Record a MERGED history row so the contributor sees "your find, already
+        // here" in their submissions. The attribution user owns guest rows; real
+        // users own their own. The previous link's submission stays untouched.
+        const attributionUserId = await resolveSubmitAttributionUserId(input.userId);
+        await prisma.jobSubmission.create({
+            data: {
+                sourceUrl,
+                applyUrl: applyUrl ?? null,
+                title: input.title.trim(),
+                company: (input.company?.trim() || 'Community').slice(0, 200),
+                status: 'MERGED',
+                submittedById: attributionUserId,
+                opportunityId: existingSubmission.opportunity.id,
+                extractedData: {
+                    mergedIntoOpportunityId: existingSubmission.opportunity.id,
+                    submittedVia: input.submittedVia || (!input.userId ? 'community_guest' : 'community_web'),
+                    submittedById: input.userId ?? null,
+                    guest: !input.userId,
+                },
+            },
+            select: { id: true },
+        });
         return {
             existing: true,
             id: existingSubmission.opportunity.id,
@@ -874,6 +935,52 @@ export async function submitJob(input: SubmitJobInput) {
     };
 }
 
+export type SubmissionViewState = 'PENDING' | 'LIVE' | 'REJECTED' | 'MERGED';
+
+export interface MySubmissionItem {
+    id: string;
+    sourceLink: string;
+    title: string;
+    company: string | null;
+    /** Raw JobSubmissionStatus value. */
+    status: string;
+    /** Contributor-facing state derived from status + the linked opportunity. */
+    viewState: SubmissionViewState;
+    createdAt: Date;
+    mappedOpportunityId: string | null;
+    slug: string | null;
+    /** Slug of the listing this submission was folded into (MERGED state). */
+    mergedTargetSlug: string | null;
+    /** Moderator-provided rejection reason, when the submission was rejected. */
+    rejectionReason: string | null;
+}
+
+/**
+ * Derive what the contributor should see from the raw submission status plus the
+ * linked opportunity. A submission whose opportunity went live is LIVE even if the
+ * status enum still says PUBLISHED; a REJECTED submission whose opportunity is live
+ * has been approved after rejection and reads LIVE too.
+ */
+function deriveSubmissionViewState(
+    status: string,
+    opportunity: { deletedAt: Date | null; status: string } | null
+): SubmissionViewState {
+    if (opportunity && opportunity.status === 'PUBLISHED' && !opportunity.deletedAt) {
+        return 'LIVE';
+    }
+    switch (status) {
+        case 'REJECTED':
+            return 'REJECTED';
+        case 'MERGED':
+            return 'MERGED';
+        case 'PUBLISHED':
+            return 'LIVE';
+        case 'PENDING_REVIEW':
+        default:
+            return 'PENDING';
+    }
+}
+
 export async function listMySubmissions(userId: string) {
     const rows = await prisma.jobSubmission.findMany({
         where: { submittedById: userId },
@@ -886,23 +993,58 @@ export async function listMySubmissions(userId: string) {
             company: true,
             status: true,
             createdAt: true,
+            extractedData: true,
             opportunityId: true,
-            opportunity: { select: { slug: true } },
+            opportunity: { select: { slug: true, status: true, deletedAt: true } },
         },
     });
 
-    return {
-        submissions: rows.map((row) => ({
+    // Resolve merge targets: a MERGED submission's linked opportunity is the
+    // listing it was folded into. exposedData.mergedIntoOpportunityId wins when set.
+    const mergeTargetIds = rows
+        .map((row) => {
+            const data = row.extractedData as { mergedIntoOpportunityId?: unknown } | null;
+            return typeof data?.mergedIntoOpportunityId === 'string' ? data.mergedIntoOpportunityId : null;
+        })
+        .filter((id): id is string => Boolean(id) && id !== rows.find((r) => r.id)?.opportunityId);
+    const mergeTargets =
+        mergeTargetIds.length > 0
+            ? await prisma.opportunity.findMany({
+                  where: { id: { in: mergeTargetIds }, deletedAt: null },
+                  select: { id: true, slug: true },
+              })
+            : [];
+    const mergeTargetByOppId = new Map(mergeTargets.map((opp) => [opp.id, opp.slug]));
+
+    const submissions: MySubmissionItem[] = rows.map((row) => {
+        const data = row.extractedData as {
+            rejectionReason?: unknown;
+            mergedIntoOpportunityId?: unknown;
+        } | null;
+        const viewState = deriveSubmissionViewState(row.status, row.opportunity);
+        const mergedIntoId = typeof data?.mergedIntoOpportunityId === 'string' ? data.mergedIntoOpportunityId : null;
+        const mergedTargetSlug =
+            (mergedIntoId ? mergeTargetByOppId.get(mergedIntoId) ?? null : null) ?? row.opportunity?.slug ?? null;
+
+        return {
             id: row.id,
             sourceLink: row.sourceUrl,
             title: row.title,
             company: row.company,
             status: row.status,
+            viewState,
             createdAt: row.createdAt,
             mappedOpportunityId: row.opportunityId,
             slug: row.opportunity?.slug ?? null,
-        })),
-    };
+            mergedTargetSlug: viewState === 'MERGED' ? mergedTargetSlug : null,
+            rejectionReason:
+                viewState === 'REJECTED' && typeof data?.rejectionReason === 'string'
+                    ? data.rejectionReason
+                    : null,
+        };
+    });
+
+    return { submissions };
 }
 
 // ========================================
@@ -1285,6 +1427,7 @@ export async function createCommunityPost(input: {
     isAnonymous?: boolean;
     anonId?: string;
     sourceOpportunityId?: string;
+    roomId?: string | null;
 }) {
     const post = await prisma.$transaction(async (tx) => {
         const created = await tx.communityPost.create({
@@ -1297,6 +1440,7 @@ export async function createCommunityPost(input: {
                 isAnonymous: input.isAnonymous ?? false,
                 anonId: input.anonId ?? null,
                 sourceOpportunityId: input.sourceOpportunityId ?? null,
+                roomId: input.roomId ?? null,
                 status: CommunityPostStatus.ACTIVE,
             },
             select: {
@@ -1305,9 +1449,18 @@ export async function createCommunityPost(input: {
                 likesCount: true, commentsCount: true, status: true,
                 createdAt: true, updatedAt: true, expiredAt: true,
                 sourceOpportunityId: true,
+                roomId: true,
                 author: { select: COMMUNITY_POST_AUTHOR_SELECT },
             },
         });
+
+        // Bump the room's post counter when the post lands in a room
+        if (input.roomId) {
+            await tx.room.update({
+                where: { id: input.roomId },
+                data: { postCount: { increment: 1 } },
+            });
+        }
 
         return created;
     });
@@ -1323,32 +1476,25 @@ export async function createCommunityPost(input: {
 export async function voteCommunityPost(input: {
     postId: string;
     userId: string;
-    value: number;
 }) {
     const post = await prisma.communityPost.findUnique({
         where: { id: input.postId, status: CommunityPostStatus.ACTIVE },
-        select: { id: true },
+        select: { id: true, authorId: true, title: true, likesCount: true },
     });
     if (!post) throw new AppError('Post not found', 404);
 
     const existing = await prisma.communityPostVote.findUnique({
         where: { postId_userId: { postId: input.postId, userId: input.userId } },
-        select: { id: true, value: true },
+        select: { id: true },
     });
 
     return prisma.$transaction(async (tx) => {
         if (existing) {
-            if (existing.value === input.value) {
-                await tx.communityPostVote.delete({ where: { id: existing.id } });
-            } else {
-                await tx.communityPostVote.update({
-                    where: { id: existing.id },
-                    data: { value: input.value },
-                });
-            }
+            // Toggle off — un-mark helpful
+            await tx.communityPostVote.delete({ where: { id: existing.id } });
         } else {
             await tx.communityPostVote.create({
-                data: { postId: input.postId, userId: input.userId, value: input.value },
+                data: { postId: input.postId, userId: input.userId, value: 1 },
             });
         }
 
@@ -1358,15 +1504,26 @@ export async function voteCommunityPost(input: {
             _count: { _all: true },
         });
 
-        const upvotes = grouped.find((g) => g.value === 1)?._count._all ?? 0;
-        const downvotes = grouped.find((g) => g.value === -1)?._count._all ?? 0;
+        const helpfulCount = grouped.find((g) => g.value === 1)?._count._all ?? 0;
 
         await tx.communityPost.update({
             where: { id: input.postId },
-            data: { likesCount: upvotes },
+            data: { likesCount: helpfulCount },
         });
 
-        return { upvotes, downvotes, myVote: existing ? (existing.value === input.value ? null : input.value) : input.value };
+        // Notify the author on the first helpful mark (not on un-mark)
+        if (!existing && post.authorId !== input.userId) {
+            await tx.notification.create({
+                data: {
+                    userId: post.authorId,
+                    type: NotificationType.ROOM_HELPFUL,
+                    actorId: input.userId,
+                    payload: { postId: input.postId, title: post.title.slice(0, 140) },
+                },
+            });
+        }
+
+        return { helpfulCount, isHelpful: !existing };
     });
 }
 
@@ -1441,32 +1598,25 @@ export async function addCommunityPostComment(input: {
 export async function voteCommunityPostComment(input: {
     commentId: string;
     userId: string;
-    value: number;
 }) {
     const comment = await prisma.communityPostComment.findUnique({
         where: { id: input.commentId },
-        select: { id: true },
+        select: { id: true, postId: true, authorId: true, body: true, likesCount: true },
     });
     if (!comment) throw new AppError('Comment not found', 404);
 
     const existing = await prisma.communityPostVote.findUnique({
         where: { commentId_userId: { commentId: input.commentId, userId: input.userId } },
-        select: { id: true, value: true },
+        select: { id: true },
     });
 
     return prisma.$transaction(async (tx) => {
         if (existing) {
-            if (existing.value === input.value) {
-                await tx.communityPostVote.delete({ where: { id: existing.id } });
-            } else {
-                await tx.communityPostVote.update({
-                    where: { id: existing.id },
-                    data: { value: input.value },
-                });
-            }
+            // Toggle off — un-mark helpful
+            await tx.communityPostVote.delete({ where: { id: existing.id } });
         } else {
             await tx.communityPostVote.create({
-                data: { commentId: input.commentId, userId: input.userId, value: input.value },
+                data: { commentId: input.commentId, userId: input.userId, value: 1 },
             });
         }
 
@@ -1476,15 +1626,26 @@ export async function voteCommunityPostComment(input: {
             _count: { _all: true },
         });
 
-        const upvotes = grouped.find((g) => g.value === 1)?._count._all ?? 0;
-        const downvotes = grouped.find((g) => g.value === -1)?._count._all ?? 0;
+        const helpfulCount = grouped.find((g) => g.value === 1)?._count._all ?? 0;
 
         await tx.communityPostComment.update({
             where: { id: input.commentId },
-            data: { likesCount: upvotes },
+            data: { likesCount: helpfulCount },
         });
 
-        return { upvotes, downvotes, myVote: existing ? (existing.value === input.value ? null : input.value) : input.value };
+        // Notify the comment author on the first helpful mark (not on un-mark)
+        if (!existing && comment.authorId !== input.userId) {
+            await tx.notification.create({
+                data: {
+                    userId: comment.authorId,
+                    type: NotificationType.ROOM_HELPFUL,
+                    actorId: input.userId,
+                    payload: { postId: comment.postId, commentId: input.commentId, excerpt: comment.body.slice(0, 140) },
+                },
+            });
+        }
+
+        return { helpfulCount, isHelpful: !existing };
     });
 }
 
@@ -1650,7 +1811,9 @@ export async function listInterviewExperiences(
     const limit = Math.min(Math.max(options.limit ?? 20, 1), 50);
     const skip = (page - 1) * limit;
 
-    const where = { opportunityId, status: 'ACTIVE' as const };
+    // Callers may pass a slug or a /jobs/<slug> URL, not only a raw id.
+    const opportunity = await resolveOpportunity(opportunityId);
+    const where = { opportunityId: opportunity.id, status: 'ACTIVE' as const };
 
     const [experiences, total] = await Promise.all([
         prisma.interviewExperience.findMany({
@@ -1684,7 +1847,8 @@ export async function listInterviewExperiences(
 }
 
 export async function getInterviewExperienceSummary(opportunityId: string) {
-    const where = { opportunityId, status: 'ACTIVE' as const };
+    const opportunity = await resolveOpportunity(opportunityId);
+    const where = { opportunityId: opportunity.id, status: 'ACTIVE' as const };
 
     const [total, byResult, byDifficulty] = await Promise.all([
         prisma.interviewExperience.count({ where }),
@@ -1750,18 +1914,15 @@ export async function createInterviewExperience(input: {
     interviewDate?: string;
     overallNotes?: string;
 }) {
-    // Verify opportunity exists
-    const opp = await prisma.opportunity.findFirst({
-        where: { id: input.opportunityId, deletedAt: null },
-        select: { id: true },
-    });
-    if (!opp) throw new AppError('Opportunity not found', 404);
+    // Accept a raw id, a slug, or a /jobs/<slug> URL; store the canonical id so
+    // interview lists keyed by either form still find the experience.
+    const opp = await resolveOpportunity(input.opportunityId);
 
     const interviewDate = input.interviewDate ? new Date(input.interviewDate) : null;
 
     const experience = await prisma.interviewExperience.create({
         data: {
-            opportunityId: input.opportunityId,
+            opportunityId: opp.id,
             authorId: input.authorId,
             role: input.role.trim(),
             batch: input.batch ?? null,
@@ -1926,10 +2087,10 @@ export async function createApplicationUpdate(input: {
 }
 
 // ========================================
-// PHASE 3: AREAS (Persistent Communities)
+// PHASE 3: ROOMS (Persistent Communities)
 // ========================================
 
-export async function listAreas(options: {
+export async function listRooms(options: {
     page?: number;
     limit?: number;
     type?: string;
@@ -1941,10 +2102,10 @@ export async function listAreas(options: {
     const limit = Math.min(Math.max(options.limit ?? 20, 1), 50);
     const skip = (page - 1) * limit;
 
-    const where: Prisma.AreaWhereInput = { status: 'ACTIVE', isPublic: true };
+    const where: Prisma.RoomWhereInput = { status: 'ACTIVE', isPublic: true };
 
     if (options.type) {
-        where.type = options.type as Prisma.EnumAreaTypeFilter['equals'];
+        where.type = options.type as Prisma.EnumRoomTypeFilter['equals'];
     }
     if (options.search && options.search.trim().length > 0) {
         const term = options.search.trim().slice(0, 100);
@@ -1958,8 +2119,8 @@ export async function listAreas(options: {
         ? { createdAt: 'desc' as const }
         : { memberCount: 'desc' as const };
 
-    const [areas, total] = await Promise.all([
-        prisma.area.findMany({
+    const [rooms, total] = await Promise.all([
+        prisma.room.findMany({
             where,
             orderBy,
             skip,
@@ -1975,15 +2136,45 @@ export async function listAreas(options: {
                 } : {}),
             },
         }),
-        prisma.area.count({ where }),
+        prisma.room.count({ where }),
     ]);
 
+    // "Active this week" — one aggregate query over the listed rooms
+    const roomIds = rooms.map((room) => room.id);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const activeRoomIds = new Set<string>();
+    if (roomIds.length > 0) {
+        const [recentPosts, recentComments] = await Promise.all([
+            prisma.communityPost.groupBy({
+                by: ['roomId'],
+                where: { roomId: { in: roomIds }, createdAt: { gte: sevenDaysAgo }, status: 'ACTIVE' },
+                _count: { _all: true },
+            }),
+            prisma.communityPostComment.groupBy({
+                by: ['postId'],
+                where: { createdAt: { gte: sevenDaysAgo }, deletedAt: null, post: { roomId: { in: roomIds } } },
+                _count: { _all: true },
+            }),
+        ]);
+        for (const row of recentPosts) if (row.roomId) activeRoomIds.add(row.roomId);
+        if (recentComments.length > 0) {
+            const commentPostIds = recentComments.map((row) => row.postId);
+            const postsOfComments = await prisma.communityPost.findMany({
+                where: { id: { in: commentPostIds }, roomId: { in: roomIds } },
+                select: { roomId: true },
+                distinct: ['roomId'],
+            });
+            for (const row of postsOfComments) if (row.roomId) activeRoomIds.add(row.roomId);
+        }
+    }
+
     return {
-        areas: areas.map((area) => ({
-            ...area,
-            createdBy: area.createdBy ? mapCommunityPostUser(area.createdBy) : null,
-            isMember: options.userId ? (area as any).members?.length > 0 : false,
-            memberRole: options.userId ? ((area as any).members?.[0]?.role ?? null) : null,
+        rooms: rooms.map((room) => ({
+            ...room,
+            createdBy: room.createdBy ? mapCommunityPostUser(room.createdBy) : null,
+            isMember: options.userId ? (room as any).members?.length > 0 : false,
+            memberRole: options.userId ? ((room as any).members?.[0]?.role ?? null) : null,
+            lastActiveThisWeek: activeRoomIds.has(room.id),
         })),
         total,
         page,
@@ -1992,8 +2183,8 @@ export async function listAreas(options: {
     };
 }
 
-export async function getArea(slug: string, userId?: string | null) {
-    const area = await prisma.area.findUnique({
+export async function getRoom(slug: string, userId?: string | null) {
+    const room = await prisma.room.findUnique({
         where: { slug, status: 'ACTIVE' },
         include: {
             createdBy: { select: COMMUNITY_POST_AUTHOR_SELECT },
@@ -2006,11 +2197,11 @@ export async function getArea(slug: string, userId?: string | null) {
             } : {}),
         },
     });
-    if (!area) throw new AppError('Area not found', 404);
+    if (!room) throw new AppError('Room not found', 404);
 
     // Get recent posts
     const recentPosts = await prisma.communityPost.findMany({
-        where: { areaId: area.id, status: 'ACTIVE' },
+        where: { roomId: room.id, status: 'ACTIVE' },
         orderBy: { createdAt: 'desc' },
         take: 10,
         include: {
@@ -2023,8 +2214,8 @@ export async function getArea(slug: string, userId?: string | null) {
     });
 
     // Get recent members
-    const members = await prisma.areaMember.findMany({
-        where: { areaId: area.id },
+    const members = await prisma.roomMember.findMany({
+        where: { roomId: room.id },
         orderBy: { joinedAt: 'desc' },
         take: 20,
         include: {
@@ -2032,12 +2223,34 @@ export async function getArea(slug: string, userId?: string | null) {
         },
     });
 
+    // "Active this week" — members who posted or commented in the last 7 days
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const memberIds = members.map((m) => m.userId);
+    const activeThisWeekUserIds = new Set<string>();
+    if (memberIds.length > 0) {
+        const [activePosters, activeCommenters] = await Promise.all([
+            prisma.communityPost.findMany({
+                where: { roomId: room.id, authorId: { in: memberIds }, createdAt: { gte: sevenDaysAgo }, status: 'ACTIVE' },
+                select: { authorId: true },
+                distinct: ['authorId'],
+            }),
+            prisma.communityPostComment.findMany({
+                where: { authorId: { in: memberIds }, createdAt: { gte: sevenDaysAgo }, deletedAt: null, post: { roomId: room.id } },
+                select: { authorId: true },
+                distinct: ['authorId'],
+            }),
+        ]);
+        for (const row of activePosters) activeThisWeekUserIds.add(row.authorId);
+        for (const row of activeCommenters) activeThisWeekUserIds.add(row.authorId);
+    }
+
     return {
-        area: {
-            ...area,
-            createdBy: area.createdBy ? mapCommunityPostUser(area.createdBy) : null,
-            isMember: userId ? (area as any).members?.length > 0 : false,
-            memberRole: userId ? ((area as any).members?.[0]?.role ?? null) : null,
+        room: {
+            ...room,
+            createdBy: room.createdBy ? mapCommunityPostUser(room.createdBy) : null,
+            isMember: userId ? (room as any).members?.length > 0 : false,
+            memberRole: userId ? ((room as any).members?.[0]?.role ?? null) : null,
+            lastActiveThisWeek: activeThisWeekUserIds.size > 0,
         },
         recentPosts: recentPosts.map((post) => ({
             ...post,
@@ -2048,11 +2261,13 @@ export async function getArea(slug: string, userId?: string | null) {
             user: mapCommunityPostUser(m.user),
             role: m.role,
             joinedAt: m.joinedAt.toISOString(),
+            activeThisWeek: activeThisWeekUserIds.has(m.userId),
         })),
+        activeThisWeekUserIds: Array.from(activeThisWeekUserIds),
     };
 }
 
-export async function createArea(input: {
+export async function createRoom(input: {
     createdByUserId: string;
     name: string;
     description?: string;
@@ -2060,13 +2275,13 @@ export async function createArea(input: {
     type?: string;
 }) {
     const slug = slugify(input.name);
-    if (!slug) throw new AppError('Invalid area name', 400);
+    if (!slug) throw new AppError('Invalid room name', 400);
 
-    const existing = await prisma.area.findUnique({ where: { slug }, select: { id: true } });
-    if (existing) throw new AppError('An area with this name already exists', 409);
+    const existing = await prisma.room.findUnique({ where: { slug }, select: { id: true } });
+    if (existing) throw new AppError('A room with this name already exists', 409);
 
-    const area = await prisma.$transaction(async (tx) => {
-        const created = await tx.area.create({
+    const room = await prisma.$transaction(async (tx) => {
+        const created = await tx.room.create({
             data: {
                 slug,
                 name: input.name.trim(),
@@ -2082,9 +2297,9 @@ export async function createArea(input: {
         });
 
         // Auto-join the creator as admin
-        await tx.areaMember.create({
+        await tx.roomMember.create({
             data: {
-                areaId: created.id,
+                roomId: created.id,
                 userId: input.createdByUserId,
                 role: 'ADMIN',
             },
@@ -2094,32 +2309,32 @@ export async function createArea(input: {
     });
 
     return {
-        ...area,
-        createdBy: area.createdBy ? mapCommunityPostUser(area.createdBy) : null,
+        ...room,
+        createdBy: room.createdBy ? mapCommunityPostUser(room.createdBy) : null,
         isMember: true,
         memberRole: 'ADMIN',
     };
 }
 
-export async function joinArea(input: { slug: string; userId: string }) {
-    const area = await prisma.area.findUnique({
+export async function joinRoom(input: { slug: string; userId: string }) {
+    const room = await prisma.room.findUnique({
         where: { slug: input.slug, status: 'ACTIVE' },
         select: { id: true },
     });
-    if (!area) throw new AppError('Area not found', 404);
+    if (!room) throw new AppError('Room not found', 404);
 
-    const existing = await prisma.areaMember.findUnique({
-        where: { areaId_userId: { areaId: area.id, userId: input.userId } },
+    const existing = await prisma.roomMember.findUnique({
+        where: { roomId_userId: { roomId: room.id, userId: input.userId } },
         select: { id: true },
     });
     if (existing) return { joined: true, message: 'Already a member' };
 
     await prisma.$transaction(async (tx) => {
-        await tx.areaMember.create({
-            data: { areaId: area.id, userId: input.userId },
+        await tx.roomMember.create({
+            data: { roomId: room.id, userId: input.userId },
         });
-        await tx.area.update({
-            where: { id: area.id },
+        await tx.room.update({
+            where: { id: room.id },
             data: { memberCount: { increment: 1 } },
         });
     });
@@ -2127,24 +2342,24 @@ export async function joinArea(input: { slug: string; userId: string }) {
     return { joined: true };
 }
 
-export async function leaveArea(input: { slug: string; userId: string }) {
-    const area = await prisma.area.findUnique({
+export async function leaveRoom(input: { slug: string; userId: string }) {
+    const room = await prisma.room.findUnique({
         where: { slug: input.slug, status: 'ACTIVE' },
         select: { id: true },
     });
-    if (!area) throw new AppError('Area not found', 404);
+    if (!room) throw new AppError('Room not found', 404);
 
-    const existing = await prisma.areaMember.findUnique({
-        where: { areaId_userId: { areaId: area.id, userId: input.userId } },
+    const existing = await prisma.roomMember.findUnique({
+        where: { roomId_userId: { roomId: room.id, userId: input.userId } },
         select: { id: true, role: true },
     });
     if (!existing) return { left: true, message: 'Not a member' };
-    if (existing.role === 'ADMIN') throw new AppError('Admins cannot leave their own area', 400);
+    if (existing.role === 'ADMIN') throw new AppError('Admins cannot leave their own room', 400);
 
     await prisma.$transaction(async (tx) => {
-        await tx.areaMember.delete({ where: { id: existing.id } });
-        await tx.area.update({
-            where: { id: area.id },
+        await tx.roomMember.delete({ where: { id: existing.id } });
+        await tx.room.update({
+            where: { id: room.id },
             data: { memberCount: { decrement: 1 } },
         });
     });
@@ -2152,15 +2367,15 @@ export async function leaveArea(input: { slug: string; userId: string }) {
     return { left: true };
 }
 
-export async function listAreaPosts(slug: string, options: { page?: number; limit?: number; userId?: string | null } = {}) {
-    const area = await prisma.area.findUnique({ where: { slug, status: 'ACTIVE' }, select: { id: true } });
-    if (!area) throw new AppError('Area not found', 404);
+export async function listRoomPosts(slug: string, options: { page?: number; limit?: number; userId?: string | null } = {}) {
+    const room = await prisma.room.findUnique({ where: { slug, status: 'ACTIVE' }, select: { id: true } });
+    if (!room) throw new AppError('Room not found', 404);
 
     const page = options.page ?? 1;
     const limit = Math.min(Math.max(options.limit ?? 20, 1), 50);
     const skip = (page - 1) * limit;
 
-    const where = { areaId: area.id, status: 'ACTIVE' as const };
+    const where = { roomId: room.id, status: 'ACTIVE' as const };
 
     const [posts, total] = await Promise.all([
         prisma.communityPost.findMany({

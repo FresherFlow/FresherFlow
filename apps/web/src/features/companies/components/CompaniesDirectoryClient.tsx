@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import CompanyLogo from '@/ui/CompanyLogo';
+import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { Input } from '@/ui/Input';
 import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';

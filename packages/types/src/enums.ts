@@ -253,7 +253,8 @@ export enum NotificationType {
     JOB_CLOSED = 'JOB_CLOSED',
     NEW_MATCHING_JOB = 'NEW_MATCHING_JOB',
     EXPIRED_JOB = 'EXPIRED_JOB',
-    COMMENT_ON_EXPIRED = 'COMMENT_ON_EXPIRED'
+    COMMENT_ON_EXPIRED = 'COMMENT_ON_EXPIRED',
+    ROOM_HELPFUL = 'ROOM_HELPFUL'
 }
 
 export enum CommunityPostCategory {
@@ -299,7 +300,7 @@ export enum ApplicationStatus {
     NO_RESPONSE = 'NO_RESPONSE'
 }
 
-export enum AreaType {
+export enum RoomType {
     BATCH = 'BATCH',
     SKILL = 'SKILL',
     LOCATION = 'LOCATION',

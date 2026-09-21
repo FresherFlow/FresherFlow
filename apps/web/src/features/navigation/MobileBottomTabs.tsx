@@ -1,0 +1,106 @@
+'use client';
+
+import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { useContext, useEffect, useState } from 'react';
+import { AuthContext } from '@/lib/auth/AuthContext';
+import { cn } from "@/ui/cn";
+import {
+    DEFAULT_NAV_ITEMS,
+    getSpace,
+    getSpaceForPathname,
+    isSpaceItemActive,
+} from './navConfig';
+
+
+export function MobileBottomTabs() {
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const context = useContext(AuthContext);
+    const user = context?.user;
+    const [isMounted, setIsMounted] = useState(false);
+    const [isVisible, setIsVisible] = useState(true);
+
+    // Mirrors the sidebar's space model: the active space's first five
+    // destinations, or the default nav on routes belonging to no space. This
+    // replaces the retired 4-context model, so the bottom bar and the sidebar
+    // can no longer disagree about which nav you are in.
+    const spaceId = getSpaceForPathname(pathname || '/');
+    const spaceItems = spaceId
+        ? getSpace(spaceId).groups.flatMap((group) => group.items)
+        : DEFAULT_NAV_ITEMS;
+
+    // Limited to 5 so the bar cannot overflow.
+    const mobileTabs = spaceItems.slice(0, 5).map((item) => ({
+        href: item.href,
+        label: 'title' in item ? item.title : item.name,
+        icon: item.icon,
+        exact: item.exact,
+    }));
+
+    useEffect(() => { setIsMounted(true); }, []);
+
+    useEffect(() => {
+        if (!user) return;
+
+        let lastY = window.scrollY;
+
+        const handleScroll = () => {
+            const currentY = window.scrollY;
+
+            if (currentY < 64) setIsVisible(true);
+            else if (currentY > lastY + 6) setIsVisible(false);
+            else if (currentY < lastY - 6) setIsVisible(true);
+
+            lastY = currentY;
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [user]);
+
+    const isAuthRoute = pathname === '/login' || pathname === '/register' || pathname === '/choose-username';
+    // Return null on server AND first client render so SSR/CSR output matches
+    if (!isMounted || !user || isAuthRoute) return null;
+
+    return (
+        <div className={cn(
+            'lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-background/95 backdrop-blur-md border-t border-border z-50 transition-transform duration-200 select-none',
+            isVisible ? 'translate-y-0' : 'translate-y-full'
+        )}>
+            <div className="flex justify-around items-center h-full px-0">
+                {mobileTabs.map((tab) => {
+                    const isActive = isSpaceItemActive(tab, pathname || '', searchParams);
+                    const Icon = tab.icon;
+
+                    return (
+                        <Link
+                            key={tab.href}
+                            href={tab.href}
+                            onClick={(event) => {
+                                if (isActive) event.preventDefault();
+                            }}
+                            aria-current={isActive ? 'page' : undefined}
+                            className={cn(
+                                'flex flex-col items-center justify-center flex-1 h-full gap-1 active:scale-95 transition-all duration-150 ease-out',
+                                isActive ? 'text-primary' : 'text-muted-foreground'
+                            )}
+                        >
+                            <div className={cn('p-1 rounded-xl', isActive && 'bg-primary/10')}>
+                                {Icon && (
+                                    <Icon
+                                        className={cn('w-6 h-6', isActive && 'fill-primary/20')}
+                                        strokeWidth={isActive ? 2 : 1.5}
+                                    />
+                                )}
+                            </div>
+                            <span className={cn('text-xs', isActive ? 'font-semibold' : 'font-normal')}>
+                                {tab.label}
+                            </span>
+                        </Link>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}

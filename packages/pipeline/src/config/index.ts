@@ -303,7 +303,7 @@ export async function loadRoleWords(): Promise<Set<string>> {
         signal: AbortSignal.timeout(8000),
       });
       if (res.ok) {
-        const roles: string[] = await res.json();
+                const roles = (await res.json()) as string[];
         const words = new Set<string>();
         for (const role of roles) {
           for (const w of role.toLowerCase().split(/\s+/)) {

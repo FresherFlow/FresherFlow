@@ -525,7 +525,7 @@ export class FeedGeneratorService {
             });
 
             const companyNames = Array.from(
-                new Set(
+                new Set<string>(
                     collections
                         .map(c => c.company)
                         .filter((c): c is string => typeof c === 'string' && c.trim() !== '')

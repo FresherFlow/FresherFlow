@@ -1,7 +1,7 @@
 import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
-import { cn } from "@/lib/utils/utils";
+import { cn } from "@/ui/cn";
 
 /**
  * Material Design Compliant Button
@@ -32,6 +32,15 @@ const buttonVariants = cva(
                 sm: "h-10 px-4 text-sm",
                 lg: "h-14 px-8 text-lg",
                 icon: "h-12 w-12",
+                // Wide CTA sizes for empty/error state actions. Pair with label="caps".
+                cta: "h-12 px-8 py-2 text-sm",
+                ctaCompact: "h-11 px-6 py-2 text-sm",
+                ctaSmall: "h-10 px-6 py-2 text-xs",
+            },
+            label: {
+                default: "",
+                // Uppercase, letter-spaced CTA label treatment.
+                caps: "font-bold capitalize tracking-widest",
             },
         },
         defaultVariants: {
@@ -48,11 +57,11 @@ export interface ButtonProps
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-    ({ className, variant, size, asChild = false, ...props }, ref) => {
+    ({ className, variant, size, label, asChild = false, ...props }, ref) => {
         const Comp = asChild ? Slot : "button";
         return (
             <Comp
-                className={cn(buttonVariants({ variant, size }), className)}
+                className={cn(buttonVariants({ variant, size, label }), className)}
                 ref={ref}
                 {...props}
             />

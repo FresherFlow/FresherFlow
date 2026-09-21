@@ -17,36 +17,159 @@ Read `DESIGN_SYSTEM.md` before UI changes.
 
 ## Architecture
 
+### One home per file type — feature-first (Cal.com pattern)
+
+Organize by **business feature first**, not by file type. This mirrors `cal.com/packages/features` where each feature is a vertical slice owning its own components, hooks, lib, and types.
+
+A file's location is decided by **who owns it**, not what type it is. Ask: "Who owns this?" before creating a file. Pick the first row that matches.
+
+| If the file… | it lives in | It must never live in |
+|---|---|---|
+| defines a route, layout, loading, error, not-found, or metadata | `src/app/<route>/` | — |
+| is a server action owned by one route | `src/app/<route>/actions.ts` | `src/lib/`, `src/features/` |
+| is used by exactly **one** route and nothing else | `src/app/<route>/_components/` · `src/app/<route>/_hooks/` | `src/ui/`, `src/lib/`, `src/features/` |
+| is product UI, a feature hook, or feature logic | `src/features/<domain>/` | `src/ui/`, `src/lib/`, `src/hooks/` |
+| is mounted once at the app root (error boundary, toaster, theme script, page transition) | `src/features/shell/` | `src/lib/` |
+| is a generic UI primitive with **no product knowledge** | `src/ui/` | `src/features/` |
+| is a framework-agnostic reusable hook | `src/hooks/` | `src/features/`, `src/lib/` |
+| is infrastructure or I/O (API wrapper, server helper, auth, cache, config, SEO) | `src/lib/` | `src/features/`, `src/ui/` |
+| is an app-level React provider/context | `src/lib/providers/` | `src/lib/auth/`, `src/features/`, `src/ui/` |
+| reads or writes browser persistence (localStorage / sessionStorage) | `src/lib/storage/` | anywhere else |
+| is a server-only helper (DB pool, rate limit) | `src/lib/server/` | `src/features/`, `src/ui/` |
+
+**The product-knowledge test** for `src/ui/` and `src/lib/`: the file must still make sense in a
+different product. If it mentions jobs, opportunities, walk-ins, freshers, referrals, profiles,
+dashboards, contributors, or navigation, it is product code and belongs in `src/features/`.
+
+**The ownership test** (eliminates folder proliferation):
+
+- Route → `app/`
+- Job functionality → `features/opportunities/` (jobs, walk-ins, internships are one feature: opportunities)
+- Room functionality → `features/community/` 
+- Profile functionality → `features/profile/`
+- Generic UI → `ui/`
+- Generic browser hook → `hooks/`
+- Database/auth/API infrastructure → `lib/`
+
+If answer is "shared by everything" → shared code. If "used by jobs" → `features/opportunities/`. If "used by one component only" → beside that component.
+
+**When to split inside a feature** (Cal.com lesson — don't create folders for file types prematurely):
+
+```text
+# Small feature (<5 files or <300 LOC per concern) — keep flat
+features/companies/
+├── CompanyLogo.tsx
+├── CompaniesDirectoryClient.tsx
+├── companyContent.ts
+├── companySlugger.ts
+├── hooks.ts
+└── index.ts
+
+# Large feature (like opportunities, 95 files) — split is justified
+features/opportunities/
+├── components/   # UI
+├── hooks/        # feature hooks
+├── api/          # data fetching
+├── domain/       # business rules (eligibility, taxonomy, matchScore)
+├── utils/        # feature-specific helpers
+├── types.ts
+└── index.ts
+```
+
+Do not create `components/`, `hooks/`, `utils/`, `lib/`, `api/`, `domain/`, `parser/`, `seo/` folders for a small feature just because the file type exists. Split only when files actually become large. Current `features/opportunities` had 8 subfolders (`api, components, domain, hooks, lib, parser, seo, utils`) — retain only `components, hooks, api, domain, utils`.
+
+**What `lib` means** — infrastructure only, like `cal.com/packages/lib`:
+
+```text
+lib/
+├── api/        # API wrappers
+├── auth/       # auth infra
+├── cache/      # cache infra
+├── config/     # config
+├── server/     # server-only helpers
+└── storage/    # browser persistence
+```
+
+Never `lib/formatJobFeedTitle.ts`, `lib/driveTimeline.ts`, `lib/walkinMapUtils.ts` — those belong in their feature.
+
+**What `hooks` means** — genuinely generic only:
+
+```text
+hooks/
+├── useDebounce.ts
+├── useMediaQuery.ts
+├── useClickOutside.ts
+└── useResizeObserver.ts
+```
+
+`useOpportunityDetail`, `useSavedJobs`, `useProfileForm`, `useAdminOpportunities` belong beside their feature, not in global hooks.
+
+**Cal.com reference** (`scratch/repos/cal.com/packages/features`): each feature owns `components/`, `lib/`, `services/`, `repositories/`, `hooks/`, `di/` — vertical slice, not horizontal layering. `packages/ui` and `packages/lib` are only truly shared code. FresherFlow mirrors this: `src/features/<domain>/` vertical slices, `src/ui/` and `src/lib/` shared only.
+
+### Import direction — enforced by eslint
+
+```text
+app/  →  features/  →  ui/ , hooks/ , lib/
+```
+
+- `app/` may import anything.
+- `features/` may import `ui/`, `hooks/`, `lib/`.
+- `ui/` and `hooks/` may import only themselves and `lib/utils`.
+- `lib/` may **not** import `features/` — that is a back-edge. Move the shared piece down
+  (into `lib/cache`, `lib/utils`, …) or inject it from `app/`.
+- A route-private `app/<route>/components|hooks` file must not be imported from outside that
+  route. If two places need it, it belongs in `src/features/`.
+
+### Route groups
+
 | Path | Owns |
 |---|---|
-| `src/app/` | Routes, layouts, loading, error, metadata |
-| `src/features/` | Domain UI, feature hooks, and feature logic |
-| `src/ui/` | Shared presentational components |
-| `src/hooks/` | Generic utility hooks (framework-agnostic) |
-| `src/lib/` | Server helpers, API wrappers, auth, navigation, providers |
 | `src/app/(admin)/` | Admin web routes |
 | `src/app/(auth)/` | Login, signup, logout, onboarding (choose-username) |
 | `src/app/(user)/` | Authenticated user pages (dashboard, profile, settings) |
 | `src/app/(public)/` | Public SEO pages (jobs, companies, batch, deadlines) |
 
-### File organization rules
+### Naming
 
-Every file must have a clear purpose you can explain in one sentence.
+| Kind | Convention | Example |
+|---|---|---|
+| React component | `PascalCase.tsx` | `OpportunityCard.tsx` |
+| Hook | `useThing.ts` | `useSavedJobs.ts` |
+| Module, util, config | `kebab-case.ts` or `camelCase.ts` — match the folder | `listUtils.ts`, `nav-config.ts` |
+| Folder | `kebab-case` | `saved-searches` |
 
-- **Route components** live in `src/app/<route>/page.tsx`
-- **Route-specific components** live in `src/app/<route>/components/` (e.g., `(auth)/components/AuthHeader.tsx`)
-- **Feature components** live in `src/features/<domain>/components/`
-- **Feature hooks** live in `src/features/<domain>/hooks/` (e.g., `features/dashboard/hooks/useSavedJobs.ts`)
-- **Generic utility hooks** live in `src/hooks/` (e.g., `useDebounce.ts`, `useClickOutside.ts`)
-- **Shared UI** lives in `src/ui/`
-- **API wrappers** live in `src/lib/api/`
-- **Auth context** lives in `src/lib/auth/`
-- **Providers** live in `src/lib/providers/`
+One concept has one name. `AppSidebar.tsx` and `app-sidebar.tsx` in the same repo is a bug.
+`utils.ts` / `helpers.ts` / `common.ts` are banned unless the file genuinely owns one narrow
+responsibility that nothing else can name better.
 
-Do not place components at route group root — use `components/` subfolder.
-Do not mix Firebase-specific hooks with generic utilities.
+### A move is not complete until the old path is gone
 
-Do not call Prisma from this app. Do not import from `apps/api`. Use `packages/api-client`, local server helpers, and CDN helpers.
+This is the rule that keeps the tree clean. When a file moves:
+
+1. `git mv` it.
+2. Rewrite **every** importer to the new path.
+3. Delete the old path — **in the same commit**.
+
+### Migration shims are temporary by construction
+
+A shim is a file whose only body is `export … from '<new path>'`.
+
+1. It must carry a first-line comment giving the canonical path, why it still exists, and the
+   condition that deletes it.
+2. It may live for at most **one** merged PR. It is not a compatibility layer.
+3. It must not be the only public entry for a module. Barrels are permanent APIs and must be
+   named as such (`src/ui/cn.ts`, `src/lib/api/rateLimit.ts`).
+4. It must not sit in `src/ui/` re-exporting `src/features/` — that inverts the layering.
+5. A shim left in place after the PR that created it is dead code. Delete it.
+
+Check the tree with `pnpm --filter ./apps/web check:structure` — **dead shims must stay at 0**.
+
+### Boundaries this app must respect
+
+Do not call Prisma from this app. Do not import from `apps/api`. Use `packages/api-client`,
+local server helpers, and CDN helpers. Do not mix Firebase-specific hooks with generic
+utilities.
+
 
 ## Server and client component rules
 
@@ -68,7 +191,7 @@ Use `server-only` boundaries for helpers that read cookies, headers, or server e
 | Server-side API calls | `src/lib/api/server-client.ts` |
 | Client-side API calls | hooks in `src/hooks/` or wrappers in `src/lib/api/` |
 | Opportunity feed | `src/lib/api/cdnFeed.ts` |
-| Logos | `src/ui/CompanyLogo.tsx` and CDN helpers |
+| Logos | `src/features/companies/components/CompanyLogo.tsx` and CDN helpers |
 | Shared types | `packages/types` |
 | Shared business rules | Root [`AGENTS.md`](../../AGENTS.md) |
 
@@ -138,17 +261,17 @@ Client code may read only `NEXT_PUBLIC_*`. Server code may read server-only env 
 | `src/app/layout.tsx` | Root layout, providers, metadata defaults |
 | `src/app/globals.css` | Design tokens and global CSS |
 | `src/app/(auth)/components/AuthHeader.tsx` | Auth page header |
-| `src/app/(user)/components/AccountShell.tsx` | User account layout shell |
-| `src/app/(user)/layout.tsx` | User account layout (wraps with NavigationWrapper + AccountShell) |
+| `src/features/navigation/` | Sidebar, top nav, megamenu, and mobile navigation |
+| `src/app/(user)/layout.tsx` | User account layout (wraps with NavigationWrapper) |
 | `src/proxy.ts` | Request proxying and route protection |
-| `src/lib/components/ProfileGate.tsx` | AuthGate and UsernameGate components |
+| `src/features/auth/components/ProfileGate.tsx` | AuthGate and UsernameGate components |
 | `src/lib/auth/AuthContext.tsx` | Auth provider, session management, Firebase sync |
 | `src/lib/api/server-client.ts` | Server API client and cache policy |
 | `src/lib/api/cdnFeed.ts` | CDN bootstrap feed access |
 | `src/lib/api/client.ts` | Client API exports |
 | `src/features/opportunities/` | Feed, filters, cards, detail UI |
 | `src/features/dashboard/hooks/` | Dashboard-specific Firebase hooks |
-| `src/ui/CompanyLogo.tsx` | Logo rendering and fallback |
+| `src/features/companies/components/CompanyLogo.tsx` | Logo rendering and fallback |
 
 ## Standard workflow
 
@@ -176,7 +299,7 @@ Client code may read only `NEXT_PUBLIC_*`. Server code may read server-only env 
 | `AuthGate` | Redirects to `/login` if not authenticated | Any route requiring login |
 | `UsernameGate` | Redirects to `/login` or `/choose-username` | Routes needing completed profile |
 
-Import from `@/lib/components/ProfileGate`.
+Import from `@/features/auth/components/ProfileGate`.
 Do NOT use `ProfileGate` (deprecated alias for `UsernameGate`).
 Do NOT nest gate components — use one gate per page.
 

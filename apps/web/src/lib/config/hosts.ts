@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isPublicPath, isUserPath, isAuthPath, isPublicDetailPath } from "./paths";
-import { getHostRole, redirectWithMethodAwareness, resolveHosts } from "./utils";
+import { getHostRole, redirectWithMethodAwareness, resolveHosts } from "./hostResolution";
 
 export function handleHostRouting(req: NextRequest) {
     const { hostname, pathname, search } = req.nextUrl;

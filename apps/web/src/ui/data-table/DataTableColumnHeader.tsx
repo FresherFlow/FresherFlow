@@ -4,7 +4,7 @@ import type { RowData } from "@tanstack/react-table"
 import { LegacyColumn } from "@tanstack/react-table/legacy"
 import { ArrowDown, ArrowUp, ChevronsUpDown, EyeOff } from "lucide-react"
 
-import { cn } from "@/lib/utils/utils"
+import { cn } from "@/ui/cn"
 import { Button } from "@/ui/Button"
 import {
   DropdownMenu,

@@ -2,10 +2,10 @@ import type { Metadata } from 'next';
 import { fetchCompaniesMetadata, fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { slugify } from '@fresherflow/utils/slugify';
 import { CompanySlugger } from '@/features/companies/utils/companySlugger';
-import { getAtsName } from '@/features/opportunities/utils/atsSource';
-import { Breadcrumb } from '@/ui/Breadcrumb';
+import { getAtsName } from '@/features/jobs/utils/atsSource';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/ui/Breadcrumb';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
-import { HeaderPortal } from '@/lib/components/HeaderPortal';
+import { HeaderPortal } from '@/features/navigation/HeaderPortal';
 import CompaniesDirectoryClient, { CompanyDirectoryItem } from '@/features/companies/components/CompaniesDirectoryClient';
 
 export const revalidate = false;
@@ -123,7 +123,17 @@ export default async function CompaniesIndexPage() {
         <div className="bg-background font-sans">
             <div className="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 space-y-6">
                 <HeaderPortal>
-                    <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Companies' }]} />
+                    <Breadcrumb>
+                        <BreadcrumbList>
+                            <BreadcrumbItem>
+                                <BreadcrumbLink href="/">Home</BreadcrumbLink>
+                            </BreadcrumbItem>
+                            <BreadcrumbSeparator />
+                            <BreadcrumbItem>
+                                <BreadcrumbPage>Companies</BreadcrumbPage>
+                            </BreadcrumbItem>
+                        </BreadcrumbList>
+                    </Breadcrumb>
                 </HeaderPortal>
                 <CompaniesDirectoryClient companies={companies} totalJobs={totalJobs} />
             </div>

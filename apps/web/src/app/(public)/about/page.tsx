@@ -83,25 +83,25 @@ const principles = [
         number: '01',
         title: 'Apply on the official page',
         description:
-            'Every opening on FresherFlow links to the employer’s official careers page or applicant system (Workday, Greenhouse, Lever, SmartRecruiters) to apply on. We don’t claim to check every job — see who shared it, what freshers say, and what changed.',
+            "Every opening on FresherFlow links to the employer's official careers page or applicant system (Workday, Greenhouse, Lever, SmartRecruiters) to apply on. We don't claim to check every job — see who shared it, what freshers say, and what changed.",
     },
     {
         number: '02',
         title: 'Free for candidates',
         description:
-            'The entry-level job hunt in India is full of consultancies demanding ₹5,000–₹25,000 for interview rounds. FresherFlow is free for candidates. We reject paid training packages, paid interview guarantees, and selling candidate data.',
+            "The entry-level job hunt in India is full of consultancies demanding ₹5,000–₹25,000 for interview rounds. FresherFlow is free for candidates. We reject paid training packages, paid interview guarantees, and selling candidate data.",
     },
     {
         number: '03',
         title: 'Walk-in drives with dates and venues',
         description:
-            'On-site hiring drives and pool campus events across Bengaluru, Hyderabad, Pune, Chennai, Noida, and other tech hubs are shared with dates, time slots, eligibility criteria, and venue addresses from the source post. Check the official page before you travel — details can change.',
+            "On-site hiring drives and pool campus events across Bengaluru, Hyderabad, Pune, Chennai, Noida, and other tech hubs are shared with dates, time slots, eligibility criteria, and venue addresses from the source post. Check the official page before you travel — details can change.",
     },
     {
         number: '04',
         title: 'Community keeps it current',
         description:
-            'FresherFlow is built transparently with the community. Listings carry who shared them and what changed, freshers flag closed links and suggest updates, and the core client apps are open source on GitHub.',
+            "FresherFlow is built transparently with the community. Listings carry who shared them and what changed, freshers flag closed links and suggest updates, and the core client apps are open source on GitHub.",
     },
 ] as const;
 
@@ -299,7 +299,7 @@ export default function AboutPage() {
 
                 <div className="space-y-6 text-base sm:text-lg text-muted-foreground leading-relaxed">
                     <p>
-                        We started FresherFlow to build what we wished had existed when we were graduating: a community home for freshers where current openings link directly to the employer’s official page to apply on.
+                        We started FresherFlow to build what we wished had existed when we were graduating: a community home for freshers where current openings link directly to the employer's official page to apply on.
                     </p>
                 </div>
             </section>
@@ -406,7 +406,7 @@ export default function AboutPage() {
             <section className="border-t border-border bg-muted/20">
                 <div className="max-w-4xl mx-auto px-4 md:px-6 py-14 md:py-20 space-y-8">
                     <div className="space-y-3">
-                        <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Founder’s Note</p>
+                        <p className="text-xs font-mono uppercase tracking-widest text-muted-foreground">Founder's Note</p>
                         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
                             A message to every student & fresher
                         </h2>

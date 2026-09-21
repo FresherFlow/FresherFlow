@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import LogoutClient from './LogoutClient';
+import LogoutClient from './_components/LogoutClient';
 
 export const metadata: Metadata = {
     robots: { index: false, follow: false },

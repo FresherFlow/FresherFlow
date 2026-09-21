@@ -129,6 +129,64 @@ export default [
       "react-hooks/exhaustive-deps": "off"
     }
   },
+  // 3b. Web layering — the contract in apps/web/AGENTS.md.
+  // app/ → features/ → ui/, hooks/, lib/.  No back-edges.
+  //
+  // Error, not warn: `pnpm --filter ./apps/web check:structure` reports 0 violations,
+  // so a back-edge now fails lint the moment it is introduced.
+  {
+    files: ["apps/web/src/ui/**/*", "apps/web/src/hooks/**/*"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/features/*", "@/features/**"],
+              message:
+                "ui/ and hooks/ are the bottom layer and must not import features/. Move the component into features/<domain>/ instead — see apps/web/AGENTS.md.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["apps/web/src/lib/**/*"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/features/*", "@/features/**"],
+              message:
+                "lib/ is infrastructure and must not import features/ (back-edge). Move the shared piece down into lib/ (lib/cache, lib/utils, …) or inject it from app/ — see apps/web/AGENTS.md.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // A route-private app/<route>/components|hooks file is owned by that route only.
+    files: ["apps/web/src/**/*"],
+    ignores: ["apps/web/src/app/**/*"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/app/**/components/*", "@/app/**/components/**", "@/app/**/hooks/*", "@/app/**/hooks/**"],
+              message:
+                "Route-private components/hooks cannot be imported from outside their route. If two places need it, it belongs in src/features/<domain>/ — see apps/web/AGENTS.md.",
+            },
+          ],
+        },
+      ],
+    },
+  },
   // 4. API layer
   {
     files: ["apps/api/**/*"],
@@ -193,8 +251,8 @@ export default [
   },
   {
     files: [
-      "apps/web/src/lib/navigation/**",
-      "apps/web/src/lib/components/**",
+      "apps/web/src/features/navigation/**",
+      "apps/web/src/features/shell/**",
     ],
     plugins: { shadcn },
     rules: {
@@ -210,7 +268,7 @@ export default [
   // Collapsible shell tracks --sidebar-w; width / left / padding-left use
   // custom cubic-bezier(0.7,0,0,1) — intentional.
   {
-    files: ["apps/web/src/lib/navigation/AppSidebar.tsx", "apps/web/src/lib/components/NavigationWrapper.tsx", "apps/web/src/lib/navigation/TopHeaderBar.tsx"],
+    files: ["apps/web/src/features/navigation/AppSidebar.tsx", "apps/web/src/features/navigation/NavigationWrapper.tsx", "apps/web/src/features/navigation/TopHeaderBar.tsx"],
     plugins: { shadcn },
     rules: {
       "shadcn/no-arbitrary-values": "off",

@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { BriefcaseIcon, BoltIcon } from '@heroicons/react/24/outline';
 import { DataGrid, DataGridColumn } from '@/ui/data-grid/DataGrid';
-import CompanyLogo from '@/ui/CompanyLogo';
+import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { PluginEntry } from '../types';
 import { Button } from '@/ui/Button';
 import { cn } from '@repo/ui/utils/cn';

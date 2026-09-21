@@ -89,7 +89,7 @@ export function ProfileVisibilityCard() {
             </div>
             {current === 'PUBLIC' && (
                 <p className="text-xs text-muted-foreground pt-1">
-                    ⚠️ Only profiles with ≥50% completion are indexed by Google.
+                    ️ Only profiles with ≥50% completion are indexed by Google.
                 </p>
             )}
         </div>

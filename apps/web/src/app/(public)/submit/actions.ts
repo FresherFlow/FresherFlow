@@ -2,6 +2,7 @@
 
 import { cookies, headers } from 'next/headers';
 import { ApiClient, getInferredBaseUrl } from '@fresherflow/api-client';
+import type { MySubmissionsResult } from '@fresherflow/types';
 
 async function getClient() {
     const cookieStore = await cookies();
@@ -19,25 +20,14 @@ async function getClient() {
     });
 }
 
-export interface SubmissionHistoryItem {
-    id: string;
-    sourceLink: string;
-    title: string | null;
-    company: string | null;
-    status: string;
-    createdAt: string;
-    mappedOpportunityId: string | null;
-    slug: string | null;
-}
-
-export async function getSubmissionHistoryAction(_userId?: string) {
+export async function getSubmissionHistoryAction(): Promise<
+    { submissions: MySubmissionsResult['submissions'] } | { error: string }
+> {
     try {
         const client = await getClient();
-        const result = await client.request<{ submissions: SubmissionHistoryItem[] }>(
-            '/api/jobs/submissions/mine'
-        );
+        const result = await client.request<MySubmissionsResult>('/api/jobs/submissions/mine');
         return { submissions: result.submissions };
     } catch {
-        return { error: 'Failed to fetch history' };
+        return { error: 'Could not load your submissions. Try again in a moment.' };
     }
 }

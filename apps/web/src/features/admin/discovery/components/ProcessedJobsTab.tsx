@@ -23,7 +23,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/ui/Dialog";
-import { cn } from "@/lib/utils/utils";
+import { cn } from "@/ui/cn";
 import { ProcessedJob } from "../types";
 import { toast } from "react-hot-toast";
 import { DataGrid, DataGridColumn, DataGridActionsContext } from "@/ui/data-grid/DataGrid";

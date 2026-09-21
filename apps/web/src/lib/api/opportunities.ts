@@ -1,4 +1,4 @@
-import { apiClient } from './_core';
+import { apiClient } from './core';
 
 const OPPORTUNITY_CLICK_SESSION_KEY = 'ff_click_session_id';
 
@@ -27,8 +27,11 @@ function getOpportunityClickSessionId(): string {
 
 export const opportunityClicksApi = {
     trackApplyClick: (opportunityId: string, source = 'opportunity_detail', targetUrl?: string | null) =>
-        apiClient(`/api/public/opportunities/${opportunityId}/click`, {
+        apiClient(`/api/opportunities/${opportunityId}/click`, {
             method: 'POST',
+            headers: {
+                'x-platform': source,
+            },
             body: JSON.stringify({
                 source,
                 sessionId: getOpportunityClickSessionId(),

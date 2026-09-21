@@ -2,12 +2,12 @@ import { Metadata } from 'next';
 import { permanentRedirect, notFound } from 'next/navigation';
 import { logRouteResult } from '@/lib/observability';
 import { Suspense } from 'react';
-import OpportunityDetailClient from '../../jobs/[slug]/OpportunityDetailClient';
-import { OpportunityDetailSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
-import { getOpportunityPath } from '@/features/opportunities/domain/opportunityPath';
+import OpportunityDetailClient from '@/features/jobs/components/detail/OpportunityDetailClient';
+import { OpportunityDetailSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
+import { getOpportunityPath } from '@/features/jobs/domain/opportunityPath';
 import { fetchFeedIndex, fetchGovernmentFeed } from '@/lib/api/cdnFeed';
 import { OpportunityType } from '@fresherflow/types';
-import { getRelatedOpportunities } from '@/features/opportunities/utils/detailUtils';
+import { getRelatedOpportunities } from '@/features/jobs/utils/detailUtils';
 import {
     fetchOpportunityForPage,
     generateOpportunityMetadata,
@@ -15,7 +15,7 @@ import {
     generateOpportunityBreadcrumbsJsonLd,
     getExpiryState,
     ExtendedOpportunity
-} from '../../jobs/[slug]/opportunitySeo';
+} from '@/features/jobs/domain/opportunitySeo';
 
 export const revalidate = false;
 export const dynamicParams = true;

@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { PlayIcon, ServerIcon } from '@heroicons/react/24/outline';
 import { DiscoveryRun } from '../types';
-import { cn } from '@/lib/utils/utils';
+import { cn } from "@/ui/cn";
 import { DataGrid, DataGridColumn } from '@/ui/data-grid/DataGrid';
 
 interface DiscoveryRunsTabProps {

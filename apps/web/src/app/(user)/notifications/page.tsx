@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { communityApi } from '@fresherflow/api-client';
 import type { CommunityNotification } from '@fresherflow/types';
-import { UsernameGate } from '@/lib/components/ProfileGate';
+import { UsernameGate } from '@/features/auth/components/ProfileGate';
 import { ArrowLeftIcon, Cog6ToothIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
 import { cn } from '@repo/ui/utils/cn';
 

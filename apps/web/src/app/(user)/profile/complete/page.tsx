@@ -5,18 +5,18 @@ import toast from 'react-hot-toast';
 import { AcademicCapIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useRouter } from 'next/navigation';
-import { AuthGate } from '@/lib/components/ProfileGate';
+import { AuthGate } from '@/features/auth/components/ProfileGate';
 import { useProfileForm } from '@/features/profile/hooks/useProfileForm';
 import { useClickOutside } from '@/hooks/useClickOutside';
 
 // Hooks
-import { useProfileCompleteHandlers } from './hooks/useProfileCompleteHandlers';
+import { useProfileCompleteHandlers } from '@/features/profile/hooks/useProfileCompleteHandlers';
 
 // Components
-import { CompletionSidebar } from './components/CompletionSidebar';
-import { CompletionMobileHeader } from './components/CompletionMobileHeader';
-import { EducationStep } from './components/EducationStep';
-import { PreferencesStep } from './components/PreferencesStep';
+import { CompletionSidebar } from '@/features/profile/components/complete/CompletionSidebar';
+import { CompletionMobileHeader } from '@/features/profile/components/complete/CompletionMobileHeader';
+import { EducationStep } from '@/features/profile/components/complete/EducationStep';
+import { PreferencesStep } from '@/features/profile/components/complete/PreferencesStep';
 
 type StepId = 'education' | 'preferences';
 

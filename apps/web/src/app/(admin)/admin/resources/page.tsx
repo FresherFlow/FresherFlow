@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import AdminResourcesClient from './components/AdminResourcesClient';
+import AdminResourcesClient from '@/features/admin/components/AdminResourcesClient';
 import { SKILLS_METADATA_URL, COMPANIES_METADATA_URL } from '@/lib/utils/runtimeConfig';
 
 

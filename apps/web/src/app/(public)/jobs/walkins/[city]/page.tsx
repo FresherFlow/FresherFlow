@@ -2,11 +2,11 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Button } from '@/ui/Button';
-import CompanyLogo from '@/ui/CompanyLogo';
+import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { logRouteResult } from '@/lib/observability';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 import { fetchFeedIndex, fetchGovernmentFeed, fetchExpiredFeed } from '@/lib/api/cdnFeed';
-import { getNextWalkinDate, getWalkinDates } from '@/features/opportunities/utils/walkinEventUtils';
+import { getNextWalkinDate, getWalkinDates } from '@/features/jobs/utils/walkinEventUtils';
 import type { Opportunity } from '@fresherflow/types';
 
 export const revalidate = false; // on-demand only — busted via revalidateTag on publish
@@ -268,7 +268,7 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
                     <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
                         No walk-in drives listed in {cityLabel} right now.{' '}
                         <Link href="/jobs/walkins" className="font-semibold text-primary hover:underline">
-                            Browse all cities →
+                            Browse all cities ·
                         </Link>
                     </div>
                 )}

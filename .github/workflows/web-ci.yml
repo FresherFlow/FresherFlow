@@ -5,11 +5,13 @@ on:
     paths:
       - "apps/web/**"
       - "packages/**"
+      - "scripts/check-web-structure.mjs"
       - ".github/workflows/web-ci.yml"
   pull_request:
     paths:
       - "apps/web/**"
       - "packages/**"
+      - "scripts/check-web-structure.mjs"
       - ".github/workflows/web-ci.yml"
 
 permissions:
@@ -35,6 +37,14 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Typecheck web
+        run: pnpm --filter fresherflow-web typecheck
+
+      # Enforces apps/web/AGENTS.md: dead shims 0, no back-edges, no route-private
+      # leaks, no ui -> lib leaks. The count can only go down.
+      - name: Check web structure
+        run: pnpm --filter fresherflow-web check:structure:gate
 
       - name: Build web
         run: pnpm --filter fresherflow-web build

@@ -54,7 +54,7 @@ export async function loadRolesFromCdn(): Promise<string[]> {
     const CDN_URL = (process.env.NEXT_PUBLIC_CDN_URL || process.env.CDN_URL || 'https://cdn.fresherflow.in').trim().replace(/\/$/, '');
     const res = await fetch(`${CDN_URL}/api/meta/roles.json`, { signal: AbortSignal.timeout(8000) });
     if (res.ok) {
-      const roles: string[] = await res.json();
+            const roles = (await res.json()) as string[];
       if (Array.isArray(roles) && roles.length > 0) {
         return roles.slice(0, 30);
       }

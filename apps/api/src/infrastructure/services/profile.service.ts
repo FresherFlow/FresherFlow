@@ -20,6 +20,9 @@ export interface ProfileUpdateData {
     avatarUrl?: string | null;
     githubPinnedRepos?: unknown | null;
     openToRecruiters?: boolean | null;
+    expectedCtc?: number | null;
+    resumeUrl?: string | null;
+    willingToRelocate?: boolean | null;
     profilePublic?: boolean | null;
     visibility?: ProfileVisibility | null;
     educationLevel?: EducationLevel;
@@ -56,6 +59,9 @@ export interface ProfilePreferencesData {
 export interface ProfileReadinessData {
     availability?: Availability;
     skills?: string[];
+    expectedCtc?: number | null;
+    resumeUrl?: string | null;
+    willingToRelocate?: boolean | null;
 }
 
 export interface ReferralData {
@@ -149,6 +155,9 @@ export class ProfileService {
         if (profileData.avatarUrl !== undefined) updateObject.avatarUrl = profileData.avatarUrl;
         if (profileData.githubPinnedRepos !== undefined) updateObject.githubPinnedRepos = profileData.githubPinnedRepos;
         if (profileData.openToRecruiters !== undefined) updateObject.openToRecruiters = profileData.openToRecruiters;
+        if (profileData.expectedCtc !== undefined) updateObject.expectedCtc = profileData.expectedCtc;
+        if (profileData.resumeUrl !== undefined) updateObject.resumeUrl = profileData.resumeUrl === '' ? null : profileData.resumeUrl;
+        if (profileData.willingToRelocate !== undefined && profileData.willingToRelocate !== null) updateObject.willingToRelocate = profileData.willingToRelocate;
         if (profileData.profilePublic !== undefined) updateObject.profilePublic = profileData.profilePublic;
         if (profileData.visibility !== undefined && profileData.visibility !== null) updateObject.visibility = profileData.visibility;
 
@@ -321,14 +330,17 @@ export class ProfileService {
     }
 
     static async updateReadiness(userId: string, data: ProfileReadinessData): Promise<{ profile: Profile, newCompletion: number }> {
-        const { availability, skills } = data;
+        const { availability, skills, expectedCtc, resumeUrl, willingToRelocate } = data;
         const normSkills = normalizeSkills(skills);
 
         let profile = await prisma.profile.update({
             where: { userId },
             data: {
                 availability: availability,
-                skills: normSkills
+                skills: normSkills,
+                ...(expectedCtc !== undefined && { expectedCtc }),
+                ...(resumeUrl !== undefined && { resumeUrl }),
+                ...(willingToRelocate !== undefined && willingToRelocate !== null && { willingToRelocate })
             }
         });
 

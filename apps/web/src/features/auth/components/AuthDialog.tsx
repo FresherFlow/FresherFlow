@@ -104,7 +104,7 @@ export default function AuthDialog({ isOpen, onClose }: AuthDialogProps) {
 
                         {error && (
                             <div className="bg-error/10 border border-error/20 text-error px-4 py-3 rounded-lg text-xs font-bold capitalize tracking-tight italic">
-                                ❌ {error}
+                                 {error}
                             </div>
                         )}
 

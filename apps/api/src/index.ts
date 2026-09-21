@@ -46,11 +46,12 @@ import adminSocialRoutes from './routes/admin/social';
 import adminQueuesRoutes from './routes/admin/queues';
 import adminPushRoutes from './routes/admin/push';
 import adminUsersRoutes from './routes/admin/users';
+import adminRoomsRoutes from './routes/admin/rooms';
 import adminTargetsRoutes from './routes/admin/targets';
+import adminProfilesRoutes from './routes/admin/profiles';
 import healthRoutes from './routes/public/health';
 import companyRoutes from './routes/public/companies';
 import sitemapRoutes from './routes/public/sitemap';
-import opportunityClickRoutes from './routes/public/opportunityClicks';
 import cronRoutes from './routes/cron';
 import referralRoutes from './routes/referrals';
 import contributorsRoutes from './routes/public/contributors';
@@ -66,6 +67,7 @@ import { initializeQueueListeners } from './infrastructure/services/push-notific
 import adminGovernmentJobsRoutes from './routes/admin/governmentJobs';
 import adminResourcesRoutes from './routes/admin/resources';
 import publicGovernmentJobsRoutes from './routes/public/governmentJobs';
+import publicProfilesRoutes from './routes/public/profiles';
 import expireJobsRoute from './routes/pipeline/expireJobs';
 import organizationsRoutes from './routes/organizations';
 import recruiterCandidatesRoutes from './routes/recruiterCandidates';
@@ -77,7 +79,7 @@ import communityUsersRouter from './routes/community/users';
 import communityPostsRouter from './routes/community/communityPosts';
 import communityInterviewsRouter from './routes/community/interviews';
 import communityUpdatesRouter from './routes/community/updates';
-import communityAreasRouter from './routes/community/areas';
+import communityRoomsRouter from './routes/community/rooms';
 import fresherNeedsRouter from './routes/fresherNeeds';
 import ingestRouter from './routes/ingest';
 
@@ -280,7 +282,6 @@ const sessionCheckLimiter = rateLimit({
 // Apply default rate limiting
 app.use(defaultLimiter);
 if (isUserMode) {
-    app.use('/api/public', opportunityClickRoutes);
     app.use('/api/public/stats', publicStatsRoutes);
     app.use('/api/cron', cronRoutes);
     app.use('/api/pipeline', expireJobsRoute);
@@ -455,6 +456,7 @@ if (isUserMode) {
     app.use('/api/resources', resourcesRoutes);
     app.use('/api/device-token', deviceTokenRoutes);
     app.use('/api/public/government-jobs', publicGovernmentJobsRoutes);
+    app.use('/api/public/profiles', publicProfilesRoutes);
     app.use('/api/organizations', organizationsRoutes);
     app.use('/api/recruiter', recruiterCandidatesRoutes);
     app.use('/api/interests', candidateInterestsRoutes);
@@ -465,7 +467,7 @@ if (isUserMode) {
     app.use('/api/community', communityPostsRouter);
     app.use('/api/interviews', communityInterviewsRouter);
     app.use('/api/updates', communityUpdatesRouter);
-    app.use('/api/areas', communityAreasRouter);
+    app.use('/api/rooms', communityRoomsRouter);
     app.use('/api', fresherNeedsRouter);
     app.use('/api/ingest', ingestRouter);
 }
@@ -486,9 +488,11 @@ if (isAdminMode) {
     app.use('/api/admin/queues', restrictAdmin, adminQueuesRoutes);
     app.use('/api/admin/push', restrictAdmin, adminPushRoutes);
     app.use('/api/admin/users', restrictAdmin, adminUsersRoutes);
+    app.use('/api/admin/rooms', restrictAdmin, adminRoomsRoutes);
     app.use('/api/admin/government-jobs', restrictAdmin, adminGovernmentJobsRoutes);
     app.use('/api/admin/resources', restrictAdmin, adminResourcesRoutes);
     app.use('/api/admin/targets', restrictAdmin, adminTargetsRoutes);
+    app.use('/api/admin/profiles', restrictAdmin, adminProfilesRoutes);
 }
 
 // ============================================================================

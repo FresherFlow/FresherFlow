@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { withRateLimit } from '@/lib/api/rateLimit';
 
-// ⚠️  ISR WRITE SAFETY — READ BEFORE EDITING THIS FILE
+//   ISR WRITE SAFETY — READ BEFORE EDITING THIS FILE
 //
 // revalidatePath() causes 1 IMMEDIATE ISR write per call on Vercel.
 // revalidateTag(tag, 'max') marks data stale lazily — ZERO ISR writes on the call itself.

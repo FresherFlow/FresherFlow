@@ -13,7 +13,7 @@ import { Page } from 'playwright';
 import { parseJobUrl } from '@fresherflow/parser';
 import { CANONICAL_CITIES_MAP } from '@fresherflow/parser/metadata';
 import { PLUGIN_REGISTRY } from '@fresherflow/plugins';
-import { extractAtsJobId } from './detector.js';
+import { extractAtsBoard, extractAtsJobId } from './detector.js';
 
 /**
  * Normalizes raw ATS location strings to canonical city names.
@@ -289,24 +289,38 @@ export async function extractNativeAtsData(
             }
         }
 
-        // 2. Identify which ATS registry key this job belongs to using parseJobUrl or direct registry match
+        // 2. Identify which ATS registry key this job belongs to.
+        //    Order: valid source tag → parseJobUrl → extractAtsBoard (URL shape) → host heuristics.
+        //    A source tag with no adapter (e.g. 'telegram', 'unstop', 'walkin') must not block
+        //    URL-based detection — an unknown source key used to short-circuit the dispatch and
+        //    the job fell to the generic scrape with no structured fields.
         let providerKey = '';
-        if (source) {
-            providerKey = source.toLowerCase().replace(/^ats_/, '');
+        const sourceKey = source ? source.toLowerCase().replace(/^ats_/, '') : '';
+        if (sourceKey && PLUGIN_REGISTRY[sourceKey]) {
+            providerKey = sourceKey;
         }
 
         if (!providerKey) {
             const parsed = parseJobUrl(url);
             if (parsed && parsed.adapter) {
                 providerKey = parsed.adapter.toLowerCase().replace(/^company-/, '');
-            } else {
-                const hostName = host.replace(/\.[a-z]+$/, '').toLowerCase();
-                if (PLUGIN_REGISTRY[hostName]) providerKey = hostName;
-                else if (host.includes('linkedin')) providerKey = 'linkedin';
-                else if (host.includes('naukri')) providerKey = 'naukri';
-                else if (host.includes('internshala')) providerKey = 'internshala';
-                else if (host.includes('wellfound')) providerKey = 'wellfound';
             }
+        }
+
+        if (!providerKey) {
+            const board = extractAtsBoard(url);
+            if (board && PLUGIN_REGISTRY[board.provider]) {
+                providerKey = String(board.provider);
+            }
+        }
+
+        if (!providerKey) {
+            const hostName = host.replace(/\.[a-z]+$/, '').toLowerCase();
+            if (PLUGIN_REGISTRY[hostName]) providerKey = hostName;
+            else if (host.includes('linkedin')) providerKey = 'linkedin';
+            else if (host.includes('naukri')) providerKey = 'naukri';
+            else if (host.includes('internshala')) providerKey = 'internshala';
+            else if (host.includes('wellfound')) providerKey = 'wellfound';
         }
 
         // 3. Dispatch to @fresherflow/plugins Registry

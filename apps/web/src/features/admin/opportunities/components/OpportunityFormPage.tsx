@@ -25,8 +25,8 @@ import Link from 'next/link';
 // Hooks & Utils
 import { useOpportunityForm } from '../useOpportunityForm';
 import { GOVERNMENT_JOB_TEMPLATE, INTERNSHIP_TEMPLATE, JOB_TEMPLATE, WALKIN_TEMPLATE } from '../jsonTemplates';
-import { useOpportunityFormDerived } from '@/app/(admin)/admin/opportunities/create/hooks/useOpportunityFormDerived';
-import { useOpportunityFormHandlers } from '@/app/(admin)/admin/opportunities/create/hooks/useOpportunityFormHandlers';
+import { useOpportunityFormDerived } from '@/features/admin/opportunities/hooks/useOpportunityFormDerived';
+import { useOpportunityFormHandlers } from '@/features/admin/opportunities/hooks/useOpportunityFormHandlers';
 
 export type OpportunityFormPageProps = {
     mode?: 'create' | 'edit';

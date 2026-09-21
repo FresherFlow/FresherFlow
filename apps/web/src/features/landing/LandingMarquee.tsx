@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 /**
  * Announcement marquee at the top of the landing page (mock: dark strip with
- * mono facts separated by ◆). Feed facts come from the server; /api/stats is
+ * mono facts separated by ·). Feed facts come from the server; /api/stats is
  * fetched here and handed to the parent via onStats so the numbers can be
  * rendered on the page (LiveStatsBox) — NOT in the strip itself.
  *
@@ -41,7 +41,7 @@ function formatAge(date: Date): string {
     return `${Math.floor(hours / 24)}d ago`;
 }
 
-import { useMarqueeHidden } from '@/lib/navigation/useMarqueeHidden';
+import { useMarqueeHidden } from '@/hooks/useMarqueeHidden';
 
 export function LandingMarquee({ newToday, refreshedAt, walkins, onStats }: LandingMarqueeProps) {
     const hidden = useMarqueeHidden(true);
@@ -68,21 +68,21 @@ export function LandingMarquee({ newToday, refreshedAt, walkins, onStats }: Land
     const items = [
         newToday > 0 ? (
             <span key="new">
-                ◆ <b className="font-semibold text-[var(--ff-accent)]">{newToday} new opportunities</b> posted today
+                · <b className="font-semibold text-[var(--ff-accent)]">{newToday} new opportunities</b> posted today
             </span>
         ) : (
-            <span key="new-alt">◆ Community-verified openings, refreshed on publish</span>
+            <span key="new-alt">· Community-verified openings, refreshed on publish</span>
         ),
-        <span key="age">◆ Board refreshed {refreshedAt ? formatAge(refreshedAt) : 'recently'}</span>,
+        <span key="age">· Board refreshed {refreshedAt ? formatAge(refreshedAt) : 'recently'}</span>,
         walkins > 0 ? (
             <span key="walkins">
-                ◆ Walk-in drives this week: <b className="font-semibold text-[var(--ff-accent)]">{walkins}</b>
+                · Walk-in drives this week: <b className="font-semibold text-[var(--ff-accent)]">{walkins}</b>
             </span>
         ) : (
-            <span key="walkins-alt">◆ Direct official apply links — zero redirects</span>
+            <span key="walkins-alt">· Direct official apply links — zero redirects</span>
         ),
-        <span key="free">◆ Free for freshers, forever</span>,
-        <span key="checked">◆ Every link checked daily</span>,
+        <span key="free">· Free for freshers, forever</span>,
+        <span key="checked">· Every link checked daily</span>,
     ];
 
     const half = [...items, ...items, ...items];

@@ -162,7 +162,7 @@ export function SavedSearchesClient() {
                                 onClick={() => toggleAlert(s)}
                                 className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
                                     s.alertEnabled
-                                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                        ? 'bg-success/10 text-success'
                                         : 'bg-muted/40 text-muted-foreground'
                                 }`}
                             >

@@ -8,8 +8,8 @@ import BookmarkSolidIcon from '@heroicons/react/24/solid/BookmarkIcon';
 import PaperAirplaneIcon from '@heroicons/react/24/outline/PaperAirplaneIcon';
 import ChevronDownIcon from '@heroicons/react/24/outline/ChevronDownIcon';
 import { ExternalLink, PlayCircle, FileText, Compass, FolderOpen, Globe } from 'lucide-react';
-import { SkillPill } from '@/ui/SkillPill';
-import CompanyLogo from '@/ui/CompanyLogo';
+import { SkillPill } from '@/features/jobs/components/SkillPill';
+import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { promptLoginToast } from '@/lib/utils/toastUtils';
 

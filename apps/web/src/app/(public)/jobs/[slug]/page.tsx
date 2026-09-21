@@ -3,9 +3,9 @@ import { Metadata } from 'next';
 import { permanentRedirect, notFound } from 'next/navigation';
 import { logRouteResult } from '@/lib/observability';
 import { Suspense } from 'react';
-import OpportunityDetailClient from './OpportunityDetailClient';
-import { OpportunityDetailSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
-import { getOpportunityPath } from '@/features/opportunities/domain/opportunityPath';
+import OpportunityDetailClient from '@/features/jobs/components/detail/OpportunityDetailClient';
+import { OpportunityDetailSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
+import { getOpportunityPath } from '@/features/jobs/domain/opportunityPath';
 import {
     fetchOpportunityForPage,
     generateOpportunityMetadata,
@@ -14,9 +14,9 @@ import {
     getExpiryState,
     getTypeHubPath,
     ExtendedOpportunity
-} from './opportunitySeo';
+} from '@/features/jobs/domain/opportunitySeo';
 import { fetchGovernmentFeed, fetchFeedIndex } from '@/lib/api/cdnFeed';
-import { getRelatedOpportunities, getValidDirectoryLinks } from '@/features/opportunities/utils/detailUtils';
+import { getRelatedOpportunities, getValidDirectoryLinks } from '@/features/jobs/utils/detailUtils';
 import {
     buildTaxonomyRegistry,
     resolveTaxonomySlug,
@@ -25,11 +25,11 @@ import {
     matchTaxonomy,
     assertRegistryJobSlugCollision,
     TaxonomyRegistry,
-} from '@/features/opportunities/lib/taxonomyRegistry';
-import { TopicBoardPage } from '@/features/opportunities/components/TopicBoardPage';
+} from '@/features/jobs/domain/taxonomy';
+import { TopicBoardPage } from '@/features/jobs/components/TopicBoardPage';
 import { truncateTitleByPixels, truncateDescription } from '@/lib/seo/seoMetrics';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
-import { FeedPageSkeleton } from '@/features/opportunities/components/OpportunitySkeletons';
+import { FeedPageSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
 
 
 /** Returns true for errors thrown by notFound() or redirect()/permanentRedirect() in Next.js 15+/16. */

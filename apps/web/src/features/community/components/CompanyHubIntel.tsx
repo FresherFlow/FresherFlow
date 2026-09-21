@@ -97,7 +97,7 @@ export function CompanyHubClient({ companyName }: { companyName: string }) {
                         <div key={e.id} className="rounded-lg bg-muted/30 p-3">
                             <div className="flex items-center justify-between gap-2">
                                 <span className="text-sm font-semibold text-foreground">{e.role}</span>
-                                <span className="text-[10px] text-muted-foreground">{timeAgo(e.createdAt)}</span>
+                                <span className="text-xs text-muted-foreground">{timeAgo(e.createdAt)}</span>
                             </div>
                             <p className="mt-1 text-xs text-muted-foreground">
                                 {e.batch ? `${e.batch} batch · ` : ''}

@@ -6,7 +6,7 @@ import {
  XMarkIcon,
  ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
-import { cn } from '@/lib/utils/utils';
+import { cn } from "@/ui/cn";
 import { toast } from 'react-hot-toast';
 
 import {

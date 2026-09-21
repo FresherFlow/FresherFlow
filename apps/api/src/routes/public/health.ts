@@ -1,7 +1,5 @@
 import express, { Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
-import fs from 'fs';
-import path from 'path';
 import prisma from '../../infrastructure/database/prisma';
 import { redis } from '@fresherflow/database';
 
@@ -57,24 +55,17 @@ router.get('/health/deep', healthLimiter, async (req: Request, res: Response) =>
 
 /**
  * @route   GET /api/stats
- * @desc    Landing page stats (Served from STATIC to save Neon compute)
+ * @desc    Landing page stats. Counters derive from the same query as the
+ *          public feed so the homepage number can never drift from what
+ *          /jobs actually returns. Served live; no static cache file.
  */
 router.get('/stats', healthLimiter, async (req: Request, res: Response) => {
     try {
-        const statsPath = path.join(process.cwd(), 'public', 'stats.json');
-
-        // Serve static if exists (Zero-DB)
-        if (fs.existsSync(statsPath)) {
-            const data = fs.readFileSync(statsPath, 'utf8');
-            res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
-            return res.json(JSON.parse(data));
-        }
-
-        // Fallback to DB only if static file is missing
         const count = await prisma.opportunity.count({
             where: { status: 'PUBLISHED', deletedAt: null },
         });
-        res.json({ opportunities: count, fallback: true });
+        res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
+        res.json({ opportunities: count });
     } catch {
         res.json({ opportunities: 0 });
     }

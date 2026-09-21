@@ -316,8 +316,13 @@ async function run(): Promise<void> {
                 let atsContent: { title: string; text: string; html: string; externalApplyUrl?: string | null } = { title: '', text: '', html: '', externalApplyUrl: null };
                 let nativeData = null;
 
-                // Priority 1: Pre-supplied ATS text from discovery
-                if ((job.atsText && job.atsText.length > 50) || (job.description && job.description.length > 50)) {
+                // Priority 1: Pre-supplied ATS text from discovery.
+                // Only trust discovery text over the ATS adapters when it is genuinely rich AND
+                // the row already knows its company. A thin (51-500 char) or company-less discovery
+                // listing used to short-circuit the adapter dispatch entirely, so structured
+                // company/location from the plugins never filled — the main source of blank fields.
+                const discoveryTextLength = Math.max((job.atsText || '').length, (job.description || '').length);
+                if (discoveryTextLength > 500 && job.company) {
                     atsContent.text = job.atsText || job.description;
                     atsContent.title = job.title;
                     console.log(`[Discovery Content] ${atsContent.text.length} chars. Skipping browser + native API.`);
@@ -341,7 +346,7 @@ async function run(): Promise<void> {
                         continue;
                     }
 
-                    if (nativeData && (nativeData.html.length > 200 || nativeData.text.length > 200)) {
+                    if (nativeData && (nativeData.html.length > 200 || nativeData.text.length > 200 || nativeData.title)) {
                         atsContent = { title: nativeData.title, text: nativeData.text, html: nativeData.html };
                         console.log(`[Native ATS API] ${source || 'detected'}: ${atsContent.text.length} chars.`);
                     } else {
@@ -353,7 +358,7 @@ async function run(): Promise<void> {
 
                             nativeData = await extractNativeAtsData(job.applyLink, source, page, companySlug);
 
-                            if (nativeData && (nativeData.html.length > 200 || nativeData.text.length > 200)) {
+                            if (nativeData && (nativeData.html.length > 200 || nativeData.text.length > 200 || nativeData.title)) {
                                 atsContent = { title: nativeData.title, text: nativeData.text, html: nativeData.html };
                                 console.log(`[ATS Adapter] ${source || 'detected'}: ${atsContent.text.length} chars.`);
                             } else {
@@ -362,6 +367,12 @@ async function run(): Promise<void> {
                                 if (blocked || atsContent.text.length < 600) {
                                     console.log(`Generic scrape thin/blocked (${atsContent.text.length} chars).`);
                                     atsContent.title = job.aggregatorTitle || job.title;
+                                    // Fix A floor: thin-discovery rows skipped Priority 1, so keep whatever
+                                    // description discovery captured instead of dropping it on a thin scrape.
+                                    const discoveryText = job.atsText || job.description || '';
+                                    if (discoveryText.length > atsContent.text.length) {
+                                        atsContent.text = discoveryText;
+                                    }
                                 } else {
                                     console.log(`Generic Playwright succeeded (${atsContent.text.length} chars).`);
                                 }
@@ -378,9 +389,13 @@ async function run(): Promise<void> {
                 const rawText = atsContent.text || '';
                 const textForLlm = trimForLlm(rawText);
 
+                // Fix C: an adapter can return a valid structured job with a short description.
+                // Don't drop it when the structured identity (title + company/locations) is present.
+                const hasStructuredNativeIdentity = !!nativeData?.title &&
+                    (!!nativeData?.company || (nativeData?.locations?.length ?? 0) > 0);
                 if (!textForLlm || textForLlm.length < 50) {
-                    if (job.title && job.company && job.applyLink) {
-                        console.log(`[Structured Discovery] Proceeding with direct metadata for ${job.title} @ ${job.company}`);
+                    if ((job.title && job.company && job.applyLink) || hasStructuredNativeIdentity) {
+                        console.log(`[Structured Metadata] Proceeding for ${nativeData?.title || job.title} @ ${nativeData?.company || job.company}`);
                     } else {
                         console.error('Insufficient job description text obtained.');
                         failureList.push({ url: job.applyLink, reason: 'Insufficient page text extracted' });

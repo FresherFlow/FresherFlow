@@ -1,6 +1,6 @@
 import { ArrowDownTrayIcon, DevicePhoneMobileIcon, CheckBadgeIcon, ClockIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { APP_LINKS } from '@/lib/config/links';
-import DownloadMockup from '@/lib/layout/DownloadMockup';
+import DownloadMockup from '@/features/landing/DownloadMockup';
 import { Button } from '@/ui/Button';
 
 export const metadata = {

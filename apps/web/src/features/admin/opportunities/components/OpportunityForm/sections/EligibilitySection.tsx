@@ -85,7 +85,7 @@ export function EligibilitySection({
                             }
                         }}
                         options={commonDegrees.map(deg => ({
-                            label: `${allowedDegrees.includes(deg) ? '✓ ' : ''}${getDegreeLabel(deg)}`,
+                            label: `${allowedDegrees.includes(deg) ? ' ' : ''}${getDegreeLabel(deg)}`,
                             value: deg
                         }))}
                     />
@@ -94,7 +94,7 @@ export function EligibilitySection({
                             {allowedDegrees.map(deg => (
                                 <span key={deg} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-primary text-primary-foreground">
                                     {getDegreeBadgeLabel(deg)}
-                                    <button type="button" onClick={() => handleDegreeToggle(deg)} className="hover:text-error ml-0.5">×</button>
+                                    <button type="button" onClick={() => handleDegreeToggle(deg)} className="hover:text-error ml-0.5">–</button>
                                 </span>
                             ))}
                         </div>

@@ -1,11 +1,11 @@
 "use client";
 
-import { cn } from "@/lib/utils/utils";
+import { cn } from "@/ui/cn";
 import Image, { ImageProps } from "next/image";
 import { memo, useEffect, useState, SyntheticEvent, useRef } from "react";
 
 // Helps prevent flickering from re-rendering
-export const BlurImage = memo((props: ImageProps) => {
+export const BlurImage = memo((props: Omit<ImageProps, 'key'>) => {
   const [loading, setLoading] = useState(true);
   const [src, setSrc] = useState(props.src);
   const imgRef = useRef<HTMLImageElement>(null);

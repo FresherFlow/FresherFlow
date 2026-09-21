@@ -29,6 +29,12 @@ router.post('/:id/click', async (req: Request, res: Response, next: NextFunction
 
         if (!opportunity) throw new AppError('Opportunity not found', 404);
 
+        // Prefer the explicit body source sent by web/mobile clients, then the
+        // platform header, then a neutral fallback.
+        const body = (req.body || {}) as { source?: unknown; sessionId?: unknown };
+        const source = String(body.source || req.headers['x-platform'] || 'unknown').slice(0, 100);
+        const sessionId = String(body.sessionId || '').slice(0, 100) || undefined;
+
         // Update Engagement Counters (Item 160 in plan)
         await updateOpportunityEngagement(opportunity.id, 'click');
 
@@ -38,7 +44,8 @@ router.post('/:id/click', async (req: Request, res: Response, next: NextFunction
             type: 'CLICK_APPLY',
             opportunityId: opportunity.id,
             userId: req.userId || undefined,
-            source: (req.headers['x-platform'] as string) || 'unknown'
+            sessionId,
+            source
         });
 
         return res.json({ success: true });

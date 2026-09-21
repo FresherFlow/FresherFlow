@@ -19,6 +19,7 @@ import {
     communityReadLimiter,
     resolveOpportunity,
     listComments,
+    getCommentCounts,
     postComment,
     voteComment,
     deleteComment,
@@ -53,6 +54,26 @@ const asyncHandler =
 // ========================================
 // Comments
 // ========================================
+
+/**
+ * GET /api/jobs/comment-counts?ids=a,b,c
+ * Batched comment totals for feed cards. Public, cacheable 60s.
+ * Must be declared BEFORE /:id/comments so 'comment-counts' is not parsed as :id.
+ */
+router.get(
+    '/comment-counts',
+    communityReadLimiter,
+    asyncHandler(async (req: Request, res: Response) => {
+        const raw = String(req.query.ids || '');
+        if (raw.length > 10000) {
+            throw new AppError('ids query too long', 400);
+        }
+        const ids = raw.split(',').map((s) => s.trim()).filter(Boolean).slice(0, 200);
+        const counts = await getCommentCounts(ids);
+        res.setHeader('Cache-Control', 'public, max-age=60');
+        return res.json({ counts });
+    })
+);
 
 router.get(
     '/:id/comments',
@@ -189,9 +210,15 @@ router.post(
             ...body
         } = req.body as Record<string, unknown>;
         void _honeypot;
-        const result = await submitJob({ userId: memberId, ...(body as object) } as Parameters<
-            typeof submitJob
-        >[0]);
+        // Public web shares are queued for moderation, never auto-published:
+        // the contribute/submit UI promises a review step before a listing goes
+        // live. `published: false` creates a DRAFT opportunity + PENDING_REVIEW
+        // submission that an admin approves via the community moderation queue.
+        const result = await submitJob({
+            userId: memberId,
+            ...(body as object),
+            published: false,
+        } as Parameters<typeof submitJob>[0]);
         return res.status(result.existing ? 200 : 201).json(result);
     })
 );

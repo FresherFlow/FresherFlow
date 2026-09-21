@@ -1,4 +1,4 @@
-import { apiClient } from './_core';
+import { apiClient } from './core';
 
 export type CandidateSearchQuery = {
     skill?: string;
@@ -88,5 +88,13 @@ export async function saveCandidateToPool(candidateId: string): Promise<{ succes
 export async function removeSavedCandidateFromPool(candidateId: string): Promise<{ success: boolean }> {
     return apiClient<{ success: boolean }>(`/api/recruiter/saved-candidates/${candidateId}`, {
         method: 'DELETE',
+    });
+}
+
+/** Request an intro on a public /u/ profile (works signed-in; anonymous form lives on the profile page). */
+export async function requestIntro(username: string, candidateId: string, message?: string): Promise<{ success: boolean; message?: string }> {
+    return apiClient<{ success: boolean; message?: string }>(`/api/public/profiles/${encodeURIComponent(username)}/intro-request`, {
+        method: 'POST',
+        body: JSON.stringify({ candidateId, message: message || undefined }),
     });
 }

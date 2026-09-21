@@ -98,7 +98,7 @@ export function AtsAdaptersTab({
        </span>
        {adapter.hasDetailFetcher && (
         <span className="bg-muted/60 text-muted-foreground text-xs border border-border/40 px-1.5 py-0.5 rounded">
-         Detail Fetcher ✓
+         Detail Fetcher 
         </span>
        )}
       </div>

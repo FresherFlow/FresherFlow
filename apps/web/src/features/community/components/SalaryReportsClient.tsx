@@ -121,21 +121,21 @@ export function SalaryReportsClient() {
             {data && data.stats.count > 0 && (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                     <div className="rounded-2xl border border-border p-3 text-center">
-                        <p className="text-[11px] uppercase text-muted-foreground">Reports</p>
+                        <p className="text-xs uppercase text-muted-foreground">Reports</p>
                         <p className="text-lg font-bold tabular-nums text-foreground">{data.stats.count}</p>
                     </div>
                     <div className="rounded-2xl border border-border p-3 text-center">
-                        <p className="text-[11px] uppercase text-muted-foreground">Avg CTC</p>
+                        <p className="text-xs uppercase text-muted-foreground">Avg CTC</p>
                         <p className="text-lg font-bold tabular-nums text-foreground">{formatLpa(data.stats.avgTotal)}</p>
                     </div>
                     <div className="rounded-2xl border border-border p-3 text-center">
-                        <p className="text-[11px] uppercase text-muted-foreground">Range</p>
+                        <p className="text-xs uppercase text-muted-foreground">Range</p>
                         <p className="text-sm font-bold tabular-nums text-foreground">
                             {formatLpa(data.stats.minTotal)} – {formatLpa(data.stats.maxTotal)}
                         </p>
                     </div>
                     <div className="rounded-2xl border border-border p-3 text-center">
-                        <p className="text-[11px] uppercase text-muted-foreground">Avg in-hand</p>
+                        <p className="text-xs uppercase text-muted-foreground">Avg in-hand</p>
                         <p className="text-sm font-bold tabular-nums text-foreground">{formatInHand(data.stats.avgInHand)}</p>
                     </div>
                 </div>
@@ -168,20 +168,20 @@ export function SalaryReportsClient() {
                                 <h3 className="truncate text-sm font-semibold text-foreground">
                                     {r.company} · {r.role}
                                 </h3>
-                                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                <p className="mt-0.5 text-xs text-muted-foreground">
                                     {r.batch ? `${r.batch} batch` : 'Fresher'}
                                     {r.city ? ` · ${r.city}` : ''} · {r.reportType === 'OFFER' ? 'Offer' : 'Current CTC'}
                                 </p>
                             </div>
                             <div className="shrink-0 text-right">
                                 <p className="text-base font-bold tabular-nums text-foreground">{formatLpa(r.ctcTotal)}</p>
-                                <p className="text-[11px] text-muted-foreground">{formatInHand(r.inHandMonthly)}</p>
+                                <p className="text-xs text-muted-foreground">{formatInHand(r.inHandMonthly)}</p>
                             </div>
                         </div>
 
                         <div className="mt-2 flex flex-wrap gap-1.5">
                             {r.bondMonths != null && r.bondMonths > 0 && (
-                                <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-400">
+                                <span className="rounded-full bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning">
                                     {r.bondMonths}-month bond
                                 </span>
                             )}
@@ -191,7 +191,7 @@ export function SalaryReportsClient() {
                         </div>
 
                         <div className="mt-3 flex items-center justify-between">
-                            <span className="text-[11px] text-muted-foreground">
+                            <span className="text-xs text-muted-foreground">
                                 by <span className="font-medium text-foreground/80">@{r.author.username ?? 'anon'}</span>
                             </span>
                             <button

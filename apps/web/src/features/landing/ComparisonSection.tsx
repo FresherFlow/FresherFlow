@@ -1,7 +1,7 @@
 /**
  * "Job boards list. Freshers confirm." — matches the accepted mock:
  * white surface band, two hairline-divided columns with 5 points each,
- * mono uppercase column tags (gray vs orange), ✕/✓ mono icons.
+ * mono uppercase column tags (gray vs orange), / mono icons.
  */
 
 const ELSE = [
@@ -47,7 +47,7 @@ export function ComparisonSection() {
                                     className="flex items-start gap-3 border-t border-border py-[13px] text-[14.5px] text-muted-foreground first:border-t-0"
                                 >
                                     <span aria-hidden className="font-record font-semibold text-muted-foreground/60">
-                                        ✕
+                                        
                                     </span>
                                     {t}
                                 </li>
@@ -65,7 +65,7 @@ export function ComparisonSection() {
                                     className="flex items-start gap-3 border-t border-border py-[13px] text-[14.5px] text-foreground first:border-t-0"
                                 >
                                     <span aria-hidden className="font-record font-semibold text-[var(--color-signal-live)]">
-                                        ✓
+                                        
                                     </span>
                                     {t}
                                 </li>

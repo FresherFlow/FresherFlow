@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { authApi, UnauthorizedError, clearUserTokens, setUserTokens } from '@/lib/api/client';
-import { clearUnreadCache } from '@/features/notifications/hooks/useUnreadNotifications';
+import { clearUnreadCache } from '@/lib/cache/unreadCount';
 import { User, Profile } from '@fresherflow/types';
 
 interface AuthContextType {

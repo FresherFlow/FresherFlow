@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import DashboardClient from './DashboardClient';
+import DashboardClient from './_components/DashboardClient';
 import { fetchFeedIndex } from '@/lib/api/cdnFeed';
 
 export const metadata: Metadata = {

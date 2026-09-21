@@ -140,12 +140,9 @@ export async function generateAndUploadOgImage(opportunity: OgOpportunity): Prom
                 type: 'div', props: { style: { display: 'flex', borderRadius: 12, padding: '16px 28px', background: 'rgba(239,68,68,0.16)', border: '1px solid rgba(239,68,68,0.35)', fontSize: 24, fontWeight: 700, color: '#fca5a5' }, children: urgency }
             });
         }
-
-        bottomBadges.push({
-            type: 'div', props: { style: { display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }, children: [
-                { type: 'div', props: { style: { width: 12, height: 12, borderRadius: 999, background: '#4ade80', display: 'flex' } } },
-                { type: 'div', props: { style: { fontSize: 22, fontWeight: 600, color: 'rgba(245,247,248,0.32)' }, children: `Verified · ${new URL(getPublicSiteUrl()).hostname}` } }
-            ]}
+bottomBadges.push({
+            type: 'div',
+            props: { style: { display: 'flex', borderRadius: 12, padding: '16px 28px', background: 'rgba(245,247,248,0.07)', border: '1px solid rgba(245,247,248,0.12)', fontSize: 22, fontWeight: 600, color: 'rgba(245,247,248,0.32)' }, children: new URL(getPublicSiteUrl()).hostname }
         });
 
         const element = {
@@ -282,12 +279,9 @@ export async function generateAndUploadHubOgImage(
             { type: 'div', props: { style: { display: 'flex', borderRadius: 12, padding: '16px 28px', background: badgeBg, border: `1px solid ${badgeBorder}`, fontSize: 24, fontWeight: 700, letterSpacing: '0.07em', color: badgeColor }, children: type.toUpperCase() } },
             { type: 'div', props: { style: { display: 'flex', borderRadius: 12, padding: '16px 28px', background: 'rgba(245,247,248,0.07)', border: '1px solid rgba(245,247,248,0.11)', fontSize: 24, fontWeight: 600, color: 'rgba(245,247,248,0.65)' }, children: 'India & Remote' } }
         ];
-
-        bottomBadges.push({
-            type: 'div', props: { style: { display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }, children: [
-                { type: 'div', props: { style: { width: 12, height: 12, borderRadius: 999, background: '#4ade80', display: 'flex' } } },
-                { type: 'div', props: { style: { fontSize: 22, fontWeight: 600, color: 'rgba(245,247,248,0.32)' }, children: `Verified · ${new URL(getPublicSiteUrl()).hostname}` } }
-            ]}
+bottomBadges.push({
+            type: 'div',
+            props: { style: { display: 'flex', borderRadius: 12, padding: '16px 28px', background: 'rgba(245,247,248,0.07)', border: '1px solid rgba(245,247,248,0.12)', fontSize: 22, fontWeight: 600, color: 'rgba(245,247,248,0.32)' }, children: new URL(getPublicSiteUrl()).hostname }
         });
 
         const element = {

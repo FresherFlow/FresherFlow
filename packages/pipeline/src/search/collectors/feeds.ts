@@ -115,7 +115,7 @@ export async function collectPublicFeeds(options: {
           const url = 'https://remotive.com/api/remote-jobs?category=software-dev';
           const resp = await fetch(url, { signal: AbortSignal.timeout(15000) });
           if (!resp.ok) return [];
-          const data = await resp.json();
+                    const data: any = await resp.json();
           const rawJobs = Array.isArray(data?.jobs) ? data.jobs : [];
           return rawJobs.slice(0, limit).map((j: any) => ({
             title: j.title || '',
@@ -144,7 +144,7 @@ export async function collectPublicFeeds(options: {
           const url = 'https://himalayas.app/jobs/api?seniority=entry-level&limit=30';
           const resp = await fetch(url, { signal: AbortSignal.timeout(15000) });
           if (!resp.ok) return [];
-          const data = await resp.json();
+          const data: any = await resp.json();
           const rawJobs = Array.isArray(data?.jobs) ? data.jobs : [];
           return rawJobs.map((j: any) => ({
             title: j.title || '',
@@ -173,7 +173,7 @@ export async function collectPublicFeeds(options: {
           const url = 'https://jobicy.com/api/v2/remote-jobs?count=30&industry=engineering';
           const resp = await fetch(url, { signal: AbortSignal.timeout(15000) });
           if (!resp.ok) return [];
-          const data = await resp.json();
+          const data: any = await resp.json();
           const rawJobs = Array.isArray(data?.jobs) ? data.jobs : [];
           return rawJobs.map((j: any) => ({
             title: j.jobTitle || '',

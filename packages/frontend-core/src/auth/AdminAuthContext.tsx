@@ -153,7 +153,6 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const registerPasskey = useCallback(async () => {
     if (!admin?.email) throw new Error('Admin profile is required to register a passkey');
     const options = await adminAuthApi.getRegistrationOptions(admin.email);
-    // @ts-expect-error react-native-passkey types are not resolvable in this build
     const PasskeyModule = await import('react-native-passkey').catch(() => null);
     const Passkey = PasskeyModule?.default?.Passkey ?? PasskeyModule?.Passkey ?? null;
     if (!Passkey) throw new Error('Passkey is not supported on this platform');

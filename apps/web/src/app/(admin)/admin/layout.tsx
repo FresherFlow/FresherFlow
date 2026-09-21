@@ -5,12 +5,12 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { cn } from '@/lib/utils/utils';
-import AdminBottomNav from '@/lib/navigation/AdminBottomNav';
+import { cn } from "@/ui/cn";
+import AdminBottomNav from '@/features/navigation/AdminBottomNav';
 import { AdminSidebar } from '@/features/admin/layout/AdminSidebar';
-import { MobileTopNav } from '@/lib/navigation/MobileTopNav';
-import { TopHeaderBar } from '@/lib/navigation/TopHeaderBar';
-import LoadingScreen from '@/ui/LoadingScreen';
+import { MobileTopNav } from '@/features/navigation/MobileTopNav';
+import { TopHeaderBar } from '@/features/navigation/TopHeaderBar';
+import LoadingScreen from '@/features/shell/LoadingScreen';
 import { getApiBaseForEndpoint } from '@/lib/api/client';
 
 const ADMIN_FEEDBACK_SEEN_KEY = 'ff_admin_feedback_last_seen_at';
@@ -179,7 +179,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <TopHeaderBar />
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background md:bg-muted/10 md:pl-48 transition-all duration-500 ease-out">
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background md:bg-muted/10 md:pl-(--sidebar-w) transition-all duration-300 ease-out motion-reduce:transition-none">
                 <MobileTopNav />
 
                 <main className="flex-1 h-full min-w-0 min-h-0 flex flex-col overflow-hidden pt-14 md:pt-18 md:px-4 md:pb-4">

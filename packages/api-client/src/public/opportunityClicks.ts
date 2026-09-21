@@ -2,8 +2,11 @@ import { apiClient } from './apiClient';
 // Optional types fallback placeholder
 export const opportunityClicksApi = {
     trackApplyClick: (opportunityId: string, source = 'opportunity_detail', targetUrl?: string | null) =>
-        apiClient(`/api/public/opportunities/${opportunityId}/click`, {
+        apiClient(`/api/opportunities/${opportunityId}/click`, {
             method: 'POST',
+            headers: {
+                'x-platform': source,
+            },
             body: JSON.stringify({
                 source,
                 sessionId: getOpportunityClickSessionId(),

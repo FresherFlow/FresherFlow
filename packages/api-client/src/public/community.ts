@@ -1,10 +1,12 @@
 import { apiClient } from './apiClient';
 import type {
     CommentListResult,
+    CommentCountMap,
     CommunityComment,
     CommentVoteResult,
     SignalState,
     SubmitJobResult,
+    MySubmissionsResult,
     ReportResult,
     NotificationListResult,
     UserActivityResult,
@@ -25,14 +27,20 @@ import type {
     InterviewExperienceListResult,
     ApplicationUpdate,
     ApplicationUpdateListResult,
-    Area,
-    AreaListResult,
-    AreaDetailResult,
+    Room,
+    RoomListResult,
+    RoomDetailResult,
 } from '@fresherflow/types';
 
 export const communityApi = {
     listComments: (id: string) =>
         apiClient<CommentListResult>(`/api/jobs/${encodeURIComponent(id)}/comments`),
+
+    /** Batched comment counts for feed cards (max 200 ids per call). */
+    getCommentCounts: (ids: string[]) =>
+        apiClient<{ counts: CommentCountMap }>(
+            `/api/jobs/comment-counts?ids=${encodeURIComponent(ids.join(','))}`
+        ),
 
     postComment: (
         id: string,
@@ -63,6 +71,9 @@ export const communityApi = {
             method: 'POST',
             body: JSON.stringify({ signalType }),
         }),
+
+    listMySubmissions: () =>
+        apiClient<MySubmissionsResult>('/api/jobs/submissions/mine'),
 
     submitJob: (data: {
         sourceUrl: string;
@@ -171,16 +182,16 @@ export const communityApi = {
     getCommunityPost: (id: string) =>
         apiClient<CommunityPostResult>(`/api/community/${encodeURIComponent(id)}`),
 
-    createCommunityPost: (data: { title: string; body: string; category?: CommunityPostCategory; tags?: string[]; sourceOpportunityId?: string }) =>
+    createCommunityPost: (data: { title: string; body: string; category?: CommunityPostCategory; tags?: string[]; sourceOpportunityId?: string; roomId?: string }) =>
         apiClient<CommunityPost>('/api/community', {
             method: 'POST',
             body: JSON.stringify(data),
         }),
 
-    voteCommunityPost: (id: string, value: number) =>
-        apiClient<{ upvotes: number; downvotes: number; myVote: number | null }>(
+    voteCommunityPost: (id: string) =>
+        apiClient<{ helpfulCount: number; isHelpful: boolean }>(
             `/api/community/${encodeURIComponent(id)}/vote`,
-            { method: 'POST', body: JSON.stringify({ value }) }
+            { method: 'POST', body: JSON.stringify({}) }
         ),
 
     addCommunityPostComment: (id: string, data: { body: string; parentId?: string }) =>
@@ -189,10 +200,10 @@ export const communityApi = {
             { method: 'POST', body: JSON.stringify(data) }
         ),
 
-    voteCommunityPostComment: (id: string, commentId: string, value: number) =>
-        apiClient<{ upvotes: number; downvotes: number; myVote: number | null }>(
+    voteCommunityPostComment: (id: string, commentId: string) =>
+        apiClient<{ helpfulCount: number; isHelpful: boolean }>(
             `/api/community/${encodeURIComponent(id)}/comments/${encodeURIComponent(commentId)}/vote`,
-            { method: 'POST', body: JSON.stringify({ value }) }
+            { method: 'POST', body: JSON.stringify({}) }
         ),
 
     deleteCommunityPostComment: (id: string, commentId: string) =>
@@ -265,8 +276,8 @@ export const communityApi = {
             body: JSON.stringify(data),
         }),
 
-    // Areas
-    listAreas: (params?: {
+    // Rooms
+    listRooms: (params?: {
         page?: number;
         limit?: number;
         type?: string;
@@ -280,33 +291,33 @@ export const communityApi = {
         if (params?.search && params.search.trim()) query.set('search', params.search.trim());
         if (params?.sort) query.set('sort', params.sort);
         const suffix = query.toString();
-        return apiClient<AreaListResult>(`/api/areas${suffix ? `?${suffix}` : ''}`);
+        return apiClient<RoomListResult>(`/api/rooms${suffix ? `?${suffix}` : ''}`);
     },
 
-    getArea: (slug: string) =>
-        apiClient<AreaDetailResult>(`/api/areas/${encodeURIComponent(slug)}`),
+    getRoom: (slug: string) =>
+        apiClient<RoomDetailResult>(`/api/rooms/${encodeURIComponent(slug)}`),
 
-    createArea: (data: { name: string; description?: string; icon?: string; type?: string }) =>
-        apiClient<Area>('/api/areas', {
+    createRoom: (data: { name: string; description?: string; icon?: string; type?: string }) =>
+        apiClient<Room>('/api/rooms', {
             method: 'POST',
             body: JSON.stringify(data),
         }),
 
-    joinArea: (slug: string) =>
-        apiClient<{ joined: boolean; message?: string }>(`/api/areas/${encodeURIComponent(slug)}/join`, {
+    joinRoom: (slug: string) =>
+        apiClient<{ joined: boolean; message?: string }>(`/api/rooms/${encodeURIComponent(slug)}/join`, {
             method: 'POST',
         }),
 
-    leaveArea: (slug: string) =>
-        apiClient<{ left: boolean; message?: string }>(`/api/areas/${encodeURIComponent(slug)}/leave`, {
+    leaveRoom: (slug: string) =>
+        apiClient<{ left: boolean; message?: string }>(`/api/rooms/${encodeURIComponent(slug)}/leave`, {
             method: 'POST',
         }),
 
-    listAreaPosts: (slug: string, params?: { page?: number; limit?: number }) => {
+    listRoomPosts: (slug: string, params?: { page?: number; limit?: number }) => {
         const query = new URLSearchParams();
         if (params?.page) query.set('page', String(params.page));
         if (params?.limit) query.set('limit', String(params.limit));
         const suffix = query.toString();
-        return apiClient<CommunityFeedResult>(`/api/areas/${encodeURIComponent(slug)}/posts${suffix ? `?${suffix}` : ''}`);
+        return apiClient<CommunityFeedResult>(`/api/rooms/${encodeURIComponent(slug)}/posts${suffix ? `?${suffix}` : ''}`);
     },
 };

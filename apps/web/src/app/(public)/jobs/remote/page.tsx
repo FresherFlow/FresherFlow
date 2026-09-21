@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import CategoryPage from '@/features/opportunities/components/CategoryPage';
+import CategoryPage from '@/features/jobs/components/CategoryPage';
 import { fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
 import { toOpportunityCardDTO, OpportunityType } from '@fresherflow/types';

@@ -52,11 +52,12 @@ What is **wrong or incomplete**:
    commented out, so regeneration today depends on `scheduleRefresh`/cron, not
    on publish. That is the real staleness risk. See §5 + §10.
 4. **`/api/stats` is split-brain.** Web's `LandingStats.tsx:48-50` fetches
-   same-origin `/api/stats` (Cloudflare Analytics at the edge, 5-min cache).
-   No `apps/web/src/app/api/stats/*` route exists in the repo; the Express
-   implementations that DO exist are `routes/public/health.ts:59-81`
-   (`GET /api/stats` from `public/stats.json`, fallback DB count) and
-   `routes/public/stats.ts:13-29` (`/api/public/stats`). Do not conflate them.
+    same-origin `/api/stats` (Cloudflare Analytics at the edge, 5-min cache).
+    No `apps/web/src/app/api/stats/*` route exists in the repo; the Express
+    implementation that serves it is `routes/public/health.ts:58-73`, which
+    queries `prisma.opportunity.count({ where: { status: 'PUBLISHED', deletedAt: null } })`
+    live — the same filter as the public feed, so the number cannot drift.
+    Do not conflate it with `routes/public/stats.ts:13-29` (`/api/public/stats`).
 
 ---
 
@@ -193,12 +194,13 @@ Explicitly MISSING (do not assume they exist):
 
 ### View / click
 
-1. Active click API: `POST /api/public/opportunities/:id/click`
-   (`routes/public/opportunities/clicks.ts:16-44`) → `clicksCount++`
-   (`engagement.ts:26`) + `eventService.track({type:'CLICK_APPLY'})`.
-2. Legacy route disabled: `routes/public/opportunityClicks.ts:11-12` returns
-   `202 {ok:true}` with comment "fully handled in real-time on Firebase
-   RTDB"; Prisma logic there is commented out (`:14-79`).
+1. Active click API: `POST /api/opportunities/:id/click`
+   (`routes/public/opportunities/clicks.ts:16-48`) → `clicksCount++`
+   (`engagement.ts:26`) + `eventService.track({type:'CLICK_APPLY'})`,
+   mounted at `index.ts:440` under `optionalAuth`.
+2. One tracker home. The disabled `routes/public/opportunityClicks.ts` stub
+   (previously mounted at `/api/public` and returning `202 {ok:true}`) has been
+   deleted; both clients now call the route above.
 3. Comments likewise offloaded: `routes/public/opportunities/comments.ts:13-14`
    "handled fully in real-time on Firebase RTDB" (`GET` → `[]`).
 4. Web emits apply-clicks with a local session id

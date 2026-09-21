@@ -7,7 +7,9 @@ const router = Router();
 
 /**
  * GET /api/recruiter/candidates
- * Search candidates open to recruiters with filtering by skills, batch, degree
+ * Search candidates open to recruiters with filtering by skills, batch, degree.
+ * Registered-recruiter surface (saved pools, interests). Pre-auth browsing of the
+ * public directory lives at GET /api/public/profiles/browse.
  */
 router.get('/candidates', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {

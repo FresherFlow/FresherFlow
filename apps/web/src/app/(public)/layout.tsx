@@ -1,7 +1,7 @@
 'use client';
 
-import { NavigationWrapper } from '@/lib/components/NavigationWrapper';
-import { SiteFooter } from '@/lib/components/SiteFooter';
+import { NavigationWrapper } from '@/features/navigation/NavigationWrapper';
+import { SiteFooter } from '@/features/shell/SiteFooter';
 import { usePathname } from 'next/navigation';
 
 /**

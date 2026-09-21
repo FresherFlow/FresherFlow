@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { communityApi } from '@fresherflow/api-client';
-import { PostDetailClient } from './PostDetailClient';
+import { PostDetailClient } from './_components/PostDetailClient';
 
 type Props = {
     params: Promise<{ id: string }>;

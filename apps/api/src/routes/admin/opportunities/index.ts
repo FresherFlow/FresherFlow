@@ -33,6 +33,7 @@ import exportRouter   from './export';
 import parseRouter    from './parse';
 import eventsRouter   from './events';
 import submissionsRouter from './submissions';
+import communitySubmissionsRouter from './communitySubmissions';
 
 const router: Router = express.Router();
 
@@ -43,10 +44,12 @@ router.use(requireAdmin);
 router.use('/', exportRouter);   // GET /export
 router.use('/', parseRouter);    // POST /parse
 router.use('/', bulkRouter);     // POST /bulk
+// Both live under fixed paths that listRouter's GET /:id would otherwise swallow.
+router.use('/community-submissions', communitySubmissionsRouter);
+router.use('/submissions', submissionsRouter);
 router.use('/', listRouter);     // GET /, GET /summary, GET /:id
 router.use('/', createRouter);   // POST /, POST /ingest-draft, PUT /:id
 router.use('/', lifecycleRouter); // POST /:id/expire, POST /:id/restore, DELETE /:id
-router.use('/submissions', submissionsRouter);
 
 // Nested event routes with mergeParams so they inherit :id
 router.use('/:id/events', eventsRouter);

@@ -139,7 +139,7 @@ describe('middleware: requireAuth, requireAdmin, profileGate', () => {
     it('requireAuth blocks when no token', async () => {
         const { requireAuth } = await import('../middleware/auth');
         const req = { cookies: {}, headers: {} } as Partial<Request>;
-        const res = {} as Partial<Response>;
+        const res = { clearCookie: vi.fn() } as unknown as Partial<Response>;
         const next = vi.fn();
 
         await requireAuth(req as Request, res as Response, next);

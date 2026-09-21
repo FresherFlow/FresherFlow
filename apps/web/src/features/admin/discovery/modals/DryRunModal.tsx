@@ -2,7 +2,7 @@
 
 import { ArrowTopRightOnSquareIcon, CodeBracketIcon } from '@heroicons/react/24/outline';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/ui/Dialog';
-import { SkillPill } from '@/ui/SkillPill';
+import { SkillPill } from '@/features/jobs/components/SkillPill';
 import { RunResult, NormalizedJob } from '../types';
 
 interface DryRunModalProps {
@@ -56,13 +56,13 @@ export function DryRunModal({ open, result, onClose, onInspectJob }: DryRunModal
  </div>
 
  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
- {job.locations?.length > 0 && <span>📍 {job.locations.join(', ')}</span>}
+ {job.locations?.length > 0 && <span> {job.locations.join(', ')}</span>}
  {(job.experience_min !== undefined || job.experience_max !== undefined) && (
  <span>
- 💼 {job.experience_min}–{job.experience_max} yrs
+  {job.experience_min}–{job.experience_max} yrs
  </span>
  )}
- {job.salary_range && <span>💰 {job.salary_range}</span>}
+ {job.salary_range && <span> {job.salary_range}</span>}
  </div>
 
  {job.required_skills?.length > 0 && (

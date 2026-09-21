@@ -13,7 +13,7 @@ import { useUnreadNotifications } from '../hooks/useUnreadNotifications';
 import { alertsApi } from '@/lib/api/client';
 import { Hint } from '@/ui/Tooltip';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@/ui/DropdownMenu';
-import { cn } from '@/lib/utils/utils';
+import { cn } from "@/ui/cn";
 import type { AlertDelivery, AlertKind, AlertFeedResponse } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 

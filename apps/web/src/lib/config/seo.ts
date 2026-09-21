@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isUserPath } from "./paths";
-import { getHostRole, resolveHosts } from "./utils";
+import { getHostRole, resolveHosts } from "./hostResolution";
 
 export function applySeoHeaders(req: NextRequest, res: NextResponse) {
     const { pathname, hostname } = req.nextUrl;

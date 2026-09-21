@@ -68,10 +68,10 @@ router.get(
             },
         });
 
-        const userMap = new Map(users.map((u) => [u.id, u]));
-        const submitMap = new Map(topSubmitters.map((s: { submittedById: string; _count: { _all: number } }) => [s.submittedById, s._count._all]));
-        const commentMap = new Map(topCommenters.map((c: { userId: string; _count: { _all: number } }) => [c.userId, c._count._all]));
-        const signalMap = new Map(topSignalers.map((s: { userId: string; _count: { _all: number } }) => [s.userId, s._count._all]));
+        const userMap = new Map(users.map((u) => [u.id, u] as const));
+        const submitMap = new Map(topSubmitters.map((s: { submittedById: string; _count: { _all: number } }) => [s.submittedById, s._count._all] as const));
+        const commentMap = new Map(topCommenters.map((c: { userId: string; _count: { _all: number } }) => [c.userId, c._count._all] as const));
+        const signalMap = new Map(topSignalers.map((s: { userId: string; _count: { _all: number } }) => [s.userId, s._count._all] as const));
 
         // Score = submissions×3 + comments×2 + signals×1
         const leaderboard = [...userIds]
