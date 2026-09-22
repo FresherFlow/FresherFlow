@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { fresherNeedsApi } from '@fresherflow/api-client';
 import type { ReferralRequestItem } from '@fresherflow/api-client';
 import { ReferralRequestStatus } from '@fresherflow/types';
@@ -26,6 +27,7 @@ function timeAgo(iso: string): string {
 
 export function ReferralBoardClient() {
     const { user } = useAuth();
+    const router = useRouter();
     const [requests, setRequests] = useState<ReferralRequestItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -53,6 +55,10 @@ export function ReferralBoardClient() {
     async function submitRequest(e: React.FormEvent) {
         e.preventDefault();
         if (!company.trim()) return;
+        if (!user) {
+            router.push('/login');
+            return;
+        }
         setSubmitting(true);
         try {
             await fresherNeedsApi.createReferralRequest({ company: company.trim(), role: role.trim() || undefined, note: note.trim() || undefined });
@@ -61,14 +67,23 @@ export function ReferralBoardClient() {
             setNote('');
             setShowForm(false);
             load();
-        } catch {
-            setError(true);
+        } catch (e) {
+            const err = e as { status?: number };
+            if (err.status === 401) {
+                router.push('/login');
+            } else {
+                setError(true);
+            }
         } finally {
             setSubmitting(false);
         }
     }
 
     async function respond(requestId: string) {
+        if (!user) {
+            router.push('/login');
+            return;
+        }
         if (!replyText.trim() && !replyHandle.trim()) return;
         try {
             await fresherNeedsApi.respondToReferralRequest(requestId, {
@@ -79,17 +94,31 @@ export function ReferralBoardClient() {
             setReplyText('');
             setReplyHandle('');
             load();
-        } catch {
-            setError(true);
+        } catch (e) {
+            const err = e as { status?: number };
+            if (err.status === 401) {
+                router.push('/login');
+            } else {
+                setError(true);
+            }
         }
     }
 
     async function updateStatus(requestId: string, status: ReferralRequestStatus) {
+        if (!user) {
+            router.push('/login');
+            return;
+        }
         try {
             await fresherNeedsApi.updateReferralRequestStatus(requestId, status);
             load();
-        } catch {
-            setError(true);
+        } catch (e) {
+            const err = e as { status?: number };
+            if (err.status === 401) {
+                router.push('/login');
+            } else {
+                setError(true);
+            }
         }
     }
 
@@ -189,31 +218,43 @@ export function ReferralBoardClient() {
                                 <span className="font-medium text-foreground/80">@{req.author.username ?? 'anon'}</span>
                             </span>
                             <div className="flex items-center gap-2">
-                                {user?.id === req.author.id && req.status === 'OPEN' && (
-                                    <>
-                                        <button
-                                            type="button"
-                                            onClick={() => void updateStatus(req.id, ReferralRequestStatus.FULFILLED)}
-                                            className="rounded-lg px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors"
-                                        >
-                                             Fulfilled
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => void updateStatus(req.id, ReferralRequestStatus.CLOSED)}
-                                            className="rounded-lg px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted/40 transition-colors"
-                                        >
-                                             Close
-                                        </button>
-                                    </>
-                                )}
+                        {user?.id === req.author.id && req.status === 'OPEN' && (
+                            <>
                                 <button
                                     type="button"
-                                    onClick={() => setExpandedId(expandedId === req.id ? null : req.id)}
-                                    className="rounded-lg px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
+                                    onClick={() => void updateStatus(req.id, ReferralRequestStatus.FULFILLED)}
+                                    className="rounded-lg px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors"
                                 >
-                                    {expandedId === req.id ? 'Hide' : 'Respond'}
+                                     Fulfilled
                                 </button>
+                                <button
+                                    type="button"
+                                    onClick={() => void updateStatus(req.id, ReferralRequestStatus.CLOSED)}
+                                    className="rounded-lg px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted/40 transition-colors"
+                                >
+                                     Close
+                                </button>
+                            </>
+                        )}
+                        {user && req.status === 'OPEN' ? (
+                            <button
+                                type="button"
+                                onClick={() => setExpandedId(expandedId === req.id ? null : req.id)}
+                                className="rounded-lg px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
+                            >
+                                {expandedId === req.id ? 'Hide' : 'Respond'}
+                            </button>
+                        ) : user ? (
+                            <button
+                                type="button"
+                                onClick={() => setExpandedId(expandedId === req.id ? null : req.id)}
+                                className="rounded-lg px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors hover:bg-muted/50"
+                            >
+                                {expandedId === req.id ? 'Hide' : 'Respond'}
+                            </button>
+                        ) : (
+                            <span className="text-xs text-muted-foreground">Sign in to respond</span>
+                        )}
                             </div>
                         </div>
 

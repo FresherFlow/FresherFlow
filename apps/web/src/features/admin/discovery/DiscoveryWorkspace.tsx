@@ -28,33 +28,14 @@ import { TargetCompaniesTab } from './components/TargetCompaniesTab';
 import { AtsAdaptersTab } from './components/AtsAdaptersTab';
 import { JobBoardsTab } from './components/JobBoardsTab';
 
-const INGESTION_URL = process.env.NEXT_PUBLIC_INGESTION_URL || 'http://localhost:3005';
-const INGESTION_SECRET = process.env.NEXT_PUBLIC_INGESTION_SECRET || '';
+import { adminApi } from '@/lib/api/admin';
 
-const BOARD_PROVIDERS = new Set([
- 'glassdoor',
- 'hackernews',
- 'hasjob',
- 'indeed',
- 'internshala',
- 'linkedin',
- 'naukri',
- 'remoteok',
- 'wellfound',
- 'weworkremotely',
- 'bayt',
+const BOARD_SET = new Set([
+    'getro', 'consider', 'glassdoor', 'hackernews', 'hasjob', 'indeed', 'internshala',
+    'linkedin', 'naukri', 'remoteok', 'wellfound', 'weworkremotely', 'bayt'
 ]);
-
-export const COMPANY_PROVIDERS = new Set([
- 'google',
- 'amazon',
- 'microsoft',
- 'ibm',
- 'apple',
- 'uber',
- 'stripe',
- 'meta',
- 'nvidia',
+const COMPANY_PROVIDER_SET = new Set([
+    'google', 'amazon', 'microsoft', 'ibm', 'apple', 'uber', 'stripe', 'meta', 'nvidia'
 ]);
 
 const DISCOVERY_SUB_TABS = [
@@ -110,16 +91,15 @@ export function DiscoveryWorkspace() {
  company: '',
  });
 
- const checkHealth = async () => {
- try {
- const r = await fetch(`${INGESTION_URL}/health`);
- const d = await r.json();
- setEngineStatus('online');
- setEnginePlugins(d.plugins || 0);
- } catch {
- setEngineStatus('offline');
- }
- };
+  const checkHealth = async () => {
+    try {
+      const d = await adminApi.getIngestionStats();
+      setEngineStatus('online');
+      setEnginePlugins(d.totalRuns ?? 0);
+    } catch {
+      setEngineStatus('offline');
+    }
+  };
 
  const loadInitialData = async () => {
  checkHealth();
@@ -159,140 +139,97 @@ export function DiscoveryWorkspace() {
  return () => clearInterval(interval);
  }, [autoRefresh]);
 
- const atsAdapters = allPlugins.filter(
- p => !BOARD_PROVIDERS.has(p.provider) && !COMPANY_PROVIDERS.has(p.provider)
- );
- const boards = allPlugins.filter(p => BOARD_PROVIDERS.has(p.provider));
+  const atsAdapters = allPlugins.filter(
+    p => !BOARD_SET.has(p.provider) && !COMPANY_PROVIDER_SET.has(p.provider)
+  );
+  const boards = allPlugins.filter(p => BOARD_SET.has(p.provider));
 
  const handleTabChange = (tabId: string) => {
  router.push(`/admin/discovery?tab=${tabId}`);
  };
 
- async function runCompany(target: IngestionTarget, dryRun = false) {
- setRunResults(prev => ({ ...prev, [target.slug]: { running: true } as any }));
- const startTime = new Date().toISOString();
- try {
- const res = await fetch(`${INGESTION_URL}/run`, {
- method: 'POST',
- headers: {
- 'Content-Type': 'application/json',
- ...(INGESTION_SECRET ? { Authorization: `Bearer ${INGESTION_SECRET}` } : {}),
- },
- body: JSON.stringify({
- ats: target.ats,
- slug: target.slug,
- company: target.company,
- filter: true,
- dryRun,
- hoursOld,
- }),
- });
- const result: RunResult = await res.json();
- setRunResults(prev => ({ ...prev, [target.slug]: result }));
+  async function runCompany(target: IngestionTarget, dryRun = false) {
+    setRunResults(prev => ({ ...prev, [target.slug]: { running: true } as any }));
+    const startTime = new Date().toISOString();
+    try {
+      const res = await adminApi.runIngestionTarget({
+        ats: target.ats,
+        slug: target.slug,
+        company: target.company,
+        filter: true,
+        dryRun,
+      });
+      const result = res as RunResult;
+      setRunResults(prev => ({ ...prev, [target.slug]: result }));
+      setRunLogs(prev => [
+        { key: target.slug, company: target.company, ats: target.ats, result, startedAt: startTime, isDryRun: dryRun },
+        ...prev,
+      ]);
+      if (dryRun && result.jobs?.length) {
+        setDryRunModal({ open: true, jobs: result.jobs, company: target.company });
+      }
+    } catch (e) {
+      setRunResults(prev => ({ ...prev, [target.slug]: { status: 'ERROR', error: String(e), running: false } as any }));
+    }
+  }
 
- setRunLogs(prev => [
- {
- key: target.slug,
- company: target.company,
- ats: target.ats,
- result,
- startedAt: startTime,
- isDryRun: dryRun,
- },
- ...prev,
- ]);
+  async function runAllCompanies() {
+    setIsRunningAll(true);
+    try {
+      const batchSize = 3;
+      for (let i = 0; i < allTargets.length; i += batchSize) {
+        const batch = allTargets.slice(i, i + batchSize);
+        await Promise.allSettled(batch.map(async (target) => { await runCompany(target); }));
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsRunningAll(false);
+    }
+  }
 
- if (dryRun && result.jobs?.length) {
- setDryRunModal({ open: true, jobs: result.jobs, company: target.company });
- }
- } catch (e) {
- setRunResults(prev => ({
- ...prev,
- [target.slug]: { status: 'ERROR', error: String(e), running: false } as any,
- }));
- }
- }
+  async function runAllBoards() {
+    setIsRunningAllBoards(true);
+    try {
+      await adminApi.runAllIngestion({ filter: true });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsRunningAllBoards(false);
+    }
+  }
 
- async function runAllCompanies() {
- setIsRunningAll(true);
- try {
- for (const target of allTargets) {
- await runCompany(target);
- }
- } catch (e) {
- console.error(e);
- } finally {
- setIsRunningAll(false);
- }
- }
+  async function runAdapterBatch(adapter: PluginEntry) {
+    setRunningAdapterId(adapter.provider);
+    try {
+      await adminApi.runAllIngestion({ filter: true });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRunningAdapterId(null);
+    }
+  }
 
- async function runAllBoards() {
- setIsRunningAllBoards(true);
- try {
- for (const board of boards) {
- await runBoard(board.provider);
- }
- } catch (e) {
- console.error(e);
- } finally {
- setIsRunningAllBoards(false);
- }
- }
+  async function runBoard(boardSlug: string) {
+    setRunningBoardId(boardSlug);
+    try {
+      await adminApi.runIngestionTarget({ ats: boardSlug, slug: boardSlug, company: boardSlug, filter: true });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setTimeout(() => setRunningBoardId(null), 2500);
+    }
+  }
 
- async function runAdapterBatch(adapter: PluginEntry) {
- setRunningAdapterId(adapter.provider);
- const targets = allTargets.filter(t => t.ats === adapter.provider);
- try {
- for (const target of targets) {
- await runCompany(target);
- }
- } catch (e) {
- console.error(e);
- } finally {
- setRunningAdapterId(null);
- }
- }
-
- async function runBoard(boardSlug: string) {
- setRunningBoardId(boardSlug);
- const boardPlugin = allPlugins.find(p => p.provider === boardSlug);
- try {
- await fetch(`${INGESTION_URL}/run`, {
- method: 'POST',
- headers: {
- 'Content-Type': 'application/json',
- ...(INGESTION_SECRET ? { Authorization: `Bearer ${INGESTION_SECRET}` } : {}),
- },
- body: JSON.stringify({
- ats: boardSlug,
- slug: boardSlug,
- company: boardPlugin?.providerName || boardSlug,
- filter: true,
- hoursOld,
- }),
- });
- } catch (e) {
- console.error(e);
- } finally {
- setTimeout(() => setRunningBoardId(null), 2500);
- }
- }
-
- async function runDorker() {
- try {
- await fetch(`${INGESTION_URL}/dork`, {
- method: 'POST',
- headers: {
- 'Content-Type': 'application/json',
- ...(INGESTION_SECRET ? { Authorization: `Bearer ${INGESTION_SECRET}` } : {}),
- }
- });
- toast.success('Dorker started in background');
- } catch (e) {
- console.error(e);
- toast.error('Failed to start Dorker');
- }
- }
+  async function runDorker() {
+    try {
+      await adminApi.runAllIngestion({ filter: true });
+      toast.success('Discovery started in background');
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to start discovery');
+    }
+  }
 
  return (
  <div className="flex flex-col h-full w-full bg-background overflow-hidden relative">

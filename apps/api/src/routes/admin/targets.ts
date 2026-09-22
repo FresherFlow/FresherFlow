@@ -12,7 +12,7 @@ router.get('/', (_req: Request, res: Response) => {
   res.json({ ingestionUrl });
 });
 
-router.post('/:id/run', async (req: Request, res: Response): Promise<void> => {
+router.post('/run', async (req: Request, res: Response): Promise<void> => {
   const { ats, slug, company, dryRun, filter } = req.body;
   if (!ats || !slug || !company) {
     res.status(400).json({ error: 'Missing required fields: ats, slug, company' });

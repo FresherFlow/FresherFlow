@@ -36,8 +36,21 @@ export function isSpaceItemActive(
             !searchParams?.get('mode') &&
             !searchParams?.get('source') &&
             !searchParams?.get('sort') &&
-            !searchParams?.get('filter')
+            !searchParams?.get('filter') &&
+            !searchParams?.get('tab')
         );
+    }
+
+    if (item.href === '/companies') {
+        return pathname === '/companies' && !searchParams?.get('tab');
+    }
+
+    if (item.href === '/account') {
+        return pathname === '/account' && !searchParams?.get('tab');
+    }
+
+    if (item.href === '/community') {
+        return pathname === '/community' && !searchParams?.get('tab');
     }
 
     if (item.href === '/admin/discovery' || item.href === '/discovery') {

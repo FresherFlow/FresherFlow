@@ -160,17 +160,17 @@ export default function TopNav() {
                                             onClick={() => setIsDropdownOpen(false)}
                                             className="block px-4 py-2 text-sm font-semibold text-primary hover:bg-muted"
                                         >
-                                            Account Hub
+                                            Account
                                         </Link>
                                         <Link
-                                            href="/profile"
+                                            href="/account?tab=profile"
                                             onClick={() => setIsDropdownOpen(false)}
                                             className="block px-4 py-2 text-sm text-foreground hover:bg-muted"
                                         >
                                             My Profile
                                         </Link>
                                         <Link
-                                            href="/saved"
+                                            href="/jobs?tab=saved"
                                             onClick={() => setIsDropdownOpen(false)}
                                             className="block px-4 py-2 text-sm text-foreground hover:bg-muted"
                                         >

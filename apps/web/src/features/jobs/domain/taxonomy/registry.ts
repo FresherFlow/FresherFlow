@@ -88,14 +88,17 @@ export function buildTaxonomyRegistry(opportunities: Opportunity[]): TaxonomyReg
     const cityLabel = (slug: string) =>
         VALID_LOCATIONS[slug as keyof typeof VALID_LOCATIONS]?.label || titleCaseSlug(slug);
 
-    // Curated roles are always present; feed-derived roles are gated.
+    // Curated roles: only if >0 like backend sitemap validRoles >0, others >=5
     const roles = new Map<string, TaxonomyItem>();
     for (const slug of Object.keys(CURATED_ROLE_KEYWORDS) as (keyof typeof CURATED_ROLE_KEYWORDS)[]) {
-        roles.set(slug, { slug, label: CURATED_ROLE_KEYWORDS[slug].label, count: roleCounts.get(slug) ?? 0 });
+        const count = roleCounts.get(slug) ?? 0;
+        if (count > 0) {
+            roles.set(slug, { slug, label: CURATED_ROLE_KEYWORDS[slug].label, count });
+        }
     }
     for (const [slug, count] of roleCounts) {
         if (roles.has(slug)) continue;
-        if (count >= TAXONOMY_MIN_JOBS) {
+        if (count >= 5) {
             roles.set(slug, { slug, label: titleCaseSlug(slug), count });
         }
     }
@@ -109,13 +112,14 @@ export function buildTaxonomyRegistry(opportunities: Opportunity[]): TaxonomyReg
 
     const skills = new Map<string, TaxonomyItem>();
     for (const [slug, count] of skillCounts) {
-        if (count >= TAXONOMY_MIN_JOBS) {
+        if (count >= 5) {
             skills.set(slug, { slug, label: formatSkillLabel(slug), count });
         }
     }
 
     const years = new Map<number, number>();
     for (const [year, count] of yearCounts) {
+        if (year < 2015 || year > 2035) continue;
         if (count >= TAXONOMY_MIN_JOBS) years.set(year, count);
     }
 

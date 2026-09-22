@@ -4,7 +4,7 @@ import { ContributeHub } from '@/features/contribute/components/ContributeHub';
 import { Skeleton } from '@/ui/Skeleton';
 
 export const metadata: Metadata = {
-    title: 'Contribute | FresherFlow',
+    title: 'Contribute',
     description:
         'Share a job, walk-in drive, or interview experience with other freshers. Reviewed before it goes live.',
 };

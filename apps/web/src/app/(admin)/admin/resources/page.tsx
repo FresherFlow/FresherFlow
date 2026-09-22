@@ -1,6 +1,8 @@
-import { Metadata } from 'next';
+import type { Metadata } from 'next';
 import AdminResourcesClient from '@/features/admin/components/AdminResourcesClient';
 import { SKILLS_METADATA_URL, COMPANIES_METADATA_URL } from '@/lib/utils/runtimeConfig';
+
+export const metadata: Metadata = { title: { absolute: 'Resources | FresherFlow Admin' } };
 
 
 

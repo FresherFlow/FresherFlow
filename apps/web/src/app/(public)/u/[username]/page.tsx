@@ -13,6 +13,10 @@ async function getProfile(username: string): Promise<PublicProfile | null> {
     try {
         const res = await serverApiClient<{ success: boolean; data: PublicProfile }>(
             `/api/public/profiles/${encodeURIComponent(username.toLowerCase())}`,
+            // Align with this page's revalidate window. The server client otherwise caches
+            // public reads for 30 minutes, so a profile the owner just republished would
+            // keep serving the previous version long after the page itself refreshed.
+            { next: { revalidate: 60 } },
         );
         return res?.data ?? null;
     } catch {
@@ -46,6 +50,10 @@ export default async function PublicProfilePage({ params }: PageProps) {
     const profile = await getProfile(username);
 
     if (!profile) {
+        // Never cache the miss: the owner may publish this page moments from now, and a
+        // cached 404 would keep their own link broken for the whole revalidate window.
+        const { unstable_noStore } = await import('next/cache');
+        unstable_noStore();
         notFound();
     }
 

@@ -42,6 +42,31 @@ export function isAuthPath(pathname: string) {
     return false;
 }
 
+/**
+ * Auth *entry* pages — the places a signed-in visitor should be sent straight into the app.
+ *
+ * Onboarding steps such as /choose-username are deliberately excluded. A signed-in user
+ * who has not claimed a username yet is *supposed* to be there, so bouncing them off it
+ * makes /dashboard and /choose-username redirect to each other forever.
+ */
+export const AUTH_ENTRY_PATHS = ['/login', '/signup', '/register'];
+
+export function isAuthEntryPath(pathname: string) {
+    return AUTH_ENTRY_PATHS.includes(pathname);
+}
+
+/**
+ * Only same-origin, non-auth destinations are allowed through a `redirect` param.
+ * Single home for the rule — used by the proxy and by client auth screens.
+ */
+export function isSafeInternalRedirect(path: string | null | undefined) {
+    if (!path) return false;
+    const clean = path.trim();
+    if (!clean.startsWith('/') || clean.startsWith('//')) return false;
+    if (clean === '/login' || clean.startsWith('/login?') || clean === '/logout' || clean.startsWith('/logout?')) return false;
+    return true;
+}
+
 export function isOpportunityPublic(pathname: string) {
     if (pathname === '/jobs/create') return false;
     if (pathname.startsWith('/jobs/edit/')) return false;

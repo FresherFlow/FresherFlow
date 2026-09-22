@@ -1,13 +1,26 @@
 'use client';
+/* eslint-disable shadcn/no-arbitrary-values, shadcn/no-unknown-classes, shadcn/no-restyle, shadcn/require-static-classes, shadcn/no-raw-colors */
 
-import { useAdmin } from '@/lib/auth/AdminContext';
+import * as React from 'react';
+import { X } from 'lucide-react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useState, type ComponentType } from 'react';
 import Link from 'next/link';
 import { LogoImage } from '@/features/shell/LogoImage';
-import { isSpaceItemActive } from '@/features/navigation/navConfig';
+import { NavMain } from '@/features/navigation/NavMain';
+import type { SpaceNavGroup } from '@/features/navigation/navConfig';
 import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
 import { cn } from '@/ui/cn';
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+} from '@/ui/sidebar';
 import {
     Squares2X2Icon,
     BriefcaseIcon,
@@ -26,8 +39,10 @@ import {
     ChartBarIcon,
     MagnifyingGlassIcon,
     GlobeAltIcon,
+    ChevronLeftIcon,
 } from '@heroicons/react/24/outline';
 
+/** Kept for MobileNavMenu: it maps `item.label`. Do not rename fields. */
 export const mainNavItems = [
     { href: '/admin/dashboard', label: 'Dashboard', icon: Squares2X2Icon },
     { href: '/admin/opportunities', label: 'Listings', icon: BriefcaseIcon, exact: true },
@@ -46,110 +61,170 @@ export const settingsNavItems = [
     { href: '/admin/settings', label: 'Settings', icon: Cog8ToothIcon },
 ];
 
-type AdminNavItem = {
-    name: string;
+const discoveryNavItems = [
+    { href: '/admin/dashboard', label: 'Back to Admin', icon: ChevronLeftIcon },
+    { href: '/admin/discovery?tab=dashboard', label: 'Dashboard', icon: ChartBarIcon },
+    { href: '/admin/discovery?tab=runs', label: 'Discovery Runs', icon: QueueListIcon },
+    { href: '/admin/discovery?tab=discovered', label: 'Discovered Jobs', icon: MagnifyingGlassIcon },
+    { href: '/admin/discovery?tab=processed', label: 'Processed Jobs', icon: CheckCircleIcon },
+    { href: '/admin/discovery?tab=companies', label: 'Target Companies', icon: BuildingOfficeIcon },
+    { href: '/admin/discovery?tab=adapters', label: 'ATS Adapters', icon: CpuChipIcon },
+    { href: '/admin/discovery?tab=boards', label: 'Job Boards', icon: GlobeAltIcon },
+];
+
+type AdminNavSourceItem = {
     href: string;
-    icon: ComponentType<{ className?: string }>;
+    label: string;
+    icon: ComponentType<{ className?: string; strokeWidth?: number }>;
     exact?: boolean;
-    badge?: number;
-    /** Renders a separator instead of a link. */
-    divider?: boolean;
 };
 
+function toGroupItems(
+    items: AdminNavSourceItem[],
+    feedbackBadge: number,
+): SpaceNavGroup['items'] {
+    return items.map((item) => ({
+        title: item.label,
+        href: item.href,
+        icon: item.icon,
+        exact: item.exact,
+        ...(item.label === 'Feedback' && feedbackBadge > 0 ? { badge: feedbackBadge } : {}),
+    }));
+}
+
+function getAdminGroups(pathname: string, feedbackBadge: number): {
+    groups: SpaceNavGroup[];
+    headerTitle: string;
+    homeHref: string;
+} {
+    if (pathname.startsWith('/admin/discovery')) {
+        return {
+            groups: [
+                {
+                    label: 'Discovery',
+                    items: toGroupItems(discoveryNavItems, 0),
+                    collapsible: true,
+                    defaultOpen: true,
+                },
+            ],
+            headerTitle: 'Discovery Engine',
+            homeHref: '/admin/dashboard',
+        };
+    }
+    return {
+        groups: [
+            {
+                label: 'Overview',
+                items: toGroupItems(mainNavItems, 0),
+                collapsible: true,
+                defaultOpen: true,
+            },
+            {
+                label: 'Manage',
+                items: toGroupItems(settingsNavItems, feedbackBadge),
+                collapsible: true,
+                defaultOpen: true,
+            },
+        ],
+        headerTitle: 'Admin Portal',
+        homeHref: '/admin/dashboard',
+    };
+}
+
 /**
- * Body of the admin rail.
- *
- * This used to be `lib/navigation/sidebar-content.tsx`, the shared
- * pre-refactor sidebar shell. That module is gone, so the brand header, the
- * nav list and the theme toggle live here now. Active state reuses
- * `isSpaceItemActive` so admin highlighting follows the same rules as the
- * app sidebar.
+ * Brand block mirroring the app sidebar: full wordmark when expanded, centered
+ * logo tile in collapsed (icon) mode.
  */
-function AdminRail({
-    pathname,
-    searchParams,
-    hostname,
-    customNavItems,
-    customHeaderTitle,
-    customHomeHref,
-    showThemeToggle,
-}: {
-    pathname: string;
-    searchParams: ReturnType<typeof useSearchParams>;
-    hostname: string;
-    customNavItems: AdminNavItem[];
-    customHeaderTitle?: string;
-    customHomeHref?: string;
-    showThemeToggle?: boolean;
-}) {
+function AdminBrand({ href, title }: { href: string; title: string }) {
     return (
-        <div className="flex h-full w-full flex-col border-r border-border bg-card select-none">
-            <div className="flex h-14 shrink-0 items-center border-b border-border px-2">
-                <Link
-                    href={customHomeHref || '/admin/dashboard'}
-                    className="flex min-w-0 items-center gap-2 transition-opacity hover:opacity-80 focus:outline-none"
+        <SidebarMenu>
+            <SidebarMenuItem>
+                <SidebarMenuButton
+                    asChild
+                    size="lg"
+                    className="h-9 justify-start px-2 hover:bg-transparent hover:text-sidebar-foreground active:bg-transparent group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
                 >
-                    <LogoImage width={28} height={28} className="h-7 w-7" />
-                    <span className="truncate text-lg font-bold text-foreground">
-                        {customHeaderTitle || 'Admin'}
-                    </span>
-                </Link>
-            </div>
-
-            <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-2 py-4" aria-label="Admin">
-                {customNavItems.map((item, index) => {
-                    if (item.divider) {
-                        return (
-                            <div
-                                key={`divider-${index}`}
-                                role="separator"
-                                className="my-2 h-px bg-border/50"
+                    <Link href={href} aria-label="FresherFlow admin home">
+                        <span className="sidebar-expanded-only flex min-w-0 items-center gap-2">
+                            <LogoImage width={28} height={28} className="h-7 w-7 shrink-0" />
+                            <span className="truncate text-base font-semibold">FresherFlow</span>
+                            <span className="truncate text-xs text-muted-foreground">{title}</span>
+                        </span>
+                        <span className="sidebar-collapsed-only flex items-center justify-center">
+                            <LogoImage
+                                width={24}
+                                height={24}
+                                className="h-6 w-6 shrink-0 object-contain"
                             />
-                        );
-                    }
-                    const Icon = item.icon;
-                    const isActive = isSpaceItemActive(item, pathname, searchParams);
-                    return (
-                        <Link
-                            key={`${item.href}-${index}`}
-                            href={item.href}
-                            aria-current={isActive ? 'page' : undefined}
-                            className={cn(
-                                'relative flex h-9 w-full items-center gap-2 rounded-md px-1.5 text-sm transition-colors focus:outline-none',
-                                isActive
-                                    ? 'bg-foreground/10 font-semibold text-foreground'
-                                    : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                            )}
-                        >
-                            <Icon className="h-5 w-5 shrink-0" />
-                            <span className="truncate">{item.name}</span>
-                            {typeof item.badge === 'number' && item.badge > 0 && (
-                                <span className="ml-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-xs font-bold text-destructive-foreground">
-                                    {item.badge > 99 ? '99+' : item.badge}
-                                </span>
-                            )}
-                        </Link>
-                    );
-                })}
-            </nav>
-
-            <div className="mt-auto flex shrink-0 items-center justify-between gap-2 border-t border-border p-2">
-                <span className="truncate text-xs text-muted-foreground" title={hostname}>
-                    {hostname || 'admin'}
-                </span>
-                {showThemeToggle && <ThemeSwitcher />}
-            </div>
-        </div>
+                        </span>
+                    </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
+        </SidebarMenu>
     );
 }
 
-export function AdminSidebar({
-    feedbackAlertCount = 0
-}: {
-    feedbackAlertCount?: number;
-}) {
-    useAdmin();
-    const pathname = usePathname();
+function AdminSidebarRail({ feedbackAlertCount = 0 }: { feedbackAlertCount?: number }) {
+    const pathname = usePathname() || '';
+    const searchParams = useSearchParams();
+    const [isScrolled, setIsScrolled] = React.useState(false);
+
+    const [hostname, setHostname] = useState<string>('');
+    useEffect(() => {
+        setHostname(window.location.hostname);
+    }, []);
+
+    const effectiveFeedbackAlertCount =
+        pathname.startsWith('/feedback') || pathname.startsWith('/admin/feedback')
+            ? 0
+            : feedbackAlertCount;
+
+    const { groups, headerTitle, homeHref } = getAdminGroups(pathname, effectiveFeedbackAlertCount);
+
+    return (
+        <Sidebar collapsible="icon">
+            <SidebarHeader
+                className={cn(
+                    'sticky top-0 z-10 gap-1.5 bg-sidebar/95 p-2 backdrop-blur-sm supports-[backdrop-filter]:bg-sidebar/80 relative',
+                    'border-b border-transparent transition-colors',
+                    isScrolled && 'border-sidebar-border shadow-[0_4px_12px_-4px_rgb(0_0_0/0.12)]'
+                )}
+            >
+                <AdminBrand href={homeHref} title={headerTitle} />
+                {/* blur fade so scrolled items feel going under header */}
+                <div
+                    aria-hidden
+                    className={cn(
+                        'pointer-events-none absolute inset-x-0 -bottom-3 h-3 bg-gradient-to-b from-sidebar to-transparent opacity-0 transition-opacity',
+                        isScrolled && 'opacity-100'
+                    )}
+                />
+            </SidebarHeader>
+            <SidebarContent onScroll={(e) => setIsScrolled(e.currentTarget.scrollTop > 2)}>
+                <NavMain groups={groups} pathname={pathname} searchParams={searchParams} isAuthed />
+            </SidebarContent>
+            <SidebarFooter>
+                <div className="flex items-center justify-between gap-2 p-2 group-data-[collapsible=icon]:justify-center">
+                    <span
+                        className="sidebar-expanded-only truncate text-xs text-muted-foreground"
+                        title={hostname}
+                    >
+                        {hostname || 'admin'}
+                    </span>
+                    <ThemeSwitcher />
+                </div>
+            </SidebarFooter>
+            <SidebarRail />
+        </Sidebar>
+    );
+}
+
+/**
+ * Nav tree for the mobile drawer (rendered by MobileTopNav inside a Sheet on
+ * `/admin` routes). Same groups as the rail, without a nested provider.
+ */
+export function AdminMobileNavTree({ onNavigate }: { onNavigate: () => void }) {
+    const pathname = usePathname() || '';
     const searchParams = useSearchParams();
 
     const [hostname, setHostname] = useState<string>('');
@@ -157,45 +232,60 @@ export function AdminSidebar({
         setHostname(window.location.hostname);
     }, []);
 
-
-    const effectiveFeedbackAlertCount = (pathname.startsWith('/feedback') || pathname.startsWith('/admin/feedback')) ? 0 : feedbackAlertCount;
-
-    const isDiscovery = pathname.startsWith('/admin/discovery');
-
-    const customNavItems: AdminNavItem[] = isDiscovery ? [
-        { name: 'Dashboard', href: '/admin/discovery?tab=dashboard', icon: ChartBarIcon },
-        { name: 'Discovery Runs', href: '/admin/discovery?tab=runs', icon: QueueListIcon },
-        { name: 'Discovered Jobs', href: '/admin/discovery?tab=discovered', icon: MagnifyingGlassIcon },
-        { name: 'Processed Jobs', href: '/admin/discovery?tab=processed', icon: CheckCircleIcon },
-        { name: 'Target Companies', href: '/admin/discovery?tab=companies', icon: BuildingOfficeIcon },
-        { name: 'ATS Adapters', href: '/admin/discovery?tab=adapters', icon: CpuChipIcon },
-        { name: 'Job Boards', href: '/admin/discovery?tab=boards', icon: GlobeAltIcon },
-    ] : [
-        ...mainNavItems.map(item => ({ ...item, name: item.label, href: item.href, icon: item.icon })),
-        { name: '', href: '', icon: Squares2X2Icon, divider: true },
-        ...settingsNavItems.map(item => {
-            const base: AdminNavItem = { name: item.label, href: item.href, icon: item.icon };
-            if (item.label === 'Feedback' && effectiveFeedbackAlertCount > 0) {
-                base.badge = effectiveFeedbackAlertCount;
-            }
-            return base;
-        })
-    ];
+    const { groups, headerTitle, homeHref } = getAdminGroups(pathname, 0);
 
     return (
-        <aside
-            style={{ width: 'var(--sidebar-w,12rem)' }}
-            className="hidden md:flex fixed top-0 left-0 bottom-0 z-50 overflow-hidden transition-all duration-300 ease-out motion-reduce:transition-none"
-        >
-            <AdminRail
-                pathname={pathname}
-                searchParams={searchParams}
-                hostname={hostname}
-                customNavItems={customNavItems}
-                customHeaderTitle={isDiscovery ? "Discovery Engine" : "Admin Portal"}
-                customHomeHref={isDiscovery ? "/admin" : "/admin/dashboard"}
-                showThemeToggle={true}
-            />
-        </aside>
+        <div className="flex h-full w-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground">
+            <div className="flex h-14 shrink-0 items-center justify-end border-b border-sidebar-border px-4">
+                <button
+                    type="button"
+                    onClick={onNavigate}
+                    aria-label="Close menu"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                    <X className="h-5 w-5" />
+                </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-2 py-3">
+                <AdminBrand href={homeHref} title={headerTitle} />
+                {/* Every nav row is a link, so any click in here is a navigation and
+                    should close the Sheet. */}
+                <div className="mt-2" onClickCapture={onNavigate}>
+                    <NavMain groups={groups} pathname={pathname} searchParams={searchParams} isAuthed />
+                </div>
+            </div>
+            <div className="shrink-0 border-t border-sidebar-border p-2">
+                <div className="flex items-center justify-between gap-2 p-2">
+                    <span className="truncate text-xs text-muted-foreground" title={hostname}>
+                        {hostname || 'admin'}
+                    </span>
+                    <ThemeSwitcher />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * Desktop rail for admin routes.
+ *
+ * The `SidebarProvider` lives in AdminLayoutClient, not here: the mobile drawer
+ * trigger lives in MobileTopNav, so both need the same provider.
+ *
+ * Wrapped in `hidden lg:block` — the Sidebar's internal gap element reserves
+ * content space at `lg` and up. Without the wrapper the rail renders from `md`
+ * up and overlaps the content between 768px and 1024px.
+ */
+export function AdminSidebar({
+    feedbackAlertCount = 0,
+}: {
+    feedbackAlertCount?: number;
+}) {
+    return (
+        <div className="hidden lg:block">
+            <React.Suspense fallback={null}>
+                <AdminSidebarRail feedbackAlertCount={feedbackAlertCount} />
+            </React.Suspense>
+        </div>
     );
 }

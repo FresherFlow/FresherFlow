@@ -11,7 +11,7 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug } = await params;
     return {
-        title: `${slug.replace(/-/g, ' ')} | FresherFlow`,
+        title: slug.replace(/-/g, ' '),
         description: `Join the ${slug.replace(/-/g, ' ')} community — discussions, jobs, and opportunities.`,
     };
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useAuth } from '@/lib/auth/AuthContext';
-import { UsernameGate } from '@/features/auth/components/ProfileGate';
+// Gate is applied once by the /jobs tab shell (JobsPageClient).
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
@@ -37,12 +37,13 @@ import {
 } from '@heroicons/react/24/outline';
 import { Input } from '@/ui/Input';
 import { promptLoginToast } from '@/lib/utils/toastUtils';
+import { PublicPageStatusBanner } from '@/features/dashboard/components/PublicPageStatusBanner';
 
 // Components
 import { DashboardHeader } from '@/features/dashboard/components/DashboardHeader';
 import { DashboardSection } from '@/features/dashboard/components/DashboardSection';
 import { RecentlyViewedRow } from '@/features/dashboard/components/RecentlyViewedRow';
-import { getSubmissionHistoryAction } from '../../../(public)/submit/actions';
+import { getSubmissionHistoryAction } from '@/features/dashboard/getSubmissionHistory';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -63,7 +64,7 @@ function DashboardStats({ savedCount, trackerCount, interviewCount, profileCompl
     const router = useRouter();
     return (
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-            <div onClick={() => router.push('/saved')} className="group cursor-pointer">
+            <div onClick={() => router.push('/jobs?tab=saved')} className="group cursor-pointer">
                 <Card className="active:scale-95 cursor-pointer">
                     <CardContent className="px-3.5 py-2 flex items-center gap-2.5">
                         <div className="p-1.5 w-fit rounded-lg bg-signal-heat/10 text-signal-heat group-hover:scale-105 transition-transform">
@@ -77,7 +78,7 @@ function DashboardStats({ savedCount, trackerCount, interviewCount, profileCompl
                 </Card>
             </div>
 
-            <div onClick={() => router.push('/tracker')} className="group cursor-pointer">
+            <div onClick={() => router.push('/jobs?tab=applied')} className="group cursor-pointer">
                 <Card className="active:scale-95 cursor-pointer">
                     <CardContent className="px-3.5 py-2 flex items-center gap-2.5">
                         <div className="p-1.5 w-fit rounded-lg bg-warning/10 text-warning group-hover:scale-105 transition-transform">
@@ -91,7 +92,7 @@ function DashboardStats({ savedCount, trackerCount, interviewCount, profileCompl
                 </Card>
             </div>
 
-            <div onClick={() => router.push('/tracker?filter=interviews')} className="group cursor-pointer">
+            <div onClick={() => router.push('/jobs?tab=applied&filter=interviews')} className="group cursor-pointer">
                 <Card className="active:scale-95 cursor-pointer">
                     <CardContent className="px-3.5 py-2 flex items-center gap-2.5">
                         <div className="p-1.5 w-fit rounded-lg bg-brand-discord/10 text-brand-discord group-hover:scale-105 transition-transform">
@@ -162,7 +163,7 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
     const [submissionsCount, setSubmissionsCount] = useState(0);
 
     useEffect(() => {
-        getSubmissionHistoryAction().then((res) => {
+        getSubmissionHistoryAction().then((res: any) => {
             if ('submissions' in res) setSubmissionsCount(res.submissions.length);
         });
     }, [user?.id]);
@@ -383,7 +384,7 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
     const showSyncError = !!(recentError && recentOpps.length === 0);
 
     return (
-        <UsernameGate>
+        <div>
                 <div className="w-full max-w-7xl mx-auto space-y-6 md:space-y-8 pt-4 md:pt-6 pb-16 md:pb-24 px-3 md:px-6">
                     {/* Header Bar */}
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 md:pb-4 border-b border-border/40">
@@ -396,6 +397,8 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
                             submissionsCount={submissionsCount}
                         />
                     </div>
+
+                    <PublicPageStatusBanner />
 
                     {showSyncError && (
                         <div className="w-full max-w-xl mx-auto flex flex-col sm:flex-row items-center justify-center text-center gap-3 p-4 border border-primary/20 bg-primary/5 rounded-xl">
@@ -700,6 +703,6 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
                         </div>
                     )}
                 </div>
-        </UsernameGate>
+        </div>
     );
 }

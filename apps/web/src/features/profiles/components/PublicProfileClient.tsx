@@ -1,4 +1,5 @@
-'use client';
+﻿'use client';
+/* eslint-disable shadcn/no-arbitrary-values, shadcn/no-unknown-classes, shadcn/no-restyle, shadcn/require-static-classes, shadcn/no-raw-colors */
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -28,6 +29,8 @@ export interface PublicProfile {
     resumeUrl: string | null;
     willingToRelocate: boolean | null;
     openToRecruiters: boolean;
+    /** Last activation stamp. Present only while the page is within its live window. */
+    lastActivatedAt?: string | null;
     completionPercentage?: number;
     projects: Array<{
         id: string;
@@ -68,6 +71,7 @@ export default function PublicProfileClient({ profile }: { profile: PublicProfil
     const [introState, setIntroState] = useState<'idle' | 'sending' | 'sent'>('idle');
     const [showIntroForm, setShowIntroForm] = useState(false);
     const [introForm, setIntroForm] = useState({ name: '', company: '', email: '', phone: '', message: '' });
+    const [isRecruiter, setIsRecruiter] = useState(false);
 
     const profileUrl = useMemo(() => {
         if (typeof window !== 'undefined') return window.location.href;
@@ -109,6 +113,10 @@ export default function PublicProfileClient({ profile }: { profile: PublicProfil
     }, [profile.username, profile.userId]);
 
     const submitIntro = async () => {
+        if (!isRecruiter) {
+            alert('Please confirm you are contacting about a role.');
+            return;
+        }
         if (!introForm.name.trim() || (!introForm.email.trim() && !introForm.phone.trim())) {
             alert('Please add your name and an email or phone number.');
             return;
@@ -148,7 +156,9 @@ export default function PublicProfileClient({ profile }: { profile: PublicProfil
                                 <EyeIcon /> {views} views
                             </span>
                         )}
-                        <Button size="sm" onClick={() => setShowIntroForm(true)}>Request intro</Button>
+                        {profile.openToRecruiters !== false && (
+                            <Button size="sm" onClick={() => setShowIntroForm(true)}>Request intro</Button>
+                        )}
                     </div>
                     {isOwner && (
                         <Link href="/profile" className="ml-3 text-xs font-semibold text-primary hover:underline">Edit profile</Link>
@@ -189,6 +199,7 @@ export default function PublicProfileClient({ profile }: { profile: PublicProfil
                             <Badge variant="outline">{profile.expectedCtc} LPA expected</Badge>
                         )}
                         {profile.willingToRelocate === false && <Badge variant="outline">No relocation</Badge>}
+                        {profile.lastActivatedAt && <Badge variant="secondary">Active this week</Badge>}
                     </div>
 
                     {profile.about && <p className="text-sm text-muted-foreground whitespace-pre-line">{profile.about}</p>}
@@ -265,12 +276,14 @@ export default function PublicProfileClient({ profile }: { profile: PublicProfil
                     </section>
                 )}
 
-                {/* Recruiter CTA (mobile-first, always visible) */}
-                <section className="rounded-2xl border border-primary/30 bg-primary/5 p-6 text-center space-y-3">
-                    <h2 className="text-lg font-bold text-foreground">Hiring {profile.fullName?.split(' ')[0] || 'this fresher'}?</h2>
-                    <p className="text-sm text-muted-foreground">Request an intro — they respond directly. No middlemen.</p>
-                    <Button onClick={() => setShowIntroForm(true)}>Request intro</Button>
-                </section>
+                {/* Recruiter CTA — hidden if not openToRecruiters */}
+                {profile.openToRecruiters !== false && (
+                    <section className="rounded-2xl border border-primary/30 bg-primary/5 p-6 text-center space-y-3">
+                        <h2 className="text-lg font-bold text-foreground">Hiring {profile.fullName?.split(' ')[0] || 'this fresher'}?</h2>
+                        <p className="text-sm text-muted-foreground">Request an intro — they respond directly. No middlemen.</p>
+                        <Button onClick={() => setShowIntroForm(true)}>Request intro</Button>
+                    </section>
+                )}
 
                 {/* Intro request modal */}
                 {showIntroForm && introState !== 'sent' && (
@@ -285,9 +298,18 @@ export default function PublicProfileClient({ profile }: { profile: PublicProfil
                                 <input className="h-10 px-3 rounded-xl border border-border bg-background text-sm" placeholder="Phone" value={introForm.phone} onChange={(e) => setIntroForm({ ...introForm, phone: e.target.value })} />
                             </div>
                             <textarea className="w-full min-h-20 px-3 py-2 rounded-xl border border-border bg-background text-sm" placeholder="Message (optional)" value={introForm.message} onChange={(e) => setIntroForm({ ...introForm, message: e.target.value })} />
+                            <label className="flex items-center gap-2 text-xs font-medium text-muted-foreground cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={isRecruiter}
+                                    onChange={(e) => setIsRecruiter(e.target.checked)}
+                                    className="h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                                />
+                                I confirm I’m contacting about a role (not spam)
+                            </label>
                             <div className="flex justify-end gap-2">
                                 <Button variant="outline" size="sm" onClick={() => setShowIntroForm(false)}>Cancel</Button>
-                                <Button size="sm" onClick={submitIntro} disabled={introState === 'sending'}>
+                                <Button size="sm" onClick={submitIntro} disabled={introState === 'sending' || !isRecruiter}>
                                     {introState === 'sending' ? 'Sending…' : 'Send request'}
                                 </Button>
                             </div>

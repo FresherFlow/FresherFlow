@@ -23,7 +23,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
     if (mode === "govt") {
         return [
             {
-                href: '/dashboard',
+                href: '/jobs?tab=for-you',
                 label: 'Dashboard',
                 mobileTitle: 'Govt Mode',
                 mobileLabel: 'Home',
@@ -87,7 +87,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
                 icon: BriefcaseIcon,
             },
             {
-                href: '/saved',
+                href: '/jobs?tab=saved',
                 label: 'Saved',
                 mobileTitle: 'Saved',
                 showInDesktop: false,
@@ -98,7 +98,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
 
     return [
         {
-            href: '/dashboard',
+            href: '/jobs?tab=for-you',
             label: 'Dashboard',
             mobileTitle: 'FresherFlow',
             mobileLabel: 'Home',
@@ -171,7 +171,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             icon: BuildingLibraryIcon,
         },
         {
-            href: '/platforms',
+            href: '/resources?tab=platforms',
             label: 'Platforms',
             mobileTitle: 'Internship Platforms',
             mobileLabel: 'Platforms',
@@ -190,14 +190,14 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             icon: UserCircleIcon,
         },
         {
-            href: '/tracker',
+            href: '/jobs?tab=applied',
             label: 'Tracker',
             mobileTitle: 'Tracker',
             showInDesktop: false,
             requiresAuth: true,
         },
         {
-            href: '/saved',
+            href: '/jobs?tab=saved',
             label: 'Saved',
             mobileTitle: 'Saved',
             showInDesktop: false,

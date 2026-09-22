@@ -2,12 +2,48 @@ import prisma from '../../infrastructure/database/prisma';
 import { User } from '@fresherflow/database';
 import { OAuth2Client } from 'google-auth-library';
 import crypto from 'crypto';
+import { AppError } from '../../middleware/errorHandler';
 
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// In-memory OTP store (In production, use Redis)
+// In-memory OTP store (dub + openship pattern: 10m expiry, 5 attempts/24h lockout)
+// Adapted from dub EmailVerificationToken (10m) + openship emailOTP (6, 600s, 5 attempts)
+// No password handling — OTP only, mobile one-time-code autofill
 const otpStore = new Map<string, { code: string; expiresAt: Date }>();
+const otpAttempts = new Map<string, { count: number; firstAt: number; lockedUntil?: number }>();
+const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10m — dub 10m / openship 600s
+const OTP_MAX_ATTEMPTS = 5;
+const OTP_LOCKOUT_MS = 6 * 60 * 60 * 1000; // 6h lockout after 5 fails (was 24h, per request)
+
+function getAttemptKey(email: string) {
+    return email.toLowerCase();
+}
+function isLocked(email: string): { locked: boolean; retryAfterMs?: number } {
+    const rec = otpAttempts.get(getAttemptKey(email));
+    if (!rec || !rec.lockedUntil) return { locked: false };
+    if (Date.now() < rec.lockedUntil) return { locked: true, retryAfterMs: rec.lockedUntil - Date.now() };
+    // lock expired
+    otpAttempts.delete(getAttemptKey(email));
+    return { locked: false };
+}
+function recordFailedAttempt(email: string) {
+    const key = getAttemptKey(email);
+    const now = Date.now();
+    const rec = otpAttempts.get(key);
+    if (!rec || now - rec.firstAt > OTP_LOCKOUT_MS) {
+        otpAttempts.set(key, { count: 1, firstAt: now });
+        return;
+    }
+    rec.count += 1;
+    if (rec.count >= OTP_MAX_ATTEMPTS) {
+        rec.lockedUntil = now + OTP_LOCKOUT_MS;
+    }
+    otpAttempts.set(key, rec);
+}
+function clearAttempts(email: string) {
+    otpAttempts.delete(getAttemptKey(email));
+}
 
 // ─── Referral helpers ─────────────────────────────────────────────────────────
 
@@ -90,38 +126,55 @@ export class AuthService {
     }
 
     /**
-     * Generate and store OTP
+     * Generate and store OTP — adapted: dub 10m + openship emailOTP 600s, clean single-purpose
      */
     static generateOtp(email: string): string {
+        const key = email.toLowerCase();
+        const locked = isLocked(key);
+        if (locked.locked) {
+            const hrs = Math.ceil((locked.retryAfterMs || 0) / 3600000);
+            throw new AppError(`Too many failed attempts. Try again in ${hrs}h.`, 429);
+        }
         const code = crypto.randomInt(100000, 1000000).toString();
-        const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+        const expiresAt = new Date(Date.now() + OTP_EXPIRY_MS);
 
-        otpStore.set(email.toLowerCase(), { code, expiresAt });
+        otpStore.set(key, { code, expiresAt });
+        // reset attempts on new code (openship behavior: resend clears prior count)
+        clearAttempts(key);
 
         return code;
     }
 
     /**
-     * Verify OTP and return/create user
+     * Verify OTP and return/create user — adapted: dub 5/24h lockout + openship expired/too-many handling
      */
     static async verifyOtp(email: string, code: string, refCode?: string, firebaseUid?: string): Promise<{ user: User; isNewUser: boolean }> {
-        const stored = otpStore.get(email.toLowerCase());
+        const key = email.toLowerCase();
+        const locked = isLocked(key);
+        if (locked.locked) {
+            throw new AppError('Too many failed attempts. Try again later.', 429);
+        }
+        const stored = otpStore.get(key);
 
         if (!stored) {
             throw new Error('No OTP found or expired');
         }
 
         if (stored.expiresAt < new Date()) {
-            otpStore.delete(email.toLowerCase());
-            throw new Error('OTP expired');
+            otpStore.delete(key);
+            throw new Error('OTP expired. Please request a new one.');
         }
 
         if (stored.code !== code) {
-            throw new Error('Invalid verification code');
+            recordFailedAttempt(key);
+            const rec = otpAttempts.get(key);
+            if (rec?.lockedUntil) throw new AppError('Too many failed attempts. Try again later.', 429);
+            throw new AppError('Invalid verification code', 401);
         }
 
         // Success - clean up
-        otpStore.delete(email.toLowerCase());
+        otpStore.delete(key);
+        clearAttempts(key);
 
         const normalizedEmail = email.toLowerCase();
         const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });

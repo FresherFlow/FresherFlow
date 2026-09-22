@@ -4,7 +4,7 @@ import { UPageClient } from '@/features/profile/components/public/UPageClient';
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-    title: 'Fresher profiles — claim your link | FresherFlow',
+    title: 'Fresher profiles — claim your link',
     description: 'Claim your fresher profile at fresherflow.in/u/yourname — skills, projects, batch and availability, recruiter-ready.',
     alternates: { canonical: '/u' },
 };

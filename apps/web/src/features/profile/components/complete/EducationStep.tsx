@@ -3,7 +3,7 @@ import { cn } from '@repo/ui/utils/cn';
 import { EDUCATION_LEVELS, DIPLOMA_DEGREES, UG_DEGREES, PG_DEGREES, getSpecializations } from '@fresherflow/utils';
 
 import { Input } from '@/ui/Input';
-import { NativeSelect as Select } from "@/ui/NativeSelect";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/ui/Select";
 import { ArrowPathIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 
 interface EducationStepProps {
@@ -63,18 +63,12 @@ export const EducationStep = ({
 }: EducationStepProps) => {
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-3 duration-300">
-            {/* Top Bar with Description and Email */}
-            {/* Integrated Header Row */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
-                <div>
-                    <h2 className="text-lg font-semibold text-foreground">Education Details</h2>
-                    <p className="text-sm text-muted-foreground mt-1">Unlock eligible-matched opportunities.</p>
+            {email && (
+                <div className="flex items-center justify-end gap-2 text-xs">
+                    <span className="font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded">Verified</span>
+                    <span className="font-medium text-foreground/80">{email}</span>
                 </div>
-                <div className="flex items-center gap-3">
-                    <span className="text-xs font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded">Verified</span>
-                    <span className="text-sm font-medium text-foreground/80">{email}</span>
-                </div>
-            </div>
+            )}
 
             {/* Main Info Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -111,15 +105,19 @@ export const EducationStep = ({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Field label="Course">
-                        <Select value={gradCourse} onChange={e => { setGradCourse(e.target.value); setGradSpecialization(''); }} disabled={!educationLevel} className="h-9">
-                            <option value="">Select…</option>
-                            {educationLevel && (educationLevel === 'DIPLOMA' ? DIPLOMA_DEGREES : educationLevel === 'DEGREE' ? UG_DEGREES : PG_DEGREES).map(d => <option key={d}>{d}</option>)}
+                        <Select value={gradCourse} onValueChange={v => { setGradCourse(v); setGradSpecialization(''); }} disabled={!educationLevel}>
+                            <SelectTrigger className="h-9"><SelectValue placeholder="Select…" /></SelectTrigger>
+                            <SelectContent>
+                                {educationLevel && (educationLevel === 'DIPLOMA' ? DIPLOMA_DEGREES : educationLevel === 'DEGREE' ? UG_DEGREES : PG_DEGREES).map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                            </SelectContent>
                         </Select>
                     </Field>
                     <Field label="Specialization">
-                        <Select value={gradSpecialization} onChange={e => setGradSpecialization(e.target.value)} disabled={!gradCourse} className="h-9">
-                            <option value="">Select…</option>
-                            {getSpecializations(gradCourse).map((s: string) => <option key={s}>{s}</option>)}
+                        <Select value={gradSpecialization} onValueChange={setGradSpecialization} disabled={!gradCourse}>
+                            <SelectTrigger className="h-9"><SelectValue placeholder="Select…" /></SelectTrigger>
+                            <SelectContent>
+                                {getSpecializations(gradCourse).map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
                         </Select>
                     </Field>
                 </div>
@@ -135,15 +133,19 @@ export const EducationStep = ({
             {hasPG && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 animate-in slide-in-from-top-2 duration-300">
                     <Field label="PG Course">
-                        <Select value={pgCourse} onChange={e => { setPgCourse(e.target.value); setPgSpecialization(''); }} className="h-9">
-                            <option value="">Select…</option>
-                            {PG_DEGREES.map(d => <option key={d}>{d}</option>)}
+                        <Select value={pgCourse} onValueChange={v => { setPgCourse(v); setPgSpecialization(''); }}>
+                            <SelectTrigger className="h-9"><SelectValue placeholder="Select…" /></SelectTrigger>
+                            <SelectContent>
+                                {PG_DEGREES.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                            </SelectContent>
                         </Select>
                     </Field>
                     <Field label="PG Specialization">
-                        <Select value={pgSpecialization} onChange={e => setPgSpecialization(e.target.value)} disabled={!pgCourse} className="h-9">
-                            <option value="">Select…</option>
-                            {getSpecializations(pgCourse).map((s: string) => <option key={s}>{s}</option>)}
+                        <Select value={pgSpecialization} onValueChange={setPgSpecialization} disabled={!pgCourse}>
+                            <SelectTrigger className="h-9"><SelectValue placeholder="Select…" /></SelectTrigger>
+                            <SelectContent>
+                                {getSpecializations(pgCourse).map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
                         </Select>
                     </Field>
                     <Field label="PG Passout Year">

@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { fresherNeedsApi } from '@fresherflow/api-client';
 import type { SalaryReportItem, SalaryReportListResult } from '@fresherflow/api-client';
 import { cn } from '@repo/ui/utils/cn';
+import { useAuth } from '@/lib/auth/AuthContext';
 
 function formatLpa(thousands: number | null | undefined): string {
     if (thousands == null) return '—';
@@ -72,6 +74,8 @@ function SalaryForm({ onDone, onCreated }: { onDone: () => void; onCreated: () =
 }
 
 export function SalaryReportsClient() {
+    const { user } = useAuth();
+    const router = useRouter();
     const [data, setData] = useState<SalaryReportListResult | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -91,6 +95,10 @@ export function SalaryReportsClient() {
     }, [load]);
 
     async function toggleHelpful(id: string) {
+        if (!user) {
+            router.push('/login');
+            return;
+        }
         try {
             const res = await fresherNeedsApi.markSalaryReportHelpful(id);
             setHelpfulIds((prev) => {
@@ -100,8 +108,13 @@ export function SalaryReportsClient() {
                 return next;
             });
             load();
-        } catch {
-            // ignore
+        } catch (e) {
+            const err = e as { status?: number };
+            if (err.status === 401) {
+                router.push('/login');
+            } else {
+                setError(true);
+            }
         }
     }
 

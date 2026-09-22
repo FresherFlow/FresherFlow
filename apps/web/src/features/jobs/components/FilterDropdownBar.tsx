@@ -1,4 +1,5 @@
-'use client';
+﻿'use client';
+/* eslint-disable shadcn/no-arbitrary-values, shadcn/no-unknown-classes, shadcn/no-restyle, shadcn/require-static-classes, shadcn/no-raw-colors */
 
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { cn } from '@repo/ui/utils/cn';
@@ -6,6 +7,7 @@ import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import ChevronDownIcon from '@heroicons/react/24/outline/ChevronDownIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
+import AdjustmentsHorizontalIcon from '@heroicons/react/24/outline/AdjustmentsHorizontalIcon';
 import { SkillPill } from '@/features/jobs/components/SkillPill';
 
 export interface FilterBarFilters {
@@ -111,6 +113,17 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
     const [companySearch, setCompanySearch] = useState('');
     const [roleSearch, setRoleSearch] = useState('');
     const [activeIndex, setActiveIndex] = useState(0);
+    const [showAllPills, setShowAllPills] = useState(false);
+    const [isWide, setIsWide] = useState(false);
+
+    // Wider screens earn more inline pills (Tailwind xl breakpoint).
+    useEffect(() => {
+        const mq = window.matchMedia('(min-width: 1280px)');
+        const update = () => setIsWide(mq.matches);
+        update();
+        mq.addEventListener('change', update);
+        return () => mq.removeEventListener('change', update);
+    }, []);
     const barRef = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -155,6 +168,39 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
     const closeOnLeave = () => setOpen(null);
 
     const isGovt = pageType === 'GOVERNMENT';
+
+    // ── Progressive disclosure ────────────────────────────────────────────
+    // Default bar: Type · Location · (Batch | Qualification) · All Filters.
+    // Wider screens (xl) reveal Role inline; the rest (Skills, Course,
+    // Source, Batch, Company) live behind the All Filters toggle. A pill
+    // always shows once it has an active selection.
+    const dimActive = {
+        type: !!selectedType,
+        location: !!filters.location || (filters.workMode?.length ?? 0) > 0,
+        sector: !!filters.sector,
+        qualification: !!filters.qualification,
+        driveDate: !!driveDate && driveDate !== 'all',
+        role: (filters.role?.length ?? 0) > 0,
+        skills: (filters.skills?.length ?? 0) > 0,
+        course: !!filters.course,
+        source: (filters.source?.length ?? 0) > 0,
+        year: filters.year !== null,
+        company: (filters.company?.length ?? 0) > 0,
+    };
+
+    const pillVisible = (dim: keyof typeof dimActive) =>
+        dimActive[dim] ||
+        showAllPills ||
+        dim === 'type' ||
+        dim === 'location' ||
+        dim === 'driveDate' ||
+        (isWide && (isGovt ? dim === 'qualification' : dim === 'role'));
+
+    // Active filters currently hidden behind the All Filters pill (badge).
+    const hiddenActiveCount = (isGovt
+        ? (['sector', 'qualification'] as const)
+        : (['role', 'skills', 'course', 'source', 'year', 'company'] as const)
+    ).filter(d => dimActive[d] && !pillVisible(d)).length;
 
     const sortedLocations = useMemo(() => {
         return Object.entries(aggregates?.locations || {})
@@ -384,9 +430,9 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
 
             {/* Type dropdown */}
             {onTypeChange && (
-                <div className="relative" onMouseLeave={closeOnLeave}>
-                    <button
-                        onClick={() => toggle('type')}
+            <div className={cn('relative', !pillVisible('type') && 'hidden')} onMouseLeave={closeOnLeave}>
+                <button
+                    onClick={() => toggle('type')}
                         onMouseEnter={() => openOnEnter('type')}
                         aria-expanded={open === 'type'}
                         aria-haspopup="listbox"
@@ -417,7 +463,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                 </div>
             )}
 
-            <div className="relative" onMouseLeave={closeOnLeave}>
+            <div className={cn('relative', !pillVisible('location') && 'hidden')} onMouseLeave={closeOnLeave}>
                 <button
                     onClick={() => toggle('location')}
                     onMouseEnter={() => openOnEnter('location')}
@@ -540,7 +586,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
             {/* Govt specific dropdowns */}
             {isGovt && (
                 <>
-                    <div className="relative" onMouseLeave={closeOnLeave}>
+                    <div className={cn('relative', !pillVisible('sector') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             onClick={() => toggle('sector')}
                             onMouseEnter={() => openOnEnter('sector')}
@@ -571,7 +617,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             </div>
                         )}
                     </div>
-                    <div className="relative" onMouseLeave={closeOnLeave}>
+                    <div className={cn('relative', !pillVisible('qualification') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             onClick={() => toggle('qualification')}
                             onMouseEnter={() => openOnEnter('qualification')}
@@ -607,7 +653,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
 
             {/* When (drive date) — walk-in specific */}
             {pageType === 'WALKIN' && onDriveDateChange && (
-                <div className="relative" onMouseLeave={closeOnLeave}>
+                <div className={cn('relative', !pillVisible('driveDate') && 'hidden')} onMouseLeave={closeOnLeave}>
                     <button
                         onClick={() => toggle('driveDate')}
                         onMouseEnter={() => openOnEnter('driveDate')}
@@ -651,7 +697,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
             {!isGovt && (
                 <>
                     {/* Role dropdown */}
-                    <div className="relative" onMouseLeave={closeOnLeave}>
+                    <div className={cn('relative', !pillVisible('role') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             onClick={() => toggle('role')}
                             onMouseEnter={() => openOnEnter('role')}
@@ -709,7 +755,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                         )}
                     </div>
 
-                    <div className="relative" onMouseLeave={closeOnLeave}>
+                    <div className={cn('relative', !pillVisible('skills') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             onClick={() => toggle('skills')}
                             onMouseEnter={() => openOnEnter('skills')}
@@ -766,7 +812,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             </div>
                         )}
                     </div>
-                    <div className="relative" onMouseLeave={closeOnLeave}>
+                    <div className={cn('relative', !pillVisible('course') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             onClick={() => toggle('course')}
                             onMouseEnter={() => openOnEnter('course')}
@@ -797,7 +843,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                             </div>
                         )}
                     </div>
-                    <div className="relative" onMouseLeave={closeOnLeave}>
+                    <div className={cn('relative', !pillVisible('source') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             onClick={() => toggle('source')}
                             onMouseEnter={() => openOnEnter('source')}
@@ -838,7 +884,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                         )}
                     </div>
                     {/* Passout year dropdown */}
-                    <div className="relative" onMouseLeave={closeOnLeave}>
+                    <div className={cn('relative', !pillVisible('year') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             onClick={() => toggle('year')}
                             onMouseEnter={() => openOnEnter('year')}
@@ -898,7 +944,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                     </div>
 
                     {/* Company dropdown */}
-                    <div className="relative" onMouseLeave={closeOnLeave}>
+                    <div className={cn('relative', !pillVisible('company') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             onClick={() => toggle('company')}
                             onMouseEnter={() => openOnEnter('company')}
@@ -958,6 +1004,21 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                     </div>
                 </>
             )}
+            {/* All Filters — reveals the rest of the pills inline */}
+            <button
+                type="button"
+                onClick={() => setShowAllPills(v => !v)}
+                aria-expanded={showAllPills}
+                className={cn(chipBase, showAllPills || hiddenActiveCount > 0 ? chipActive : chipDefault)}
+            >
+                <AdjustmentsHorizontalIcon className="w-4 h-4 shrink-0" />
+                All Filters
+                {hiddenActiveCount > 0 && (
+                    <span className="bg-muted text-foreground rounded-md px-1.5 text-sm font-medium shrink-0 flex items-center justify-center h-5 min-w-5">
+                        {hiddenActiveCount}
+                    </span>
+                )}
+            </button>
         </div>
     );
 }

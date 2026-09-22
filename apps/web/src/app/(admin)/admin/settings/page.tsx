@@ -1,6 +1,9 @@
+import type { Metadata } from 'next';
 import TwoFactorSetup from "@/features/admin/components/TwoFactorSetup";
 import PasskeyManager from "@/features/admin/components/PasskeyManager";
 import { Badge } from "@/ui/Badge";
+
+export const metadata: Metadata = { title: { absolute: 'Settings | FresherFlow Admin' } };
 
 
 

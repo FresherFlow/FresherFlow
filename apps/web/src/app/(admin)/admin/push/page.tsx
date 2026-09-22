@@ -1,6 +1,8 @@
-import { Metadata } from 'next';
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import PushNotificationClient from '@/features/admin/components/PushNotificationClient';
+
+export const metadata: Metadata = { title: { absolute: 'Push Notifications | FresherFlow Admin' } };
 
 
 

@@ -47,6 +47,10 @@ export function errorHandler(
         } else {
             logger.error(chalk.yellow('  -> Run: npm run db:push to sync database'));
         }
+    } else if (statusCode === 429) {
+        // Rate limit — expected client error, not an application error. Keep logs clean like reference apps (dub/cal)
+        logger.warn(chalk.yellow(`RateLimit: ${errorMsg.split('\n')[0]}`));
+        logger.warn(chalk.gray(`  at ${location}`));
     } else if (statusCode === 401 || statusCode === 404) {
         logger.warn(chalk.yellow(`${statusCode === 401 ? 'Auth' : 'NotFound'}: ${errorMsg.split('\n')[0]}`));
         logger.warn(chalk.gray(`  at ${location}`));
@@ -57,13 +61,20 @@ export function errorHandler(
 
     if (process.env.NODE_ENV !== 'production') {
         const trimmedMsg = errorMsg.trim();
+        const isRateLimited = statusCode === 429 || trimmedMsg.includes('Too many failed attempts') || trimmedMsg.includes('Too many verification codes');
+        const isExpectedOtpError = statusCode === 401 && (
+            trimmedMsg.includes('Invalid verification code') ||
+            trimmedMsg.includes('No OTP found') ||
+            trimmedMsg.includes('OTP expired') ||
+            trimmedMsg.includes('Too many failed attempts')
+        );
         const isCommonAuthError = statusCode === 401 && (
             trimmedMsg.includes('No token provided') ||
             trimmedMsg.includes('Authorization header missing') ||
             trimmedMsg.includes('Authentication required')
         );
 
-        if (!isCommonAuthError) {
+        if (!isCommonAuthError && !isRateLimited && !isExpectedOtpError) {
             logger.error(chalk.red('[DEV] Full error:'), err);
         }
     } else if (process.env.DEBUG) {

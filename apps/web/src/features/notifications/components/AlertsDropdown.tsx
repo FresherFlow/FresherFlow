@@ -112,7 +112,7 @@ export function AlertsDropdown({ className }: { className?: string }) {
         if (item.opportunity?.slug) {
             router.push(`/opportunities/${item.opportunity.slug}`);
         } else {
-            router.push('/alerts');
+            router.push('/jobs?tab=alerts');
         }
     };
 
@@ -165,7 +165,7 @@ export function AlertsDropdown({ className }: { className?: string }) {
                         )}
                         <Hint label="Alert Settings" side="bottom">
                             <Link
-                                href="/settings#alerts"
+                                href="/account#alerts"
                                 onClick={() => setIsOpen(false)}
                                 className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
                                 aria-label="Alert Settings"
@@ -249,7 +249,7 @@ export function AlertsDropdown({ className }: { className?: string }) {
                 {/* Footer */}
                 <div className="p-3 border-t border-border/40 bg-muted/30 flex items-center justify-between gap-2 text-xs">
                     <Link
-                        href="/alerts"
+                        href="/jobs?tab=alerts"
                         onClick={() => setIsOpen(false)}
                         className="text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
                     >
@@ -257,7 +257,7 @@ export function AlertsDropdown({ className }: { className?: string }) {
                         <ArrowRightIcon className="w-3 h-3" />
                     </Link>
                     <Link
-                        href="/settings#alerts"
+                        href="/account#alerts"
                         onClick={() => setIsOpen(false)}
                         className="text-xs font-semibold text-primary hover:underline flex items-center gap-1.5"
                     >

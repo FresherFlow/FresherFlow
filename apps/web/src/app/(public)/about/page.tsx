@@ -139,7 +139,7 @@ const ecosystem: EcosystemItem[] = [
         description:
             'Public proof-of-work profiles where students can showcase GitHub repositories, live projects, and technical skills directly to recruiters.',
         linkText: 'Create Profile',
-        href: '/profile',
+        href: '/account?tab=profile',
         external: false,
     },
     {

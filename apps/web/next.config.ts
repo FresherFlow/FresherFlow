@@ -1,8 +1,18 @@
 import events from "node:events";
-import { withSentryConfig } from "@sentry/nextjs";
+import { createRequire } from "node:module";
 import type { NextConfig } from "next";
 
 events.defaultMaxListeners = 30;
+
+// Sentry is production-only: importing @sentry/nextjs/config costs ~1.5s
+// on config load (seen as "Running next.config.ts took 2.4s") and
+// widenClientFileUpload instruments every file. Load it lazily and only
+// when NODE_ENV=production so `pnpm dev:web` stays fast.
+const require = createRequire(import.meta.url);
+const withSentryConfig: (config: NextConfig, opts: unknown) => NextConfig =
+  process.env.NODE_ENV === "production"
+    ? require("@sentry/nextjs/config").withSentryConfig
+    : ((c: NextConfig) => c);
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
@@ -100,7 +110,10 @@ const APP_ORIGIN = resolveWebOrigin(
 );
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
+  // `standalone` is needed for Docker/Vercel production only — it
+  // adds a full copy of node_modules to .next/standalone and slows
+  // dev startup. Disable in dev.
+  ...(IS_PRODUCTION ? { output: 'standalone' as const } : {}),
 
   transpilePackages: [
     "@fresherflow/types",
@@ -393,12 +406,11 @@ const nextConfig: NextConfig = {
 export default withSentryConfig(nextConfig, {
   // For all available options, see:
   // https://github.com/getsentry/sentry-webpack-plugin#options
-
-  // Suppresses source map uploading logs during bundling
   silent: true,
   org: "fresherflow",
   project: "javascript-nextjs",
-
-  // Upload a larger set of source maps for prettier stack traces (increases build time)
-  widenClientFileUpload: true,
+  // widenClientFileUpload instruments every client file — only worth
+  // the cost in production. In dev we already no-op withSentryConfig
+  // above, but keep this false as safety.
+  widenClientFileUpload: IS_PRODUCTION,
 });

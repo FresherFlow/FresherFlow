@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { useRouter } from 'next/navigation';
 import { authApi, UnauthorizedError, clearUserTokens, setUserTokens } from '@/lib/api/client';
 import { clearUnreadCache } from '@/lib/cache/unreadCount';
+import { isSafeInternalRedirect } from '@/lib/config/paths';
 import { User, Profile } from '@fresherflow/types';
 
 interface AuthContextType {
@@ -11,10 +12,9 @@ interface AuthContextType {
     profile: Profile | null;
     isLoading: boolean;
     skipUsernameSetup: boolean;
-    login: (email: string, password: string) => Promise<void>;
     sendOtp: (email: string) => Promise<void>;
-    verifyOtp: (email: string, code: string, source?: string, ref?: string) => Promise<void>;
-    loginWithGoogle: (source?: string, ref?: string) => Promise<void>;
+    verifyOtp: (email: string, code: string, source?: string, ref?: string) => Promise<User>;
+    loginWithGoogle: (source?: string, ref?: string) => Promise<User>;
     logout: (redirectTo?: string) => Promise<void>;
     refreshUser: () => Promise<void>;
     refreshProfile: () => Promise<void>;
@@ -30,6 +30,21 @@ const SESSION_REVALIDATE_MS = Number(process.env.NEXT_PUBLIC_SESSION_REVALIDATE_
 const SESSION_HINT_COOKIE_MAX_AGE_SECONDS = Number(process.env.NEXT_PUBLIC_SESSION_HINT_COOKIE_MAX_AGE_SECONDS || 90 * 24 * 60 * 60);
 
 const SESSION_CACHE_KEY = 'ff_cached_session_v1';
+const LAST_AUTH_KEY = 'ff_last_auth_method';
+const ONBOARDING_WINDOW_MS = 24 * 60 * 60 * 1000; // dub: 24h window
+
+function setLastAuthMethod(method: 'otp' | 'google') {
+    try { localStorage.setItem(LAST_AUTH_KEY, method); } catch {}
+}
+export function getLastAuthMethod(): 'otp' | 'google' | null {
+    try { return localStorage.getItem(LAST_AUTH_KEY) as any; } catch { return null; }
+}
+function isWithinOnboardingWindow(user: User | null): boolean {
+    if (!user || user.username) return false;
+    const created = (user as any).createdAt ? new Date((user as any).createdAt).getTime() : 0;
+    if (!created) return !user.username; // fallback: if no createdAt, treat missing username as window
+    return Date.now() - created < ONBOARDING_WINDOW_MS;
+}
 
 type CachedSession = {
     user: User;
@@ -188,6 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const lastVisibilityRefreshAtRef = useRef(0);
     const lastSuccessfulLoadAtRef = useRef(0);
+    const loadUserPromiseRef = useRef<Promise<void> | null>(null);
 
     const logout = useCallback(async (redirectTo?: string) => {
         if (isLoggingOutRef.current) return;
@@ -228,156 +244,165 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; SameSite=Lax;`;
                 });
             }
-            const target = redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//') && !redirectTo.startsWith('/logout')
-                ? redirectTo
-                : '/login';
-            router.push(target);
+            router.push(isSafeInternalRedirect(redirectTo) ? (redirectTo as string) : '/login');
         }
     }, [router]);
 
     const loadUser = useCallback(async (options?: { silent?: boolean; force?: boolean }) => {
         if (isLoggingOutRef.current) return;
+
+        // Deduplicate concurrent loadUser calls - return existing promise if one is in flight
+        if (loadUserPromiseRef.current) {
+            return loadUserPromiseRef.current;
+        }
+
         const silent = options?.silent === true;
         const force = options?.force === true;
         if (!silent) setIsLoading(true);
 
-        // Safety timeout: if API hangs (not down, but slow/stuck), bail out after 10s
-        // so users never get trapped on a blank loading screen when the backend is unhealthy.
-        const timeoutId = setTimeout(() => {
-            const cached = readCachedSession();
-            if (cached) {
-                setUser(cached.user);
-                setProfile(cached.profile);
-                setSkipUsernameSetup(!!cached.skipUsernameSetup);
-                setClientSessionHints();
-            } else {
-                setUser(null);
-                setProfile(null);
-                clearClientSessionHints();
-                clearCachedSession();
-            }
-            setIsLoading(false);
-        }, 10000);
-
-        try {
-            const cached = readCachedSession();
-            const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
-
-            // Offline mode: Load immediately from cache
-            if (isOffline && cached) {
-                setUser(cached.user);
-                setProfile(cached.profile);
-                setSkipUsernameSetup(!!cached.skipUsernameSetup);
-                setClientSessionHints();
-                lastSuccessfulLoadAtRef.current = cached.savedAt;
-                if (!silent) setIsLoading(false);
-                return;
-            }
-
-            const { auth } = await import('@/lib/api/firebase');
-            const firebaseUser = auth.currentUser;
-
-            const hasSessionCookie = typeof document !== 'undefined' && (document.cookie.includes('ff_logged_in=true') || document.cookie.includes('accessToken'));
-
-            if (firebaseUser) {
-                if (force || !hasSessionCookie || !cached || !isCachedSessionFresh(cached)) {
-                    // Direct API fetch from backend PostgreSQL database
-                    let userResponse: User;
-                    let profileResponse: Profile | null = null;
-                    if (!hasSessionCookie) {
-                        const idToken = await firebaseUser.getIdToken(true);
-                        const response = await authApi.handshake(idToken);
-                        setUserTokens(response.accessToken, response.refreshToken);
-                        userResponse = response.user;
-                        profileResponse = response.profile as Profile;
-                    } else {
-                        const response = await authApi.me() as { user: User; profile: Profile };
-                        userResponse = response.user;
-                        profileResponse = response.profile;
-                    }
-
-                    setUser(userResponse);
-                    setProfile(profileResponse);
-                    setClientSessionHints();
-
-                    const onboarding = await readFirebaseOnboarding(firebaseUser.uid);
-                    const isSkipped = !!onboarding?.skipUsernameSetup;
-                    setSkipUsernameSetup(isSkipped);
-                    writeCachedSession(userResponse, profileResponse, isSkipped);
-                    lastSuccessfulLoadAtRef.current = Date.now();
-
-                    if (profileResponse) {
-                        void writeFirebaseProfile(firebaseUser.uid, profileResponse);
-                    }
-                } else {
-                    // Session fresh in cache -> load direct user & profile from API/cache
-                    setUser(cached.user);
-                    setProfile(cached.profile);
-                    setSkipUsernameSetup(!!cached.skipUsernameSetup);
-                    setClientSessionHints();
-                    lastSuccessfulLoadAtRef.current = cached.savedAt;
-                }
-            } else {
-                // If firebaseUser is null, attempt authApi.me() or use fresh cached session
-                if (!hasSessionCookie) {
-                    setUser(null);
-                    setProfile(null);
-                    clearCachedSession();
-                    clearClientSessionHints();
-                    if (!silent) setIsLoading(false);
-                    return;
-                }
-                if (!force && cached && isCachedSessionFresh(cached)) {
-                    setUser(cached.user);
-                    setProfile(cached.profile);
-                    setSkipUsernameSetup(!!cached.skipUsernameSetup);
-                    setClientSessionHints();
-                    lastSuccessfulLoadAtRef.current = cached.savedAt;
-                } else {
-                    const response = await authApi.me() as { user: User; profile: Profile };
-                    setUser(response.user);
-                    setProfile(response.profile);
-                    setClientSessionHints();
-
-                    const isSkipped = cached ? !!cached.skipUsernameSetup : false;
-                    setSkipUsernameSetup(isSkipped);
-                    writeCachedSession(response.user, response.profile, isSkipped);
-                    lastSuccessfulLoadAtRef.current = Date.now();
-                }
-            }
-        } catch (error: unknown) {
-            const status = (error as { statusCode?: number; status?: number })?.statusCode || (error as { status?: number })?.status;
-            const isUnauthorized = error instanceof UnauthorizedError || status === 401;
-
-            if (isUnauthorized) {
-                clearCachedSession();
-                clearUserTokens();
-                clearClientSessionHints();
-                clearAllClientCaches();
-                setUser(null);
-                setProfile(null);
-                setSkipUsernameSetup(false);
-            } else {
-                // Silently fall back to cached session on 503 / 5xx / network errors
+        const promise = (async () => {
+            // Safety timeout: if API hangs (not down, but slow/stuck), bail out after 10s
+            // so users never get trapped on a blank loading screen when the backend is unhealthy.
+            const timeoutId = setTimeout(() => {
                 const cached = readCachedSession();
                 if (cached) {
                     setUser(cached.user);
                     setProfile(cached.profile);
                     setSkipUsernameSetup(!!cached.skipUsernameSetup);
                     setClientSessionHints();
-                    lastSuccessfulLoadAtRef.current = cached.savedAt;
                 } else {
                     setUser(null);
                     setProfile(null);
-                    setSkipUsernameSetup(false);
                     clearClientSessionHints();
                     clearCachedSession();
                 }
+                setIsLoading(false);
+            }, 10000);
+
+            try {
+                const cached = readCachedSession();
+                const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+
+                // Offline mode: Load immediately from cache
+                if (isOffline && cached) {
+                    setUser(cached.user);
+                    setProfile(cached.profile);
+                    setSkipUsernameSetup(!!cached.skipUsernameSetup);
+                    setClientSessionHints();
+                    lastSuccessfulLoadAtRef.current = cached.savedAt;
+                    if (!silent) setIsLoading(false);
+                    return;
+                }
+
+                const { auth } = await import('@/lib/api/firebase');
+                const firebaseUser = auth.currentUser;
+
+                const hasSessionCookie = typeof document !== 'undefined' && (document.cookie.includes('ff_logged_in=true') || document.cookie.includes('accessToken'));
+
+                if (firebaseUser) {
+                    if (force || !hasSessionCookie || !cached || !isCachedSessionFresh(cached)) {
+                        // Direct API fetch from backend PostgreSQL database
+                        let userResponse: User;
+                        let profileResponse: Profile | null = null;
+                        if (!hasSessionCookie) {
+                            const idToken = await firebaseUser.getIdToken(true);
+                            const response = await authApi.handshake(idToken);
+                            setUserTokens(response.accessToken, response.refreshToken);
+                            userResponse = response.user;
+                            profileResponse = response.profile as Profile;
+                        } else {
+                            const response = await authApi.me() as { user: User; profile: Profile };
+                            userResponse = response.user;
+                            profileResponse = response.profile;
+                        }
+
+                        setUser(userResponse);
+                        setProfile(profileResponse);
+                        setClientSessionHints();
+
+                        const onboarding = await readFirebaseOnboarding(firebaseUser.uid);
+                        const isSkipped = !!onboarding?.skipUsernameSetup;
+                        setSkipUsernameSetup(isSkipped);
+                        writeCachedSession(userResponse, profileResponse, isSkipped);
+                        lastSuccessfulLoadAtRef.current = Date.now();
+
+                        if (profileResponse) {
+                            void writeFirebaseProfile(firebaseUser.uid, profileResponse);
+                        }
+                    } else {
+                        // Session fresh in cache -> load direct user & profile from API/cache
+                        setUser(cached.user);
+                        setProfile(cached.profile);
+                        setSkipUsernameSetup(!!cached.skipUsernameSetup);
+                        setClientSessionHints();
+                        lastSuccessfulLoadAtRef.current = cached.savedAt;
+                    }
+                } else {
+                    // If firebaseUser is null, attempt authApi.me() or use fresh cached session
+                    if (!hasSessionCookie) {
+                        setUser(null);
+                        setProfile(null);
+                        clearCachedSession();
+                        clearClientSessionHints();
+                        if (!silent) setIsLoading(false);
+                        return;
+                    }
+                    if (!force && cached && isCachedSessionFresh(cached)) {
+                        setUser(cached.user);
+                        setProfile(cached.profile);
+                        setSkipUsernameSetup(!!cached.skipUsernameSetup);
+                        setClientSessionHints();
+                        lastSuccessfulLoadAtRef.current = cached.savedAt;
+                    } else {
+                        const response = await authApi.me() as { user: User; profile: Profile };
+                        setUser(response.user);
+                        setProfile(response.profile);
+                        setClientSessionHints();
+
+                        const isSkipped = cached ? !!cached.skipUsernameSetup : false;
+                        setSkipUsernameSetup(isSkipped);
+                        writeCachedSession(response.user, response.profile, isSkipped);
+                        lastSuccessfulLoadAtRef.current = Date.now();
+                    }
+                }
+            } catch (error: unknown) {
+                const status = (error as { statusCode?: number; status?: number })?.statusCode || (error as { status?: number })?.status;
+                const isUnauthorized = error instanceof UnauthorizedError || status === 401;
+
+                if (isUnauthorized) {
+                    clearCachedSession();
+                    clearUserTokens();
+                    clearClientSessionHints();
+                    clearAllClientCaches();
+                    setUser(null);
+                    setProfile(null);
+                    setSkipUsernameSetup(false);
+                } else {
+                    // Silently fall back to cached session on 503 / 5xx / network errors
+                    const cached = readCachedSession();
+                    if (cached) {
+                        setUser(cached.user);
+                        setProfile(cached.profile);
+                        setSkipUsernameSetup(!!cached.skipUsernameSetup);
+                        setClientSessionHints();
+                        lastSuccessfulLoadAtRef.current = cached.savedAt;
+                    } else {
+                        setUser(null);
+                        setProfile(null);
+                        setSkipUsernameSetup(false);
+                        clearClientSessionHints();
+                        clearCachedSession();
+                    }
+                }
+            } finally {
+                clearTimeout(timeoutId);
+                setIsLoading(false);
+                loadUserPromiseRef.current = null;
             }
-        } finally {
-            clearTimeout(timeoutId);
-            setIsLoading(false);
-        }
+        })();
+
+        loadUserPromiseRef.current = promise;
+        return promise;
     }, []);
 
     const updateProfileState = useCallback((updated: Partial<Profile> & { fullName?: string }, apiSyncTask?: () => Promise<unknown>) => {
@@ -425,7 +450,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             clearAllClientCaches();
             setUser(null);
             setProfile(null);
-            const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/dashboard';
+            const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/jobs';
             const loginUrl = `/login?expired=true${currentPath && currentPath !== '/login' ? `&redirect=${encodeURIComponent(currentPath)}` : ''}`;
             window.location.replace(loginUrl);
         };
@@ -479,36 +504,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
     }, [loadUser]);
 
-    const login = useCallback(async (email: string, pass: string) => {
-        const response = await authApi.login(email, pass);
-        setUserTokens(response.accessToken, response.refreshToken);
-        setUser(response.user);
-        setProfile(response.profile as Profile);
-        setClientSessionHints();
-        
-        let isSkipped = false;
-        if (response.firebaseCustomToken) {
-            const { signInWithCustomToken } = await import('firebase/auth');
-            const { auth } = await import('@/lib/api/firebase');
-            const userCred = await signInWithCustomToken(auth, response.firebaseCustomToken);
-            const onboarding = await readFirebaseOnboarding(userCred.user.uid);
-            isSkipped = !!onboarding?.skipUsernameSetup;
-        }
-        setSkipUsernameSetup(isSkipped);
-        writeCachedSession(response.user, response.profile as Profile, isSkipped);
-        lastSuccessfulLoadAtRef.current = Date.now();
-    }, []);
-
     async function sendOtp(email: string) {
         await authApi.sendOtp(email);
     }
 
-    async function verifyOtp(email: string, code: string, source?: string, ref?: string) {
+    async function verifyOtp(email: string, code: string, source?: string, ref?: string): Promise<User> {
         const response = await authApi.verifyOtp(email, code, source, ref);
         setUserTokens(response.accessToken, response.refreshToken);
         setUser(response.user);
         setProfile(response.profile as Profile);
         setClientSessionHints();
+        setLastAuthMethod('otp');
         
         let isSkipped = false;
         if (response.firebaseCustomToken) {
@@ -521,9 +527,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSkipUsernameSetup(isSkipped);
         writeCachedSession(response.user, response.profile as Profile, isSkipped);
         lastSuccessfulLoadAtRef.current = Date.now();
+        return response.user;
     }
 
-    async function loginWithGoogle(source?: string, ref?: string) {
+    async function loginWithGoogle(source?: string, ref?: string): Promise<User> {
         const { signInWithPopup, GoogleAuthProvider } = await import('firebase/auth');
         const { auth } = await import('@/lib/api/firebase');
         const provider = new GoogleAuthProvider();
@@ -536,12 +543,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(response.user);
         setProfile(response.profile as Profile);
         setClientSessionHints();
+        setLastAuthMethod('google');
         
         const onboarding = await readFirebaseOnboarding(userCredential.user.uid);
         const isSkipped = !!onboarding?.skipUsernameSetup;
         setSkipUsernameSetup(isSkipped);
         writeCachedSession(response.user, response.profile as Profile, isSkipped);
         lastSuccessfulLoadAtRef.current = Date.now();
+        return response.user;
     }
 
     const refreshUser = useCallback(async () => {
@@ -571,7 +580,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return (
         <AuthContext.Provider
-            value={{ user, profile, isLoading, skipUsernameSetup, login, sendOtp, verifyOtp, loginWithGoogle, logout, refreshUser, refreshProfile, forceRefreshProfile, skipUsername, updateProfileState }}
+            value={{ user, profile, isLoading, skipUsernameSetup, sendOtp, verifyOtp, loginWithGoogle, logout, refreshUser, refreshProfile, forceRefreshProfile, skipUsername, updateProfileState }}
         >
             {children}
         </AuthContext.Provider>

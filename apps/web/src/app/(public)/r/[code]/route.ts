@@ -23,8 +23,7 @@ export async function GET(
     }).catch(() => { /* silent */ });
 
     // Redirect to signup with the short code as ref
-    const signupUrl = new URL('/login', request.url);
-    signupUrl.searchParams.set('intent', 'signup');
+    const signupUrl = new URL('/signup', request.url);
     signupUrl.searchParams.set('ref', code.toUpperCase());
 
     return NextResponse.redirect(signupUrl, 307);

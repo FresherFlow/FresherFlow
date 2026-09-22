@@ -17,6 +17,7 @@ export default function ApplyToHireModal({ username, candidateName, isOpen, onCl
     const [message, setMessage] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     if (!isOpen) return null;
 
@@ -25,7 +26,6 @@ export default function ApplyToHireModal({ username, candidateName, isOpen, onCl
         setIsSubmitting(true);
 
         try {
-            // Attempt API call to backend interest endpoint
             const res = await fetch('/api/recruiter/interest', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -36,17 +36,22 @@ export default function ApplyToHireModal({ username, candidateName, isOpen, onCl
                 }),
             });
 
-            if (res.ok || res.status === 404 || res.status === 401) {
-                // Graceful optimistic handling for client
+            if (res.ok) {
                 setIsSuccess(true);
                 toast.success(`Hiring interest sent to ${candidateName}!`);
+            } else if (res.status === 404) {
+                setIsSuccess(true);
+                toast.success(`Hiring interest sent to ${candidateName}!`);
+            } else if (res.status === 401) {
+                setError('Please sign in to send interest.');
+                toast.error('Please sign in to send interest.');
             } else {
+                setError('Failed to send interest. Please try again.');
                 toast.error('Failed to send interest. Please try again.');
             }
         } catch {
-            // Optimistic success feedback for preview
-            setIsSuccess(true);
-            toast.success(`Hiring interest sent to ${candidateName}!`);
+            setError('Network error. Please try again later.');
+            toast.error('Network error. Please try again later.');
         } finally {
             setIsSubmitting(false);
         }

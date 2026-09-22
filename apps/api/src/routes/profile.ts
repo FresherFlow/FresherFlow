@@ -5,8 +5,18 @@ import { validate } from '../middleware/validate';
 import { educationSchema, preferencesSchema, readinessSchema, contributionSchema, profileUpdateSchema } from '../utils/validation';
 import { ProfileService } from '../infrastructure/services/profile.service';
 import { AppError } from '../middleware/errorHandler';
+import { createRateLimiter } from '../middleware/rateLimit';
+import { profilePageExpiresAt } from '@fresherflow/utils';
 
 const router: Router = express.Router();
+
+// Publishing rebuilds and uploads the public profile payload; keep it bounded.
+const publishLimiter = createRateLimiter({
+    windowMs: 60 * 60 * 1000,
+    max: 30,
+    message: 'Too many publish attempts. Please try again later.',
+    keyPrefix: 'profile-publish',
+});
 
 // GET /api/profile
 router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
@@ -47,10 +57,14 @@ router.patch('/visibility', requireAuth, async (req: Request, res: Response, nex
 });
 
 // POST /api/profile/publish
-router.post('/publish', requireVerifiedAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/publish', publishLimiter, requireVerifiedAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { publishedAt } = await ProfileService.publishProfile(req.userId as string);
-        res.json({ publishedAt: publishedAt.toISOString() });
+        res.json({
+            publishedAt: publishedAt.toISOString(),
+            // The page is only live until this moment; after it the owner must reactivate.
+            activeUntil: profilePageExpiresAt(publishedAt).toISOString(),
+        });
     } catch (error) {
         next(error);
     }

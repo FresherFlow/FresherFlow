@@ -263,23 +263,45 @@ function PostCard({ post: initial }: { post: CommunityPost }) {
             )}
 
             <div className="flex items-center gap-4">
-                {user ? (
-                    <HelpfulButton
-                        helpfulCount={post.likesCount}
-                        isHelpful={((post.votes?.[0]?.value ?? null) as number | null) === 1}
-                        onToggle={handleHelpful}
-                    />
-                ) : (
-                    <span className="text-xs text-muted-foreground">{post.likesCount} helpful</span>
-                )}
-                <button
-                    type="button"
-                    onClick={() => setShowComments(!showComments)}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                >
-                    {post.commentsCount} {post.commentsCount === 1 ? 'comment' : 'comments'}
-                </button>
-            </div>
+                    {user ? (
+                        <HelpfulButton
+                            helpfulCount={post.likesCount}
+                            isHelpful={((post.votes?.[0]?.value ?? null) as number | null) === 1}
+                            onToggle={handleHelpful}
+                        />
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const { pathname } = window.location;
+                                window.location.href = `/login?redirect=${encodeURIComponent(pathname)}`;
+                            }}
+                            className="text-xs text-primary font-semibold hover:underline"
+                        >
+                            Sign in to vote
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => setShowComments(!showComments)}
+                        className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                        {post.commentsCount} {post.commentsCount === 1 ? 'comment' : 'comments'}
+                    </button>
+                </div>
+
+            {!user && (
+                <div className="rounded-xl border border-dashed border-border bg-card p-4 text-center">
+                    <p className="text-xs text-muted-foreground">
+                        Sign in to{' '}
+                        <a href="/login" className="font-semibold text-primary hover:underline">post</a>
+                        {' · '}
+                        <a href="/login" className="font-semibold text-primary hover:underline">vote</a>
+                        {' · '}
+                        <a href="/login" className="font-semibold text-primary hover:underline">comment</a>
+                    </p>
+                </div>
+            )}
 
             {showComments && (
                 <CommentThread
@@ -364,19 +386,20 @@ export function CommunityFeedClient() {
                 .split(',')
                 .map((t) => t.trim())
                 .filter(Boolean);
-            await communityApi.createCommunityPost({
+            const newPost = await communityApi.createCommunityPost({
                 title: newPostTitle.trim(),
                 body: newPostBody.trim(),
                 category: newPostCategory,
                 tags: tags.length > 0 ? tags : undefined,
                 sourceOpportunityId,
             });
+            setPosts((prev) => [newPost, ...prev]);
+            setTotal((prev) => prev + 1);
             setNewPostTitle('');
             setNewPostBody('');
             setNewPostCategory(CommunityPostCategory.DISCUSSION);
             setNewPostTags('');
             setPage(1);
-            await load();
         } catch {
             setError(true);
         } finally {
@@ -409,7 +432,7 @@ export function CommunityFeedClient() {
     return (
         <div className="space-y-6">
             {/* ── New Post Form ── */}
-            {user && (
+            {user ? (
                 <div className="rounded-2xl border border-border bg-card p-6 space-y-4">
                     <h2 className="text-sm font-bold text-foreground">Start a Discussion</h2>
                     {sourceOpportunityId && (
@@ -454,6 +477,17 @@ export function CommunityFeedClient() {
                     >
                         {posting ? 'Posting…' : 'Post'}
                     </button>
+                </div>
+            ) : (
+                <div className="rounded-2xl border border-dashed border-border bg-card p-6 text-center">
+                    <p className="text-sm font-semibold text-foreground">Start a Discussion</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Sign in to post discussions and share experiences.</p>
+                    <a
+                        href={`/login?redirect=${encodeURIComponent('/community')}`}
+                        className="mt-3 inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-all hover:bg-primary/90"
+                    >
+                        Sign In to Post
+                    </a>
                 </div>
             )}
 

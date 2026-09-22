@@ -25,8 +25,15 @@ const ADMIN_ACCESS_TOKEN_KEY = 'ff_admin_access_token_v1';
 
 function logClientWarning(message: string, error?: unknown) {
     if (process.env.NODE_ENV === 'development') {
+        const err = error as { statusCode?: number; message?: string } | undefined;
+        // Expected OTP / auth flows — handled by toast only, keep logs clean like reference apps (dub: silent)
+        if (err?.statusCode === 429) return;
+        if (err?.statusCode === 401) return; // all 401 OTP failures are expected (invalid code, Too many, expired)
+        if (err?.message?.includes('Too many')) return;
+        if (err?.message?.includes('Invalid verification code')) return;
+        if (err?.message?.includes('No OTP found') || err?.message?.includes('OTP expired')) return;
         if (error instanceof Error && error.message.includes('status 500')) {
-            return; // Silence backend-offline terminal spam
+            return;
         }
         console.warn(`[Client] ${message}`, error);
     }
@@ -196,6 +203,7 @@ function shouldAttemptSessionRefresh(endpoint: string): boolean {
         '/api/auth/google',
         '/api/auth/otp/send',
         '/api/auth/otp/verify',
+        '/api/auth/handshake',
         '/api/auth/register',
         '/api/auth/refresh',
         '/api/admin/auth/login/options',
@@ -338,12 +346,14 @@ export async function apiClient<T = unknown>(
                 });
                 clearTimeout(id);
 
-                if (response.ok || response.status < i * 100 || !canRetry) return response;
+                if (response.ok || !canRetry) return response;
 
-                // Only retry on potential transient errors (5xx or network failures)
-                if (response.status < 500 && response.status !== 429) return response;
+                // Only retry on transient 5xx — never retry 429 (rate limit) like reference dub (returns 429 immediately)
+                if (response.status < 500) return response;
 
-                lastError = new Error(`Request failed with status ${response.status}`);
+                const err = new Error(`Request failed with status ${response.status}`) as Error & { statusCode?: number };
+                err.statusCode = response.status;
+                lastError = err;
                 try {
                     if (response.body) {
                         void response.body.cancel().catch(() => {});

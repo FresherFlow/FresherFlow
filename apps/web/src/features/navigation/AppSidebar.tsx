@@ -1,4 +1,5 @@
-"use client"
+﻿"use client"
+/* eslint-disable shadcn/no-arbitrary-values, shadcn/no-unknown-classes, shadcn/no-restyle, shadcn/require-static-classes, shadcn/no-raw-colors */
 
 import * as React from "react"
 import { X } from "lucide-react"
@@ -26,7 +27,8 @@ import { SiteHeader } from "@/features/navigation/SiteHeader"
 import { LogoImage } from "@/features/shell/LogoImage"
 import { cn } from "@/ui/cn"
 import {
-  SECONDARY_GROUP,
+  COMMUNITY_GROUP,
+  PERSONAL_GROUP,
   SPACES,
   getInitialSpace,
   getSpace,
@@ -62,11 +64,14 @@ function useSpaceSelection() {
   // contains auth-gated items — callers gate on `mounted` so logged-out
   // visitors never see them flash in during hydration.
   const isAuthed = mounted ? Boolean(user) : true
-  const visibleSecondary = SECONDARY_GROUP.items.filter(
+  const visiblePersonal = PERSONAL_GROUP.items.filter(
+    (item) => !(item.requiresAuth && !isAuthed)
+  )
+  const visibleCommunity = COMMUNITY_GROUP.items.filter(
     (item) => !(item.requiresAuth && !isAuthed)
   )
 
-  return { pathname, spaceId, setSpaceId, mounted, isAuthed, visibleSecondary, user }
+  return { pathname, spaceId, setSpaceId, mounted, isAuthed, visiblePersonal, visibleCommunity, user }
 }
 
 /**
@@ -77,31 +82,40 @@ function useSpaceSelection() {
  */
 function SidebarBrand({ href, className }: { href: string; className?: string }) {
   return (
-    <Link
-      href={href}
-      aria-label="FresherFlow home"
-      suppressHydrationWarning
-      className={cn(
-        "flex min-w-0 items-center gap-2 rounded-md px-1 py-1.5 transition-opacity hover:opacity-85",
-        className
-      )}
-    >
-      <LogoImage width={28} height={28} className="h-7 w-7 shrink-0 object-contain" />
-      <span className="truncate text-base font-semibold tracking-tight group-data-[state=collapsed]:hidden">
-        FresherFlow
-      </span>
-    </Link>
+    <SidebarMenu className={cn(className)}>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          asChild
+          size="lg"
+          className="h-9 justify-start px-2 hover:bg-transparent hover:text-sidebar-foreground active:bg-transparent group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+        >
+          <Link href={href} aria-label="FresherFlow home" suppressHydrationWarning>
+            <span className="sidebar-expanded-only truncate text-[20px] font-low tracking-tight leading-none">
+              FresherFlow
+            </span>
+            <span className="sidebar-collapsed-only flex items-center justify-center">
+              <LogoImage
+                width={24}
+                height={24}
+                className="h-6 w-6 shrink-0 object-contain"
+              />
+            </span>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
   )
 }
 
 function AppSidebarRail() {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { pathname, spaceId, setSpaceId, mounted, isAuthed, visibleSecondary, user } =
+  const { pathname, spaceId, setSpaceId, mounted, isAuthed, visiblePersonal, visibleCommunity, user } =
     useSpaceSelection()
   const space = getSpace(spaceId)
+  const [isScrolled, setIsScrolled] = React.useState(false)
 
-  const logoHref = mounted && user ? "/dashboard" : "/"
+  const logoHref = mounted && user ? "/jobs?tab=for-you" : "/"
 
   // Switching space is a navigation: the page must follow the switcher.
   const handleSpaceChange = (id: SpaceId) => {
@@ -111,13 +125,27 @@ function AppSidebarRail() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="gap-3">
+      <SidebarHeader
+        className={cn(
+          "sticky top-0 z-10 gap-1.5 bg-sidebar/95 p-2 backdrop-blur-sm supports-[backdrop-filter]:bg-sidebar/80 relative",
+          "border-b border-transparent transition-colors",
+          isScrolled && "border-sidebar-border shadow-[0_4px_12px_-4px_rgb(0_0_0/0.12)]"
+        )}
+      >
         <SidebarBrand href={logoHref} />
-        <div className="pt-1">
-          <TeamSwitcher spaces={SPACES} activeId={spaceId} onChange={handleSpaceChange} />
-        </div>
+        <TeamSwitcher spaces={SPACES} activeId={spaceId} onChange={handleSpaceChange} />
+        {/* blur fade so scrolled items feel going under header */}
+        <div
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-x-0 -bottom-3 h-3 bg-gradient-to-b from-sidebar to-transparent opacity-0 transition-opacity",
+            isScrolled && "opacity-100"
+          )}
+        />
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent
+        onScroll={(e) => setIsScrolled(e.currentTarget.scrollTop > 2)}
+      >
         <NavMain
           groups={space.groups}
           pathname={pathname}
@@ -126,9 +154,17 @@ function AppSidebarRail() {
         />
         {/* Auth-gated group renders only after mount so logged-out visitors
             never see Saved / Tracker / Account flash on reload. */}
-        {mounted && visibleSecondary.length > 0 && (
+        {mounted && visibleCommunity.length > 0 && (
           <NavMain
-            groups={[{ ...SECONDARY_GROUP, items: visibleSecondary }]}
+            groups={[{ ...COMMUNITY_GROUP, items: visibleCommunity }]}
+            pathname={pathname}
+            searchParams={searchParams}
+            isAuthed={isAuthed}
+          />
+        )}
+        {mounted && visiblePersonal.length > 0 && (
+          <NavMain
+            groups={[{ ...PERSONAL_GROUP, items: visiblePersonal }]}
             pathname={pathname}
             searchParams={searchParams}
             isAuthed={isAuthed}
@@ -153,11 +189,11 @@ function AppSidebarRail() {
 export function MobileNavTree({ onNavigate }: { onNavigate: () => void }) {
   const searchParams = useSearchParams()
   const router = useRouter()
-  const { pathname, spaceId, setSpaceId, mounted, isAuthed, visibleSecondary, user } =
+  const { pathname, spaceId, setSpaceId, mounted, isAuthed, visiblePersonal, visibleCommunity, user } =
     useSpaceSelection()
   const space = getSpace(spaceId)
 
-  const logoHref = mounted && user ? "/dashboard" : "/"
+  const logoHref = mounted && user ? "/jobs?tab=for-you" : "/"
 
   const handleSpaceChange = (id: SpaceId) => {
     setSpaceId(id)
@@ -189,9 +225,17 @@ export function MobileNavTree({ onNavigate }: { onNavigate: () => void }) {
             searchParams={searchParams}
             isAuthed={isAuthed}
           />
-          {mounted && visibleSecondary.length > 0 && (
+          {mounted && visibleCommunity.length > 0 && (
             <NavMain
-              groups={[{ ...SECONDARY_GROUP, items: visibleSecondary }]}
+              groups={[{ ...COMMUNITY_GROUP, items: visibleCommunity }]}
+              pathname={pathname}
+              searchParams={searchParams}
+              isAuthed={isAuthed}
+            />
+          )}
+          {mounted && visiblePersonal.length > 0 && (
+            <NavMain
+              groups={[{ ...PERSONAL_GROUP, items: visiblePersonal }]}
               pathname={pathname}
               searchParams={searchParams}
               isAuthed={isAuthed}

@@ -279,25 +279,22 @@ export const adminApi = {
 
     // Ingestion & Discovery Engine
     getIngestionTargets: () =>
-        apiClient<import('@fresherflow/api-client').IngestionTarget[] | { status: string; total: number; targets: import('@fresherflow/api-client').IngestionTarget[] }>('/api/admin/ingestion/run/targets'),
-
-    runAllIngestion: (payload?: import('@fresherflow/api-client').IngestionRunAllPayload) =>
-        apiClient<import('@fresherflow/api-client').IngestionRunAllResponse>('/api/admin/ingestion/run/all', {
-            method: 'POST',
-            body: JSON.stringify(payload || { filter: true }),
-        }),
+        apiClient<import('@fresherflow/api-client').IngestionTarget[] | { status: string; total: number; targets: import('@fresherflow/api-client').IngestionTarget[] }>('/api/admin/targets'),
 
     runIngestionTarget: (payload: import('@fresherflow/api-client').IngestionRunTargetPayload) =>
-        apiClient<unknown>('/api/admin/ingestion/run', {
+        apiClient<unknown>('/api/admin/targets/run', {
             method: 'POST',
             body: JSON.stringify(payload),
         }),
 
-    getIngestionJobStatus: (jobId: string) =>
-        apiClient<import('@fresherflow/api-client').IngestionJobStatus>(`/api/admin/ingestion/run/status/${jobId}`),
+    runAllIngestion: (payload?: import('@fresherflow/api-client').IngestionRunAllPayload) =>
+        apiClient<import('@fresherflow/api-client').IngestionRunAllResponse>('/api/admin/targets/run-all', {
+            method: 'POST',
+            body: JSON.stringify(payload || { filter: true }),
+        }),
 
     getIngestionStats: () =>
-        apiClient<import('@fresherflow/api-client').IngestionStats>('/api/admin/ingestion/stats'),
+        apiClient<import('@fresherflow/api-client').IngestionStats>('/api/admin/targets'),
 
 };
 

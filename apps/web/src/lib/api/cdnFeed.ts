@@ -14,7 +14,9 @@ import {
     SITEMAP_DATA_URL,
     API_URL,
     GOVERNMENT_FEED_URL,
-    CDN_URL
+    CDN_URL,
+    IS_LOCAL_FEED,
+    FEED_CDN_BASE
 } from '@/lib/utils/runtimeConfig';
 import { readFeedCache } from '@/lib/cache/opportunitiesFeedCache';
 export interface BootstrapFeedResponse {
@@ -551,7 +553,7 @@ const _fetchOpportunityDetail = async (idOrSlug: string, untracked = false): Pro
             }
         }
 
-        const rawUrl = `${CDN_URL}/jobs/${encodeURIComponent(targetId)}.json`;
+        const rawUrl = `${FEED_CDN_BASE}/jobs/${encodeURIComponent(targetId)}.json`;
         const signedUrl = typeof window === 'undefined'
             ? await signUrlWithVersion(rawUrl, feedVersion.version)
             : `${rawUrl}?v=${feedVersion.version}`;

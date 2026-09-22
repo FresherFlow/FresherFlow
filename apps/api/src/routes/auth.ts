@@ -33,8 +33,8 @@ const otpSendLimiter = createRateLimiter({
 
 const authVerifyLimiter = createRateLimiter({
     windowMs: 60 * 60 * 1000,
-    max: 15,
-    message: 'Too many login attempts. Please try again after an hour.',
+    max: 10,
+    message: 'Too many verification attempts. Please try again later.',
     keyPrefix: 'rate:auth:verify'
 });
 

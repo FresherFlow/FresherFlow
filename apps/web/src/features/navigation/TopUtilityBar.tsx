@@ -37,7 +37,7 @@ export function TopUtilityBar() {
             {isCandidatePortfolioRoute ? (
                 <div className="flex items-center gap-2">
                     <Link
-                        href="/dashboard"
+                        href="/jobs?tab=for-you"
                         className="auth-user-only inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-95 shadow-sm shrink-0"
                     >
                         Dashboard
@@ -76,15 +76,11 @@ export function TopUtilityBar() {
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => router.push('/account')} className="cursor-pointer flex items-center">
                                     <Squares2X2Icon className="mr-2 h-4 w-4" />
-                                    <span>Account Hub</span>
+                                    <span>Account</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer flex items-center">
+                                <DropdownMenuItem onClick={() => router.push('/account?tab=profile')} className="cursor-pointer flex items-center">
                                     <UserCircleIcon className="mr-2 h-4 w-4" />
                                     <span>Profile</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer flex items-center">
-                                    <Cog6ToothIcon className="mr-2 h-4 w-4" />
-                                    <span>Account Settings</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem className="cursor-pointer" onSelect={handleLogout}>

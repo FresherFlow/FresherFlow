@@ -1,12 +1,8 @@
-'use client';
+import type { Metadata } from 'next';
+import CreateClient from './CreateClient';
 
-import { Suspense } from 'react';
-import { OpportunityFormPage } from '@/features/admin/opportunities/components/OpportunityFormPage';
+export const metadata: Metadata = { title: { absolute: 'Create Listing | FresherFlow Admin' } };
 
-export default function CreateOpportunityPage() {
-    return (
-        <Suspense fallback={<div className="p-10 text-center text-muted-foreground animate-pulse">Loading editor...</div>}>
-            <OpportunityFormPage mode="create" />
-        </Suspense>
-    );
+export default function Page() {
+    return <CreateClient />;
 }

@@ -9,7 +9,7 @@ import { useIsMobile } from "@/hooks/useIsMobile"
 import { cn } from "@/ui/cn"
 import { Button } from "@/ui/Button"
 import { Input } from "@/ui/Input"
-import { Separator } from "@/ui/Separator"
+import { Separator } from "@/ui/separator"
 import {
   Sheet,
   SheetContent,
@@ -300,7 +300,75 @@ const SidebarRail = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<"button">
 >(({ className, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar()
+  const { state, toggleSidebar } = useSidebar()
+  const isDraggingRef = React.useRef(false)
+  const didDragRef = React.useRef(false)
+  const startXRef = React.useRef(0)
+  const startWidthRef = React.useRef(192)
+
+  const handleMouseDown = React.useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (state === "collapsed") return
+      // Only left button
+      if (e.button !== 0) return
+      isDraggingRef.current = true
+      didDragRef.current = false
+      startXRef.current = e.clientX
+      const current = getComputedStyle(document.documentElement).getPropertyValue("--sidebar-w").trim()
+      let px = 192
+      if (current.endsWith("px")) px = parseInt(current, 10) || 192
+      else if (current.endsWith("rem")) px = parseFloat(current) * 16 || 192
+      else {
+        // fallback from actual sidebar element
+        const el = document.querySelector("[data-sidebar=sidebar]") as HTMLElement | null
+        if (el) px = el.getBoundingClientRect().width || 192
+      }
+      startWidthRef.current = px
+      e.preventDefault()
+      document.body.style.cursor = "col-resize"
+      document.body.style.userSelect = "none"
+
+      const onMove = (ev: MouseEvent) => {
+        const dx = ev.clientX - startXRef.current
+        if (Math.abs(dx) > 3) didDragRef.current = true
+        const next = Math.min(240, Math.max(192, startWidthRef.current + dx))
+        document.documentElement.style.setProperty("--sidebar-w", `${next}px`)
+      }
+      const onUp = () => {
+        window.removeEventListener("mousemove", onMove)
+        window.removeEventListener("mouseup", onUp)
+        document.body.style.cursor = ""
+        document.body.style.userSelect = ""
+        isDraggingRef.current = false
+        const finalStr = getComputedStyle(document.documentElement).getPropertyValue("--sidebar-w").trim()
+        let finalPx = parseInt(finalStr, 10)
+        if (!Number.isFinite(finalPx)) finalPx = startWidthRef.current
+        finalPx = Math.min(240, Math.max(192, finalPx))
+        try {
+          localStorage.setItem("ff:sidebarWidth", String(finalPx))
+        } catch {}
+        // let click through only if not dragged
+        setTimeout(() => {
+          didDragRef.current = false
+        }, 0)
+      }
+      window.addEventListener("mousemove", onMove)
+      window.addEventListener("mouseup", onUp)
+    },
+    [state]
+  )
+
+  const handleClick = React.useCallback(
+    (e: React.MouseEvent<HTMLButtonElement>) => {
+      if (didDragRef.current) {
+        e.preventDefault()
+        e.stopPropagation()
+        return
+      }
+      toggleSidebar()
+    },
+    [toggleSidebar]
+  )
 
   return (
     <button
@@ -308,11 +376,12 @@ const SidebarRail = React.forwardRef<
       data-sidebar="rail"
       aria-label="Toggle Sidebar"
       tabIndex={-1}
-      onClick={toggleSidebar}
+      onMouseDown={handleMouseDown}
+      onClick={handleClick}
       title="Toggle Sidebar"
       className={cn(
         "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex",
-        "[[data-side=left]_&]:cursor-w-resize [[data-side=right]_&]:cursor-e-resize",
+        "[[data-side=left]_&]:cursor-col-resize [[data-side=right]_&]:cursor-col-resize",
         "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
         "group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full group-data-[collapsible=offcanvas]:hover:bg-sidebar",
         "[[data-side=left][data-collapsible=offcanvas]_&]:-right-2",

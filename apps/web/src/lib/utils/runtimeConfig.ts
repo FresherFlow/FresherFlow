@@ -90,48 +90,69 @@ export const ADMIN_WEB_HOST = normalizeHost(
 
 export const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL as string;
 
+/**
+ * Feed source switch (testing).
+ *
+ * FEED_SOURCE=cdn  (default) — all feeds come from the production CDN.
+ * FEED_SOURCE=local           — all feeds come from local static JSON files
+ *                               served by Next itself (apps/web/public/…).
+ *                               Override the host with LOCAL_FEED_URL.
+ *                               No signatures, no network dependency: lets us
+ *                               test pages, Lighthouse and scale offline.
+ */
+const FEED_SOURCE = (process.env.FEED_SOURCE || 'cdn').toLowerCase();
+export const IS_LOCAL_FEED = FEED_SOURCE === 'local';
+
+export const LOCAL_FEED_BASE =
+    (process.env.LOCAL_FEED_URL && process.env.LOCAL_FEED_URL.replace(/\/+$/, '')) ||
+    (IS_LOCAL_FEED ? SITE_URL : '');
+
+/** CDN when live; the local static host when FEED_SOURCE=local. */
+export const FEED_CDN_BASE = IS_LOCAL_FEED ? LOCAL_FEED_BASE : CDN_URL;
+
 export const BOOTSTRAP_FEED_URL =
     process.env.NEXT_PUBLIC_BOOTSTRAP_FEED_URL ||
     process.env.BOOTSTRAP_FEED_URL ||
-    `${CDN_URL}/feeds/bootstrap-feed.min.json`;
+    `${FEED_CDN_BASE}/feeds/bootstrap-feed.min.json`;
 
 export const FEED_INDEX_URL =
     process.env.NEXT_PUBLIC_FEED_INDEX_URL ||
-    `${CDN_URL}/feeds/feed-index.json`;
+    `${FEED_CDN_BASE}/feeds/feed-index.json`;
 
 export const EXPIRED_FEED_URL =
     process.env.NEXT_PUBLIC_EXPIRED_FEED_URL ||
     process.env.EXPIRED_FEED_URL ||
-    `${CDN_URL}/feeds/expired-feed.min.json`;
+    `${FEED_CDN_BASE}/feeds/expired-feed.min.json`;
 
 export const GOVERNMENT_FEED_URL =
     process.env.NEXT_PUBLIC_GOVERNMENT_FEED_URL ||
     process.env.GOVERNMENT_FEED_URL ||
-    `${CDN_URL}/feeds/government-feed.json`;
+    `${FEED_CDN_BASE}/feeds/government-feed.json`;
 
-export const FEED_VERSION_URL = `${CDN_URL}/meta/feed-version.json`;
+export const FEED_VERSION_URL =
+    IS_LOCAL_FEED ? `${FEED_CDN_BASE}/feeds/feed-version.json` : `${CDN_URL}/meta/feed-version.json`;
 
 export const SITEMAP_DATA_URL =
     process.env.NEXT_PUBLIC_SITEMAP_DATA_URL ||
     process.env.SITEMAP_DATA_URL ||
-    `${CDN_URL}/sitemaps/sitemap-data.json`;
+    `${FEED_CDN_BASE}/sitemaps/sitemap-data.json`;
 
 export const LINKS_FEED_URL =
     process.env.NEXT_PUBLIC_LINKS_FEED_URL ||
     process.env.LINKS_FEED_URL ||
-    `${CDN_URL}/feeds/links.min.json`;
+    `${FEED_CDN_BASE}/feeds/links.min.json`;
 
 export const GET_CATEGORY_SHARD_URL = (id: string) =>
-    `${CDN_URL}/categories/${id}.json`;
+    `${FEED_CDN_BASE}/categories/${id}.json`;
 
 export const GET_COMPANY_SHARD_URL = (slug: string) =>
-    `${CDN_URL}/companies/${slug}.json`;
+    `${FEED_CDN_BASE}/companies/${slug}.json`;
 
-export const EDUCATION_METADATA_URL = `${CDN_URL}/education.json`;
+export const EDUCATION_METADATA_URL = `${FEED_CDN_BASE}/education.json`;
 
-export const SKILLS_METADATA_URL = `${CDN_URL}/skills.json`;
+export const SKILLS_METADATA_URL = `${FEED_CDN_BASE}/skills.json`;
 
-export const COMPANIES_METADATA_URL = `${CDN_URL}/companies.json`;
+export const COMPANIES_METADATA_URL = `${FEED_CDN_BASE}/companies.json`;
 
-export const CITIES_METADATA_URL = `${CDN_URL}/cities.json`;
+export const CITIES_METADATA_URL = `${FEED_CDN_BASE}/cities.json`;
 

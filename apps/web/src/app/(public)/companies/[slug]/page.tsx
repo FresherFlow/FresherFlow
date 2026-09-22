@@ -14,7 +14,7 @@ import { fetchCompanyShard, fetchCompaniesMetadata, fetchFeedIndex } from '@/lib
 import { CompanySlugger } from '@/features/companies/utils/companySlugger';
 import CompanyFollowButton from '@/features/companies/components/CompanyFollowButton';
 import { PageTagLinks } from '@/features/jobs/components/PageTagLinks';
-import { CompanyHubClient } from '@/features/community/components/CompanyHubIntel';
+import { CompanyHubClient } from '@/features/jobs/components/CompanyHubIntel';
 import { getValidDirectoryLinks } from '@/features/jobs/utils/detailUtils';
 import { VALID_LOCATIONS } from '@/features/jobs/utils/locationUtils';
 import { cn } from '@repo/ui/utils/cn';

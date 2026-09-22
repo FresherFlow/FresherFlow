@@ -11,11 +11,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     try {
         const result = await communityApi.getCommunityPost(id);
         return {
-            title: `${result.post.title} | FresherFlow Community`,
+            title: result.post.title,
             description: result.post.body.slice(0, 160),
         };
     } catch {
-        return { title: 'Post Not Found | FresherFlow' };
+        return { title: 'Post Not Found' };
     }
 }
 

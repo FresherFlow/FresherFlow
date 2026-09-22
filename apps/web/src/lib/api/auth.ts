@@ -9,12 +9,6 @@ import { apiClient } from './core';
 
 // Auth API calls
 export const authApi = {
-    login: (email: string, password: string) =>
-        apiClient<AuthResponse>('/api/auth/login', {
-            method: 'POST',
-            body: JSON.stringify({ email, password })
-        }),
-
     sendOtp: (email: string) =>
         apiClient('/api/auth/otp/send', {
             method: 'POST',
@@ -40,26 +34,13 @@ export const authApi = {
     me: () => apiClient('/api/auth/me'),
 
     handshake: async (idToken: string, ref?: string) => {
-        const response = await fetch('/api/auth/local-session', {
+        return apiClient<AuthResponse>('/api/auth/handshake', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
                 Authorization: `Bearer ${idToken}`
             },
             body: JSON.stringify({ ref })
         });
-        if (!response.ok) {
-            let errorMessage = `HTTP ${response.status} - ${response.statusText || 'Error'}`;
-            try {
-                const errorData = await response.json();
-                if (errorData.message) errorMessage = errorData.message;
-                else if (errorData.error) errorMessage = errorData.error;
-            } catch (e) {
-                // Ignore parse errors for non-JSON responses
-            }
-            throw new Error(`Authentication failed: ${errorMessage}`);
-        }
-        return response.json() as Promise<AuthResponse>;
     }
 };
 

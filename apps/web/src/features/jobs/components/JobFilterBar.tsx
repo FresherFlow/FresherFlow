@@ -7,6 +7,7 @@ import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import ChevronDownIcon from '@heroicons/react/24/outline/ChevronDownIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
+import AdjustmentsHorizontalIcon from '@heroicons/react/24/outline/AdjustmentsHorizontalIcon';
 import { SkillPill } from '@/features/jobs/components/SkillPill';
 
 export interface FilterBarFilters {
@@ -129,8 +130,19 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
     const [companySearch, setCompanySearch] = useState('');
     const [roleSearch, setRoleSearch] = useState('');
     const [activeIndex, setActiveIndex] = useState(-1);
+    const [showAllPills, setShowAllPills] = useState(false);
+    const [isWide, setIsWide] = useState(false);
     const barRef = useRef<HTMLDivElement>(null);
     const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+    // Wider screens earn more inline pills (Tailwind xl breakpoint).
+    useEffect(() => {
+        const mq = window.matchMedia('(min-width: 1280px)');
+        const update = () => setIsWide(mq.matches);
+        update();
+        mq.addEventListener('change', update);
+        return () => mq.removeEventListener('change', update);
+    }, []);
 
     // Portaled panels: panels render fixed under their pill (the scrollable bar
     // would clip absolutely-positioned panels). Hover continuity across the
@@ -247,6 +259,42 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
     const closeOnLeave = () => scheduleClose();
 
     const isGovt = pageType === 'GOVERNMENT';
+
+    // ── Progressive disclosure ────────────────────────────────────────────
+    // Default bar: Type · Location · (Batch | Qualification) · All Filters.
+    // Wider screens (xl) reveal Role (and Batch on corp pages). The rest
+    // (Skills, Course, Source, Company, Sector) live behind the All Filters
+    // toggle. A pill always shows once it has an active selection so users
+    // can see and clear what they set.
+    type FilterDim = 'type' | 'location' | 'sector' | 'qualification' | 'driveDate' | 'role' | 'skills' | 'course' | 'source' | 'year' | 'company';
+
+    const dimActive: Record<FilterDim, boolean> = {
+        type: !!selectedType,
+        location: !!filters.location || (filters.workMode?.length ?? 0) > 0,
+        sector: !!filters.sector,
+        qualification: !!filters.qualification,
+        driveDate: !!driveDate && driveDate !== 'all',
+        role: (filters.role?.length ?? 0) > 0,
+        skills: (filters.skills?.length ?? 0) > 0,
+        course: !!filters.course,
+        source: (filters.source?.length ?? 0) > 0,
+        year: filters.year !== null,
+        company: (filters.company?.length ?? 0) > 0,
+    };
+
+    const pillVisible = (dim: FilterDim) =>
+        dimActive[dim] ||
+        showAllPills ||
+        dim === 'type' ||
+        dim === 'location' ||
+        dim === 'driveDate' ||
+        (isWide && (isGovt ? dim === 'qualification' : dim === 'role' || dim === 'year'));
+
+    // Active filters that live behind the All Filters pill (badge count).
+    const hiddenActiveCount = (isGovt
+        ? (['sector', 'qualification'] as FilterDim[])
+        : (['role', 'skills', 'course', 'source', 'year', 'company'] as FilterDim[])
+    ).reduce((n, d) => n + (dimActive[d] ? 1 : 0), 0);
 
     const sortedLocations = useMemo(() => {
         return Object.entries(aggregates?.locations || {})
@@ -513,6 +561,7 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
                 </div>
             )}
 
+            {/* Location pill — always visible (2nd default) */}
             <div className="relative" onMouseLeave={closeOnLeave}>
                 <button
                     ref={el => { triggerRefs.current.location = el; }}
@@ -639,7 +688,7 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
             {/* Govt specific dropdowns */}
             {isGovt && (
                 <>
-                    <div className="relative" onMouseLeave={closeOnLeave}>
+                    <div className={cn('relative', !pillVisible('sector') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             ref={el => { triggerRefs.current.sector = el; }}
                             onClick={() => toggle('sector')}
@@ -673,7 +722,7 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
                             </div>
                         , document.body)}
                     </div>
-                    <div className="relative" onMouseLeave={closeOnLeave}>
+                    <div className={cn('relative', !pillVisible('qualification') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             ref={el => { triggerRefs.current.qualification = el; }}
                             onClick={() => toggle('qualification')}
@@ -711,7 +760,7 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
             )}
 
             {/* When (drive date) — walk-in specific */}
-            {pageType === 'WALKIN' && onDriveDateChange && (
+            {pageType === 'WALKIN' && onDriveDateChange && pillVisible('driveDate') && (
                 <div className="relative" onMouseLeave={closeOnLeave}>
                         <button
                             ref={el => { triggerRefs.current.driveDate = el; }}
@@ -758,8 +807,8 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
             {/* Corporate specific dropdowns */}
             {!isGovt && (
                 <>
-                    {/* Role dropdown */}
-                    <div className="relative" onMouseLeave={closeOnLeave}>
+                    {/* Role dropdown — inline from xl */}
+                    <div className={cn('relative', !pillVisible('role') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             ref={el => { triggerRefs.current.role = el; }}
                             onClick={() => toggle('role')}
@@ -820,7 +869,7 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
                         , document.body)}
                     </div>
 
-                    <div className="relative" onMouseLeave={closeOnLeave}>
+                    <div className={cn('relative', !pillVisible('skills') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             ref={el => { triggerRefs.current.skills = el; }}
                             onClick={() => toggle('skills')}
@@ -880,7 +929,7 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
                             </div>
                         , document.body)}
                     </div>
-                    <div className="relative" onMouseLeave={closeOnLeave}>
+                    <div className={cn('relative', !pillVisible('course') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             ref={el => { triggerRefs.current.course = el; }}
                             onClick={() => toggle('course')}
@@ -914,7 +963,7 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
                             </div>
                         , document.body)}
                     </div>
-                    <div className="relative" onMouseLeave={closeOnLeave}>
+                    <div className={cn('relative', !pillVisible('source') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             ref={el => { triggerRefs.current.source = el; }}
                             onClick={() => toggle('source')}
@@ -957,8 +1006,8 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
                             </div>
                         , document.body)}
                     </div>
-                    {/* Passout year dropdown */}
-                    <div className="relative" onMouseLeave={closeOnLeave}>
+                    {/* Passout year dropdown — inline from xl */}
+                    <div className={cn('relative', !pillVisible('year') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             ref={el => { triggerRefs.current.year = el; }}
                             onClick={() => toggle('year')}
@@ -1020,8 +1069,8 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
                         })(), document.body)}
                     </div>
 
-                    {/* Company dropdown */}
-                    <div className="relative" onMouseLeave={closeOnLeave}>
+                    {/* Company dropdown — behind All Filters */}
+                    <div className={cn('relative', !pillVisible('company') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             ref={el => { triggerRefs.current.company = el; }}
                             onClick={() => toggle('company')}
@@ -1084,6 +1133,28 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
                     </div>
                 </>
             )}
+
+            {/* All Filters toggle — reveals the rest of the pills inline.
+                Badge counts active filters that only live behind this pill. */}
+            <button
+                type="button"
+                onClick={() => setShowAllPills(prev => !prev)}
+                aria-expanded={showAllPills}
+                className={cn(
+                    pillBase,
+                    'ml-auto border border-border/60 bg-card/70',
+                    showAllPills || hiddenActiveCount > 0 ? 'text-foreground' : pillDefault,
+                    showAllPills && pillOpen
+                )}
+            >
+                <AdjustmentsHorizontalIcon className="w-4 h-4 shrink-0" />
+                All Filters
+                {hiddenActiveCount > 0 && (
+                    <span className="bg-primary text-primary-foreground rounded-md px-1.5 text-sm font-semibold shrink-0 flex items-center justify-center h-5 min-w-5">
+                        {hiddenActiveCount}
+                    </span>
+                )}
+            </button>
         </div>
     );
 }

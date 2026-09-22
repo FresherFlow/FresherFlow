@@ -1,7 +1,8 @@
-'use client';
+import type { Metadata } from 'next';
+import CaptionsClient from './CaptionsClient';
 
-import CaptionsTool from '@/features/admin/components/CaptionsTool';
+export const metadata: Metadata = { title: { absolute: 'Captions | FresherFlow Admin' } };
 
-export default function AdminCaptionsPage() {
-    return <CaptionsTool isAdmin={true} />;
+export default function Page() {
+    return <CaptionsClient />;
 }

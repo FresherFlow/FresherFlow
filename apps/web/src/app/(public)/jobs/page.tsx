@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import { Suspense } from 'react';
-import CategoryPage from '@/features/jobs/components/CategoryPage';
+import JobsPageClient from '@/features/jobs/components/JobsPageClient';
 import { FeedPageSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
 import { fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
@@ -59,5 +59,9 @@ export default async function JobsPage() {
         partial: (feedIndexData?.count ?? opportunities.length) > FEED_PAGE_SIZE,
     } : null;
 
-    return <CategoryPage type={null} initialData={initialData} />;
+    return (
+        <Suspense fallback={<FeedPageSkeleton />}>
+            <JobsPageClient initialData={initialData} />
+        </Suspense>
+    );
 }

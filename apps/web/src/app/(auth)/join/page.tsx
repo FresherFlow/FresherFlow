@@ -11,20 +11,21 @@ export const metadata: Metadata = {
 };
 
 interface PageProps {
-    searchParams: Promise<{ ref?: string }>;
+    searchParams: Promise<{ ref?: string; username?: string }>;
 }
 
 /**
- * /join?ref=<userId>
+ * /join?ref=<userId>&username=<handle>
  *
- * Short, shareable invite link. Redirects to /login with the ref
- * so the existing invite attribution flow is preserved without
- * exposing UTM parameters in the shared URL.
+ * Short, shareable invite link + username prefill for u/ marketing.
+ * Redirects to /login with ref and username so choose-username can prefill.
  */
 export default async function JoinPage({ searchParams }: PageProps) {
-    const { ref } = await searchParams;
+    const { ref, username } = await searchParams;
 
-    // Relative redirect — works in any environment
-    const destination = `/login?intent=signup${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`;
-    redirect(destination);
+    const params = new URLSearchParams({ intent: 'signup' });
+    if (ref) params.set('ref', ref);
+    if (username) params.set('username', username);
+
+    redirect(`/login?${params.toString()}`);
 }

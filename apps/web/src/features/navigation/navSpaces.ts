@@ -1,6 +1,6 @@
 import { BriefcaseIcon, BuildingLibraryIcon } from '@heroicons/react/24/outline';
 import type { NavIcon, NavItem, NavItemId } from './navRegistry';
-import { ACCOUNT_NAV_ITEMS, GOVT_NAV_ITEMS, JOBS_NAV_ITEMS, REGISTRY } from './navRegistry';
+import { ACCOUNT_NAV_ITEMS, DEFAULT_NAV_ITEMS, GOVT_NAV_ITEMS, JOBS_NAV_ITEMS, REGISTRY } from './navRegistry';
 
 /* ────────────────────────────────────────────────────────────────────────────
    Space model (Jobs / Government).
@@ -26,6 +26,9 @@ export interface SpaceNavItem {
 export interface SpaceNavGroup {
     label: string;
     items: SpaceNavItem[];
+    /** When true, group renders as shadcn Collapsible like Platform/Playground. Jobs and Govt stay separate spaces via SpaceSwitcher — this only collapses within a space. */
+    collapsible?: boolean;
+    defaultOpen?: boolean;
 }
 
 export interface Space {
@@ -73,11 +76,23 @@ export const SPACES: Space[] = [
         groups: [
             {
                 label: 'Browse',
-                items: pick(JOBS_NAV_ITEMS, 'jobs', 'internships', 'remote', 'walkins', 'jobBoards'),
+                items: [
+                    ...pick(JOBS_NAV_ITEMS, 'dashboard', 'jobs', 'internships', 'remote', 'walkins', 'jobBoards'),
+                    ...pick(DEFAULT_NAV_ITEMS, 'saved', 'tracker'),
+                    { title: REGISTRY.alerts.name, href: REGISTRY.alerts.href, icon: REGISTRY.alerts.icon, requiresAuth: REGISTRY.alerts.requiresAuth },
+                    { title: REGISTRY.notifications.name, href: REGISTRY.notifications.href, icon: REGISTRY.notifications.icon, requiresAuth: REGISTRY.notifications.requiresAuth },
+                ],
+                collapsible: true,
+                defaultOpen: true,
             },
             {
                 label: 'Discover',
-                items: pick(JOBS_NAV_ITEMS, 'companies', 'resources', 'platforms', 'contribute'),
+                items: [
+                    ...pick(JOBS_NAV_ITEMS, 'companies', 'resources', 'contribute'),
+                    ...pick(ACCOUNT_NAV_ITEMS, 'following'),
+                ],
+                collapsible: true,
+                defaultOpen: true,
             },
         ],
     },
@@ -102,6 +117,8 @@ export const SPACES: Space[] = [
                     'govtPolice',
                     'govtEngineering'
                 ),
+                collapsible: true,
+                defaultOpen: true,
             },
             {
                 label: 'More',
@@ -112,18 +129,30 @@ export const SPACES: Space[] = [
 ];
 
 /**
- * Persistent secondary group (Sidebar 08 `nav-secondary` pattern).
+ * Persistent secondary groups (Sidebar 08 `nav-secondary` pattern).
  * Always visible regardless of active space; auth-gated items are
- * filtered at render time. `Post Opportunity` lives in the space
- * groups above, so it is intentionally excluded here.
+ * filtered at render time. Community tabs are shown as their own
+ * group so the sub-pages stay discoverable.
  */
-export const SECONDARY_GROUP: SpaceNavGroup = {
+export const PERSONAL_GROUP: SpaceNavGroup = {
     label: 'Personal',
     items: [
-        ...pick(ACCOUNT_NAV_ITEMS, 'account', 'profile', 'tracker', 'saved', 'following', 'referrals', 'settings'),
-        toSpaceItem(nav('alerts')),
-        toSpaceItem(nav('community')),
+        ...pick(ACCOUNT_NAV_ITEMS, 'profile', 'referrals', 'feedback', 'settings'),
     ],
+    collapsible: true,
+    defaultOpen: true,
+};
+
+export const COMMUNITY_GROUP: SpaceNavGroup = {
+    label: 'Community',
+    items: [
+        { title: 'Discussions', href: '/community?tab=discussions', icon: REGISTRY.community.icon },
+        { title: 'Salary & Offers', href: '/community?tab=salary', icon: REGISTRY.community.icon },
+        { title: 'Rooms', href: '/community?tab=rooms', icon: REGISTRY.community.icon },
+        { title: 'Saved Searches', href: '/community?tab=saved-searches', icon: REGISTRY.community.icon },
+    ],
+    collapsible: true,
+    defaultOpen: true,
 };
 
 export function getSpace(id: SpaceId): Space {
@@ -143,6 +172,7 @@ export function getSpaceForPathname(pathname: string): SpaceId | null {
     if (pathname.startsWith('/govt')) return 'govt';
     if (
         pathname.startsWith('/jobs') ||
+        pathname.startsWith('/companies') ||
         pathname.startsWith('/off-campus') ||
         pathname.startsWith('/skills') ||
         pathname.startsWith('/roles') ||

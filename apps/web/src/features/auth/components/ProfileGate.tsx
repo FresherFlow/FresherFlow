@@ -55,7 +55,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
  * (dashboard, settings, alerts, etc.). Do NOT use on /choose-username itself.
  */
 export function UsernameGate({ children }: { children: React.ReactNode }) {
-    const { user, isLoading, skipUsernameSetup } = useAuth();
+    const { user, isLoading } = useAuth();
     const router = useRouter();
     const pathname = usePathname();
     const [mounted, setMounted] = useState(false);
@@ -74,14 +74,15 @@ export function UsernameGate({ children }: { children: React.ReactNode }) {
                     ? `/login?redirect=${encodeURIComponent(pathname)}`
                     : '/login';
                 router.push(redirectUrl);
-            } else if (!user.username && !skipUsernameSetup && pathname !== '/choose-username') {
+            } else if (!user.username && pathname !== '/choose-username' && pathname !== '/login') {
+                // username is mandatory like Twitter — keep on username until claimed
                 const redirectParam = pathname && pathname !== '/'
                     ? `?redirect=${encodeURIComponent(pathname)}`
                     : '';
                 router.push(`/choose-username${redirectParam}`);
             }
         }
-    }, [user, isLoading, skipUsernameSetup, pathname, router, mounted]);
+    }, [user, isLoading, pathname, router, mounted]);
 
     if (!mounted || isLoading) {
         return (

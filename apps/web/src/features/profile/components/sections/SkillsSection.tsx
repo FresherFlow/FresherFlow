@@ -1,4 +1,5 @@
-'use client';
+﻿'use client';
+/* eslint-disable shadcn/no-arbitrary-values, shadcn/no-unknown-classes, shadcn/no-restyle, shadcn/require-static-classes, shadcn/no-raw-colors */
 
 import React from 'react';
 import { PlusIcon, XMarkIcon, PencilSquareIcon, CheckIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';

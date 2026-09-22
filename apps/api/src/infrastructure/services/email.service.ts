@@ -47,7 +47,7 @@ export class EmailService {
                 <div style="background: #f4f4f4; padding: 20px; text-align: center; border-radius: 5px; margin: 20px 0;">
                     <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #000;">${code}</span>
                 </div>
-                <p style="font-size: 14px; color: #999; text-align: center;">This code will expire in 5 minutes.</p>
+                <p style="font-size: 14px; color: #999; text-align: center;">This code will expire in 10 minutes.</p>
                 <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
                 <p style="font-size: 12px; color: #bbb; text-align: center;">If you didn't request this, you can safely ignore this email.</p>
             </div>
@@ -150,8 +150,42 @@ export class EmailService {
                 <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
                 <p style="font-size: 12px; color: #bbb; text-align: center;">You're receiving this because you enabled instant job alerts in your preferences.</p>
             </div>
+        `;                await this.pushToQueue(email, `🎯 New Job: ${data.title} at ${data.company}`, html);
+    }
+
+    /**
+     * Nudge the owner that their public page is about to go dark.
+     * Public pages are live for a bounded activation window, so this is the one
+     * email that keeps the link alive — it has to say exactly what to do.
+     */
+    static async sendProfilePageExpiryReminder(
+        email: string,
+        fullName: string | null | undefined,
+        payload: { username: string; pageUrl: string; daysLeft: number }
+    ): Promise<void> {
+        const greeting = fullName ? `Hi ${fullName.split(' ')[0]},` : 'Hi,';
+        const window =
+            payload.daysLeft <= 1
+                ? 'in less than a day'
+                : `in ${payload.daysLeft} days`;
+
+        const html = `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                <p style="font-size: 15px; color: #333;">${greeting}</p>
+                <h2 style="color: #111; margin: 8px 0 12px;">Your page goes offline ${window}</h2>
+                <p style="font-size: 15px; color: #333; margin: 8px 0;">
+                    <strong>${payload.pageUrl}</strong> is live right now. Public pages need a quick
+                    reactivation each week so recruiters only ever see profiles that are still current.
+                </p>
+                <p style="font-size: 14px; color: #555; margin: 8px 0 16px;">
+                    Open your profile and hit activate — it takes a second, and the link keeps working for another 7 days.
+                </p>
+                <a href="${payload.pageUrl}" style="background:#08183d;color:#fff;padding:10px 14px;border-radius:6px;text-decoration:none;display:inline-block;">Open my page</a>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+                <p style="font-size: 12px; color: #bbb; text-align: center;">If you'd rather not keep the page up, do nothing — it goes offline on its own.</p>
+            </div>
         `;
 
-        await this.pushToQueue(email, `🎯 New Job: ${data.title} at ${data.company}`, html);
+        await this.pushToQueue(email, `Your FresherFlow page goes offline ${window}`, html);
     }
 }

@@ -3,7 +3,7 @@ import { buildShareUrl } from './display.js';
 export function buildLoginFromDetailHref(detailPath: string, sourceParam: string | null, refParam: string | null) {
     const fromShare = refParam === 'share' || sourceParam === 'opportunity_share';
     const loginSource = fromShare ? 'opportunity_share' : 'opportunity_detail';
-    return `/login?redirect=${encodeURIComponent(detailPath)}&source=${encodeURIComponent(loginSource)}&intent=signup`;
+    return `/signup?redirect=${encodeURIComponent(detailPath)}&source=${encodeURIComponent(loginSource)}`;
 }
 
 export function getDetailShareUrl(currentUrl: string) {

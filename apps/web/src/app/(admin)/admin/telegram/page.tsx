@@ -1,8 +1,10 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = { title: { absolute: 'Broadcasts | FresherFlow Admin' } };
+
 // import TelegramBroadcastPanel from "@/features/admin/components/TelegramBroadcastPanel";
 // import SocialBroadcastPanel from "@/features/admin/components/SocialBroadcastPanel";
 // import DeliveryControlsPanel from "@/features/admin/components/DeliveryControlsPanel";
-
-
 
 export default function AdminTelegramPage() {
     return (

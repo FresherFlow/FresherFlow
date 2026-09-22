@@ -11,6 +11,7 @@ import { useUnreadNotifications } from '@/features/notifications/hooks/useUnread
 import { AlertsDropdown } from '@/features/notifications/components/AlertsDropdown';
 import { Sheet, SheetContent, SheetTitle } from '@/ui/Sheet';
 import { MobileNavTree } from '@/features/navigation/AppSidebar';
+import { AdminMobileNavTree } from '@/features/admin/layout/AdminSidebar';
 
 import { getNavRoutes } from './routeConfig';
 
@@ -65,9 +66,9 @@ export function MobileTopNav() {
                 <div className="w-full flex items-center justify-between px-4 h-full">
                     {/* Brand */}
                     <Link
-                        href={resolvedUser && !isAuthRoute ? '/dashboard' : '/'}
+                        href={resolvedUser && !isAuthRoute ? '/jobs?tab=for-you' : '/'}
                         onClick={(event) => {
-                            const targetHref = resolvedUser && !isAuthRoute ? '/dashboard' : '/';
+                            const targetHref = resolvedUser && !isAuthRoute ? '/jobs?tab=for-you' : '/';
                             if (pathname === targetHref) event.preventDefault();
                         }}
                         className="flex items-center gap-2 min-w-0 active:scale-95 transition-transform duration-150 ease-out"
@@ -84,7 +85,7 @@ export function MobileTopNav() {
                             <div className="flex items-center gap-2">
                                 {resolvedUser ? (
                                     <Link
-                                        href="/dashboard"
+                                        href="/jobs?tab=for-you"
                                         className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-95 shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                     >
                                         Dashboard
@@ -117,14 +118,19 @@ export function MobileTopNav() {
                 </div>
             </header>
  
-            {/* Mobile drawer. Renders MobileNavTree against the shell's single
-                SidebarProvider (NavigationWrapper) instead of nesting another
+            {/* Mobile drawer. Renders the admin tree on `/admin` routes (against
+                AdminLayoutClient's SidebarProvider) and the app tree elsewhere
+                (against NavigationWrapper's provider) instead of nesting another
                 one, so this trigger actually opens the drawer. */}
             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
                 <SheetContent side="left" nav className="lg:hidden">
                     <SheetTitle className="sr-only">Menu</SheetTitle>
                     <Suspense fallback={null}>
-                        <MobileNavTree onNavigate={() => setMenuOpen(false)} />
+                        {(pathname || '').startsWith('/admin') ? (
+                            <AdminMobileNavTree onNavigate={() => setMenuOpen(false)} />
+                        ) : (
+                            <MobileNavTree onNavigate={() => setMenuOpen(false)} />
+                        )}
                     </Suspense>
                 </SheetContent>
             </Sheet>

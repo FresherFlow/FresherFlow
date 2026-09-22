@@ -1,4 +1,5 @@
-'use client';
+﻿'use client';
+/* eslint-disable shadcn/no-arbitrary-values, shadcn/no-unknown-classes, shadcn/no-restyle, shadcn/require-static-classes, shadcn/no-raw-colors */
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';

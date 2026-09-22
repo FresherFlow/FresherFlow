@@ -4,6 +4,7 @@ import { logger } from '@fresherflow/utils';
 import TelegramService from '../infrastructure/services/telegram.service';
 import { StaticFeedService } from '../infrastructure/services/staticFeed.service';
 import { expireJobNotifyEngagedUsers } from '../infrastructure/services/community.service';
+import { runProfilePageExpiryReminders } from './profilePageReminder';
 
 function formatDateKeyInTimezone(date: Date, timezone: string): string {
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -133,6 +134,16 @@ export async function runExpiryCycle() {
             where: { createdAt: { lt: logsPruneThreshold } }
         });
 
+        // 5. PUBLIC PAGE ACTIVATION REMINDERS
+        // A public page lapses when its activation window closes, so warn owners inside
+        // the last day. Isolated: a failure here must never break job expiry.
+        let profilePageReminders = { candidates: 0, sent: 0, skipped: 0 };
+        try {
+            profilePageReminders = await runProfilePageExpiryReminders(nowUTC);
+        } catch (error) {
+            logger.error('Profile page reminder cycle failed', error);
+        }
+
         const endTime = new Date();
         const durationMs = endTime.getTime() - startTime.getTime();
 
@@ -140,7 +151,8 @@ export async function runExpiryCycle() {
             durationMs,
             totalExpired: expiredJobsResult.count + expiredWalkInsResult.count,
             staleWarnings: staleListings,
-            pruned: { raw: rawPruned.count, logs: logsPruned.count }
+            pruned: { raw: rawPruned.count, logs: logsPruned.count },
+            profilePageReminders
         };
 
         logger.info('Expiry cycle completed successfully', summary);

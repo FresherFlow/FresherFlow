@@ -48,7 +48,6 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
                     "lg:pt-14",
                     !isSidebarRoute && "lg:pt-22",
                     isSidebarRoute ? "pb-0" : "pb-0 lg:pb-0",
-                    isSidebarRoute && "lg:pl-[var(--sidebar-w,12rem)] transition-[padding] duration-200 ease-linear"
                 )}
             >
                 <FeedHeaderProvider>

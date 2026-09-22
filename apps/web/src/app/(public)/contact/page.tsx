@@ -71,7 +71,7 @@ export default function ContactPage() {
                     Faster inside the product
                 </div>
                 <div className="mt-4 grid gap-px border border-border bg-border sm:grid-cols-2">
-                    <Link href="/feedback" className="group bg-card px-6 py-5 transition-colors hover:bg-muted/40">
+                    <Link href="/account?tab=feedback" className="group bg-card px-6 py-5 transition-colors hover:bg-muted/40">
                         <div className="text-sm font-bold text-foreground group-hover:text-warning">
                             Feedback page
                         </div>

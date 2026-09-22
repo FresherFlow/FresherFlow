@@ -1,4 +1,5 @@
 import BellIcon from '@heroicons/react/24/outline/BellIcon';
+import ChatBubbleLeftRightIcon from '@heroicons/react/24/outline/ChatBubbleLeftRightIcon';
 import {
     HomeIcon,
     BriefcaseIcon,
@@ -64,7 +65,7 @@ type NavItemDef = Omit<NavItem, 'id'>;
  * still declarative and greppable.
  */
 export const REGISTRY = {
-    dashboard: { name: 'Home', href: '/dashboard', icon: HomeIcon },
+    dashboard: { name: 'For You', href: '/jobs?tab=for-you', icon: HomeIcon },
     jobs: { name: 'All Jobs', href: '/jobs', icon: BriefcaseIcon, hasSubmenu: true },
     jobsPrivate: { name: 'Private Jobs', href: '/jobs', icon: BriefcaseIcon, hasSubmenu: true },
     internships: { name: 'Internships', href: '/jobs?type=internship', icon: AcademicCapIcon },
@@ -73,7 +74,6 @@ export const REGISTRY = {
     jobBoards: { name: 'Browse Boards', href: '/jobs/browse', icon: CodeBracketIcon },
     companies: { name: 'Companies', href: '/companies', icon: BuildingOfficeIcon },
     resources: { name: 'Resources', href: '/resources', icon: BookOpenIcon },
-    platforms: { name: 'Platforms', href: '/platforms', icon: GlobeAltIcon },
     community: { name: 'Community', href: '/community', icon: UserGroupIcon },
     contribute: { name: 'Post Opportunity', href: '/contribute', icon: PlusCircleIcon },
     govt: { name: 'Government', href: '/govt', icon: BuildingLibraryIcon, hasSubmenu: true },
@@ -87,14 +87,16 @@ export const REGISTRY = {
     govtTeaching: { name: 'Teaching', href: '/govt?category=Teaching', icon: AcademicCapIcon },
     govtPolice: { name: 'Police', href: '/govt?category=Police', icon: ShieldExclamationIcon },
     govtEngineering: { name: 'Engineering', href: '/govt?category=Engineering', icon: WrenchScrewdriverIcon },
-    saved: { name: 'Saved', href: '/saved', icon: BookmarkIcon, requiresAuth: true },
-    tracker: { name: 'Tracker', href: '/tracker', icon: ChartBarIcon, requiresAuth: true },
+    saved: { name: 'Saved', href: '/jobs?tab=saved', icon: BookmarkIcon, requiresAuth: true },
+    tracker: { name: 'Tracker', href: '/jobs?tab=applied', icon: ChartBarIcon, requiresAuth: true },
     account: { name: 'Account', href: '/account', icon: UserCircleIcon, hasSubmenu: true, requiresAuth: true },
-    profile: { name: 'Profile', href: '/profile', icon: UserIcon, requiresAuth: true },
-    following: { name: 'Following', href: '/followed-companies', icon: Building, requiresAuth: true },
-    referrals: { name: 'Referrals', href: '/referral', icon: UserPlusIcon, requiresAuth: true },
-    settings: { name: 'Settings', href: '/settings', icon: Cog6ToothIcon, requiresAuth: true },
-    alerts: { name: 'Alerts', href: '/alerts', icon: BellIcon, requiresAuth: true },
+    profile: { name: 'Profile', href: '/account?tab=profile', icon: UserIcon, requiresAuth: true },
+    following: { name: 'Following', href: '/companies?tab=following', icon: Building, requiresAuth: true },
+    referrals: { name: 'Referrals', href: '/account?tab=referral', icon: UserPlusIcon, requiresAuth: true },
+    settings: { name: 'Settings', href: '/account', icon: Cog6ToothIcon, requiresAuth: true },
+    alerts: { name: 'Alerts', href: '/jobs?tab=alerts', icon: BellIcon, requiresAuth: true },
+    notifications: { name: 'Notifications', href: '/jobs?tab=notifications', icon: BellIcon, requiresAuth: true },
+    feedback: { name: 'Feedback', href: '/account?tab=feedback', icon: ChatBubbleLeftRightIcon, requiresAuth: true },
 } satisfies Record<string, NavItemDef>;
 
 export type NavItemId = keyof typeof REGISTRY;
@@ -111,11 +113,10 @@ export const DEFAULT_NAV_ITEMS: NavItem[] = [
     nav('govt'),
     nav('companies'),
     nav('resources'),
-    nav('platforms'),
     nav('saved'),
     nav('tracker'),
     nav('contribute'),
-    nav('account'),
+    nav('settings'),
 ];
 
 /** Jobs space nav items */
@@ -126,9 +127,8 @@ export const JOBS_NAV_ITEMS: NavItem[] = [
     nav('walkins'),
     nav('contribute', { name: 'Post a Job' }),
     nav('jobBoards'),
-    nav('companies', { name: 'Company' }),
+    nav('companies', { name: 'Companies' }),
     nav('resources'),
-    nav('platforms'),
     nav('govt'),
 ];
 
@@ -148,7 +148,6 @@ export const GOVT_NAV_ITEMS: NavItem[] = [
 ];
 
 export const ACCOUNT_NAV_ITEMS: NavItem[] = [
-    nav('account'),
     nav('profile'),
     nav('tracker'),
     nav('saved'),

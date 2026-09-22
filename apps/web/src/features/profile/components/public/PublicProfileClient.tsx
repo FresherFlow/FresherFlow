@@ -217,7 +217,6 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
         : [];
 
     const seoTitle = `${user?.fullName || 'Candidate'} – ${profile?.headline || 'Software Engineer'} | FresherFlow`;
-
     useEffect(() => {
         if (typeof document !== 'undefined' && !document.title.includes('FresherFlow')) {
             document.title = seoTitle;
@@ -260,7 +259,6 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
         .slice(0, 2) || 'FF';
 
     const isOwnProfile = Boolean(
-        mounted &&
         authUser &&
         user &&
         (authUser.id === user.id || authUser.username?.toLowerCase() === user.username.toLowerCase())

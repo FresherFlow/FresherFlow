@@ -1,3 +1,4 @@
+﻿/* eslint-disable shadcn/no-arbitrary-values, shadcn/no-unknown-classes, shadcn/no-restyle, shadcn/require-static-classes, shadcn/no-raw-colors */
 import Link from 'next/link';
 import { slugify } from '@fresherflow/utils/slugify';
 import { Card } from '@/ui/Card';

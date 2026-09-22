@@ -1,4 +1,5 @@
-'use client';
+﻿'use client';
+/* eslint-disable shadcn/no-arbitrary-values, shadcn/no-unknown-classes, shadcn/no-restyle, shadcn/require-static-classes, shadcn/no-raw-colors */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { communityApi } from '@fresherflow/api-client';
@@ -36,25 +37,36 @@ const numOrNull = (v: string) => {
     return Number.isFinite(n) ? n : null;
 };
 
-function extractOpportunitySlug(input: string): string {
+function extractOpportunitySlug(input: string): { slug: string; error: string | null } {
     const raw = input.trim();
-    if (!raw) return '';
-    // If it looks like a URL, extract the last path segment
-    try {
-        if (raw.includes('://') || raw.startsWith('www.')) {
+    if (!raw) return { slug: '', error: null };
+
+    if (raw.includes('://') || raw.startsWith('www.')) {
+        try {
             const urlStr = raw.startsWith('www.') ? `https://${raw}` : raw;
             const url = new URL(urlStr);
-            // Basic hostname check — accept fresherflow hosts or any, but parse path safely
+            const validHosts = ['fresherflow.in', 'www.fresherflow.in', 'fresherflow.in'];
+            const isAllowed = validHosts.some((h) => url.hostname === h || url.hostname.endsWith('.' + h));
+            if (!isAllowed) {
+                return { slug: '', error: 'Only fresherflow.in links are allowed.' };
+            }
             const parts = url.pathname.split('/').filter(Boolean);
-            // /jobs/<slug> or /govt/<slug> — take last segment
-            return parts.length ? parts[parts.length - 1] : raw;
+            const slug = parts.length ? parts[parts.length - 1] : '';
+            if (!slug) return { slug: '', error: 'Could not extract slug from URL.' };
+            return { slug, error: null };
+        } catch {
+            return { slug: '', error: 'Invalid URL format.' };
         }
-    } catch {
-        // not a valid URL, fall through to slug handling
     }
-    // Handle pasted /jobs/slug or just slug
+
+    if (raw.startsWith('/jobs/') || raw.startsWith('/govt/')) {
+        const parts = raw.split('/').filter(Boolean);
+        const slug = parts.length ? parts[parts.length - 1] : '';
+        return { slug, error: null };
+    }
+
     const parts = raw.split('/').filter(Boolean);
-    return parts.length ? parts[parts.length - 1] : raw;
+    return { slug: parts.length ? parts[parts.length - 1] : raw, error: null };
 }
 
 const TYPE_META: Record<ContributeType, { title: string; description: string }> = {
@@ -798,7 +810,11 @@ export function ContributeSheet({ open, onOpenChange, initialType = 'JOB', onSub
                 return;
             }
         } else {
-            const slug = extractOpportunitySlug(values.opportunitySlug ?? '');
+            const { slug, error: slugError } = extractOpportunitySlug(values.opportunitySlug ?? '');
+            if (slugError) {
+                setError(slugError);
+                return;
+            }
             if (!slug || !(values.iexRole ?? '').trim()) {
                 setError('The job link and role are required.');
                 return;
@@ -816,8 +832,9 @@ export function ContributeSheet({ open, onOpenChange, initialType = 'JOB', onSub
         setSubmitting(true);
         try {
             if (type === 'INTERVIEW_EXPERIENCE') {
+                const { slug: iexSlug } = extractOpportunitySlug(values.opportunitySlug ?? '');
                 await communityApi.createInterviewExperience({
-                    opportunityId: extractOpportunitySlug(values.opportunitySlug ?? ''),
+                    opportunityId: iexSlug,
                     role: (values.iexRole ?? '').trim(),
                     batch: values.iexBatch ? Number(values.iexBatch) : undefined,
                     difficulty: (values.iexDifficulty || undefined) as

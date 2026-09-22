@@ -63,12 +63,6 @@ export const PreferencesStep = ({
     return (
         <div className="space-y-6 animate-in fade-in slide-in-from-right-3 duration-300">
 
-            {/* Section header */}
-            <div className="border-b border-border pb-5">
-                <h2 className="text-xl font-bold tracking-tight text-foreground">Preferences & Skills</h2>
-                <p className="text-xs text-muted-foreground mt-1">Tell us what you&apos;re looking for and what you bring.</p>
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Field label="Looking For">
                     <div className="flex flex-wrap gap-2 mt-1">
@@ -143,7 +137,7 @@ export const PreferencesStep = ({
             <Field label="Skills">
                 <div className="relative mt-1" ref={skillRef}>
                     <div className="flex gap-2">
-                        <input
+                        <Input
                             value={skillInput}
                             onChange={e => { setSkillInput(e.target.value); setSkillHighlight(-1); setSkillOpen(true); }}
                             onFocus={() => setSkillOpen(true)}
@@ -160,7 +154,7 @@ export const PreferencesStep = ({
                                 }
                                 else if (e.key === 'Escape') setSkillOpen(false);
                             }}
-                            className="h-10! text-sm flex-1"
+                            className="h-10 text-sm flex-1"
                             placeholder="e.g. React, Node.js, Python"
                         />
                         <button onClick={addSkill} className="w-11 h-11 flex items-center justify-center rounded-xl border border-border bg-muted hover:bg-muted/80 text-foreground transition-all shrink-0">

@@ -42,6 +42,7 @@ export type { EligibilityResult, RelevanceBreakdown, RankedOpportunity } from '.
 // ── Profile ──────────────────────────────────────────────────
 export * from './profile/completion.js';
 export * from './profile/constants.js';
+export * from './profile/publicPage.js';
 export * from './profile/validation.js';
 export type { ProfileCompletionResult } from './profile/completion.js';
 

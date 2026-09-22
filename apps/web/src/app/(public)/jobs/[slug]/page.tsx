@@ -158,7 +158,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const registry = await loadTaxonomyRegistry();
     const resolved = registry ? resolveTaxonomySlug(registry, slugOrId) : null;
     if (resolved) {
-        const rawTitle = `${boardTitle(resolved)} | FresherFlow`;
+        const rawTitle = boardTitle(resolved);
         const title = truncateTitleByPixels(rawTitle);
         const description = truncateDescription(boardDescription(resolved));
         const base = SITE_URL.replace(/\/+$/, '');

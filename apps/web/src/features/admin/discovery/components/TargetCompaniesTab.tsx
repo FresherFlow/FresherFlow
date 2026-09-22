@@ -4,10 +4,14 @@ import { useMemo, useState } from 'react';
 import { PlayIcon, CodeBracketIcon, EllipsisHorizontalIcon } from '@heroicons/react/24/outline';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/ui/DropdownMenu';
-import { COMPANY_PROVIDERS } from '../DiscoveryWorkspace';
 import { IngestionTarget, RunResult } from '../types';
 import { DataGrid, DataGridColumn } from '@/ui/data-grid/DataGrid';
 import { cn } from '@repo/ui/utils/cn';
+
+const COMPANY_PROVIDER_SET = new Set([
+    'google', 'amazon', 'microsoft', 'ibm', 'apple', 'uber', 'stripe', 'meta', 'nvidia'
+]);
+const COMPANY_PROVIDERS = COMPANY_PROVIDER_SET;
 
 interface TargetCompaniesTabProps {
   targets: IngestionTarget[];

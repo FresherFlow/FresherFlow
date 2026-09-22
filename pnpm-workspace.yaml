@@ -23,6 +23,13 @@ linkWorkspacePackages: true
 # pnpm 12 reads settings from this file; the legacy .npmrc key is ignored.
 nodeLinker: hoisted
 
+# Fix: stop pnpm from auto-running `install` before every script.
+# Without this, `pnpm dev:web` / `pnpm typecheck` re-links all 24 workspaces
+# (resolved 2243, reused 2243, added 4xx) on EVERY invocation — slow and
+# fails on Windows with "Access is denied" when Next/TS locks @firebase/*.
+# You now run `pnpm install` manually after changing deps.
+verifyDepsBeforeRun: false
+
 overrides:
   tar: "^7.5.7"
   react-native-safe-area-context: "~5.6.2"

@@ -3,6 +3,7 @@ import prisma from '../../infrastructure/database/prisma';
 import { requireAdmin } from '../../middleware/auth';
 import { AppError } from '../../middleware/errorHandler';
 import { ProfileVisibility } from '@prisma/client';
+import { getProfilePageState } from '@fresherflow/utils';
 
 const router: Router = Router();
 
@@ -127,6 +128,9 @@ router.get('/', requireAdmin, async (req: Request, res: Response, next: NextFunc
             data: profiles.map((p) => ({
                 ...p,
                 views: viewsByProfile.get(p.userId) ?? 0,
+                // `profilePublishedAt != null` only means "activated at some point". The page
+                // goes dark when that activation lapses, so the UI needs the derived state.
+                pageState: getProfilePageState(p.profilePublishedAt).status,
             })),
             pagination: { page: pageNum, limit: limitNum, total, pages: Math.ceil(total / limitNum) },
         });

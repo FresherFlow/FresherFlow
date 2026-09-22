@@ -46,7 +46,7 @@ export function DesktopNav() {
 
     const desktopRoutes = isAuthRoute ? [] : getNavRoutes().filter(r => {
         if (!r.showInDesktop) return false;
-        const isAuthRequired = r.requiresAuth || r.href === '/dashboard' || r.href.startsWith('/account');
+        const isAuthRequired = r.requiresAuth || r.href === '/jobs?tab=for-you' || r.href.startsWith('/account');
         if (isAuthRequired && !resolvedUser) return false;
         return true;
     });
@@ -86,9 +86,9 @@ export function DesktopNav() {
 
                 {/* Brand Left */}
                 <Link
-                    href={resolvedUser && !isAuthRoute ? '/dashboard' : '/'}
+                    href={resolvedUser && !isAuthRoute ? '/jobs?tab=for-you' : '/'}
                     onClick={(event) => {
-                        const targetHref = resolvedUser && !isAuthRoute ? '/dashboard' : '/';
+                        const targetHref = resolvedUser && !isAuthRoute ? '/jobs?tab=for-you' : '/';
                         if (pathname === targetHref) event.preventDefault();
                     }}
                     aria-label="Home"
@@ -145,7 +145,7 @@ export function DesktopNav() {
                         <div className="flex items-center gap-2">
                             {resolvedUser ? (
                                 <Link
-                                    href="/dashboard"
+                                    href="/jobs?tab=for-you"
                                     className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-95 shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                 >
                                     Dashboard
@@ -187,15 +187,11 @@ export function DesktopNav() {
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onClick={() => router.push('/account')} className="cursor-pointer flex items-center">
                                         <Squares2X2Icon className="mr-2 h-4 w-4" />
-                                        <span>Account Hub</span>
+                                        <span>Account</span>
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer flex items-center">
+                                    <DropdownMenuItem onClick={() => router.push('/account?tab=profile')} className="cursor-pointer flex items-center">
                                         <UserCircleIcon className="mr-2 h-4 w-4" />
                                         <span>Profile</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer flex items-center">
-                                        <Cog6ToothIcon className="mr-2 h-4 w-4" />
-                                        <span>Account Settings</span>
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem className="cursor-pointer" onSelect={handleLogout}>

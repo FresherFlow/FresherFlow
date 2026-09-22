@@ -7,7 +7,7 @@ import { validate } from '../../middleware/validate';
 import { optionalAuth } from '../../middleware/auth';
 import { ProfileVisibility } from '@prisma/client';
 import crypto from 'crypto';
-import { logger } from '@fresherflow/utils';
+import { logger, profilePageActiveSince } from '@fresherflow/utils';
 
 const router = Router();
 
@@ -148,6 +148,9 @@ function toPublicProfile(row: PublicProfileRow) {
         willingToRelocate: row.willingToRelocate,
         openToRecruiters: row.openToRecruiters,
         completionPercentage: row.completionPercentage,
+        // Only ever exposed for live pages (the query filters expired activations out),
+        // so it is safe to surface as a freshness signal.
+        lastActivatedAt: row.profilePublishedAt,
         projects: row.user.projects,
     };
 }
@@ -166,7 +169,8 @@ router.get('/browse', publicReadLimiter, async (req: Request, res: Response, nex
         const whereClause: Record<string, unknown> = {
             openToRecruiters: true,
             visibility: { in: [ProfileVisibility.PUBLIC, ProfileVisibility.UNLISTED] },
-            profilePublishedAt: { not: null },
+            // Stale activations drop out of the directory too.
+            profilePublishedAt: { gt: profilePageActiveSince() },
             user: { status: 'ACTIVE', deletedAt: null },
         };
         if (batch) whereClause.gradYear = parseInt(String(batch), 10) || undefined;
@@ -230,12 +234,17 @@ router.get('/:username', publicReadLimiter, async (req: Request, res: Response, 
             return next(new AppError('Profile not found', 404));
         }
 
+        // A published page must be reachable by its own link even when the owner has not
+        // opted into recruiter intro requests — the CTA is hidden client-side instead.
+        // (The /browse directory below still requires openToRecruiters: true.)
+        //
+        // Activation only lasts PROFILE_PAGE_ACTIVE_DAYS: past that the link is dark until
+        // the owner reactivates, so the same cutoff is applied to every public read.
         const row = (await prisma.profile.findFirst({
             where: {
                 user: { username, status: 'ACTIVE' },
-                openToRecruiters: true,
                 visibility: { in: [ProfileVisibility.PUBLIC, ProfileVisibility.UNLISTED] },
-                profilePublishedAt: { not: null },
+                profilePublishedAt: { gt: profilePageActiveSince() },
             },
             select: publicProfileSelect,
         })) as unknown as PublicProfileRow | null;

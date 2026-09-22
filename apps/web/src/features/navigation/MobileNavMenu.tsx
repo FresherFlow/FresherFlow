@@ -116,7 +116,7 @@ function MobileNavMenuInner({ user, unreadCount, pendingSyncCount, onClose }: Mo
     }
 
     const isAppHost = typeof window !== 'undefined' && (window.location.hostname.startsWith('app.') || window.location.hostname === 'localhost' || window.location.hostname.startsWith('127.'));
-    const homeHref = isAppHost ? '/dashboard' : '/';
+    const homeHref = isAppHost ? '/jobs?tab=for-you' : '/';
     navItems = navItems
         .filter(item => !(item.requiresAuth && !user))
         .map(item => item.name === 'Home' ? { ...item, href: homeHref } : item);
@@ -141,7 +141,7 @@ function MobileNavMenuInner({ user, unreadCount, pendingSyncCount, onClose }: Mo
             }
         }
         
-        const isAlerts = item.href === '/alerts' || item.name === 'Alerts';
+        const isAlerts = item.href === '/jobs?tab=alerts' || item.name === 'Alerts';
 
         return (
             <Link

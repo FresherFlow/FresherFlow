@@ -21,8 +21,7 @@ export function handleHostRouting(req: NextRequest) {
             refCode = segments[0];
         }
 
-        const targetUrl = new URL(`${req.nextUrl.protocol}//${USER_LOGIN_HOST}/login`);
-        targetUrl.searchParams.set('intent', 'signup');
+        const targetUrl = new URL(`${req.nextUrl.protocol}//${USER_LOGIN_HOST}/signup`);
         if (refCode) {
             targetUrl.searchParams.set('ref', refCode.toUpperCase());
         }

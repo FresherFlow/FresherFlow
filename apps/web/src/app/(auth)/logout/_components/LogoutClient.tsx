@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { useSearchParams } from 'next/navigation';
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 import { Card } from '@/ui/Card';
+import { isSafeInternalRedirect } from '@/lib/config/paths';
 
 function LogoutContent() {
     const { logout } = useAuth();
@@ -12,9 +13,7 @@ function LogoutContent() {
     const redirectParam = searchParams.get('redirect') || searchParams.get('to');
 
     useEffect(() => {
-        const target = redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//') && !redirectParam.startsWith('/logout')
-            ? redirectParam
-            : '/login';
+        const target = isSafeInternalRedirect(redirectParam) ? (redirectParam as string) : '/login';
             
         if (logout) {
             void logout(target);

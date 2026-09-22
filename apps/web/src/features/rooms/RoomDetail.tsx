@@ -43,6 +43,9 @@ export function RoomDetail({ slug }: { slug: string }) {
                 await communityApi.joinRoom(room.slug);
                 setRoom({ ...room, isMember: true, memberCount: room.memberCount + 1 });
             }
+            const result = await communityApi.getRoom(slug);
+            setRoom(result.room);
+            setMembers(result.members || []);
         } finally {
             setJoining(false);
         }
@@ -74,22 +77,30 @@ export function RoomDetail({ slug }: { slug: string }) {
                             <span className="text-xs text-muted-foreground">{room.type}</span>
                         </div>
                     </div>
-                    {user && (
-                        <button
-                            type="button"
-                            onClick={() => void handleJoinLeave()}
-                            disabled={joining}
-                            className={cn(
-                                'shrink-0 rounded-lg px-4 py-1.5 text-xs font-bold transition-all',
-                                room.isMember
-                                    ? 'border border-border bg-card text-muted-foreground hover:border-destructive hover:text-destructive'
-                                    : 'bg-primary text-primary-foreground hover:bg-primary/90',
-                                joining && 'opacity-50'
-                            )}
-                        >
-                            {joining ? '…' : room.isMember ? 'Leave' : 'Join'}
-                        </button>
-                    )}
+{user && room && (
+    <button
+        type="button"
+        onClick={() => void handleJoinLeave()}
+        disabled={joining}
+        className={cn(
+            'shrink-0 rounded-lg px-4 py-1.5 text-xs font-bold transition-all',
+            room.isMember
+                ? 'border border-border bg-card text-muted-foreground hover:border-destructive hover:text-destructive'
+                : 'bg-primary text-primary-foreground hover:bg-primary/90',
+            joining && 'opacity-50'
+        )}
+    >
+        {joining ? '…' : room.isMember ? 'Leave' : 'Join'}
+    </button>
+)}
+{!user && (
+    <Link
+        href="/login"
+        className="shrink-0 rounded-lg px-4 py-1.5 text-xs font-bold bg-muted text-muted-foreground hover:bg-muted/80 transition-colors"
+    >
+        Sign in to Join
+    </Link>
+)}
                 </div>
                 {room.description && <p className="text-sm text-muted-foreground">{room.description}</p>}
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -173,16 +184,51 @@ function RoomPosts({ slug }: { slug: string }) {
 
 function RoomJobs({ slug }: { slug: string }) {
     const [loading, setLoading] = useState(true);
+    const [jobs, setJobs] = useState<Array<{ id: string; title: string; company: string; type: string; location?: string; salary?: string | null; applied?: boolean }>>([]);
+    const [error, setError] = useState(false);
 
     useEffect(() => {
-        setLoading(false);
+        let cancelled = false;
+        setLoading(true);
+        communityApi.listRoomPosts(slug, { page: 1, limit: 50 })
+            .then((result) => {
+                if (!cancelled) {
+                    setJobs(result.posts.map((p) => ({
+                        id: p.id,
+                        title: p.title,
+                        company: p.author?.fullName || p.author?.username || 'Room',
+                        type: p.category,
+                        location: (p.tags?.[0]) || undefined,
+                        salary: null,
+                        applied: false,
+                    })));
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setError(true);
+            })
+            .finally(() => {
+                if (!cancelled) setLoading(false);
+            });
+        return () => { cancelled = true; };
     }, [slug]);
 
     if (loading) return <div className="h-20 animate-pulse rounded-xl bg-muted/40" />;
+    if (error) return <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-xs text-muted-foreground">Could not load jobs.</div>;
 
     return (
-        <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-xs text-muted-foreground">
-            Job listings in this room coming soon.
+        <div className="space-y-3">
+            {jobs.length === 0 && (
+                <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-xs text-muted-foreground">
+                    No job listings in this room yet.
+                </div>
+            )}
+            {jobs.map((job) => (
+                <div key={job.id} className="rounded-xl border border-border bg-card p-4 space-y-2">
+                    <p className="text-sm font-semibold text-foreground">{job.title}</p>
+                    <p className="text-xs text-muted-foreground">{job.company} · {job.type}</p>
+                </div>
+            ))}
         </div>
     );
 }

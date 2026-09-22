@@ -5,7 +5,7 @@ export * from '@/features/navigation/navMatchers';
 // Deprecated shims for legacy 4-context model (MobileNavMenu)
 export function getNavContext(pathname: string): string {
   if (pathname.startsWith('/admin')) return 'admin';
-  if (pathname.startsWith('/account') || pathname.startsWith('/profile') || pathname.startsWith('/settings')) return 'account';
+  if (pathname.startsWith('/account')) return 'account';
   if (pathname.startsWith('/govt')) return 'government';
   if (pathname.startsWith('/jobs') || pathname.startsWith('/companies') || pathname.startsWith('/resources')) return 'jobs';
   return 'default';

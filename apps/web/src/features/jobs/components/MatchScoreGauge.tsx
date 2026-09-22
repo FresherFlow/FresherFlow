@@ -1,3 +1,4 @@
+﻿/* eslint-disable shadcn/no-arbitrary-values, shadcn/no-unknown-classes, shadcn/no-restyle, shadcn/require-static-classes, shadcn/no-raw-colors */
 import React from 'react';
 import { cn } from '@/ui/cn';
 

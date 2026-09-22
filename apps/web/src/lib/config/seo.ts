@@ -9,9 +9,14 @@ export function applySeoHeaders(req: NextRequest, res: NextResponse) {
     const hostRole = getHostRole(normalizedHost, req);
 
     const isAuthUtility = pathname === '/login' || pathname === '/signup' || pathname === '/logout';
+    // Private tab views on public routes must never be indexed.
+    const hasPrivateTab =
+        (pathname === '/jobs' && req.nextUrl.searchParams.has('tab')) ||
+        (pathname === '/community' && req.nextUrl.searchParams.has('tab'));
     const isExplicitNoIndexPath =
         pathname === '/deadlines' ||
-        pathname === '/referral' ||
+        pathname === '/account' ||
+        hasPrivateTab ||
         pathname === '/sentry-example-page';
 
     if (

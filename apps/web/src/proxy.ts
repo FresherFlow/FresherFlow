@@ -130,6 +130,14 @@ export default function middleware(req: NextRequest) {
     const authResult = !isPublicPath(pathname) ? handleAuth(req) : null;
     if (authResult) return authResult;
 
+    // 2b. Server-side admin gate: /admin/* (except /admin/login) requires admin auth
+    if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')) {
+        const adminLoggedIn = req.cookies.has('adminAccessToken') || req.cookies.has('ff_admin_logged_in');
+        if (!adminLoggedIn) {
+            return NextResponse.redirect(new URL('/admin/login', req.nextUrl.origin), 308);
+        }
+    }
+
     // 3. Complete response and apply SEO NoIndex rules
     const response = hostResult || NextResponse.next();
     return applySeoHeaders(req, response);

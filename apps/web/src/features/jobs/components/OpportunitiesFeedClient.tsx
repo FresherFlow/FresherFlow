@@ -63,11 +63,20 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
     const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
     const [visibleCount, setVisibleCount] = useState(FEED_PAGE_SIZE);
     const leftColumnRef = useRef<HTMLDivElement>(null);
-    const { targetRef: loadMoreRef, isIntersecting } = useIntersectionObserver({ threshold: 0.1, rootMargin: '400px' });
     const [isLoadingMore, setIsLoadingMore] = useState(false);
 
     const typeParam = searchParams.get('type');
     const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
+    // In split view the job list scrolls inside the left column (lg:overflow-y-auto),
+    // not the window. Observing the viewport makes the sentinel sit below the fold
+    // forever — the list looks "hung" at FEED_PAGE_SIZE with a spinner. Observe the
+    // actual scroll container instead; fall back to the viewport on mobile/grid view
+    // (where the column does not clip, so rooting on it would report everything visible).
+    const { targetRef: loadMoreRef, isIntersecting } = useIntersectionObserver({
+        threshold: 0.1,
+        rootMargin: '400px',
+        root: isDesktop === true ? leftColumnRef.current : null,
+    });
 
     useEffect(() => {
         const checkSize = () => setIsDesktop(window.innerWidth >= 1024);
@@ -254,7 +263,8 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         }
     }, [isDesktop, filteredOpps, selectedOpp]);
 
-    // Infinite scroll trigger
+    // Infinite scroll trigger. Also flushes when the sentinel ref re-attaches to a
+    // new DOM node (root change, list re-render), since isIntersecting may stay false.
     useEffect(() => {
         if (isIntersecting && visibleCount < filteredOpps.length && !isLoadingMore) {
             setIsLoadingMore(true);
@@ -263,7 +273,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                 setIsLoadingMore(false);
             }, 200);
         }
-    }, [isIntersecting, visibleCount, filteredOpps.length, isLoadingMore]);
+    }, [isIntersecting, visibleCount, filteredOpps.length, isLoadingMore, loadMoreRef]);
 
     // Auto-select first job on desktop
     useEffect(() => {
@@ -481,8 +491,10 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                     ) : (
                         <CommentCountsProvider>
                         <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-                            {/* Left Column: Grid list */}
-                            <div className="min-w-0 lg:sticky lg:top-24 lg:h-full lg:overflow-y-auto lg:pr-2" ref={leftColumnRef}>
+                            {/* Left Column: Grid list — px gutters keep cards off the
+                                column edges instead of butting against the screen
+                                border and the detail pane */}
+                            <div className="min-w-0 lg:sticky lg:top-24 lg:h-full lg:overflow-y-auto lg:px-3" ref={leftColumnRef}>
                                 <OpportunityGrid
                                     opportunities={pagedOpps}
                                     isLoading={isLoading}

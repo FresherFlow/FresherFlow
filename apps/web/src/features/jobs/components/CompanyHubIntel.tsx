@@ -131,10 +131,10 @@ export function CompanyHubClient({ companyName }: { companyName: string }) {
 
             {/* Links */}
             <div className="flex flex-wrap gap-2 border-t border-border/40 pt-3 text-xs">
-                <Link href="/community/referrals" className="rounded-full bg-primary/10 px-3 py-1.5 font-semibold text-primary">
+                <Link href="/community?tab=referrals" className="rounded-full bg-primary/10 px-3 py-1.5 font-semibold text-primary">
                     Request a referral here →
                 </Link>
-                <Link href="/community/salary" className="rounded-full bg-muted/40 px-3 py-1.5 font-semibold text-muted-foreground">
+                <Link href="/community?tab=salary" className="rounded-full bg-muted/40 px-3 py-1.5 font-semibold text-muted-foreground">
                     Share your offer
                 </Link>
             </div>

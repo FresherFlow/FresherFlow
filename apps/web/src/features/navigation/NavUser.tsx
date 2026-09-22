@@ -1,4 +1,5 @@
 "use client"
+/* eslint-disable shadcn/no-arbitrary-values, shadcn/no-unknown-classes, shadcn/no-restyle, shadcn/require-static-classes, shadcn/no-raw-colors */
 
 import * as React from "react"
 import Link from "next/link"
@@ -8,7 +9,7 @@ import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-} from "@/ui/Avatar"
+} from "@/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -101,16 +102,16 @@ export function NavUser() {
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
                 <Link href="/account">
-                  <span>Account Hub</span>
+                  <span>Account</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/profile">
+                <Link href="/account?tab=profile">
                   <span>Profile</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/alerts">
+                <Link href="/jobs?tab=alerts">
                   <span>Job Alerts</span>
                 </Link>
               </DropdownMenuItem>

@@ -36,7 +36,7 @@ export function ProfileReadinessRequired({ percentage, message }: ProfileReadine
                         </div>
                     </div>
                 </div>
-                <Button size="sm" onClick={() => router.push('/profile')}>
+                <Button size="sm" onClick={() => router.push('/account?tab=profile')}>
                     Complete Profile
                     <ChevronRightIcon className="w-4 h-4 ml-2" />
                 </Button>

@@ -3,7 +3,7 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { profileApi } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { validateEducationData } from '@fresherflow/utils';
+import { validateEducationData, PROFILE_PAGE_ACTIVE_DAYS } from '@fresherflow/utils';
 
 export interface ProfileCompleteForm {
     fullName: string;
@@ -29,10 +29,10 @@ export function useProfileCompleteHandlers(
     setCurrentStep: (step: 'education' | 'preferences') => void
 ) {
     const router = useRouter();
-    const { updateProfileState } = useAuth();
-    const [isLoading] = useState(false);
+    const { updateProfileState, user } = useAuth();
+    const [isLoading, setIsLoading] = useState(false);
 
-    const handleEducationSubmit = () => {
+    const handleEducationSubmit = async () => {
         const validation = validateEducationData({
             fullName: form.fullName,
             requireFullName: true,
@@ -53,6 +53,8 @@ export function useProfileCompleteHandlers(
             return;
         }
 
+        setIsLoading(true);
+
         const payload = {
             fullName: form.fullName,
             educationLevel: form.educationLevel,
@@ -68,13 +70,22 @@ export function useProfileCompleteHandlers(
             }),
         };
 
-        updateProfileState(payload as any, () => profileApi.updateEducation(payload));
-        toast.success('Education saved.');
-        setCurrentStep('preferences');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        try {
+            // Awaited so a failed save is surfaced here instead of being swallowed and
+            // then published as a page missing the education the user just entered.
+            await profileApi.updateEducation(payload);
+            updateProfileState(payload as any);
+            toast.success('Education saved.');
+            setCurrentStep('preferences');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        } catch (err) {
+            toast.error((err as Error).message || 'Could not save your education. Try again.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    const handleReadinessSubmit = () => {
+    const handleReadinessSubmit = async () => {
         if (form.interestedIn.length === 0 || form.preferredCities.length === 0 || form.workModes.length === 0) {
             toast.error('Please fill in your career preferences');
             return;
@@ -99,13 +110,33 @@ export function useProfileCompleteHandlers(
             skills: form.skills,
         };
 
-        updateProfileState({ ...prefPayload, ...readinessPayload } as any, async () => {
+        setIsLoading(true);
+        try {
+            // Await the writes before publishing: the published payload is built from
+            // Postgres, so publishing first would ship a page with none of this data.
             await profileApi.updatePreferences(prefPayload);
             await profileApi.updateReadiness(readinessPayload);
-        });
+            updateProfileState({ ...prefPayload, ...readinessPayload } as any);
 
-        toast.success('Profile complete! Welcome to FresherFlow.');
-        router.push('/dashboard');
+            const username = user?.username;
+            if (username) {
+                try {
+                    await profileApi.publishProfile();
+                    toast.success(`Profile complete — your page is live for the next ${PROFILE_PAGE_ACTIVE_DAYS} days.`);
+                    router.push(`/u/${username}`);
+                    return;
+                } catch {
+                    toast.error('Saved. Publishing your page failed — retry it from your profile.');
+                }
+            } else {
+                toast.success('Profile complete! Welcome to FresherFlow.');
+            }
+            router.push('/jobs?tab=for-you');
+        } catch (err) {
+            toast.error((err as Error).message || 'Could not save your preferences. Try again.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return {

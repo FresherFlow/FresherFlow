@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useContext, Fragment } from 'react';
+import { Suspense, useContext, Fragment, useState, useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AuthContext } from '@/lib/auth/AuthContext';
@@ -11,7 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Cog6ToothIcon, ArrowRightOnRectangleIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
 import UserCircleIcon from '@heroicons/react/24/outline/UserCircleIcon';
 import { SidebarTrigger } from '@/ui/sidebar';
-import { Separator } from '@/ui/Separator';
+import { Separator } from '@/ui/separator';
 import { formatSegment, getAdminTitle, isFeedHeaderRoute } from './headerContent';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/ui/Breadcrumb';
 
@@ -26,9 +26,12 @@ function SiteHeaderContent() {
 
     const context = useContext(AuthContext);
     const user = context?.user;
+    const isLoading = context?.isLoading ?? true;
     const logout = context?.logout;
     const router = useRouter();
     const pendingSyncCount = useOfflineActionQueue(user?.id);
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
 
     const isAuthRoute = pathname === '/login' || pathname === '/register' || pathname === '/choose-username';
     const isCandidatePortfolioRoute = pathname?.startsWith('/u/');
@@ -104,16 +107,20 @@ function SiteHeaderContent() {
                 </div>
             </div>
 
-            {/* Utility cluster (was TopUtilityBar) */}
+            {/* Utility cluster (was TopUtilityBar) — auth-dependent, must not hydrate-mismatch */}
             {!isAuthRoute && (
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0" suppressHydrationWarning>
                     <ThemeSwitcher />
 
-                    {isCandidatePortfolioRoute ? (
+                    {!mounted || isLoading ? (
+                        // SSR + first client paint: render skeleton matching the logged-out size
+                        // so server HTML === client HTML until AuthContext hydrates
+                        <div className="h-8 w-20 animate-pulse rounded-lg bg-muted/50" aria-hidden />
+                    ) : isCandidatePortfolioRoute ? (
                         <div className="flex items-center gap-2">
                             {user ? (
                                 <Link
-                                    href="/dashboard"
+                                    href="/jobs?tab=for-you"
                                     className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-95 shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                 >
                                     Dashboard
@@ -141,7 +148,7 @@ function SiteHeaderContent() {
 
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
-                                            <button aria-label="User Menu" suppressHydrationWarning className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border border-border/60 text-xs font-bold uppercase transition-all duration-150 ease-out active:scale-95 hover:border-primary/40 cursor-pointer focus:outline-none">
+                                            <button aria-label="User Menu" className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border border-border/60 text-xs font-bold uppercase transition-all duration-150 ease-out active:scale-95 hover:border-primary/40 cursor-pointer focus:outline-none">
                                                 {initialLetter}
                                             </button>
                                         </DropdownMenuTrigger>
@@ -155,17 +162,12 @@ function SiteHeaderContent() {
                                             <DropdownMenuSeparator />
                                             <DropdownMenuItem onClick={() => router.push('/account')} className="cursor-pointer flex items-center">
                                                 <Squares2X2Icon className="mr-2 h-4 w-4" />
-                                                <span>Account Hub</span>
+                                                <span>Account</span>
                                             </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer flex items-center">
+                                            <DropdownMenuItem onClick={() => router.push('/account?tab=profile')} className="cursor-pointer flex items-center">
                                                 <UserCircleIcon className="mr-2 h-4 w-4" />
                                                 <span>Profile</span>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer flex items-center">
-                                                <Cog6ToothIcon className="mr-2 h-4 w-4" />
-                                                <span>Account Settings</span>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuSeparator />
+                                            </DropdownMenuItem>                                      
                                             <DropdownMenuItem className="cursor-pointer" onSelect={handleLogout}>
                                                 <ArrowRightOnRectangleIcon className="mr-2 h-4 w-4" />
                                                 <span>Log out</span>

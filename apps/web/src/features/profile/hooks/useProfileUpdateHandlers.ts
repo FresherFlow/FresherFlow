@@ -7,21 +7,26 @@ import { validateEducationData } from '@fresherflow/utils';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function useProfileUpdateHandlers(form: any, _refreshUser?: () => Promise<void>) {  
     const { updateProfileState } = useAuth();
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [saving, setSaving] = useState<string | null>(null);
     const [editingSection, setEditingSection] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const handleIdentityUpdate = () => {
-        if (!form.fullName.trim()) { toast.error('Full name is required'); return; }
+        setSaving('identity');
+        setError(null);
+        if (!form.fullName.trim()) { toast.error('Full name is required'); setSaving(null); return; }
         const payload = { fullName: form.fullName };
         updateProfileState(payload, () => profileApi.updateProfile(payload));
         toast.success('Name updated.');
         setEditingSection(null);
+        setTimeout(() => setSaving(null), 300);
     };
 
     const handleEducationUpdate = () => {
+        setSaving('education');
+        setError(null);
         if (!form.tenthYear || !form.twelfthYear || !form.educationLevel || !form.gradCourse || !form.gradSpecialization || !form.gradYear) {
-            toast.error('Please fill all mandatory education fields'); return;
+            toast.error('Please fill all mandatory education fields'); setSaving(null); return;
         }
         const validation = validateEducationData({
             educationLevel: form.educationLevel,
@@ -60,9 +65,12 @@ export function useProfileUpdateHandlers(form: any, _refreshUser?: () => Promise
         updateProfileState(payload as any, () => profileApi.updateEducation(payload));
         toast.success('Education updated.');
         setEditingSection(null);
+        setTimeout(() => setSaving(null), 300);
     };
 
     const handlePreferencesUpdate = () => {
+        setSaving('preferences');
+        setError(null);
         const cleanCities = (form.preferredCities || []).map((c: string) => c.trim()).filter(Boolean);
         const cleanInterestedIn = (form.interestedIn || []).filter(Boolean);
         const cleanWorkModes = (form.workModes || []).filter(Boolean);
@@ -104,6 +112,7 @@ export function useProfileUpdateHandlers(form: any, _refreshUser?: () => Promise
         updateProfileState(payload as any, () => profileApi.updateReadiness(payload));
         toast.success('Skills updated.');
         setEditingSection(null);
+        setTimeout(() => setSaving(null), 300);
     };
 
     return {
@@ -113,7 +122,9 @@ export function useProfileUpdateHandlers(form: any, _refreshUser?: () => Promise
         handleIdentityUpdate,
         handleEducationUpdate,
         handlePreferencesUpdate,
-        handleReadinessUpdate
+        handleReadinessUpdate,
+        error,
+        setError,
     };
 }
 

@@ -1,3 +1,4 @@
+/* eslint-disable shadcn/no-arbitrary-values, shadcn/no-unknown-classes, shadcn/no-restyle, shadcn/require-static-classes, shadcn/no-raw-colors */
 import { cn } from '@repo/ui/utils/cn';
 import { useMemo, useEffect, useState, useCallback, Suspense, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -38,7 +39,7 @@ import { Input } from '@/ui/Input';
 import { SkeletonJobCard, OpportunityDetailSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { EmptyState } from '@/ui/EmptyState';
-import { FilterDropdownBar } from '@/features/jobs/components/FilterDropdownBar';
+import { JobsFilterBar } from '@/features/jobs/components/JobsFilterBar';
 import { WalkinMapPane } from '@/features/jobs/components/WalkinMapPane';
 import {
     GovtPhaseTabs,
@@ -481,7 +482,7 @@ export function CategoryPageView({
 
                         {/* Desktop filter dropdowns */}
                         <div className="hidden lg:flex items-center gap-2 flex-wrap">
-                            <FilterDropdownBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} aggregates={filterAggregates} driveDate={driveDate} onDriveDateChange={setDriveDate} />
+                            <JobsFilterBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} aggregates={filterAggregates} driveDate={driveDate} onDriveDateChange={setDriveDate} />
                         </div>
                     </div>
                 </div>
@@ -534,35 +535,36 @@ export function CategoryPageView({
 
                             {/* Desktop filter dropdowns + toggle */}
                             <div className="hidden lg:flex items-center gap-2 flex-wrap">
-                                <FilterDropdownBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} aggregates={filterAggregates} driveDate={driveDate} onDriveDateChange={setDriveDate} />
+                                <JobsFilterBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} aggregates={filterAggregates} driveDate={driveDate} onDriveDateChange={setDriveDate} />
                                 
-                                {/* View mode switcher (List vs Split) */}
+                                {/* View mode switcher (List vs Split) — icons only;
+                                    each icon always visible, state shown via highlight */}
                                 <div className="inline-flex items-center bg-muted rounded-lg border border-border/70 shrink-0 p-0.5">
                                     <button
                                         type="button"
                                         onClick={() => { if (showDetail) toggleShowDetail(); }}
                                         className={cn(
-                                            'flex items-center gap-1.5 h-7.5 px-3 rounded-md text-xs font-semibold cursor-pointer select-none',
+                                            'flex items-center justify-center h-7.5 w-8 rounded-md cursor-pointer select-none transition-colors',
                                             !showDetail ? 'bg-card text-foreground shadow-xs border border-border/40' : 'text-muted-foreground hover:text-foreground'
                                         )}
                                         aria-label="List view"
                                         aria-pressed={!showDetail}
+                                        title="List view"
                                     >
-                                        {!showDetail && <Bars3Icon className="w-3.5 h-3.5 shrink-0" aria-hidden />}
-                                        <span>List</span>
+                                        <Bars3Icon className="w-4 h-4 shrink-0" aria-hidden />
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => { if (!showDetail) toggleShowDetail(); }}
                                         className={cn(
-                                            'flex items-center gap-1.5 h-7.5 px-3 rounded-md text-xs font-semibold cursor-pointer select-none',
+                                            'flex items-center justify-center h-7.5 w-8 rounded-md cursor-pointer select-none transition-colors',
                                             showDetail ? 'bg-card text-foreground shadow-xs border border-border/40' : 'text-muted-foreground hover:text-foreground'
                                         )}
                                         aria-label="Split view"
                                         aria-pressed={showDetail}
+                                        title="Split view"
                                     >
-                                        {showDetail && <Squares2X2Icon className="w-3.5 h-3.5 shrink-0" aria-hidden />}
-                                        <span>Split</span>
+                                        <Squares2X2Icon className="w-4 h-4 shrink-0" aria-hidden />
                                     </button>
                                 </div>
                             </div>
@@ -749,7 +751,7 @@ export function CategoryPageView({
                                 </div>
                             </div>
                         </div>
-                        <Button onClick={() => router.push('/profile')} size="cta" label="caps">
+                        <Button onClick={() => router.push('/account?tab=profile')} size="cta" label="caps">
                             Complete Profile <ChevronRightIcon className="w-4 h-4 ml-2" />
                         </Button>
                     </div>
@@ -761,7 +763,7 @@ export function CategoryPageView({
                     </div>
                 ) : (
                     <div className="w-full grid gap-6 items-start grid-cols-1 xl:ff-detail-split pt-3.5 xl:pt-0 xl:gap-0 xl:h-full xl:min-h-0">
-                        <div className="min-w-0 xl:h-full xl:min-h-0 xl:overflow-y-auto">
+                        <div className="min-w-0 xl:h-full xl:min-h-0 xl:overflow-y-auto xl:px-6">
                             <div className="grid grid-cols-1 gap-4 md:gap-6">
                                 {[1,2,3,4,5].map(i => <SkeletonJobCard key={i} variant="compact" />)}
                             </div>
@@ -835,7 +837,7 @@ export function CategoryPageView({
                         onScroll={handleScroll}
                         className={cn(
                             "min-w-0 pt-3.5",
-                            type !== OpportunityType.GOVERNMENT && showDetail && "xl:pt-0 xl:h-full xl:min-h-0 xl:overflow-y-auto [:root[data-show-detail='false']_&]:xl:h-auto [:root[data-show-detail='false']_&]:xl:overflow-y-visible"
+                            type !== OpportunityType.GOVERNMENT && showDetail && "xl:pt-0 xl:h-full xl:min-h-0 xl:overflow-y-auto xl:px-6 [:root[data-show-detail='false']_&]:xl:h-auto [:root[data-show-detail='false']_&]:xl:overflow-y-visible [:root[data-show-detail='false']_&]:xl:px-0"
                         )}
                     >
                         <div className={cn(

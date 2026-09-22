@@ -32,6 +32,46 @@ export function readSidebarOpen(): boolean {
 /** The single width token the shell and the fixed header both consume. */
 const SIDEBAR_W = { expanded: '12rem', collapsed: '3rem' } as const;
 
+/** Resizable range: our small 12rem ↔ shadcn regular ~15rem (192px ↔ 240px) — decreased from 256px per feedback. */
+export const SIDEBAR_WIDTH_MIN = 192;
+export const SIDEBAR_WIDTH_MAX = 240;
+const SIDEBAR_WIDTH_STORAGE_KEY = 'ff:sidebarWidth';
+
+function clamp(n: number, min: number, max: number) {
+    return Math.min(max, Math.max(min, n));
+}
+
+export function readSidebarWidth(): number | null {
+    try {
+        const raw = localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
+        if (!raw) return null;
+        const v = Number(raw);
+        if (!Number.isFinite(v)) return null;
+        return clamp(v, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX);
+    } catch {
+        return null;
+    }
+}
+
+export function persistSidebarWidth(px: number) {
+    const clamped = clamp(px, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX);
+    try {
+        localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(clamped));
+    } catch {}
+    try {
+        // Only apply when expanded — collapsed stays 3rem.
+        const isCollapsed = document.documentElement.getAttribute('data-sidebar') === 'collapsed';
+        if (!isCollapsed) {
+            document.documentElement.style.setProperty('--sidebar-w', `${clamped}px`);
+        }
+    } catch {}
+}
+
+export function getStoredSidebarWidthOrDefault(): string {
+    const w = readSidebarWidth();
+    return w ? `${w}px` : SIDEBAR_W.expanded;
+}
+
 export function persistSidebarOpen(next: boolean) {
     // Cookie first: it is the source of truth read on reload. Each store is
     // guarded so a blocked localStorage can never skip the cookie write
@@ -52,7 +92,16 @@ export function persistSidebarOpen(next: boolean) {
         // (`lg:pl-[var(--sidebar-w)]`) and the fixed header (`left:
         // var(--sidebar-w)`) both read it — without this write they stay at
         // the load-time value while the rail animates away underneath them.
-        document.documentElement.style.setProperty('--sidebar-w', next ? SIDEBAR_W.expanded : SIDEBAR_W.collapsed);
+        if (next) {
+            // Restore resizable width if user dragged before.
+            const stored = readSidebarWidth();
+            document.documentElement.style.setProperty(
+                '--sidebar-w',
+                stored ? `${stored}px` : SIDEBAR_W.expanded
+            );
+        } else {
+            document.documentElement.style.setProperty('--sidebar-w', SIDEBAR_W.collapsed);
+        }
     } catch {
         // Not in a DOM context — nothing to mirror.
     }
@@ -81,7 +130,15 @@ export function useSidebarOpenState() {
     React.useEffect(() => {
         try {
             document.documentElement.setAttribute('data-sidebar', open ? 'expanded' : 'collapsed');
-            document.documentElement.style.setProperty('--sidebar-w', open ? SIDEBAR_W.expanded : SIDEBAR_W.collapsed);
+            if (open) {
+                const stored = readSidebarWidth();
+                document.documentElement.style.setProperty(
+                    '--sidebar-w',
+                    stored ? `${stored}px` : SIDEBAR_W.expanded
+                );
+            } else {
+                document.documentElement.style.setProperty('--sidebar-w', SIDEBAR_W.collapsed);
+            }
         } catch {
             // Not in a DOM context — nothing to mirror.
         }
