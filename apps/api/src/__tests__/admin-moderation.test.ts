@@ -64,7 +64,7 @@ const prismaMock = {
     jobSubmission: { updateMany: vi.fn() },
     salaryReport: { updateMany: vi.fn() },
     rawOpportunity: { updateMany: vi.fn() },
-    walkInDetails: { deleteMany: vi.fn() },
+    driveDetails: { deleteMany: vi.fn() },
     governmentJobDetails: { deleteMany: vi.fn() },
     notification: { deleteMany: vi.fn(), updateMany: vi.fn() },
     user: {
@@ -177,7 +177,7 @@ function seedHardDeleteChildren() {
         prismaMock.interviewExperienceVote,
         prismaMock.opportunityComment,
         prismaMock.applicationUpdate,
-        prismaMock.walkInDetails,
+        prismaMock.driveDetails,
         prismaMock.governmentJobDetails,
     ]) {
         (model.deleteMany as ReturnType<typeof vi.fn>).mockResolvedValue({ count: 1 });
@@ -283,7 +283,7 @@ describe('DELETE /api/admin/opportunities/:id/hard (child cleanup regression)', 
             where: { mappedOpportunityId: 'opp-1' },
             data: { mappedOpportunityId: null },
         });
-        expect(prismaMock.walkInDetails.deleteMany).toHaveBeenCalledWith({ where: { opportunityId: 'opp-1' } });
+        expect(prismaMock.driveDetails.deleteMany).toHaveBeenCalledWith({ where: { opportunityId: 'opp-1' } });
         expect(prismaMock.governmentJobDetails.deleteMany).toHaveBeenCalledWith({ where: { opportunityId: 'opp-1' } });
     });
 
@@ -300,7 +300,7 @@ describe('DELETE /api/admin/opportunities/:id/hard (child cleanup regression)', 
         expect(parentOrder).toBeGreaterThan(prismaMock.opportunityComment.deleteMany.mock.invocationCallOrder[0]);
         expect(parentOrder).toBeGreaterThan(prismaMock.interviewExperience.deleteMany.mock.invocationCallOrder[0]);
         expect(parentOrder).toBeGreaterThan(prismaMock.applicationUpdate.deleteMany.mock.invocationCallOrder[0]);
-        expect(parentOrder).toBeGreaterThan(prismaMock.walkInDetails.deleteMany.mock.invocationCallOrder[0]);
+        expect(parentOrder).toBeGreaterThan(prismaMock.driveDetails.deleteMany.mock.invocationCallOrder[0]);
     });
 
     it('returns 404 without touching children when the opportunity is missing', async () => {
