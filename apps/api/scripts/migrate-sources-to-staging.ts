@@ -7,7 +7,7 @@
  */
 
 import 'dotenv/config';
-import prisma from '../src/lib/prisma';
+import prisma from '../src/infrastructure/database/prisma';
 import stagingPrisma from '../src/lib/stagingPrisma';
 
 async function main() {

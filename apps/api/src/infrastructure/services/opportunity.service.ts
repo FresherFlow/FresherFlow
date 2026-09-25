@@ -1,4 +1,4 @@
-import prisma, { Prisma, OpportunityStatus as DbOpportunityStatus, EducationLevel as DbEducationLevel, WorkMode as DbWorkMode, OpportunityCategory as DbOpportunityCategory, EmploymentType as DbEmploymentType } from '../../lib/prisma';
+import prisma, { Prisma, OpportunityStatus as DbOpportunityStatus, EducationLevel as DbEducationLevel, WorkMode as DbWorkMode, OpportunityCategory as DbOpportunityCategory, EmploymentType as DbEmploymentType } from '../database/prisma';
 import { OpportunityStatus, OpportunityCategory, EmploymentType, RecruitmentMethod, Opportunity, Profile } from '@fresherflow/types';
 import { calculateOpportunityMatch, generateSlug, generateCompanyLogoUrl } from '@fresherflow/utils';
 import { searchOpportunitiesQuery, SearchResult, SearchOptions } from '../../application/opportunity/search';
