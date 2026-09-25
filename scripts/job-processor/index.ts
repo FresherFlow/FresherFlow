@@ -40,7 +40,7 @@ import {
 
 import { resolveCompanyWebsiteAndLogo } from '@fresherflow/utils';
 
-import { matchFromCdn } from '@fresherflow/parser';
+import { matchFromCdn, demuxJobTitle, extractCompanyFromUrl } from '@fresherflow/parser';
 
 async function fileExists(filePath: string): Promise<boolean> {
     try {
@@ -411,12 +411,22 @@ async function run(): Promise<void> {
                 // No LLM at this stage.
                 // ─────────────────────────────────────────────────────────
 
+                // 2a0. Title demux: split polluted titles like
+                //   "Intern at Infosys — Bangalore Urban, Karnataka, India"
+                //   "Junior Developer - EPM - Datavail Career Site"
+                // into clean title + company + location (deterministic regex tiers).
+                const rawTitleForDemux = nativeData?.title || atsContent.title || job.title || '';
+                const demuxed = demuxJobTitle(rawTitleForDemux);
+                const finalTitle = demuxed.title || rawTitleForDemux;
+                const demuxedCompany = demuxed.company || extractCompanyFromUrl(job.applyLink) || '';
+                const demuxedLocation = demuxed.location ? [demuxed.location] : [];
+
                 // 2a. Rule engine: title → type, experience, workMode
                 const rules = applyRuleEngine({
-                    title: nativeData?.title || atsContent.title || job.title || '',
+                    title: finalTitle,
                     department: nativeData?.department,
                     description: textForLlm,
-                    location: nativeData?.locations.join(', '),
+                    location: nativeData?.locations.join(', ') || demuxed.location || '',
                     employmentType: nativeData?.employmentType,
                 });
 
@@ -452,7 +462,7 @@ async function run(): Promise<void> {
 
                 let jobCompany = nativeData?.company || job.company || '';
                 if (!jobCompany || /^(corporate\s*walk\s*in|freshers?|ar\s*voice\s*freshers?|job\s*opportunity|walk\s*in)$/i.test(jobCompany)) {
-                    const rawTitle = nativeData?.title || atsContent.title || job.title || '';
+                    const rawTitle = rawTitleForDemux;
                     const compMatch = rawTitle.match(/^([^|–—\-]+?)(?:\s+(?:Walk\s*in|Walkin|Recruitment|Off\s*Campus|Hiring|Drive|for\s+Freshers))/i) ||
                                       rawTitle.match(/(?:at|for|by)\s+([^|–—\-]+)/i);
                     if (compMatch && compMatch[1].trim().length > 1) {
@@ -461,6 +471,10 @@ async function run(): Promise<void> {
                             jobCompany = cleaned;
                         }
                     }
+                }
+                // Final fallback: demux-extracted company ("... at Infosys") or URL host
+                if (!jobCompany) {
+                    jobCompany = demuxedCompany;
                 }
 
                 const walkInDetails = isWalkIn ? (job.walkInDetails || {
@@ -479,7 +493,7 @@ async function run(): Promise<void> {
                 }) : null;
 
                 const walkInCity = job.city || job.locationCity || (walkInDetails?.venueAddress ? (walkInDetails.venueAddress.match(/\b(Hyderabad|Bengaluru|Bangalore|Chennai|Pune|Mumbai|Delhi|Noida|Gurugram|Gurgaon|Jaipur|Kolkata|Ahmedabad|Kochi|Coimbatore)\b/i)?.[1] || 'Hyderabad') : 'Hyderabad');
-                const initialLocations = isWalkIn ? [walkInCity] : ((nativeData?.locations && nativeData.locations.length > 0) ? nativeData.locations : dbLocations);
+                const initialLocations = isWalkIn ? [walkInCity] : ((nativeData?.locations && nativeData.locations.length > 0) ? nativeData.locations : (dbLocations.length > 0 ? dbLocations : demuxedLocation));
                 const initialWorkMode = isWalkIn ? 'ONSITE' : (nativeData?.workplaceType ?? dbWorkMode ?? rules.workMode ?? null);
                 const initialType = isWalkIn ? 'WALKIN' : (rules.type ?? 'JOB');
 
@@ -492,7 +506,7 @@ async function run(): Promise<void> {
 
                 const nativeJob: Record<string, unknown> = {
                     type: initialType,
-                    title: nativeData?.title || atsContent.title || job.title || '',
+                    title: finalTitle,
                     company: jobCompany,
                     companyId: job.companyId || job.company_id || null,
                     companyWebsite: job.companyUrl || job.companyWebsite || '',

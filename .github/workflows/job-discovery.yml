@@ -59,7 +59,19 @@ jobs:
           INGESTION_DATABASE_URL: ${{ secrets.INGESTION_DATABASE_URL || secrets.DATABASE_URL }}
           WORKER_URL: ${{ secrets.WORKER_URL }}
           WORKER_SECRET: ${{ secrets.WORKER_SECRET }}
+          # Community board intake (FresherFlow/India-Jobs-Internships)
+          # Files `new_role` issues for jobs this bot already found. The board
+          # repo then approves, adds them to data/jobs.json and rebuilds its site.
+          # OFF unless BOARD_PUBLISH_ENABLED=true; dry-run by default.
+          BOARD_PUBLISH_ENABLED: ${{ secrets.BOARD_PUBLISH_ENABLED || 'false' }}
+          BOARD_PUBLISH_DRY_RUN: ${{ secrets.BOARD_PUBLISH_DRY_RUN || 'true' }}
+          BOARD_PUBLISH_MAX_PER_RUN: ${{ secrets.BOARD_PUBLISH_MAX_PER_RUN || '5' }}
+          BOARD_PUBLISH_DELAY_MS: ${{ secrets.BOARD_PUBLISH_DELAY_MS || '4000' }}
+          BOARD_PUBLISH_AUTO_APPROVE: ${{ secrets.BOARD_PUBLISH_AUTO_APPROVE || 'true' }}
+          JOBS_REPO: ${{ secrets.JOBS_REPO || 'FresherFlow/India-Jobs-Internships' }}
+          JOBS_REPO_TOKEN: ${{ secrets.JOBS_REPO_TOKEN }}
           DISCOVERY_MODE: aggregator
+          # a useful source and cost the most crawl time. Switched off at the source.
           DISCOVERY_STATE_STORAGE: "local"
           PROXY_LIST: ${{ secrets.PROXY_LIST }}
           GOOGLE_SHEET_SCRIPT_URL: ${{ secrets.GOOGLE_SHEET_SCRIPT_URL }}

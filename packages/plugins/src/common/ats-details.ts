@@ -230,23 +230,76 @@ export async function fetchSmartRecruitersDetails(applyLink: string): Promise<an
     }
 }
 
+/**
+ * Workday URL convention: /<site>/job/<location-slug>/<title-slug>_<reqId>
+ * Some tenants (WAF-blocked CXS APIs) return 403 on the public JSON endpoint, so
+ * we fall back to deterministic path dissection rather than dropping the row.
+ */
+function workdayPathFallback(applyLink: string): any | undefined {
+    try {
+        const urlObj = new URL(applyLink);
+        let parts = urlObj.pathname.split('/').filter(Boolean);
+        if (/^[a-z]{2}(-[A-Z]{2})?$/i.test(parts[0])) parts = parts.slice(1);
+        const jobIdx = parts.findIndex(p => p.toLowerCase() === 'job');
+        if (jobIdx === -1 || jobIdx + 1 >= parts.length) return undefined;
+
+        const locationSlug = parts[jobIdx + 1] || '';
+        const titleSlug = parts[jobIdx + 2] || '';
+
+        // Title slug: "NATA-Trainee_R-14978" → "NATA Trainee"
+        const titleWords = titleSlug.split('_')[0].replace(/[-]+/g, ' ').trim();
+        if (titleWords.length < 4) return undefined;
+        const title = titleWords.replace(/\s+/g, ' ')
+            .replace(/\b\w/g, c => c.toUpperCase());
+
+        // Location slug: "Hyderabad-Telangana" → "Hyderabad Telangana"
+        const locations = locationSlug
+            .replace(/[-]+/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        const tenant = urlObj.hostname.split('.')[0];
+        const company = tenant.charAt(0).toUpperCase() + tenant.slice(1);
+
+        return {
+            title,
+            html: '',
+            text: '',
+            locations: locations ? [locations] : [],
+            company,
+            applyLink
+        };
+    } catch {
+        return undefined;
+    }
+}
+
 export async function fetchWorkdayDetails(applyLink: string, page?: any): Promise<any> {
     try {
         const urlObj = new URL(applyLink);
-        const parts = urlObj.pathname.split('/').filter(Boolean);
+        let parts = urlObj.pathname.split('/').filter(Boolean);
         if (parts.length < 2) return undefined;
 
-        // E.g., motorolasolutions.wd5.myworkdayjobs.com
+        // Skip locale segment if present, e.g. /en-US/GE_Appliances/...
+        if (/^[a-z]{2}(-[A-Z]{2})?$/i.test(parts[0])) {
+            parts = parts.slice(1);
+        }
+        if (parts.length < 2) return undefined;
+
+        // E.g., haier.wd3.myworkdayjobs.com -> haier
         const companyDomain = urlObj.hostname.split('.')[0];
         const site = parts[0]; 
         
-        // Remove the site part to get the external path, e.g., /job/Illinois-Remote-Work/Field-Engineer_R67664
+        // Remove the site part to get the external path, e.g., /job/IND-Bangalore-KA/Co-op-Intern_REQ-26671
         const externalPath = '/' + parts.slice(1).join('/');
         
         const apiUrl = `https://${urlObj.hostname}/wday/cxs/${companyDomain}/${site}${externalPath}`;
 
         const data = await fetchJson<any>(apiUrl);
-        if (!data || !data.jobPostingInfo) return undefined;
+        if (!data || !data.jobPostingInfo) {
+            // CXS blocked (403/404) — use deterministic URL-path extraction
+            return workdayPathFallback(applyLink);
+        }
         
         const info = data.jobPostingInfo;
         const title = info.title || '';
@@ -262,7 +315,8 @@ export async function fetchWorkdayDetails(applyLink: string, page?: any): Promis
             html,
             text: stripHtml(html),
             locations: locations.map((l: string) => l.trim()).filter(Boolean),
-            company: company.trim()
+            company: company.trim(),
+            applyLink
         };
     } catch (e: any) {
         console.warn(`[Workday] details fetch failed: ${e.message}`);
@@ -271,6 +325,62 @@ export async function fetchWorkdayDetails(applyLink: string, page?: any): Promis
 }
 
 export async function fetchOracleDetails(applyLink: string, page?: any): Promise<any> {
+    // 1. Try public REST API first (zero Playwright, ultrafast)
+    try {
+        const urlObj = new URL(applyLink);
+        const reqMatch = urlObj.pathname.match(/\/job\/(\d+)/i);
+        if (reqMatch && reqMatch[1]) {
+            const reqId = reqMatch[1];
+            const apiUrl = `https://${urlObj.hostname}/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails/${reqId}`;
+            const data = await fetchJson<any>(apiUrl);
+            if (data && data.Title) {
+                const locations: string[] = [];
+                if (data.PrimaryLocation) locations.push(data.PrimaryLocation);
+                const html = data.ExternalDescriptionStr || data.CorporateDescriptionStr || '';
+                
+                // Infer company name from title/site or domain
+                let company = '';
+                const siteMatch = urlObj.pathname.match(/\/sites\/([^/]+)/i);
+                if (siteMatch && !siteMatch[1].startsWith('CX_') && siteMatch[1] !== 'ExternalCareerSite') {
+                    company = siteMatch[1].replace(/[-_]/g, ' ');
+                }
+                // Fallback: page <title>/og:site_name e.g. "Datavail Career Site" → "Datavail"
+                if (!company) {
+                    try {
+                        const pageRes = await fetch(applyLink, {
+                            headers: { 'User-Agent': 'Mozilla/5.0', 'Accept': 'text/html' },
+                            signal: AbortSignal.timeout(8000)
+                        });
+                        if (pageRes.ok) {
+                            const pageHtml = await pageRes.text();
+                            const tMatch = pageHtml.match(/<title[^>]*>([^<]{2,200})<\/title>/i) ||
+                                pageHtml.match(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i);
+                            if (tMatch) {
+                                company = tMatch[1]
+                                    .replace(/\s*[-–|]?\s*(?:(?:External\s*)?Career\s*Site|Careers?|Jobs?).*$/i, '')
+                                    .trim();
+                                // Reject generic leftovers like "Search", "Candidate", "Welcome"
+                                if (/^(search|find|job|career|external|candidate|welcome|home|apply|opportunit|requisition|hiring)\b/i.test(company)) {
+                                    company = '';
+                                }
+                            }
+                        }
+                    } catch { /* company stays empty */ }
+                }
+                
+                return {
+                    title: data.Title.trim(),
+                    html,
+                    text: stripHtml(html),
+                    locations,
+                    company: company.trim(),
+                    applyLink
+                };
+            }
+        }
+    } catch {}
+
+    // 2. Playwright fallback if page provided
     if (!page) return undefined;
     try {
         await page.goto(applyLink, { waitUntil: 'domcontentloaded', timeout: 45000 });

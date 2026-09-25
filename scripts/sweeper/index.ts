@@ -604,7 +604,7 @@ async function run() {
                 const res = await fetch('https://api.github.com/repos/FresherFlow/India-Jobs-Internships/issues', {
                     method: 'POST',
                     headers: { 'Accept': 'application/vnd.github+json', 'Authorization': `Bearer ${boardToken}`, 'X-GitHub-Api-Version': '2022-11-28' },
-                    body: JSON.stringify({ title: `Bulk Marking Roles as Inactive (sweeper ${today})`, body, labels: ['bulk_mark_inactive'] }),
+                    body: JSON.stringify({ title: `Bulk Marking Roles as Inactive (sweeper ${today})`, body, labels: ['bulk_mark_inactive', 'approved'] }),
                 });
                 console.log(res.ok
                     ? `Board handoff: filed bulk_mark_inactive issue with ${externalExpired.length} URL(s).`

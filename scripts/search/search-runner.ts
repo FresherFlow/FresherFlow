@@ -1,7 +1,6 @@
 import { AtsJob } from '@fresherflow/plugins';
 import {
   collectPublicFeeds,
-  collectBoardSearches,
   collectGitHubHiring,
   collectDirectCompanyPortals,
   collectDorkSearches,
@@ -20,6 +19,7 @@ import {
   loadPostedUrlsCache,
   savePostedUrlsCache,
   postJobsToSocial,
+  createBoardPublisher,
   loadEnv,
   loadRolesFromCdn,
   CORE_SEARCH_KEYWORDS,
@@ -95,16 +95,19 @@ async function runSearchEngine() {
     const keywords = options.roles ? await loadRolesFromCdn() : CORE_SEARCH_KEYWORDS;
 
     // Run selected or all channels concurrently
-    const [feedJobs, boardJobs, vcJobs, companyJobs, githubJobs, walkinJobs] = await Promise.all([
+    const [feedJobs, vcJobs, companyJobs, githubJobs, walkinJobs] = await Promise.all([
       (channel === 'all' || channel === 'feeds') ? collectPublicFeeds({ resultsWanted: limit, hoursOld }) : Promise.resolve([]),
-      (channel === 'all' || channel === 'boards') ? collectBoardSearches(keywords, { resultsPerKeyword: limit, hoursOld }) : Promise.resolve([]),
       (channel === 'all' || channel === 'vc' || channel === 'boards') ? collectVcStartupPortals() : Promise.resolve([]),
       (channel === 'all' || channel === 'companies') ? collectDirectCompanyPortals({ resultsWanted: limit, hoursOld }) : Promise.resolve([]),
       (channel === 'all' || channel === 'github') ? collectGitHubHiring({ resultsWanted: limit }) : Promise.resolve([]),
       (channel === 'all' || channel === 'walkin') ? collectHyderabadWalkinDrives({ resultsWanted: 10, hoursOld }) : Promise.resolve([]),
     ]);
 
-    rawCandidates.push(...feedJobs, ...boardJobs, ...vcJobs, ...companyJobs, ...githubJobs, ...walkinJobs);
+    // Job boards (Internshala, LinkedIn, HasJob, HackerNews, WeWorkRemotely) are
+    // no longer crawled: they only republish employer postings, they cost the
+    // most crawl time, and their links/titles are the polluted ones. Everything
+    // collected below comes from direct employer/ATS pages.
+    rawCandidates.push(...feedJobs, ...vcJobs, ...companyJobs, ...githubJobs, ...walkinJobs);
 
 
     // Track raw source counts
@@ -178,9 +181,31 @@ async function runSearchEngine() {
       if (verifiedJobs.length > 0) {
         const socialJobs = verifiedJobs
           .filter(j => j.applyLink && j.title)
-          .map(j => ({ title: j.title, applyLink: j.applyLink, company: j.company, source: j.source }));
+          .map(j => ({
+            title: j.title,
+            applyLink: j.applyLink,
+            company: j.company,
+            locations: [j.location].filter((l): l is string => !!l && !!l.trim()),
+            source: j.source,
+          }));
         const scheduled = await postJobsToSocial(socialJobs, postedUrlsCache);
         console.log(`[Social] ${scheduled} new verified jobs scheduled to social media.`);
+
+        // Community board intake: file `new_role` issues for the same jobs.
+        // Disabled unless BOARD_PUBLISH_ENABLED=true (dry-run by default).
+        const board = createBoardPublisher();
+        if (board) {
+          for (const j of socialJobs) {
+            await board.post({
+              title: j.title,
+              company: j.company || '',
+              applyLink: j.applyLink,
+              locations: j.locations,
+            });
+          }
+          const bs = board.summary();
+          console.log(`[Board] eligible: ${bs.eligible} | filed: ${bs.created} | skipped: ${bs.skipped} | failed: ${bs.failed}`);
+        }
       } else {
         console.log('[Social] No verified jobs to post this run.');
       }

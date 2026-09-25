@@ -29,7 +29,8 @@ export {
 
 export { parseJobTextLite } from './lite.js';
 
-export { normalizeSalary, normalizeExpiry, normalizeCompany, normalizeLocation, normalizeTitle } from './normalize.js';
+export { normalizeSalary, normalizeExpiry, normalizeCompany, normalizeLocation, normalizeTitle, demuxJobTitle, extractCompanyFromUrl } from './normalize.js';
+export type { DemuxedTitleResult } from './normalize.js';
 export { UrlParser, parseJobUrl } from './url-parser.js';
 export type { JobSourceType, UrlParseResult, ParsedJobUrl } from './url-parser.js';
 

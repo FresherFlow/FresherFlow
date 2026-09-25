@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises';
-import { DiscoveryState, DiscoveredJobEntry, fetchTargetSitesFromCdn, postJobsToSocial } from '@fresherflow/pipeline';
+import { DiscoveryState, DiscoveredJobEntry, fetchTargetSitesFromCdn, postJobsToSocial, createBoardPublisher } from '@fresherflow/pipeline';
 import { sendTelegramMessage } from '@fresherflow/utils';
 
 function getFormattedDate(): string {
@@ -120,8 +120,41 @@ export async function sendNotifications(state: DiscoveryState) {
     console.log("Sending Telegram message:\n" + tgMsg);
     await sendTelegramMessage(tgMsg);
 
-    // Post aggregator jobs to social media (X, LinkedIn, Telegram)
-    await postAggregatorsToSocial(realAggJobs, state.postedLinks);
+    // Social media (X, LinkedIn, Telegram channel).
+    // Only ATS/direct-employer jobs are posted. Aggregator wrapper links
+    // (LinkedIn, Internshala, Unstop, ...) are never advertised on our accounts —
+    // the shared poster enforces this, and we do not even hand them over.
+    const atsJobsForSocial = state.newJobsFound.filter(
+        j => j.sourceType === 'ATS' && j.applyLink && j.title
+    );
+    if (atsJobsForSocial.length > 0) {
+        await postJobsToSocial(
+            atsJobsForSocial.map(j => ({
+                title: j.title,
+                applyLink: j.applyLink,
+                company: j.company,
+                locations: [j.location, j.locationCity].filter((l): l is string => !!l && !!l.trim()),
+                source: j.source,
+            })),
+            state.postedLinks
+        );
+
+        // Community board intake: file `new_role` issues for the same jobs.
+        // Disabled unless BOARD_PUBLISH_ENABLED=true (dry-run by default).
+        const board = createBoardPublisher();
+        if (board) {
+            for (const j of atsJobsForSocial) {
+                await board.post({
+                    title: j.title,
+                    company: j.company || '',
+                    applyLink: j.applyLink,
+                    locations: [j.location, j.locationCity].filter((l): l is string => !!l && !!l.trim()),
+                });
+            }
+            const bs = board.summary();
+            console.log(`[board] eligible: ${bs.eligible} | filed: ${bs.created} | skipped: ${bs.skipped} | failed: ${bs.failed}`);
+        }
+    }
 
     const apiBaseUrl = (process.env.API_BASE_URL || '').trim().replace(/\/$/, '');
     if (apiBaseUrl) {
@@ -131,16 +164,9 @@ export async function sendNotifications(state: DiscoveryState) {
 }
 
 // ─── Social Media Posting ───────────────────────────────────────────────────
-
-// Shared poster (packages/pipeline/src/utils/social.ts) handles captions, adaptive
-// stagger, dedup and the worker call. Aggregator wrapper titles rarely carry a
-// reliable company name, so aggregator jobs post WITHOUT a Company line — only
-// the external search bot (which has real companies) passes company.
-async function postAggregatorsToSocial(aggJobs: DiscoveredJobEntry[], postedLinks: string[]): Promise<void> {
-    if (aggJobs.length === 0) return;
-    const jobs = aggJobs.map(j => ({ title: j.title, applyLink: j.applyLink, source: j.source }));
-    await postJobsToSocial(jobs, postedLinks);
-}
+// The shared poster (packages/pipeline/src/utils/social.ts) owns captions,
+// adaptive stagger, dedup, the aggregator/board blocklist and the worker call.
+// Aggregator wrapper links are never passed to it — see the call site above.
 
 export async function writeGitHubSummary(state: DiscoveryState) {
     const atsJobs = state.newJobsFound.filter(j => j.sourceType === 'ATS');
