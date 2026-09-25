@@ -33,7 +33,8 @@ router.get('/opportunities', async (req: Request, res: Response, next: NextFunct
                 select: {
                     id: true,
                     slug: true,
-                    type: true,
+                    category: true,
+                    recruitmentMethod: true,
                     postedAt: true,
                     expiresAt: true,
                 },
@@ -46,7 +47,8 @@ router.get('/opportunities', async (req: Request, res: Response, next: NextFunct
         const output = items.map((item) => ({
             id: item.id,
             slug: item.slug,
-            type: item.type,
+            category: item.category,
+            recruitmentMethod: item.recruitmentMethod,
             postedAt: item.postedAt.toISOString(),
             expiresAt: item.expiresAt ? (item.expiresAt as Date).toISOString() : null,
         }));

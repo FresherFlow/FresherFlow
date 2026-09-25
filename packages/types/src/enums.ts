@@ -1,13 +1,105 @@
-ï»¿// Shared Enums - Single Source of Truth
+// Shared Enums - Single Source of Truth
 // Match Prisma schema exactly
 
-export enum OpportunityType {
-    JOB = 'JOB',
+// -- Opportunity taxonomy (v2) ------------------------------------------------
+// Independent dimensions. The old single `OpportunityType` mixed what an
+// opportunity IS (JOB / INTERNSHIP / HACKATHONS), how you attend (WALKIN /
+// REMOTE) and which sector it belongs to (GOVERNMENT), so every new concept
+// needed a new enum value. Adding a concept is now just data.
+
+export enum OpportunityCategory {
+    EMPLOYMENT = 'EMPLOYMENT',
+    COMPETITION = 'COMPETITION',
+    SCHOLARSHIP = 'SCHOLARSHIP',
+    EDUCATION = 'EDUCATION',
+    EVENT = 'EVENT'
+}
+
+export enum EmploymentType {
+    FULL_TIME = 'FULL_TIME',
+    PART_TIME = 'PART_TIME',
+    CONTRACT = 'CONTRACT',
+    TEMPORARY = 'TEMPORARY',
+    FREELANCE = 'FREELANCE',
     INTERNSHIP = 'INTERNSHIP',
-    WALKIN = 'WALKIN',
-    REMOTE = 'REMOTE',
+    APPRENTICESHIP = 'APPRENTICESHIP',
+    VOLUNTEER = 'VOLUNTEER',
+    PER_DIEM = 'PER_DIEM',
+    OTHER = 'OTHER'
+}
+
+// India-specific recruitment taxonomy. REGULAR covers ordinary open listings.
+export enum RecruitmentMethod {
+    REGULAR = 'REGULAR',
+    ON_CAMPUS = 'ON_CAMPUS',
+    OFF_CAMPUS = 'OFF_CAMPUS',
+    POOL_CAMPUS = 'POOL_CAMPUS',
+    WALK_IN = 'WALK_IN',
+    REFERRAL = 'REFERRAL'
+}
+
+export enum Sector {
+    PRIVATE = 'PRIVATE',
     GOVERNMENT = 'GOVERNMENT',
-    HACKATHONS = 'HACKATHONS'
+    NGO = 'NGO',
+    ACADEMIC = 'ACADEMIC',
+    STARTUP = 'STARTUP',
+    OTHER = 'OTHER'
+}
+
+// Seniority band, separate from experienceMin / experienceMax.
+export enum ExperienceLevel {
+    ENTRY_LEVEL = 'ENTRY_LEVEL',
+    INTERN = 'INTERN',
+    ASSOCIATE = 'ASSOCIATE',
+    MID = 'MID',
+    SENIOR = 'SENIOR',
+    LEAD = 'LEAD',
+    EXECUTIVE = 'EXECUTIVE'
+}
+
+// How the listing entered the platform: community submission vs bot scrape.
+export enum OpportunitySourceKind {
+    SCRAPED = 'SCRAPED',
+    USER_SUBMITTED = 'USER_SUBMITTED',
+    IMPORTED = 'IMPORTED',
+    PARTNER_FEED = 'PARTNER_FEED'
+}
+
+// The community funnel: one record for "applied to a job", "registered for a
+// hackathon" and "enrolled in a scholarship".
+export enum ApplicationStage {
+    APPLIED = 'APPLIED',
+    REGISTERED = 'REGISTERED',
+    IN_REVIEW = 'IN_REVIEW',
+    ASSESSMENT = 'ASSESSMENT',
+    INTERVIEW = 'INTERVIEW',
+    OFFERED = 'OFFERED',
+    ACCEPTED = 'ACCEPTED',
+    REJECTED = 'REJECTED',
+    WITHDRAWN = 'WITHDRAWN',
+    SKIPPED = 'SKIPPED',
+    PARTICIPATED = 'PARTICIPATED'
+}
+
+export enum CompensationType {
+    SALARY = 'SALARY',
+    STIPEND = 'STIPEND',
+    EQUITY = 'EQUITY',
+    BONUS = 'BONUS',
+    COMMISSION = 'COMMISSION',
+    PER_DIEM = 'PER_DIEM',
+    REIMBURSEMENT = 'REIMBURSEMENT',
+    OTHER = 'OTHER'
+}
+
+export enum EquityUnit {
+    ESOP = 'ESOP',
+    RSU = 'RSU',
+    OPTIONS = 'OPTIONS',
+    SHARES = 'SHARES',
+    PHANTOM = 'PHANTOM',
+    OTHER = 'OTHER'
 }
 
 export enum GovernmentApplicationStatus {
@@ -196,7 +288,7 @@ export enum MembershipStatus {
 }
 
 // ========================================
-// COMMUNITY ENUMS (plan 09b Â§6.3 â€” must match schema.prisma exactly)
+// COMMUNITY ENUMS (plan 09b §6.3 — must match schema.prisma exactly)
 // ========================================
 
 export enum CommentType {
@@ -300,13 +392,22 @@ export enum ApplicationStatus {
     NO_RESPONSE = 'NO_RESPONSE'
 }
 
-export enum RoomType {
-    BATCH = 'BATCH',
-    SKILL = 'SKILL',
-    LOCATION = 'LOCATION',
-    COMPANY = 'COMPANY',
-    TOPIC = 'TOPIC',
-    CUSTOM = 'CUSTOM'
+// A Room is not a CommunityPost, so it has its own lifecycle.
+export enum RoomStatus {
+  ACTIVE = 'ACTIVE',
+  ARCHIVED = 'ARCHIVED',
+  DELETED = 'DELETED'
+}
+
+export enum RoomMemberRole {
+  MEMBER = 'MEMBER',
+  MODERATOR = 'MODERATOR',
+  ADMIN = 'ADMIN'
+}
+
+export enum RoomOpportunityReason {
+  PINNED = 'PINNED',
+  SHARED = 'SHARED'
 }
 
 export enum ReferralRequestStatus {

@@ -27,7 +27,7 @@ router.post(
                 companyName: string;
                 jobUrl: string;
                 location?: string;
-                employmentType?: string;
+                employmentTypes?: string;
                 salary?: string;
                 description?: string;
                 eligibility?: string;
@@ -42,9 +42,9 @@ router.post(
                 title: body.title,
                 company: body.companyName,
                 description: body.description ?? null,
-                type: 'JOB',
+                category: 'EMPLOYMENT',
                 locations: body.location ? [body.location] : [],
-                employmentType: body.employmentType ?? null,
+                employmentTypes: body.employmentTypes ?? null,
                 salaryRange: body.salary ?? null,
                 requiredSkills: [],
                 allowedPassoutYears: [],

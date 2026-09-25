@@ -6,7 +6,16 @@ const { join, sql } = Prisma;
 type Sql = Prisma.Sql;
 
 export interface SearchOptions {
-    filterType?: string;
+    /**
+     * Legacy `type` filter, now expressed across the independent dimensions.
+     * Kept as a structured object so one legacy value can expand into several
+     * column predicates (INTERNSHIP -> category + employmentTypes).
+     */
+    filterType?: {
+        category?: string;
+        recruitmentMethod?: string;
+        employmentType?: string;
+    };
     limit?: number;
     offset?: number;
     cursor?: string; // ISO string of postedAt for keyset pagination
@@ -64,7 +73,14 @@ export async function searchOpportunitiesQuery(
         if (!includeDeleted) baseConditions.push(sql`"deletedAt" IS NULL`);
         if (!includeExpired) baseConditions.push(sql`"expiredAt" IS NULL`);
         if (statuses.length > 0) baseConditions.push(sql`status::text = ANY(${statuses})`);
-        if (filterType) baseConditions.push(sql`type = ${filterType}`);
+        // The old single `type` column no longer exists; filter each dimension.
+        if (filterType?.category) baseConditions.push(sql`"category"::text = ${filterType.category}`);
+        if (filterType?.recruitmentMethod) {
+            baseConditions.push(sql`"recruitmentMethod"::text = ${filterType.recruitmentMethod}`);
+        }
+        if (filterType?.employmentType) {
+            baseConditions.push(sql`"employmentTypes" @> ARRAY[${filterType.employmentType}]::"EmploymentType"[]`);
+        }
         if (locations && locations.length > 0) baseConditions.push(sql`locations && ${locations}::text[]`);
         if (siteMode === 'govt') {
             baseConditions.push(sql`EXISTS (SELECT 1 FROM "GovernmentJobDetails" gjd WHERE gjd."opportunityId" = "Opportunity"."id")`);

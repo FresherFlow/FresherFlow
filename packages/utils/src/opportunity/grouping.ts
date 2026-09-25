@@ -9,9 +9,10 @@ import type {
     GroupedOpportunity,
     GroupedWalkInDetails,
     OpportunityStatus,
-    OpportunityType,
     WorkMode,
     SalaryPeriod,
+    RecruitmentMethod,
+    OpportunityCategory,
 } from '@fresherflow/types';
 import { LinkHealth } from '@fresherflow/types';
 import { slugify } from '../slugify.js';
@@ -19,7 +20,7 @@ import { slugify } from '../slugify.js';
 interface GroupingOpportunityInput {
     id: string;
     slug: string;
-    type: GroupedOpportunity['type'];
+    category: GroupedOpportunity['category'];
     status: GroupedOpportunity['status'];
     title: string;
     company: string;
@@ -114,7 +115,7 @@ export function toGroupedOpportunity(raw: GroupingOpportunityInput): GroupedOppo
     const grouped: GroupedOpportunity = {
         id: raw.id,
         slug: raw.slug,
-        type: raw.type,
+        category: raw.category,
         status: raw.status,
         title: raw.title,
         description: cleanMaybe(raw.description),
@@ -134,7 +135,7 @@ export function toGroupedOpportunity(raw: GroupingOpportunityInput): GroupedOppo
         },
 
         jobFunction: cleanMaybe(raw.jobFunction),
-        employmentType: cleanMaybe(raw.employmentType),
+        employmentTypes: raw.employmentType ? [raw.employmentType as any] : undefined,
         workMode: cleanMaybe(raw.workMode),
         locations: cleanArray(raw.locations),
 

@@ -1,4 +1,4 @@
-import { OpportunityType, WorkMode, EducationLevel } from '@fresherflow/types';
+import { OpportunityCategory, WorkMode, EducationLevel } from '@fresherflow/types';
 import {
     extractPassoutYears,
     extractExperience,
@@ -115,7 +115,7 @@ export function enrichJobRuleBased(
     }
 
     const rawPayload: EnrichedJobPayload = {
-        type: OpportunityType.JOB,
+        category: OpportunityCategory.EMPLOYMENT,
         title,
         company: job.company || 'Company',
         description: rawDesc || title,

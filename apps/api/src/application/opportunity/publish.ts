@@ -28,7 +28,7 @@ export async function publishOpportunity(id: string, _adminId: string) {
             lastVerified: new Date(),
         },
         include: {
-            walkInDetails: true,
+            driveDetails: true,
             governmentJobDetails: true,
         },
     });

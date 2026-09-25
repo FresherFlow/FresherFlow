@@ -1,6 +1,6 @@
 import { City } from '@fresherflow/constants';
 import { EnrichedJobPayload } from './enricher-schema.js';
-import { EducationLevel, SalaryPeriod } from '@fresherflow/types';
+import { EducationLevel, SalaryPeriod, OpportunityCategory } from '@fresherflow/types';
 
 // Pre-compute map of lowercase city names to properly capitalized City names in India
 const INDIAN_CITY_MAP = new Map<string, string>();
@@ -155,7 +155,7 @@ export function validateAndCleanPayload(payload: EnrichedJobPayload): EnrichedJo
     }
 
     const cleanedPayload: EnrichedJobPayload = {
-        type: payload.type || 'JOB',
+        category: payload.category || OpportunityCategory.EMPLOYMENT,
         title: cleanTitle,
         company: cleanCompany,
         companyWebsite: payload.companyWebsite || '',

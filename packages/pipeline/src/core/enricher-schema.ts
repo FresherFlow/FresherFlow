@@ -2,12 +2,12 @@
 // Types imported from @fresherflow/types — single source of truth across all apps.
 
 export type { ApplicationDetails } from '@fresherflow/types';
-export { OpportunityType as JobType, WorkMode, SalaryPeriod, EducationLevel as AllowedDegree } from '@fresherflow/types';
+export { OpportunityCategory, WorkMode, SalaryPeriod, EducationLevel as AllowedDegree } from '@fresherflow/types';
 
-import { OpportunityType, WorkMode, SalaryPeriod, EducationLevel, ApplicationDetails } from '@fresherflow/types';
+import { OpportunityCategory, WorkMode, SalaryPeriod, EducationLevel, ApplicationDetails } from '@fresherflow/types';
 
 export interface EnrichedJobPayload {
-    type: OpportunityType;
+    category: OpportunityCategory;
     title: string;
     company: string;
     companyWebsite?: string;

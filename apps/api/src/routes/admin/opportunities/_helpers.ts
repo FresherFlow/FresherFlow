@@ -1,5 +1,5 @@
-import { Prisma, OpportunityEventType, OpportunityStatus as DbOpportunityStatus, GovernmentLevel, VacancyNature, GovernmentApplicationStatus } from '@fresherflow/database';
-import { OpportunityStatus, OpportunityType, EducationLevel } from '@fresherflow/types';
+import { Prisma, OpportunityEventType, OpportunityStatus as DbOpportunityStatus, GovernmentLevel, VacancyNature, GovernmentApplicationStatus, EmploymentType, type OpportunityCategory, type RecruitmentMethod, type Sector } from '@fresherflow/database';
+import { OpportunityStatus, EducationLevel } from '@fresherflow/types';
 import { extractDegreesFromQualifications, deriveGovtLocations } from '@fresherflow/constants';
 import { normalizeEducationBuckets } from '@fresherflow/utils';
 import { AdminOpportunityRequest } from '../../../types/admin';
@@ -8,14 +8,33 @@ import { AdminOpportunityRequest } from '../../../types/admin';
 
 export type AdminStatusFilter = OpportunityStatus | 'EXPIRED' | 'DELETED' | 'LIVE';
 
-export function normalizeTypeParam(raw?: string): OpportunityType | undefined {
+/**
+ * Map a legacy admin `type` query param onto the split dimensions.
+ *
+ * The old single enum conflated three separate concepts. The admin list filter
+ * still accepts the same URL values, so we translate them here rather than
+ * breaking the filter contract: walk-ins are a recruitment method, internships
+ * are an employment type, and the rest are categories.
+ */
+export function normalizeTypeParam(raw?: string):
+    | {
+          category?: OpportunityCategory;
+          recruitmentMethod?: RecruitmentMethod;
+          employmentType?: EmploymentType;
+          sector?: Sector;
+      }
+    | undefined {
     if (!raw) return undefined;
     const value = raw.toLowerCase();
-    if (value === 'job' || value === 'jobs') return OpportunityType.JOB;
-    if (value === 'internship' || value === 'internships') return OpportunityType.INTERNSHIP;
-    if (value === 'walk-in' || value === 'walkin' || value === 'walkins' || value === 'walk-ins') return OpportunityType.WALKIN;
-    const upper = raw.toUpperCase();
-    if (Object.values(OpportunityType).includes(upper as OpportunityType)) return upper as OpportunityType;
+    if (value === 'job' || value === 'jobs') return { category: 'EMPLOYMENT' };
+    if (value === 'internship' || value === 'internships') return { category: 'EMPLOYMENT', employmentType: 'INTERNSHIP' };
+    if (value === 'walk-in' || value === 'walkin' || value === 'walkins' || value === 'walk-ins') {
+        return { recruitmentMethod: 'WALK_IN' };
+    }
+    if (value === 'scholarship' || value === 'scholarships') return { category: 'SCHOLARSHIP' };
+    if (value === 'competition' || value === 'competitions') return { category: 'COMPETITION' };
+    if (value === 'event' || value === 'events') return { category: 'EVENT' };
+    if (value === 'government' || value === 'govt') return { sector: 'GOVERNMENT' };
     return undefined;
 }
 
@@ -63,19 +82,20 @@ export function toDateOrNull(value: unknown): Date | null {
 }
 
 export function normalizeWalkInDates(data: AdminOpportunityRequest): Date[] {
-    const walkInDetails = data?.walkInDetails || {};
+    const driveDetails = data?.driveDetails || {};
     const rawDates: string[] = [];
-    if (Array.isArray(walkInDetails.dates)) rawDates.push(...walkInDetails.dates);
-    else if (typeof walkInDetails.date === 'string') rawDates.push(walkInDetails.date);
+    if (Array.isArray(driveDetails.dates)) rawDates.push(...driveDetails.dates);
+    else if (typeof driveDetails.date === 'string') rawDates.push(driveDetails.date);
     if (typeof data?.startDate === 'string') rawDates.push(data.startDate);
     if (typeof data?.endDate === 'string') rawDates.push(data.endDate);
     return rawDates.map(toDateOrNull).filter((v): v is Date => Boolean(v));
 }
 
-export function deriveOpportunityExpiryDate(data: AdminOpportunityRequest, type: OpportunityType): Date | null {
+export function deriveOpportunityExpiryDate(data: AdminOpportunityRequest, recruitmentMethod?: RecruitmentMethod): Date | null {
     const explicit = toDateOrNull(data?.expiresAt);
     if (explicit) return explicit;
-    if (type !== OpportunityType.WALKIN) return null;
+    // Only a dated drive has an implicit expiry; everything else expires manually.
+    if (recruitmentMethod !== 'WALK_IN') return null;
     const walkInDates = normalizeWalkInDates(data);
     if (walkInDates.length === 0) return null;
     const endDate = new Date(Math.max(...walkInDates.map(d => d.getTime())));
@@ -129,41 +149,41 @@ export function normalizeEducationRequirements(
 
 
 export function buildWalkInCreate(data: AdminOpportunityRequest) {
-    const walkInDetails = data.walkInDetails || {};
+    const driveDetails = data.driveDetails || {};
     const dates = normalizeWalkInDates(data);
-    const venueAddress = walkInDetails.venueAddress || walkInDetails.venue;
-    const reportingTime = walkInDetails.reportingTime || walkInDetails.startTime;
+    const venueAddress = driveDetails.venueAddress || driveDetails.venue;
+    const reportingTime = driveDetails.reportingTime || driveDetails.startTime;
     if (!venueAddress) return undefined;
     return {
         create: {
             dates,
-            dateRange: walkInDetails.dateRange,
-            timeRange: walkInDetails.timeRange,
+            dateRange: driveDetails.dateRange,
+            timeRange: driveDetails.timeRange,
             venueAddress,
-            venueLink: walkInDetails.venueLink,
+            venueLink: driveDetails.venueLink,
             reportingTime: reportingTime || 'Contact for timing',
-            requiredDocuments: walkInDetails.requiredDocuments || [],
-            contactPerson: walkInDetails.contactPerson,
-            contactPhone: walkInDetails.contactPhone,
+            requiredDocuments: driveDetails.requiredDocuments || [],
+            contactPerson: driveDetails.contactPerson,
+            contactPhone: driveDetails.contactPhone,
         },
     };
 }
 
 export function buildWalkInUpsert(data: AdminOpportunityRequest) {
-    const walkInDetails = data.walkInDetails || {};
+    const driveDetails = data.driveDetails || {};
     const dates = normalizeWalkInDates(data);
-    const venueAddress = walkInDetails.venueAddress || walkInDetails.venue;
-    const reportingTime = walkInDetails.reportingTime || walkInDetails.startTime;
+    const venueAddress = driveDetails.venueAddress || driveDetails.venue;
+    const reportingTime = driveDetails.reportingTime || driveDetails.startTime;
     const fields = {
         dates,
-        dateRange: walkInDetails.dateRange,
-        timeRange: walkInDetails.timeRange,
+        dateRange: driveDetails.dateRange,
+        timeRange: driveDetails.timeRange,
         venueAddress: venueAddress!,
-        venueLink: walkInDetails.venueLink,
+        venueLink: driveDetails.venueLink,
         reportingTime: reportingTime || 'Contact for timing',
-        requiredDocuments: walkInDetails.requiredDocuments || [],
-        contactPerson: walkInDetails.contactPerson,
-        contactPhone: walkInDetails.contactPhone,
+        requiredDocuments: driveDetails.requiredDocuments || [],
+        contactPerson: driveDetails.contactPerson,
+        contactPhone: driveDetails.contactPhone,
     };
     return { upsert: { create: fields, update: fields } };
 }
@@ -319,4 +339,69 @@ export function queueNewJobAlerts(opportunityId: string) {
 export function buildIdOrSlugWhere(idOrSlug: string): Prisma.OpportunityWhereInput {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
     return isUuid ? { OR: [{ id: idOrSlug }, { slug: idOrSlug }] } : { slug: idOrSlug };
+}
+
+const EMPLOYMENT_TYPE_VALUES = new Set<string>(Object.values(EmploymentType));
+
+function normaliseEmploymentTypes(input: unknown): EmploymentType[] {
+    const raw = Array.isArray(input) ? input : typeof input === 'string' ? input.split(/[,/|]/) : [];
+    const out = new Set<EmploymentType>();
+    for (const piece of raw) {
+        if (typeof piece !== 'string') continue;
+        const normalised = piece.trim().toUpperCase().replace(/[\s-]+/g, '_');
+        if (EMPLOYMENT_TYPE_VALUES.has(normalised)) out.add(normalised as EmploymentType);
+    }
+    return [...out];
+}
+
+/**
+ * Resolve the admin opportunity form into the independent taxonomy dimensions.
+ *
+ * The admin UI still sends the legacy mixed `category` ("job" / "internship" /
+ * "walk-in" / "government"), which used to map 1:1 onto a single `type` enum.
+ * The schema now splits that apart, so a form value can land in more than one
+ * dimension at once — "internship walk-in" is an employment type AND a
+ * recruitment method. Resolving them centrally keeps create, update, and the
+ * raw-submission approval path from drifting apart.
+ */
+export function resolveOpportunityDimensions(data: {
+    category?: string;
+    type?: string;
+    employmentTypes?: unknown;
+    sector?: string;
+    recruitmentMethod?: string;
+}): {
+    category: OpportunityCategory;
+    recruitmentMethod: RecruitmentMethod;
+    employmentTypes: EmploymentType[];
+    isWalkIn: boolean;
+    isGovt: boolean;
+} {
+    const raw = (data.category ?? data.type ?? 'job').toString().trim().toLowerCase();
+
+    let category: OpportunityCategory = 'EMPLOYMENT';
+    switch (raw) {
+        case 'scholarship': category = 'SCHOLARSHIP'; break;
+        case 'competition': category = 'COMPETITION'; break;
+        case 'event': category = 'EVENT'; break;
+        case 'education': case 'course': category = 'EDUCATION'; break;
+    }
+
+    const isWalkIn = raw === 'walk-in' || raw === 'walkin' || raw === 'walk_in';
+    const isGovt = raw === 'government' || raw === 'govt' || raw === 'government-job';
+
+    const employmentTypes = normaliseEmploymentTypes(data.employmentTypes);
+    // An internship is an employment type, not a category: keep the admin's
+    // intent instead of silently dropping it during the split.
+    if (raw === 'internship' && !employmentTypes.includes('INTERNSHIP')) {
+        employmentTypes.push('INTERNSHIP');
+    }
+
+    return {
+        category,
+        recruitmentMethod: isWalkIn ? 'WALK_IN' : 'REGULAR',
+        employmentTypes,
+        isWalkIn,
+        isGovt,
+    };
 }

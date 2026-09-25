@@ -1,14 +1,14 @@
-import { OpportunityType } from '@fresherflow/types';
+import { OpportunityCategory, EmploymentType, RecruitmentMethod, WorkMode } from '@fresherflow/types';
 
 /**
  * Broad + Stable Categories (The Nature of the Opportunity)
  */
-export const CORE_CATEGORIES = [
-    OpportunityType.JOB,
-    OpportunityType.INTERNSHIP,
-    OpportunityType.WALKIN,
-    OpportunityType.REMOTE,
-];
+export const CORE_CATEGORIES = {
+    opportunityCategories: [OpportunityCategory.EMPLOYMENT, OpportunityCategory.COMPETITION, OpportunityCategory.SCHOLARSHIP, OpportunityCategory.EDUCATION, OpportunityCategory.EVENT] as const,
+    employmentTypes: [EmploymentType.FULL_TIME, EmploymentType.PART_TIME, EmploymentType.CONTRACT, EmploymentType.INTERNSHIP, EmploymentType.APPRENTICESHIP] as const,
+    recruitmentMethods: [RecruitmentMethod.REGULAR, RecruitmentMethod.WALK_IN, RecruitmentMethod.ON_CAMPUS, RecruitmentMethod.OFF_CAMPUS, RecruitmentMethod.POOL_CAMPUS, RecruitmentMethod.REFERRAL] as const,
+    workModes: [WorkMode.ONSITE, WorkMode.HYBRID, WorkMode.REMOTE] as const,
+};
 
 /**
  * Controlled Tag System (The Meta-data layer)
@@ -27,9 +27,19 @@ export const CONTROLLED_TAGS = {
  * Mapping for display labels
  */
 export const CATEGORY_LABELS: Record<string, string> = {
-    [OpportunityType.JOB]: 'Jobs',
-    [OpportunityType.INTERNSHIP]: 'Internships',
-    [OpportunityType.WALKIN]: 'Walk-ins',
-    [OpportunityType.REMOTE]: 'Remote Only',
+    [OpportunityCategory.EMPLOYMENT]: 'Jobs',
+    [OpportunityCategory.COMPETITION]: 'Competitions',
+    [OpportunityCategory.SCHOLARSHIP]: 'Scholarships',
+    [OpportunityCategory.EDUCATION]: 'Education',
+    [OpportunityCategory.EVENT]: 'Events',
+    [EmploymentType.FULL_TIME]: 'Full-time',
+    [EmploymentType.PART_TIME]: 'Part-time',
+    [EmploymentType.CONTRACT]: 'Contract',
+    [EmploymentType.INTERNSHIP]: 'Internships',
+    [EmploymentType.APPRENTICESHIP]: 'Apprenticeships',
+    [RecruitmentMethod.WALK_IN]: 'Walk-ins',
+    [WorkMode.REMOTE]: 'Remote Only',
+    [WorkMode.HYBRID]: 'Hybrid',
+    [WorkMode.ONSITE]: 'On-site',
 };
 

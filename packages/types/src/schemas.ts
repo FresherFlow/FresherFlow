@@ -4,7 +4,11 @@
 
 import { z } from 'zod';
 import {
-    OpportunityType,
+    OpportunityCategory,
+    EmploymentType,
+    RecruitmentMethod,
+    Sector,
+    ExperienceLevel,
     OpportunityStatus,
     EducationLevel,
     WorkMode,
@@ -113,7 +117,11 @@ export const createOpportunitySchema = z.object({
     companySize: z.string().optional(),
     companyIndustry: z.array(z.string()).optional().default([]),
     companyTopics: z.array(z.string()).optional().default([]),
-    type: z.nativeEnum(OpportunityType),
+    category: z.nativeEnum(OpportunityCategory).default(OpportunityCategory.EMPLOYMENT),
+    employmentTypes: z.array(z.nativeEnum(EmploymentType)).default([]),
+    recruitmentMethod: z.nativeEnum(RecruitmentMethod).optional(),
+    sector: z.nativeEnum(Sector).optional().default(Sector.PRIVATE),
+    experienceLevel: z.nativeEnum(ExperienceLevel).optional(),
     workMode: z.nativeEnum(WorkMode).optional().default(WorkMode.ONSITE),
     locations: z.array(z.string()).min(1, 'At least one location is required'),
     salaryRange: z.string().optional(),

@@ -66,7 +66,7 @@ async function sendDailyDigestForUser(
                 title: item.opportunity.title,
                 company: item.opportunity.company,
                 location: item.opportunity.locations?.[0] || null,
-                applyUrl: buildOpportunityUrl(frontendUrl, item.opportunity.slug, item.opportunity.type),
+                applyUrl: buildOpportunityUrl(frontendUrl, item.opportunity.slug, item.opportunity.category),
             }))
         );
     }
@@ -148,7 +148,7 @@ async function sendClosingSoonForUser(
                 title: item.opportunity.title,
                 company: item.opportunity.company,
                 expiresText,
-                applyUrl: buildOpportunityUrl(frontendUrl, item.opportunity.slug, item.opportunity.type),
+                applyUrl: buildOpportunityUrl(frontendUrl, item.opportunity.slug, item.opportunity.category),
             });
         }
 
@@ -226,7 +226,7 @@ async function sendEventRemindersForUser(
                     eventDate: event.eventDate,
                     reminderWindow: window.key,
                     sourceLink: event.sourceLink || null,
-                    applyUrl: buildOpportunityUrl(frontendUrl, event.opportunity.slug, event.opportunity.type),
+                    applyUrl: buildOpportunityUrl(frontendUrl, event.opportunity.slug, event.opportunity.category),
                 })
             }
         });
@@ -272,7 +272,7 @@ async function sendTrendingAlertsForUser(
             title: `🔥 Trending: ${item.opportunity.title}`,
             company: item.opportunity.company,
             location: item.opportunity.locations?.[0] || 'Remote',
-            applyUrl: buildOpportunityUrl(frontendUrl, item.opportunity.slug, item.opportunity.type),
+            applyUrl: buildOpportunityUrl(frontendUrl, item.opportunity.slug, item.opportunity.category),
         });
     }
 
@@ -317,7 +317,7 @@ export async function runAlertsCycle() {
                 expiredAt: null,
                 OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
             },
-            include: { walkInDetails: true },
+            include: { driveDetails: true },
             orderBy: { postedAt: 'desc' },
             take: maxOpportunities,
         }) as unknown as Promise<Opportunity[]>,
@@ -334,7 +334,7 @@ export async function runAlertsCycle() {
             },
             include: {
                 opportunity: {
-                    include: { walkInDetails: true }
+                    include: { driveDetails: true }
                 }
             },
             orderBy: { eventDate: 'asc' },

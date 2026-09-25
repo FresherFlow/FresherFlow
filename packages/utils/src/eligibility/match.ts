@@ -1,7 +1,7 @@
 // Eligibility Matching Engine
 // Deterministic, explainable, logged
 
-import { Opportunity, Profile } from '@fresherflow/types';
+import { Opportunity, Profile, RecruitmentMethod, OpportunityCategory } from '@fresherflow/types';
 import { HARD_RULES, SOFT_RULES } from './rules.js';
 
 import { normalizeSkillList } from '@fresherflow/constants';
@@ -91,10 +91,12 @@ export function filterOpportunitiesForUser(
     );
 }
 
-export function sortOpportunitiesWithWalkinsFirst<T extends { type: string; postedAt: Date | string }>(opportunities: T[]): T[] {
+export function sortOpportunitiesWithWalkinsFirst<T extends { recruitmentMethod?: RecruitmentMethod | null; postedAt: Date | string }>(opportunities: T[]): T[] {
     return [...opportunities].sort((a, b) => {
-        if (a.type === 'WALKIN' && b.type !== 'WALKIN') return -1;
-        if (a.type !== 'WALKIN' && b.type === 'WALKIN') return 1;
+        const aIsWalkin = a.recruitmentMethod === RecruitmentMethod.WALK_IN;
+        const bIsWalkin = b.recruitmentMethod === RecruitmentMethod.WALK_IN;
+        if (aIsWalkin && !bIsWalkin) return -1;
+        if (!aIsWalkin && bIsWalkin) return 1;
         return new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime();
     });
 }
@@ -133,7 +135,7 @@ function getPreferenceMatchScore(opportunity: Opportunity, profile: Profile): nu
         (profile.preferredCities || []).some(city => city.toLowerCase().includes(loc.toLowerCase()))
     ) || opportunity.workMode === 'REMOTE' || opportunity.workMode === 'HYBRID';
 
-    const typeMatch = (profile.interestedIn || []).includes(opportunity.type);
+    const typeMatch = (profile.interestedIn || []).includes(opportunity.category);
     const workModeMatch = opportunity.workMode ? (profile.workModes || []).includes(opportunity.workMode) : false;
 
     return (locationMatch ? 0.333 : 0) + (typeMatch ? 0.333 : 0) + (workModeMatch ? 0.333 : 0);

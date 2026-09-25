@@ -10,7 +10,8 @@ interface FeedbackGroup {
         id: string;
         title: string;
         company: string;
-        type: string;
+        category: string;
+  recruitmentMethod: string | null;
     } | null;
     feedbackCount: number;
     negativeCount: number;
@@ -67,7 +68,8 @@ router.get('/', requireAdmin, async (req: Request, res: Response, next: NextFunc
                         id: true,
                         title: true,
                         company: true,
-                        type: true
+                        category: true,
+                        recruitmentMethod: true
                     }
                 }
             },

@@ -41,7 +41,7 @@ router.get('/highlights', requireAuth, async (req: Request, res: Response, next:
                 }
             },
             include: {
-                walkInDetails: true,
+                driveDetails: true,
                 actions: {
                     where: { userId }
                 },
@@ -62,9 +62,9 @@ router.get('/highlights', requireAuth, async (req: Request, res: Response, next:
             userId
         ).map((item) => item.opportunity);
 
-        // 4. Categorize for the UI
-        const walkins = rankedUrgent.filter(o => o.type === 'WALKIN');
-        const others = rankedUrgent.filter(o => o.type !== 'WALKIN');
+        // 4. Categorize for the UI — walk-ins are a recruitment method now
+        const walkins = rankedUrgent.filter(o => o.recruitmentMethod === 'WALK_IN');
+        const others = rankedUrgent.filter(o => o.recruitmentMethod !== 'WALK_IN');
 
         // 5. Fetch "New Opportunities" (less than 24h old)
         const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -98,7 +98,7 @@ router.get('/highlights', requireAuth, async (req: Request, res: Response, next:
                 OR: [{ expiresAt: null }, { expiresAt: { gt: now } }]
             },
             include: {
-                walkInDetails: true,
+                driveDetails: true,
                 actions: { where: { userId } },
                 savedBy: { where: { userId } }
             },
@@ -137,7 +137,8 @@ router.get('/highlights', requireAuth, async (req: Request, res: Response, next:
                     select: {
                         id: true,
                         slug: true,
-                        type: true,
+                        category: true,
+                        recruitmentMethod: true,
                         title: true,
                         company: true,
                         locations: true,
@@ -184,7 +185,8 @@ router.get('/highlights', requireAuth, async (req: Request, res: Response, next:
                 select: {
                     id: true,
                     slug: true,
-                    type: true,
+                    category: true,
+                    recruitmentMethod: true,
                     title: true,
                     company: true,
                     locations: true,

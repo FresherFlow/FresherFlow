@@ -32,7 +32,7 @@ router.post('/submit-job-link', submitLimiter, async (req: Request, res: Respons
                     name: 'Crowdsourced Links',
                     sourceType: 'CUSTOM',
                     endpoint: 'Public Submissions',
-                    defaultType: 'JOB',
+                    defaultCategory: 'EMPLOYMENT',
                 }
             });
         }

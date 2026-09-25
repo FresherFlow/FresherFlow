@@ -1,6 +1,6 @@
 import prisma from '../infrastructure/database/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { Opportunity, Profile, OpportunityType, OpportunityStatus } from '@fresherflow/types';
+import { Opportunity, Profile, OpportunityStatus } from '@fresherflow/types';
 import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { userActionSchema } from '../utils/validation';
@@ -26,7 +26,7 @@ router.post('/:id/action', requireAuth, validate(userActionSchema), async (req: 
         const opportunity = await prisma.opportunity.findUnique({
             where: { id: opportunityId },
             include: {
-                walkInDetails: true
+                driveDetails: true
             }
         });
 
@@ -63,17 +63,17 @@ router.post('/:id/action', requireAuth, validate(userActionSchema), async (req: 
 
         // WALK-IN ATTENDED VALIDATION (Backend Only)
         // Can only mark ATTENDED after EARLIEST date has passed
-        if (opportunity.type === OpportunityType.WALKIN && (normalizedActionType === 'INTERVIEWED' || normalizedActionType === 'ATTENDED')) {
+        if (opportunity.recruitmentMethod === 'WALK_IN' && (normalizedActionType === 'INTERVIEWED' || normalizedActionType === 'ATTENDED')) {
             const nowUTC = new Date();
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if (!opportunity.walkInDetails || !opportunity.walkInDetails.dates || !(opportunity.walkInDetails.dates as any).length) {
+            if (!opportunity.driveDetails || !opportunity.driveDetails.dates || !(opportunity.driveDetails.dates as any).length) {
                 return next(new AppError('Walk-in dates not found', 400));
             }
 
             // Get EARLIEST date (event semantics)
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const dates = (opportunity.walkInDetails.dates as any[]).map((d: any) => new Date(d));
+            const dates = (opportunity.driveDetails.dates as any[]).map((d: any) => new Date(d));
             const earliestDate = dates.sort((a: Date, b: Date) => a.getTime() - b.getTime())[0];
 
             if (nowUTC < earliestDate) {
@@ -116,7 +116,7 @@ router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunct
             include: {
                 opportunity: {
                     include: {
-                        walkInDetails: true
+                        driveDetails: true
                     }
                 }
             },

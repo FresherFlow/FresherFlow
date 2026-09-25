@@ -7,7 +7,7 @@ export async function getBySlugOrId(slugOrId: string) {
     const bySlug = await prisma.opportunity.findUnique({
         where: { slug: slugOrId },
         include: {
-            walkInDetails: true,
+            driveDetails: true,
             user: {
                 select: { fullName: true, email: true },
             },
@@ -19,7 +19,7 @@ export async function getBySlugOrId(slugOrId: string) {
     return await prisma.opportunity.findUnique({
         where: { id: slugOrId },
         include: {
-            walkInDetails: true,
+            driveDetails: true,
             user: {
                 select: { fullName: true, email: true },
             },

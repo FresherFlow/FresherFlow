@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import { OpportunityType } from '@fresherflow/types';
+import type { Prisma } from '@fresherflow/database';
 import { verifyAccessToken } from '@fresherflow/utils';
 import { createRateLimiter } from '../../../middleware/rateLimit';
 
@@ -78,7 +78,8 @@ export function buildGuestOpportunitySelect() {
     return {
         id: true,
         slug: true,
-        type: true,
+        category: true,
+        recruitmentMethod: true,
         title: true,
         company: true,
         companyWebsite: true,
@@ -88,7 +89,7 @@ export function buildGuestOpportunitySelect() {
         salaryMax: true,
         salaryRange: true,
         salaryPeriod: true,
-        employmentType: true,
+        employmentTypes: true,
         tags: true,
         requiredSkills: true,
         allowedDegrees: true,
@@ -141,7 +142,8 @@ export function buildPublicOpportunitySelect(userId?: string) {
     return {
         id: true,
         slug: true,
-        type: true,
+        category: true,
+        recruitmentMethod: true,
         title: true,
         company: true,
         companyWebsite: true,
@@ -167,7 +169,7 @@ export function buildPublicOpportunitySelect(userId?: string) {
         selectionProcess: true,
         notesHighlights: true,
         stipend: true,
-        employmentType: true,
+        employmentTypes: true,
         tags: true,
         applyLink: true,
         sourceLink: true,
@@ -193,7 +195,7 @@ export function buildPublicOpportunitySelect(userId?: string) {
                 updatedAt: true,
             }
         },
-        walkInDetails: {
+        driveDetails: {
             select: {
                 dates: true,
                 dateRange: true,
@@ -298,7 +300,8 @@ export function buildGroupedOpportunitySelect() {
     return {
         id: true,
         slug: true,
-        type: true,
+        category: true,
+        recruitmentMethod: true,
         status: true,
         title: true,
         company: true,
@@ -313,7 +316,7 @@ export function buildGroupedOpportunitySelect() {
         sourceLink: true,
         applyLink: true,
         jobFunction: true,
-        employmentType: true,
+        employmentTypes: true,
         workMode: true,
         locations: true,
         allowedDegrees: true,
@@ -349,7 +352,7 @@ export function buildGroupedOpportunitySelect() {
         updatedAt: true,
         deletedAt: true,
         deletionReason: true,
-        walkInDetails: true,
+        driveDetails: true,
         governmentJobDetails: true,
     } as const;
 }
@@ -401,12 +404,23 @@ export function normalizeTypeParam(raw?: string) {
     return raw.toUpperCase();
 }
 
-export function parseOpportunityType(raw?: string): OpportunityType | undefined {
+/**
+ * Translate the public `?type=` query param into a Prisma filter over the
+ * independent dimensions.
+ *
+ * The old single `OpportunityType` enum conflated three concepts, so the same
+ * URL that used to mean "WALKIN" now selects a recruitment method. Returning a
+ * where-clause (rather than a value) keeps that mapping in one place and lets
+ * callers spread it into their existing filter object.
+ */
+export function parseOpportunityTypeFilter(raw?: string): Prisma.OpportunityWhereInput | undefined {
     const normalized = normalizeTypeParam(raw);
     if (!normalized) return undefined;
-    if (normalized === OpportunityType.JOB) return OpportunityType.JOB;
-    if (normalized === OpportunityType.INTERNSHIP) return OpportunityType.INTERNSHIP;
-    if (normalized === OpportunityType.WALKIN) return OpportunityType.WALKIN;
+    if (normalized === 'JOB') return { category: 'EMPLOYMENT' };
+    if (normalized === 'INTERNSHIP') {
+        return { category: 'EMPLOYMENT', employmentTypes: { has: 'INTERNSHIP' } };
+    }
+    if (normalized === 'WALKIN') return { recruitmentMethod: 'WALK_IN' };
     return undefined;
 }
 

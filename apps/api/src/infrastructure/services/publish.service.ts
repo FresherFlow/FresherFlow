@@ -9,10 +9,17 @@ import { slugify } from '@fresherflow/utils';
 export function getGranularTagsForOpportunity(opportunity: Partial<Opportunity>): string[] {
   const tags: string[] = ['homepage-feed'];
   if (opportunity.company) tags.push(`company-${slugify(opportunity.company)}`);
-  if (opportunity.type === 'JOB') tags.push('hub-jobs');
-  if (opportunity.type === 'INTERNSHIP') tags.push('hub-internships');
-  if (opportunity.type === 'WALKIN') tags.push('hub-walkins');
-  if (opportunity.type === 'GOVERNMENT') tags.push('hub-government');
+  // Hubs are derived from independent dimensions, not one mixed `type` enum:
+  //   - jobs         -> category = EMPLOYMENT
+  //   - internships  -> employmentTypes contains INTERNSHIP
+  //   - walk-ins     -> recruitmentMethod = WALK_IN (a drive, not a category)
+  //   - government   -> sector = GOVERNMENT
+  if (opportunity.category === 'EMPLOYMENT') tags.push('hub-jobs');
+  if (Array.isArray(opportunity.employmentTypes) && opportunity.employmentTypes.includes('INTERNSHIP' as never)) {
+    tags.push('hub-internships');
+  }
+  if (opportunity.recruitmentMethod === 'WALK_IN') tags.push('hub-walkins');
+  if (opportunity.sector === 'GOVERNMENT') tags.push('hub-government');
 
   if (Array.isArray(opportunity.locations)) {
     opportunity.locations.forEach(loc => tags.push(`location-${slugify(loc)}`));
@@ -96,7 +103,7 @@ export async function handleOpportunityPublished(
   invalidatePublicOpportunityCache({
     idsOrSlugs: invalidationIds,
     purgeFeed: true,
-    type: opportunity.type as string,
+    type: (opportunity.category ?? undefined) as string,
     tags,
   }).catch((err) => {
     logger.error('[publish] Cache invalidation failed', { 
@@ -134,12 +141,14 @@ export async function handleOpportunityPublished(
 
   // 8. Generate static OG image and upload to R2
   // This makes Vercel OG image routes irrelevant — zero compute for OG after this.
-  if (isNew && ['JOB', 'INTERNSHIP', 'WALKIN'].includes(opportunity.type as string)) {
+  // OG image for the main employment surface; competitions/scholarships are not job-shaped.
+  if (isNew && opportunity.category === 'EMPLOYMENT') {
     generateAndUploadOgImage({
       id: opportunity.id,
       title: opportunity.title,
       company: opportunity.company,
-      type: opportunity.type,
+        // OG renderer still takes a job-shaped label; map the new category onto it.
+        type: opportunity.category === 'EMPLOYMENT' ? 'JOB' : opportunity.category,
       locations: opportunity.locations,
       expiresAt: opportunity.expiresAt instanceof Date ? opportunity.expiresAt.toISOString() : opportunity.expiresAt,
       companyLogoUrl: opportunity.companyLogoUrl,

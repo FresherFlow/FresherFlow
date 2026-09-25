@@ -188,14 +188,14 @@ export class StaticFeedService {
                     'id', 'slug', 'type', 'status', 'title', 'company', 'companyWebsite', 'companyLogoUrl',
                     'companyStage', 'companySize', 'companyIndustry', 'companyTopics',
                     'locations', 'workMode', 'salaryMin', 'salaryMax', 'salaryRange', 'salaryPeriod',
-                    'stipend', 'incentives', 'employmentType', 'jobFunction',
+                    'stipend', 'incentives', 'employmentTypes', 'jobFunction',
                     'requiredSkills', 'tags',
                     'allowedDegrees', 'allowedCourses', 'allowedSpecializations',
                     'allowedPassoutYears', 'passoutYearMin', 'passoutYearMax',
                     'experienceMin', 'experienceMax',
                     'postedAt', 'publishedAt', 'expiresAt', 'updatedAt',
                     'applyLink', 'sourceLink',
-                    'walkInDetails', 'governmentJobDetails',
+                    'driveDetails', 'governmentJobDetails',
                     'isReferral', 'referredByUsername'
                 ];
                 const indexOpps = activeMapped.map(opp => {
@@ -236,7 +236,7 @@ export class StaticFeedService {
 
             // 5b. Generate & Upload Walk-ins Feed (including Hyderabad Tech Cluster Map Feed)
             if (target === 'all' || target === 'walkin' || target === 'bootstrap') {
-                const walkinMapped = activeMapped.filter(opp => opp.type === 'WALKIN' || Boolean(opp.walkInDetails));
+                const walkinMapped = activeMapped.filter(opp => opp.type === 'WALKIN' || Boolean(opp.driveDetails));
                 const walkins = {
                     opportunities: walkinMapped,
                     timestamp: Date.now(),

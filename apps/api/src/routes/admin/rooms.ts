@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { z } from 'zod';
 import { requireAdmin } from '../../middleware/auth';
+import { normaliseRoomTags } from '../../infrastructure/services/community.service';
 import { validate } from '../../middleware/validate';
 import { AppError } from '../../middleware/errorHandler';
 import prisma from '../../infrastructure/database/prisma';
@@ -71,7 +72,9 @@ router.post(
                     name: String(req.body.name).trim(),
                     description: req.body.description?.trim() || null,
                     icon: req.body.icon || null,
-                    type: req.body.type ?? 'CUSTOM',
+                    // A room is a community described by free-form tags, not a typed
+                    // saved search. See Room.tags in the schema.
+                    tags: normaliseRoomTags(req.body.tags),
                     createdByUserId: adminId,
                     memberCount: 1,
                 },

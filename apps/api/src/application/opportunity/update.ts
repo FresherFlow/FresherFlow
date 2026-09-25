@@ -35,16 +35,11 @@ export async function updateOpportunity(id: string, data: Partial<Opportunity>, 
         updateData.slug = generateSlug(newTitle, newCompany, existing.id as string);
     }
 
-    // If data.type is provided, ensure it's correctly typed
-    if (data.type !== undefined) {
-        updateData.type = data.type as unknown as Prisma.EnumOpportunityTypeFieldUpdateOperationsInput;
-    }
-
     return await prisma.opportunity.update({
         where: { id },
         data: updateData,
         include: {
-            walkInDetails: true,
+            driveDetails: true,
         },
     });
 }

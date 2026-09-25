@@ -1,4 +1,4 @@
-import { Opportunity } from '@fresherflow/types';
+import { Opportunity, RecruitmentMethod } from '@fresherflow/types';
 
 export const CLOSING_SOON_WINDOW_HOURS = Number(process.env.CLOSING_SOON_WINDOW_HOURS || 48);
 
@@ -27,7 +27,7 @@ export function buildOpportunityUrl(frontendUrl: string, slug: string, type?: st
 }
 
 export function getClosingSoonHours(opportunity: Opportunity, now: Date): number | null {
-    if (opportunity.type === 'WALKIN') {
+    if (opportunity.recruitmentMethod === RecruitmentMethod.WALK_IN) {
         const dates = (opportunity.walkInDetails?.dates ?? []) as Array<string | Date>;
         if (dates.length === 0) return null;
         const lastDate = new Date(Math.max(...dates.map((d: string | Date) => new Date(d).getTime())));

@@ -1,5 +1,5 @@
 import { prisma } from '@fresherflow/database';
-import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
+import { OpportunityStatus, OpportunityCategory, RecruitmentMethod } from '@fresherflow/types';
 import { logger } from '@fresherflow/utils';
 import TelegramService from '../infrastructure/services/telegram.service';
 import { StaticFeedService } from '../infrastructure/services/staticFeed.service';
@@ -43,7 +43,7 @@ export async function runExpiryCycle() {
         // 1. EXPIRE JOBS & INTERNSHIPS
         const expiredJobsResult = await prisma.opportunity.updateMany({
             where: {
-                type: { in: [OpportunityType.JOB, OpportunityType.INTERNSHIP] },
+                category: OpportunityCategory.EMPLOYMENT,
                 status: OpportunityStatus.PUBLISHED,
                 expiresAt: { lt: nowUTC }
             },
@@ -56,7 +56,7 @@ export async function runExpiryCycle() {
         if (expiredJobsResult.count > 0) {
             const expiredOpps = await prisma.opportunity.findMany({
                 where: {
-                    type: { in: [OpportunityType.JOB, OpportunityType.INTERNSHIP] },
+                    category: OpportunityCategory.EMPLOYMENT,
                     status: OpportunityStatus.PUBLISHED,
                     expiredAt: { not: null }
                 },
@@ -70,16 +70,16 @@ export async function runExpiryCycle() {
         // 2. EXPIRE WALK-INS
         const activeWalkIns = await prisma.opportunity.findMany({
             where: {
-                type: OpportunityType.WALKIN,
+                recruitmentMethod: RecruitmentMethod.WALK_IN,
                 status: OpportunityStatus.PUBLISHED
             },
-            include: { walkInDetails: true }
+            include: { driveDetails: true }
         });
 
         const walkInIdsToExpire: string[] = [];
         for (const walkIn of activeWalkIns) {
-            const walkInDates = Array.isArray(walkIn.walkInDetails?.dates)
-                ? (walkIn.walkInDetails.dates as Array<string | Date>)
+            const walkInDates = Array.isArray(walkIn.driveDetails?.dates)
+                ? (walkIn.driveDetails.dates as Array<string | Date>)
                 : [];
             const dates = walkInDates.map((dateValue) => new Date(dateValue));
             const validDates = dates.filter((d: Date) => !Number.isNaN(d.getTime()));
@@ -111,7 +111,7 @@ export async function runExpiryCycle() {
             where: {
                 status: OpportunityStatus.PUBLISHED,
                 expiresAt: null,
-                type: { not: OpportunityType.WALKIN },
+                recruitmentMethod: { not: RecruitmentMethod.WALK_IN },
                 lastVerified: { lt: staleThreshold }
             }
         });

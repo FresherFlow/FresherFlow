@@ -25,13 +25,32 @@ vi.mock('@fresherflow/database', () => ({
         ARCHIVED: 'ARCHIVED',
         EXPIRED: 'EXPIRED'
     },
-    OpportunityType: {
-        JOB: 'JOB',
+    OpportunityCategory: {
+        EMPLOYMENT: 'EMPLOYMENT',
+        COMPETITION: 'COMPETITION',
+        SCHOLARSHIP: 'SCHOLARSHIP',
+        EDUCATION: 'EDUCATION',
+        EVENT: 'EVENT'
+    },
+    RecruitmentMethod: {
+        REGULAR: 'REGULAR',
+        ON_CAMPUS: 'ON_CAMPUS',
+        OFF_CAMPUS: 'OFF_CAMPUS',
+        POOL_CAMPUS: 'POOL_CAMPUS',
+        WALK_IN: 'WALK_IN',
+        REFERRAL: 'REFERRAL'
+    },
+    EmploymentType: {
+        FULL_TIME: 'FULL_TIME',
+        PART_TIME: 'PART_TIME',
+        CONTRACT: 'CONTRACT',
+        TEMPORARY: 'TEMPORARY',
+        FREELANCE: 'FREELANCE',
         INTERNSHIP: 'INTERNSHIP',
-        WALKIN: 'WALKIN',
-        REMOTE: 'REMOTE',
-        GOVERNMENT: 'GOVERNMENT',
-        HACKATHONS: 'HACKATHONS'
+        APPRENTICESHIP: 'APPRENTICESHIP',
+        VOLUNTEER: 'VOLUNTEER',
+        PER_DIEM: 'PER_DIEM',
+        OTHER: 'OTHER'
     },
     EducationLevel: {
         TENTH: 'TENTH',

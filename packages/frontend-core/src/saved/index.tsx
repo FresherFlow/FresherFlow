@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { OpportunityType, ResourceItemStatus, ResourceSector, type Opportunity, type SharedResource } from '@fresherflow/types';
+import { OpportunityCategory, EmploymentType, ResourceItemStatus, ResourceSector, type Opportunity, type SharedResource } from '@fresherflow/types';
 import { 
   readSavedJobs, 
   saveSavedJobs, 
@@ -105,7 +105,8 @@ export const SavedProvider: React.FC<{
                 id,
                 title: 'Saved Job',
                 company: 'Details loading...',
-                type: OpportunityType.JOB,
+                category: OpportunityCategory.EMPLOYMENT,
+                employmentTypes: [EmploymentType.FULL_TIME],
                 locations: ['Remote'],
                 expiresAt: '',
               } as unknown as Opportunity);

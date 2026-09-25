@@ -89,7 +89,7 @@ router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunct
             include: {
                 opportunity: {
                     include: {
-                        walkInDetails: true,
+                        driveDetails: true,
                         user: {
                             select: { fullName: true }
                         },

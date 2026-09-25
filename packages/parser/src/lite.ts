@@ -1,5 +1,5 @@
 import { ParsedJob } from './types.js';
-import { OpportunityType, WorkMode, EducationLevel, SalaryPeriod } from '@fresherflow/types';
+import { OpportunityCategory, EmploymentType, WorkMode, EducationLevel, SalaryPeriod } from '@fresherflow/types';
 import {
     NAV_PATTERNS, TITLE_KEYWORDS, COMMON_SKILLS, COMMON_CITIES,
 } from './heuristics.js';
@@ -29,7 +29,7 @@ export function parseJobTextLite(rawText: string): ParsedJob {
     const result: ParsedJob = {
         title: '',
         company: '',
-        type: OpportunityType.JOB,
+        category: OpportunityCategory.EMPLOYMENT,
         locations: [],
         skills: [],
         allowedPassoutYears: [],

@@ -44,7 +44,7 @@ export async function matchOpportunitiesForUser(userId: string): Promise<RankedO
 
     const rawOpportunities = await prisma.opportunity.findMany({
         where: { AND: conditions },
-        include: { walkInDetails: true },
+        include: { driveDetails: true },
         orderBy: { postedAt: 'desc' },
         take: 200,
     });

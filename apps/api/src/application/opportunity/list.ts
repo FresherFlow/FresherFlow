@@ -10,7 +10,7 @@ export async function getAllForAdmin(adminId?: string) {
     return await prisma.opportunity.findMany({
         where,
         include: {
-            walkInDetails: true,
+            driveDetails: true,
             user: {
                 select: {
                     id: true,

@@ -1,6 +1,6 @@
 import prisma from '../database/prisma';
 import { Prisma } from '@prisma/client';
-import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
+import { OpportunityStatus, RecruitmentMethod, Sector } from '@fresherflow/types';
 import { logger } from '@fresherflow/utils';
 import { StorageService } from './storage.service';
 
@@ -73,7 +73,8 @@ export class FeedGeneratorService {
             // Identity
             id: true,
             slug: true,
-            type: true,
+            category: true,
+            recruitmentMethod: true,
             status: true,
 
             // Display
@@ -88,7 +89,7 @@ export class FeedGeneratorService {
             companyId: true,
             description: true,
             jobFunction: true,
-            employmentType: true,
+            employmentTypes: true,
             notesHighlights: true,
             selectionProcess: true,
             tags: true,
@@ -133,7 +134,7 @@ export class FeedGeneratorService {
             commentsCount: true,
 
             // Relations
-            walkInDetails: true,
+            driveDetails: true,
             governmentJobDetails: true,
             events: true,
 
@@ -216,7 +217,7 @@ export class FeedGeneratorService {
                     status: OpportunityStatus.PUBLISHED,
                     deletedAt: null,
                     OR: [
-                        { type: OpportunityType.GOVERNMENT },
+                        { sector: Sector.GOVERNMENT },
                         { governmentJobDetails: { isNot: null } }
                     ],
                     AND: [
@@ -244,8 +245,8 @@ export class FeedGeneratorService {
                     status: OpportunityStatus.PUBLISHED,
                     deletedAt: null,
                     OR: [
-                        { type: OpportunityType.WALKIN },
-                        { walkInDetails: { isNot: null } }
+                        { recruitmentMethod: RecruitmentMethod.WALK_IN },
+                        { driveDetails: { isNot: null } }
                     ],
                     AND: [
                         {
@@ -367,7 +368,7 @@ export class FeedGeneratorService {
                         company: true,
                         companyLogoUrl: true,
                         locations: true,
-                        type: true,
+                        category: true,
                         postedAt: true,
                         tags: true,
                         trendingScore: true,
@@ -421,7 +422,7 @@ export class FeedGeneratorService {
                 select: {
                     id: true,
                     slug: true,
-                    type: true,
+                    category: true,
                     postedAt: true,
                     updatedAt: true
                 }
@@ -439,7 +440,7 @@ export class FeedGeneratorService {
                 opportunities: opportunities.map(opp => ({
                     id: opp.id,
                     slug: opp.slug,
-                    type: opp.type,
+                    category: opp.category,
                     postedAt: opp.postedAt,
                     updatedAt: opp.updatedAt
                 })),
@@ -465,7 +466,7 @@ export class FeedGeneratorService {
                     slug: true,
                     title: true,
                     company: true,
-                    type: true,
+                    category: true,
                     status: true,
                     locations: true,
                     expiresAt: true,

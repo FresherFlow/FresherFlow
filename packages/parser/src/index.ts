@@ -17,7 +17,7 @@ export {
     extractLocations,
     extractTitle,
     extractCompany,
-    extractType,
+    extractClassification,
     extractPassoutYears,
     extractDegrees,
     extractWorkMode,
@@ -25,6 +25,7 @@ export {
     extractIncentives,
     extractJobFunction,
     extractWalkInDetails,
+    type ExtractedClassification,
 } from './extract.js';
 
 export { parseJobTextLite } from './lite.js';
@@ -50,7 +51,7 @@ export { parseHtmlToMarkdown, cleanClickbait } from './html-to-markdown.js';
 
 import { ParsedJob } from './types.js';
 import {
-    extractTitle, extractCompany, extractType, extractLocations, extractSkills,
+    extractTitle, extractCompany, extractClassification, extractLocations, extractSkills,
     extractPassoutYears, extractDegrees, extractWorkMode, extractExperience,
     extractIncentives, extractJobFunction, extractWalkInDetails,
 } from './extract.js';
@@ -65,26 +66,26 @@ export function parseJobText(text: string): ParsedJob {
     const textLines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     const textLower = text.toLowerCase();
 
-    const type = extractType(textLower);
+    const classification = extractClassification(textLower);
     const rawLocations = extractLocations(text);
     const { locations, structuredLocations } = cleanAndResolveLocations(rawLocations);
     const skills = extractSkills(text, locations);
     const salary = normalizeSalary(text);
     const experience = extractExperience(text);
     const workMode = extractWorkMode(text);
-    const walkIn = type === 'WALKIN' ? extractWalkInDetails(text, textLines) : {};
+    const walkIn = classification.workMode ? extractWalkInDetails(text, textLines) : {};
 
     return {
         title: extractTitle(textLines),
         company: extractCompany(text),
-        type,
+        category: classification.category,
         locations,
         structuredLocations,
         skills,
         allowedPassoutYears: extractPassoutYears(text),
         allowedDegrees: extractDegrees(text),
         isFresherOnly: textLower.includes('fresher') || textLower.includes('freshers'),
-        workMode,
+        workMode: classification.workMode ?? workMode,
         isRemote: workMode === 'REMOTE',
         jobFunction: extractJobFunction(textLower),
         incentives: extractIncentives(text),

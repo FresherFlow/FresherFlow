@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { Prisma, OpportunityStatus as DbOpportunityStatus, OpportunityType as DbOpportunityType } from '@fresherflow/database';
-import { OpportunityStatus, OpportunityType, Profile, Opportunity, CompanyGroupedResponse } from '@fresherflow/types';
+import { Prisma, OpportunityStatus as DbOpportunityStatus } from '@fresherflow/database';
+import { OpportunityStatus, Profile, Opportunity, CompanyGroupedResponse } from '@fresherflow/types';
 import { env } from '@fresherflow/utils';
 import { logger } from '@fresherflow/utils';
 import { toGroupedOpportunity, groupOpportunitiesByCompany } from '@fresherflow/utils';
@@ -12,7 +12,7 @@ import {
     isLikelyBotTraffic, publicFeedLimiter, publicFeedBotLimiter,
     GUEST_FEED_LIMIT, MAX_FEED_LIMIT, MAX_FEED_PAGE, GUEST_FEED_CACHE_TTL_SECONDS,
     normalizeSafeQueryString, parseStrictPositiveInt, ALLOWED_SORT_KEYS, MAX_SALARY_FILTER,
-    buildGuestOpportunitySelect, buildPublicOpportunitySelect, buildGroupedOpportunitySelect, getFreshnessScore, parseSiteMode,
+    buildGuestOpportunitySelect, buildPublicOpportunitySelect, buildGroupedOpportunitySelect, getFreshnessScore, parseSiteMode, parseOpportunityTypeFilter,
     GUEST_FEED_CACHE_CONTROL
 } from './_helpers';
 
@@ -32,15 +32,6 @@ function normalizeTypeParam(raw?: string) {
     return raw.toUpperCase();
 }
 
-function parseOpportunityType(raw?: string): OpportunityType | undefined {
-    const normalized = normalizeTypeParam(raw);
-    if (!normalized) return undefined;
-    if (normalized === OpportunityType.JOB) return OpportunityType.JOB;
-    if (normalized === OpportunityType.INTERNSHIP) return OpportunityType.INTERNSHIP;
-    if (normalized === OpportunityType.WALKIN) return OpportunityType.WALKIN;
-    return undefined;
-}
-
 router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { type, city, tag, relevanceDebug, minSalary, maxSalary, company, closingSoon, page = '1', limit = '50', sort, siteMode, feedType, groupBy } = req.query;
@@ -50,7 +41,7 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
         const companyValue = normalizeSafeQueryString(company, 100);
         const closingSoonValue = closingSoon === 'true';
         const effectiveSiteMode = parseSiteMode(siteMode as string);
-        const filterType = parseOpportunityType(typeValue || undefined);
+        const typeFilter = parseOpportunityTypeFilter(typeValue || undefined);
         const minSal = minSalary !== undefined ? parseStrictPositiveInt(minSalary) : undefined;
         const maxSal = maxSalary !== undefined ? parseStrictPositiveInt(maxSalary) : undefined;
         const pageValue = parseStrictPositiveInt(page);
@@ -100,9 +91,11 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
         } else if (feedType === '2026') {
             andConditions.push({ allowedPassoutYears: { has: 2026 } });
         } else if (feedType === 'internships') {
-            andConditions.push({ type: 'INTERNSHIP' });
+            // Internships are an employment type, not a category.
+            andConditions.push({ employmentTypes: { has: 'INTERNSHIP' } });
         } else if (feedType === 'walkins') {
-            andConditions.push({ type: 'WALKIN' });
+            // Walk-ins are a recruitment method: a dated drive.
+            andConditions.push({ recruitmentMethod: 'WALK_IN' });
         }
 
         const whereClause: Prisma.OpportunityWhereInput = {
@@ -112,7 +105,7 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
             ...(effectiveSiteMode === 'govt'
                 ? { governmentJobDetails: { isNot: null } }
                 : { governmentJobDetails: { is: null } }),
-            ...(filterType ? { type: filterType as unknown as DbOpportunityType } : {}),
+            ...(typeFilter ?? {}),
             ...(cityValue ? { locations: { has: cityValue } } : {}),
             ...(tagValue ? { tags: { has: tagValue } } : {}),
             ...(companyValue ? { company: { equals: companyValue, mode: 'insensitive' } } : {}),
@@ -155,7 +148,7 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
         const effectiveGuestPage = 1;
         const effectiveGuestLimit = Math.min(l, GUEST_FEED_LIMIT);
         const guestCacheKey = isGuest
-            ? ['opportunities', 'v5', `mode:${effectiveSiteMode}`, `feed:${feedType || 'all'}`, `type:${filterType || 'all'}`, `city:${cityValue || 'all'}`, `tag:${tagValue || 'all'}`, `min:${minSal ?? 'na'}`, `max:${maxSal ?? 'na'}`, `sort:${sortKey || 'default'}`, `page:${effectiveGuestPage}`, `limit:${effectiveGuestLimit}`].join('|')
+            ? ['opportunities', 'v5', `mode:${effectiveSiteMode}`, `feed:${feedType || 'all'}`, `type:${typeValue || 'all'}`, `city:${cityValue || 'all'}`, `tag:${tagValue || 'all'}`, `min:${minSal ?? 'na'}`, `max:${maxSal ?? 'na'}`, `sort:${sortKey || 'default'}`, `page:${effectiveGuestPage}`, `limit:${effectiveGuestLimit}`].join('|')
             : null;
 
         if (isGuest && guestCacheKey && redis_client) {

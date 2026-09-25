@@ -1,6 +1,6 @@
 import { prisma } from '@fresherflow/database';
 import { SocialPlatform, SocialPostStatus } from '@prisma/client';
-import { OpportunityType } from '@fresherflow/types';
+import { Sector, OpportunityCategory } from '@fresherflow/types';
 
 import { buildCaption } from './caption.service';
 import { enqueueSocialPost } from '@fresherflow/queue';
@@ -9,11 +9,26 @@ import { getPublicSiteUrl } from '../../../utils/runtimeConfig';
 import { getAdminDeliveryControls } from '../adminDeliveryControl.service';
 
 /** Minimal interface for social posting logic to avoid tight coupling */
+
+/**
+ * Human-readable labels for social captions. The caption shows a friendly
+ * noun, never the raw enum member, so keep this map in sync with
+ * OpportunityCategory.
+ */
+const OPPORTUNITY_CATEGORY_LABELS: Record<OpportunityCategory, string> = {
+  EMPLOYMENT: 'Job',
+  COMPETITION: 'Competition',
+  SCHOLARSHIP: 'Scholarship',
+  EDUCATION: 'Education',
+  EVENT: 'Event',
+};
+
 export interface SocialOpportunity {
   id: string;
   title: string;
   company: string;
-  type: OpportunityType;
+  sector: Sector;
+  category: OpportunityCategory;
   locations: string[];
   applyLink?: string | null;
   sourceLink?: string | null;
@@ -52,14 +67,15 @@ async function postOnePlatform(
     frontendOrigin: baseUrl,
     slug: opportunity.slug,
     platform: platform === 'LINKEDIN' ? 'linkedin' : platform === 'X' ? 'x' : 'facebook',
-    type: opportunity.type,
+    sector: opportunity.sector,
   });
 
   const text = buildCaption(
     {
       title: opportunity.title,
       company: opportunity.company,
-      type: opportunity.type,
+      // Caption wants a human label, not an enum member.
+      type: OPPORTUNITY_CATEGORY_LABELS[opportunity.category] ?? 'Opportunity',
       locations: opportunity.locations,
       applyLink: socialLink,
       salaryRange: opportunity.salaryRange,

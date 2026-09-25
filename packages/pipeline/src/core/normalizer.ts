@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import {
-    OpportunityType,
+    OpportunityCategory,
+    EmploymentType,
+    RecruitmentMethod,
     OpportunityStatus,
     WorkMode,
     SalaryPeriod
@@ -12,7 +14,8 @@ import {
     extractDegrees,
     extractPassoutYears,
     extractSkills,
-    extractType,
+    extractClassification,
+    type ExtractedClassification,
 } from '@fresherflow/parser';
 import {
     CANONICAL_COMPANIES,
@@ -61,7 +64,11 @@ export const structuredLocationSchema = z.object({
 });
 
 export const jobSchema = z.object({
-    type: z.nativeEnum(OpportunityType).catch(OpportunityType.JOB),
+    category: z.nativeEnum(OpportunityCategory).catch(OpportunityCategory.EMPLOYMENT),
+    employmentTypes: z.array(z.nativeEnum(EmploymentType)).default([]),
+    recruitmentMethod: z.nativeEnum(RecruitmentMethod).optional().nullable(),
+    // Legacy 'type' field for backward compatibility with processed_jobs table
+    type: z.string().optional().default('JOB'),
     status: z.nativeEnum(OpportunityStatus).optional().default(OpportunityStatus.DRAFT),
     title: z.string().min(1),
     company: z.string().min(1),
@@ -144,14 +151,36 @@ export interface JobsJsonFormat {
 export function normalizeRawJson(raw: Record<string, unknown>): Record<string, unknown> {
     if (!raw || typeof raw !== 'object') return raw;
 
-    // 1. Normalize type
-    if (typeof raw.type === 'string') {
-        const t = raw.type.toUpperCase();
-        if (['JOB', 'INTERNSHIP', 'WALKIN'].includes(t)) {
-            raw.type = t;
+    // 1. Normalize category and recruitment method
+    if (typeof raw.category === 'string') {
+        const cat = raw.category.toUpperCase();
+        if (['EMPLOYMENT', 'COMPETITION', 'SCHOLARSHIP', 'EDUCATION', 'EVENT'].includes(cat)) {
+            raw.category = cat;
         } else {
-            raw.type = 'JOB';
+            raw.category = 'EMPLOYMENT';
         }
+    }
+
+    // Normalize recruitmentMethod
+    if (typeof raw.recruitmentMethod === 'string') {
+        const rm = raw.recruitmentMethod.toUpperCase();
+        if (['REGULAR', 'WALK_IN', 'ON_CAMPUS', 'OFF_CAMPUS', 'POOL_CAMPUS', 'REFERRAL'].includes(rm)) {
+            raw.recruitmentMethod = rm;
+        } else {
+            raw.recruitmentMethod = 'REGULAR';
+        }
+    }
+
+    // Normalize employmentTypes if present
+    if (Array.isArray(raw.employmentTypes)) {
+        raw.employmentTypes = raw.employmentTypes.map((et: unknown) => {
+            if (typeof et !== 'string') return '';
+            const e = et.toUpperCase().trim();
+            if (['FULL_TIME', 'PART_TIME', 'CONTRACT', 'TEMPORARY', 'FREELANCE', 'INTERNSHIP', 'APPRENTICESHIP', 'VOLUNTEER', 'PER_DIEM', 'OTHER'].includes(e)) {
+                return e;
+            }
+            return '';
+        }).filter(Boolean);
     }
 
     // 2. Normalize allowedDegrees
@@ -256,14 +285,14 @@ export function postProcessNormalize(job: ExtractedJob, _fullText: string): Extr
         }
     }
 
-    // Clean employment type: if empty, use extractType or job title to infer it, falling back to FULL_TIME
+    // Clean employment type: if empty, use extractClassification or job title to infer it, falling back to FULL_TIME
     if (!job.employmentType || job.employmentType === '') {
-        if (job.type === 'INTERNSHIP') {
+        if (job.category === OpportunityCategory.EMPLOYMENT && job.employmentTypes?.includes(EmploymentType.INTERNSHIP)) {
             job.employmentType = 'INTERNSHIP';
         } else {
             const titleLower = (job.title || '').toLowerCase();
-            const inferredType = extractType(titleLower);
-            if (inferredType === 'INTERNSHIP') {
+            // Use simple title-based inference since extractClassification doesn't return employmentType
+            if (titleLower.includes('internship') || titleLower.includes('stipend') || titleLower.includes('trainee')) {
                 job.employmentType = 'INTERNSHIP';
             } else if (titleLower.includes('part time') || titleLower.includes('part-time')) {
                 job.employmentType = 'PART_TIME';
@@ -731,11 +760,26 @@ export function postProcessNormalize(job: ExtractedJob, _fullText: string): Extr
     }
 
     // --- 5. Strip walk-in fields from non-WALKIN types ---
-    const isWalkInJob = job.type === OpportunityType.WALKIN || /\bwalk[\s-]*in\b|\bwalkin\b/i.test(job.title || '') || !!job.walkInDetails || !!job.venueAddress;
+    const isWalkInJob = job.recruitmentMethod === RecruitmentMethod.WALK_IN || /\bwalk[\s-]*in\b|\bwalkin\b/i.test(job.title || '') || !!job.walkInDetails || !!job.venueAddress;
     if (isWalkInJob) {
-        job.type = OpportunityType.WALKIN;
+        job.recruitmentMethod = RecruitmentMethod.WALK_IN;
         job.workMode = WorkMode.ONSITE;
+        job.type = 'WALKIN';
     } else {
+        // Set legacy type field based on new taxonomy
+        if (job.category === OpportunityCategory.COMPETITION) {
+            job.type = 'COMPETITION';
+        } else if (job.category === OpportunityCategory.SCHOLARSHIP) {
+            job.type = 'SCHOLARSHIP';
+        } else if (job.category === OpportunityCategory.EDUCATION) {
+            job.type = 'EDUCATION';
+        } else if (job.category === OpportunityCategory.EVENT) {
+            job.type = 'EVENT';
+        } else if (job.employmentTypes?.includes(EmploymentType.INTERNSHIP)) {
+            job.type = 'INTERNSHIP';
+        } else {
+            job.type = 'JOB';
+        }
         const walkinFields = ['venueAddress', 'venueLink', 'dateRange', 'timeRange',
             'requiredDocuments', 'contactPerson', 'contactPhone',
             'startDate', 'endDate', 'startTime', 'endTime'] as const;

@@ -1,5 +1,5 @@
-import prisma, { Prisma, OpportunityStatus as DbOpportunityStatus, EducationLevel as DbEducationLevel, WorkMode as DbWorkMode } from '../../lib/prisma';
-import { OpportunityStatus, OpportunityType, Opportunity, Profile } from '@fresherflow/types';
+import prisma, { Prisma, OpportunityStatus as DbOpportunityStatus, EducationLevel as DbEducationLevel, WorkMode as DbWorkMode, OpportunityCategory as DbOpportunityCategory, EmploymentType as DbEmploymentType } from '../../lib/prisma';
+import { OpportunityStatus, OpportunityCategory, EmploymentType, RecruitmentMethod, Opportunity, Profile } from '@fresherflow/types';
 import { calculateOpportunityMatch, generateSlug, generateCompanyLogoUrl } from '@fresherflow/utils';
 import { searchOpportunitiesQuery, SearchResult, SearchOptions } from '../../application/opportunity/search';
 
@@ -39,13 +39,17 @@ export class OpportunityService {
                 slug,
                 postedByUserId: adminId,
                 status: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus,
-                type: (data.type || OpportunityType.JOB) as 'JOB' | 'INTERNSHIP' | 'WALKIN',
+                category: (data.category || OpportunityCategory.EMPLOYMENT) as unknown as DbOpportunityCategory,
+                employmentTypes: (data.employmentTypes?.length
+                    ? data.employmentTypes
+                    : [EmploymentType.FULL_TIME]) as unknown as DbEmploymentType[],
+                recruitmentMethod: data.recruitmentMethod,
                 title: data.title || '',
                 company: data.company || '',
                 description: data.description || '',
             },
             include: {
-                walkInDetails: true,
+                driveDetails: true,
             },
         });
 
@@ -123,7 +127,7 @@ export class OpportunityService {
             where: { id },
             data: updateData,
             include: {
-                walkInDetails: true,
+                driveDetails: true,
             },
         });
 
@@ -190,7 +194,7 @@ export class OpportunityService {
         return await prisma.opportunity.findMany({
             where,
             include: {
-                walkInDetails: true,
+                driveDetails: true,
                 user: {
                     select: {
                         id: true,
@@ -246,10 +250,10 @@ export class OpportunityService {
             ]
         });
 
-        // Preference Filter: Opportunity Type
+        // Preference Filter: Opportunity Category
         if (profile.interestedIn && (profile.interestedIn as unknown[]).length > 0) {
             andConditions.push({
-                type: { in: (profile.interestedIn as unknown) as ('JOB' | 'INTERNSHIP' | 'WALKIN')[] }
+                category: { in: (profile.interestedIn as unknown) as OpportunityCategory[] }
             });
         }
 
@@ -278,7 +282,7 @@ export class OpportunityService {
                 AND: andConditions
             },
             include: {
-                walkInDetails: true,
+                driveDetails: true,
             },
             orderBy: {
                 postedAt: 'desc',
@@ -299,8 +303,8 @@ export class OpportunityService {
             .filter((opp) => opp.eligible)
             .sort((a, b) => {
                 // Walk-ins first
-                if (a.type === OpportunityType.WALKIN && b.type !== OpportunityType.WALKIN) return -1;
-                if (b.type === OpportunityType.WALKIN && a.type !== OpportunityType.WALKIN) return 1;
+                if (a.recruitmentMethod === RecruitmentMethod.WALK_IN && b.recruitmentMethod !== RecruitmentMethod.WALK_IN) return -1;
+                if (b.recruitmentMethod === RecruitmentMethod.WALK_IN && a.recruitmentMethod !== RecruitmentMethod.WALK_IN) return 1;
 
                 // Then by match score
                 const scoreA = (a as unknown as { matchScore: number }).matchScore;
@@ -318,7 +322,7 @@ export class OpportunityService {
         return await prisma.opportunity.findUnique({
             where: { id },
             include: {
-                walkInDetails: true,
+                driveDetails: true,
                 user: {
                     select: {
                         fullName: true,
@@ -337,7 +341,7 @@ export class OpportunityService {
         const bySlug = await prisma.opportunity.findUnique({
             where: { slug: slugOrId },
             include: {
-                walkInDetails: true,
+                driveDetails: true,
                 user: {
                     select: {
                         fullName: true,
@@ -396,7 +400,7 @@ export class OpportunityService {
 
         const oppsForTags = await prisma.opportunity.findMany({
             where: { id: { in: ids } },
-            select: { id: true, slug: true, company: true, type: true, locations: true, requiredSkills: true, title: true, allowedPassoutYears: true }
+            select: { id: true, slug: true, company: true, category: true, employmentTypes: true, recruitmentMethod: true, sector: true, locations: true, requiredSkills: true, title: true, allowedPassoutYears: true }
         });
 
         return {

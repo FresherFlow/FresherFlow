@@ -19,7 +19,7 @@
  * No LLM required for these structured sources.
  */
 
-import { OpportunityType, WorkMode, SalaryPeriod } from '@fresherflow/types';
+import { OpportunityCategory, WorkMode, SalaryPeriod } from '@fresherflow/types';
 import type { ParsedJob } from './types.js';
 import { MONTH_INDEX } from './heuristics.js';
 import { cleanAndResolveLocations } from './location-matcher.js';
@@ -194,14 +194,26 @@ export function cleanAggregatorTitle(aggregatorTitle: string): string {
     return title.trim() || aggregatorTitle;
 }
 
-// ── Opportunity type ───────────────────────────────────────────────────────
+// ── Opportunity classification ───────────────────────────────────────────────────────
 
-export function extractTypeFromText(text: string, textLower = text.toLowerCase()): OpportunityType {
-    if (textLower.includes('walkin') || textLower.includes('walk-in') || textLower.includes('walk in')) return OpportunityType.WALKIN;
-    if (textLower.includes('hackathon')) return OpportunityType.HACKATHONS;
-    if (textLower.includes('internship') || textLower.includes('intern/trainee') || textLower.includes('stipend')) return OpportunityType.INTERNSHIP;
-    if (textLower.includes('government') || textLower.includes(' govt ')) return OpportunityType.GOVERNMENT;
-    return OpportunityType.JOB;
+export interface ExtractedClassification {
+    category: OpportunityCategory;
+}
+
+export function extractClassificationFromText(text: string, textLower = text.toLowerCase()): ExtractedClassification {
+    if (textLower.includes('walkin') || textLower.includes('walk-in') || textLower.includes('walk in')) {
+        return { category: OpportunityCategory.EMPLOYMENT };
+    }
+    if (textLower.includes('hackathon')) {
+        return { category: OpportunityCategory.COMPETITION };
+    }
+    if (textLower.includes('internship') || textLower.includes('intern/trainee') || textLower.includes('stipend')) {
+        return { category: OpportunityCategory.EMPLOYMENT };
+    }
+    if (textLower.includes('government') || textLower.includes(' govt ')) {
+        return { category: OpportunityCategory.EMPLOYMENT };
+    }
+    return { category: OpportunityCategory.EMPLOYMENT };
 }
 
 // ── Locations using CDN cities ─────────────────────────────────────────────
@@ -519,7 +531,7 @@ export function parseFromTemplate(
     const skills = extractSkills(rawSkills, cleanedText);
     const allowedPassoutYears = extractYearsFromTags(postedIn);
     const expiresAt = parseClosingDate(rawClosing || '');
-    const type = extractTypeFromText(cleanedText, cleanedTextLower);
+    const classification = extractClassificationFromText(cleanedText, cleanedTextLower);
     const isFresherOnly = /\b(fresher|freshers|entry.?level|fresh.?graduate)\b/i.test(cleanedText);
     const isRemote = workMode === WorkMode.REMOTE;
     const salary = parseSalaryFromText(text);
@@ -537,7 +549,7 @@ export function parseFromTemplate(
         allowedSpecializations,
         skills,
         allowedPassoutYears,
-        type,
+        category: classification.category,
         isFresherOnly,
         isRemote,
         description,

@@ -1,5 +1,5 @@
 import prisma from '../database/prisma';
-import { Prisma, EducationLevel, OpportunityType, WorkMode, Availability, ProfileVisibility } from '@prisma/client';
+import { Prisma, EducationLevel, OpportunityCategory, WorkMode, Availability, ProfileVisibility } from '@prisma/client';
 import { Profile, Gender, ReservationCategory } from '@fresherflow/types';
 import { calculateCompletion, normalizeProfileEducation, normalizeSkills } from '@fresherflow/utils';
 import { areOpportunityUrlsEquivalent, getOpportunityUrlAliases, normalizeOpportunityUrl } from '@fresherflow/utils';
@@ -37,7 +37,7 @@ export interface ProfileUpdateData {
     pgCourse?: string;
     pgSpecialization?: string;
     pgYear?: number;
-    interestedIn?: OpportunityType[];
+    interestedIn?: OpportunityCategory[];
     preferredCities?: string[];
     workModes?: WorkMode[];
     availability?: Availability;
@@ -51,7 +51,7 @@ export interface ProfileUpdateData {
 }
 
 export interface ProfilePreferencesData {
-    interestedIn?: OpportunityType[];
+    interestedIn?: OpportunityCategory[];
     preferredCities?: string[];
     workModes?: WorkMode[];
 }
@@ -528,7 +528,7 @@ export class ProfileService {
                         name: 'Crowdsourced Links',
                         sourceType: 'CUSTOM',
                         endpoint: 'Internal Submissions',
-                        defaultType: 'JOB',
+                        defaultCategory: 'EMPLOYMENT',
                     }
                 });
             } catch {
@@ -570,7 +570,7 @@ export class ProfileService {
                     slug: uniqueSlug,
                     title,
                     company: companyName,
-                    type: 'JOB',
+                    category: 'EMPLOYMENT',
                     status: 'DRAFT',
                     description: referral.description || null,
                     applyLink: referral.contact || null,

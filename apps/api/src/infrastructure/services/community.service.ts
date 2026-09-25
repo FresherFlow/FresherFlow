@@ -3,6 +3,7 @@ import prisma from '../database/prisma';
 import { AppError } from '../../middleware/errorHandler';
 import { createRateLimiter } from '../../middleware/rateLimit';
 import { slugify } from '@fresherflow/utils';
+import { logger } from '@fresherflow/utils';
 import {
     CommentType,
     CommentVoteValue,
@@ -11,12 +12,40 @@ import {
     EducationLevel as DbEducationLevel,
     JobSignalType,
     NotificationType,
-    OpportunityType,
     ReportReason,
+    type OpportunityCategory,
+    type RecruitmentMethod,
+    EmploymentType,
     SalaryPeriod,
     WorkMode,
 } from '@fresherflow/database';
 import type { Prisma } from '@prisma/client';
+
+const VALID_EMPLOYMENT_TYPES = new Set<string>(Object.values(EmploymentType));
+
+/**
+ * Normalise user-supplied employment types into `EmploymentType[]`.
+ *
+ * Accepts the legacy comma-separated free-text form ("Full Time, Internship")
+ * as well as an already-parsed array, and silently drops values that are not
+ * real enum members. A community submission should not fail wholesale because
+ * one of its tags was misspelled.
+ */
+export function normaliseEmploymentTypes(input: string | string[] | null | undefined): EmploymentType[] {
+    const raw = Array.isArray(input) ? input : (input ?? '').split(/[,/|]/);
+    const seen = new Set<EmploymentType>();
+    for (const piece of raw) {
+        // "Full Time" / "full-time" / "FULL_TIME" all normalise to FULL_TIME.
+        const normalised = piece.trim().toUpperCase().replace(/[\s-]+/g, '_');
+        if (!normalised) continue;
+        if (VALID_EMPLOYMENT_TYPES.has(normalised)) {
+            seen.add(normalised as EmploymentType);
+        } else {
+            logger.warn('[community] Dropped unrecognised employmentType', { value: normalised });
+        }
+    }
+    return [...seen];
+}
 
 // Re-export CommunityPostUser for consumers
 export type CommunityPostUser = {
@@ -628,7 +657,7 @@ export interface SubmitJobInput {
     description?: string | null;
     companyWebsite?: string | null;
     companyLogoUrl?: string | null;
-    type?: OpportunityType;
+    category?: string;
     locations?: string[];
     workMode?: WorkMode | null;
     salaryRange?: string | null;
@@ -636,7 +665,7 @@ export interface SubmitJobInput {
     salaryMax?: number | null;
     salaryPeriod?: SalaryPeriod;
     stipend?: string | null;
-    employmentType?: string | null;
+    employmentTypes?: string | string[] | null;
     experienceMin?: number | null;
     experienceMax?: number | null;
     requiredSkills?: string[];
@@ -791,14 +820,34 @@ export async function submitJob(input: SubmitJobInput) {
     const companyWebsite = input.companyWebsite?.trim() || null;
     const companyLogoUrl = input.companyLogoUrl?.trim() || null;
     const stipend = input.stipend?.trim() || null;
-    const employmentType = input.employmentType?.trim() || null;
+    // Employment types are a first-class enum array now. Accept the legacy
+    // comma-separated free-text form and normalise to valid enum members,
+    // dropping unknown values rather than failing the whole submission.
+    const employmentTypes = normaliseEmploymentTypes(input.employmentTypes);
     const experienceMin = input.experienceMin ?? null;
     const experienceMax = input.experienceMax ?? null;
     const jobFunction = input.jobFunction?.trim() || null;
     const incentives = input.incentives?.trim() || null;
     const selectionProcess = input.selectionProcess?.trim() || null;
     const notesHighlights = input.notesHighlights?.trim() || null;
-    const opportunityType = input.type ?? 'JOB';
+    // Legacy clients still send the mixed `type` values (JOB/INTERNSHIP/WALKIN/...).
+    // Map them onto the independent dimensions rather than rejecting the submission.
+    const rawType = ((input.category as string | undefined) ?? 'job').toUpperCase();
+    const opportunityCategory: OpportunityCategory =
+        rawType === 'SCHOLARSHIP'
+            ? 'SCHOLARSHIP'
+            : rawType === 'COMPETITION'
+              ? 'COMPETITION'
+              : rawType === 'EVENT'
+                ? 'EVENT'
+                : 'EMPLOYMENT';
+    // WALKIN is now a recruitment method (a dated drive), not a category.
+    const isWalkIn = rawType === 'WALKIN' || rawType === 'WALK_IN';
+    const recruitmentMethod: RecruitmentMethod = isWalkIn ? 'WALK_IN' : 'REGULAR';
+    // Internships are an employment type, so seed the array from the legacy value too.
+    if (rawType === 'INTERNSHIP' && !employmentTypes.includes('INTERNSHIP')) {
+        employmentTypes.push('INTERNSHIP');
+    }
     let expiresAt: Date | null = null;
     if (input.expiresAt?.trim()) {
         const parsed = new Date(input.expiresAt.trim());
@@ -821,7 +870,7 @@ export async function submitJob(input: SubmitJobInput) {
                 companyLogoUrl ||
                 salaryRange ||
                 stipend ||
-                employmentType ||
+                employmentTypes ||
                 jobFunction ||
                 incentives ||
                 selectionProcess ||
@@ -849,7 +898,8 @@ export async function submitJob(input: SubmitJobInput) {
                 title: input.title.trim(),
                 company,
                 description: input.description?.trim() || null,
-                type: opportunityType,
+                category: opportunityCategory,
+                recruitmentMethod,
                 status: publish ? 'PUBLISHED' : 'DRAFT',
                 allowedDegrees,
                 allowedCourses,
@@ -873,7 +923,7 @@ export async function submitJob(input: SubmitJobInput) {
                 salaryMax,
                 salaryPeriod,
                 stipend,
-                employmentType,
+                employmentTypes,
                 experienceMin,
                 experienceMax,
                 jobFunction,
@@ -883,9 +933,9 @@ export async function submitJob(input: SubmitJobInput) {
                 applicationDetails: applicationDetails
                     ? (applicationDetails as unknown as Prisma.InputJsonValue)
                     : undefined,
-                ...(opportunityType === 'WALKIN'
+                ...(isWalkIn
                     ? {
-                          walkInDetails: {
+                          driveDetails: {
                               create: {
                                   dates: walkinDates.length > 0 ? walkinDates : [new Date()],
                                   dateRange,
@@ -1717,7 +1767,8 @@ export async function getContributorProfile(userId: string, options: { page?: nu
             slug: true,
             title: true,
             company: true,
-            type: true,
+            category: true,
+            recruitmentMethod: true,
             status: true,
             description: true,
             allowedDegrees: true,
@@ -1730,7 +1781,7 @@ export async function getContributorProfile(userId: string, options: { page?: nu
             salaryMax: true,
             salaryRange: true,
             stipend: true,
-            employmentType: true,
+            employmentTypes: true,
             experienceMin: true,
             experienceMax: true,
             tags: true,
@@ -2104,8 +2155,10 @@ export async function listRooms(options: {
 
     const where: Prisma.RoomWhereInput = { status: 'ACTIVE', isPublic: true };
 
+    // Rooms are communities described by free-form tags now, so filter on tags
+    // instead of the removed RoomType enum.
     if (options.type) {
-        where.type = options.type as Prisma.EnumRoomTypeFilter['equals'];
+        where.tags = { has: options.type as string };
     }
     if (options.search && options.search.trim().length > 0) {
         const term = options.search.trim().slice(0, 100);
@@ -2267,12 +2320,30 @@ export async function getRoom(slug: string, userId?: string | null) {
     };
 }
 
+/**
+ * Normalise room tags to lowercase, `#`-stripped, de-duplicated, non-empty strings.
+ * A room is described by free-form community tags, so we only enforce shape here —
+ * there is no allowlist of valid tags by design.
+ */
+export function normaliseRoomTags(tags: string[] | undefined): string[] {
+    if (!Array.isArray(tags)) return [];
+    const seen = new Set<string>();
+    for (const tag of tags.slice(0, 30)) {
+        if (typeof tag !== 'string') continue;
+        const cleaned = tag.trim().replace(/^#+/, '').toLowerCase();
+        if (!cleaned || cleaned.length > 50) continue;
+        seen.add(cleaned);
+    }
+    return [...seen];
+}
+
 export async function createRoom(input: {
     createdByUserId: string;
     name: string;
     description?: string;
     icon?: string;
-    type?: string;
+    /** Free-form community tags: #2026, #mca, #swe, #hyderabad. Replaces RoomType. */
+    tags?: string[];
 }) {
     const slug = slugify(input.name);
     if (!slug) throw new AppError('Invalid room name', 400);
@@ -2287,7 +2358,7 @@ export async function createRoom(input: {
                 name: input.name.trim(),
                 description: input.description?.trim() || null,
                 icon: input.icon || null,
-                type: (input.type as any) ?? 'CUSTOM',
+                tags: normaliseRoomTags(input.tags),
                 createdByUserId: input.createdByUserId,
                 memberCount: 1,
             },

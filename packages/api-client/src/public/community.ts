@@ -14,7 +14,6 @@ import type {
     CommentType,
     CommentVoteValue,
     JobSignalType,
-    OpportunityType,
     ReportReason,
     SalaryPeriod,
     WorkMode,
@@ -83,7 +82,6 @@ export const communityApi = {
         description?: string;
         companyWebsite?: string;
         companyLogoUrl?: string | null;
-        type?: OpportunityType;
         locations?: string[];
         workMode?: WorkMode | null;
         salaryRange?: string | null;

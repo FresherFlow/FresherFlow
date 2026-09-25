@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { OpportunityType, OpportunityStatus, EducationLevel, WorkMode, SalaryPeriod } from '@fresherflow/types';
+import { OpportunityStatus, EducationLevel, WorkMode, SalaryPeriod } from '@fresherflow/types';
 import type {
     GovernmentApplicationFee,
     GovernmentEligibilityDetails,
@@ -11,7 +11,6 @@ import type {
 export interface AdminOpportunityRequest {
     startDate?: string;
     endDate?: string;
-    type?: OpportunityType;
     status?: OpportunityStatus;
     category?: 'job' | 'internship' | 'walk-in';
     title: string;
@@ -37,7 +36,7 @@ export interface AdminOpportunityRequest {
     notesHighlights?: string;
     experienceMin?: number;
     experienceMax?: number;
-    employmentType?: string;
+    employmentTypes?: string;
     tags?: string[];
     sourceLink?: string;
     applyLink?: string;
@@ -109,7 +108,7 @@ export interface AdminOpportunityRequest {
         payLevel?: string;
         allowances?: string[];
     } | null;
-    walkInDetails?: {
+    driveDetails?: {
         date?: string;
         dates?: string[];
         dateRange?: string;

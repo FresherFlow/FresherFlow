@@ -109,7 +109,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
 
     const rawOpportunity = await prisma.opportunity.findUnique({
         where: { id: opportunityId },
-        include: { walkInDetails: true }
+        include: { driveDetails: true }
     });
 
     if (!rawOpportunity || rawOpportunity.status !== OpportunityStatus.PUBLISHED) {
@@ -331,7 +331,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                     title: opportunity.title,
                     company: opportunity.company,
                     location: opportunity.locations?.[0] || null,
-                    applyUrl: buildOpportunityUrl(frontendUrl, opportunity.slug, opportunity.type),
+                    applyUrl: buildOpportunityUrl(frontendUrl, opportunity.slug, opportunity.category),
                 });
                 emailsSent++;
                 deliveriesToCreate.push({
@@ -398,7 +398,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                 company: opportunity.company,
                 opportunityId: opportunity.id,
                 opportunitySlug: opportunity.slug,
-                type: opportunity.type,
+                category: opportunity.category,
             });
             pushSentCount += 1;
             await prisma.alertDelivery.create({

@@ -34,7 +34,7 @@ router.post('/share', requireAuth, async (req: Request, res: Response, next: Nex
                     name: 'User Shares',
                     sourceType: 'CUSTOM',
                     endpoint: 'Mobile App Share',
-                    defaultType: 'JOB',
+                    defaultCategory: 'EMPLOYMENT',
                 }
             });
         }
@@ -143,7 +143,7 @@ router.post('/share', requireAuth, async (req: Request, res: Response, next: Nex
                 slug: uniqueSlug,
                 title,
                 company: companyName,
-                type: 'JOB',
+                category: 'EMPLOYMENT',
                 status: 'DRAFT',
                 sourceLink: normalizedUrl,
                 applyLink: normalizedUrl,

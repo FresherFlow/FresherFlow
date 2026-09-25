@@ -1,9 +1,9 @@
 import prisma from '../../infrastructure/database/prisma';
-import { OpportunityType, OpportunityStatus } from '@fresherflow/types';
+import { RecruitmentMethod, OpportunityStatus } from '@fresherflow/types';
 import { Prisma } from '@fresherflow/database';
 
 type OpportunityWithWalkin = Prisma.OpportunityGetPayload<{
-    include: { walkInDetails: true }
+    include: { driveDetails: true }
 }>;
 
 /**
@@ -27,7 +27,7 @@ export class WalkinService {
 
         const walkins = await prisma.opportunity.findMany({
             where: {
-                type: OpportunityType.WALKIN,
+                recruitmentMethod: RecruitmentMethod.WALK_IN,
                 status: OpportunityStatus.PUBLISHED,
                 deletedAt: null,
                 locations: {
@@ -35,7 +35,7 @@ export class WalkinService {
                 },
             },
             include: {
-                walkInDetails: true,
+                driveDetails: true,
             },
             orderBy: {
                 postedAt: 'desc',
@@ -44,7 +44,7 @@ export class WalkinService {
 
         // Filter by date match in code
         const filtered = (walkins as OpportunityWithWalkin[]).filter((w) =>
-            w.walkInDetails?.dates.some((d: Date) => {
+            w.driveDetails?.dates.some((d: Date) => {
                 const date = new Date(d);
                 return date >= now && date <= futureDate;
             })
@@ -52,8 +52,8 @@ export class WalkinService {
 
         // Sort by nearest date
         return filtered.sort((a, b) => {
-            const aNextDate = a.walkInDetails?.dates.map((d: Date) => new Date(d)).find((d: Date) => d >= now) || now;
-            const bNextDate = b.walkInDetails?.dates.map((d: Date) => new Date(d)).find((d: Date) => d >= now) || now;
+            const aNextDate = a.driveDetails?.dates.map((d: Date) => new Date(d)).find((d: Date) => d >= now) || now;
+            const bNextDate = b.driveDetails?.dates.map((d: Date) => new Date(d)).find((d: Date) => d >= now) || now;
             return aNextDate.getTime() - bNextDate.getTime();
         });
     }
@@ -70,7 +70,7 @@ export class WalkinService {
 
         const walkins = await prisma.opportunity.findMany({
             where: {
-                type: OpportunityType.WALKIN,
+                recruitmentMethod: RecruitmentMethod.WALK_IN,
                 status: OpportunityStatus.PUBLISHED,
                 deletedAt: null,
                 locations: {
@@ -78,12 +78,12 @@ export class WalkinService {
                 },
             },
             include: {
-                walkInDetails: true,
+                driveDetails: true,
             },
         });
 
         return (walkins as OpportunityWithWalkin[]).filter((w) =>
-            w.walkInDetails?.dates.some((d: Date) => {
+            w.driveDetails?.dates.some((d: Date) => {
                 const date = new Date(d);
                 return date >= today && date < tomorrow;
             })
@@ -97,10 +97,10 @@ export class WalkinService {
         // Check if walk-in exists and is valid
         const walkin = await prisma.opportunity.findUnique({
             where: { id: walkinId },
-            include: { walkInDetails: true },
+            include: { driveDetails: true },
         });
 
-        if (!walkin || walkin.type !== OpportunityType.WALKIN) {
+        if (!walkin || walkin.recruitmentMethod !== RecruitmentMethod.WALK_IN) {
             throw new Error('Walk-in not found');
         }
 
@@ -138,7 +138,7 @@ export class WalkinService {
             include: {
                 opportunity: {
                     include: {
-                        walkInDetails: true,
+                        driveDetails: true,
                     },
                 },
             },

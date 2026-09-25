@@ -1,4 +1,4 @@
-import { OpportunityType } from '@fresherflow/types';
+import { Sector } from '@fresherflow/types';
 
 export type SharePlatform = 'telegram' | 'linkedin' | 'x' | 'instagram' | 'facebook' | 'other';
 
@@ -15,7 +15,7 @@ type BuildSocialOpportunityUrlArgs = {
     frontendOrigin: string;
     slug: string;
     platform: SharePlatform;
-    type?: OpportunityType;
+    sector?: Sector;
     campaign?: string;
     source?: string;
     ref?: string;
@@ -25,12 +25,13 @@ export function buildSocialOpportunityUrl({
     frontendOrigin,
     slug,
     platform,
-    type,
+    sector,
     campaign = 'job_share',
     source = 'opportunity_share',
     ref = 'social',
 }: BuildSocialOpportunityUrlArgs) {
-    const prefix = type === OpportunityType.GOVERNMENT ? 'govt' : 'jobs';
+    // Government opportunities live under a different public route prefix.
+    const prefix = sector === 'GOVERNMENT' ? 'govt' : 'jobs';
     const path = `/${prefix}/${slug}`;
 
     const url = new URL(path, frontendOrigin);

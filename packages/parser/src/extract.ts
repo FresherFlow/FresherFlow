@@ -2,7 +2,7 @@
  * Field extraction functions.
  * Each function takes raw job text and returns one specific field or group.
  */
-import { OpportunityType, WorkMode } from '@fresherflow/types';
+import { OpportunityCategory, WorkMode } from '@fresherflow/types';
 import nlp from 'compromise';
 import { City } from '@fresherflow/constants';
 import {
@@ -42,12 +42,27 @@ export function extractCompany(text: string): string | undefined {
     return organizations.length > 0 ? organizations[0] : undefined;
 }
 
-// ── Opportunity type ──────────────────────────────────────────────────────────
+// ── Opportunity classification ────────────────────────────────────────────────
 
-export function extractType(textLower: string): OpportunityType {
-    if (textLower.includes('walkin') || textLower.includes('walk-in') || textLower.includes('venue')) return OpportunityType.WALKIN;
-    if (textLower.includes('internship') || textLower.includes('stipend')) return OpportunityType.INTERNSHIP;
-    return OpportunityType.JOB;
+export interface ExtractedClassification {
+    category: OpportunityCategory;
+    workMode?: WorkMode;
+}
+
+export function extractClassification(textLower: string): ExtractedClassification {
+    if (textLower.includes('walkin') || textLower.includes('walk-in') || textLower.includes('venue')) {
+        return { category: OpportunityCategory.EMPLOYMENT };
+    }
+    if (textLower.includes('internship') || textLower.includes('stipend')) {
+        return { category: OpportunityCategory.EMPLOYMENT };
+    }
+    if (textLower.includes('hackathon')) {
+        return { category: OpportunityCategory.COMPETITION };
+    }
+    if (textLower.includes('government') || textLower.includes(' govt ')) {
+        return { category: OpportunityCategory.EMPLOYMENT };
+    }
+    return { category: OpportunityCategory.EMPLOYMENT };
 }
 
 // ── Locations ─────────────────────────────────────────────────────────────────

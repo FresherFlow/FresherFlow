@@ -2,8 +2,10 @@ import prisma from '../database/prisma';
 import { AppError } from '../../middleware/errorHandler';
 import {
     CommunityPostStatus,
+    EmploymentType,
+    OpportunityCategory,
     OpportunityStatus,
-    OpportunityType,
+    RecruitmentMethod,
     ReferralRequestStatus,
 } from '@fresherflow/database';
 import type { Prisma } from '@prisma/client';
@@ -57,7 +59,7 @@ const walkInHubSelect = {
     allowedPassoutYears: true,
     postedAt: true,
     expiresAt: true,
-    walkInDetails: {
+    driveDetails: {
         select: {
             dates: true,
             dateRange: true,
@@ -76,7 +78,7 @@ const walkInHubSelect = {
 type WalkInHubRow = Prisma.OpportunityGetPayload<{ select: typeof walkInHubSelect }>;
 
 function toWalkInTodayItem(o: WalkInHubRow) {
-    const w = o.walkInDetails;
+    const w = o.driveDetails;
     return {
         id: o.id,
         slug: o.slug,
@@ -130,11 +132,11 @@ export async function listWalkInsToday(params: { city?: string; batch?: number; 
     const now = new Date();
 
     const where: Prisma.OpportunityWhereInput = {
-        type: OpportunityType.WALKIN,
+        recruitmentMethod: RecruitmentMethod.WALK_IN,
         status: OpportunityStatus.PUBLISHED,
         deletedAt: null,
         OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-        ...(params.city ? { OR: [{ walkInDetails: { city: { equals: params.city, mode: 'insensitive' } } }, { locations: { has: params.city } }] } : {}),
+        ...(params.city ? { OR: [{ driveDetails: { city: { equals: params.city, mode: 'insensitive' } } }, { locations: { has: params.city } }] } : {}),
         ...(params.batch ? { allowedPassoutYears: { has: params.batch } } : {}),
     };
 
@@ -285,9 +287,9 @@ export async function deleteSavedSearch(userId: string, searchId: string): Promi
 async function countMatchesForFilters(filters: SavedSearchFilters, since: Date): Promise<number> {
     const andConditions: Prisma.OpportunityWhereInput[] = [];
 
-    if (filters.type) andConditions.push({ type: filters.type as OpportunityType });
-    else if (filters.feedType === 'walkins') andConditions.push({ type: OpportunityType.WALKIN });
-    else if (filters.feedType === 'internships') andConditions.push({ type: OpportunityType.INTERNSHIP });
+    if (filters.type) andConditions.push({ category: filters.type as OpportunityCategory });
+    else if (filters.feedType === 'walkins') andConditions.push({ recruitmentMethod: RecruitmentMethod.WALK_IN });
+    else if (filters.feedType === 'internships') andConditions.push({ employmentTypes: { has: EmploymentType.INTERNSHIP } });
 
     if (filters.feedType === 'remote') andConditions.push({ workMode: 'REMOTE' });
     if (filters.feedType === '2026') andConditions.push({ allowedPassoutYears: { has: 2026 } });
@@ -659,7 +661,8 @@ export async function getCompanyHub(companyName: string) {
                 id: true,
                 slug: true,
                 title: true,
-                type: true,
+                category: true,
+                employmentTypes: true,
                 locations: true,
                 salaryRange: true,
                 salaryMin: true,

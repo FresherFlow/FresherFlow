@@ -11,7 +11,7 @@ router.get('/:id/similar', async (req: Request, res: Response, next: NextFunctio
 
         const original = await prisma.opportunity.findUnique({
             where: { id: id as string },
-            select: { id: true, title: true, company: true, type: true, tags: true }
+            select: { id: true, title: true, company: true, category: true, recruitmentMethod: true, employmentTypes: true, tags: true }
         });
 
         if (!original) throw new AppError('Original opportunity not found', 404);
@@ -25,7 +25,7 @@ router.get('/:id/similar', async (req: Request, res: Response, next: NextFunctio
                 id: { not: id as string },
                 AND: [
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    { type: (original as any).type },
+                    { category: (original as any).category, recruitmentMethod: (original as any).recruitmentMethod },
                     {
                         OR: [
                             // eslint-disable-next-line @typescript-eslint/no-explicit-any

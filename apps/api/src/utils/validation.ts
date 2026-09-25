@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { OpportunityType, OpportunityStatus, WorkMode, EducationLevel, Availability, ActionType, FeedbackReason, SalaryPeriod, AppFeedbackType, ReservationCategory, Gender, CommentType, CommentVoteValue, JobSignalType, ReportReason } from '@fresherflow/types';
+import { OpportunityCategory, OpportunityStatus, WorkMode, EducationLevel, Availability, ActionType, FeedbackReason, SalaryPeriod, AppFeedbackType, ReservationCategory, Gender, CommentType, CommentVoteValue, JobSignalType, ReportReason } from '@fresherflow/types';
 
 const governmentApplicationFeeSchema = z.object({
     general: z.number().nonnegative().optional(),
@@ -110,7 +110,7 @@ export const profileUpdateSchema = z.object({
     pgCourse: z.string().optional(),
     pgSpecialization: z.string().optional(),
     pgYear: z.number().int().optional(),
-    interestedIn: z.array(z.nativeEnum(OpportunityType)).optional(),
+    interestedIn: z.array(z.nativeEnum(OpportunityCategory)).optional(),
     preferredCities: z.array(z.string()).optional(),
     workModes: z.array(z.nativeEnum(WorkMode)).optional(),
     availability: z.nativeEnum(Availability).optional(),
@@ -161,7 +161,7 @@ export const educationSchema = z.object({
 });
 
 export const preferencesSchema = z.object({
-    interestedIn: z.array(z.nativeEnum(OpportunityType)).optional().default([]),
+    interestedIn: z.array(z.nativeEnum(OpportunityCategory)).optional().default([]),
     preferredCities: z.array(z.string()).max(5, 'Select up to 5 cities').optional().default([]),
     workModes: z.array(z.nativeEnum(WorkMode)).optional().default([])
 });
@@ -196,7 +196,6 @@ const applicationDetailsSchema = z.object({
 
 // Admin Schemas
 export const opportunitySchema = z.object({
-    type: z.nativeEnum(OpportunityType).optional(), // Backend
     status: z.nativeEnum(OpportunityStatus).optional(),
     category: z.enum(['job', 'internship', 'walk-in']).optional(), // Frontend alias
     rawOpportunityId: z.string().optional(),
@@ -229,7 +228,7 @@ export const opportunitySchema = z.object({
     notesHighlights: z.string().nullable().optional(),
     experienceMin: z.number().nullable().optional(),
     experienceMax: z.number().nullable().optional(),
-    employmentType: z.string().nullable().optional(), // New
+    employmentTypes: z.string().nullable().optional(), // New
     tags: z.array(z.string()).optional().default([]),
     sourceLink: z.string().url().nullable().optional().or(z.string().length(0).nullable().optional()),
     applyLink: z.string().url().nullable().optional().or(z.string().length(0).nullable().optional()),
@@ -304,7 +303,7 @@ export const opportunitySchema = z.object({
     }).nullable().optional(),
 
     // Walk-in specific (Simplified)
-    walkInDetails: z.object({
+    driveDetails: z.object({
         date: z.string().optional(), // Frontend sends singular date often
         dates: z.array(z.string()).optional(), // Backend expects array
         dateRange: z.string().optional(), // New: "2nd Feb - 6th Feb"
@@ -327,7 +326,7 @@ export const opportunitySubmitSchema = z.object({
     companyWebsite: z.string().url().nullable().optional().or(z.string().length(0).nullable().optional()),
     companyLogoUrl: z.string().url().nullable().optional().or(z.string().length(0).nullable().optional()),
     description: z.string().optional().nullable(),
-    type: z.nativeEnum(OpportunityType).optional().default(OpportunityType.JOB),
+    category: z.nativeEnum(OpportunityCategory).optional().default(OpportunityCategory.EMPLOYMENT),
     status: z.nativeEnum(OpportunityStatus).optional().default(OpportunityStatus.DRAFT),
     locations: z.array(z.string()).optional().default([]),
     requiredSkills: z.array(z.string()).optional().default([]),
@@ -342,7 +341,7 @@ export const opportunitySubmitSchema = z.object({
     salaryMax: z.number().nullable().optional(),
     salaryPeriod: z.nativeEnum(SalaryPeriod).optional().default(SalaryPeriod.YEARLY),
     stipend: z.string().nullable().optional(),
-    employmentType: z.string().nullable().optional(),
+    employmentTypes: z.string().nullable().optional(),
     applyLink: z.string().url().nullable().optional().or(z.string().length(0).nullable().optional()),
     sourceLink: z.string().url().nullable().optional().or(z.string().length(0).nullable().optional()),
     applicationDetails: applicationDetailsSchema.nullable().optional(),
@@ -447,7 +446,7 @@ export const submitJobSchema = z.object({
         .union([z.string().trim().url('Enter a valid URL'), z.literal('')])
         .nullable()
         .optional(),
-    type: z.nativeEnum(OpportunityType).optional(),
+    category: z.nativeEnum(OpportunityCategory).optional(),
     locations: z.array(z.string().trim().min(1).max(120)).max(15).optional(),
     workMode: z.nativeEnum(WorkMode).nullable().optional(),
     salaryRange: z.string().trim().max(60).nullable().optional(),
@@ -455,7 +454,7 @@ export const submitJobSchema = z.object({
     salaryMax: z.number().int().min(0).nullable().optional(),
     salaryPeriod: z.nativeEnum(SalaryPeriod).optional(),
     stipend: z.string().trim().max(120).nullable().optional(),
-    employmentType: z.string().trim().max(80).nullable().optional(),
+    employmentTypes: z.string().trim().max(80).nullable().optional(),
     experienceMin: z.number().min(0).max(30).nullable().optional(),
     experienceMax: z.number().min(0).max(30).nullable().optional(),
     requiredSkills: z.array(z.string().trim().min(1).max(60)).max(30).optional(),
@@ -521,7 +520,7 @@ export const mcpSubmitOpportunitySchema = z.object({
     jobUrl: z.string().trim().url('jobUrl must be a valid https URL').max(2000)
         .refine((u) => u.startsWith('https://'), 'jobUrl must use https'),
     location: z.string().trim().max(120).optional(),
-    employmentType: z.string().trim().max(80).optional(),
+    employmentTypes: z.string().trim().max(80).optional(),
     salary: z.string().trim().max(60).optional(),
     description: z.string().trim().max(5000).optional(),
     eligibility: z.string().trim().max(2000).optional(),

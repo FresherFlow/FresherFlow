@@ -6,7 +6,7 @@ import { filterAndRankOpportunitiesForUser } from '@fresherflow/utils';
 import { Opportunity, Profile } from '@fresherflow/types';
 import {
     isLikelyBotTraffic, publicFeedLimiter, publicFeedBotLimiter,
-    normalizeSafeQueryString, parseStrictPositiveInt, parseOpportunityType, parseSiteMode
+    normalizeSafeQueryString, parseStrictPositiveInt, parseOpportunityTypeFilter, parseSiteMode
 } from './_helpers';
 
 const router: Router = Router();
@@ -29,12 +29,12 @@ router.get('/search', adaptiveSearchLimiter, async (req: Request, res: Response,
         if (p < 1 || p > 100) throw new AppError('Invalid page', 400);
         if (l < 1 || l > 50) throw new AppError('Invalid limit', 400);
 
-        const filterType = parseOpportunityType(typeValue || undefined);
+        const typeFilter = parseOpportunityTypeFilter(typeValue || undefined);
         const locations = cityValue ? [cityValue] : undefined;
         const offset = (p - 1) * l;
 
         const searchResults = await searchOpportunities(query, {
-            filterType,
+            ...(typeFilter ?? {}),
             limit: l,
             offset,
             locations,

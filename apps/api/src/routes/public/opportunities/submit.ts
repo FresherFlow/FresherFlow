@@ -1,11 +1,18 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { prisma, OpportunityStatus as DbOpportunityStatus, OpportunityType as DbOpportunityType, EducationLevel as DbEducationLevel, WorkMode as DbWorkMode, SalaryPeriod as DbSalaryPeriod } from '@fresherflow/database';
-import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
+import { prisma, OpportunityStatus as DbOpportunityStatus, EducationLevel as DbEducationLevel, WorkMode as DbWorkMode, SalaryPeriod as DbSalaryPeriod } from '@fresherflow/database';
+import { OpportunityStatus } from '@fresherflow/types';
+import { normaliseEmploymentTypes as parseEmploymentTypes } from '../../../infrastructure/services/community.service';
 import { slugify } from '@fresherflow/utils';
 import { tryResolveUserIdFromCookie } from './_helpers';
 import { opportunitySubmitSchema } from '../../../utils/validation';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
 import crypto from 'crypto';
+
+/** The public submit form still uses the legacy 'walk-in' category alias. */
+function isWalkInSubmission(category?: string): boolean {
+    const value = (category ?? '').toLowerCase();
+    return value === 'walk-in' || value === 'walkin' || value === 'walk_in';
+}
 
 const router = Router();
 
@@ -122,7 +129,7 @@ router.post('/submit', async (req: Request, res: Response, next: NextFunction) =
                 companyWebsite: data.companyWebsite,
                 companyLogoUrl: data.companyLogoUrl,
                 description: data.description || '',
-                type: (data.type || OpportunityType.JOB) as unknown as DbOpportunityType,
+                category: 'EMPLOYMENT',
                 status: targetStatus as unknown as DbOpportunityStatus,
                 locations: data.locations,
                 requiredSkills: data.requiredSkills.length > 0 ? data.requiredSkills : (data.skills || []),
@@ -136,7 +143,8 @@ router.post('/submit', async (req: Request, res: Response, next: NextFunction) =
                 salaryMax: data.salaryMax,
                 salaryPeriod: data.salaryPeriod as unknown as DbSalaryPeriod,
                 stipend: data.stipend,
-                employmentType: data.employmentType,
+                employmentTypes: parseEmploymentTypes(data.employmentTypes),
+                recruitmentMethod: isWalkInSubmission(data.category) ? 'WALK_IN' : 'REGULAR',
                 applyLink: data.applyLink || data.sourceLink,
                 sourceLink: data.sourceLink,
                 applicationDetails: data.applicationDetails || undefined,
@@ -149,8 +157,8 @@ router.post('/submit', async (req: Request, res: Response, next: NextFunction) =
                 selectionProcess: data.selectionProcess ?? null,
                 notesHighlights: data.notesHighlights ?? null,
                 publishedAt: data.status === 'PUBLISHED' ? new Date() : null,
-                ...(data.type === 'WALKIN' ? {
-                    walkInDetails: {
+                ...(isWalkInSubmission(data.category) ? {
+                    driveDetails: {
                         create: {
                             dates: data.dates ? data.dates.map((d: string) => new Date(d)) : [],
                             dateRange: data.dateRange || '',

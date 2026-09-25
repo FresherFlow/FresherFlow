@@ -17,8 +17,11 @@ router.get('/export', async (req: Request, res: Response, next: NextFunction) =>
         const now = new Date();
 
         const normalizedType = typeof type === 'string' ? normalizeTypeParam(type) : undefined;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (normalizedType) where.type = normalizedType as any;
+        // A legacy 	ype param now expands across several dimensions.
+        if (normalizedType?.category) where.category = normalizedType.category;
+        if (normalizedType?.recruitmentMethod) where.recruitmentMethod = normalizedType.recruitmentMethod;
+        if (normalizedType?.employmentType) where.employmentTypes = { has: normalizedType.employmentType };
+        if (normalizedType?.sector) where.sector = normalizedType.sector;
 
         const statusFilter = typeof status === 'string' ? parseAdminStatusFilter(status) : undefined;
         if (statusFilter === 'EXPIRED') {
@@ -40,7 +43,7 @@ router.get('/export', async (req: Request, res: Response, next: NextFunction) =>
         const header = ['id', 'slug', 'type', 'status', 'title', 'company', 'locations', 'postedAt', 'expiresAt', 'linkHealth'].join(',');
         const rows = opportunities.map((opp) =>
             [
-                toCsvValue(opp.id), toCsvValue(opp.slug), toCsvValue(opp.type),
+                toCsvValue(opp.id), toCsvValue(opp.slug), toCsvValue(opp.category), toCsvValue(opp.recruitmentMethod),
                 toCsvValue(opp.status), toCsvValue(opp.title), toCsvValue(opp.company),
                 toCsvValue(opp.locations), toCsvValue(opp.postedAt),
                 toCsvValue(opp.expiresAt), toCsvValue(opp.linkHealth),

@@ -8,7 +8,8 @@ export type NewJobPushPayload = {
     company: string;
     opportunityId: string;
     opportunitySlug: string;
-    type?: string;
+    /** The independent category dimension, e.g. EMPLOYMENT. */
+    category?: string;
 };
 
 function getFrontendOrigin() {
@@ -51,7 +52,7 @@ export async function sendNewJobPush(userId: string, payload: NewJobPushPayload)
         userId,
         title: `New job: ${payload.title}`,
         body: `${payload.company} posted a new opening for freshers.`,
-        url: buildOpportunityUrl(payload.opportunitySlug, payload.type),
+        url: buildOpportunityUrl(payload.opportunitySlug, payload.category),
         kind: 'NEW_JOB',
         opportunityId: payload.opportunityId,
         platform: isExpo ? 'expo' : 'web',

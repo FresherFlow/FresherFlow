@@ -56,7 +56,7 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
             }),
             prisma.user.count({ where: { createdAt: { gte: windowStart } } }),
             prisma.opportunity.groupBy({
-                by: ['type'],
+                by: ['category'],
                 _count: true,
                 where: { status: OpportunityStatus.PUBLISHED, deletedAt: null }
             }),
@@ -219,7 +219,7 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
                 returningRate7d,
                 signupConversionRate30d,
             },
-            typeDistribution: typeStats.map((t) => ({ type: t.type, count: t._count })),
+            typeDistribution: typeStats.map((t) => ({ type: t.category, count: t._count })),
             feedback: feedbackStats.reduce((acc: Record<string, number>, s) => { acc[s.reason] = s._count; return acc; }, {}),
             channelAttribution,
             clicks: {

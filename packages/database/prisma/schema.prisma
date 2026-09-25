@@ -1,6 +1,14 @@
 // This is your Prisma schema file
-// Production-Grade Schema for Job & Walk-in Opportunity Platform
-// Code Review Score: 10/10 ✅
+// FresherFlow platform schema.
+//
+// Covers far more than job postings: opportunities (employment, competitions,
+// scholarships, education, events), drives and campus targeting, government
+// recruiting, community rooms and posts, and recruiter/organisation workspaces.
+//
+// Note: many taxonomies are intentionally String[] rather than enums � tags,
+// skills, locations, jobFunction and similar are open vocabularies that vary by
+// employer and region. Enums are used only where the platform must constrain
+// and index the value.
 
 generator client {
   provider = "prisma-client-js"
@@ -33,11 +41,75 @@ enum Gender {
   OTHER
 }
 
-enum OpportunityType {
-  JOB
+// ── Opportunity taxonomy (v2) ────────────────────────────────────────────────
+// Replaces the old mixed-axis `OpportunityType { JOB, INTERNSHIP, WALKIN,
+// GOVERNMENT }`. These are independent dimensions, so adding a new concept
+// (hackathon, off-campus drive, scholarship) never needs a new enum value.
+enum OpportunityCategory {
+  EMPLOYMENT
+  COMPETITION
+  SCHOLARSHIP
+  EDUCATION
+  EVENT
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  TEMPORARY
+  FREELANCE
   INTERNSHIP
-  WALKIN
+  APPRENTICESHIP
+  VOLUNTEER
+  PER_DIEM
+  OTHER
+}
+
+// India-specific recruitment taxonomy: which campuses a drive is open to.
+// REGULAR covers ordinary open listings.
+enum RecruitmentMethod {
+  REGULAR
+  ON_CAMPUS
+  OFF_CAMPUS
+  POOL_CAMPUS
+  WALK_IN
+  REFERRAL
+}
+
+enum WorkMode {
+  ONSITE
+  HYBRID
+  REMOTE
+}
+
+enum Sector {
+  PRIVATE
   GOVERNMENT
+  NGO
+  ACADEMIC
+  STARTUP
+  OTHER
+}
+
+// Seniority band, deliberately separate from experienceMin/experienceMax.
+enum ExperienceLevel {
+  ENTRY_LEVEL
+  INTERN
+  ASSOCIATE
+  MID
+  SENIOR
+  LEAD
+  EXECUTIVE
+}
+
+// How the listing entered the platform. Lets a user tell a community
+// submission from a bot scrape, and drives trust scoring.
+enum OpportunitySourceKind {
+  SCRAPED
+  USER_SUBMITTED
+  IMPORTED
+  PARTNER_FEED
 }
 
 enum OpportunityStatus {
@@ -78,14 +150,15 @@ enum GovernmentApplicationStatus {
   CANCELLED
 }
 
+// This is a LEVEL, not a domain. CENTRAL / STATE / PSU describe where in the
+// hierarchy the post sits. Domains (BANKING, DEFENCE, JUDICIARY, EDUCATION)
+// belong on GovernmentJobDetails.domain, not mixed in here.
 enum GovernmentLevel {
   CENTRAL
   STATE
   PSU
-  BANKING
-  DEFENCE
-  JUDICIARY
-  EDUCATION
+  LOCAL
+  OTHER
 }
 
 enum VacancyNature {
@@ -134,12 +207,6 @@ enum EducationLevel {
   DIPLOMA
   DEGREE
   PG
-}
-
-enum WorkMode {
-  ONSITE
-  HYBRID
-  REMOTE
 }
 
 enum SalaryPeriod {
@@ -212,6 +279,10 @@ enum AlertKind {
   APP_UPDATE
   NEW_JOB  // Instant alert when new opportunity is published
   EVENT_REMINDER
+  CAMPUS_DRIVE       // A drive opened for a college the user follows
+  REGISTRATION_OPEN  // Hackathon / competition / scholarship registration opened
+  REGISTRATION_CLOSING
+  APPLICATION_UPDATE
 }
 
 enum AlertDispatchStatus {
@@ -240,7 +311,27 @@ enum OpportunityEventType {
   RESULT
   INTERVIEW
   DOC_VERIFICATION
+  // Stage updates a candidate actually needs to report or an admin declares.
+  ASSESSMENT_RELEASED
+  SHORTLIST
+  DRIVE_POSTPONED
+  DRIVE_CLOSED
+  REOPENED
   OTHER
+}
+
+// Who may assert something happened, and how much weight the claim carries.
+enum EventAuthorRole {
+  USER
+  MODERATOR
+  ADMIN
+  SYSTEM
+}
+
+enum EventVerification {
+  UNVERIFIED
+  VERIFIED
+  REJECTED
 }
 
 enum SocialPlatform {
@@ -305,6 +396,10 @@ model User {
    // Relations
    profile            Profile?
   actions            UserAction[]
+  applications       OpportunityApplication[]
+  sharedIntoRooms    RoomOpportunity[]
+  reportedEvents     OpportunityEvent[] @relation("OpportunityEventAuthor")
+  verifiedEvents     OpportunityEvent[] @relation("OpportunityEventVerifier")
   feedback           ListingFeedback[]
   appFeedback        AppFeedback[]
   savedOpportunities SavedOpportunity[]
@@ -449,6 +544,12 @@ model Profile {
   collegeId          String?
   collegeName        String?
   collegeState       String?
+  // The student's own campus as a real entity. Without this, a saved search can
+  // never join against OpportunityInstitution, so "a drive targets your college"
+  // is not queryable. collegeName/collegeState remain as the display fallback
+  // until a profile has been matched to a known institution.
+  institutionId      String?
+  institution        Institution? @relation("ProfileInstitution", fields: [institutionId], references: [id], onDelete: SetNull)
 
   // Post Graduation (Optional)
   pgCourse          String?
@@ -456,7 +557,7 @@ model Profile {
   pgYear            Int?
 
   // Opportunity Preferences (40% weight)
-  interestedIn    OpportunityType[]
+  interestedIn    OpportunityCategory[] @default([EMPLOYMENT])
   preferredCities String[] // max 5
   workModes       WorkMode[]
 
@@ -577,9 +678,8 @@ model UserAccessRole {
 model Opportunity {
   id   String          @id @default(uuid())
   slug String          @unique // SEO-friendly URL slug
-  type OpportunityType // Enum for type safety
 
-  // Core Fields
+  // ── Identity ───────────────────────────────────────────────────────────────
   title       String
   company     String
   companyWebsite String?
@@ -590,7 +690,22 @@ model Opportunity {
   companyTopics   String[] @default([])
   description String? @db.Text
 
-  // Eligibility Rules (DB-filterable)
+  // ── Classification (independent dimensions, see enums above) ────────────────
+  category         OpportunityCategory @default(EMPLOYMENT)
+  employmentTypes  EmploymentType[]     @default([]) // array: sources can publish more than one
+  recruitmentMethod RecruitmentMethod?  // null = not drive-based
+  workMode         WorkMode?
+  sector           Sector               @default(PRIVATE)
+  experienceLevel  ExperienceLevel?
+
+  // ── Provenance (community + scrapers share one table) ──────────────────────
+  sourceKind      OpportunitySourceKind @default(SCRAPED)
+  sourceExternalId String? // id in the upstream ATS/feed, for stable dedupe
+  sourceLink      String?  // original listing page; may equal applyLink
+  applyLink       String?
+  firstSeenAt     DateTime @default(now())
+
+  // ── Eligibility Rules (DB-filterable) ─────────────────────────────────────
   allowedDegrees      EducationLevel[]
   allowedCourses      String[] // Specific courses like "B.Tech", "MCA", "MBA"
   allowedSpecializations String[] @default([]) // Specific streams like "Computer Science", "Mechanical"
@@ -599,44 +714,83 @@ model Opportunity {
   passoutYearMax      Int?  // Range Optimization
   allowedAvailability Availability[] // When candidate should be available
   requiredSkills      String[]
+
+  // ── Location ───────────────────────────────────────────────────────────────
   locations           String[] // For DB-level filtering
   structuredLocations Json?
+  // Where remote applicants may live from, which is NOT the same as work
+  // location (Google JobPosting + Wellfound both separate these).
+  applicantLocationRequirements String[] @default([])
+
+  // ── Experience ─────────────────────────────────────────────────────────────
   experienceMin       Float?   // Experience in years (e.g. 0, 0.5, 1.5)
   experienceMax       Float?   // Experience in years (e.g. 3, 5.5)
 
-  // Job/Internship Specific
-  workMode       WorkMode?
-  salaryMin      Int? // Legacy: Can map salaryRange to this
+  // ── Compensation ───────────────────────────────────────────────────────────
+  // SOURCE OF TRUTH RULE: OpportunityCompensation rows are authoritative.
+  // salaryMin/salaryMax/salaryRange/salaryPeriod are a denormalised PROJECTION of
+  // the first SALARY row, written by the same save path, purely so the feed can
+  // filter on salary without a join. If they ever disagree, the component rows
+  // win and these are stale — never the other way round.
+  salaryMin      Int?
   salaryMax      Int?
-  salaryRange    String? // New: "6-8 LPA"
+  salaryRange    String? // "6-8 LPA"
   salaryPeriod   SalaryPeriod @default(YEARLY) // Default to Annual (India standard)
-  incentives     String? // Optional: "Rs. 20k - 1L targets"
-  jobFunction    String? // Optional: "Banking", "Sales", "Engineering"
-  selectionProcess String? @db.Text // Optional: "Aptitude > Technical > HR"
-  notesHighlights  String? @db.Text // Optional: bond, training, special conditions
-  stipend        String? // New: "10k/month"
-  employmentType String? // New: "full-time"
-  tags           String[] @default([])
-  sourceLink     String? // Original listing/source page; may equal applyLink when only one URL exists
-  applyLink      String?
-  applicationDetails Json?
+  stipend        String? // "10k/month" — display only. A STIPEND row in
+                          // OpportunityCompensation is the structured truth.
+  incentives     String? // "Rs. 20k - 1L targets" — display only, same rule.
 
-  // Walk-in Specific (nullable for non-walk-ins)
-  walkInDetails WalkInDetails?
+  // ── Application ────────────────────────────────────────────────────────────
+  jobFunction    String? // "Banking", "Sales", "Engineering"
+  selectionProcess String? @db.Text // "Aptitude > Technical > HR"
+  notesHighlights  String? @db.Text // bond, training, special conditions
+  applicationStartDate   DateTime?
+  applicationDeadline    DateTime? // drives + competitions close on this
+  applicationDetails Json?
+  tags           String[] @default([])
+
+  // ── Time-bounded events (competitions, hackathons, workshops) ──────────────
+  // Only populated for category != EMPLOYMENT, or a dated drive.
+  startsAt       DateTime?
+  endsAt         DateTime?
+  registrationDeadline DateTime?
+
+  // ── Kind-specific details ──────────────────────────────────────────────────
+  // Only ever add a relation here when the data needs real SQL filtering or
+  // joins. Everything else belongs in `attributes`.
+  driveDetails        DriveDetails?
+  eventDetails        EventDetails?
   governmentJobDetails GovernmentJobDetails?
 
-  // Expiry Management
+  // Long tail for a kind, no migration required to add a new kind.
+  attributes Json?
+
+  // ── Trust ──────────────────────────────────────────────────────────────────
+  // FresherFlow is a community: members submit listings too, not just bots. A
+  // visible, sortable trust score lets a user tell a community submission from
+  // a scrape, and lets ranking prefer verified sources as volume grows.
+  // Starts neutral at 50 (unknown), not at 0 (untrustworthy).
+  trustScore        Float   @default(50)
+  // Deliberately NOT UserTrustLevel: BANNED/CONTRIBUTOR/MODERATOR describe a
+  // person. A listing has its own verification state.
+  trustLevel        OpportunityTrustLevel @default(UNVERIFIED)
+  reviewedByUserId  String?
+  reviewedAt        DateTime?
+
+  // ── Expiry Management ──────────────────────────────────────────────────────
   expiresAt DateTime?
   expiredAt DateTime?
   status    OpportunityStatus @default(DRAFT) // Starts as draft
 
-  // Soft Delete Support (PRODUCTION MUST-HAVE)
+  // ── Soft Delete Support (PRODUCTION MUST-HAVE) ─────────────────────────────
   deletedAt      DateTime? // Null = not deleted, set = soft deleted
   deletionReason String? // Why was it removed (audit trail)
 
-  // Metadata - Referential Integrity with Admin roles
-  postedByUserId String
-  user           User    @relation(fields: [postedByUserId], references: [id])
+  // ── Authorship ─────────────────────────────────────────────────────────────
+  // Optional: bot-scraped listings have no human author. Community
+  // submissions do, and `sourceKind` distinguishes the two.
+  postedByUserId String?
+  user           User?   @relation(fields: [postedByUserId], references: [id])
   postedAt        DateTime @default(now())
   publishedAt     DateTime?
   updatedAt       DateTime @default(now()) @updatedAt
@@ -671,18 +825,42 @@ model Opportunity {
   submissions JobSubmission[]
    reports     Report[]
    notifications Notification[]
-   companyId   String?
+  // The organisation that owns this listing. A recruiter, a college placement
+  // cell or a training institute posts through its Organization account, so it
+  // can manage and edit what it posted. Null for scraped rows whose employer has
+  // not been matched to an Organization yet — `company` stays as the display
+  // value in that case. (This replaces an old `companyId` string that pointed at
+  // nothing, because no Company model existed.)
+  organizationId String?
+  organization   Organization? @relation("OrganizationOpportunities", fields: [organizationId], references: [id], onDelete: SetNull)
    interviewExperiences InterviewExperience[]
    applicationUpdates ApplicationUpdate[]
    salaryReports  SalaryReport[]
+   institutions  OpportunityInstitution[]
+   applications  OpportunityApplication[]
+   compensations OpportunityCompensation[]
+   roomListings  RoomOpportunity[]
+  // The hiring process this listing follows. Null means "use the platform
+  // default template" — the normal case for scraped listings.
+  pipelineId    String?
+  pipeline      HiringPipeline? @relation(fields: [pipelineId], references: [id], onDelete: SetNull)
 
    // Performance Search optimization
   search_vector  Unsupported("tsvector")? @default(dbgenerated("''::tsvector"))
 
   // DB-level filtering indexes
-  @@index([companyId])
-  @@index([status, deletedAt, type, postedAt(desc)])
+  @@index([organizationId])
+  @@index([status, deletedAt, category, postedAt(desc)])
   @@index([status, postedAt(desc)])
+  @@index([category, sector, status])
+  @@index([recruitmentMethod, status])
+  @@index([workMode, status])
+  @@index([experienceLevel, status])
+  @@index([sourceKind, postedAt(desc)])
+  @@index([trustScore(desc), status])
+  @@index([sourceExternalId])
+  @@index([applicationDeadline])
+  @@index([registrationDeadline])
   @@index([trendingScore(desc)])
   @@index([sharesCount(desc)])
   @@index([search_vector], type: Gin)
@@ -691,7 +869,9 @@ model Opportunity {
   @@index([allowedCourses], type: Gin)
   @@index([allowedSpecializations], type: Gin)
   @@index([locations], type: Gin)
+  @@index([applicantLocationRequirements], type: Gin)
   @@index([requiredSkills], type: Gin)
+  @@index([employmentTypes], type: Gin)
   @@index([tags], type: Gin)
   @@index([salaryMin, salaryMax])
   @@index([companyIndustry], type: Gin)
@@ -707,11 +887,66 @@ model Opportunity {
 }
 
 
-model WalkInDetails {
+// Compensation components. Ashby exposes salary + equity + bonus and Wellfound
+// salary + equity, so a single min/max pair cannot represent a real offer.
+//
+// Opportunity.salaryMin/salaryMax/salaryPeriod stay as the fast, indexed path
+// because salary is what users actually filter on. This table is the full
+// picture: equity, bonus, commission, per-diem, and split offers. Anything a
+// new kind invents still goes in `attributes` — this is only for the parts
+// worth querying and comparing.
+enum CompensationType {
+  SALARY
+  STIPEND
+  EQUITY
+  BONUS
+  COMMISSION
+  PER_DIEM
+  REIMBURSEMENT
+  OTHER
+}
+
+enum EquityUnit {
+  ESOP
+  RSU
+  OPTIONS
+  SHARES
+  PHANTOM
+  OTHER
+}
+
+model OpportunityCompensation {
+  id            String           @id @default(uuid())
+  opportunityId String
+  type          CompensationType
+  minAmount     Int?             // cash amounts, in the row's currency
+  maxAmount     Int?
+  currency      String           @default("INR")
+  // null for equity, which has no monthly/yearly period
+  period        SalaryPeriod?
+  equityMin     Float?           // option/RSU counts
+  equityMax     Float?
+  equityUnit    EquityUnit?
+  note          String?          // "0.5% of current valuation", "joining bonus"
+  isNegotiable  Boolean          @default(false)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId, type])
+  @@index([type, maxAmount])
+  @@index([equityUnit])
+}
+
+// A dated, venue-based recruitment drive. Shared by every drive-style
+// RecruitmentMethod (WALK_IN, ON_CAMPUS, OFF_CAMPUS, POOL_CAMPUS) so we do not
+// need one detail table per method. Replaces the old WalkInDetails.
+model DriveDetails {
   id            String @id @default(uuid())
   opportunityId String @unique
 
-  dates             DateTime[] // Multiple walk-in dates
+  dates             DateTime[] // Multiple drive dates
   dateRange         String?    // e.g. "24th Aug - 28th Aug"
   timeRange         String?    // e.g. "9:30 AM - 1:00 PM"
   venueAddress      String     @db.Text
@@ -736,6 +971,96 @@ model WalkInDetails {
   @@index([latitude, longitude])
 }
 
+// Competitions, hackathons, workshops, conferences. These are events, not
+// employment: they have prizes, team sizes and tracks, and they close on a
+// deadline. Dates live on Opportunity (startsAt/endsAt/registrationDeadline).
+model EventDetails {
+  id            String @id @default(uuid())
+  opportunityId String @unique
+
+  prizeAmount        Int?     // in INR; per-team totals for competitions
+  prizeCurrency      String?  @default("INR")
+  prizeBreakdown     Json?    // [{ place, amount }]
+  teamSizeMin        Int?
+  teamSizeMax        Int?
+  isTeamEvent        Boolean  @default(false)
+  participantLimit   Int?
+  tracks             String[] @default([])
+  eligibilityNotes   String?  @db.Text
+  rulesUrl           String?
+  registrationUrl    String?
+  platformUrl        String?  // Where the event actually happens
+  supportEmail       String?
+  resultAnnouncementDate DateTime?
+  organizerName      String?
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([prizeAmount])
+  @@index([teamSizeMin, teamSizeMax])
+}
+
+// Colleges and universities. Off-campus and pool-campus drives target named
+// institutions, and users want alerts when a drive targets their campus, so
+// institutions must be first-class rather than a free-text tag.
+model Institution {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  city      String?
+  state     String?
+  // "UNIVERSITY" | "COLLEGE" | "INSTITUTE" | "POLYTECHNIC" | "SCHOOL" | "OTHER"
+  kind      String   @default("COLLEGE")
+  website   String?
+  aliases   String[] @default([])
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  opportunities OpportunityInstitution[]
+  // Students who attend here — the join that makes campus alerts possible.
+  alumniProfiles  Profile[]            @relation("ProfileInstitution")
+  followedBySearches SavedSearchInstitution[]
+  // A college that also has an account on the platform. One canonical record,
+  // not two competing ones.
+  organization    Organization?        @relation("OrganizationInstitution")
+
+  @@index([name])
+  @@index([city, state])
+  @@index([kind])
+}
+
+// "Alert me when a drive targets my college" needs to be a real join, because
+// SavedSearch.filters is a serialized Json blob and cannot be filtered in SQL.
+model SavedSearchInstitution {
+  savedSearchId String
+  institutionId String
+  // "TARGETED" = drive run for this college, "ELIGIBLE" = open to it
+  targeting     String @default("TARGETED")
+
+  savedSearch SavedSearch @relation(fields: [savedSearchId], references: [id], onDelete: Cascade)
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@id([savedSearchId, institutionId])
+  @@index([institutionId, targeting])
+  @@index([institutionId])
+}
+
+model OpportunityInstitution {
+  opportunityId String
+  institutionId String
+
+  // "ELIGIBLE" = open to this college, "TARGETED" = drive is run for it
+  targeting     String     @default("ELIGIBLE")
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  institution Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+
+  @@id([opportunityId, institutionId])
+  @@index([institutionId, targeting])
+  @@index([institutionId])
+}
+
 model GovernmentJobDetails {
   id                     String   @id @default(uuid())
   opportunityId          String   @unique
@@ -751,6 +1076,8 @@ model GovernmentJobDetails {
   applicationStatus      GovernmentApplicationStatus?
   governmentLevel        GovernmentLevel?
   jobCategory            String[] @default([])
+  // Recruiting DOMAIN, not level: BANKING, DEFENCE, JUDICIARY, EDUCATION, RAILWAYS.
+  domain                 String?
   examName               String?   // e.g. "SSC CGL", "RRB ALP", "UGC NET"
   postName               String?   // e.g. "Assistant Section Officer, Inspector of Income Tax"
   
@@ -786,6 +1113,12 @@ model GovernmentJobDetails {
   reservationDetails     Json?
   importantInstructions  String?  @db.Text
   
+  // CANONICAL DATE RULE: the Opportunity-level applicationStartDate /
+  // applicationDeadline (real DateTime) are the source of truth and drive
+  // alerts and expiry. The fields below are the RAW values as printed in the
+  // notification, kept verbatim because government notices state dates in
+  // formats ("15.08.2026", "as notified") that do not always parse. Never read
+  // these for behaviour — parse them into the Opportunity columns instead.
   applicationStartDate   String?
   applicationEndDate     String?
   examDate               String?
@@ -858,6 +1191,66 @@ model UserAction {
   opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
 
   @@unique([userId, opportunityId])
+}
+
+// ── The community funnel ─────────────────────────────────────────────────────
+// A user applying to a job, registering for a hackathon and enrolling in a
+// scholarship are the same act: they committed to an opportunity. One record
+// covers every category, so the taxonomy never has to special-case it.
+//
+// This is deliberately separate from UserAction, which stays for lightweight
+// signals (VIEWED / SHARED / PLANNED / OA) and allows only one row per
+// user+opportunity, so it cannot hold a real funnel.
+// Verification state of a LISTING. Intentionally separate from UserTrustLevel,
+// which describes a person (BANNED / CONTRIBUTOR / MODERATOR).
+enum OpportunityTrustLevel {
+  UNVERIFIED
+  COMMUNITY_REPORTED
+  VERIFIED
+  FLAGGED
+  REJECTED
+}
+
+enum ApplicationStage {
+  APPLIED
+  REGISTERED
+  IN_REVIEW
+  ASSESSMENT
+  INTERVIEW
+  OFFERED
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+  SKIPPED
+  PARTICIPATED
+}
+
+model OpportunityApplication {
+  id            String           @id @default(uuid())
+  userId        String
+  opportunityId String
+  stage         ApplicationStage @default(APPLIED)
+  // The exact step of THIS employer's process that the candidate reached —
+  // "Technical round 2", "Case study". `stage` above stays the coarse funnel for
+  // reporting; this is the fine-grained truth from HiringPipeline.
+  currentStageId   String?
+  currentStage     RecruitmentStage?   @relation(fields: [currentStageId], references: [id], onDelete: SetNull)
+  // Kind of the current step, denormalised for filtering without a join.
+  currentStageKind RecruitmentStageKind?
+  stageEnteredAt   DateTime?
+  // Kind-specific result: "Offer accepted", "Won 1st place", "Cleared round 2"
+  outcome       String?
+  outcomeData   Json?
+  appliedAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, opportunityId])
+  @@index([opportunityId, stage])
+  @@index([userId, appliedAt(desc)])
+  @@index([stage])
 }
 
 model ListingFeedback {
@@ -1025,13 +1418,27 @@ model OpportunityEvent {
   title         String
   notes         String?              @db.Text
   sourceLink    String?
+  // Provenance: who told us, and with what authority. A candidate who received
+  // an assessment mail reports it as USER/UNVERIFIED; a moderator or admin
+  // confirms it. Without this, a rumour looks like an official notice.
+  authorId      String?
+  authorRole    EventAuthorRole      @default(USER)
+  verification  EventVerification    @default(UNVERIFIED)
+  verifiedByUserId String?
+  verifiedAt   DateTime?
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
 
   opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  author      User?       @relation("OpportunityEventAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  verifiedBy  User?       @relation("OpportunityEventVerifier", fields: [verifiedByUserId], references: [id], onDelete: SetNull)
 
   @@index([opportunityId, eventDate])
   @@index([eventDate])
+  // The moderation queue: unverified reports waiting for a human.
+  @@index([verification, createdAt])
+  @@index([authorId])
+  @@index([eventType, verification])
 }
 
 enum TelegramBroadcastStatus {
@@ -1130,7 +1537,7 @@ model IngestionSource {
   endpoint            String
   enabled             Boolean             @default(true)
   runFrequencyMinutes Int                 @default(60)
-  defaultType         OpportunityType     @default(JOB)
+  defaultCategory     OpportunityCategory    @default(EMPLOYMENT)
   createdByUserId     String?
   lastRunAt           DateTime?
   lastSuccessAt       DateTime?
@@ -1176,7 +1583,7 @@ model RawOpportunity {
   company             String?
   sourceLink          String?
   applyLink           String?
-  suggestedType       OpportunityType?
+  suggestedCategory   OpportunityCategory?
   fresherScore        Int?
   reasonFlags         String[]             @default([])
   mappedOpportunityId String?
@@ -1194,8 +1601,11 @@ model RawOpportunity {
   @@index([status, createdAt])
   @@index([sourceLink])
   @@index([applyLink])
-  @@index([sourceExternalId])
   @@index([createdByUserId])
+  // Ingestion identity is the PAIR, not the external id alone: Greenhouse job
+  // 123 and another source's job 123 are different records. Postgres treats
+  // NULL as distinct, so rows with no external id are still allowed.
+  @@unique([sourceId, sourceExternalId])
 }
 
 model DomainReputation {
@@ -1317,6 +1727,11 @@ enum NotificationType {
   COMMENT_ON_EXPIRED
   ROOM_HELPFUL
   INTRO_REQUEST
+  CAMPUS_DRIVE_MATCH
+  REGISTRATION_OPEN
+  REGISTRATION_CLOSING
+  OPPORTUNITY_APPLIED
+  APPLICATION_STAGE_CHANGED
 }
 
 model CommentVote {
@@ -1555,6 +1970,14 @@ model Organization {
   members      OrganizationMembership[]
   invites      OrganizationInvite[]
   interests    CandidateInterest[]
+  // Listings this organisation owns and can manage.
+  opportunities Opportunity[] @relation("OrganizationOpportunities")
+  // The hiring process this organisation runs, reusable across its listings.
+  pipelines     HiringPipeline[] @relation("OrganizationPipelines")
+  // A college account points at its canonical Institution record, so campus
+  // targeting has one source of truth instead of two competing ones.
+  institutionId String?       @unique
+  institution   Institution?  @relation("OrganizationInstitution", fields: [institutionId], references: [id], onDelete: SetNull)
 }
 
 model OrganizationMembership {
@@ -1826,13 +2249,18 @@ model ApplicationUpdate {
 // PHASE 3: ROOMS (Persistent Communities)
 // ============================================================================
 
-enum RoomType {
-  BATCH
-  SKILL
-  LOCATION
-  COMPANY
-  TOPIC
-  CUSTOM
+// A Room is not a CommunityPost, so it gets its own lifecycle enum rather than
+// borrowing CommunityPostStatus.
+enum RoomStatus {
+  ACTIVE
+  ARCHIVED
+  DELETED
+}
+
+enum RoomMemberRole {
+  MEMBER
+  MODERATOR
+  ADMIN
 }
 
 model Room {
@@ -1841,12 +2269,19 @@ model Room {
   name        String   @db.VarChar(100)
   description String?  @db.Text
   icon        String?  @db.VarChar(10)
-  type        RoomType @default(CUSTOM)
+  // A room is a COMMUNITY, not a saved search. It is described by free-form
+  // tags: #2026, #mca, #swe, #hyderabad, #tcs. This replaces a RoomType enum
+  // plus a structured criteria object, which turned rooms into a third matching
+  // system alongside SavedSearch and forced a single dimension per room.
+  // One room can now span company + batch + role at once.
+  tags        String[] @default([])
   memberCount Int      @default(0)
   postCount   Int      @default(0)
-  jobCount    Int      @default(0)
+  // Not "jobCount": the platform also carries competitions, scholarships,
+  // education and events.
+  opportunityCount Int @default(0)
   isPublic    Boolean  @default(true)
-  status      CommunityPostStatus @default(ACTIVE)
+  status      RoomStatus @default(ACTIVE)
   createdByUserId String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -1854,20 +2289,51 @@ model Room {
   createdBy User?         @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
   members   RoomMember[]
   posts     CommunityPost[]
+  // Opportunities this group surfaces, by deliberate sharing or curation.
+  // Without this join, the counter above was an integer nobody could maintain
+  // or query.
+  opportunities RoomOpportunity[]
 
   @@index([slug])
-  @@index([type])
+  @@index([tags], type: Gin)
   @@index([memberCount(sort: Desc)])
   @@index([createdAt(sort: Desc)])
 
   @@map("areas")
 }
 
+// Opportunities deliberately surfaced inside a community. They are shared or
+// curated by members and moderators — NOT automatically matched from the room's
+// tags. Personal matching is SavedSearch's job; a room is a place people gather.
+// Room.opportunityCount is a denormalised counter of these rows.
+enum RoomOpportunityReason {
+  // MATCHED is deliberately gone. Automatic surfacing belongs to SavedSearch
+  // (personal matching) and a future recommendation engine, not to the room.
+  PINNED   // an owner or moderator curated it to the top
+  SHARED   // a member shared it into the community
+}
+
+model RoomOpportunity {
+  roomId        String
+  opportunityId String
+  reason        RoomOpportunityReason @default(SHARED)
+  addedByUserId String?
+  createdAt     DateTime      @default(now())
+
+  room        Room        @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  addedBy     User?       @relation(fields: [addedByUserId], references: [id], onDelete: SetNull)
+
+  @@id([roomId, opportunityId])
+  @@index([opportunityId])
+  @@index([roomId, reason])
+}
+
 model RoomMember {
   id        String   @id @default(cuid())
   roomId    String
   userId    String
-  role      String   @default("MEMBER") // MEMBER, MODERATOR, ADMIN
+  role      RoomMemberRole @default(MEMBER)
   joinedAt  DateTime @default(now())
 
   room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
@@ -1889,6 +2355,64 @@ enum ReferralRequestStatus {
   CLOSED
 }
 
+// ── Hiring pipeline ───────────────────────────────────────────────────────────
+// A hiring process is an ORDERED LIST OF STAGES that differs per company: one
+// firm runs screening, two technical rounds, then HR and an offer; another runs
+// a coding assessment and a case study. Encoding that as a fixed enum is what
+// made the lifecycle vocabulary grow forever, so the concrete steps are DATA.
+//
+// RecruitmentStageKind stays a small, stable vocabulary (it is the axis we want
+// to filter and report on). Everything company-specific — how many rounds, what
+// they are called, how long each takes — lives in RecruitmentStage rows.
+enum RecruitmentStageKind {
+  SCREENING
+  ASSESSMENT
+  INTERVIEW
+  CASE_STUDY
+  GROUP_EXERCISE
+  OFFER
+  TRAINING
+  ONBOARDING
+  OTHER
+}
+
+model HiringPipeline {
+  id             String        @id @default(uuid())
+  // The organisation that owns this process. Null for the platform default
+  // template, which is used for scraped listings whose employer has no account.
+  organizationId String?
+  organization   Organization? @relation("OrganizationPipelines", fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  isDefault      Boolean       @default(false)
+  // The platform-supplied template, not editable by an organisation.
+  isTemplate     Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  stages        RecruitmentStage[]
+  opportunities Opportunity[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+model RecruitmentStage {
+  id           String               @id @default(uuid())
+  pipelineId   String
+  kind         RecruitmentStageKind
+  // Company-specific label: "Technical round 2", "Case study", "Onboarding".
+  name         String
+  order        Int
+  expectedDays Int?
+
+  pipeline     HiringPipeline         @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  applications OpportunityApplication[]
+
+  @@unique([pipelineId, order])
+  @@index([kind])
+  @@index([pipelineId, order])
+}
+
 model SavedSearch {
   id          String   @id @default(cuid())
   userId      String
@@ -1902,6 +2426,7 @@ model SavedSearch {
   updatedAt   DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  institutions SavedSearchInstitution[]
 
   @@index([userId])
   @@index([alertEnabled, lastNotifiedAt])

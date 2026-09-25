@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import prisma, { OpportunityStatus as DbOpportunityStatus, OpportunityType as DbOpportunityType } from '../../../infrastructure/database/prisma';
+import prisma, { OpportunityStatus as DbOpportunityStatus } from '../../../infrastructure/database/prisma';
 import { Prisma } from '@fresherflow/database';
-import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
+import { OpportunityStatus } from '@fresherflow/types';
 import { searchOpportunities } from '../../../application/opportunity';
 import {
     normalizeTypeParam, parseAdminStatusFilter, buildExpiredWhere, buildIdOrSlugWhere,
@@ -25,8 +25,13 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         const andFilters: Prisma.OpportunityWhereInput[] = [];
         const now = new Date();
 
+        // A single legacy `type` param can now expand into several dimensions,
+        // so push each as its own AND clause rather than assigning one field.
         const normalizedType = typeof type === 'string' ? normalizeTypeParam(type) : undefined;
-        if (normalizedType) where.type = normalizedType as unknown as DbOpportunityType;
+        if (normalizedType?.category) andFilters.push({ category: normalizedType.category });
+        if (normalizedType?.recruitmentMethod) andFilters.push({ recruitmentMethod: normalizedType.recruitmentMethod });
+        if (normalizedType?.employmentType) andFilters.push({ employmentTypes: { has: normalizedType.employmentType } });
+        if (normalizedType?.sector) andFilters.push({ sector: normalizedType.sector });
 
         if (typeof sector === 'string' && sector) {
             if (sector === 'GOVERNMENT') {
@@ -107,7 +112,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
                 const fetchedOpportunities = await prisma.opportunity.findMany({
                     where: { id: { in: hitIds } },
                     include: {
-                        ...(shouldIncludeWalkInDetails ? { walkInDetails: true } : {}),
+                        ...(shouldIncludeWalkInDetails ? { driveDetails: true } : {}),
                         governmentJobDetails: true,
                         ...(shouldIncludeCounts ? { _count: { select: { actions: true, feedback: true } } } : {}),
                         socialPosts: true,
@@ -151,7 +156,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
             ...(take !== undefined ? { take } : {}),
             ...(skip !== undefined ? { skip } : {}),
             include: {
-                ...(shouldIncludeWalkInDetails ? { walkInDetails: true } : {}),
+                ...(shouldIncludeWalkInDetails ? { driveDetails: true } : {}),
                 governmentJobDetails: true,
                 ...(shouldIncludeCounts ? { _count: { select: { actions: true, feedback: true } } } : {}),
                 socialPosts: true,
@@ -195,8 +200,8 @@ router.get('/summary', async (_req: Request, res: Response, next: NextFunction) 
             await prisma.$transaction([
                 prisma.opportunity.count({ where: { deletedAt: null } }),
                 prisma.opportunity.count({ where: liveWhere }),
-                prisma.opportunity.count({ where: { deletedAt: null, type: OpportunityType.WALKIN as unknown as DbOpportunityType } }),
-                prisma.opportunity.count({ where: { ...liveWhere, type: OpportunityType.WALKIN as unknown as DbOpportunityType } }),
+                prisma.opportunity.count({ where: { deletedAt: null, recruitmentMethod: 'WALK_IN' } }),
+                prisma.opportunity.count({ where: { ...liveWhere, recruitmentMethod: 'WALK_IN' } }),
                 prisma.opportunity.count({ where: { status: OpportunityStatus.DRAFT as unknown as DbOpportunityStatus, deletedAt: null } }),
                 prisma.opportunity.count({ where: { status: OpportunityStatus.ARCHIVED as unknown as DbOpportunityStatus, deletedAt: null } }),
                 prisma.opportunity.count({ where: { deletedAt: { not: null } } }),
@@ -227,7 +232,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
         const opportunity = await prisma.opportunity.findFirst({
             where: buildIdOrSlugWhere(id),
             include: {
-                walkInDetails: true,
+                driveDetails: true,
                 governmentJobDetails: true,
                 events: { orderBy: { eventDate: 'asc' } },
                 socialPosts: { orderBy: { createdAt: 'desc' } },

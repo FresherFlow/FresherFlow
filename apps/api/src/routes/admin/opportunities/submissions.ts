@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import prisma, { RawOpportunityStatus as DbRawStatus, OpportunityStatus as DbOpportunityStatus, OpportunityType as DbOpportunityType } from '../../../infrastructure/database/prisma';
-import { RawOpportunityStatus, OpportunityStatus, OpportunityType, Opportunity } from '@fresherflow/types';
+import prisma, { RawOpportunityStatus as DbRawStatus, OpportunityStatus as DbOpportunityStatus, } from '../../../infrastructure/database/prisma';
+import { RawOpportunityStatus, OpportunityStatus, Opportunity } from '@fresherflow/types';
+import { resolveOpportunityDimensions } from './_helpers';
 import { generateSlug } from '@fresherflow/utils';
 import { handleOpportunityPublished } from '../../../infrastructure/services/publish.service';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
@@ -39,14 +40,18 @@ router.post('/bulk', async (req: Request & { adminId?: string }, res: Response, 
             for (const rawOpp of rawOpps) {
                 const tempId = crypto.randomUUID();
                 const slug = generateSlug(rawOpp.title || 'Untitled', rawOpp.company || 'Unknown', tempId);
-                const resolvedType = rawOpp.suggestedType || OpportunityType.JOB;
+                const { category, recruitmentMethod, employmentTypes } = resolveOpportunityDimensions({
+                    category: rawOpp.suggestedCategory ?? undefined,
+                });
 
                 // Create the published opportunity
                 const opportunity = await prisma.opportunity.create({
                     data: {
                         id: tempId,
                         slug,
-                        type: resolvedType as unknown as DbOpportunityType,
+                        category,
+                        recruitmentMethod,
+                        employmentTypes,
                         title: rawOpp.title || 'Untitled Opportunity',
                         company: rawOpp.company || 'Unknown Company',
                         sourceLink: rawOpp.sourceLink,

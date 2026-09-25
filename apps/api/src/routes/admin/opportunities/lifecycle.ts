@@ -43,7 +43,7 @@ router.post(
             if (existing.slug) adminCache.invalidate(existing.slug as string);
             adminCache.invalidateLists();
 
-            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
+            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.category as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
             // void StaticFeedService.scheduleRefresh();
         } catch (error) {
             next(error);
@@ -82,7 +82,7 @@ router.post(
             void invalidatePublicOpportunityCache({
                 idsOrSlugs: [existing.id as string, existing.slug as string, opportunity.id as string, opportunity.slug as string],
                 purgeFeed: true,
-                type: opportunity.type as string,
+                type: opportunity.category as string,
                 tags: getGranularTagsForOpportunity(opportunity as unknown as Partial<Opportunity>)
             });
             // void StaticFeedService.scheduleRefresh();
@@ -127,7 +127,7 @@ router.delete(
             if (existing.slug) adminCache.invalidate(existing.slug as string);
             adminCache.invalidateLists();
 
-            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
+            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.category as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
             // void StaticFeedService.scheduleRefresh();
         } catch (error) {
             next(error);
@@ -165,7 +165,7 @@ router.delete(
             if (existing.slug) adminCache.invalidate(existing.slug as string);
             adminCache.invalidateLists();
 
-            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
+            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.category as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
         } catch (error) {
             next(error);
         }
@@ -237,7 +237,7 @@ router.post(
             if (existing.slug) adminCache.invalidate(existing.slug as string);
             adminCache.invalidateLists();
 
-            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
+            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.category as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
             // void StaticFeedService.scheduleRefresh();
         } catch (error) {
             next(error);
@@ -275,7 +275,7 @@ router.post(
             if (existing.slug) adminCache.invalidate(existing.slug as string);
             adminCache.invalidateLists();
 
-            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
+            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.category as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
             // void StaticFeedService.scheduleRefresh();
         } catch (error) {
             next(error);

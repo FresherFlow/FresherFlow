@@ -47,10 +47,14 @@ export async function rejectOpportunity(opportunityId: string, adminId: string, 
 
     // 2. Adjust User Reputation
     const action = isSpam ? 'INVALID_SHARE' : 'DUPLICATE_SHARE';
-    const contributor = await tx.user.findUnique({
-      where: { id: opportunity.postedByUserId },
-      select: { id: true, trustScore: true }
-    });
+    // Anonymous/imported opportunities have no author, so there is no
+    // reputation to adjust. Skip rather than look up a null id.
+    const contributor = opportunity.postedByUserId
+      ? await tx.user.findUnique({
+          where: { id: opportunity.postedByUserId },
+          select: { id: true, trustScore: true }
+        })
+      : null;
 
     if (contributor) {
       const nextScore = calculateNewTrustScore(contributor.trustScore || 0, action);

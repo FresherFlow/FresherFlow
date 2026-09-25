@@ -41,7 +41,8 @@ type MetricsV2Response = {
         id: string;
         title: string;
         company: string;
-        type: string;
+        category: string;
+  recruitmentMethod: string | null;
         postedAt: string;
     }[];
 };
@@ -118,7 +119,8 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
                 id: true,
                 title: true,
                 company: true,
-                type: true,
+                category: true,
+                recruitmentMethod: true,
                 postedAt: true
             }
         })
@@ -141,7 +143,8 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
         id: item.id,
         title: item.title,
         company: item.company,
-        type: item.type,
+        category: item.category,
+        recruitmentMethod: item.recruitmentMethod,
         postedAt: item.postedAt.toISOString()
     }));
 

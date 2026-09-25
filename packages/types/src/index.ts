@@ -7,7 +7,15 @@
 // ========================================
 
 import {
-    OpportunityType,
+    OpportunityCategory,
+    EmploymentType,
+    RecruitmentMethod,
+    Sector,
+    ExperienceLevel,
+    OpportunitySourceKind,
+    ApplicationStage,
+    CompensationType,
+    EquityUnit,
     GovernmentApplicationStatus,
     GovernmentLevel,
     VacancyNature,
@@ -40,7 +48,7 @@ import {
     InterviewResult,
     InterviewDifficulty,
     ApplicationStatus,
-    RoomType,
+    RoomOpportunityReason,
     ReferralRequestStatus,
     SalaryReportType
 } from './enums.js';
@@ -88,7 +96,7 @@ export interface Profile {
     pgYear: number | null;
 
     // Preferences (40% weight)
-    interestedIn: OpportunityType[];
+    interestedIn: OpportunityCategory[];
     preferredCities: string[];
     workModes: WorkMode[];
 
@@ -137,7 +145,14 @@ export interface Admin {
 export interface Opportunity {
     id: string;
     slug: string; // SEO-friendly URL slug
-    type: OpportunityType;
+    // Classification (v2): independent dimensions instead of one mixed enum.
+    category: OpportunityCategory;
+    employmentTypes: EmploymentType[];
+    recruitmentMethod?: RecruitmentMethod | null;
+    sector: Sector;
+    experienceLevel?: ExperienceLevel | null;
+    sourceKind: OpportunitySourceKind;
+    sourceExternalId?: string | null;
     status: OpportunityStatus;
 
     // Basic Info
@@ -163,6 +178,7 @@ export interface Opportunity {
 
     // Location
     locations: string[];
+    applicantLocationRequirements?: string[];
     workMode?: WorkMode;
     experienceMin?: number;
     experienceMax?: number;
@@ -177,8 +193,17 @@ export interface Opportunity {
     selectionProcess?: string;
     notesHighlights?: string;
     stipend?: string;
-    employmentType?: string;
     tags?: string[];
+
+    // Deadlines & time-bounded events
+    applicationStartDate?: string | null;
+    applicationDeadline?: string | null;
+    startsAt?: string | null;
+    endsAt?: string | null;
+    registrationDeadline?: string | null;
+
+    // Kind-specific long tail (no migration needed to add a new kind)
+    attributes?: Record<string, unknown> | null;
 
     // UI Mapping Support
     salary?: {
@@ -494,7 +519,7 @@ export interface RawOpportunity {
     company?: string | null;
     sourceLink?: string | null;
     applyLink?: string | null;
-    suggestedType?: OpportunityType | null;
+    suggestedCategory?: OpportunityCategory | null;
     fresherScore?: number | null;
     reasonFlags: string[];
     mappedOpportunityId?: string | null;
@@ -580,7 +605,7 @@ export interface UpdateEducationRequest {
 }
 
 export interface UpdatePreferencesRequest {
-    interestedIn: OpportunityType[];
+    interestedIn: OpportunityCategory[];
     preferredCities: string[];
     workModes: WorkMode[];
 }
@@ -591,7 +616,7 @@ export interface UpdateReadinessRequest {
 }
 
 export interface CreateOpportunityRequest {
-    type: OpportunityType;
+    category: OpportunityCategory;
     title: string;
     company: string;
     description: string;
@@ -637,14 +662,14 @@ export interface SubmitFeedbackRequest {
 // ========================================
 
 export interface OpportunityFilters {
-    type?: OpportunityType;
+    category?: OpportunityCategory;
     city?: string;
     tag?: string;
     closingSoon?: boolean;
 }
 
 export interface AdminOpportunityFilters {
-    type?: OpportunityType;
+    category?: OpportunityCategory;
     status?: OpportunityStatus;
 }
 
@@ -662,7 +687,7 @@ export interface ParsedJob {
     locations: string[];
     structuredLocations?: StructuredLocation[];
     skills: string[];
-    type: OpportunityType;
+    category: OpportunityCategory;
     allowedPassoutYears: number[];
     isFresherOnly: boolean;
     allowedDegrees: string[];
@@ -1014,7 +1039,7 @@ export interface CreateCompanyTargetPayload {
 export interface OpportunityCardDTO {
     id: string;
     slug: string;
-    type: OpportunityType;
+    category: OpportunityCategory;
     status: OpportunityStatus;
     title: string;
     company: string;
@@ -1031,7 +1056,11 @@ export interface OpportunityCardDTO {
     salaryRange?: string;
     salaryPeriod?: SalaryPeriod;
     stipend?: string;
-    employmentType?: string;
+    employmentTypes?: EmploymentType[];
+    recruitmentMethod?: RecruitmentMethod | null;
+    sector?: Sector;
+    experienceLevel?: ExperienceLevel | null;
+    sourceKind?: OpportunitySourceKind;
     tags?: string[];
     requiredSkills: string[];
     allowedPassoutYears?: number[];
@@ -1056,11 +1085,89 @@ export interface OpportunityCardDTO {
     };
 }
 
+// A user applying to a job, registering for a hackathon and enrolling in a
+// scholarship are the same act, so one record covers every category.
+export interface OpportunityApplication {
+    id: string;
+    userId: string;
+    opportunityId: string;
+    stage: ApplicationStage;
+    outcome?: string | null;
+    outcomeData?: Record<string, unknown> | null;
+    appliedAt: string;
+    updatedAt: string;
+}
+
+export interface CompensationComponent {
+    id: string;
+    opportunityId: string;
+    type: CompensationType;
+    minAmount?: number | null;
+    maxAmount?: number | null;
+    currency: string;
+    period?: SalaryPeriod | null;
+    equityMin?: number | null;
+    equityMax?: number | null;
+    equityUnit?: EquityUnit | null;
+    note?: string | null;
+    isNegotiable: boolean;
+}
+
+export interface Institution {
+    id: string;
+    name: string;
+    slug: string;
+    city?: string | null;
+    state?: string | null;
+    kind: string;
+    website?: string | null;
+    aliases: string[];
+    isActive: boolean;
+}
+
+export interface DriveDetails {
+    id: string;
+    opportunityId: string;
+    dates: string[];
+    dateRange?: string | null;
+    timeRange?: string | null;
+    venueAddress: string;
+    venueLink?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    clusterName?: string | null;
+    city?: string | null;
+    reportingTime: string;
+    requiredDocuments: string[];
+    contactPerson?: string | null;
+    contactPhone?: string | null;
+}
+
+export interface EventDetails {
+    id: string;
+    opportunityId: string;
+    prizeAmount?: number | null;
+    prizeCurrency?: string | null;
+    teamSizeMin?: number | null;
+    teamSizeMax?: number | null;
+    isTeamEvent: boolean;
+    participantLimit?: number | null;
+    tracks: string[];
+    registrationUrl?: string | null;
+    platformUrl?: string | null;
+    organizerName?: string | null;
+}
+
 export function toOpportunityCardDTO(opp: Opportunity): OpportunityCardDTO {
     return {
         id: opp.id,
         slug: opp.slug,
-        type: opp.type,
+        category: opp.category,
+        employmentTypes: opp.employmentTypes || [],
+        recruitmentMethod: opp.recruitmentMethod,
+        sector: opp.sector,
+        experienceLevel: opp.experienceLevel,
+        sourceKind: opp.sourceKind,
         status: opp.status,
         title: opp.title,
         company: opp.company,
@@ -1073,7 +1180,6 @@ export function toOpportunityCardDTO(opp: Opportunity): OpportunityCardDTO {
         salaryRange: opp.salaryRange,
         salaryPeriod: opp.salaryPeriod,
         stipend: opp.stipend,
-        employmentType: opp.employmentType,
         tags: opp.tags || [],
         requiredSkills: opp.requiredSkills || [],
         allowedPassoutYears: opp.allowedPassoutYears || [],
@@ -1177,7 +1283,7 @@ export interface GroupedGovernmentDetails {
 export interface GroupedOpportunity {
     id: string;
     slug: string;
-    type: OpportunityType;
+    category: OpportunityCategory;
     status: OpportunityStatus;
     title: string;
     description?: string | null;
@@ -1199,7 +1305,10 @@ export interface GroupedOpportunity {
 
     // Taxonomy & Work Mode
     jobFunction?: string | null;
-    employmentType?: string | null;
+    employmentTypes?: EmploymentType[];
+    recruitmentMethod?: RecruitmentMethod | null;
+    sector?: Sector;
+    experienceLevel?: ExperienceLevel | null;
     workMode?: WorkMode | null;
     locations: string[];
 
@@ -1570,10 +1679,12 @@ export interface Room {
     name: string;
     description?: string | null;
     icon?: string | null;
-    type: RoomType;
+    // A room is a community described by free-form tags (#2026, #mca, #swe).
+    // No RoomType and no criteria: those made a room a saved search in disguise.
+    tags: string[];
     memberCount: number;
     postCount: number;
-    jobCount: number;
+    opportunityCount: number;
     isPublic: boolean;
     status?: string;
     createdAt: string;

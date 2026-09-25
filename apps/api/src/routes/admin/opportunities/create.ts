@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import prisma, { OpportunityStatus as DbOpportunityStatus, OpportunityType as DbOpportunityType } from '../../../infrastructure/database/prisma';
-import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
+import prisma, { OpportunityStatus as DbOpportunityStatus } from '../../../infrastructure/database/prisma';
+import { OpportunityStatus } from '@fresherflow/types';
 import { Prisma } from '@fresherflow/database';
 import { adminRateLimit } from '../../../middleware/adminRateLimit';
 import { withAdminAudit } from '../../../middleware/adminAudit';
@@ -11,7 +11,7 @@ import { normalizeOpportunityLinks } from '../../../utils/opportunityLinks';
 import {
     normalizeEducationRequirements, buildWalkInCreate,
     deriveOpportunityExpiryDate, buildGovernmentJobDetailsCreate, buildGovernmentJobDetailsUpsert,
-    buildGovernmentTags, extractGovtLocations,
+    buildGovernmentTags, extractGovtLocations, resolveOpportunityDimensions,
 } from './_helpers';
 import { handleOpportunityPublished } from '../../../infrastructure/services/publish.service';
 import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/publicOpportunityCache.service';
@@ -33,28 +33,24 @@ router.post(
     async (req: Request, res: Response, next: NextFunction) => {
         try {
             const data = req.body;
-            let type: OpportunityType = data.type;
-            if (data.category) {
-                const map: Record<string, OpportunityType> = {
-                    job: OpportunityType.JOB,
-                    internship: OpportunityType.INTERNSHIP,
-                    'walk-in': OpportunityType.WALKIN,
-                };
-                type = map[data.category] || OpportunityType.JOB;
-            }
+            // Resolve the independent dimensions from the admin form once, up front.
+            // Legacy `category` values (job / internship / walk-in) map onto the
+            // split model: walk-in becomes a recruitment method, internship an
+            // employment type, everything else an OpportunityCategory.
+            const resolved = resolveOpportunityDimensions(data);
+            const { category, recruitmentMethod, employmentTypes, isWalkIn, isGovt } = resolved;
 
             const { sourceLink, applyLink } = normalizeOpportunityLinks(data.sourceLink, data.applyLink);
-            if (type !== OpportunityType.WALKIN && !applyLink) {
+            if (!isWalkIn && !applyLink) {
                 return res.status(400).json({ message: 'At least one sourceLink or applyLink is required' });
             }
 
-            const walkInCreate = type === OpportunityType.WALKIN && data.walkInDetails
+            const walkInCreate = isWalkIn && data.driveDetails
                 ? buildWalkInCreate(data)
                 : undefined;
             const governmentJobCreate = buildGovernmentJobDetailsCreate(data);
 
             const tempId = crypto.randomUUID();
-            const isGovt = type === 'GOVERNMENT';
             let slug: string;
             if (data.customSlug) {
                 const base = sanitizeCustomSlug(data.customSlug);
@@ -86,7 +82,7 @@ router.post(
 
             const opportunity = await prisma.opportunity.create({
                 data: {
-                    id: tempId, slug, type: type as unknown as DbOpportunityType,
+                    id: tempId, slug, category, recruitmentMethod,
                     title: data.title, company: data.company,
                     companyWebsite: data.companyWebsite,
                     companyLogoUrl: data.companyLogoUrl || generateCompanyLogoUrl(data.companyWebsite),
@@ -98,7 +94,7 @@ router.post(
                     requiredSkills: normalizeSkills(data.requiredSkills),
                     locations: locations, workMode: data.workMode,
                     salaryRange: data.salaryRange, stipend: data.stipend,
-                    employmentType: data.employmentType,
+                    employmentTypes,
                     salaryMin: data.salaryMin || (data.salaryRange ? parseInt(data.salaryRange) : undefined),
                     salaryMax: data.salaryMax, salaryPeriod: data.salaryPeriod,
                     incentives: data.incentives, jobFunction: data.jobFunction,
@@ -107,13 +103,13 @@ router.post(
                     tags: buildGovernmentTags(data),
                     sourceLink, applyLink,
                     applicationDetails: data.applicationDetails,
-                    expiresAt: deriveOpportunityExpiryDate(data, type),
+                    expiresAt: deriveOpportunityExpiryDate(data, recruitmentMethod),
                     postedByUserId: contributorId || (req.adminId as string),
                     status: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus,
-                    ...(walkInCreate && { walkInDetails: walkInCreate }),
+                    ...(walkInCreate && { driveDetails: walkInCreate }),
                     ...(governmentJobCreate && { governmentJobDetails: governmentJobCreate }),
                 },
-                include: { walkInDetails: true, governmentJobDetails: true },
+                include: { driveDetails: true, governmentJobDetails: true },
             });
 
             await handleOpportunityPublished(opportunity as unknown as Opportunity, { isNew: true });
@@ -151,18 +147,11 @@ router.post(
     async (req: Request, res: Response, next: NextFunction) => {
         try {
             const data = req.body;
-            let type: OpportunityType = data.type;
-            if (data.category) {
-                const map: Record<string, OpportunityType> = {
-                    job: OpportunityType.JOB,
-                    internship: OpportunityType.INTERNSHIP,
-                    'walk-in': OpportunityType.WALKIN,
-                };
-                type = map[data.category] || OpportunityType.JOB;
-            }
+            const { category, recruitmentMethod, employmentTypes, isWalkIn, isGovt } =
+                resolveOpportunityDimensions(data);
 
             const { sourceLink, applyLink } = normalizeOpportunityLinks(data.sourceLink, data.applyLink);
-            if (type !== OpportunityType.WALKIN && !applyLink) {
+            if (!isWalkIn && !applyLink) {
                 return res.status(400).json({ message: 'At least one sourceLink or applyLink is required' });
             }
 
@@ -184,13 +173,12 @@ router.post(
                 }
             }
 
-            const walkInCreate = type === OpportunityType.WALKIN && data.walkInDetails
+            const walkInCreate = isWalkIn && data.driveDetails
                 ? buildWalkInCreate(data)
                 : undefined;
             const governmentJobCreate = buildGovernmentJobDetailsCreate(data);
 
             const tempId = crypto.randomUUID();
-            const isGovt = type === 'GOVERNMENT';
             let slug: string;
             if (data.customSlug) {
                 const base = sanitizeCustomSlug(data.customSlug);
@@ -222,7 +210,7 @@ router.post(
 
             const opportunity = await prisma.opportunity.create({
                 data: {
-                    id: tempId, slug, type: type as unknown as DbOpportunityType,
+                    id: tempId, slug, category, recruitmentMethod,
                     title: data.title, company: data.company,
                     companyWebsite: data.companyWebsite,
                     companyLogoUrl: data.companyLogoUrl || generateCompanyLogoUrl(data.companyWebsite),
@@ -234,7 +222,7 @@ router.post(
                     requiredSkills: normalizeSkills(data.requiredSkills),
                     locations: locations, workMode: data.workMode,
                     salaryRange: data.salaryRange, stipend: data.stipend,
-                    employmentType: data.employmentType,
+                    employmentTypes,
                     salaryMin: data.salaryMin || (data.salaryRange ? parseInt(data.salaryRange) : undefined),
                     salaryMax: data.salaryMax, salaryPeriod: data.salaryPeriod,
                     incentives: data.incentives, jobFunction: data.jobFunction,
@@ -243,13 +231,13 @@ router.post(
                     tags: buildGovernmentTags(data),
                     sourceLink, applyLink,
                     applicationDetails: data.applicationDetails,
-                    expiresAt: deriveOpportunityExpiryDate(data, type),
+                    expiresAt: deriveOpportunityExpiryDate(data, recruitmentMethod),
                     postedByUserId: contributorId || (req.adminId as string),
                     status: OpportunityStatus.DRAFT as unknown as DbOpportunityStatus,
-                    ...(walkInCreate && { walkInDetails: walkInCreate }),
+                    ...(walkInCreate && { driveDetails: walkInCreate }),
                     ...(governmentJobCreate && { governmentJobDetails: governmentJobCreate }),
                 },
-                include: { walkInDetails: true, governmentJobDetails: true },
+                include: { driveDetails: true, governmentJobDetails: true },
             });
 
             // If linked to a raw opportunity submission, update it
@@ -291,21 +279,21 @@ router.put(
 
             const existing = await prisma.opportunity.findFirst({
                 where: { OR: [{ id: idParam }, { slug: idParam }] },
-                include: { governmentJobDetails: true, walkInDetails: true },
+                include: { governmentJobDetails: true, driveDetails: true },
             });
             if (!existing) return res.status(404).json({ message: 'Opportunity not found' });
 
-            const type = data.type as OpportunityType;
+            const { category, recruitmentMethod, employmentTypes, isWalkIn, isGovt } = resolveOpportunityDimensions(data);
 
             // Safe deletions of related 1-to-1 records to prevent strict Prisma P2025 nested delete crashes
-            if (type !== OpportunityType.WALKIN) {
-                await prisma.walkInDetails.deleteMany({ where: { opportunityId: existing.id } });
+            if (!isWalkIn) {
+                await prisma.driveDetails.deleteMany({ where: { opportunityId: existing.id } });
             }
             if (data.governmentJobDetails === null) {
                 await prisma.governmentJobDetails.deleteMany({ where: { opportunityId: existing.id } });
             }
 
-            const walkInUpdate = type === OpportunityType.WALKIN && data.walkInDetails
+            const walkInUpdate = isWalkIn && data.driveDetails
                 ? { upsert: (() => { const b = buildWalkInCreate(data); return b ? { create: b.create, update: b.create } : undefined; })() }
                 : undefined;
             const governmentJobUpdate = data.governmentJobDetails === null
@@ -314,16 +302,16 @@ router.put(
 
             const govtDetailsUpdate = data.governmentJobDetails;
             const education = normalizeEducationRequirements(data, govtDetailsUpdate ?? undefined);
-            const locations = type === 'GOVERNMENT'
+            const locations = isGovt
                 ? extractGovtLocations(govtDetailsUpdate ?? undefined, data.locations ?? [])
                 : (data.locations ?? []);
             const { sourceLink, applyLink } = normalizeOpportunityLinks(data.sourceLink, data.applyLink);
-            if (type !== OpportunityType.WALKIN && !applyLink) {
+            if (!isWalkIn && !applyLink) {
                 return res.status(400).json({ message: 'At least one sourceLink or applyLink is required' });
             }
 
             const updateData: Prisma.OpportunityUpdateInput = {
-                ...education, type: type as unknown as DbOpportunityType, status: data.status as unknown as DbOpportunityStatus,
+                ...education, category, recruitmentMethod, status: data.status as unknown as DbOpportunityStatus,
                 title: data.title, company: data.company,
                 companyWebsite: data.companyWebsite,
                 companyLogoUrl: data.companyLogoUrl || generateCompanyLogoUrl(data.companyWebsite),
@@ -338,22 +326,21 @@ router.put(
                 experienceMin: data.experienceMin, experienceMax: data.experienceMax,
                 salaryRange: data.salaryRange, stipend: data.stipend,
                 tags: buildGovernmentTags(data),
-                employmentType: data.employmentType, sourceLink, applyLink,
+                employmentTypes, sourceLink, applyLink,
                 applicationDetails: data.applicationDetails,
-                expiresAt: deriveOpportunityExpiryDate(data, type),
+                expiresAt: deriveOpportunityExpiryDate(data, recruitmentMethod),
                 lastVerified: new Date(),
                 ...(data.status === OpportunityStatus.PUBLISHED ? { expiredAt: null, deletedAt: null } : {}),
-                ...(type === OpportunityType.WALKIN && walkInUpdate && { walkInDetails: walkInUpdate }),
+                ...(isWalkIn && walkInUpdate && { driveDetails: walkInUpdate }),
                 ...(governmentJobUpdate && { governmentJobDetails: governmentJobUpdate }),
             };
 
             if (data.title !== existing.title || data.company !== existing.company || data.customSlug) {
-                const isGovtUpdate = type === 'GOVERNMENT';
-                if (data.customSlug) {
+                                if (data.customSlug) {
                     const base = sanitizeCustomSlug(data.customSlug);
                     const others = await prisma.opportunity.findMany({ where: { slug: { startsWith: base }, id: { not: existing.id as string } }, select: { slug: true } });
                     updateData.slug = resolveUniqueSlug(base, new Set(others.map(o => o.slug)));
-                } else if (isGovtUpdate) {
+                } else if (isGovt) {
                     const base = generateSlug(data.title as string, data.company as string, undefined, { isGovt: true });
                     const others = await prisma.opportunity.findMany({ where: { slug: { startsWith: base }, id: { not: existing.id as string } }, select: { slug: true } });
                     updateData.slug = resolveUniqueSlug(base, new Set(others.map(o => o.slug)));
@@ -365,7 +352,7 @@ router.put(
             const opportunity = await prisma.opportunity.update({
                 where: { id: existing.id as string },
                 data: updateData,
-                include: { walkInDetails: true, governmentJobDetails: true },
+                include: { driveDetails: true, governmentJobDetails: true },
             });
 
             // If linked to a raw opportunity submission, update it
@@ -389,7 +376,7 @@ router.put(
                 void invalidatePublicOpportunityCache({
                     idsOrSlugs: [opportunity.id as string, opportunity.slug as string, ...(existing.slug !== opportunity.slug ? [existing.slug as string] : [])],
                     purgeFeed: true,
-                    type: opportunity.type as string,
+                    type: opportunity.category as string,
                     tags: getGranularTagsForOpportunity(opportunity as unknown as Partial<Opportunity>),
                 });
                 // StaticFeedService.scheduleRefresh(); // Commented out — use Generate JSON button instead
@@ -435,7 +422,7 @@ router.patch(
                     status: status as unknown as DbOpportunityStatus,
                     ...(status === OpportunityStatus.PUBLISHED ? { expiredAt: null, expiresAt: null, deletedAt: null, deletionReason: null } : {}),
                 },
-                include: { walkInDetails: true, governmentJobDetails: true },
+                include: { driveDetails: true, governmentJobDetails: true },
             });
 
             // Fire publish pipeline if transitioning to PUBLISHED

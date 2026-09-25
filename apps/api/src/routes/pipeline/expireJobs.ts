@@ -107,7 +107,7 @@ router.post(
                     where: {
                         OR: ids.map((idOrSlug) => [{ id: idOrSlug }, { slug: idOrSlug }]).flat(),
                     },
-                    select: { id: true, slug: true, expiredAt: true, status: true, type: true },
+                    select: { id: true, slug: true, expiredAt: true, status: true, category: true, recruitmentMethod: true },
                 });
 
                 const foundIdSet = new Set(found.map((o) => o.id));
@@ -143,7 +143,7 @@ router.post(
                     void invalidatePublicOpportunityCache({
                         idsOrSlugs: [opp.id, opp.slug as string].filter(Boolean),
                         purgeFeed: true,
-                        type: opp.type as string,
+                        type: opp.category as string,
                     });
                 }
             }
@@ -159,7 +159,7 @@ router.post(
                         expiredAt: null,
                         deletedAt: null,
                     },
-                    select: { id: true, slug: true, type: true },
+                    select: { id: true, slug: true, category: true, recruitmentMethod: true },
                 });
 
                 logger.info(`[pipeline/expire-jobs] Sweep found ${staleJobs.length} stale jobs to expire.`);
@@ -181,7 +181,7 @@ router.post(
                     void invalidatePublicOpportunityCache({
                         idsOrSlugs: [opp.id, opp.slug as string].filter(Boolean),
                         purgeFeed: true,
-                        type: opp.type as string,
+                        type: opp.category as string,
                     });
                 }
             }
