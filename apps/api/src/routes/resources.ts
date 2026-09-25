@@ -234,6 +234,41 @@ router.post('/',
     }
 );
 
+// Get the signed-in user's collections, any status (Contribute hub history).
+// Public GET / below intentionally returns APPROVED only.
+router.get('/mine', requireAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+        const userId = req.userId || null;
+        if (!userId) {
+            res.status(401).json({ error: 'Sign in required' });
+            return;
+        }
+        const collections = await prisma.resourceCollection.findMany({
+            where: { addedByUserId: userId },
+            orderBy: { createdAt: 'desc' },
+            take: 50,
+            select: {
+                id: true,
+                title: true,
+                status: true,
+                createdAt: true,
+                _count: { select: { items: true } },
+            },
+        });
+        res.json({
+            resources: collections.map((c) => ({
+                id: c.id,
+                title: c.title,
+                status: c.status,
+                createdAt: c.createdAt.toISOString(),
+                itemCount: c._count.items,
+            })),
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
 // Get approved collections (public)
 router.get('/', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {

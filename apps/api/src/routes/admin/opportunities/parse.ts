@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { ParsedJob } from '@fresherflow/types';
+import { requirePermission } from '../../../middleware/auth';
 import { AppError } from '../../../middleware/errorHandler';
 
 const router = Router();
@@ -32,7 +33,7 @@ function getParserModule(): Promise<ParserModule> {
  * POST /api/admin/opportunities/parse
  * Parse raw job text and return structured fields.
  */
-router.post('/parse', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/parse', requirePermission('opportunity.review'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { text } = req.body;
         if (!text) return res.status(400).json({ message: 'Text is required' });

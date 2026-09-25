@@ -3,8 +3,10 @@
         "src"
     ],
     "ext": "ts",
+    "delay": 2500,
     "ignore": [
-        "src/**/*.spec.ts"
-    ],
-    "exec": "ts-node src/index.ts"
+        "src/**/*.spec.ts",
+        "src/__tests__/**",
+        "**/*.test.ts"
+    ]
 }

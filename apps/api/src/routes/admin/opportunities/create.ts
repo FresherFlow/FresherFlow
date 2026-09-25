@@ -6,6 +6,7 @@ import { adminRateLimit } from '../../../middleware/adminRateLimit';
 import { withAdminAudit } from '../../../middleware/adminAudit';
 import { validate } from '../../../middleware/validate';
 import { opportunitySchema } from '../../../utils/validation';
+import { requirePermission } from '../../../middleware/auth';
 import { generateSlug, generateCompanyLogoUrl, normalizeSkills, sanitizeCustomSlug, resolveUniqueSlug } from '@fresherflow/utils';
 import { normalizeOpportunityLinks } from '../../../utils/opportunityLinks';
 import {
@@ -22,11 +23,29 @@ import { adminCache } from '../../../infrastructure/cache/adminCache';
 const router = Router();
 
 /**
+ * Status transitions need the permission of the destination state, mirroring
+ * lifecycle.ts: publishing needs opportunity.publish, expiring/archiving
+ * needs opportunity.archive, anything else needs opportunity.edit.
+ */
+function requireStatusPermission() {
+    return async (req: Request, res: Response, next: NextFunction) => {
+        const status = typeof req.body?.status === 'string' ? req.body.status : '';
+        const key = status === 'PUBLISHED'
+            ? 'opportunity.publish'
+            : status === 'EXPIRED' || status === 'ARCHIVED'
+                ? 'opportunity.archive'
+                : 'opportunity.edit';
+        return requirePermission(key)(req, res, next);
+    };
+}
+
+/**
  * POST /api/admin/opportunities
  * Create and immediately publish an opportunity.
  */
 router.post(
     '/',
+    requirePermission('opportunity.create'),
     adminRateLimit,
     withAdminAudit('CREATE'),
     validate(opportunitySchema),
@@ -141,6 +160,7 @@ router.post(
  */
 router.post(
     '/ingest-draft',
+    requirePermission('opportunity.create'),
     adminRateLimit,
     withAdminAudit('CREATE'),
     validate(opportunitySchema),
@@ -269,6 +289,7 @@ router.post(
  */
 router.put(
     '/:id',
+    requirePermission('opportunity.edit'),
     adminRateLimit,
     withAdminAudit('UPDATE'),
     validate(opportunitySchema),
@@ -402,6 +423,7 @@ router.put(
  */
 router.patch(
     '/:id/status',
+    requireStatusPermission(),
     adminRateLimit,
     withAdminAudit('UPDATE'),
     async (req: Request, res: Response, next: NextFunction) => {

@@ -64,6 +64,15 @@ export interface ProfileReadinessData {
     willingToRelocate?: boolean | null;
 }
 
+export interface ProfileDemographicsData {
+    dob?: string | null;
+    gender?: Gender | null;
+    category?: ReservationCategory | null;
+    isPwBD?: boolean | null;
+    isExServicemen?: boolean | null;
+    homeState?: string | null;
+}
+
 export interface ReferralData {
     title?: string;
     company?: string;
@@ -217,7 +226,7 @@ export class ProfileService {
             where: { id: userId },
             select: { firebase_uid: true, fullName: true }
         });
-        
+
         if (user?.firebase_uid) {
             void FirebaseDbService.updateOnboardingRecord(user.firebase_uid, {
                 fullName: user.fullName,
@@ -341,6 +350,34 @@ export class ProfileService {
                 ...(expectedCtc !== undefined && { expectedCtc }),
                 ...(resumeUrl !== undefined && { resumeUrl }),
                 ...(willingToRelocate !== undefined && willingToRelocate !== null && { willingToRelocate })
+            }
+        });
+
+        // Recalculate completion
+        const newCompletion = calculateCompletion((profile as unknown) as Profile);
+        profile = await prisma.profile.update({
+            where: { userId },
+            data: { completionPercentage: newCompletion }
+        });
+
+        return {
+            profile: profile as unknown as Profile,
+            newCompletion
+        };
+    }
+
+    static async updateDemographics(userId: string, data: ProfileDemographicsData): Promise<{ profile: Profile, newCompletion: number }> {
+        const { dob, gender, category, isPwBD, isExServicemen, homeState } = data;
+
+        let profile = await prisma.profile.update({
+            where: { userId },
+            data: {
+                ...(dob !== undefined && { dob: dob === null ? null : new Date(dob) }),
+                ...(gender !== undefined && { gender }),
+                ...(category !== undefined && { category }),
+                ...(isPwBD !== undefined && isPwBD !== null && { isPwBD }),
+                ...(isExServicemen !== undefined && isExServicemen !== null && { isExServicemen }),
+                ...(homeState !== undefined && { homeState })
             }
         });
 

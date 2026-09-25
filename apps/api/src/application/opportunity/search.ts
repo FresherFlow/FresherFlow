@@ -46,6 +46,30 @@ export interface SearchResult {
 }
 
 /**
+ * node-pg has no OID mapping for custom enum array columns (e.g.
+ * EducationLevel[]), so `$queryRaw` returns them as Postgres array literals
+ * like `"{DEGREE}"` instead of JS arrays. The eligibility engine calls
+ * `.join()/.some()` on these fields, which 500s authed search. Normalize at
+ * this raw-SQL boundary so hits honor the Opportunity[] contract.
+ */
+function parsePgEnumArray(value: unknown): string[] {
+    if (Array.isArray(value)) return value.filter((v): v is string => typeof v === 'string');
+    if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed === '' || trimmed === '{}') return [];
+        const inner = trimmed.startsWith('{') && trimmed.endsWith('}')
+            ? trimmed.slice(1, -1)
+            : trimmed;
+        if (inner.trim() === '') return [];
+        return inner
+            .split(',')
+            .map((part) => part.trim().replace(/^"|"$/g, ''))
+            .filter((part) => part.length > 0);
+    }
+    return [];
+}
+
+/**
  * Searches opportunities using PostgreSQL full-text search (tsvector/tsquery).
  * Uses keyset (cursor) pagination for stable O(log n) scrolling.
  * Count queries use baseConditions (no cursor) for accurate totals.
@@ -162,6 +186,11 @@ export async function searchOpportunitiesQuery(
         if (hasMore) {
             hits = hits.slice(0, limit);
         }
+
+        hits = hits.map((hit) => ({
+            ...hit,
+            allowedDegrees: parsePgEnumArray(hit.allowedDegrees) as OpportunitySearchHit['allowedDegrees'],
+        }));
 
         if (includeTotal) {
             const countWhere = sql`WHERE ${join(allBaseConditions, ' AND ')}`;

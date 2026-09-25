@@ -8,29 +8,6 @@ import { getCookieDomain } from '../utils/runtimeConfig';
 
 const COOKIE_DOMAIN = getCookieDomain();
 
-function clearCookieVariants(res: Response, name: string, httpOnly = true) {
-    const baseOptions = {
-        path: '/',
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax' as 'lax' | 'strict' | 'none',
-        httpOnly,
-    };
-
-    res.clearCookie(name, baseOptions);
-
-    if (COOKIE_DOMAIN) {
-        const normalizedDomain = COOKIE_DOMAIN.replace(/^\./, '');
-        res.clearCookie(name, { ...baseOptions, domain: COOKIE_DOMAIN });
-        res.clearCookie(name, { ...baseOptions, domain: normalizedDomain });
-    }
-}
-
-function clearAuthCookieVariants(res: Response) {
-    clearCookieVariants(res, 'accessToken');
-    clearCookieVariants(res, 'refreshToken');
-    clearCookieVariants(res, 'ff_logged_in', false);
-}
-
 declare global {
     // eslint-disable-next-line @typescript-eslint/no-namespace
     namespace Express {
@@ -40,6 +17,14 @@ declare global {
             isAnonymous?: boolean;
         }
     }
+}
+
+/**
+ * Returns the acting staff identity for audit attribution: prefer the admin
+ * session, fall back to the user session (moderators via normal login).
+ */
+export function actorId(req: express.Request): string | undefined {
+    return req.adminId ?? req.userId;
 }
 
 /**
@@ -112,11 +97,25 @@ export async function requireAuth(req: express.Request, res: Response, next: Nex
         try {
             userId = verifyAccessToken(token);
         } catch {
-            clearAuthCookieVariants(res);
+            // Access token only — leave refreshToken/ff_logged_in intact so the
+            // client can still refresh. Clearing here kills valid 90-day sessions
+            // every time the 15-minute access token expires.
             return next(new AppError('Invalid or expired token', 401));
         }
 
         if (userId) {
+            // V1 moderation: suspended/deactivated/banned users cannot write.
+            try {
+                const account = await prisma.user.findUnique({
+                    where: { id: userId },
+                    select: { status: true, trustLevel: true },
+                });
+                if (account && (account.status !== 'ACTIVE' || account.trustLevel === 'BANNED')) {
+                    return next(new AppError('Account suspended. Contact support.', 403));
+                }
+            } catch {
+                // Fail open on transient DB errors for reads; writes still validate downstream.
+            }
             req.userId = userId;
             req.isAnonymous = false;
             return next();
@@ -131,7 +130,9 @@ export async function requireAuth(req: express.Request, res: Response, next: Nex
         return next();
     }
 
-    clearAuthCookieVariants(res);
+    // Missing/expired access token: 401 only. Do not clear refresh cookies —
+    // the client refreshes with them. Full clear stays in logout and definitive
+    // refresh rejection.
     return next(new AppError('Authentication required', 401));
 }
 
@@ -187,6 +188,8 @@ export async function requireAdmin(req: express.Request, res: Response, next: Ne
                     profile: { create: {} }
                 }
             });
+        } else if (user.status !== 'ACTIVE' || user.trustLevel === 'BANNED') {
+            return next(new AppError('Account suspended. Contact support.', 403));
         }
     } catch (error) {
         logger.error('[auth] Admin user check/creation failed:', error);
@@ -195,6 +198,124 @@ export async function requireAdmin(req: express.Request, res: Response, next: Ne
 
     req.adminId = adminId;
     next();
+}
+
+/**
+ * Staff authentication: accepts EITHER a valid admin session OR a valid
+ * signed-in user session (moderators via the normal application login).
+ * Anonymous identities are never staff. Suspended/deactivated/banned accounts
+ * are rejected on both paths. Sets req.adminId for admin sessions and
+ * req.userId for user sessions; permission checks downstream decide what the
+ * caller may do. Must precede requirePermission / requireRole.
+ */
+export async function requireStaff(req: express.Request, res: Response, next: NextFunction) {
+    const authHeader = req.headers?.authorization;
+    const bearerToken =
+        authHeader && authHeader.toLowerCase().startsWith('bearer ')
+            ? authHeader.slice(7).trim()
+            : undefined;
+
+    // 1. Admin session (cookie or Bearer admin token).
+    const adminToken = (req.cookies?.adminAccessToken as string | undefined) || bearerToken;
+    if (adminToken) {
+        let adminId: string | null = null;
+        try {
+            adminId = verifyAdminToken(adminToken);
+        } catch {
+            // Not an admin token — fall through to the user-session path so a
+            // user Bearer token in Authorization is still honored.
+        }
+        if (adminId) {
+            try {
+                const user = await prisma.user.findUnique({ where: { id: adminId } });
+                if (!user) {
+                    const referralCode = `ADMIN_${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+                    await prisma.user.create({
+                        data: {
+                            id: adminId,
+                            email: process.env.ADMIN_EMAIL!,
+                            fullName: 'Admin User',
+                            role: 'ADMIN',
+                            isAnonymous: false,
+                            referralCode,
+                            profile: { create: {} }
+                        }
+                    });
+                } else if (user.status !== 'ACTIVE' || user.trustLevel === 'BANNED') {
+                    return next(new AppError('Account suspended. Contact support.', 403));
+                }
+            } catch (error) {
+                logger.error('[auth] Admin user check/creation failed:', error);
+                return next(new AppError('Database is temporarily unavailable. Please try again shortly.', 503));
+            }
+            req.adminId = adminId;
+            return next();
+        }
+        // A Bearer token that is neither admin nor (checked below) user session
+        // must not fall through to anonymous access on staff routes.
+        if (bearerToken) {
+            try {
+                const userId = verifyAccessToken(bearerToken);
+                if (userId) {
+                    return authorizeStaffUser(req, next, userId);
+                }
+            } catch {
+                // Invalid/expired user token below.
+            }
+            const cookieToken = req.cookies?.accessToken as string | undefined;
+            if (cookieToken) {
+                try {
+                    const userId = verifyAccessToken(cookieToken);
+                    if (userId) {
+                        return authorizeStaffUser(req, next, userId);
+                    }
+                } catch {
+                    // Handled below as unauthenticated.
+                }
+            }
+            return next(new AppError('Invalid or expired token', 401));
+        }
+    }
+
+    // 2. User session (cookie access token). No anonymous fallback on staff routes.
+    const token = req.cookies?.accessToken as string | undefined;
+    if (!token) {
+        return next(new AppError('Authentication required', 401));
+    }
+    let userId: string | null = null;
+    try {
+        userId = verifyAccessToken(token);
+    } catch {
+        return next(new AppError('Invalid or expired token', 401));
+    }
+    if (!userId) {
+        return next(new AppError('Authentication required', 401));
+    }
+    return authorizeStaffUser(req, next, userId);
+}
+
+async function authorizeStaffUser(req: express.Request, next: NextFunction, userId: string) {
+    try {
+        const account = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { status: true, trustLevel: true, isAnonymous: true },
+        });
+        if (!account) {
+            return next(new AppError('User not found', 404));
+        }
+        if (account.isAnonymous) {
+            return next(new AppError('Verified account required', 401));
+        }
+        if (account.status !== 'ACTIVE' || account.trustLevel === 'BANNED') {
+            return next(new AppError('Account suspended. Contact support.', 403));
+        }
+    } catch (error) {
+        logger.error('[auth] Staff user check failed:', error);
+        return next(new AppError('Database is temporarily unavailable. Please try again shortly.', 503));
+    }
+    req.userId = userId;
+    req.isAnonymous = false;
+    return next();
 }
 
 /**
@@ -228,6 +349,44 @@ export function requireInternalApiKey(req: express.Request, res: Response, next:
     }
 
     next();
+}
+
+/**
+ * Moderator authorization: passes admins and users holding a MODERATOR (or any)
+ * AccessRole grant, rejects everyone else. Must run AFTER requireStaff, which
+ * has already established req.adminId (admin session) or req.userId (user
+ * session) and rejected suspended/deactivated/banned accounts.
+ *
+ * Admin sessions are always allowed (they are the superset). User sessions are
+ * allowed only when a UserAccessRole row exists — a plain signed-in user gets
+ * 403. This is the gate for the moderator queue surface; the finer per-area
+ * checks stay on requirePermission.
+ */
+export async function requireModerator(req: express.Request, res: Response, next: NextFunction) {
+    // Admin session already passed requireStaff: admins can moderate.
+    if (req.adminId && !req.userId) {
+        return next();
+    }
+
+    const userId = req.userId;
+    if (!userId) {
+        return next(new AppError('Authentication required', 401));
+    }
+
+    try {
+        const grant = await prisma.userAccessRole.findFirst({
+            where: { userId },
+            select: { userId: true },
+        });
+        if (!grant) {
+            return next(new AppError('Forbidden: Moderator access required', 403));
+        }
+    } catch (error) {
+        logger.error('[requireModerator] Access role check failed:', error);
+        return next(new AppError('Database is temporarily unavailable. Please try again shortly.', 503));
+    }
+
+    return next();
 }
 
 /**
@@ -281,15 +440,7 @@ export function requirePermission(requiredKey: string) {
         }
 
         try {
-            const rows = await prisma.$queryRaw<{ key: string }[]>`
-                SELECT DISTINCT p."key" AS "key"
-                FROM "Permission" p
-                JOIN "AccessRolePermission" arp ON arp."permissionId" = p.id
-                JOIN "UserAccessRole" uar ON uar."roleId" = arp."roleId"
-                WHERE uar."userId" = ${userId}
-            `;
-
-            if (!rows.some(r => r.key === requiredKey)) {
+            if (!(await hasPermission(userId, requiredKey))) {
                 return next(new AppError('Forbidden: Insufficient permissions', 403));
             }
 
@@ -299,5 +450,25 @@ export function requirePermission(requiredKey: string) {
             return next(new AppError('Database is temporarily unavailable. Please try again shortly.', 503));
         }
     };
+}
+
+/**
+ * Returns every permission key granted to a user through any AccessRole.
+ * Used by the /api/auth/permissions self endpoint and by in-handler
+ * least-privilege checks (e.g. resource deletes, privileged targets).
+ */
+export async function getUserPermissions(userId: string): Promise<string[]> {
+    const rows = await prisma.$queryRaw<{ key: string }[]>`
+        SELECT DISTINCT p."key" AS "key"
+        FROM "Permission" p
+        JOIN "AccessRolePermission" arp ON arp."permissionId" = p.id
+        JOIN "UserAccessRole" uar ON uar."roleId" = arp."roleId"
+        WHERE uar."userId" = ${userId}
+    `;
+    return rows.map((r) => r.key);
+}
+
+export async function hasPermission(userId: string, key: string): Promise<boolean> {
+    return (await getUserPermissions(userId)).includes(key);
 }
 

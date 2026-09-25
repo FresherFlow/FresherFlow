@@ -30,13 +30,16 @@ export function errorHandler(
 ) {
     const databaseUnavailable = isDatabaseUnavailableError(err);
     const statusCode = databaseUnavailable ? 503 : (err.statusCode || 500);
+    const requestId = (req as Request & { requestId?: string }).requestId
+        || (req.headers['x-request-id'] as string | undefined)
+        || 'unknown';
 
     if (statusCode >= 500) {
         TelegramService.notifyError(`${req.method} ${req.path}`, err).catch(() => { });
     }
 
     const errorMsg = err.message || 'Unknown error';
-    const location = `${req.method} ${req.path}`;
+    const location = `${req.method} ${req.path} [requestId=${requestId}]`;
     const isPrismaError = databaseUnavailable || errorMsg.includes('Prisma') || errorMsg.includes('does not exist in the current database');
 
     if (isPrismaError) {
@@ -75,40 +78,69 @@ export function errorHandler(
         );
 
         if (!isCommonAuthError && !isRateLimited && !isExpectedOtpError) {
-            logger.error(chalk.red('[DEV] Full error:'), err);
+            logger.error(chalk.red(`[DEV] Full error [requestId=${requestId}]:`), err);
         }
     } else if (process.env.DEBUG) {
         logger.error('Full error details', {
             error: err.message,
             stack: err.stack,
             path: req.path,
-            method: req.method
+            method: req.method,
+            requestId
         });
     }
 
-    const isDev = process.env.NODE_ENV !== 'production';
     const technicalKeywords = /prisma|neon|aws|database|sql|connect/i;
     const isTechnical = technicalKeywords.test(err.message || '');
     const isOperational = (err.isAppError || err.isOperational) && !isTechnical;
 
-    const message = databaseUnavailable
+    // Client errors (4xx, incl. Zod validation via AppError) keep their exact
+    // message so validation text stays identical. Anything 5xx or technical
+    // becomes a generic message in EVERY env; filesystem paths and stacks
+    // never leave the server (full details stay in server logs with requestId).
+    const rawMessage = databaseUnavailable
         ? 'Database is temporarily unavailable. Please try again shortly.'
-        : isDev
+        : statusCode < 500 && isOperational
             ? (err.message || 'Unknown error')
-            : isOperational
-                ? err.message
+            : statusCode < 500
+                ? sanitizeClientMessage(err.message || 'Unknown error')
                 : 'A system error occurred. Please check your connection and try again.';
+    const message = sanitizeClientMessage(rawMessage);
+
+    const code = databaseUnavailable
+        ? 'DB_UNAVAILABLE'
+        : sanitizeErrorCode(err.code || (isOperational ? err.name : undefined) || 'UNKNOWN_ERROR');
 
     res.status(statusCode).json({
         error: {
             message,
-            code: databaseUnavailable ? 'DB_UNAVAILABLE' : (err.code || err.name || 'UNKNOWN_ERROR'),
-            statusCode,
-            ...(isDev && {
-                stack: err.stack,
-            })
+            code,
+            requestId
         }
     });
+}
+
+function sanitizeClientMessage(input: string): string {
+    // Keep only the first line (drops appended "at ..." stack frames), strip
+    // filesystem paths, cap length. Validation sentences pass through untouched.
+    const firstLine = (input || '').split('\n')[0].trim();
+    if (!firstLine) return 'Unknown error';
+    if (firstLine.length > 10000) return 'Invalid request. Please check your input and try again.';
+    let out = firstLine
+        .replace(/[A-Za-z]:\\[^\s"']*/g, '[path]')
+        .replace(/\/(app|home|usr|var|tmp|opt|srv)[^\s"']*/g, '[path]')
+        .replace(/\s+at\s+[^\s]+\s+\([^)]*\)/g, '')
+        .replace(/\.ts:\d+:\d+/g, '')
+        .replace(/\.js:\d+:\d+/g, '');
+    if (out.length > 500) out = `${out.slice(0, 497)}...`;
+    return out || 'Unknown error';
+}
+
+function sanitizeErrorCode(input: string): string {
+    const clean = (input || '').split('\n')[0].trim().slice(0, 64);
+    if (!clean) return 'UNKNOWN_ERROR';
+    if (/[\\/]|\.ts|\.js|node_modules|Error stack/i.test(clean)) return 'UNKNOWN_ERROR';
+    return clean;
 }
 
 export class AppError extends Error {

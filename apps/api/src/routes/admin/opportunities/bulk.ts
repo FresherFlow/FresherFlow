@@ -1,4 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import { requirePermission } from '../../../middleware/auth';
 import { withAdminAudit } from '../../../middleware/adminAudit';
 import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/publicOpportunityCache.service';
 import { queueNewJobAlerts } from './_helpers';
@@ -12,8 +13,24 @@ const router = Router();
  * POST /api/admin/opportunities/bulk
  * Bulk publish, archive, expire, or delete by ID array.
  */
+/**
+ * The bulk action needs the permission of what it does: PUBLISH needs
+ * opportunity.publish, ARCHIVE/EXPIRE need opportunity.archive, DELETE needs
+ * opportunity.delete (SUPER_ADMIN-only — moderators get 403 on bulk delete).
+ */
+function requireBulkActionPermission(req: Request, res: Response, next: NextFunction) {
+    const action = (req.body as { action?: unknown })?.action;
+    const key = action === 'PUBLISH'
+        ? 'opportunity.publish'
+        : action === 'ARCHIVE' || action === 'EXPIRE'
+            ? 'opportunity.archive'
+            : 'opportunity.delete';
+    return requirePermission(key)(req, res, next);
+}
+
 router.post(
     '/bulk',
+    requireBulkActionPermission,
     withAdminAudit('BULK_ACTION'),
     async (req: Request, res: Response, next: NextFunction) => {
         try {

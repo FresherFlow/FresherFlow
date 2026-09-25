@@ -2,7 +2,7 @@ import express, { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { requireAuth, optionalAuth, requireVerifiedAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
-import { educationSchema, preferencesSchema, readinessSchema, contributionSchema, profileUpdateSchema } from '../utils/validation';
+import { educationSchema, preferencesSchema, readinessSchema, demographicsSchema, contributionSchema, profileUpdateSchema } from '../utils/validation';
 import { ProfileService } from '../infrastructure/services/profile.service';
 import { AppError } from '../middleware/errorHandler';
 import { createRateLimiter } from '../middleware/rateLimit';
@@ -102,6 +102,19 @@ router.put('/preferences', requireAuth, validate(preferencesSchema), async (req:
 router.put('/readiness', requireAuth, validate(readinessSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { profile, newCompletion } = await ProfileService.updateReadiness(req.userId as string, req.body);
+        res.json({
+            profile,
+            message: `Profile updated. Completion: ${newCompletion}%`
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// PUT /api/profile/demographics
+router.put('/demographics', requireAuth, validate(demographicsSchema), async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { profile, newCompletion } = await ProfileService.updateDemographics(req.userId as string, req.body);
         res.json({
             profile,
             message: `Profile updated. Completion: ${newCompletion}%`

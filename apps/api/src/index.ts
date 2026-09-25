@@ -46,6 +46,11 @@ import adminSocialRoutes from './routes/admin/social';
 import adminQueuesRoutes from './routes/admin/queues';
 import adminPushRoutes from './routes/admin/push';
 import adminUsersRoutes from './routes/admin/users';
+import adminModeratorsRoutes from './routes/admin/moderators';
+import adminAuditRoutes from './routes/admin/audit';
+import adminReportsRoutes from './routes/admin/reports';
+import adminCommunityRoutes from './routes/admin/community';
+import adminModerationRoutes from './routes/admin/moderation';
 import adminRoomsRoutes from './routes/admin/rooms';
 import adminTargetsRoutes from './routes/admin/targets';
 import adminProfilesRoutes from './routes/admin/profiles';
@@ -488,6 +493,11 @@ if (isAdminMode) {
     app.use('/api/admin/queues', restrictAdmin, adminQueuesRoutes);
     app.use('/api/admin/push', restrictAdmin, adminPushRoutes);
     app.use('/api/admin/users', restrictAdmin, adminUsersRoutes);
+    app.use('/api/admin/moderators', restrictAdmin, adminModeratorsRoutes);
+    app.use('/api/admin/audit', restrictAdmin, adminAuditRoutes);
+    app.use('/api/admin/reports', restrictAdmin, adminReportsRoutes);
+    app.use('/api/admin/community', restrictAdmin, adminCommunityRoutes);
+    app.use('/api/admin/moderation', restrictAdmin, adminModerationRoutes);
     app.use('/api/admin/rooms', restrictAdmin, adminRoomsRoutes);
     app.use('/api/admin/government-jobs', restrictAdmin, adminGovernmentJobsRoutes);
     app.use('/api/admin/resources', restrictAdmin, adminResourcesRoutes);
@@ -522,7 +532,7 @@ app.use(errorHandler);
 // Server Start
 // ============================================================================
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     logger.info(`Server running on port ${PORT}`);
     logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
     logger.info(`API mode: ${APP_MODE}`);
@@ -533,6 +543,18 @@ app.listen(PORT, () => {
     initializeBackgroundServices().catch((err) => {
         logger.error('Failed to initialize background services', err);
     });
+});
+
+server.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+        logger.error(
+            `Port ${PORT} is already in use. Another API process is still running and holding the port. ` +
+            `Stop it first (pnpm kill:port), then restart. Exiting.`
+        );
+    } else {
+        logger.error('HTTP server error', err);
+    }
+    process.exit(1);
 });
 
 async function initializeBackgroundServices() {

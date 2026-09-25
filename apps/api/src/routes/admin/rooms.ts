@@ -8,6 +8,13 @@ import prisma from '../../infrastructure/database/prisma';
 
 const router = Router();
 
+// All admin room routes require an admin token (GET list powers the admin UI,
+// POST/PATCH mutate). Mounted behind a host gate in index.ts; auth is enforced
+// here. NOTE: POST /api/rooms (community router) stays as a legacy admin-only
+// alias (requireAuth + requireAdmin); /api/admin/rooms is canonical for the
+// admin UI. Kept, not removed, to avoid breaking existing callers.
+router.use(requireAdmin);
+
 const asyncHandler =
     (handler: (req: Request, res: Response, next: NextFunction) => Promise<unknown>): RequestHandler =>
         (req, res, next) => {

@@ -292,7 +292,8 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
         const headerRefreshToken = req.header('x-refresh-token') || req.header('x-refresh-token'.toLowerCase());
         const refreshToken = req.cookies.refreshToken || headerRefreshToken;
         if (!refreshToken) {
-            clearAuthCookieVariants(res);
+            // Do not clear cookies here. A parallel refresh may have just rotated
+            // and Set-Cookie'd a live pair; wiping on this response races that win.
             return next(new AppError('No refresh token provided', 401));
         }
 
@@ -302,21 +303,53 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
             return next(new AppError('Invalid refresh token', 401));
         }
 
+        // Rotation race tolerance: two tabs (or a retry) can present the same
+        // refresh token at once when access tokens expire together. A token
+        // revoked within the grace window means a sibling just rotated it, so
+        // hand this caller a fresh pair instead of killing its session.
+        // Anything older is treated as genuine expiry/theft as before.
+        const REFRESH_REUSE_GRACE_MS = 60 * 1000;
+
         const tokenHash = hashRefreshToken(refreshToken);
-        const storedToken = await prisma.refreshToken.findFirst({
-            where: { tokenHash, userId, revokedAt: null, expiresAt: { gt: new Date() } }
+        const rotation = await prisma.$transaction(async (tx) => {
+            const liveToken = await tx.refreshToken.findFirst({
+                where: { tokenHash, userId, revokedAt: null, expiresAt: { gt: new Date() } }
+            });
+            if (liveToken) {
+                await tx.refreshToken.update({
+                    where: { id: liveToken.id },
+                    data: { revokedAt: new Date() }
+                });
+                return true;
+            }
+
+            const recentlyRevoked = await tx.refreshToken.findFirst({
+                where: {
+                    tokenHash,
+                    userId,
+                    revokedAt: { gt: new Date(Date.now() - REFRESH_REUSE_GRACE_MS) }
+                }
+            });
+            if (!recentlyRevoked) return false;
+
+            // Retire whatever is currently live so only one token stays valid.
+            const current = await tx.refreshToken.findFirst({
+                where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
+                orderBy: { createdAt: 'desc' }
+            });
+            if (current) {
+                await tx.refreshToken.update({
+                    where: { id: current.id },
+                    data: { revokedAt: new Date() }
+                });
+            }
+            return true;
         });
 
-        if (!storedToken) {
+        if (!rotation) {
             clearAuthCookieVariants(res);
             return next(new AppError('Refresh token expired or revoked', 401));
         }
-
-        // Revoke the old token
-        await prisma.refreshToken.update({
-            where: { id: storedToken.id },
-            data: { revokedAt: new Date() }
-        });
 
         // Generate a new token pair
         const newAccessToken = generateAccessToken(userId);
@@ -365,6 +398,30 @@ router.post('/logout', async (req: Request, res: Response, next: NextFunction) =
     }
 });
 
+// GET /api/auth/permissions
+// Returns the caller's AccessRole grants for client-side gating of the
+// moderator area. requireAuth already rejects anonymous/suspended callers;
+// the payload is advisory — every moderation route re-checks server-side.
+router.get('/permissions', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const rows = await prisma.$queryRaw<{ key: string; role: string }[]>`
+            SELECT DISTINCT p."key" AS "key", r."name" AS "role"
+            FROM "Permission" p
+            JOIN "AccessRolePermission" arp ON arp."permissionId" = p.id
+            JOIN "UserAccessRole" uar ON uar."roleId" = arp."roleId"
+            JOIN "AccessRole" r ON r."id" = uar."roleId"
+            WHERE uar."userId" = ${req.userId}
+        `;
+        res.setHeader('Cache-Control', 'private, no-store');
+        res.json({
+            roles: Array.from(new Set(rows.map((r) => r.role))),
+            permissions: rows.map((r) => r.key),
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+ 
 // GET /api/auth/me
 router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {

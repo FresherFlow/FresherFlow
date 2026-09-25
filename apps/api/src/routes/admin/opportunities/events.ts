@@ -6,6 +6,7 @@ import { AppError } from '../../../middleware/errorHandler';
 import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/publicOpportunityCache.service';
 import { getGranularTagsForOpportunity } from '../../../infrastructure/services/publish.service';
 import { parseEventType } from './_helpers';
+import { requirePermission } from '../../../middleware/auth';
 import { Prisma } from '@fresherflow/database';
 import { Opportunity } from '@fresherflow/types';
 
@@ -25,7 +26,7 @@ async function resolveOpportunity(idParam: string) {
 /**
  * GET /api/admin/opportunities/:id/events
  */
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', requirePermission('opportunity.review'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const opp = await resolveOpportunity(String(req.params.id || ''));
         const events = await prisma.opportunityEvent.findMany({
@@ -41,7 +42,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 /**
  * POST /api/admin/opportunities/:id/events
  */
-router.post('/', adminRateLimit, withAdminAudit('UPDATE'), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', requirePermission('opportunity.edit'), adminRateLimit, withAdminAudit('UPDATE'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const opp = await resolveOpportunity(String(req.params.id || ''));
         const title = String(req.body?.title || '').trim();
@@ -69,7 +70,7 @@ router.post('/', adminRateLimit, withAdminAudit('UPDATE'), async (req: Request, 
 /**
  * PATCH /api/admin/opportunities/:id/events/:eventId
  */
-router.patch('/:eventId', adminRateLimit, withAdminAudit('UPDATE'), async (req: Request, res: Response, next: NextFunction) => {
+router.patch('/:eventId', requirePermission('opportunity.edit'), adminRateLimit, withAdminAudit('UPDATE'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const opp = await resolveOpportunity(String(req.params.id || ''));
         const eventId = String(req.params.eventId || '');
@@ -107,7 +108,7 @@ router.patch('/:eventId', adminRateLimit, withAdminAudit('UPDATE'), async (req: 
 /**
  * DELETE /api/admin/opportunities/:id/events/:eventId
  */
-router.delete('/:eventId', adminRateLimit, withAdminAudit('UPDATE'), async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:eventId', requirePermission('opportunity.edit'), adminRateLimit, withAdminAudit('UPDATE'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const opp = await resolveOpportunity(String(req.params.id || ''));
         const eventId = String(req.params.eventId || '');

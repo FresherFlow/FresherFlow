@@ -268,8 +268,10 @@ export async function resolveOpportunity(slugOrId: string) {
         const parts = id.split('-').filter(Boolean);
         const last = parts[parts.length - 1] || '';
         if (/^[a-f0-9]{6,12}$/i.test(last)) {
+            // Slug suffix is the HEAD of the UUID (slugify.ts), so rescue
+            // drifted slugs with a head match, not a tail match.
             opportunity = await prisma.opportunity.findFirst({
-                where: { id: { endsWith: last.toLowerCase() }, deletedAt: null },
+                where: { id: { startsWith: last.toLowerCase() }, deletedAt: null },
                 select,
             });
         }
@@ -366,11 +368,38 @@ export async function getCommentCounts(opportunityIds: string[]): Promise<Record
         where: { OR: [{ id: { in: uniqueIds } }, { slug: { in: uniqueIds } }], deletedAt: null },
         select: { id: true, slug: true },
     });
-    if (rows.length === 0) return {};
+
+    // Suffix-aware rescue for drifted slugs: the slug suffix is the HEAD of
+    // the UUID (slugify.ts), so resolve misses via a head match. One batched
+    // query regardless of miss count.
+    const matched = new Set(rows.flatMap((r) => [r.id, r.slug]));
+    const missSuffixes = new Map<string, string>();
+    for (const requestedId of uniqueIds) {
+        if (matched.has(requestedId)) continue;
+        const parts = requestedId.split('-').filter(Boolean);
+        const last = (parts[parts.length - 1] || '').toLowerCase();
+        if (/^[a-f0-9]{6,12}$/i.test(last)) missSuffixes.set(requestedId, last);
+    }
+    const fallbackByRequested = new Map<string, { id: string; slug: string }>();
+    if (missSuffixes.size > 0) {
+        const fallbackRows = await prisma.opportunity.findMany({
+            where: {
+                OR: Array.from(new Set(missSuffixes.values())).map((suffix) => ({ id: { startsWith: suffix } })),
+                deletedAt: null,
+            },
+            select: { id: true, slug: true },
+        });
+        for (const [requestedId, suffix] of missSuffixes) {
+            const row = fallbackRows.find((r) => r.id.toLowerCase().startsWith(suffix));
+            if (row) fallbackByRequested.set(requestedId, row);
+        }
+    }
+    const allRows = rows.concat(Array.from(new Set(fallbackByRequested.values())));
+    if (allRows.length === 0) return {};
 
     const grouped = await prisma.opportunityComment.groupBy({
         by: ['opportunityId'],
-        where: { opportunityId: { in: rows.map((r) => r.id) }, deletedAt: null },
+        where: { opportunityId: { in: allRows.map((r) => r.id) }, deletedAt: null },
         _count: { _all: true },
     });
     const countsByCanonicalId = new Map<string, number>();
@@ -380,7 +409,8 @@ export async function getCommentCounts(opportunityIds: string[]): Promise<Record
 
     const counts: Record<string, number> = {};
     for (const requestedId of uniqueIds) {
-        const row = rows.find((r) => r.id === requestedId || r.slug === requestedId);
+        const row = allRows.find((r) => r.id === requestedId || r.slug === requestedId)
+            ?? fallbackByRequested.get(requestedId);
         const count = row ? countsByCanonicalId.get(row.id) : undefined;
         if (count && count > 0) counts[requestedId] = count;
     }
@@ -1452,7 +1482,7 @@ export async function getCommunityPost(id: string, userId?: string | null) {
         },
     });
 
-    if (!post || post.status === CommunityPostStatus.DELETED) {
+    if (!post || post.status !== CommunityPostStatus.ACTIVE) {
         throw new AppError('Community post not found', 404);
     }
 
@@ -2134,6 +2164,86 @@ export async function createApplicationUpdate(input: {
     return {
         ...update,
         author: mapCommunityPostUser(update.author),
+    };
+}
+
+// ========================================
+// MY CONTRIBUTIONS (Contribute hub history)
+// ========================================
+
+const MY_OPPORTUNITY_SELECT = {
+    id: true,
+    slug: true,
+    title: true,
+} as const;
+
+/**
+ * Everything the signed-in user contributed through community surfaces:
+ * hiring-update posts, interview experiences, and application updates.
+ * Powers the "Your contributions" history next to GET /submissions/mine.
+ */
+export async function listMyContributions(userId: string) {
+    const [posts, interviews, updates] = await Promise.all([
+        prisma.communityPost.findMany({
+            where: { authorId: userId },
+            orderBy: { createdAt: 'desc' },
+            take: 20,
+            select: {
+                id: true,
+                title: true,
+                category: true,
+                status: true,
+                createdAt: true,
+            },
+        }),
+        prisma.interviewExperience.findMany({
+            where: { authorId: userId },
+            orderBy: { createdAt: 'desc' },
+            take: 20,
+            select: {
+                id: true,
+                role: true,
+                status: true,
+                createdAt: true,
+                opportunity: { select: MY_OPPORTUNITY_SELECT },
+            },
+        }),
+        prisma.applicationUpdate.findMany({
+            where: { authorId: userId },
+            orderBy: { createdAt: 'desc' },
+            take: 20,
+            select: {
+                id: true,
+                status: true,
+                description: true,
+                createdAt: true,
+                opportunity: { select: MY_OPPORTUNITY_SELECT },
+            },
+        }),
+    ]);
+
+    return {
+        posts: posts.map((p) => ({
+            id: p.id,
+            title: p.title,
+            category: p.category,
+            status: p.status,
+            createdAt: p.createdAt.toISOString(),
+        })),
+        interviews: interviews.map((e) => ({
+            id: e.id,
+            role: e.role,
+            moderationStatus: e.status,
+            createdAt: e.createdAt.toISOString(),
+            opportunity: e.opportunity,
+        })),
+        updates: updates.map((u) => ({
+            id: u.id,
+            updateStatus: u.status,
+            description: u.description,
+            createdAt: u.createdAt.toISOString(),
+            opportunity: u.opportunity,
+        })),
     };
 }
 

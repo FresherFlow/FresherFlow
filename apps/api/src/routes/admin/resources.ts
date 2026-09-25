@@ -2,12 +2,35 @@ import { Prisma } from '@prisma/client';
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, query, validationResult } from 'express-validator';
 import prisma from '../../infrastructure/database/prisma';
+import { hasPermission, requirePermission, requireStaff } from '../../middleware/auth';
+import { withAdminAudit } from '../../middleware/adminAudit';
 import { ResourceItemStatus } from '@fresherflow/types';
 
 const router = Router();
 
+// Staff auth on the router; each route adds its own least-privilege gate.
+// Review flow (list + approve/reject via PATCH :id) needs resource.moderate;
+// collection authoring (create, item edits, deleting live collections) needs
+// resource.manage, which stays SUPER_ADMIN-only via the seed.
+// NOTE: this router previously relied only on the mount-level domain gate in
+// index.ts; staff auth is added here so the permission check has an
+// authenticated identity and unauthenticated callers get 401, not 403.
+router.use(requireStaff);
+
+/**
+ * Approving/rejecting a collection (status-only change) is moderation work
+ * (resource.moderate); editing metadata or items is collection authoring
+ * (resource.manage, SUPER_ADMIN-only).
+ */
+function requireResourcePatchPermission(req: Request, res: Response, next: NextFunction) {
+    const keys = Object.keys((req.body as Record<string, unknown>) || {});
+    const statusOnly = keys.length > 0 && keys.every((k) => k === 'status');
+    return requirePermission(statusOnly ? 'resource.moderate' : 'resource.manage')(req, res, next);
+}
+
 // GET /api/admin/resources - Get paginated collections
-router.get('/', 
+router.get('/',
+    requirePermission('resource.moderate'), 
     [
         query('page').optional().isInt({ min: 1 }).toInt(),
         query('limit').optional().isInt({ min: 1, max: 100 }).toInt(),
@@ -83,6 +106,7 @@ const createResourceValidation = [
 ];
 
 router.post('/',
+    requirePermission('resource.manage'),
     createResourceValidation,
     async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
@@ -145,7 +169,9 @@ const updateResourceValidation = [
     body('items.*.url').optional().isURL({ require_tld: false }).trim(),
 ];
 
-router.patch('/:id', 
+router.patch('/:id',
+    requireResourcePatchPermission,
+    withAdminAudit('UPDATE'),
     updateResourceValidation,
     async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
@@ -230,13 +256,16 @@ router.patch('/:id',
     }
 );
 
-// DELETE /api/admin/resources/:id - Delete collection
+// DELETE /api/admin/resources/:id - Delete collection.
+// Rejecting a pending submission (PENDING_REVIEW) is moderation work;
+// deleting a live (APPROVED) collection is collection authoring.
 router.delete('/:id', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const id = req.params.id as string;
 
         const existing = await prisma.resourceCollection.findUnique({
-            where: { id }
+            where: { id },
+            select: { id: true, status: true },
         });
 
         if (!existing) {
@@ -244,9 +273,30 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction): P
             return;
         }
 
+        const actor = req.adminId ?? req.userId;
+        if (!actor) {
+            res.status(401).json({ error: 'Authentication required' });
+            return;
+        }
+        const needed = existing.status === 'PENDING_REVIEW' ? 'resource.moderate' : 'resource.manage';
+        if (!(await hasPermission(actor, needed))) {
+            res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
+            return;
+        }
+
         await prisma.resourceCollection.delete({
             where: { id }
         });
+
+        // 204 responses bypass withAdminAudit (it hooks res.json), so record
+        // the rejection/removal explicitly. Best-effort: never fail the delete.
+        try {
+            await prisma.adminAudit.create({
+                data: { userId: actor, action: 'DELETE', targetId: id },
+            });
+        } catch {
+            // Audit write failures must not undo the moderation decision.
+        }
 
         // StaticFeedService.scheduleRefresh();
 
@@ -258,6 +308,7 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction): P
 
 // POST /api/admin/resources/:id/items - Add item to collection
 router.post('/:id/items',
+    requirePermission('resource.manage'),
     [
         body('title').isString().notEmpty().trim(),
         body('type').isString().trim(),
@@ -303,6 +354,7 @@ router.post('/:id/items',
 
 // PATCH /api/admin/resources/:collectionId/items/:itemId - Update item
 router.patch('/:collectionId/items/:itemId',
+    requirePermission('resource.manage'),
     [
         body('title').optional().isString().trim(),
         body('type').optional().isString().trim(),
@@ -343,7 +395,7 @@ router.patch('/:collectionId/items/:itemId',
 );
 
 // DELETE /api/admin/resources/:collectionId/items/:itemId - Delete item
-router.delete('/:collectionId/items/:itemId', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.delete('/:collectionId/items/:itemId', requirePermission('resource.manage'), async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const itemId = req.params.itemId as string;
 

@@ -64,7 +64,10 @@ const prismaMock = {
         : Promise.all(arg as Array<unknown>)
 );
 
-vi.mock('@fresherflow/database', () => ({
+vi.mock('@fresherflow/database', async () => ({
+    // Full enum set mirrored from the schema (helpers/dbEnums.ts) so the enum
+    // split cannot break test collection.
+    ...(await import('./helpers/dbEnums')),
     prisma: prismaMock,
     redis: {},
     OpportunityStatus: { DRAFT: 'DRAFT', PUBLISHED: 'PUBLISHED', ARCHIVED: 'ARCHIVED' },

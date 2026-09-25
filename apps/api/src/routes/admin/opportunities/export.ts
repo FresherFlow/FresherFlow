@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../../../infrastructure/database/prisma';
 import { Prisma } from '@fresherflow/database';
 import { normalizeTypeParam, parseAdminStatusFilter, buildExpiredWhere, toCsvValue } from './_helpers';
+import { requirePermission } from '../../../middleware/auth';
 
 const router = Router();
 
@@ -9,7 +10,7 @@ const router = Router();
  * GET /api/admin/opportunities/export
  * Returns a CSV of all opportunities matching the given filters.
  */
-router.get('/export', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/export', requirePermission('opportunity.review'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { type, status } = req.query;
         const where: Prisma.OpportunityWhereInput = {};

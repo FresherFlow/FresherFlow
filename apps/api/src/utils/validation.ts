@@ -88,7 +88,7 @@ export const profileUpdateSchema = z.object({
     expectedCtc: z.number().int().min(0).max(200, 'CTC expectation must be between 0 and 200 LPA').nullable().optional(),
     resumeUrl: z.string().url().max(2000).nullable().optional().or(z.literal('')),
     willingToRelocate: z.boolean().nullable().optional(),
-    headline: z.string().nullable().optional(),
+    headline: z.string().max(120, 'Headline must be at most 120 characters').nullable().optional(),
     about: z.string().nullable().optional(),
     githubUrl: z.string().url().nullable().optional().or(z.literal('')),
     linkedinUrl: z.string().url().nullable().optional().or(z.literal('')),
@@ -114,7 +114,7 @@ export const profileUpdateSchema = z.object({
     preferredCities: z.array(z.string()).optional(),
     workModes: z.array(z.nativeEnum(WorkMode)).optional(),
     availability: z.nativeEnum(Availability).optional(),
-    skills: z.array(z.string()).optional(),
+    skills: z.array(z.string()).max(10, 'Maximum 10 skills allowed').optional(),
     dob: z.string().nullable().optional(),
     gender: z.nativeEnum(Gender).nullable().optional(),
     category: z.nativeEnum(ReservationCategory).nullable().optional(),
@@ -129,13 +129,13 @@ export const educationSchema = z.object({
     // 10th Details
     tenthYear: z.number().int().min(1000, 'Year must be 4 digits').max(9999, 'Year must be 4 digits'),
 
-    // 12th Details
-    twelfthYear: z.number().int().min(1000, 'Year must be 4 digits').max(9999, 'Year must be 4 digits'),
+    // 12th Details — not applicable to 10th passouts
+    twelfthYear: z.number().int().min(1000, 'Year must be 4 digits').max(9999, 'Year must be 4 digits').optional(),
 
-    // Graduation Details
-    gradCourse: z.string().min(1, 'Course name is required'),
-    gradSpecialization: z.string().min(1, 'Specialization is required'),
-    gradYear: z.number().int().min(1000, 'Year must be 4 digits').max(9999, 'Year must be 4 digits'),
+    // Graduation Details — only for DIPLOMA/DEGREE/PG levels
+    gradCourse: z.string().min(1, 'Course name is required').optional(),
+    gradSpecialization: z.string().min(1, 'Specialization is required').optional(),
+    gradYear: z.number().int().min(1000, 'Year must be 4 digits').max(9999, 'Year must be 4 digits').optional(),
     collegeId: z.string().optional().nullable(),
     collegeName: z.string().optional().nullable(),
     collegeState: z.string().optional().nullable(),
@@ -158,6 +158,17 @@ export const educationSchema = z.object({
     isPwBD: z.boolean().optional().nullable(),
     isExServicemen: z.boolean().optional().nullable(),
     homeState: z.string().optional().nullable()
+}).superRefine((val, ctx) => {
+    // Required fields follow the highest level so lower levels are never
+    // forced to invent entries for schooling they don't have.
+    if (val.educationLevel !== 'TENTH' && val.twelfthYear === undefined) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['twelfthYear'], message: '12th passout year is required' });
+    }
+    if (['DIPLOMA', 'DEGREE', 'PG'].includes(val.educationLevel)) {
+        if (!val.gradCourse) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['gradCourse'], message: 'Course name is required' });
+        if (!val.gradSpecialization) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['gradSpecialization'], message: 'Specialization is required' });
+        if (val.gradYear === undefined) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['gradYear'], message: 'Graduation year is required' });
+    }
 });
 
 export const preferencesSchema = z.object({
@@ -168,10 +179,21 @@ export const preferencesSchema = z.object({
 
 export const readinessSchema = z.object({
     availability: z.nativeEnum(Availability),
-    skills: z.array(z.string()).min(1, 'Add at least one skill'),
+    skills: z.array(z.string()).min(1, 'Add at least one skill').max(10, 'Maximum 10 skills allowed'),
     expectedCtc: z.number().int().min(0).max(200, 'CTC expectation must be between 0 and 200 LPA').nullable().optional(),
     resumeUrl: z.string().url().max(2000).nullable().optional().or(z.literal('')),
     willingToRelocate: z.boolean().nullable().optional()
+});
+
+// Government-eligibility demographics (Profile.dob/gender/category/isPwBD/
+// isExServicemen/homeState). All fields optional: this is a partial editor.
+export const demographicsSchema = z.object({
+    dob: z.string().datetime({ offset: true }).or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD')).nullable().optional(),
+    gender: z.nativeEnum(Gender).nullable().optional(),
+    category: z.nativeEnum(ReservationCategory).nullable().optional(),
+    isPwBD: z.boolean().nullable().optional(),
+    isExServicemen: z.boolean().nullable().optional(),
+    homeState: z.string().trim().max(100).nullable().optional()
 });
 
 export const introRequestSchema = z.object({

@@ -16,15 +16,19 @@ export function withAdminAudit(action: AdminAction) {
 
         // Override json to intercept successful responses
         res.json = function (body: unknown) {
-            // Extract opportunity ID from various sources
+            // Extract opportunity ID from various sources (user admin routes use :userId)
             const bodyObj = body as { opportunity?: { id?: string } } | null;
-            const targetId = (req.params.id as string | undefined) || bodyObj?.opportunity?.id;
+            const params = req.params as { id?: string; userId?: string };
+            const targetId = params.id ?? params.userId ?? bodyObj?.opportunity?.id;
 
-            if (targetId && req.adminId) {
+            // Attribute to the admin session, or to the user session for
+            // moderators acting through the normal login (requireStaff).
+            const actorId = req.adminId ?? req.userId;
+            if (targetId && actorId) {
                 // Log asynchronously (don't block response)
                 prisma.adminAudit.create({
                     data: {
-                        userId: req.adminId,
+                        userId: actorId,
                         action,
                         targetId,
                         reason: (req.body as { reason?: string })?.reason || null

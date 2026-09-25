@@ -96,7 +96,10 @@ vi.mock('../infrastructure/services/publish.service', () => ({
 vi.mock('../application/opportunity/publish', () => ({ publishOpportunity: vi.fn() }));
 vi.mock('../application/opportunity/moderation', () => ({ rejectOpportunity: vi.fn() }));
 
-vi.mock('@fresherflow/database', () => ({
+vi.mock('@fresherflow/database', async () => ({
+    // Full enum set mirrored from the schema so a taxonomy split cannot break
+    // test collection. See helpers/dbEnums.ts.
+    ...(await import('./helpers/dbEnums')),
     prisma: prismaMock,
     redis: {},
     CommunityPostStatus: {

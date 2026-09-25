@@ -3,6 +3,7 @@ import prisma, { OpportunityStatus as DbOpportunityStatus } from '../../../infra
 import { Prisma } from '@fresherflow/database';
 import { OpportunityStatus } from '@fresherflow/types';
 import { searchOpportunities } from '../../../application/opportunity';
+import { requirePermission } from '../../../middleware/auth';
 import {
     normalizeTypeParam, parseAdminStatusFilter, buildExpiredWhere, buildIdOrSlugWhere,
 } from './_helpers';
@@ -14,7 +15,7 @@ const router = Router();
  * GET /api/admin/opportunities
  * List and search opportunities with filtering, sorting, and cursor/offset pagination.
  */
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', requirePermission('opportunity.review'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const cacheKey = `list_${JSON.stringify(req.query)}`;
         const cached = adminCache.get(cacheKey);
@@ -183,7 +184,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
  * GET /api/admin/opportunities/summary
  * Aggregate counts by status for dashboard widgets.
  */
-router.get('/summary', async (_req: Request, res: Response, next: NextFunction) => {
+router.get('/summary', requirePermission('opportunity.review'), async (_req: Request, res: Response, next: NextFunction) => {
     try {
         const cacheKey = 'summary_all';
         const cached = adminCache.get(cacheKey);
@@ -220,7 +221,7 @@ router.get('/summary', async (_req: Request, res: Response, next: NextFunction) 
 /**
  * GET /api/admin/opportunities/:id
  */
-router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id', requirePermission('opportunity.review'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const id = req.params.id as string;
         if (!id) return res.status(400).json({ message: 'Opportunity ID or slug is required' });

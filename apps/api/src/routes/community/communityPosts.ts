@@ -14,6 +14,7 @@ import {
     addCommunityPostComment,
     voteCommunityPostComment,
     deleteCommunityPostComment,
+    listMyContributions,
 } from '../../infrastructure/services/community.service';
 import { z } from 'zod';
 import { communityPostVoteSchema, communityPostCommentCreateSchema, communityPostCommentVoteSchema } from '../../utils/validation';
@@ -79,6 +80,23 @@ router.get(
         const limit = Number(req.query.limit) || 20;
         const result = await listTrendingTags({ limit });
         res.setHeader('Cache-Control', 'public, max-age=300');
+        return res.json(result);
+    })
+);
+
+// ========================================
+// My contributions (Contribute hub history)
+// Registered before /:id so "mine" is not treated as a post id.
+// ========================================
+
+router.get(
+    '/mine',
+    communityReadLimiter,
+    requireAuth,
+    asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+        const userId = requireMember(req, next);
+        if (!userId) return;
+        const result = await listMyContributions(userId);
         return res.json(result);
     })
 );

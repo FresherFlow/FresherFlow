@@ -70,8 +70,10 @@ router.get('/:id', adaptiveDetailLimiter, async (req: Request, res: Response, ne
         if (!opportunity) {
             const suffix = extractSlugSuffix(id);
             if (suffix) {
+                // Slug suffix is the HEAD of the UUID (slugify.ts), so rescue
+                // drifted slugs with a head match, not a tail match.
                 opportunity = await prisma.opportunity.findFirst({
-                    where: { id: { endsWith: suffix }, deletedAt: null },
+                    where: { id: { startsWith: suffix }, deletedAt: null },
                     select: buildPublicOpportunitySelect(userId || undefined)
                 });
             }

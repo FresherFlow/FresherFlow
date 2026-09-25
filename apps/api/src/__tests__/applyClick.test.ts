@@ -15,7 +15,10 @@ const prismaMock = {
 
 const trackMock = vi.fn();
 
-vi.mock("@fresherflow/database", () => ({
+vi.mock("@fresherflow/database", async () => ({
+  // Full enum set mirrored from the schema (helpers/dbEnums.ts) so new or
+  // split enums cannot break test collection.
+  ...(await import("./helpers/dbEnums")),
   prisma: prismaMock,
   OpportunityStatus: { PUBLISHED: "PUBLISHED" },
 }));

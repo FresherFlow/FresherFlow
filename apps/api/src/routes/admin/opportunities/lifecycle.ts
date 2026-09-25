@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../../../infrastructure/database/prisma';
+import { requirePermission } from '../../../middleware/auth';
 import { OpportunityStatus, Opportunity } from '@fresherflow/types';
 import { adminRateLimit } from '../../../middleware/adminRateLimit';
 import { withAdminAudit, validateReason } from '../../../middleware/adminAudit';
@@ -17,6 +18,7 @@ const router = Router();
  */
 router.post(
     '/:id/expire',
+    requirePermission('opportunity.archive'),
     adminRateLimit,
     withAdminAudit('EXPIRE'),
     async (req: Request, res: Response, next: NextFunction) => {
@@ -56,6 +58,7 @@ router.post(
  */
 router.post(
     '/:id/restore',
+    requirePermission('opportunity.restore'),
     adminRateLimit,
     withAdminAudit('UPDATE'),
     async (req: Request, res: Response, next: NextFunction) => {
@@ -98,6 +101,7 @@ router.post(
  */
 router.delete(
     '/:id',
+    requirePermission('opportunity.archive'),
     adminRateLimit,
     validateReason,
     withAdminAudit('DELETE'),
@@ -142,6 +146,7 @@ router.delete(
  */
 router.delete(
     '/:id/hard',
+    requirePermission('opportunity.delete'),
     adminRateLimit,
     validateReason,
     withAdminAudit('DELETE'),
@@ -155,8 +160,67 @@ router.delete(
             });
             if (!existing) throw new AppError('Opportunity not found', 404);
 
-            await prisma.opportunity.delete({
-                where: { id: existing.id as string },
+            const opportunityId = existing.id as string;
+
+            // Hard delete must succeed even where the deployed database still
+            // carries RESTRICT FKs from older migrations (the schema declares
+            // Cascades, but drift happens). Delete leaf rows first inside one
+            // short transaction — no network calls inside — then the
+            // opportunity itself.
+            await prisma.$transaction(async (tx) => {
+                const commentIds = (
+                    await tx.opportunityComment.findMany({
+                        where: { opportunityId },
+                        select: { id: true },
+                    })
+                ).map((comment) => comment.id);
+                if (commentIds.length > 0) {
+                    await tx.commentVote.deleteMany({ where: { commentId: { in: commentIds } } });
+                    await tx.notification.deleteMany({ where: { commentId: { in: commentIds } } });
+                    await tx.report.deleteMany({ where: { commentId: { in: commentIds } } });
+                }
+
+                const interviewIds = (
+                    await tx.interviewExperience.findMany({
+                        where: { opportunityId },
+                        select: { id: true },
+                    })
+                ).map((experience) => experience.id);
+                if (interviewIds.length > 0) {
+                    await tx.interviewExperienceVote.deleteMany({
+                        where: { interviewExperienceId: { in: interviewIds } },
+                    });
+                }
+
+                await tx.jobSignal.deleteMany({ where: { opportunityId } });
+                await tx.savedOpportunity.deleteMany({ where: { opportunityId } });
+                await tx.userAction.deleteMany({ where: { opportunityId } });
+                await tx.listingFeedback.deleteMany({ where: { opportunityId } });
+                await tx.platformEvent.deleteMany({ where: { opportunityId } });
+                await tx.opportunityEvent.deleteMany({ where: { opportunityId } });
+                await tx.telegramBroadcast.deleteMany({ where: { opportunityId } });
+                await tx.socialPost.deleteMany({ where: { opportunityId } });
+                await tx.opportunityComment.deleteMany({ where: { opportunityId } });
+                await tx.report.deleteMany({ where: { opportunityId } });
+                await tx.interviewExperience.deleteMany({ where: { opportunityId } });
+                await tx.applicationUpdate.deleteMany({ where: { opportunityId } });
+
+                await tx.alertDelivery.updateMany({ where: { opportunityId }, data: { opportunityId: null } });
+                await tx.alertDispatchLog.updateMany({ where: { opportunityId }, data: { opportunityId: null } });
+                await tx.jobSubmission.updateMany({ where: { opportunityId }, data: { opportunityId: null } });
+                await tx.salaryReport.updateMany({ where: { opportunityId }, data: { opportunityId: null } });
+                await tx.rawOpportunity.updateMany({
+                    where: { mappedOpportunityId: opportunityId },
+                    data: { mappedOpportunityId: null },
+                });
+                await tx.notification.updateMany({ where: { opportunityId }, data: { opportunityId: null } });
+
+                // `walkInDetails` was renamed to `driveDetails` when walk-ins became
+                // a recruitment method rather than a separate opportunity type.
+                await tx.driveDetails.deleteMany({ where: { opportunityId } });
+                await tx.governmentJobDetails.deleteMany({ where: { opportunityId } });
+
+                await tx.opportunity.delete({ where: { id: opportunityId } });
             });
 
             res.json({ message: 'Opportunity permanently deleted' });
@@ -177,6 +241,7 @@ router.delete(
  */
 router.post(
     '/:id/publish',
+    requirePermission('opportunity.publish'),
     adminRateLimit,
     withAdminAudit('UPDATE'),
     async (req: Request, res: Response, next: NextFunction) => {
@@ -212,6 +277,7 @@ router.post(
  */
 router.post(
     '/:id/reject',
+    requirePermission('opportunity.review'),
     adminRateLimit,
     validateReason,
     withAdminAudit('REJECT'),
@@ -250,6 +316,7 @@ router.post(
  */
 router.post(
     '/:id/spam',
+    requirePermission('opportunity.archive'),
     adminRateLimit,
     validateReason,
     withAdminAudit('SPAM'),

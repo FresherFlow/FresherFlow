@@ -23,7 +23,7 @@
  *   DELETE /:id/events/:eventId → events.ts
  */
 import express, { Router } from 'express';
-import { requireAdmin } from '../../../middleware/auth';
+import { requireStaff } from '../../../middleware/auth';
 
 import listRouter     from './list';
 import createRouter   from './create';
@@ -37,8 +37,11 @@ import communitySubmissionsRouter from './communitySubmissions';
 
 const router: Router = express.Router();
 
-// Auth guard applies to all sub-routes
-router.use(requireAdmin);
+// Staff guard (admin session OR signed-in user session) applies to all
+// sub-routes; each module adds its own requirePermission leaf gate so plain
+// authenticated users get 403. Moderators hold review/edit/publish/archive/
+// restore; create/delete stay SUPER_ADMIN-only via the seed.
+router.use(requireStaff);
 
 // Fixed-path routes registered before /:id to avoid shadowing
 router.use('/', exportRouter);   // GET /export

@@ -4,6 +4,7 @@ import { RawOpportunityStatus, OpportunityStatus, Opportunity } from '@fresherfl
 import { resolveOpportunityDimensions } from './_helpers';
 import { generateSlug } from '@fresherflow/utils';
 import { handleOpportunityPublished } from '../../../infrastructure/services/publish.service';
+import { actorId, requirePermission } from '../../../middleware/auth';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
 import crypto from 'node:crypto';
 
@@ -13,7 +14,17 @@ const router = Router();
  * POST /api/admin/opportunities/submissions/bulk
  * Bulk approve/publish or reject/archive submissions.
  */
-router.post('/bulk', async (req: Request & { adminId?: string }, res: Response, next: NextFunction) => {
+/**
+ * Raw-submission bulk actions need the permission of what they do:
+ * PUBLISH needs opportunity.publish, ARCHIVE needs opportunity.archive.
+ */
+function requireRawBulkPermission(req: Request, res: Response, next: NextFunction) {
+    const action = (req.body as { action?: unknown })?.action;
+    const key = action === 'PUBLISH' ? 'opportunity.publish' : 'opportunity.archive';
+    return requirePermission(key)(req, res, next);
+}
+
+router.post('/bulk', requireRawBulkPermission, async (req: Request & { adminId?: string }, res: Response, next: NextFunction) => {
     try {
         const { ids, action } = req.body;
         if (!ids || !Array.isArray(ids) || ids.length === 0) {
@@ -57,7 +68,7 @@ router.post('/bulk', async (req: Request & { adminId?: string }, res: Response, 
                         sourceLink: rawOpp.sourceLink,
                         applyLink: rawOpp.applyLink || rawOpp.sourceLink,
                         status: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus,
-                        postedByUserId: rawOpp.createdByUserId || req.adminId || 'system',
+                        postedByUserId: rawOpp.createdByUserId || actorId(req) || 'system',
                         publishedAt: now,
                     }
                 });
@@ -89,7 +100,7 @@ router.post('/bulk', async (req: Request & { adminId?: string }, res: Response, 
  * GET /api/admin/opportunities/submissions
  * List pending user submissions (RawOpportunity with status FETCHED).
  */
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', requirePermission('opportunity.review'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const submissions = await prisma.rawOpportunity.findMany({
             where: {
@@ -110,7 +121,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
  * POST /api/admin/opportunities/submissions/:id/reject
  * Reject a submission.
  */
-router.post('/:id/reject', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/reject', requirePermission('opportunity.review'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const id = req.params.id as string;
         
@@ -131,7 +142,7 @@ router.post('/:id/reject', async (req: Request, res: Response, next: NextFunctio
  * POST /api/admin/opportunities/submissions/:id/link
  * Link a submission (RawOpportunity) to a published opportunity.
  */
-router.post('/:id/link', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/link', requirePermission('opportunity.edit'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const id = req.params.id as string;
         const { opportunityId } = req.body;

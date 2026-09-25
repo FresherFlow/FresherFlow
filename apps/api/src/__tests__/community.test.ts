@@ -80,7 +80,10 @@ const prismaMock = {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (prismaMock as any).$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(prismaMock));
 
-vi.mock('@fresherflow/database', () => ({
+vi.mock('@fresherflow/database', async () => ({
+    // Full enum set mirrored from the schema (helpers/dbEnums.ts) so the enum
+    // split (EmploymentType, JobSignalType, ...) cannot break collection.
+    ...(await import('./helpers/dbEnums')),
     prisma: prismaMock,
     redis: {},
     CommentType: {

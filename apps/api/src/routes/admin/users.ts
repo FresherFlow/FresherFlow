@@ -1,8 +1,18 @@
 import prisma from '../../infrastructure/database/prisma';
 import { Router, Request, Response, NextFunction } from 'express';
-import { requireAdmin } from '../../middleware/auth';
+import { z } from 'zod';
+import { actorId, hasPermission, requireAdmin, requirePermission, requireStaff } from '../../middleware/auth';
+import { validate } from '../../middleware/validate';
+import { adminRateLimit } from '../../middleware/adminRateLimit';
+import { withAdminAudit } from '../../middleware/adminAudit';
+import { AppError } from '../../middleware/errorHandler';
 
 const router = Router();
+
+const userStatusSchema = z.object({
+    status: z.enum(['ACTIVE', 'SUSPENDED', 'DEACTIVATED']),
+    reason: z.string().trim().max(500).optional(),
+});
 
 /**
  * GET /api/admin/users
@@ -24,6 +34,7 @@ router.get('/', requireAdmin, async (req: Request, res: Response, next: NextFunc
                 email: true,
                 role: true,
                 trustLevel: true,
+                status: true,
                 createdAt: true,
             }
         });
@@ -78,7 +89,7 @@ router.get('/handles', requireAdmin, async (_req: Request, res: Response, next: 
  * POST /api/admin/users/:userId/vet
  * Approve/vet a user's handle.
  */
-router.post('/:userId/vet', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:userId/vet', requireAdmin, requirePermission('user.manage'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = req.params.userId as string;
         const user = await prisma.user.update({
@@ -86,6 +97,67 @@ router.post('/:userId/vet', requireAdmin, async (req: Request, res: Response, ne
             data: { trustLevel: 'VERIFIED' }
         });
         res.json({ success: true, user });
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
+ * POST /api/admin/users/:userId/status
+ * Suspend, deactivate, or reactivate an abusive user (V1 checklist F).
+ * SUSPENDED/DEACTIVATED users are blocked in requireAuth/requireStaff with
+ * 403; trustLevel BANNED is also enforced. Reactivation sets ACTIVE and
+ * clears a legacy BANNED trust level back to VERIFIED.
+ *
+ * Moderators (user session + user.manage) may suspend/reactivate plain USER
+ * accounts — the explicitly-required account action for spam fighting.
+ * Privileged targets (role ADMIN, or anyone holding an AccessRole grant) and
+ * self-suspension are admin-only: non-admin actors get 403.
+ */
+router.post('/:userId/status', requireStaff, requirePermission('user.manage'), adminRateLimit, validate(userStatusSchema), withAdminAudit('UPDATE'), async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.params.userId as string;
+        const { status, reason } = req.body as { status: 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED'; reason?: string };
+
+        const existing = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, status: true, trustLevel: true, role: true },
+        });
+        if (!existing) throw new AppError('User not found', 404);
+
+        const actor = actorId(req);
+        const isAdminActor = Boolean(req.adminId);
+        if (!isAdminActor) {
+            if (!actor || actor === userId) {
+                throw new AppError('Forbidden: Insufficient permissions', 403);
+            }
+            const privileged = existing.role === 'ADMIN'
+                || (await hasPermission(userId, 'moderator.manage'))
+                || (await hasPermission(userId, 'settings.manage'))
+                || (await hasPermission(userId, 'audit.view'));
+            if (privileged) {
+                throw new AppError('Forbidden: Insufficient permissions', 403);
+            }
+        }
+
+        const data: { status: typeof status; trustLevel?: 'BANNED' | 'VERIFIED' } = { status };
+        if (status !== 'ACTIVE' && existing.trustLevel !== 'BANNED') {
+            data.trustLevel = 'BANNED';
+        } else if (status === 'ACTIVE' && existing.trustLevel === 'BANNED') {
+            data.trustLevel = 'VERIFIED';
+        }
+
+        const user = await prisma.user.update({
+            where: { id: userId },
+            data,
+            select: { id: true, status: true, trustLevel: true },
+        });
+
+        res.json({
+            success: true,
+            user,
+            message: reason ?? `User ${status === 'ACTIVE' ? 'reactivated' : status.toLowerCase()}`,
+        });
     } catch (error) {
         next(error);
     }
