@@ -17,8 +17,10 @@ export default function TopNav() {
     const [isAuthOpen, setIsAuthOpen] = useState(false);
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-    const isOpportunitiesRoute = pathname === '/' || pathname.startsWith('/jobs');
-    const isWalkinsMode = isOpportunitiesRoute && (pathname.includes('/walkins') || pathname.includes('/walk-ins'));
+    // Walk-ins moved to the Drives hub, so /drives is an opportunities route too.
+    // Without this the header fell through to neither Jobs nor Walk-ins mode.
+    const isOpportunitiesRoute = pathname === '/' || pathname.startsWith('/jobs') || pathname.startsWith('/drives');
+    const isWalkinsMode = isOpportunitiesRoute && (pathname.startsWith('/drives/walk-in') || pathname.includes('/walkins') || pathname.includes('/walk-ins'));
     const isJobsMode = isOpportunitiesRoute && !isWalkinsMode;
     const isAdminRoute = pathname.startsWith('/admin');
 

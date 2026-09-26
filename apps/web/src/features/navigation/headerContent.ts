@@ -46,7 +46,9 @@ export function getAdminTitle(segments: string[]): string {
 export function isFeedHeaderRoute(segments: string[]): boolean {
     const first = segments[0];
     return (
-        (first === 'jobs' && (segments.length === 1 || ['internships', 'walkins', 'walk-ins', 'remote'].includes(segments[1]))) ||
+        (first === 'jobs' && (segments.length === 1 || ['internships', 'walkins', 'walk-ins', 'remote', 'full-time', 'part-time'].includes(segments[1]))) ||
+        // Drives and its children render the feed header, not a breadcrumb.
+        (first === 'drives' && (segments.length === 1 || ['walk-in', 'off-campus'].includes(segments[1]))) ||
         (['govt', 'hackathons', 'resources'].includes(first) && segments.length === 1)
     );
 }
