@@ -6,6 +6,7 @@ import BuildingLibraryIcon from '@heroicons/react/24/outline/BuildingLibraryIcon
 import GlobeAltIcon from '@heroicons/react/24/outline/GlobeAltIcon';
 import UserCircleIcon from '@heroicons/react/24/outline/UserCircleIcon';
 import MapIcon from '@heroicons/react/24/outline/MapIcon';
+import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import type { ComponentProps } from 'react';
 
 export type NavRoute = {
@@ -135,6 +136,24 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             icon: AcademicCapIcon,
         },
         {
+            href: '/drives',
+            label: 'Drives',
+            mobileTitle: 'Drives',
+            mobileLabel: 'Drives',
+            showInDesktop: true,
+            showInMobileTabs: false,
+            icon: MapIcon,
+        },
+        {
+            href: '/drives/off-campus',
+            label: 'Off-Campus',
+            mobileTitle: 'Off-Campus Drives',
+            mobileLabel: 'Off-Campus',
+            showInDesktop: true,
+            showInMobileTabs: false,
+            icon: MapPinIcon,
+        },
+        {
             href: '/drives/walk-in',
             label: 'Walk-ins',
             mobileTitle: 'Walk-in Drives',
@@ -215,6 +234,10 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
 export const SIDEBAR_ROUTES = [
     '/jobs',
     '/jobs/internships',
+    // Prefix entry: covers the hub, /drives/off-campus and /drives/walk-in
+    // (including /drives/walk-in/[city]). Listing only the leaf left the hub
+    // and off-campus on the public DesktopNav with no sidebar at all.
+    '/drives',
     '/drives/walk-in',
     '/govt',
     '/jobs/remote',

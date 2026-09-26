@@ -69,6 +69,14 @@ export function formatJobFeedTitle(filters: TitleFilters): string {
         parts.push(`${batchPrefix}Walk-in Drives`);
     } else if (filters.type === 'HACKATHONS') {
         parts.push(`${batchPrefix}Hackathons`);
+    } else if (filters.type === 'DRIVES') {
+        parts.push(`${batchPrefix}Hiring Drives`);
+    } else if (filters.type === 'OFF_CAMPUS') {
+        parts.push(`${batchPrefix}Off-Campus Drives`);
+    } else if (filters.type === 'FULL_TIME') {
+        parts.push(`${batchPrefix}Full-Time Jobs`);
+    } else if (filters.type === 'PART_TIME') {
+        parts.push(`${batchPrefix}Part-Time Jobs`);
     } else {
         parts.push(`${batchPrefix}Jobs`);
     }
