@@ -1,6 +1,6 @@
 import { BriefcaseIcon, BuildingLibraryIcon, MapIcon } from '@heroicons/react/24/outline';
 import type { NavIcon, NavItem, NavItemId } from './navRegistry';
-import { ACCOUNT_NAV_ITEMS, DEFAULT_NAV_ITEMS, GOVT_NAV_ITEMS, JOBS_NAV_ITEMS, REGISTRY } from './navRegistry';
+import { ACCOUNT_NAV_ITEMS, DEFAULT_NAV_ITEMS, DRIVES_NAV_ITEMS, GOVT_NAV_ITEMS, JOBS_NAV_ITEMS, REGISTRY } from './navRegistry';
 
 /* ────────────────────────────────────────────────────────────────────────────
    Space model (Jobs / Government).
@@ -77,7 +77,7 @@ export const SPACES: Space[] = [
             {
                 label: 'Browse',
                 items: [
-                    ...pick(JOBS_NAV_ITEMS, 'dashboard', 'jobs', 'internships', 'fullTime', 'partTime', 'remote', 'drives', 'offCampus', 'walkins', 'jobBoards'),
+                    ...pick(JOBS_NAV_ITEMS, 'dashboard', 'jobs', 'internships', 'fullTime', 'partTime', 'remote', 'jobBoards'),
                     ...pick(DEFAULT_NAV_ITEMS, 'saved', 'tracker'),
                     { title: REGISTRY.alerts.name, href: REGISTRY.alerts.href, icon: REGISTRY.alerts.icon, requiresAuth: REGISTRY.alerts.requiresAuth },
                     { title: REGISTRY.notifications.name, href: REGISTRY.notifications.href, icon: REGISTRY.notifications.icon, requiresAuth: REGISTRY.notifications.requiresAuth },
@@ -102,7 +102,7 @@ export const SPACES: Space[] = [
         groups: [
             {
                 label: 'Browse',
-                items: pick(JOBS_NAV_ITEMS, 'drives', 'offCampus', 'walkins'),
+                items: pick(DRIVES_NAV_ITEMS, 'drives', 'offCampus', 'walkins'),
                 collapsible: true,
             },
             {

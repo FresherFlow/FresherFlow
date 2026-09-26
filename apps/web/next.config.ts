@@ -271,19 +271,40 @@ const nextConfig: NextConfig = {
         destination: "/jobs/remote",
         permanent: true,
       },
+      // Walk-ins are now part of the Drives hub. Every legacy spelling lands on
+      // the canonical page in ONE hop — chaining through /jobs/walkins (which
+      // itself redirects to /drives) burned a redirect and diluted the signal.
       {
         source: "/walk-ins",
-        destination: "/jobs/walkins",
+        destination: "/drives/walk-in",
         permanent: true,
       },
       {
         source: "/jobs/walk-ins",
-        destination: "/jobs/walkins",
+        destination: "/drives/walk-in",
         permanent: true,
       },
       {
         source: "/jobs/walk-ins/:path*",
-        destination: "/jobs/walkins/:path*",
+        destination: "/drives/walk-in/:path*",
+        permanent: true,
+      },
+      {
+        source: "/jobs/walkins",
+        destination: "/drives",
+        permanent: true,
+      },
+      {
+        source: "/jobs/walkins/:path*",
+        destination: "/drives/walk-in/:path*",
+        permanent: true,
+      },
+      // `/off-campus` is referenced by Navigation.tsx, routeConfig.ts,
+      // navSpaces.ts and paths.ts but had no route behind it — a dead link.
+      // Point it at the real hub.
+      {
+        source: "/off-campus",
+        destination: "/drives/off-campus",
         permanent: true,
       },
       {

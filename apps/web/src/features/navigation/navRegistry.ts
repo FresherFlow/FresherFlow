@@ -73,10 +73,12 @@ export const REGISTRY = {
     internships: { name: 'Internships', href: '/jobs?type=internship', icon: AcademicCapIcon },
     remote: { name: 'Remote', href: '/jobs?mode=remote', icon: ComputerDesktopIcon },
     walkins: { name: 'Walk-ins', href: '/drives/walk-in', icon: MapIcon },
-    drives: { name: 'Drives', href: '/drives', icon: MapIcon, hasSubmenu: true },
-    offCampus: { name: 'Off-Campus', href: '/drives/off-campus', icon: MapPinIcon },
-    fullTime: { name: 'Full-Time', href: '/jobs/full-time', icon: BriefcaseIcon },
-    partTime: { name: 'Part-Time', href: '/jobs/part-time', icon: ClockIcon },
+    // `exact` matters here: without it `/drives` prefix-matches and both this
+    // hub and the Walk-ins row light up on /drives/walk-in.
+    drives: { name: 'Drives', href: '/drives', icon: MapIcon, exact: true },
+    offCampus: { name: 'Off-Campus', href: '/drives/off-campus', icon: MapPinIcon, exact: true },
+    fullTime: { name: 'Full-Time', href: '/jobs/full-time', icon: BriefcaseIcon, exact: true },
+    partTime: { name: 'Part-Time', href: '/jobs/part-time', icon: ClockIcon, exact: true },
     jobBoards: { name: 'Browse Boards', href: '/jobs/browse', icon: CodeBracketIcon },
     companies: { name: 'Companies', href: '/companies', icon: BuildingOfficeIcon },
     resources: { name: 'Resources', href: '/resources', icon: BookOpenIcon },
@@ -135,9 +137,6 @@ export const JOBS_NAV_ITEMS: NavItem[] = [
     nav('fullTime'),
     nav('partTime'),
     nav('remote'),
-    nav('drives'),
-    nav('offCampus'),
-    nav('walkins'),
     nav('contribute', { name: 'Post a Job' }),
     nav('jobBoards'),
     nav('companies', { name: 'Companies' }),
@@ -158,6 +157,16 @@ export const GOVT_NAV_ITEMS: NavItem[] = [
     nav('govtEngineering'),
     nav('jobsPrivate'),
     nav('contribute', { name: 'Post a Job' }),
+];
+
+/**
+ * Drive destinations. They are a separate space, not part of the Jobs list:
+ * Jobs covers postings you apply to, Drives covers events you attend.
+ */
+export const DRIVES_NAV_ITEMS: NavItem[] = [
+    nav('drives'),
+    nav('offCampus'),
+    nav('walkins'),
 ];
 
 export const ACCOUNT_NAV_ITEMS: NavItem[] = [
