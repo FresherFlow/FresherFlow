@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { requireAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { validate } from '../middleware/validate';
+import { createRateLimiter } from '../middleware/rateLimit';
 import {
     savedSearchCreateSchema,
     savedSearchUpdateSchema,
@@ -105,6 +106,34 @@ router.get('/saved-searches/:id/matches', requireAuth, async (req: Request, res:
                 limit: parsePositiveInt(req.query.limit, 20, 50),
             }
         );
+        res.json(result);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// ============================================================================
+// REFERRAL FEED (public curated hiring-post list — techreferrals-style)
+// OPEN-only lean rows. Full request/response detail: GET /referral-requests.
+// ============================================================================
+
+const referralFeedLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 60,
+    message: 'Too many requests',
+    keyPrefix: 'rate:referral:feed',
+});
+
+router.get('/referral-feed', referralFeedLimiter, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const result = await fresherNeeds.listReferralFeed({
+            page: parsePositiveInt(req.query.page, 1, 100),
+            limit: parsePositiveInt(req.query.limit, 20, 50),
+            company: typeof req.query.company === 'string' ? req.query.company.slice(0, 120) : undefined,
+            role: typeof req.query.role === 'string' ? req.query.role.slice(0, 120) : undefined,
+            city: typeof req.query.city === 'string' ? req.query.city.slice(0, 80) : undefined,
+        });
+        res.setHeader('Cache-Control', 'public, max-age=120, stale-while-revalidate=300');
         res.json(result);
     } catch (err) {
         next(err);

@@ -51,5 +51,7 @@ describe('config env parsing', () => {
         expect(run(' user admin ')).toBe('all');
         expect(run('user,admin')).toBe('all');
         expect(run('admin')).toBe('admin');
-    });
+        // Four cold `node -e` spawns each pay full module-resolution cost here,
+        // which exceeds the 20s default on a cold or loaded machine.
+    }, 60000);
 });

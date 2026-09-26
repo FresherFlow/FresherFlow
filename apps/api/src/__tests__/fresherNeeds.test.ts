@@ -253,6 +253,56 @@ describe('GET /api/referral-requests', () => {
     });
 });
 
+describe('GET /api/referral-feed', () => {
+    it('lists OPEN posts as lean rows without nested responses', async () => {
+        prismaMock.referralRequest.count.mockResolvedValue(1);
+        prismaMock.referralRequest.findMany.mockResolvedValue([
+            {
+                id: 'rr-1',
+                company: 'Zoho',
+                role: 'SDE',
+                batch: 2026,
+                city: 'Chennai',
+                note: 'Hiring freshers',
+                responseCount: 2,
+                createdAt: new Date(),
+                author: user('user-2'),
+            },
+        ]);
+
+        const res = await request(app).get('/api/referral-feed');
+
+        expect(res.status).toBe(200);
+        expect(res.body.posts).toHaveLength(1);
+        expect(res.body.posts[0].company).toBe('Zoho');
+        expect(res.body.posts[0]).not.toHaveProperty('responses');
+        expect(res.body.posts[0].author.username).toBe('user_user-2');
+        // OPEN-only filter enforced at the DB layer
+        expect(prismaMock.referralRequest.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({ where: expect.objectContaining({ status: 'OPEN' }) })
+        );
+    });
+
+    it('passes company, role, and city filters through', async () => {
+        prismaMock.referralRequest.count.mockResolvedValue(0);
+        prismaMock.referralRequest.findMany.mockResolvedValue([]);
+
+        const res = await request(app).get('/api/referral-feed?company=Zoho&role=SDE&city=Chennai');
+
+        expect(res.status).toBe(200);
+        expect(prismaMock.referralRequest.findMany).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: expect.objectContaining({
+                    status: 'OPEN',
+                    company: { equals: 'Zoho', mode: 'insensitive' },
+                    role: { contains: 'SDE', mode: 'insensitive' },
+                    city: { equals: 'Chennai', mode: 'insensitive' },
+                }),
+            })
+        );
+    });
+});
+
 describe('POST /api/referral-requests', () => {
     it('returns 401 when unauthenticated', async () => {
         const res = await request(app).post('/api/referral-requests').send({ company: 'Zoho' });

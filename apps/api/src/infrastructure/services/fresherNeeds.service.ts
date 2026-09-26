@@ -347,13 +347,12 @@ export async function executeSavedSearch(
         return {
             searchId,
             matches: rows as unknown as Array<Record<string, unknown>>,
-            total,
-            page,
-            limit,
-            hasMore: page * limit < total,
-        };
-    }
-
+        total,
+        page,
+        limit,
+        hasMore: page * limit < total,
+    };
+}
     const [total, rows] = await Promise.all([
         prisma.opportunity.count({ where }),
         prisma.opportunity.findMany({
@@ -378,6 +377,62 @@ export async function executeSavedSearch(
     return {
         searchId,
         matches: rows as unknown as Array<Record<string, unknown>>,
+        total,
+        page,
+        limit,
+        hasMore: page * limit < total,
+    };
+}
+
+export async function listReferralFeed(params: {
+    page: number;
+    limit: number;
+    company?: string;
+    role?: string;
+    city?: string;
+}) {
+    const { page, limit, company, role, city } = params;
+
+    const where: Prisma.ReferralRequestWhereInput = {
+        status: ReferralRequestStatus.OPEN,
+        ...(company ? { company: { equals: company, mode: 'insensitive' } } : {}),
+        ...(role ? { role: { contains: role, mode: 'insensitive' } } : {}),
+        ...(city ? { city: { equals: city, mode: 'insensitive' } } : {}),
+    };
+
+    const [total, requests] = await Promise.all([
+        prisma.referralRequest.count({ where }),
+        prisma.referralRequest.findMany({
+            where,
+            orderBy: { createdAt: 'desc' },
+            skip: (page - 1) * limit,
+            take: limit,
+            select: {
+                id: true,
+                company: true,
+                role: true,
+                batch: true,
+                city: true,
+                note: true,
+                responseCount: true,
+                createdAt: true,
+                author: { select: postUserSelect },
+            },
+        }),
+    ]);
+
+    return {
+        posts: requests.map((r) => ({
+            id: r.id,
+            company: r.company,
+            role: r.role,
+            batch: r.batch,
+            city: r.city,
+            note: r.note,
+            responseCount: r.responseCount,
+            createdAt: r.createdAt.toISOString(),
+            author: toPostUser(r.author),
+        })),
         total,
         page,
         limit,
