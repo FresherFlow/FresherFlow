@@ -5,8 +5,8 @@ import { validate } from '../../middleware/validate';
 import { AppError } from '../../middleware/errorHandler';
 import { createRateLimiter } from '../../middleware/rateLimit';
 import prisma from '../../infrastructure/database/prisma';
-import { PipelineService } from '../../infrastructure/services/pipeline.service';
-import { requireOrgMembership } from '../../infrastructure/services/orgAccess';
+import { PipelineService } from '../../infrastructure/services/organization/pipeline.service';
+import { requireOrgMembership } from '../../infrastructure/services/organization/orgAccess';
 import {
     addStageSchema,
     createPipelineSchema,

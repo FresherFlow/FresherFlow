@@ -8,8 +8,8 @@ import { AppError } from '../../middleware/errorHandler';
 import {
     getAdminDeliveryControls,
     updateAdminDeliveryControls,
-} from '../../infrastructure/services/adminDeliveryControl.service';
-import { retrySocialPost } from '../../infrastructure/services/social/socialPost.service';
+} from '../../infrastructure/services/platform/adminDeliveryControl.service';
+import { retrySocialPost } from '../../infrastructure/services/alerts/social/socialPost.service';
 
 const router = Router();
 

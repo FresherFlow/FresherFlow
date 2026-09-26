@@ -73,8 +73,8 @@ import usernameRoutes from './routes/username';
 import publicStatsRoutes from './routes/public/stats';
 import resourcesRoutes from './routes/resources';
 import deviceTokenRoutes from './routes/deviceToken';
-import { StaticFeedService } from './infrastructure/services/staticFeed.service';
-import { initializeQueueListeners } from './infrastructure/services/push-notification.service';
+import { StaticFeedService } from './infrastructure/services/opportunity/staticFeed.service';
+import { initializeQueueListeners } from './infrastructure/services/alerts/push-notification.service';
 import { installShutdownHandlers, markReady } from './utils/readiness';
 
 import adminGovernmentJobsRoutes from './routes/admin/governmentJobs';

@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { MetadataService } from '../infrastructure/services/metadata.service';
+import { MetadataService } from '../infrastructure/services/opportunity/metadata.service';
 import { logger } from '@fresherflow/utils';
 
 async function run() {

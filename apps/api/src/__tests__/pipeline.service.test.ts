@@ -428,7 +428,7 @@ beforeEach(async () => {
     prismaMock.$queryRaw.mockClear();
 
     if (!PipelineService) {
-        const mod = await import('../infrastructure/services/pipeline.service');
+        const mod = await import('../infrastructure/services/organization/pipeline.service');
         PipelineService = (mod as unknown as { PipelineService: PipelineServiceShape }).PipelineService;
     }
 });

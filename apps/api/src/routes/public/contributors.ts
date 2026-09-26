@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { prisma } from '@fresherflow/database';
-import { getContributorProfile } from '../../infrastructure/services/community.service';
+import { getContributorProfile } from '../../infrastructure/services/community/community.service';
 
 const router = Router();
 

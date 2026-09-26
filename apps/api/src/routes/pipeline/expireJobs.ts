@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import prisma from '../../infrastructure/database/prisma';
 import { requireInternalApiKey } from '../../middleware/auth';
-import { invalidatePublicOpportunityCache } from '../../infrastructure/services/publicOpportunityCache.service';
+import { invalidatePublicOpportunityCache } from '../../infrastructure/services/opportunity/publicOpportunityCache.service';
 import { adminCache } from '../../infrastructure/cache/adminCache';
 import { logger } from '@fresherflow/utils';
 

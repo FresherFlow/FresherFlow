@@ -6,7 +6,7 @@ import {
     ingestJobsHourLimiter,
     ingestJobsMinuteLimiter,
     submitJob,
-} from '../../infrastructure/services/community.service';
+} from '../../infrastructure/services/community/community.service';
 
 const router = Router();
 

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireAdmin } from '../../middleware/auth';
 import { adminRateLimit } from '../../middleware/adminRateLimit';
 import { withAdminAudit } from '../../middleware/adminAudit';
-import { normaliseRoomTags } from '../../infrastructure/services/community.service';
+import { normaliseRoomTags } from '../../infrastructure/services/community/community.service';
 import { validate } from '../../middleware/validate';
 import { AppError } from '../../middleware/errorHandler';
 import prisma from '../../infrastructure/database/prisma';

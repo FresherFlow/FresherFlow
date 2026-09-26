@@ -330,7 +330,7 @@ const auth = (id: string) => ({ Authorization: `Bearer ${generateAccessToken(id)
 
 describe('organization membership service', () => {
     it('rejects granting OWNER through addMember', async () => {
-        const { OrganizationMembershipService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationMembershipService } = await import('../infrastructure/services/organization/organization.service');
         addUser('u1', 'u1@example.com');
 
         await expect(
@@ -339,7 +339,7 @@ describe('organization membership service', () => {
     });
 
     it('rejects granting OWNER through createInvite', async () => {
-        const { OrganizationMembershipService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationMembershipService } = await import('../infrastructure/services/organization/organization.service');
         await expect(
             OrganizationMembershipService.createInvite({
                 organizationId: 'org-1',
@@ -351,7 +351,7 @@ describe('organization membership service', () => {
     });
 
     it('refuses to demote the last owner', async () => {
-        const { OrganizationMembershipService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationMembershipService } = await import('../infrastructure/services/organization/organization.service');
         addOrg('org-1');
         addMember('owner-1', 'org-1', OrgRole.OWNER);
 
@@ -365,7 +365,7 @@ describe('organization membership service', () => {
     });
 
     it('refuses to remove the last owner', async () => {
-        const { OrganizationMembershipService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationMembershipService } = await import('../infrastructure/services/organization/organization.service');
         addOrg('org-1');
         addMember('owner-1', 'org-1', OrgRole.OWNER);
 
@@ -375,7 +375,7 @@ describe('organization membership service', () => {
     });
 
     it('allows demoting one of two owners', async () => {
-        const { OrganizationMembershipService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationMembershipService } = await import('../infrastructure/services/organization/organization.service');
         addOrg('org-1');
         addMember('owner-1', 'org-1', OrgRole.OWNER);
         addMember('owner-2', 'org-1', OrgRole.OWNER);
@@ -389,7 +389,7 @@ describe('organization membership service', () => {
     });
 
     it('refuses to promote to OWNER through the role path', async () => {
-        const { OrganizationMembershipService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationMembershipService } = await import('../infrastructure/services/organization/organization.service');
         addOrg('org-1');
         addMember('rec-1', 'org-1', OrgRole.RECRUITER);
 
@@ -403,7 +403,7 @@ describe('organization membership service', () => {
     });
 
     it('refuses to add a non-active account', async () => {
-        const { OrganizationMembershipService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationMembershipService } = await import('../infrastructure/services/organization/organization.service');
         addUser('u1', 'u1@example.com', { status: 'SUSPENDED' });
 
         await expect(
@@ -412,7 +412,7 @@ describe('organization membership service', () => {
     });
 
     it('rejects a website with a non-http protocol', async () => {
-        const { OrganizationMembershipService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationMembershipService } = await import('../infrastructure/services/organization/organization.service');
         addOrg('org-1');
         addMember('owner-1', 'org-1', OrgRole.OWNER);
 
@@ -429,7 +429,7 @@ describe('organization membership service', () => {
 describe('invite lifecycle', () => {
     /** Shorthand for the common "create an invite for this address" setup. */
     const issueInvite = async (email: string, organizationId = 'org-1') => {
-        const { OrganizationMembershipService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationMembershipService } = await import('../infrastructure/services/organization/organization.service');
         return OrganizationMembershipService.createInvite({
             organizationId,
             email,
@@ -439,7 +439,7 @@ describe('invite lifecycle', () => {
     };
 
     it('binds an invite to the invited address on accept', async () => {
-        const { OrganizationMembershipService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationMembershipService } = await import('../infrastructure/services/organization/organization.service');
         addOrg('org-1');
         addUser('attacker', 'attacker@example.com');
         const invite = await issueInvite('right@example.com');
@@ -451,7 +451,7 @@ describe('invite lifecycle', () => {
     });
 
     it('rejects an expired invite', async () => {
-        const { OrganizationMembershipService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationMembershipService } = await import('../infrastructure/services/organization/organization.service');
         addOrg('org-1');
         addUser('u1', 'u1@example.com');
         const invite = await issueInvite('u1@example.com');
@@ -463,7 +463,7 @@ describe('invite lifecycle', () => {
     });
 
     it('rejects a replayed invite', async () => {
-        const { OrganizationMembershipService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationMembershipService } = await import('../infrastructure/services/organization/organization.service');
         addOrg('org-1');
         addUser('u1', 'u1@example.com');
         const invite = await issueInvite('u1@example.com');
@@ -475,7 +475,7 @@ describe('invite lifecycle', () => {
     });
 
     it('creates a membership and stamps the invite together', async () => {
-        const { OrganizationMembershipService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationMembershipService } = await import('../infrastructure/services/organization/organization.service');
         addOrg('org-1');
         addUser('u1', 'u1@example.com');
         const invite = await issueInvite('u1@example.com');
@@ -488,7 +488,7 @@ describe('invite lifecycle', () => {
     });
 
     it('matches the invited address case-insensitively', async () => {
-        const { OrganizationMembershipService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationMembershipService } = await import('../infrastructure/services/organization/organization.service');
         addOrg('org-1');
         addUser('u1', 'U1@Example.COM');
         const invite = await issueInvite('  u1@example.com  ');
@@ -506,7 +506,7 @@ describe('invite lifecycle', () => {
     });
 
     it('refuses to revoke an invite that was already accepted', async () => {
-        const { OrganizationMembershipService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationMembershipService } = await import('../infrastructure/services/organization/organization.service');
         addOrg('org-1');
         state.invites.set('inv-done', {
             id: 'inv-done',
@@ -525,7 +525,7 @@ describe('invite lifecycle', () => {
     });
 
     it('refuses to accept an invite into an inactive organization', async () => {
-        const { OrganizationMembershipService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationMembershipService } = await import('../infrastructure/services/organization/organization.service');
         addOrg('org-1', { active: false });
         addUser('u1', 'u1@example.com');
         state.invites.set('inv-inactive', {

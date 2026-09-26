@@ -1,13 +1,13 @@
 import prisma from '../../infrastructure/database/prisma';
 import { Router, Request, Response, NextFunction } from 'express';
 import { requireAdmin } from '../../middleware/auth';
-import { runLinkVerification } from '../../infrastructure/services/verificationBot';
+import { runLinkVerification } from '../../infrastructure/services/opportunity/verificationBot';
 import { getObservabilityMetrics } from '../../middleware/observability';
 import { TelegramBroadcastStatus } from '@fresherflow/database';
-import { runAlertsCycle } from '../../infrastructure/services/alerts.service';
-import { getAdminMetricsV2, MetricsWindow } from '../../infrastructure/services/adminMetrics.service';
-import { getAdminDeliveryControls, updateAdminDeliveryControls } from '../../infrastructure/services/adminDeliveryControl.service';
-import { StaticFeedService } from '../../infrastructure/services/staticFeed.service';
+import { runAlertsCycle } from '../../infrastructure/services/alerts/alerts.service';
+import { getAdminMetricsV2, MetricsWindow } from '../../infrastructure/services/platform/adminMetrics.service';
+import { getAdminDeliveryControls, updateAdminDeliveryControls } from '../../infrastructure/services/platform/adminDeliveryControl.service';
+import { StaticFeedService } from '../../infrastructure/services/opportunity/staticFeed.service';
 import { redis } from '@fresherflow/database';
 import { enqueueCacheRevalidation } from '@fresherflow/queue';
 import { logger } from '@fresherflow/utils';

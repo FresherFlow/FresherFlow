@@ -5,7 +5,7 @@ import { requireAuth } from '../middleware/auth';
 import { createRateLimiter } from '../middleware/rateLimit';
 import crypto from 'crypto';
 import { getPublicSiteUrl } from '../utils/runtimeConfig';
-import { eventService } from '../infrastructure/services/event.service';
+import { eventService } from '../infrastructure/services/platform/event.service';
 
 const router: Router = express.Router();
 

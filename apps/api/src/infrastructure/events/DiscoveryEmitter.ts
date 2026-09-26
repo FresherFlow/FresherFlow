@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { logger } from '@fresherflow/utils';
-import { StaticFeedService } from '../services/staticFeed.service';
+import { StaticFeedService } from '../services/opportunity/staticFeed.service';
 
 /**
  * DiscoveryEmitter: Decouples business logic from static asset regeneration.

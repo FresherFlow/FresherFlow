@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { validate } from '../../../middleware/validate';
 import { mcpSubmitOpportunitySchema } from '../../../utils/validation';
-import { mcpSubmitLimiter, submitJob } from '../../../infrastructure/services/community.service';
+import { mcpSubmitLimiter, submitJob } from '../../../infrastructure/services/community/community.service';
 
 const router = Router();
 

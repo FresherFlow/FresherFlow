@@ -11,7 +11,7 @@ import {
     referralRequestStatusSchema,
     salaryReportCreateSchema,
 } from '../utils/validation';
-import * as fresherNeeds from '../infrastructure/services/fresherNeeds.service';
+import * as fresherNeeds from '../infrastructure/services/community/fresherNeeds.service';
 import { ReferralRequestStatus } from '@fresherflow/database';
 
 const router = Router();

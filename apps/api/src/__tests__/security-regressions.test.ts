@@ -24,7 +24,7 @@ const opportunityUpdateMany = vi.fn();
 const opportunityUpdate = vi.fn();
 const listSocialPostsMock = vi.fn();
 
-vi.mock('../infrastructure/services/social/socialPost.service', () => ({
+vi.mock('../infrastructure/services/alerts/social/socialPost.service', () => ({
   listSocialPosts: (...args: unknown[]) => listSocialPostsMock(...(args as [])),
   retrySocialPost: vi.fn().mockResolvedValue(undefined),
 }));
@@ -121,7 +121,7 @@ beforeEach(() => {
 
 describe('getPublicProfileByUsername (visibility + PII)', () => {
     it('omits dob, gender, category, isPwBD, isExServicemen and resumeUrl', async () => {
-        const { ProfileService } = await import('../infrastructure/services/profile.service');
+        const { ProfileService } = await import('../infrastructure/services/platform/profile.service');
 
         const result = await ProfileService.getPublicProfileByUsername('testuser');
         const p = result.profile as Record<string, unknown>;
@@ -132,7 +132,7 @@ describe('getPublicProfileByUsername (visibility + PII)', () => {
     });
 
     it('still returns the public fields', async () => {
-        const { ProfileService } = await import('../infrastructure/services/profile.service');
+        const { ProfileService } = await import('../infrastructure/services/platform/profile.service');
 
         const result = await ProfileService.getPublicProfileByUsername('testuser');
         const p = result.profile as Record<string, unknown>;
@@ -143,7 +143,7 @@ describe('getPublicProfileByUsername (visibility + PII)', () => {
 
     it('404s a PRIVATE profile instead of 403, so the account is not confirmed', async () => {
         mockUser({ visibility: 'PRIVATE' });
-        const { ProfileService } = await import('../infrastructure/services/profile.service');
+        const { ProfileService } = await import('../infrastructure/services/platform/profile.service');
 
         await expect(ProfileService.getPublicProfileByUsername('testuser')).rejects.toMatchObject({
             statusCode: 404,
@@ -152,7 +152,7 @@ describe('getPublicProfileByUsername (visibility + PII)', () => {
 
     it('serves an UNLISTED profile directly by username', async () => {
         mockUser({ visibility: 'UNLISTED' });
-        const { ProfileService } = await import('../infrastructure/services/profile.service');
+        const { ProfileService } = await import('../infrastructure/services/platform/profile.service');
 
         const result = await ProfileService.getPublicProfileByUsername('testuser');
         expect((result.profile as Record<string, unknown>).visibility).toBe('UNLISTED');
@@ -224,7 +224,7 @@ describe('auth middleware account-status check', () => {
 describe('OrganizationService.inviteTeamMember membership guard', () => {
     it('refuses an invite from a non-member', async () => {
         membershipFindFirst.mockResolvedValue(null);
-        const { OrganizationService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationService } = await import('../infrastructure/services/organization/organization.service');
 
         await expect(
             OrganizationService.inviteTeamMember({
@@ -239,7 +239,7 @@ describe('OrganizationService.inviteTeamMember membership guard', () => {
 
     it('allows a RECRUITER member to invite as RECRUITER and normalises the email', async () => {
         membershipFindFirst.mockResolvedValue({ role: 'RECRUITER' });
-        const { OrganizationService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationService } = await import('../infrastructure/services/organization/organization.service');
 
         await OrganizationService.inviteTeamMember({
             organizationId: 'org-1',
@@ -256,7 +256,7 @@ describe('OrganizationService.inviteTeamMember membership guard', () => {
 
     it('blocks a RECRUITER from granting an elevated role', async () => {
         membershipFindFirst.mockResolvedValue({ role: 'RECRUITER' });
-        const { OrganizationService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationService } = await import('../infrastructure/services/organization/organization.service');
 
         await expect(
             OrganizationService.inviteTeamMember({
@@ -272,7 +272,7 @@ describe('OrganizationService.inviteTeamMember membership guard', () => {
 
     it('allows an OWNER to grant an elevated role', async () => {
         membershipFindFirst.mockResolvedValue({ role: 'OWNER' });
-        const { OrganizationService } = await import('../infrastructure/services/organization.service');
+        const { OrganizationService } = await import('../infrastructure/services/organization/organization.service');
 
         await OrganizationService.inviteTeamMember({
             organizationId: 'org-1',
@@ -310,7 +310,7 @@ describe('validate middleware applies the parsed body', () => {
 
 describe('buildOpportunityUpdateData (mass-assignment guard)', () => {
     async function loader() {
-        return import('../infrastructure/services/opportunity.service');
+        return import('../infrastructure/services/opportunity/opportunity.service');
     }
 
     const existing = { id: 'opp-1', title: 'Old Title', company: 'Old Co' };
@@ -494,7 +494,7 @@ describe('executeBulkAction cannot resurrect soft-deleted rows', () => {
     // setting deletedAt: null, so a bulk publish could un-delete removed
     // listings and put them straight back into the public feed.
     async function bulkSvc() {
-        return import('../infrastructure/services/opportunity.service');
+        return import('../infrastructure/services/opportunity/opportunity.service');
     }
 
     it('scopes bulk DELETE to live rows only', async () => {

@@ -17,7 +17,7 @@ import {
     deleteCommunityPostComment,
     listMyContributions,
     createCommunityReport,
-} from '../../infrastructure/services/community.service';
+} from '../../infrastructure/services/community/community.service';
 import { z } from 'zod';
 import { communityPostVoteSchema, communityPostCommentCreateSchema, communityPostCommentVoteSchema } from '../../utils/validation';
 

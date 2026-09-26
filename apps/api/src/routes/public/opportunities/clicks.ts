@@ -39,7 +39,7 @@ router.post('/:id/click', async (req: Request, res: Response, next: NextFunction
         await updateOpportunityEngagement(opportunity.id, 'click');
 
         // Use Buffered Event Service
-        const { eventService } = await import('../../../infrastructure/services/event.service');
+        const { eventService } = await import('../../../infrastructure/services/platform/event.service');
         await eventService.track({
             type: 'CLICK_APPLY',
             opportunityId: opportunity.id,

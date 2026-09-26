@@ -1,10 +1,10 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { requirePermission } from '../../../middleware/auth';
 import { withAdminAudit } from '../../../middleware/adminAudit';
-import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/publicOpportunityCache.service';
+import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/opportunity/publicOpportunityCache.service';
 import { queueNewJobAlerts } from './_helpers';
-import { OpportunityService } from '../../../infrastructure/services/opportunity.service';
-import { getGranularTagsForOpportunity } from '../../../infrastructure/services/publish.service';
+import { OpportunityService } from '../../../infrastructure/services/opportunity/opportunity.service';
+import { getGranularTagsForOpportunity } from '../../../infrastructure/services/opportunity/publish.service';
 import type { Opportunity } from '@fresherflow/database';
 
 const router = Router();

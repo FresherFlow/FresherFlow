@@ -9,7 +9,7 @@ vi.mock('@fresherflow/database', async () => {
     return { ...enums, Prisma, prisma: {}, default: {} };
 });
 
-vi.mock('../infrastructure/services/notification.service', () => ({
+vi.mock('../infrastructure/services/alerts/notification.service', () => ({
     sendNewJobAlerts: async () => ({ usersSent: 0, emailsSent: 0, appAlertsSent: 0, pushSent: 0 }),
 }));
 
@@ -35,8 +35,8 @@ import {
     normalizeTypeParam as normalizePublicTypeParam,
     parseOpportunityTypeFilter,
 } from '../routes/public/opportunities/_helpers';
-import { normaliseEmploymentTypes } from '../infrastructure/services/community.service';
-import { buildOpportunityUpdateData } from '../infrastructure/services/opportunity.service';
+import { normaliseEmploymentTypes } from '../infrastructure/services/community/community.service';
+import { buildOpportunityUpdateData } from '../infrastructure/services/opportunity/opportunity.service';
 import { normalizeOpportunityLinks } from '../utils/opportunityLinks';
 import { generateSlug, resolveUniqueSlug } from '@fresherflow/utils';
 import { Prisma } from '@fresherflow/database';

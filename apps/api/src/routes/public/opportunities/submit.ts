@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { prisma, OpportunityStatus as DbOpportunityStatus, EducationLevel as DbEducationLevel, WorkMode as DbWorkMode, SalaryPeriod as DbSalaryPeriod } from '@fresherflow/database';
 import { OpportunityStatus } from '@fresherflow/types';
-import { normaliseEmploymentTypes as parseEmploymentTypes } from '../../../infrastructure/services/community.service';
+import { normaliseEmploymentTypes as parseEmploymentTypes } from '../../../infrastructure/services/community/community.service';
 import { slugify } from '@fresherflow/utils';
 import { tryResolveUserIdFromCookie } from './_helpers';
 import { opportunitySubmitSchema } from '../../../utils/validation';

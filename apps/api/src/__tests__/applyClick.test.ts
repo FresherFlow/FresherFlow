@@ -24,7 +24,7 @@ vi.mock("@fresherflow/database", async () => ({
   OpportunityStatus: { PUBLISHED: "PUBLISHED" },
 }));
 
-vi.mock("../infrastructure/services/event.service", () => ({
+vi.mock("../infrastructure/services/platform/event.service", () => ({
   eventService: { track: trackMock },
 }));
 

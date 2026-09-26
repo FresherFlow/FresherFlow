@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import prisma from '../../infrastructure/database/prisma';
 import { createRateLimiter } from '../../middleware/rateLimit';
-import TelegramService from '../../infrastructure/services/telegram.service';
+import TelegramService from '../../infrastructure/services/alerts/telegram.service';
 
 const router = express.Router();
 

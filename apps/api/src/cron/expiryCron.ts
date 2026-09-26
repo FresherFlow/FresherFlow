@@ -1,9 +1,9 @@
 import { prisma } from '@fresherflow/database';
 import { OpportunityStatus, OpportunityCategory, RecruitmentMethod } from '@fresherflow/types';
 import { logger } from '@fresherflow/utils';
-import TelegramService from '../infrastructure/services/telegram.service';
-import { StaticFeedService } from '../infrastructure/services/staticFeed.service';
-import { expireJobNotifyEngagedUsers } from '../infrastructure/services/community.service';
+import TelegramService from '../infrastructure/services/alerts/telegram.service';
+import { StaticFeedService } from '../infrastructure/services/opportunity/staticFeed.service';
+import { expireJobNotifyEngagedUsers } from '../infrastructure/services/community/community.service';
 import { runProfilePageExpiryReminders } from './profilePageReminder';
 
 function formatDateKeyInTimezone(date: Date, timezone: string): string {

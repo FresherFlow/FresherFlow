@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { AppError } from "../../middleware/errorHandler";
-import { PipelineService } from "../../infrastructure/services/pipeline.service";
+import { PipelineService } from "../../infrastructure/services/organization/pipeline.service";
 import pipelineRoutes, { stageRoutes } from "./pipelines";
 import applicationRoutes from "./applications";
 

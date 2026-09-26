@@ -1,6 +1,6 @@
 import prisma from '../../infrastructure/database/prisma';
 import { OpportunityStatus, Opportunity } from '@fresherflow/types';
-import { handleOpportunityPublished } from '../../infrastructure/services/publish.service';
+import { handleOpportunityPublished } from '../../infrastructure/services/opportunity/publish.service';
 import { calculateNewTrustScore, determineTrustLevel } from '@fresherflow/utils';
 
 /**

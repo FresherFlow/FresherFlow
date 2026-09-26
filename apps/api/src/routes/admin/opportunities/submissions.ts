@@ -3,7 +3,7 @@ import prisma, { RawOpportunityStatus as DbRawStatus, OpportunityStatus as DbOpp
 import { RawOpportunityStatus, OpportunityStatus, Opportunity } from '@fresherflow/types';
 import { resolveOpportunityDimensions } from './_helpers';
 import { generateSlug } from '@fresherflow/utils';
-import { handleOpportunityPublished } from '../../../infrastructure/services/publish.service';
+import { handleOpportunityPublished } from '../../../infrastructure/services/opportunity/publish.service';
 import { actorId, requirePermission } from '../../../middleware/auth';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
 import crypto from 'node:crypto';

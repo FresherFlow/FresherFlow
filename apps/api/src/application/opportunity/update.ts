@@ -1,6 +1,6 @@
 import prisma from '../../infrastructure/database/prisma';
 import { Opportunity } from '@fresherflow/types';
-import { buildOpportunityUpdateData } from '../../infrastructure/services/opportunity.service';
+import { buildOpportunityUpdateData } from '../../infrastructure/services/opportunity/opportunity.service';
 import { opportunityDetailInclude } from './detail';
 
 /**

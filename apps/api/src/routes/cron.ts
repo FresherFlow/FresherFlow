@@ -1,9 +1,9 @@
 import { Router } from 'express';
 import { runExpiryCycle } from '../cron/expiryCron';
-import { runLinkVerification } from '../infrastructure/services/verificationBot';
-import { runAlertsCycle } from '../infrastructure/services/alerts.service';
+import { runLinkVerification } from '../infrastructure/services/opportunity/verificationBot';
+import { runAlertsCycle } from '../infrastructure/services/alerts/alerts.service';
 import { runDueSources } from '../application/ingestion/scheduling';
-import { StaticFeedService } from '../infrastructure/services/staticFeed.service';
+import { StaticFeedService } from '../infrastructure/services/opportunity/staticFeed.service';
 import { logger } from '@fresherflow/utils';
 
 const router = Router();
@@ -81,7 +81,7 @@ router.post('/alerts', async (req, res) => {
             alreadyDelivered: 0,
         };
         try {
-            const { retryFailedDispatches } = await import('../infrastructure/services/alertDispatch.service');
+            const { retryFailedDispatches } = await import('../infrastructure/services/alerts/alertDispatch.service');
             retried = await retryFailedDispatches(50);
         } catch (error) {
             logger.warn('Failed to retry dispatches', error);

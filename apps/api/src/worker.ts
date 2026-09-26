@@ -1,7 +1,7 @@
 import './bootstrap';
 
 import { logger } from '@fresherflow/utils';
-import { eventService } from './infrastructure/services/event.service';
+import { eventService } from './infrastructure/services/platform/event.service';
 
 logger.info('Starting FresherFlow background worker', {
     nodeEnv: process.env.NODE_ENV || 'development'

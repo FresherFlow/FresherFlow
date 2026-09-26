@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireAuth, optionalAuth, requireVerifiedAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { educationSchema, preferencesSchema, readinessSchema, demographicsSchema, contributionSchema, profileUpdateSchema } from '../utils/validation';
-import { ProfileService } from '../infrastructure/services/profile.service';
+import { ProfileService } from '../infrastructure/services/platform/profile.service';
 import { AppError } from '../middleware/errorHandler';
 import { createRateLimiter } from '../middleware/rateLimit';
 import { profilePageExpiresAt } from '@fresherflow/utils';

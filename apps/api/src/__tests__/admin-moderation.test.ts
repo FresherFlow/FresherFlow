@@ -94,7 +94,7 @@ vi.mock('../infrastructure/cache/adminCache', () => ({
 vi.mock('../infrastructure/services/publicOpportunityCache.service', () => ({
     invalidatePublicOpportunityCache: vi.fn().mockResolvedValue(undefined),
 }));
-vi.mock('../infrastructure/services/publish.service', () => ({
+vi.mock('../infrastructure/services/opportunity/publish.service', () => ({
     getGranularTagsForOpportunity: vi.fn(() => []),
 }));
 vi.mock('../application/opportunity/publish', () => ({ publishOpportunity: vi.fn() }));

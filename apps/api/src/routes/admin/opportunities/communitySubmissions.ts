@@ -5,7 +5,7 @@ import { validate } from '../../../middleware/validate';
 import { actorId, requirePermission } from '../../../middleware/auth';
 import { AppError } from '../../../middleware/errorHandler';
 import { approveSubmission, rejectOpportunity } from '../../../application/opportunity/moderation';
-import { handleOpportunityPublished } from '../../../infrastructure/services/publish.service';
+import { handleOpportunityPublished } from '../../../infrastructure/services/opportunity/publish.service';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
 import type { Opportunity } from '@fresherflow/types';
 

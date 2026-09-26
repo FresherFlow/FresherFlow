@@ -16,8 +16,8 @@ import {
     parseSourceKind, parseOrganizationId, parseInstitutionIds,
     buildCompensationCreates, buildEventDetailsCreate, buildEventDetailsUpsert,
 } from './_helpers';
-import { handleOpportunityPublished } from '../../../infrastructure/services/publish.service';
-import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/publicOpportunityCache.service';
+import { handleOpportunityPublished } from '../../../infrastructure/services/opportunity/publish.service';
+import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/opportunity/publicOpportunityCache.service';
 
 import { Opportunity } from '@fresherflow/types';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
@@ -523,7 +523,7 @@ router.put(
                 await handleOpportunityPublished(opportunity as unknown as Opportunity, { isNew: true });
                 responseMessage = 'Opportunity published successfully.';
             } else if (opportunity.status === OpportunityStatus.PUBLISHED) {
-                const { getGranularTagsForOpportunity } = await import('../../../infrastructure/services/publish.service');
+                const { getGranularTagsForOpportunity } = await import('../../../infrastructure/services/opportunity/publish.service');
                 void invalidatePublicOpportunityCache({
                     idsOrSlugs: [opportunity.id as string, opportunity.slug as string, ...(existing.slug !== opportunity.slug ? [existing.slug as string] : [])],
                     purgeFeed: true,

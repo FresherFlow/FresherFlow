@@ -5,7 +5,7 @@ import {
     profilePageActiveSince,
     profilePageExpiresAt,
 } from '@fresherflow/utils';
-import { EmailService } from '../infrastructure/services/email.service';
+import { EmailService } from '../infrastructure/services/alerts/email.service';
 import { getPublicSiteUrl } from '../utils/runtimeConfig';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;

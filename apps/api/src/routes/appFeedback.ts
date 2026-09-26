@@ -4,7 +4,7 @@ import { AppFeedbackType } from '@prisma/client';
 import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { appFeedbackSchema } from '../utils/validation';
-import TelegramService from '../infrastructure/services/telegram.service';
+import TelegramService from '../infrastructure/services/alerts/telegram.service';
 
 const router: Router = express.Router();
 

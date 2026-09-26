@@ -73,7 +73,7 @@ vi.mock('../application/opportunity/engagement', () => ({
     updateOpportunityEngagement: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../infrastructure/services/telegram.service', () => ({
+vi.mock('../infrastructure/services/alerts/telegram.service', () => ({
     default: { notifyListingFeedback: vi.fn() },
 }));
 

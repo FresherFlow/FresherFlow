@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { logger } from '@fresherflow/utils';
 import chalk from 'chalk';
-import TelegramService from '../infrastructure/services/telegram.service';
+import TelegramService from '../infrastructure/services/alerts/telegram.service';
 
 interface ExtendedError extends Error {
     statusCode?: number;

@@ -454,7 +454,7 @@ export function toCsvValue(value: unknown): string {
 
 // ── Alert helpers ─────────────────────────────────────────────────────────────
 
-import { sendNewJobAlerts } from '../../../infrastructure/services/notification.service';
+import { sendNewJobAlerts } from '../../../infrastructure/services/alerts/notification.service';
 import { logger } from '@fresherflow/utils';
 
 export function queueNewJobAlerts(opportunityId: string) {

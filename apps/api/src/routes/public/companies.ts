@@ -1,5 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { CompanyService } from '../../infrastructure/services/company.service';
+import { CompanyService } from '../../infrastructure/services/organization/company.service';
 import { AppError } from '../../middleware/errorHandler';
 
 const router = express.Router();

@@ -14,7 +14,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { requireAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import prisma from '../infrastructure/database/prisma';
-import { requireOrgMembership } from '../infrastructure/services/orgAccess';
+import { requireOrgMembership } from '../infrastructure/services/organization/orgAccess';
 import { OrgRole } from '@fresherflow/database';
 import type { Prisma } from '@fresherflow/database';
 import { CandidateInterestStatus } from '@fresherflow/types';

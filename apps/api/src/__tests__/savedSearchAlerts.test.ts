@@ -103,7 +103,7 @@ beforeEach(() => {
 
 describe('Phase 7 gate: saved search → matching opportunity → exactly one notification', () => {
     it('delivers exactly one NEW_JOB APP notification for a matching opportunity', async () => {
-        const { notifySavedSearchMatches } = await import('../infrastructure/services/savedSearchAlert.service');
+        const { notifySavedSearchMatches } = await import('../infrastructure/services/alerts/savedSearchAlert.service');
 
         const result = await notifySavedSearchMatches('opp-1');
 
@@ -120,7 +120,7 @@ describe('Phase 7 gate: saved search → matching opportunity → exactly one no
     });
 
     it('prevents duplicate delivery on a second run for the same match', async () => {
-        const { notifySavedSearchMatches } = await import('../infrastructure/services/savedSearchAlert.service');
+        const { notifySavedSearchMatches } = await import('../infrastructure/services/alerts/savedSearchAlert.service');
 
         await notifySavedSearchMatches('opp-1');
         expect(prismaMock.alertDelivery.create).toHaveBeenCalledTimes(1);
@@ -140,7 +140,7 @@ describe('Phase 7 gate: saved search → matching opportunity → exactly one no
         prismaMock.savedSearch.findMany.mockResolvedValue([
             { ...matchingSearch, id: 'ss-2', filters: { company: 'OtherCorp' } },
         ]);
-        const { notifySavedSearchMatches } = await import('../infrastructure/services/savedSearchAlert.service');
+        const { notifySavedSearchMatches } = await import('../infrastructure/services/alerts/savedSearchAlert.service');
 
         const result = await notifySavedSearchMatches('opp-1');
         expect(result.matched).toBe(0);
@@ -150,7 +150,7 @@ describe('Phase 7 gate: saved search → matching opportunity → exactly one no
 
     it('dispatches once per channel with dispatch logging (dedupe + retry surface)', async () => {
         const { dispatchAlert, retryFailedDispatches } = await import(
-            '../infrastructure/services/alertDispatch.service'
+            '../infrastructure/services/alerts/alertDispatch.service'
         );
 
         const first = await dispatchAlert({

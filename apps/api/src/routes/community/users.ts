@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { optionalAuth } from '../../middleware/auth';
-import { communityReadLimiter, getUserActivity } from '../../infrastructure/services/community.service';
+import { communityReadLimiter, getUserActivity } from '../../infrastructure/services/community/community.service';
 
 const router = Router();
 

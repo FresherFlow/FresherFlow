@@ -17,7 +17,7 @@ import { requireAuth } from '../middleware/auth';
 import { createRateLimiter } from '../middleware/rateLimit';
 import { AppError } from '../middleware/errorHandler';
 import { logger } from '@fresherflow/utils';
-import { eventService } from '../infrastructure/services/event.service';
+import { eventService } from '../infrastructure/services/platform/event.service';
 import { getPublicSiteUrl } from '../utils/runtimeConfig';
 import { setAuthCookies } from './auth';
 

@@ -4,7 +4,7 @@ import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { claimUsernameSchema } from '@fresherflow/types';
 import { AppError } from '../middleware/errorHandler';
-import { StaticFeedService } from '../infrastructure/services/staticFeed.service';
+import { StaticFeedService } from '../infrastructure/services/opportunity/staticFeed.service';
 
 const router = Router();
 

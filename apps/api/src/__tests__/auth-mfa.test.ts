@@ -45,7 +45,7 @@ vi.mock('../infrastructure/database/prisma', () => ({
     default: prismaMock,
 }));
 
-vi.mock('../infrastructure/services/auth.service', () => ({
+vi.mock('../infrastructure/services/platform/auth.service', () => ({
     AuthService: {
         generateOtp: vi.fn(() => '123456'),
         verifyOtp: vi.fn(),
@@ -54,13 +54,13 @@ vi.mock('../infrastructure/services/auth.service', () => ({
     },
 }));
 
-vi.mock('../infrastructure/services/email.service', () => ({
+vi.mock('../infrastructure/services/alerts/email.service', () => ({
     EmailService: {
         sendOtp: vi.fn(),
     },
 }));
 
-vi.mock('../infrastructure/services/event.service', () => ({
+vi.mock('../infrastructure/services/platform/event.service', () => ({
     eventService: { track: vi.fn() },
 }));
 

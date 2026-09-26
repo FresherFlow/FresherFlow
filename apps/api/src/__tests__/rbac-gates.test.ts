@@ -114,7 +114,7 @@ describe('PHASE 4 gates', () => {
     });
 
     it('organization member cannot access another organization', async () => {
-        const { requireOrgMembership } = await import('../infrastructure/services/orgAccess');
+        const { requireOrgMembership } = await import('../infrastructure/services/organization/orgAccess');
 
         // Member of org-A only: the org-B lookup finds nothing.
         membershipMock.findFirst.mockImplementation(async (args: { where: { organizationId: string } }) =>
@@ -129,7 +129,7 @@ describe('PHASE 4 gates', () => {
     });
 
     it('pending membership and under-ranked roles are denied', async () => {
-        const { requireOrgMembership } = await import('../infrastructure/services/orgAccess');
+        const { requireOrgMembership } = await import('../infrastructure/services/organization/orgAccess');
 
         membershipMock.findFirst.mockResolvedValue({
             organizationId: 'org-A',

@@ -20,8 +20,8 @@ import { AppError } from '../middleware/errorHandler';
 import {
     OrganizationService,
     OrganizationMembershipService,
-} from '../infrastructure/services/organization.service';
-import { requireOrgMembership } from '../infrastructure/services/orgAccess';
+} from '../infrastructure/services/organization/organization.service';
+import { requireOrgMembership } from '../infrastructure/services/organization/orgAccess';
 import { OrgRole } from '@fresherflow/database';
 import type { Prisma } from '@fresherflow/database';
 import { OrganizationType } from '@fresherflow/types';

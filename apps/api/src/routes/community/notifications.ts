@@ -7,7 +7,7 @@ import {
     notificationsLimiter,
     listNotifications,
     markNotificationsRead,
-} from '../../infrastructure/services/community.service';
+} from '../../infrastructure/services/community/community.service';
 
 const router = Router();
 
