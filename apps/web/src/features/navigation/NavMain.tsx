@@ -188,7 +188,7 @@ function NavMainRow({
         </Link>
       </SidebarMenuButton>
       {typeof badge === "number" && badge > 0 && (
-        <SidebarMenuBadge data-nav-badge>{badge > 99 ? "99+" : badge}</SidebarMenuBadge>
+        <SidebarMenuBadge data-nav-badge>{badge.toLocaleString('en-IN')}</SidebarMenuBadge>
       )}
     </SidebarMenuItem>
   )

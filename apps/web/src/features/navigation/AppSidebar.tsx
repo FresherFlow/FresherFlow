@@ -141,8 +141,7 @@ function AppSidebarRail() {
   const { pathname, spaceId, setSpaceId, mounted, isAuthed, visiblePersonal, visibleCommunity, user } =
     useSpaceSelection()
   const space = getSpace(spaceId)
-  const navCounts = useNavCounts()
-  const navBadges = navCounts !== null ? { '/jobs': navCounts } : undefined
+  const navBadges = useNavCounts() ?? undefined
   const [isScrolled, setIsScrolled] = React.useState(false)
 
   const logoHref = mounted && user ? "/jobs?tab=for-you" : "/"
@@ -194,7 +193,7 @@ function AppSidebarRail() {
           />
         )}
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="border-t border-sidebar-border">
         <NavUser />
       </SidebarFooter>
       <SidebarRail />
@@ -215,8 +214,7 @@ export function MobileNavTree({ onNavigate }: { onNavigate: () => void }) {
   const { pathname, spaceId, setSpaceId, mounted, isAuthed, visiblePersonal, visibleCommunity, user } =
     useSpaceSelection()
   const space = getSpace(spaceId)
-  const navCounts = useNavCounts()
-  const navBadges = navCounts !== null ? { '/jobs': navCounts } : undefined
+  const navBadges = useNavCounts() ?? undefined
 
   const logoHref = mounted && user ? "/jobs?tab=for-you" : "/"
 

@@ -7,7 +7,7 @@ import { EmploymentType, Opportunity, OpportunityCategory, RecruitmentMethod, Se
  * display derive from the independent taxonomy dimensions below — never
  * read `opp.type`, which no longer exists on the model.
  */
-export type CategoryFeedType = 'JOB' | 'INTERNSHIP' | 'WALKIN' | 'GOVERNMENT' | 'REMOTE' | 'HACKATHONS';
+export type CategoryFeedType = 'JOB' | 'INTERNSHIP' | 'WALKIN' | 'GOVERNMENT' | 'REMOTE' | 'HACKATHONS' | 'DRIVES' | 'OFF_CAMPUS' | 'FULL_TIME' | 'PART_TIME';
 
 /**
  * Drive details regardless of which field name the payload used.
@@ -68,6 +68,51 @@ export function isInternshipOpportunity(opp: Opportunity): boolean {
     return typeof legacySingular === 'string' && legacySingular.toUpperCase() === 'INTERNSHIP';
 }
 
+/** An off-campus drive: campus-based recruitment (not a walk-in, not the regular channel). */
+export function isOffCampusOpportunity(opp: Opportunity): boolean {
+    return (
+        opp.recruitmentMethod === RecruitmentMethod.OFF_CAMPUS ||
+        opp.recruitmentMethod === RecruitmentMethod.ON_CAMPUS ||
+        opp.recruitmentMethod === RecruitmentMethod.POOL_CAMPUS
+    );
+}
+
+/** Any drive on the platform: walk-ins plus campus drives. */
+export function isDriveOpportunity(opp: Opportunity): boolean {
+    return isWalkinOpportunity(opp) || isOffCampusOpportunity(opp);
+}
+
+/** A full-time listing. */
+export function isFullTimeOpportunity(opp: Opportunity): boolean {
+    if ((opp.employmentTypes || []).includes(EmploymentType.FULL_TIME)) return true;
+    const legacy = (opp as unknown as { employmentType?: unknown }).employmentType;
+    if (typeof legacy === 'string') {
+        const normalized = legacy.toUpperCase().replace(/[\s-]+/g, '_');
+        if (normalized === 'FULL_TIME') return true;
+    }
+    // Unlabelled permanent/contract roles without an explicit employment type
+    // are the common case for fresher job listings, but only count them when
+    // they are not internships — otherwise both hubs would show the same rows.
+    return (
+        opp.category === OpportunityCategory.EMPLOYMENT &&
+        !isInternshipOpportunity(opp) &&
+        !isWalkinOpportunity(opp) &&
+        !isGovernmentOpportunity(opp) &&
+        (opp.employmentTypes || []).length === 0
+    );
+}
+
+/** A part-time listing. */
+export function isPartTimeOpportunity(opp: Opportunity): boolean {
+    if ((opp.employmentTypes || []).includes(EmploymentType.PART_TIME)) return true;
+    const legacy = (opp as unknown as { employmentType?: unknown }).employmentType;
+    if (typeof legacy === 'string') {
+        const normalized = legacy.toUpperCase().replace(/[\s-]+/g, '_');
+        if (normalized === 'PART_TIME') return true;
+    }
+    return false;
+}
+
 /** A government listing: GOVERNMENT sector or government details present. */
 export function isGovernmentOpportunity(opp: Opportunity): boolean {
     return opp.sector === Sector.GOVERNMENT || Boolean(opp.governmentJobDetails);
@@ -111,6 +156,14 @@ export function matchesFeedType(opp: Opportunity, type: CategoryFeedType | strin
             return isInternshipOpportunity(opp);
         case 'HACKATHONS':
             return opp.category === OpportunityCategory.COMPETITION;
+        case 'DRIVES':
+            return isDriveOpportunity(opp);
+        case 'OFF_CAMPUS':
+            return isOffCampusOpportunity(opp);
+        case 'FULL_TIME':
+            return isFullTimeOpportunity(opp);
+        case 'PART_TIME':
+            return isPartTimeOpportunity(opp);
         case 'REMOTE':
             return isRemoteOpportunity(opp);
         case 'JOB':
@@ -333,7 +386,7 @@ export function getGoogleCalendarUrl(opp: Opportunity): string {
         '',
         `Directions: ${details?.venueLink || `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(details?.venueAddress || '')}`}`,
         '',
-        'Shared on FresherFlow: https://fresherflow.in/jobs/walkins',
+        'Shared on FresherFlow: https://fresherflow.in/drives/walk-in',
     ].filter(Boolean).join('\n');
 
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&location=${location}&details=${encodeURIComponent(descLines)}`;
@@ -414,7 +467,7 @@ export function getWhatsAppShareUrl(opp: Opportunity): string {
     }
     lines.push(``);
     lines.push(`Shared on FresherFlow`);
-    lines.push(`https://fresherflow.in/jobs/walkins`);
+    lines.push(`https://fresherflow.in/drives/walk-in`);
 
     const text = encodeURIComponent(lines.join('\n'));
     return `https://api.whatsapp.com/send?text=${text}`;

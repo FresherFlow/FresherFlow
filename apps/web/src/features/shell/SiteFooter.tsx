@@ -41,7 +41,7 @@ const GROUPS: Array<{ title: string; links: Array<{ label: string; href: string 
         links: [
             { label: 'Off-Campus Jobs', href: '/jobs' },
             { label: 'Internships', href: '/jobs/internships' },
-            { label: 'Walk-in Drives', href: '/jobs/walkins' },
+            { label: 'Walk-in Drives', href: '/drives/walk-in' },
             { label: 'Government', href: '/govt' },
         ],
     },

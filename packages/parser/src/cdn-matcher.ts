@@ -2,16 +2,16 @@
  * cdn-matcher.ts
  *
  * Deterministic field extraction from raw job description text using CDN metadata.
- * Runs BEFORE LLM enrichment ΓÇö reduces LLM calls significantly.
+ * Runs BEFORE LLM enrichment — reduces LLM calls significantly.
  *
  * CDN data wired:
- *  - skills.json       ΓåÆ requiredSkills (scan full text)
- *  - education.json    ΓåÆ allowedDegrees + allowedCourses (course names + keywords)
- *  - cities.json       ΓåÆ locations (detect Indian cities in raw text)
- *  - passout year      ΓåÆ allowedPassoutYears (regex over text)
- *  - salary            ΓåÆ salaryRange (regex over text)
- *  - experience        ΓåÆ experienceMin/Max (regex over text)
- *  - work mode         ΓåÆ workMode (keyword scan)
+ *  - skills.json       → requiredSkills (scan full text)
+ *  - education.json    → allowedDegrees + allowedCourses (course names + keywords)
+ *  - cities.json       → locations (detect Indian cities in raw text)
+ *  - passout year      → allowedPassoutYears (regex over text)
+ *  - salary            → salaryRange (regex over text)
+ *  - experience        → experienceMin/Max (regex over text)
+ *  - work mode         → workMode (keyword scan)
  */
 
 import {
@@ -43,7 +43,7 @@ export const SOFT_SKILL_BLOCKLIST = new Set([
     'analysis', 'analytics', 'planning', 'delivery', 'execution',
 ]);
 
-// Maps raw degree mentions in text ΓåÆ canonical CDN degree level
+// Maps raw degree mentions in text → canonical CDN degree level
 const DEGREE_KEYWORD_MAP: Array<[RegExp, string]> = [
     [/\bph\.?d\b/i, 'PG'],
     [/\bm\.?tech\b|\bm\.?e\b|\bmaster[s]? (of|in) (engineering|technology)/i, 'PG'],
@@ -65,7 +65,7 @@ const DEGREE_KEYWORD_MAP: Array<[RegExp, string]> = [
     [/\b(10th|ssc|matriculation|secondary school)\b/i, 'TENTH'],
 ];
 
-// Maps course keywords ΓåÆ canonical course names from CDN
+// Maps course keywords → canonical course names from CDN
 const COURSE_KEYWORD_MAP: Array<[RegExp, string]> = [
     [/\bb\.?tech\b|\bb\.?e\.?\b/i, 'B.Tech / B.E.'],
     [/\bmca\b/i, 'MCA'],
@@ -110,7 +110,7 @@ const REMOTE_REGEX = /\bremote\b|\bwork from home\b|\bwfh\b|\bfully remote\b/i;
 const HYBRID_REGEX = /\bhybrid\b/i;
 const ONSITE_REGEX = /\bonsite\b|\bon.?site\b|\bin.?office\b|\bin office\b/i;
 
-// Canonical city aliases ΓÇö both names map to the preferred single canonical name
+// Canonical city aliases — both names map to the preferred single canonical name
 // Prevents duplicate entries like ["Bengaluru", "Bangalore"] in the same locations array
 const CITY_ALIASES: Record<string, string> = {
     'Bengaluru': 'Bangalore',
@@ -130,34 +130,34 @@ const CITY_ALIASES: Record<string, string> = {
  * Returns array of canonical values (may be empty if the string is meaningless).
  *
  * Examples:
- *   "Home based - Worldwide"     ΓåÆ ["Remote"]
- *   "Home Based - Americas"      ΓåÆ ["Remote"]
- *   "India (Remote)"             ΓåÆ ["Remote India"]
- *   "Office Based - London, UK"  ΓåÆ []  (filtered; international office)
- *   "Bengaluru"                  ΓåÆ ["Bangalore"]  (alias)
- *   "Bengaluru, Karnataka"       ΓåÆ ["Bangalore"]
+ *   "Home based - Worldwide"     → ["Remote"]
+ *   "Home Based - Americas"      → ["Remote"]
+ *   "India (Remote)"             → ["Remote India"]
+ *   "Office Based - London, UK"  → []  (filtered; international office)
+ *   "Bengaluru"                  → ["Bangalore"]  (alias)
+ *   "Bengaluru, Karnataka"       → ["Bangalore"]
  */
 function normalizeLocationString(raw: string): string[] {
     let s = raw.trim();
     if (s.length > 500) s = s.substring(0, 500);
     if (!s) return [];
 
-    // Home based / remote ΓåÆ "Remote"
+    // Home based / remote → "Remote"
     if (/home.?based|home.?office|work.?from.?home|fully.?remote|work.?remotely/i.test(s)) return ['Remote'];
     if (/\bworldwide\b|\ball.?locations?\b|\banywhere\b/i.test(s)) return ['Remote'];
     if (/\bremote\b/i.test(s) && /india/i.test(s)) return ['Remote India'];
     if (/\bremote\b/i.test(s)) return ['Remote'];
     if (/\bpan.?india\b/i.test(s)) return ['PAN India'];
 
-    // Strip country suffix for known Indian cities: "Bengaluru, India" ΓåÆ "Bengaluru"
+    // Strip country suffix for known Indian cities: "Bengaluru, India" → "Bengaluru"
     // Match: "<City>, India" or "<City>, Karnataka, India" etc.
     const indiaStrip = s.replace(/,?\s*(india|karnataka|maharashtra|telangana|tamil nadu|west bengal|uttar pradesh|rajasthan|gujarat|punjab|andhra pradesh|delhi|ncr)(\s*,.*)?$/i, '').trim();
     if (indiaStrip && indiaStrip !== s) return [indiaStrip];
 
-    // Office based / office only ΓåÆ skip (not a real location)
+    // Office based / office only → skip (not a real location)
     if (/^office.?based/i.test(s)) return [];
 
-    // "City; City2" ΓåÆ split on semicolon
+    // "City; City2" → split on semicolon
     if (s.includes(';')) {
         return s.split(';').flatMap(part => normalizeLocationString(part.trim())).filter(Boolean);
     }
@@ -179,23 +179,23 @@ export interface CdnMatchResult {
 
 /**
  * Extract all possible fields from raw job description text using CDN metadata.
- * Returns partial matches ΓÇö caller decides what to do with empty arrays.
+ * Returns partial matches — caller decides what to do with empty arrays.
  */
 export function matchFromCdn(rawText: string, existingLocations: string[] = []): CdnMatchResult {
     let text = rawText || '';
     if (text.length > 10000) text = text.substring(0, 10000);
     const lowerText = text.toLowerCase();
 
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-    // 1. SKILLS ΓÇö scan full text for every canonical skill (CDN-backed)
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ─────────────────────────────────────────────────────────────────
+    // 1. SKILLS — scan full text for every canonical skill (CDN-backed)
+    // ─────────────────────────────────────────────────────────────────
     const skillsFound = new Set<string>();
     for (const [lowerSkill, canonicalSkill] of CANONICAL_SKILLS_MAP.entries()) {
         if (SOFT_SKILL_BLOCKLIST.has(lowerSkill)) continue;
-        // Skip very short skills (1-2 chars) that match too broadly ΓÇö C, Go etc handled via exact word
+        // Skip very short skills (1-2 chars) that match too broadly — C, Go etc handled via exact word
         // Exception: well-known acronyms with 2+ chars like 'AI', 'ML', 'Go' are fine
         if (lowerSkill.length < 2) continue;
-        // For single-letter skills like 'C', 'R' ΓÇö require exact word (space or start/end of line)
+        // For single-letter skills like 'C', 'R' — require exact word (space or start/end of line)
         const isVeryShort = lowerSkill.length <= 2 && /^[a-z]$/i.test(lowerSkill);
         const escaped = lowerSkill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const pattern = isVeryShort
@@ -206,10 +206,10 @@ export function matchFromCdn(rawText: string, existingLocations: string[] = []):
         }
     }
 
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-    // 2. EDUCATION ΓÇö degrees + courses from CDN education.json
+    // ─────────────────────────────────────────────────────────────────
+    // 2. EDUCATION — degrees + courses from CDN education.json
     //    Uses the CDN course names mapped to DEGREE/PG/DIPLOMA levels
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ─────────────────────────────────────────────────────────────────
     const degreesFound = new Set<string>();
     const coursesFound = new Set<string>();
 
@@ -247,14 +247,14 @@ export function matchFromCdn(rawText: string, existingLocations: string[] = []):
         }
     }
 
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
-    // 3. LOCATIONS ΓÇö using CDN cities.json as source of truth
+    // ─────────────────────────────────────────────────────────────────
+    // 3. LOCATIONS — using CDN cities.json as source of truth
     //    Strategy:
-    //    a) First normalise raw Greenhouse location strings ("Home based - Worldwide" ΓåÆ "Remote")
-    //    b) Scan text for Indian cities (CDN INDIAN_CITIES_MAP) ΓÇö these are always kept
+    //    a) First normalise raw Greenhouse location strings ("Home based - Worldwide" → "Remote")
+    //    b) Scan text for Indian cities (CDN INDIAN_CITIES_MAP) — these are always kept
     //    c) International cities only kept if NO Indian city was found (global job)
-    //    d) Deduplicate aliases (BengaluruΓåöBangalore, GurgaonΓåöGurugram)
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    //    d) Deduplicate aliases (Bengaluru→Bangalore, Gurgaon→Gurugram)
+    // ─────────────────────────────────────────────────────────────────
 
     // 3a. Normalize raw existingLocations strings passed in from ATS API
     const normalizedRaw = new Set<string>();
@@ -266,7 +266,7 @@ export function matchFromCdn(rawText: string, existingLocations: string[] = []):
 
     // 3b. Scan full text for PAN India / remote India / remote
     if (/\bpan.?india\b/i.test(text)) normalizedRaw.add('PAN India');
-    if (/\bremote\s*[ΓÇô-]\s*india\b|\bindia\s*[ΓÇô-]\s*remote\b|\bindia\s*\(remote\)/i.test(text)) normalizedRaw.add('Remote India');
+    if (/\bremote\s*[–-]\s*india\b|\bindia\s*[–-]\s*remote\b|\bindia\s*\(remote\)/i.test(text)) normalizedRaw.add('Remote India');
     if (/\bwork from home\b|\bwfh\b|\bfully remote\b|\bwork remotely\b/i.test(text)) normalizedRaw.add('Remote');
 
     // 3c. Scan full text for Indian cities via CDN INDIAN_CITIES_MAP
@@ -276,7 +276,7 @@ export function matchFromCdn(rawText: string, existingLocations: string[] = []):
         const escaped = lowerCity.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const pattern = new RegExp(`(?:^|[^a-zA-Z])(${escaped})(?:$|[^a-zA-Z])`, 'i');
         if (pattern.test(lowerText)) {
-            // Canonical alias resolution: both Bengaluru + Bangalore ΓåÆ Bangalore
+            // Canonical alias resolution: both Bengaluru + Bangalore → Bangalore
             const city = CITY_ALIASES[canonicalCity] || canonicalCity;
             indianCitiesFound.add(city);
         }
@@ -311,9 +311,9 @@ export function matchFromCdn(rawText: string, existingLocations: string[] = []):
     for (const city of indianCitiesFound) locationsFound.add(city);
     for (const city of internationalCitiesFound) locationsFound.add(city);
 
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ─────────────────────────────────────────────────────────────────
     // 4. PASSOUT YEARS from text
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ─────────────────────────────────────────────────────────────────
     const passoutYearsFound = new Set<number>();
 
     // Direct year mentions (2024, 2025, 2026, etc.)
@@ -335,18 +335,18 @@ export function matchFromCdn(rawText: string, existingLocations: string[] = []):
         }
     }
 
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ─────────────────────────────────────────────────────────────────
     // 5. SALARY from text
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ─────────────────────────────────────────────────────────────────
     let salaryRange = '';
     const salaryMatch = text.match(SALARY_REGEX);
     if (salaryMatch) {
         salaryRange = salaryMatch[0].trim();
     }
 
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ─────────────────────────────────────────────────────────────────
     // 6. EXPERIENCE from text
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ─────────────────────────────────────────────────────────────────
     let experienceMin: number | undefined;
     let experienceMax: number | undefined;
 
@@ -364,14 +364,14 @@ export function matchFromCdn(rawText: string, existingLocations: string[] = []):
         }
     }
 
-    // Freshers explicitly ΓåÆ 0 experience
+    // Freshers explicitly → 0 experience
     if (EXP_FRESHER_REGEX.test(text)) {
         if (experienceMin === undefined) experienceMin = 0;
     }
 
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ─────────────────────────────────────────────────────────────────
     // 7. WORK MODE from text
-    // ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+    // ─────────────────────────────────────────────────────────────────
     let workMode: 'ONSITE' | 'HYBRID' | 'REMOTE' | null = null;
     if (REMOTE_REGEX.test(text)) workMode = 'REMOTE';
     else if (HYBRID_REGEX.test(text)) workMode = 'HYBRID';
@@ -380,7 +380,7 @@ export function matchFromCdn(rawText: string, existingLocations: string[] = []):
     return {
         requiredSkills: Array.from(skillsFound).slice(0, 25),
         allowedDegrees: Array.from(degreesFound),
-        // Normalize and deduplicate courses using constants (maps 'B.Tech' ΓåÆ 'B.Tech / B.E.' etc)
+        // Normalize and deduplicate courses using constants (maps 'B.Tech' → 'B.Tech / B.E.' etc)
         allowedCourses: normalizeCourseArray(Array.from(coursesFound)),
         allowedPassoutYears: Array.from(passoutYearsFound).sort(),
         salaryRange,

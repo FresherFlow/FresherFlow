@@ -23,7 +23,7 @@ import { ChevronDownIcon } from '@heroicons/react/24/outline';
 const BOARDS = [
     { label: 'Off-Campus Jobs', href: '/jobs', note: 'Every opening on the platform' },
     { label: 'Internships', href: '/jobs/internships', note: 'Intern roles for students' },
-    { label: 'Walk-in Drives', href: '/jobs/walkins', note: 'Drives with dates & venues' },
+    { label: 'Walk-in Drives', href: '/drives/walk-in', note: 'Drives with dates & venues' },
     { label: 'Government', href: '/govt', note: 'Sarkari exams & notifications' },
     { label: 'Remote / WFH', href: '/jobs/remote', note: 'Work-from-home openings' },
 ];

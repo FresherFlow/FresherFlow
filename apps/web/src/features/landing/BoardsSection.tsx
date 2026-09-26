@@ -18,7 +18,7 @@ export function BoardsSection({ data }: { data: BoardsData }) {
     const rows = [
         { idx: '01', name: 'Off-Campus Jobs', count: data.jobs, href: '/jobs' },
         { idx: '02', name: 'Internships', count: data.internships, href: '/jobs/internships' },
-        { idx: '03', name: 'Walk-in Drives', count: data.walkins, href: '/jobs/walkins' },
+        { idx: '03', name: 'Walk-in Drives', count: data.walkins, href: '/drives/walk-in' },
         { idx: '04', name: 'Government', count: data.govt, href: '/govt' },
     ];
 

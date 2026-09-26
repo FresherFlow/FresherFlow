@@ -62,7 +62,7 @@ export default function NotFoundPage() {
                                 </div>
                                 <ArrowRight className="h-4 w-4 text-muted-foreground transition-all duration-300 transform group-hover:translate-x-1 group-hover:text-primary" />
                             </Link>
-                            <Link href="/jobs/walkins" className="group flex items-center gap-4 rounded-xl border border-border/70 bg-card p-3.5 transition-all duration-300 hover:border-primary/30 hover:shadow-lg">
+                            <Link href="/drives/walk-in" className="group flex items-center gap-4 rounded-xl border border-border/70 bg-card p-3.5 transition-all duration-300 hover:border-primary/30 hover:shadow-lg">
                                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-paper">
                                     <MapPin className="h-5 w-5" />
                                 </div>

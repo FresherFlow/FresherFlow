@@ -38,7 +38,7 @@ export function getExpiryState(opportunity: ExtendedOpportunity) {
 export function getTypeHubPath(type?: CategoryFeedType | string | null) {
     if (type === 'JOB') return '/jobs';
     if (type === 'INTERNSHIP') return '/jobs/internships';
-    if (type === 'WALKIN') return '/jobs/walkins';
+    if (type === 'WALKIN') return '/drives/walk-in';
     return '/jobs';
 }
 
@@ -372,7 +372,7 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
     const isInternSeo = isInternshipOpportunity(opportunity);
     const isWalkinSeo = isWalkinOpportunity(opportunity);
     const typeLabel = isInternSeo ? 'Internships' : isWalkinSeo ? 'Walk-ins' : 'Jobs';
-    const typePath = isInternSeo ? '/jobs/internships' : isWalkinSeo ? '/jobs/walkins' : '/jobs';
+    const typePath = isInternSeo ? '/jobs/internships' : isWalkinSeo ? '/drives/walk-in' : '/jobs';
     const companySlug = slugify(opportunity.company || '');
 
     const breadcrumbs = {
@@ -416,7 +416,7 @@ export const generateOpportunityBreadcrumbsJsonLd = (opportunity: Opportunity) =
     const isInternSeo = isInternshipOpportunity(opportunity);
     const isWalkinSeo = isWalkinOpportunity(opportunity);
     const typeLabel = isInternSeo ? 'Internships' : isWalkinSeo ? 'Walk-ins' : 'Jobs';
-    const typePath = isInternSeo ? '/jobs/internships' : isWalkinSeo ? '/jobs/walkins' : '/jobs';
+    const typePath = isInternSeo ? '/jobs/internships' : isWalkinSeo ? '/drives/walk-in' : '/jobs';
     const companySlug = slugify(opportunity.company || '');
     
     return {

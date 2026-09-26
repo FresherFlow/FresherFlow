@@ -135,7 +135,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             icon: AcademicCapIcon,
         },
         {
-            href: '/jobs/walkins',
+            href: '/drives/walk-in',
             label: 'Walk-ins',
             mobileTitle: 'Walk-in Drives',
             mobileLabel: 'Walk-ins',
@@ -215,7 +215,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
 export const SIDEBAR_ROUTES = [
     '/jobs',
     '/jobs/internships',
-    '/jobs/walkins',
+    '/drives/walk-in',
     '/govt',
     '/jobs/remote',
     '/jobs/browse',

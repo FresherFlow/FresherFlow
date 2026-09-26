@@ -29,7 +29,7 @@ function buildSearchUrl(filters: SavedSearch['filters']): string {
     if (filters.batch) params.set('batch', String(filters.batch));
     if (filters.minSalary) params.set('minSalary', String(filters.minSalary));
     if (filters.closingSoon) params.set('closingSoon', 'true');
-    if (filters.feedType === 'walkins') return `/jobs/walkins${params.toString() ? `?${params}` : ''}`;
+    if (filters.feedType === 'walkins') return `/drives/walk-in${params.toString() ? `?${params}` : ''}`;
     if (filters.feedType === 'internships') return `/jobs/internships${params.toString() ? `?${params}` : ''}`;
     if (filters.feedType === 'remote') return `/jobs/remote${params.toString() ? `?${params}` : ''}`;
     const suffix = params.toString() ? `?${params}` : '';

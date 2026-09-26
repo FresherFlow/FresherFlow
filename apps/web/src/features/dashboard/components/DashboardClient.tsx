@@ -634,7 +634,7 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
                                     description="Direct interview walk-in events and venue drives"
                                     count={dataStreams.walkins.length}
                                     icon={<UserGroupIcon className="w-5 h-5 text-muted-foreground" />}
-                                    viewAllHref="/jobs/walkins"
+                                    viewAllHref="/drives/walk-in"
                                 >
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {dataStreams.walkins.map((opp) => (

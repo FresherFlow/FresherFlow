@@ -67,7 +67,7 @@ export default function TopNav() {
                                 Jobs
                             </Link>
                             <Link
-                                href="/jobs/walkins"
+                                href="/drives/walk-in"
                                 className={cn(
                                     "px-4 py-2 text-sm font-medium rounded-md transition-colors",
                                     isWalkinsMode

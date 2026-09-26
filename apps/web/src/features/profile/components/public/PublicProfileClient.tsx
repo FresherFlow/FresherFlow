@@ -222,7 +222,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
         ? profile.githubPinnedRepos
         : [];
 
-    const seoTitle = `${user?.fullName || 'Candidate'} ΓÇô ${profile?.headline || 'Software Engineer'} | FresherFlow`;
+    const seoTitle = `${user?.fullName || 'Candidate'} – ${profile?.headline || 'Software Engineer'} | FresherFlow`;
     useEffect(() => {
         if (typeof document !== 'undefined' && !document.title.includes('FresherFlow')) {
             document.title = seoTitle;
@@ -492,7 +492,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                             rel="noopener noreferrer"
                                             className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline transition-opacity duration-150 ease-out shrink-0"
                                         >
-                                            <span>View GitHub ΓåÆ</span>
+                                            <span>View GitHub →</span>
                                         </a>
                                     )}
                                 </div>
@@ -523,7 +523,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                                                     className="px-2.5 py-1 text-xs rounded-lg shrink-0 bg-primary text-primary-foreground hover:opacity-95 active:scale-95 transition-all duration-150 ease-out font-bold inline-flex items-center justify-center gap-1 shadow-2xs"
                                                                 >
                                                                     <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
-                                                                    <span>Live Demo ΓåÆ</span>
+                                                                    <span>Live Demo →</span>
                                                                 </a>
                                                             )}
                                                             {hasGithubUrl && (
@@ -534,7 +534,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                                                     className="px-2.5 py-1 text-xs rounded-lg shrink-0 text-muted-foreground hover:text-foreground bg-card hover:bg-accent border border-border/60 active:scale-95 transition-all duration-150 ease-out font-semibold inline-flex items-center justify-center gap-1 shadow-2xs"
                                                                 >
                                                                     <GithubSvgIcon className="w-3.5 h-3.5" />
-                                                                    <span>Git Docs ΓåÆ</span>
+                                                                    <span>Git Docs →</span>
                                                                 </a>
                                                             )}
                                                         </div>
@@ -591,7 +591,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                                                     className="px-2.5 py-1 text-xs rounded-lg shrink-0 bg-primary text-primary-foreground hover:opacity-95 active:scale-95 transition-all duration-150 ease-out font-bold inline-flex items-center justify-center gap-1 shadow-2xs"
                                                                 >
                                                                     <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
-                                                                    <span>Live Demo ΓåÆ</span>
+                                                                    <span>Live Demo →</span>
                                                                 </a>
                                                             )}
                                                             <a
@@ -601,7 +601,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                                                 className="px-2.5 py-1 text-xs rounded-lg shrink-0 text-muted-foreground hover:text-foreground bg-card hover:bg-accent border border-border/60 active:scale-95 transition-all duration-150 ease-out font-semibold inline-flex items-center justify-center gap-1 shadow-2xs"
                                                             >
                                                                 <GithubSvgIcon className="w-3.5 h-3.5" />
-                                                                <span>GitHub ΓåÆ</span>
+                                                                <span>GitHub →</span>
                                                             </a>
                                                         </div>
                                                     </div>
@@ -901,7 +901,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                                 <GithubSvgIcon className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0 transition-colors" />
                                                 <span className="truncate">GitHub</span>
                                             </div>
-                                            <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-150 ease-out">Γåù</span>
+                                            <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-150 ease-out">›</span>
                                         </a>
                                     )}
 
@@ -916,7 +916,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                                 <LinkedinSvgIcon className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0 transition-colors" />
                                                 <span className="truncate">LinkedIn</span>
                                             </div>
-                                            <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-150 ease-out">Γåù</span>
+                                            <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-150 ease-out">›</span>
                                         </a>
                                     )}
 
@@ -931,7 +931,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                                 <GlobeAltIcon className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0 transition-colors" />
                                                 <span className="truncate">Portfolio</span>
                                             </div>
-                                            <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-150 ease-out">Γåù</span>
+                                            <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-150 ease-out">›</span>
                                         </a>
                                     )}
 
@@ -946,7 +946,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                                 <DocumentTextIcon className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0 transition-colors" />
                                                 <span className="truncate">Resume</span>
                                             </div>
-                                            <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-150 ease-out">Γåù</span>
+                                            <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-150 ease-out">›</span>
                                         </a>
                                     )}
                                 </div>
@@ -959,7 +959,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                     <p className="text-xs font-medium text-muted-foreground">
                         Built with FresherFlow •{' '}
                         <Link href="/jobs" className="font-bold text-foreground hover:text-primary transition-colors duration-150 ease-out">
-                            Explore Verified Fresher Jobs ΓåÆ
+                            Explore Verified Fresher Jobs →
                         </Link>
                     </p>
                 </div>

@@ -23,7 +23,7 @@ function getMobileTitle(pathname: string): string {
     if (pathname.startsWith('/admin/discovery')) return 'Discovery Engine';
     if (pathname.startsWith('/admin')) return 'FF Admin';
     if (pathname.startsWith('/jobs/internships')) return 'Internship';
-    if (pathname.startsWith('/jobs/walkins') || pathname.startsWith('/jobs/walk-ins')) return 'Walk-in';
+    if (pathname.startsWith('/drives/walk-in') || pathname.startsWith('/jobs/walk-ins')) return 'Walk-in';
     if (pathname.startsWith('/jobs/')) return 'Job';
     if (pathname === '/profile') return 'Profile';
     if (pathname === '/alerts' || pathname === '/account/alerts') return 'Alerts';

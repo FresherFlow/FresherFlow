@@ -259,7 +259,7 @@ export function WalkinCalendar({
                     description="Check another month or browse all drives."
                     size="md"
                     variant="ghost"
-                    action={<Button variant="outline" size="sm" asChild><Link href="/jobs/walkins">Browse all drives</Link></Button>}
+                    action={<Button variant="outline" size="sm" asChild><Link href="/drives/walk-in">Browse all drives</Link></Button>}
                 />
             )}
         </div>

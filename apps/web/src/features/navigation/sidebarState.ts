@@ -167,10 +167,10 @@ export function useSidebarOpenState() {
 
 const SPACE_STORAGE_KEY = 'ff:spaceId';
 
-export function readSpaceId(): 'jobs' | 'govt' | null {
+export function readSpaceId(): 'jobs' | 'drives' | 'govt' | null {
     try {
         const v = localStorage.getItem(SPACE_STORAGE_KEY);
-        return v === 'jobs' || v === 'govt' ? v : null;
+        return v === 'jobs' || v === 'drives' || v === 'govt' ? v : null;
     } catch {
         return null;
     }

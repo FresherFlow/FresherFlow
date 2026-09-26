@@ -16,7 +16,7 @@ export { SIDEBAR_ROUTES, isSidebarPage };
 export const FEED_ROUTES = [
     '/jobs',
     '/jobs/internships',
-    '/jobs/walkins',
+    '/drives/walk-in',
     '/govt',
     '/jobs/remote',
     '/jobs/browse',

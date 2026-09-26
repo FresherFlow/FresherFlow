@@ -1,4 +1,4 @@
-import { BriefcaseIcon, BuildingLibraryIcon } from '@heroicons/react/24/outline';
+import { BriefcaseIcon, BuildingLibraryIcon, MapIcon } from '@heroicons/react/24/outline';
 import type { NavIcon, NavItem, NavItemId } from './navRegistry';
 import { ACCOUNT_NAV_ITEMS, DEFAULT_NAV_ITEMS, GOVT_NAV_ITEMS, JOBS_NAV_ITEMS, REGISTRY } from './navRegistry';
 
@@ -11,7 +11,7 @@ import { ACCOUNT_NAV_ITEMS, DEFAULT_NAV_ITEMS, GOVT_NAV_ITEMS, JOBS_NAV_ITEMS, R
    to keep in sync.
    ──────────────────────────────────────────────────────────────────────────── */
 
-export type SpaceId = 'jobs' | 'govt';
+export type SpaceId = 'jobs' | 'drives' | 'govt';
 
 export interface SpaceNavItem {
     title: string;
@@ -77,7 +77,7 @@ export const SPACES: Space[] = [
             {
                 label: 'Browse',
                 items: [
-                    ...pick(JOBS_NAV_ITEMS, 'dashboard', 'jobs', 'internships', 'remote', 'walkins', 'jobBoards'),
+                    ...pick(JOBS_NAV_ITEMS, 'dashboard', 'jobs', 'internships', 'fullTime', 'partTime', 'remote', 'drives', 'offCampus', 'walkins', 'jobBoards'),
                     ...pick(DEFAULT_NAV_ITEMS, 'saved', 'tracker'),
                     { title: REGISTRY.alerts.name, href: REGISTRY.alerts.href, icon: REGISTRY.alerts.icon, requiresAuth: REGISTRY.alerts.requiresAuth },
                     { title: REGISTRY.notifications.name, href: REGISTRY.notifications.href, icon: REGISTRY.notifications.icon, requiresAuth: REGISTRY.notifications.requiresAuth },
@@ -90,6 +90,24 @@ export const SPACES: Space[] = [
                     ...pick(JOBS_NAV_ITEMS, 'companies', 'resources', 'contribute'),
                     ...pick(ACCOUNT_NAV_ITEMS, 'following'),
                 ],
+                collapsible: true,
+            },
+        ],
+    },
+    {
+        id: 'drives',
+        name: 'Drives',
+        subtitle: 'Campus & walk-in',
+        icon: MapIcon,
+        groups: [
+            {
+                label: 'Browse',
+                items: pick(JOBS_NAV_ITEMS, 'drives', 'offCampus', 'walkins'),
+                collapsible: true,
+            },
+            {
+                label: 'Discover',
+                items: pick(JOBS_NAV_ITEMS, 'companies', 'resources', 'contribute'),
                 collapsible: true,
             },
         ],
@@ -165,6 +183,7 @@ export function getInitialSpace(pathname: string): SpaceId {
  */
 export function getSpaceForPathname(pathname: string): SpaceId | null {
     if (pathname.startsWith('/govt')) return 'govt';
+  if (pathname.startsWith('/drives') || pathname.startsWith('/off-campus')) return 'drives';
     if (
         pathname.startsWith('/jobs') ||
         pathname.startsWith('/companies') ||

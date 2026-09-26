@@ -22,7 +22,7 @@ const HUB_PATHS = new Set([
     '/internships',
     '/jobs/internships',
     '/walkins',
-    '/jobs/walkins',
+    '/drives/walk-in',
     '/remote',
     '/jobs/remote',
     '/government-jobs',
