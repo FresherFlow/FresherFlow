@@ -25,7 +25,7 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({
     className = '',
 }) => {
     return (
-        <section className={`space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:animate-none ${className}`}>
+        <section className={`space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out-strong motion-reduce:animate-none ${className}`}>
             <div className="flex flex-wrap items-start sm:items-center justify-between gap-3 pb-2.5 border-b border-border/30">
                 <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
                     {icon && (

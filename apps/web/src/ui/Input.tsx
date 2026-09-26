@@ -19,12 +19,24 @@ import { cn } from "@/ui/cn";
  *   is added here (call sites keep the height/layout classes).
  * - `searchGlow`: same as `search`, plus the soft focus glow used by the govt
  *   header search row.
+ * - `form`: the standard app form field. Placeholder tracking returns to normal
+ *   (the base reserves `tracking-widest` for search placeholders) and the
+ *   focused border takes the primary tint over a 200ms transition.
+ * - `mono`: same surface as `form`, plus the monospaced bold type used for
+ *   handles the user has to read character by character.
+ * - `inline`: the borderless editor used inside table cells and other dense
+ *   rows. The surface and border only appear on hover/focus, so the field does
+ *   not compete with the row around it.
  */
 const inputVariants = {
     default: "",
     search: "text-xs",
     searchGlow:
         "text-xs shadow-xs focus:bg-background focus:ring-2 focus:ring-ring/30 transition-shadow duration-150 ease-out",
+    form: "placeholder:tracking-normal focus:border-primary/60 duration-200",
+    mono: "placeholder:tracking-normal focus:border-primary/60 duration-200 font-mono font-bold",
+    inline:
+        "border-transparent bg-transparent hover:bg-input/30 focus-visible:bg-background",
 } as const;
 
 export type InputVariant = keyof typeof inputVariants;

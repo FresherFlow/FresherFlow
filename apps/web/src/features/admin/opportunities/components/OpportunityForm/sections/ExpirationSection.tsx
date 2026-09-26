@@ -29,8 +29,9 @@ export function ExpirationSection({ form }: { form: OpportunityFormApi }) {
             </div>
             <CardContent className="space-y-4 px-4 md:px-5 pb-4 md:pb-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="relative">
+                <div className="flex items-start gap-2">
                     <SmartInput
+                        containerClassName="flex-1"
                         label="Date (optional)"
                         type="date"
                         value={expiryDate}
@@ -38,15 +39,17 @@ export function ExpirationSection({ form }: { form: OpportunityFormApi }) {
                         min={new Date().toISOString().split('T')[0]}
                     />
                     {expiryDate && (
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            onClick={handleClear}
-                            aria-label="Clear expiry date"
-                            className="absolute right-1.5 top-8 h-6 w-6 rounded-full p-0 text-muted-foreground hover:text-destructive"
-                        >
-                            <XMarkIcon className="w-3.5 h-3.5" />
-                        </Button>
+                        <div className="mt-6 flex">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleClear}
+                                aria-label="Clear expiry date"
+                            >
+                                <XMarkIcon className="w-5 h-5" />
+                            </Button>
+                        </div>
                     )}
                 </div>
 
@@ -65,16 +68,16 @@ export function ExpirationSection({ form }: { form: OpportunityFormApi }) {
                     <Button
                         type="button"
                         variant="outline"
+                        size="sm"
                         onClick={() => onToggleAmPm('AM')}
-                        className="h-7 rounded-md px-3 text-xs font-semibold"
                     >
                         Force AM
                     </Button>
                     <Button
                         type="button"
                         variant="outline"
+                        size="sm"
                         onClick={() => onToggleAmPm('PM')}
-                        className="h-7 rounded-md px-3 text-xs font-semibold"
                     >
                         Force PM
                     </Button>

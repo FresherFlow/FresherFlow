@@ -68,17 +68,16 @@ export function ProfilePreviewCard() {
                     {displayUrl && (
                         <Button
                             variant="outline"
-                            size="sm"
+                            size="chip"
                             onClick={() => void copyUrl()}
-                            className="inline-flex items-center gap-1.5 whitespace-nowrap"
                         >
                             <Copy className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                             Copy link
                         </Button>
                     )}
                     {page.isLive && pagePath && (
-                        <Button variant="outline" size="sm" asChild className="inline-flex items-center gap-1.5 whitespace-nowrap">
-                            <a href={pagePath} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 whitespace-nowrap">
+                        <Button variant="outline" size="chip" asChild>
+                            <a href={pagePath} target="_blank" rel="noopener noreferrer">
                                 Open page
                                 <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                             </a>

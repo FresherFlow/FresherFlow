@@ -16,6 +16,7 @@ import {
     GOVERNMENT_FEED_URL,
     CDN_URL,
     IS_LOCAL_FEED,
+    IS_DB_FEED,
     FEED_CDN_BASE
 } from '@/lib/utils/runtimeConfig';
 import { readFeedCache } from '@/lib/cache/opportunitiesFeedCache';
@@ -85,6 +86,9 @@ async function signMessage(message: string, secret: string): Promise<string> {
  * Used for the bootstrap feed on the web/Next.js server side.
  */
 async function signUrlWithVersion(url: string, version: string): Promise<string> {
+    // FEED_SOURCE=db reads the API directly; it is not signature-gated.
+    if (IS_DB_FEED) return url;
+
     const secret = process.env.CDN_SIGNATURE_SECRET || process.env.NEXT_PUBLIC_CDN_SIGNATURE_SECRET || process.env.EXPO_PUBLIC_CDN_SIGNATURE_SECRET;
     try {
         const parsedUrl = new URL(url, CDN_URL);
@@ -143,9 +147,29 @@ function getCDNFetchOptions(options: CDNFetchOptions = {}): CDNFetchOptions {
 }
 
 /**
+ * Feed cache policy for `next.revalidate`.
+ *
+ * - CDN mode: `false` — immutable until an explicit revalidateTag, because the
+ *   URL is version-busted (`?v=`) and the edge serves it forever.
+ * - DB mode: a short number of seconds — refresh from Postgres on that
+ *   interval so a DB edit surfaces without waiting for a publish/revalidate
+ *   event. Tune with DB_FEED_REVALIDATE_SECONDS (default 60).
+ */
+const DB_FEED_REVALIDATE_SECONDS = Number(process.env.DB_FEED_REVALIDATE_SECONDS) || 60;
+function feedRevalidate(): false | number {
+    return IS_DB_FEED ? DB_FEED_REVALIDATE_SECONDS : false;
+}
+
+/**
  * Fetches the centrally stored R2 feed version through Next's tagged cache.
  */
 const _fetchFeedVersion = async (untracked = false): Promise<FeedVersion> => {
+    // FEED_SOURCE=db reads the API (Postgres) directly: there is no CDN
+    // version to resolve, so skip the network round-trip entirely.
+    if (IS_DB_FEED) {
+        return { version: 'db', stable: true };
+    }
+
     const IS_CLIENT = typeof window !== 'undefined';
     if (IS_CLIENT) {
         if (clientVersionCache) {
@@ -258,7 +282,7 @@ const _fetchBootstrapFeed = async (forceLive = false, customTags?: string[], unt
 
         let res = await fetch(signedUrl, getCDNFetchOptions({
             cache: forceLive ? 'no-store' : 'force-cache',
-            ...(!forceLive && !untracked ? { next: { revalidate: false, tags: customTags ?? ['homepage-feed'] } } : {}),
+            ...(!forceLive && !untracked ? { next: { revalidate: feedRevalidate(), tags: customTags ?? ['homepage-feed'] } } : {}),
             signal: controller.signal,
         }));
 
@@ -379,7 +403,7 @@ const _fetchFeedIndex = async (forceLive = false, customTags?: string[], untrack
 
         let res = await fetch(signedUrl, getCDNFetchOptions({
             cache: forceLive ? 'no-store' : 'force-cache',
-            ...(!forceLive && !untracked ? { next: { revalidate: false, tags: customTags ?? ['feed-index'] } } : {}),
+            ...(!forceLive && !untracked ? { next: { revalidate: feedRevalidate(), tags: customTags ?? ['feed-index'] } } : {}),
             signal: controller.signal,
         }));
 
@@ -413,8 +437,10 @@ const _fetchExpiredFeed = async (customTags?: string[], untracked = false): Prom
         return null;
     }
     try {
-        if (process.env.NODE_ENV === 'development') {
-            return null; // Don't mock expired feed in dev for now
+        // CDN mode has no local expired snapshot in dev. FEED_SOURCE=db reads
+        // the API (Postgres), which does serve it, so let db mode through.
+        if (process.env.NODE_ENV === 'development' && !IS_DB_FEED) {
+            return null;
         }
 
         const feedVersion = await fetchFeedVersion(untracked);
@@ -429,7 +455,7 @@ const _fetchExpiredFeed = async (customTags?: string[], untracked = false): Prom
 
         const res = await fetch(signedUrl, getCDNFetchOptions({
             cache: feedVersion.stable ? 'force-cache' : 'no-store',
-            ...(feedVersion.stable && !untracked ? { next: { revalidate: false, tags: customTags ?? ['expired-feed'] } } : {}),
+            ...(feedVersion.stable && !untracked ? { next: { revalidate: feedRevalidate(), tags: customTags ?? ['expired-feed'] } } : {}),
             signal: controller.signal,
         }));
 
@@ -476,7 +502,7 @@ const _fetchGovernmentFeed = async (_forceLive = false, customTags?: string[], u
 
         let res = await fetch(signedUrl, getCDNFetchOptions({
             cache: feedVersion.stable ? 'force-cache' : 'no-store',
-            ...(feedVersion.stable && !untracked ? { next: { revalidate: false, tags: customTags ?? ['government-feed'] } } : {}),
+            ...(feedVersion.stable && !untracked ? { next: { revalidate: feedRevalidate(), tags: customTags ?? ['government-feed'] } } : {}),
             signal: controller.signal,
         }));
 

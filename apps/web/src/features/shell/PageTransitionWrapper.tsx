@@ -60,16 +60,10 @@ export function PageTransitionWrapper({ children }: PageTransitionWrapperProps) 
                 opacity: 0;
               }
             }
-            @media (prefers-reduced-motion: reduce) {
-              .ff-page-sweep {
-                animation: none !important;
-                display: none !important;
-              }
-            }
           `}</style>
           <div
             key={`sweep-anim-${sweepKey}`}
-            className="ff-page-sweep fixed inset-0 z-50 pointer-events-none bg-background shadow-xl border-l-8 border-t-8 border-primary/20 motion-reduce:hidden"
+            className="fixed inset-0 z-50 pointer-events-none bg-background shadow-xl border-l-8 border-t-8 border-primary/20 motion-reduce:hidden"
             style={{
               transformOrigin: 'top left',
               animation: 'pageSweepAnim 1.4s cubic-bezier(0.65, 0, 0.35, 1) forwards'

@@ -42,8 +42,8 @@ export function LogisticsSection({
                                 key={loc}
                                 type="button"
                                 variant="outline"
+                                size="sm"
                                 onClick={() => handleQuickLocation(loc)}
-                                className="h-7 rounded-md px-2.5 text-xs font-semibold"
                             >
                                 + {loc}
                             </Button>

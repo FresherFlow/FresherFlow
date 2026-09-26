@@ -81,7 +81,7 @@ export const RecentlyViewedRow: React.FC<RecentlyViewedRowProps> = ({ fallbackCo
                         companyLogoUrl={item.logoUrl}
                         className="w-5 h-5 shrink-0 rounded-full"
                     />
-                    <span className="truncate max-w-[110px]">{item.name}</span>
+                    <span className="truncate max-w-27.5">{item.name}</span>
                     {item.roleCount !== undefined && item.roleCount > 0 && (
                         <span className="tabular-nums text-muted-foreground">{item.roleCount}</span>
                     )}

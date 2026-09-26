@@ -302,13 +302,13 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
                 <>
                     <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
                         <span className="ff-hero-note ff-pin-in relative shrink-0 self-start">
-                            <span aria-hidden className="text-[var(--ff-accent)]">·</span>{' '}
+                            <span aria-hidden className="text-ff-accent">·</span>{' '}
                             {step === 'username' ? (<><b>CLAIM</b> — your public link</>) : (<><b>LIVE</b> — fresher jobs</>)}
                         </span>
                         <div aria-hidden className="pointer-events-none relative min-h-0 flex-1 shrink" />
                         {step === 'username' ? (
                             <>
-                                <h2 className="ff-hero-h1 font-display text-[clamp(28px,2.4vw,36px)] font-extrabold leading-[1.02] tracking-[-0.02em]">
+                                <h2 className="ff-hero-h1 font-display ff-display-h1 font-extrabold">
                                     <span className="line" style={{ animationDelay: '0.05s' }}>
                                         Your public profile,
                                     </span>
@@ -323,7 +323,7 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
                             </>
                         ) : (
                             <>
-                                <h2 className="ff-hero-h1 font-display text-[clamp(28px,2.4vw,36px)] font-extrabold leading-[1.02] tracking-[-0.02em]">
+                                <h2 className="ff-hero-h1 font-display ff-display-h1 font-extrabold">
                                     <span className="line" style={{ animationDelay: '0.05s' }}>
                                         Find jobs.
                                     </span>
@@ -338,8 +338,8 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
                         )}
                         <ul className="relative mt-6 mb-6 shrink-0 space-y-2.5">
                             {[['Free', 'for freshers'], ['Pan-India', 'drives & walk-ins'], ['Community', 'shared by freshers']].map(([value, label]) => (
-                                <li key={label} className="flex items-center gap-2.5 text-[13px] leading-none">
-                                    <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--ff-accent)]" />
+                                <li key={label} className="flex items-center gap-2.5 text-meta leading-none">
+                                    <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-ff-accent" />
                                     <span className="font-bold text-foreground">{value}</span>
                                     <span className="text-muted-foreground">{label}</span>
                                 </li>
@@ -357,7 +357,7 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
                 </>
             }
         >
-            <div className="m-auto flex w-full max-w-[min(580px,100%)] flex-col gap-5 lg:max-w-[min(580px,75%)]">
+            <div className="m-auto flex w-full ff-form-col flex-col gap-5 lg:ff-form-col-lg">
                 <div className="space-y-3">
                     {step !== 'email' && step !== 'username' && (
                         <button onClick={() => { setStep('email'); navigatedRef.current=false; }} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary mb-1 transition-colors cursor-pointer active:scale-95">
@@ -390,16 +390,16 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
                             <div className="space-y-2">
                                 <label htmlFor="auth-email" className="block pl-1 text-xs font-semibold text-foreground">Email address</label>
                                 <div className="relative group">
-                                    <EnvelopeIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-muted-foreground/40 group-focus-within:text-primary transition-colors duration-200 z-10 pointer-events-none" />
-                                    <Input id="auth-email" type="email" required autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-11 h-12 rounded-xl placeholder:tracking-normal transition-colors duration-200 focus:border-primary/60" placeholder="Enter your email address" />
+                                    <EnvelopeIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-muted-foreground/40 group-focus-within:text-primary transition-colors duration-200 z-10 pointer-events-none" />
+                                    <Input id="auth-email" type="email" variant="form" required autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-11 h-12" placeholder="Enter your email address" />
                                 </div>
                             </div>
-                            <button type="submit" disabled={(mounted && isLoading) || isProcessing || !email.trim() || !EMAIL_PATTERN.test(email.trim())} className="w-full h-12 rounded-xl bg-[var(--ff-accent)] text-paper font-semibold text-sm flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-100">
+                            <button type="submit" disabled={(mounted && isLoading) || isProcessing || !email.trim() || !EMAIL_PATTERN.test(email.trim())} className="w-full h-12 rounded-xl bg-ff-accent text-paper font-semibold text-sm flex items-center justify-center gap-2 hover:opacity-90 active-press-soft transition-all disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-100">
                                 {isProcessing ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : <>Continue <span aria-hidden>→</span></>}
                             </button>
                             <div className="relative py-3"><div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div><div className="relative flex justify-center"><span className="bg-card px-3 text-xs text-muted-foreground">or</span></div></div>
-                            <button type="button" onClick={handleGoogleSignIn} disabled={(mounted && isLoading) || isProcessing} className="w-full h-12 rounded-xl border border-border bg-card text-foreground font-medium text-sm flex items-center justify-center gap-2.5 hover:bg-muted active:scale-[0.98] transition-all disabled:opacity-50">
-                                {isProcessing ? <svg className="w-5 h-5 shrink-0 animate-spin text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24"><path fill="#EA4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.37 0 3.412 2.667 1.48 6.555l3.786 3.21z" /><path fill="#FBBC05" d="M1.48 6.555A12.049 12.049 0 0 0 0 12c0 1.927.455 3.746 1.258 5.373l3.967-3.07a7.086 7.086 0 0 1-.225-2.303c0-1.442.434-2.776 1.18-3.885L1.48 6.555z" /><path fill="#4285F4" d="M12 24c3.245 0 5.973-1.076 7.964-2.912l-3.836-2.973c-1.127.755-2.564 1.203-4.128 1.203-3.18 0-5.88-2.154-6.845-5.064L1.258 17.373C3.12 21.294 7.234 24 12 24z" /><path fill="#34A853" d="M24 12c0-.864-.077-1.697-.22-2.509H12v4.8h6.732c-.29 1.549-1.164 2.863-2.477 3.745l3.836 2.973C22.336 19.167 24 15.827 24 12z" /></svg>}
+                            <button type="button" onClick={handleGoogleSignIn} disabled={(mounted && isLoading) || isProcessing} className="w-full h-12 rounded-xl border border-border bg-card text-foreground font-medium text-sm flex items-center justify-center gap-2.5 hover:bg-muted active-press-soft transition-all disabled:opacity-50">
+                                {isProcessing ? <svg className="w-5 h-5 shrink-0 animate-spin text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24"><path fill="var(--color-brand-google-red)" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.37 0 3.412 2.667 1.48 6.555l3.786 3.21z" /><path fill="var(--color-brand-google-yellow)" d="M1.48 6.555A12.049 12.049 0 0 0 0 12c0 1.927.455 3.746 1.258 5.373l3.967-3.07a7.086 7.086 0 0 1-.225-2.303c0-1.442.434-2.776 1.18-3.885L1.48 6.555z" /><path fill="var(--color-brand-google-blue)" d="M12 24c3.245 0 5.973-1.076 7.964-2.912l-3.836-2.973c-1.127.755-2.564 1.203-4.128 1.203-3.18 0-5.88-2.154-6.845-5.064L1.258 17.373C3.12 21.294 7.234 24 12 24z" /><path fill="var(--color-brand-google-green)" d="M24 12c0-.864-.077-1.697-.22-2.509H12v4.8h6.732c-.29 1.549-1.164 2.863-2.477 3.745l3.836 2.973C22.336 19.167 24 15.827 24 12z" /></svg>}
                                 <span>{isProcessing ? 'Connecting...' : 'Google'}</span>
                             </button>
                             {mounted && (() => { try { const last = localStorage.getItem('ff_last_auth_method'); if (last === 'otp') return <p className="text-center text-xs text-muted-foreground">You signed in with email code last time</p>; if (last === 'google') return <p className="text-center text-xs text-muted-foreground">You signed in with Google last time</p>; return null; } catch { return null; }})()}
@@ -443,7 +443,7 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
                                 <label htmlFor="username-input" className="block pl-1 text-xs font-semibold text-foreground">Username</label>
                                 <div className="relative group">
                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm z-10 pointer-events-none">@</span>
-                                    <Input id="username-input" type="text" autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder="your_username" value={username} onChange={handleUsernameChange} maxLength={20} disabled={isClaiming} className="pl-10 pr-10 h-12 font-mono text-sm font-bold placeholder:tracking-normal transition-colors duration-200 focus:border-primary/60" />
+                                    <Input id="username-input" type="text" variant="mono" autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder="your_username" value={username} onChange={handleUsernameChange} maxLength={20} disabled={isClaiming} className="pl-10 pr-10 h-12" />
                                     <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center z-10">
                                         {isChecking && <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />}
                                         {!isChecking && isAvailable === true && <svg className="w-5 h-5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}

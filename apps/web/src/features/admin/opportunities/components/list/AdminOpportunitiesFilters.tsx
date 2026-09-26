@@ -6,7 +6,6 @@ import {
     TrashIcon, ArchiveBoxIcon, ArrowUpCircleIcon, ClockIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '@/ui/Button';
-import { cn } from '@/ui/cn';
 import {
     Select,
     SelectContent,
@@ -96,7 +95,7 @@ export const AdminOpportunitiesFilters = ({
         {/* RIGHT: facet dropdowns push to the end */}
         <div className="flex items-center gap-2 ml-auto">
             <Select value={typeFilter || 'ALL'} onValueChange={(v) => setTypeFilter(v === 'ALL' ? '' : v)}>
-                <SelectTrigger className="h-9 w-auto min-w-28 cursor-pointer text-xs" aria-label="Filter by type">
+                <SelectTrigger className="w-auto min-w-28 cursor-pointer" aria-label="Filter by type">
                     <SelectValue placeholder="All types" />
                 </SelectTrigger>
                 <SelectContent>
@@ -107,7 +106,7 @@ export const AdminOpportunitiesFilters = ({
             </Select>
 
             <Select value={statusFilter || 'ALL'} onValueChange={(v) => setStatusFilter(v === 'ALL' ? '' : v)}>
-                <SelectTrigger className="h-9 w-auto min-w-28 cursor-pointer text-xs" aria-label="Filter by status">
+                <SelectTrigger className="w-auto min-w-28 cursor-pointer" aria-label="Filter by status">
                     <SelectValue placeholder="All status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -118,7 +117,7 @@ export const AdminOpportunitiesFilters = ({
             </Select>
 
             <Select value={sort} onValueChange={setSort}>
-                <SelectTrigger className="h-9 w-auto min-w-28 cursor-pointer text-xs" aria-label="Sort listings">
+                <SelectTrigger className="w-auto min-w-28 cursor-pointer" aria-label="Sort listings">
                     <SelectValue placeholder="Newest" />
                 </SelectTrigger>
                 <SelectContent>
@@ -129,7 +128,7 @@ export const AdminOpportunitiesFilters = ({
             </Select>
 
             {isDirty && (
-                <Button variant="admin" size="sm" onClick={onClear} className={cn(bulkActionPending && 'pointer-events-none opacity-60')}>
+                <Button variant="admin" size="sm" onClick={onClear} disabled={bulkActionPending}>
                     Clear
                 </Button>
             )}

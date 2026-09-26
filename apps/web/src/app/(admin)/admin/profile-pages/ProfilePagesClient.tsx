@@ -141,8 +141,8 @@ export default function AdminProfilePagesPage() {
                 <div className="space-y-3">
                     {Array.from({ length: 3 }).map((_, i) => (
                         <div key={i} className="space-y-2 py-3">
-                            <Skeleton className="h-4 w-3/4 bg-muted/60" />
-                            <Skeleton className="h-3 w-1/2 bg-muted/60" />
+                            <Skeleton variant="subtle" className="h-4 w-3/4" />
+                            <Skeleton variant="subtle" className="h-3 w-1/2" />
                         </div>
                     ))}
                 </div>

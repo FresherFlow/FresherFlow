@@ -73,7 +73,7 @@ export function SectionEditButton({
     const text = isAdd ? 'Add' : label;
 
     return (
-        <Button variant="outline" size="sm" onClick={onClick} disabled={disabled} aria-label={text} className="inline-flex items-center gap-1.5 whitespace-nowrap">
+        <Button variant="outline" size="chip" onClick={onClick} disabled={disabled} aria-label={text}>
             {isAdd ? <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> : <PencilLine className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
             {text}
         </Button>

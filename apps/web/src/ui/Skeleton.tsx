@@ -8,9 +8,11 @@ type SkeletonProps = React.HTMLAttributes<HTMLDivElement> & {
      * through className (for example h-8 and w-24). 'default' keeps the base
      * `rounded` from the class list below, 'pill' is a fully round
      * chip/avatar, 'panel' is a card/tile-scale block, 'action' matches compact
-     * button geometry, and 'surface' is a bordered card surface.
+     * button geometry, 'surface' is a bordered card surface, 'subtle' is the
+     * lighter second line of a two-line text placeholder, and 'tabActive' is
+     * the active tab underline placeholder.
      */
-    variant?: 'default' | 'pill' | 'panel' | 'action' | 'surface';
+    variant?: 'default' | 'pill' | 'panel' | 'action' | 'surface' | 'subtle' | 'tabActive';
 };
 
 /** Shape classes per variant. `default` adds nothing — the base already carries `rounded`. */
@@ -20,6 +22,8 @@ const VARIANT_CLASSES: Record<NonNullable<SkeletonProps['variant']>, string> = {
     panel: 'rounded-lg',
     action: 'rounded-md',
     surface: 'rounded-xl border border-border/60 bg-card',
+    subtle: 'bg-muted/60',
+    tabActive: 'border-b-2 border-primary',
 };
 
 export function Skeleton({ className, variant = 'default', ...props }: SkeletonProps) {

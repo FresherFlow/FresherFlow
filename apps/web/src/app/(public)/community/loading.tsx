@@ -1,13 +1,5 @@
 import { Skeleton } from '@/ui/Skeleton';
 
-const COMMUNITY_TABS = [
-    { label: 'Discussions', width: 'w-24' },
-    { label: 'Referrals', width: 'w-20' },
-    { label: 'Salary & Offers', width: 'w-28' },
-    { label: 'Rooms', width: 'w-16' },
-    { label: 'Saved Searches', width: 'w-28' },
-];
-
 function CommunityPostSkeleton() {
     return (
         <article className="rounded-2xl border border-border bg-card p-6 space-y-3">
@@ -43,9 +35,11 @@ export default function CommunityLoading() {
                     <Skeleton className="h-4 w-72" />
                 </div>
                 <div className="flex w-fit max-w-full gap-1 overflow-x-auto rounded-xl bg-muted/40 p-1">
-                    {COMMUNITY_TABS.map((tab) => (
-                        <Skeleton key={tab.label} variant="panel" className={`h-7 ${tab.width}`} />
-                    ))}
+                    <Skeleton variant="panel" className="h-7 w-24" />
+                    <Skeleton variant="panel" className="h-7 w-20" />
+                    <Skeleton variant="panel" className="h-7 w-28" />
+                    <Skeleton variant="panel" className="h-7 w-16" />
+                    <Skeleton variant="panel" className="h-7 w-28" />
                 </div>
             </header>
             <div className="space-y-4">

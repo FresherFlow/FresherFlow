@@ -96,7 +96,7 @@ export function ApplicationDetailsSection({ form }: { form: OpportunityFormApi }
                     <label className="text-sm font-medium text-muted-foreground/80 block">
                         {appMethod === 'ASSESSMENT' ? 'Assessment Topics / Syllabus' : 'Required Preparation Items'}
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 items-center">
                         <SmartInput
                             aria-label={appMethod === 'ASSESSMENT' ? 'Add topic' : 'Add item'}
                             containerClassName="flex-1"
@@ -109,7 +109,6 @@ export function ApplicationDetailsSection({ form }: { form: OpportunityFormApi }
                             type="button"
                             size="sm"
                             onClick={handleAddItem}
-                            className="h-11 shrink-0"
                         >
                             <PlusIcon className="w-4 h-4 mr-1.5" />
                             Add
@@ -122,17 +121,18 @@ export function ApplicationDetailsSection({ form }: { form: OpportunityFormApi }
                                 <Badge
                                     key={idx}
                                     variant="default"
-                                    className="gap-1 px-3 py-1 normal-case tracking-normal"
                                 >
-                                    {item}
-                                    <button
-                                        type="button"
-                                        onClick={() => handleRemoveItem(idx)}
-                                        aria-label={`Remove ${item}`}
-                                        className="flex items-center rounded-full p-0.5 transition-colors hover:bg-primary-foreground/20"
-                                    >
-                                        <XMarkIcon className="w-3.5 h-3.5" />
-                                    </button>
+                                    <span className="flex items-center gap-1 normal-case tracking-normal">
+                                        {item}
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveItem(idx)}
+                                            aria-label={`Remove ${item}`}
+                                            className="flex items-center rounded-full p-0.5 transition-colors hover:bg-primary-foreground/20"
+                                        >
+                                            <XMarkIcon className="w-3.5 h-3.5" />
+                                        </button>
+                                    </span>
                                 </Badge>
                             ))}
                         </div>

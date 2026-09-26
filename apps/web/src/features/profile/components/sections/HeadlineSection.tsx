@@ -125,12 +125,12 @@ export function HeadlineSection() {
                                 <Button
                                     type="button"
                                     variant="ghost"
-                                    size="sm"
+                                    size="chip"
                                     onClick={() => {
                                         setAvatarBroken(false);
                                         set('avatarUrl', '');
                                     }}
-                                    className="ml-auto inline-flex items-center gap-1.5 whitespace-nowrap text-xs h-7 px-2"
+                                    className="ml-auto"
                                 >
                                     <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
                                     Remove photo
@@ -148,7 +148,7 @@ export function HeadlineSection() {
                             }}
                             placeholder="https://example.com/photo.jpg"
                         />
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-micro text-muted-foreground">
                             Shown on fresherflow.in/u/{user?.username ?? 'username'} — leave empty to use initials
                         </p>
                     </div>

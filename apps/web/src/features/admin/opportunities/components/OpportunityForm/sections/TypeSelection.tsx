@@ -55,7 +55,7 @@ export function TypeSelection({ form }: { form: OpportunityFormApi }) {
                             aria-checked={isActive}
                             onClick={() => setType(option.value)}
                             className={cn(
-                                "relative flex items-start gap-3 rounded-xl border bg-card p-3.5 text-left shadow-sm transition-all duration-150 ease-out active:scale-[0.98] motion-reduce:transform-none",
+                                "relative flex items-start gap-3 rounded-xl border bg-card p-3.5 text-left shadow-sm transition-all duration-150 ease-out active:scale-95 motion-reduce:transform-none",
                                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
                                 isActive
                                     ? "border-primary ring-2 ring-primary/20"

@@ -104,7 +104,7 @@ export default function CompaniesTabsClient({ companies, totalJobs }: CompaniesT
                 </Breadcrumb>
             </HeaderPortal>
 
-            <TabBar items={items} activeKey={active} className="px-0 pt-0 max-w-none" />
+            <TabBar items={items} activeKey={active} />
 
             {active === 'following' ? (
                 <UsernameGate>

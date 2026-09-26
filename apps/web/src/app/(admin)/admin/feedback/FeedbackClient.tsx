@@ -355,7 +355,7 @@ export default function FeedbackPage() {
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground">Community moderation</h1>
-                    <div className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm text-muted-foreground">
+                    <div className="mt-2 rounded-lg border border-signal-aging/30 bg-signal-aging/5 px-3 py-2 text-sm text-muted-foreground">
                         Legacy Firebase view — read-only signal, not a moderation dependency. Triage user
                         reports in the canonical queue:{' '}
                         <Link href="/admin/reports" className="font-semibold text-foreground underline">

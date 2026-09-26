@@ -32,6 +32,10 @@ const buttonVariants = cva(
                 sm: "h-10 px-4 text-sm",
                 lg: "h-14 px-8 text-lg",
                 icon: "h-12 w-12",
+                // Compact icon + label chip: 40px (the secondary-action
+                // minimum) and the 6px gap between icon and label, which the
+                // primitive owns so call sites never restyle spacing.
+                chip: "h-10 gap-1.5 px-4 text-sm",
                 // Wide CTA sizes for empty/error state actions. Pair with label="caps".
                 cta: "h-12 px-8 py-2 text-sm",
                 ctaCompact: "h-11 px-6 py-2 text-sm",

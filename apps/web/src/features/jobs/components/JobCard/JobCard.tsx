@@ -250,7 +250,7 @@ export default function JobCard({
                                 {job.normalizedRole || job.title}
                             </h2>
                             <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-xs sm:text-sm text-muted-foreground">
-                                <span className="font-semibold text-foreground/80 truncate min-w-0 max-w-[14rem] sm:max-w-[18rem]">{job.company}</span>
+                                <span className="font-semibold text-foreground/80 truncate min-w-0 ff-company-cap sm:ff-company-cap-lg">{job.company}</span>
                                 <span className="text-muted-foreground/40 shrink-0 hidden sm:inline">•</span>
                                 <span className="inline-flex min-w-0 flex-1 items-center gap-1">
                                     <MapPinIcon className="w-3.5 h-3.5 shrink-0 text-muted-foreground" aria-hidden />

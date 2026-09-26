@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/ui/cn"
 
 const badgeVariants = cva(
-    "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold tracking-wide capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+    "inline-flex items-center rounded-full border text-xs font-semibold tracking-wide capitalize transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
     {
         variants: {
             variant: {
@@ -14,6 +14,9 @@ const badgeVariants = cva(
                 destructive:
                     "border-transparent bg-destructive/15 text-destructive hover:bg-destructive/25",
                 outline: "text-foreground border-border/60",
+                // De-emphasised outline chip: same border as `outline`, muted
+                // label. For tags whose value is context, not the row's subject.
+                muted: "text-muted-foreground border-border/60",
                 success:
                     "border-transparent bg-success/15 text-success hover:bg-success/25",
                 warning:
@@ -21,9 +24,15 @@ const badgeVariants = cva(
                 discord:
                     "border-transparent bg-brand-discord/15 text-brand-discord hover:bg-brand-discord/25",
             },
+            size: {
+                // Compact chip for dense rows (table cells, tab triggers).
+                sm: "px-1.5 py-0.5",
+                md: "px-2.5 py-0.5",
+            },
         },
         defaultVariants: {
             variant: "default",
+            size: "md",
         },
     }
 )
@@ -32,9 +41,9 @@ export interface BadgeProps
     extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof badgeVariants> { }
 
-function Badge({ className, variant, ...props }: BadgeProps) {
+function Badge({ className, variant, size, ...props }: BadgeProps) {
     return (
-        <div className={cn(badgeVariants({ variant }), className)} {...props} />
+        <div className={cn(badgeVariants({ variant, size }), className)} {...props} />
     )
 }
 

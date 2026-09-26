@@ -79,6 +79,14 @@ export class StaticFeedService {
         return FeedGeneratorService.generateExpiredFeed();
     }
 
+    static async generateFeedIndex() {
+        return FeedGeneratorService.generateFeedIndex();
+    }
+
+    static async generateOpportunityDetail(idOrSlug: string) {
+        return FeedGeneratorService.generateOpportunityDetail(idOrSlug);
+    }
+
     static async generateCompanyShards() {
         return FeedGeneratorService.generateCompanyShards();
     }
@@ -184,31 +192,9 @@ export class StaticFeedService {
                 // ~700 bytes/job vs ~2.5KB/job in the full bootstrap.
                 // Web /jobs pages fetch this instead of the full feed.
                 // Mobile and detail pages continue using the full bootstrap.
-                const indexFields = [
-                    'id', 'slug', 'type', 'status', 'title', 'company', 'companyWebsite', 'companyLogoUrl',
-                    'companyStage', 'companySize', 'companyIndustry', 'companyTopics',
-                    'locations', 'workMode', 'salaryMin', 'salaryMax', 'salaryRange', 'salaryPeriod',
-                    'stipend', 'incentives', 'employmentTypes', 'jobFunction',
-                    'requiredSkills', 'tags',
-                    'allowedDegrees', 'allowedCourses', 'allowedSpecializations',
-                    'allowedPassoutYears', 'passoutYearMin', 'passoutYearMax',
-                    'experienceMin', 'experienceMax',
-                    'postedAt', 'publishedAt', 'expiresAt', 'updatedAt',
-                    'applyLink', 'sourceLink',
-                    'driveDetails', 'governmentJobDetails',
-                    'isReferral', 'referredByUsername'
-                ];
-                const indexOpps = activeMapped.map(opp => {
-                    const light: Record<string, unknown> = {};
-                    for (const key of indexFields) {
-                        const val = opp[key];
-                        if (val !== undefined && val !== null) {
-                            if (Array.isArray(val) && val.length === 0) continue;
-                            light[key] = val;
-                        }
-                    }
-                    return light;
-                });
+                // Projection lives in FeedGeneratorService so the CDN snapshot
+                // and the FEED_SOURCE=db route cannot drift.
+                const indexOpps = FeedGeneratorService.projectFeedIndex(activeMapped);
                 const feedIndex = {
                     opportunities: indexOpps,
                     timestamp: Date.now(),

@@ -119,23 +119,24 @@ function SidebarDemoInner() {
   return (
     <SidebarProvider>
       <Sidebar collapsible="icon">
-        <SidebarHeader className="gap-2">
+        <SidebarHeader>
           <Brand />
           {/* Search — like sidebar-01 SearchForm, lets many-routes stay findable without scrolling */}
           <form onSubmit={(e) => e.preventDefault()}>
-            <SidebarGroup className="py-0">
-              <SidebarGroupContent className="relative">
-                <label htmlFor="dev-sb-search" className="sr-only">
-                  Search
-                </label>
-                <SidebarInput
-                  id="dev-sb-search"
-                  placeholder="Search routes..."
-                  className="pl-8"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                />
-                <Search className="pointer-events-none absolute left-2 top-1/2 size-4 -translate-y-1/2 opacity-50" />
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <div className="flex items-center gap-2">
+                  <label htmlFor="dev-sb-search" className="sr-only">
+                    Search
+                  </label>
+                  <Search className="size-4 shrink-0 opacity-50" aria-hidden />
+                  <SidebarInput
+                    id="dev-sb-search"
+                    placeholder="Search routes..."
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                  />
+                </div>
               </SidebarGroupContent>
             </SidebarGroup>
           </form>
@@ -157,10 +158,7 @@ function SidebarDemoInner() {
           {govtCategoriesFiltered.items.length > 0 && (
             <Collapsible defaultOpen className="group/collapsible">
               <SidebarGroup>
-                <SidebarGroupLabel
-                  asChild
-                  className="group/label text-sm text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                >
+                <SidebarGroupLabel asChild variant="interactive">
                   <CollapsibleTrigger className="flex w-full items-center">
                     {govtCategoriesFiltered.label}
                     <ChevronRight className="ml-auto size-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
@@ -258,7 +256,7 @@ function SidebarDemoInner() {
       </Sidebar>
 
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+        <header className="flex h-16 shrink-0 items-center gap-2 border-b ff-pane-transition ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <div className="flex items-center gap-2 px-4">
             <SidebarTrigger className="-ml-1" />
             <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
@@ -281,7 +279,7 @@ function SidebarDemoInner() {
             <div className="aspect-video rounded-xl bg-muted/50" />
             <div className="aspect-video rounded-xl bg-muted/50" />
           </div>
-          <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />
+          <div className="min-h-dvh flex-1 rounded-xl bg-muted/50 md:min-h-min" />
         </div>
       </SidebarInset>
     </SidebarProvider>

@@ -9,7 +9,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   const isPure = pathname === '/login' || pathname.startsWith('/login?') || pathname === '/onboarding' || pathname.startsWith('/onboarding?') || pathname === '/choose-username' || pathname.startsWith('/choose-username?');
   if (isPure) {
     return (
-      <main className="flex h-[100svh] flex-col overflow-hidden bg-background dark:bg-background relative pt-[calc(3.5rem+env(safe-area-inset-top))] lg:pt-0">
+      <main className="flex h-svh flex-col overflow-hidden bg-background dark:bg-background relative ff-safe-top-pad lg:pt-0">
         <MobileTopNav />
         <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
           {children}

@@ -55,7 +55,7 @@ export const AdminOpportunitiesHeader = ({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 variant="search"
-                className="pl-9 pr-8 h-9 bg-muted/50"
+                className="pl-9 pr-8 h-9"
             />
             {search && (
                 <button

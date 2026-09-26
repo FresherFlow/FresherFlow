@@ -91,24 +91,41 @@ export const ADMIN_WEB_HOST = normalizeHost(
 export const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL as string;
 
 /**
- * Feed source switch (testing).
+ * Feed source switch.
  *
- * FEED_SOURCE=cdn  (default) — all feeds come from the production CDN.
- * FEED_SOURCE=local           — all feeds come from local static JSON files
- *                               served by Next itself (apps/web/public/…).
- *                               Override the host with LOCAL_FEED_URL.
- *                               No signatures, no network dependency: lets us
- *                               test pages, Lighthouse and scale offline.
+ * Postgres is the source of truth; the CDN serves derived snapshots of it.
+ * This one flag selects which read path the web app uses — no consumer code
+ * changes:
+ *
+ * FEED_SOURCE=cdn    (default) — feeds come from the production CDN (R2 snapshots).
+ * FEED_SOURCE=db                — feeds come from the API, generated from Postgres.
+ *                                 No signatures and no CDN dependency; a few
+ *                                 CDN-only artifacts (shards, metadata, sitemaps)
+ *                                 degrade to their existing fallbacks. Use when
+ *                                 you need to read the source directly.
+ * FEED_SOURCE=local             — feeds come from local static JSON files
+ *                                 served by Next itself (apps/web/public/…).
+ *                                 Override the host with LOCAL_FEED_URL.
+ *                                 No signatures, no network dependency: lets us
+ *                                 test pages, Lighthouse and scale offline.
  */
 const FEED_SOURCE = (process.env.FEED_SOURCE || 'cdn').toLowerCase();
 export const IS_LOCAL_FEED = FEED_SOURCE === 'local';
+export const IS_DB_FEED = FEED_SOURCE === 'db';
 
 export const LOCAL_FEED_BASE =
     (process.env.LOCAL_FEED_URL && process.env.LOCAL_FEED_URL.replace(/\/+$/, '')) ||
     (IS_LOCAL_FEED ? SITE_URL : '');
 
-/** CDN when live; the local static host when FEED_SOURCE=local. */
-export const FEED_CDN_BASE = IS_LOCAL_FEED ? LOCAL_FEED_BASE : CDN_URL;
+/**
+ * CDN when live; the local static host when FEED_SOURCE=local; the API
+ * (Postgres-backed feed routes) when FEED_SOURCE=db.
+ */
+export const FEED_CDN_BASE = IS_DB_FEED
+    ? API_URL
+    : IS_LOCAL_FEED
+        ? LOCAL_FEED_BASE
+        : CDN_URL;
 
 export const BOOTSTRAP_FEED_URL =
     process.env.NEXT_PUBLIC_BOOTSTRAP_FEED_URL ||
@@ -130,7 +147,9 @@ export const GOVERNMENT_FEED_URL =
     `${FEED_CDN_BASE}/feeds/government-feed.json`;
 
 export const FEED_VERSION_URL =
-    IS_LOCAL_FEED ? `${FEED_CDN_BASE}/feeds/feed-version.json` : `${CDN_URL}/meta/feed-version.json`;
+    IS_LOCAL_FEED || IS_DB_FEED
+        ? `${FEED_CDN_BASE}/feeds/feed-version.json`
+        : `${CDN_URL}/meta/feed-version.json`;
 
 export const SITEMAP_DATA_URL =
     process.env.NEXT_PUBLIC_SITEMAP_DATA_URL ||

@@ -171,7 +171,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                             if (!open) form.setShowParser(false);
                         }}
                     >
-                        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+                        <DialogContent className="max-h-9/10 overflow-y-auto sm:max-w-2xl">
                             <ParserSection
                                 form={form}
                                 applyJsonToForm={(overrideJson?: string) => {
@@ -259,65 +259,64 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
             </div>
 
             {/* Floating action pill: back, progress and actions hover over the form */}
-            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full border border-border bg-background/95 py-2 pl-2 pr-2 shadow-lg backdrop-blur-md">
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    asChild
-                    aria-label="Back to listings"
-                    className="h-9 w-9 shrink-0 rounded-full"
-                >
-                    <Link href="/admin/opportunities">
-                        <ChevronLeftIcon className="h-5 w-5" />
-                    </Link>
-                </Button>
+            <div className="fixed inset-x-4 bottom-6 z-40 flex justify-center">
+                <div className="flex max-w-full items-center gap-2 rounded-2xl border border-border bg-background/95 py-2 pl-2 pr-2 shadow-lg backdrop-blur-md">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        asChild
+                        aria-label="Back to listings"
+                    >
+                        <Link href="/admin/opportunities">
+                            <ChevronLeftIcon className="h-5 w-5" />
+                        </Link>
+                    </Button>
 
-                <div className="hidden min-w-0 md:block">
-                    <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-semibold text-foreground">
-                            {isEditMode ? 'Edit listing' : 'New listing'}
-                        </span>
-                        <Badge variant="outline" className="shrink-0">
-                            {TYPE_LABELS[form.type] ?? form.type}
-                        </Badge>
+                    <div className="hidden min-w-0 md:block">
+                        <div className="flex items-center gap-2">
+                            <span className="truncate text-sm font-semibold text-foreground">
+                                {isEditMode ? 'Edit listing' : 'New listing'}
+                            </span>
+                            <Badge variant="outline" className="shrink-0">
+                                {TYPE_LABELS[form.type] ?? form.type}
+                            </Badge>
+                        </div>
+                        <div className="mt-1 flex items-center gap-2">
+                            <Progress value={percent} className="h-1.5 w-28" aria-label={`Listing ${percent}% complete`} />
+                            <span className="truncate text-xs text-muted-foreground">
+                                {percent}%{next ? ` · Next: ${next}` : ' · Ready'}
+                            </span>
+                        </div>
                     </div>
-                    <div className="mt-1 flex items-center gap-2">
-                        <Progress value={percent} className="h-1.5 w-28" aria-label={`Listing ${percent}% complete`} />
-                        <span className="truncate text-xs text-muted-foreground">
-                            {percent}%{next ? ` · Next: ${next}` : ' · Ready'}
+
+                    <div className="h-6 w-px shrink-0 bg-border hidden md:block" />
+
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={form.isParsing}
+                        onClick={() => void handleAutoFillAction()}
+                    >
+                        {form.isParsing ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                            <BoltIcon className="w-4 h-4 text-primary" />
+                        )}
+                        <span className="hidden sm:inline">
+                            {form.isParsing ? 'Filling…' : 'Auto-fill'}
                         </span>
-                    </div>
+                    </Button>
+                    <Button
+                        type="submit"
+                        form="opportunity-form"
+                        size="sm"
+                        disabled={form.isLoading}
+                    >
+                        {form.isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {form.isLoading ? (isEditMode ? 'Updating…' : 'Publishing…') : (isEditMode ? 'Update' : 'Publish')}
+                    </Button>
                 </div>
-
-                <div className="h-6 w-px shrink-0 bg-border hidden md:block" />
-
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={form.isParsing}
-                    onClick={() => void handleAutoFillAction()}
-                    className="shrink-0 rounded-full"
-                >
-                    {form.isParsing ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                        <BoltIcon className="w-4 h-4 text-primary" />
-                    )}
-                    <span className="hidden sm:inline">
-                        {form.isParsing ? 'Filling…' : 'Auto-fill'}
-                    </span>
-                </Button>
-                <Button
-                    type="submit"
-                    form="opportunity-form"
-                    size="sm"
-                    disabled={form.isLoading}
-                    className="h-9 shrink-0 rounded-full px-5 font-semibold shadow-sm"
-                >
-                    {form.isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-                    {form.isLoading ? (isEditMode ? 'Updating…' : 'Publishing…') : (isEditMode ? 'Update' : 'Publish')}
-                </Button>
             </div>
         </div>
     );

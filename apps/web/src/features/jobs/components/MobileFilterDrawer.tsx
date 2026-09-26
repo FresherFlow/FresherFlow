@@ -6,7 +6,7 @@ import { Button } from '@/ui/Button';
 import { SkillPill } from '@/features/jobs/components/SkillPill';
 import { FRESHER_EXPERIENCE_VALUE } from '@/features/jobs/components/JobFilterBar';
 import { cn } from '@repo/ui/utils/cn';
-import { Drawer } from 'vaul';
+import { Drawer, DrawerContent } from '@/ui/drawer';
 
 // Removed hardcoded locations
 
@@ -208,14 +208,9 @@ export function MobileFilterDrawer({
     const filteredCompanies = compQuery ? sortedCompanies.filter(c => c.company.toLowerCase().includes(compQuery)) : sortedCompanies;
 
     return (
-        <Drawer.Root open={isOpen} onOpenChange={(open) => !open && onClose()} modal={false}>
-            <Drawer.Portal>
-                <Drawer.Overlay className="fixed inset-0 z-50 bg-transparent lg:hidden" />
-                <Drawer.Content className="fixed bottom-0 pb-4 left-0 right-0 z-50 flex flex-col max-h-96 rounded-t-3xl border-t border-border bg-background shadow-2xl lg:hidden overscroll-contain">
-                    <div className="flex justify-center py-3 sticky top-0 z-20 bg-background rounded-t-3xl">
-                        <div className="h-1.5 w-12 rounded-full bg-muted" />
-                    </div>
-
+        <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()} modal={false}>
+            {/* DrawerContent owns the portal, the transparent overlay and the grab handle. */}
+            <DrawerContent variant="panel" className="lg:hidden overscroll-contain">
                     <div className="px-5 pb-3 border-b border-border/70 flex items-start justify-between">
                         <div>
                             <h3 id="mobile-filter-title" className="text-xl font-bold text-foreground">Filters</h3>
@@ -523,9 +518,8 @@ export function MobileFilterDrawer({
                         </Button>
                     </div>
                 </div>
-            </Drawer.Content>
-            </Drawer.Portal>
-        </Drawer.Root>
+            </DrawerContent>
+        </Drawer>
     );
 }
 

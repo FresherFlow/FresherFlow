@@ -47,7 +47,7 @@ export default function CommunityTabsClient() {
                 <p className="text-sm text-muted-foreground">
                     Discuss job opportunities, share experiences, and connect with fellow freshers.
                 </p>
-                <TabBar items={[...COMMUNITY_TABS]} activeKey={active} className="px-0 pt-0 max-w-none" />
+                <TabBar items={[...COMMUNITY_TABS]} activeKey={active} />
             </header>
             <TabContent />
         </main>

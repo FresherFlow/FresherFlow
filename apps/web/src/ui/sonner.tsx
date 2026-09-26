@@ -11,6 +11,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       theme={theme as ToasterProps["theme"]}
+      // `toaster` is injected by sonner at runtime (its stylesheet targets
+      // `.toaster`), and the `group-[.toaster]:` variants below depend on that
+      // selector. Tailwind never generates it, so the design-system linter
+      // cannot know it — declaring @utility toaster would emit dead CSS.
+      // eslint-disable-next-line shadcn/no-unknown-classes
       className="toaster group"
       toastOptions={{
         classNames: {

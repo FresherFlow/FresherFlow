@@ -58,9 +58,11 @@ export function ParserSection({
     return (
         <div className="space-y-4">
             <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                    <BoltIcon className="w-4 h-4 text-primary" />
-                    Auto-fill listing
+                <DialogTitle>
+                    <span className="flex items-center gap-2">
+                        <BoltIcon className="w-4 h-4 text-primary" />
+                        Auto-fill listing
+                    </span>
                 </DialogTitle>
                 <DialogDescription>
                     Paste a JSON payload to fill the form, or copy a template to start from.
@@ -97,7 +99,6 @@ export function ParserSection({
                 onChange={(e) => setPastedJson(e.target.value)}
                 placeholder='{"type":"WALKIN","title":"...","company":"..."}'
                 rows={6}
-                className="font-mono"
             />
 
             <div className="flex flex-wrap gap-2">
@@ -106,8 +107,8 @@ export function ParserSection({
                         key={template.type}
                         type="button"
                         variant="outline"
+                        size="sm"
                         onClick={() => handleCopy(template.text, template.type)}
-                        className="h-8 rounded-md px-2.5 text-xs font-semibold"
                     >
                         {copiedType === template.type ? (
                             <>
@@ -146,52 +147,53 @@ export function ParserSection({
                 </div>
             )}
 
-            <DialogFooter className="gap-2 sm:gap-2">
-                {clearAllFields && (
-                    <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={clearAllFields}
-                        className="text-destructive hover:text-destructive"
-                    >
-                        Clear Form
-                    </Button>
-                )}
-                <div className="flex flex-1 flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                    <Button type="button" variant="ghost" size="sm" onClick={closeParser}>
-                        Cancel
-                    </Button>
-                    <Button
-                        type="button"
-                        size="sm"
-                        onClick={async () => {
-                            if (!pastedJson.trim()) {
-                                try {
-                                    const text = await navigator.clipboard.readText();
-                                    if (text) {
-                                        applyJsonToForm(text);
+            <DialogFooter>
+                <div className="flex flex-1 flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+                    {clearAllFields && (
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={clearAllFields}
+                        >
+                            Clear Form
+                        </Button>
+                    )}
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <Button type="button" variant="ghost" size="sm" onClick={closeParser}>
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            onClick={async () => {
+                                if (!pastedJson.trim()) {
+                                    try {
+                                        const text = await navigator.clipboard.readText();
+                                        if (text) {
+                                            applyJsonToForm(text);
+                                        }
+                                    } catch (err) {
+                                        console.error("Failed to read clipboard", err);
                                     }
-                                } catch (err) {
-                                    console.error("Failed to read clipboard", err);
+                                } else {
+                                    applyJsonToForm();
                                 }
-                            } else {
-                                applyJsonToForm();
-                            }
-                        }}
-                    >
-                        {!pastedJson.trim() ? 'Paste JSON & Apply' : 'Apply JSON'}
-                    </Button>
+                            }}
+                        >
+                            {!pastedJson.trim() ? 'Paste JSON & Apply' : 'Apply JSON'}
+                        </Button>
+                    </div>
                 </div>
             </DialogFooter>
 
             {jsonReport?.valid && (
                 <div className="flex flex-wrap gap-1.5">
-                    <Badge variant="success" className="normal-case tracking-normal">
+                    <Badge variant="success">
                         {jsonReport.present.length} fields present
                     </Badge>
                     {jsonReport.missing.length > 0 && (
-                        <Badge variant="warning" className="normal-case tracking-normal">
+                        <Badge variant="warning">
                             {jsonReport.missing.length} missing
                         </Badge>
                     )}

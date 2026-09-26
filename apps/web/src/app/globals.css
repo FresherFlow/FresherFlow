@@ -11,6 +11,13 @@
    Component CSS references these via var(--color-*).
    ────────────────────────────────────────────────────────────────────── */
 @theme {
+  /* Strong easing curves (Emil Kowalski). In @theme, not :root, so Tailwind
+     emits `ease-out-strong` / `ease-in-out-strong` / `ease-drawer` as real
+     utilities and no call site needs an arbitrary cubic-bezier. */
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
   /* ── Core palette ─────────────────────────────────────────────── */
   --color-primary: oklch(20.6% 0.039 266); /* Deep navy */
   --color-primary-foreground: var(--color-paper); /* Paper — never pure white */
@@ -89,6 +96,12 @@
   --color-brand-discord: oklch(57.7% 0.209 274); /* #5865F2 */
   --color-brand-facebook: oklch(58.9% 0.203 258); /* #1877F2 */
   --color-brand-company-blue: oklch(46% 0.129 250); /* #005a9c */
+  /* Google mark — the official 4-colour G on the sign-in screen. Fixed brand
+     palette, identical in light and dark. */
+  --color-brand-google-red: oklch(62.6% 0.206 29.1); /* #EA4335 */
+  --color-brand-google-yellow: oklch(83% 0.17 84); /* #FBBC05 */
+  --color-brand-google-blue: oklch(63% 0.18 260); /* #4285F4 */
+  --color-brand-google-green: oklch(64.8% 0.16 148.5); /* #34A853 */
 
   /* ── Landing accent (brand orange #ff571a = --ff-accent) ──────── */
   --color-ff-accent: oklch(
@@ -121,6 +134,11 @@
   --font-record:
     var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 
+  /* Two scale steps Tailwind does not ship: 13px metadata and 11px micro-labels
+     (the `--fs-*` vars above stay responsive, these stay fixed). */
+  --text-meta: 13px;
+  --text-micro: 11px;
+
   /* ── Spacing ─────────────────────────────────────────────────── */
   --spacing-18: 4.5rem;
   --spacing-22: 5.5rem;
@@ -140,10 +158,8 @@
     color-scheme: light dark;
     --radius: 10px;
 
-    /* Strong easing curves (Emil Kowalski) */
-    --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
-    --ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
-    --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+    /* Strong easing curves live in @theme above so Tailwind emits real
+       `ease-*` utilities (ease-out-strong) instead of arbitrary values. */
 
     /* Typography Scale - Mobile First */
     --fs-h1: 28px;
@@ -1046,6 +1062,10 @@ html.ff-smooth {
   padding-bottom: env(safe-area-inset-bottom);
 }
 
+@utility ff-safe-top-pad {
+  padding-top: calc(3.5rem + env(safe-area-inset-top));
+}
+
 @utility ff-dvh-92 {
   height: 92dvh;
 }
@@ -1056,6 +1076,67 @@ html.ff-smooth {
 
 @utility ff-min-w-2ch {
   min-width: 2ch;
+}
+
+/* ── Auth shell + display type ───────────────────────────────
+   The compact auth box: page-width gutter, viewport-capped height, the
+   9/11 brand/form split, the form column caps, the fluid display
+   headline, and the brand-panel dot grid. None of these have a
+   Tailwind scale step, so they live here instead of as arbitrary
+   values at the call site. */
+@utility ff-auth-split {
+  grid-template-columns: 9fr 11fr;
+}
+
+@utility ff-shell-gutter {
+  padding-left: 7%;
+  padding-right: 7%;
+}
+
+@utility ff-shell-max-h {
+  max-height: calc(100svh - 4rem);
+}
+
+@utility ff-form-col {
+  max-width: min(580px, 100%);
+}
+
+@utility ff-form-col-lg {
+  max-width: min(580px, 75%);
+}
+
+/* Line-height and tracking for this size stay with the unlayered
+   .ff-hero-h1 base, which outranks utilities. */
+@utility ff-display-h1 {
+  font-size: clamp(28px, 2.4vw, 36px);
+}
+
+@utility ff-dot-grid {
+  background-image: radial-gradient(
+    var(--color-muted-foreground) 1px,
+    transparent 1px
+  );
+  background-size: 18px 18px;
+  mask-image: linear-gradient(to bottom, black 0%, transparent 50%);
+}
+
+@utility ff-hide-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ── Company-name truncation ───────────────────────────────
+   The two caps on the job-card meta row. Not numeric utilities:
+   Tailwind would read `max-w-18` as the `--spacing-18` theme key
+   (4.5rem), not 18rem. */
+@utility ff-company-cap {
+  max-width: 14rem;
+}
+
+@utility ff-company-cap-lg {
+  max-width: 18rem;
 }
 
 /* Custom z-index scale (Tailwind default caps at z-50) */

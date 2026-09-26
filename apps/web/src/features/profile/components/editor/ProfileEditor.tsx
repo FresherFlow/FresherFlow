@@ -153,7 +153,7 @@ export default function ProfileEditor() {
                     <aside className="lg:col-span-3 lg:sticky lg:top-8 lg:self-start space-y-4">
                         <nav
                             aria-label="Profile sections"
-                            className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:px-0 lg:pb-0 lg:snap-none"
+                            className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth px-4 pb-2 ff-hide-scrollbar lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:px-0 lg:pb-0 lg:snap-none"
                         >
                             {PROFILE_SECTION_ITEMS.map((section) => {
                                 const Icon = section.icon;

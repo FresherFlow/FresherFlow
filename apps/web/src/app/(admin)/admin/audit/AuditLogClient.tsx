@@ -126,7 +126,7 @@ export default function AuditLogClient() {
                         <TableBody>
                             {entries.map((entry) => (
                                 <TableRow key={entry.id}>
-                                    <TableCell className="text-sm">
+                                    <TableCell>
                                         {entry.user?.username ? `@${entry.user.username}` : (entry.user?.fullName ?? entry.user?.email ?? entry.user?.id ?? '—')}
                                     </TableCell>
                                     <TableCell>
@@ -134,16 +134,24 @@ export default function AuditLogClient() {
                                             {entry.action}
                                         </span>
                                     </TableCell>
-                                    <TableCell className="font-mono text-xs">{entry.targetId}</TableCell>
-                                    <TableCell className="whitespace-nowrap text-xs">
-                                        {new Date(entry.createdAt).toLocaleString('en-IN')}
+                                    <TableCell>
+                                        <span className="font-mono text-xs">{entry.targetId}</span>
                                     </TableCell>
-                                    <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
-                                        {entry.reason || '—'}
+                                    <TableCell>
+                                        <span className="whitespace-nowrap text-xs">
+                                            {new Date(entry.createdAt).toLocaleString('en-IN')}
+                                        </span>
+                                    </TableCell>
+                                    <TableCell>
+                                        <span className="block max-w-xs truncate text-sm text-muted-foreground">
+                                            {entry.reason || '—'}
+                                        </span>
                                     </TableCell>
                                     {/* TODO(spec): the audit API returns no result field; audited writes
                                         are successes by construction. Render '—' until the API adds one. */}
-                                    <TableCell className="text-sm text-muted-foreground">—</TableCell>
+                                    <TableCell>
+                                        <span className="text-sm text-muted-foreground">—</span>
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>

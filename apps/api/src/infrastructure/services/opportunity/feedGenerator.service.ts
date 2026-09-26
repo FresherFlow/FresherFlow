@@ -286,6 +286,83 @@ export class FeedGeneratorService {
         });
     }
 
+    /**
+     * Lightweight feed-index fields — card-rendering only (~700 bytes/job).
+     * Shared with StaticFeedService so the CDN snapshot and the FEED_SOURCE=db
+     * route project identical fields and cannot drift.
+     */
+    public static readonly FEED_INDEX_FIELDS: readonly string[] = [
+        'id', 'slug', 'type', 'status', 'title', 'company', 'companyWebsite', 'companyLogoUrl',
+        'companyStage', 'companySize', 'companyIndustry', 'companyTopics',
+        'locations', 'workMode', 'salaryMin', 'salaryMax', 'salaryRange', 'salaryPeriod',
+        'stipend', 'incentives', 'employmentTypes', 'jobFunction',
+        'requiredSkills', 'tags',
+        'allowedDegrees', 'allowedCourses', 'allowedSpecializations',
+        'allowedPassoutYears', 'passoutYearMin', 'passoutYearMax',
+        'experienceMin', 'experienceMax',
+        'postedAt', 'publishedAt', 'expiresAt', 'updatedAt',
+        'applyLink', 'sourceLink',
+        'driveDetails', 'governmentJobDetails',
+        'isReferral', 'referredByUsername'
+    ];
+
+    public static projectFeedIndex(opportunities: Record<string, unknown>[]): Record<string, unknown>[] {
+        return opportunities.map((opp) => {
+            const light: Record<string, unknown> = {};
+            for (const key of this.FEED_INDEX_FIELDS) {
+                const val = opp[key];
+                if (val !== undefined && val !== null) {
+                    if (Array.isArray(val) && val.length === 0) continue;
+                    light[key] = val;
+                }
+            }
+            return light;
+        });
+    }
+
+    public static async generateFeedIndex() {
+        return this.withDbRetry(async () => {
+            const opportunities = await prisma.opportunity.findMany({
+                where: {
+                    status: OpportunityStatus.PUBLISHED,
+                    deletedAt: null,
+                    OR: [
+                        { expiresAt: null },
+                        { expiresAt: { gt: new Date() } }
+                    ]
+                },
+                orderBy: { postedAt: 'desc' },
+                select: this.getFeedSelectFields(),
+            });
+
+            const mapped = this.mapFeedOpportunities(opportunities as unknown as Record<string, unknown>[]);
+            const indexOpps = this.projectFeedIndex(mapped);
+            return { opportunities: indexOpps, timestamp: Date.now(), generatedAt: new Date().toISOString(), count: indexOpps.length };
+        });
+    }
+
+    /**
+     * A single opportunity JSON, matching the CDN's jobs/{id}.json shard.
+     * Accepts a uuid or a slug. Published-but-expired rows are included so a
+     * recently expired detail page still resolves, exactly like the CDN shard.
+     */
+    public static async generateOpportunityDetail(idOrSlug: string) {
+        return this.withDbRetry(async () => {
+            const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+            const opportunity = await prisma.opportunity.findFirst({
+                where: {
+                    ...(isUuid ? { id: idOrSlug } : { slug: idOrSlug }),
+                    status: OpportunityStatus.PUBLISHED,
+                    deletedAt: null,
+                },
+                select: this.getFeedSelectFields(),
+            });
+
+            if (!opportunity) return null;
+            return this.mapFeedOpportunities([opportunity as unknown as Record<string, unknown>])[0] ?? null;
+        });
+    }
+
     public static async generateCompanyShards() {
         return this.withDbRetry(async () => {
             const opportunities = await prisma.opportunity.findMany({

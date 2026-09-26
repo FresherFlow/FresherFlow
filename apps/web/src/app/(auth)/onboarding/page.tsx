@@ -254,7 +254,7 @@ function OnboardingContent() {
                     type="button"
                     onClick={goBack}
                     disabled={isSaving}
-                    className="h-12 rounded-xl border border-border bg-card px-5 text-sm font-semibold text-foreground transition-all hover:bg-muted active:scale-[0.98] disabled:opacity-50"
+                    className="h-12 rounded-xl border border-border bg-card px-5 text-sm font-semibold text-foreground transition-all hover:bg-muted active-press-soft disabled:opacity-50"
                 >
                     Back
                 </button>
@@ -264,7 +264,7 @@ function OnboardingContent() {
                     type="button"
                     onClick={() => void handleReadinessSubmit()}
                     disabled={isSaving}
-                    className="h-12 flex-1 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+                    className="h-12 flex-1 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 active-press-soft disabled:opacity-50"
                 >
                     {isSaving ? 'Publishing…' : 'Finish → publish my page'}
                 </button>
@@ -273,7 +273,7 @@ function OnboardingContent() {
                     type="button"
                     onClick={() => void saveEducationAndContinue()}
                     disabled={isSaving}
-                    className="h-12 flex-1 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+                    className="h-12 flex-1 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 active-press-soft disabled:opacity-50"
                 >
                     {isSaving ? 'Saving…' : 'Save education & continue →'}
                 </button>
@@ -281,7 +281,7 @@ function OnboardingContent() {
                 <button
                     type={currentStep === 'name' ? 'submit' : 'button'}
                     onClick={currentStep === 'name' ? undefined : handleContinue}
-                    className="h-12 flex-1 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 active:scale-[0.98]"
+                    className="h-12 flex-1 rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-all hover:opacity-90 active-press-soft"
                 >
                     Continue →
                 </button>
@@ -311,7 +311,7 @@ function OnboardingContent() {
                                 const done = i < currentIdx;
                                 const reachable = i <= maxReached;
                                 return (
-                                    <button key={s.id} onClick={() => reachable && setCurrentStep(s.id)} disabled={!reachable} className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] transition-colors ${active ? 'font-semibold text-foreground' : 'text-muted-foreground hover:bg-card/60'} ${!reachable ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
+                                    <button key={s.id} onClick={() => reachable && setCurrentStep(s.id)} disabled={!reachable} className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-meta transition-colors ${active ? 'font-semibold text-foreground' : 'text-muted-foreground hover:bg-card/60'} ${!reachable ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
                                         <span className="flex h-5 w-5 shrink-0 items-center justify-center" aria-hidden="true">
                                             {done ? (
                                                 <svg className="h-3.5 w-3.5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
@@ -382,9 +382,9 @@ function OnboardingContent() {
                                 </label>
                                 <NativeSelect
                                     id="higher-studies"
+                                    variant="compact"
                                     value={higher}
                                     onChange={(e) => setHigher(e.target.value)}
-                                    className="h-11 rounded-xl border text-sm"
                                 >
                                     <option value="">Pick one…</option>
                                     {HIGHER_OPTIONS.map((opt) => (

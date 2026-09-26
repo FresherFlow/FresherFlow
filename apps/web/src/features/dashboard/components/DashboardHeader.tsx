@@ -23,7 +23,7 @@ export const DashboardHeader = ({ userName }: DashboardHeaderProps) => {
     const nameText = userName ? `, ${userName}` : '';
 
     return (
-        <div className="min-w-0 flex-1 animate-in fade-in slide-in-from-bottom-2 duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:animate-none">
+        <div className="min-w-0 flex-1 animate-in fade-in slide-in-from-bottom-2 duration-300 ease-out-strong motion-reduce:animate-none">
             <h1 className="font-display text-xl md:text-2xl font-extrabold tracking-tight leading-tight text-foreground">
                 {greeting}{nameText}.
             </h1>

@@ -9,7 +9,7 @@ function GovernmentJobCardSkeleton() {
                     <Skeleton className="h-4 w-3/4" />
                     <Skeleton className="h-3 w-1/2" />
                 </div>
-                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton variant="pill" className="h-5 w-16" />
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-3 sm:grid-cols-4">
                 {Array.from({ length: 4 }).map((_, index) => (
@@ -41,7 +41,7 @@ export default function GovernmentJobsLoading() {
             </div>
             <div className="flex gap-2 overflow-hidden border-b border-border pb-3">
                 {['Upcoming', 'Open', 'Results', 'Admit Cards'].map((label) => (
-                    <Skeleton key={label} className="h-8 w-24 rounded-lg" />
+                    <Skeleton key={label} variant="panel" className="h-8 w-24" />
                 ))}
             </div>
             <div className="space-y-3 pt-2">

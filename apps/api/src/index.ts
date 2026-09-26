@@ -352,21 +352,26 @@ app.get('/robots.txt', (_req, res) => {
 
 app.get(['/bootstrap-feed.min.json', '/feeds/bootstrap-feed.min.json'], async (req, res) => {
     try {
+        // FEED_SOURCE=db forces generation from Postgres on every request,
+        // bypassing any cached static file. Postgres is the source of truth.
+        const serveFromDb = process.env.FEED_SOURCE === 'db';
         const filePath = path.join(process.cwd(), 'public', 'feeds', 'bootstrap-feed.min.json');
         const legacyPath = path.join(process.cwd(), 'public', 'bootstrap-feed.min.json');
-        if (fs.existsSync(filePath)) {
-            return res.sendFile(filePath);
-        }
-        if (fs.existsSync(legacyPath)) {
-            return res.sendFile(legacyPath);
+        if (!serveFromDb) {
+            if (fs.existsSync(filePath)) {
+                return res.sendFile(filePath);
+            }
+            if (fs.existsSync(legacyPath)) {
+                return res.sendFile(legacyPath);
+            }
         }
 
-        // Fallback if file not yet generated
+        // Generated live from Postgres
         const results = await StaticFeedService.generateBootstrapFeed();
         res.json(results);
 
-        // Background refresh to create the file
-        StaticFeedService.scheduleRefresh();
+        // Background refresh to (re)create the static file (CDN path only)
+        if (!serveFromDb) StaticFeedService.scheduleRefresh();
     } catch (error) {
         logger.error('Failed to serve bootstrap feed', error);
         res.status(500).json({ error: { message: 'Internal server error' } });
@@ -375,14 +380,56 @@ app.get(['/bootstrap-feed.min.json', '/feeds/bootstrap-feed.min.json'], async (r
 
 app.get(['/government-feed.json', '/feeds/government-feed.json'], async (_req, res) => {
     try {
+        const serveFromDb = process.env.FEED_SOURCE === 'db';
         const filePath = path.join(process.cwd(), 'public', 'feeds', 'government-feed.json');
-        if (fs.existsSync(filePath)) {
+        if (!serveFromDb && fs.existsSync(filePath)) {
             return res.sendFile(filePath);
         }
         const results = await StaticFeedService.generateGovernmentFeed();
         res.json(results);
     } catch (error) {
         logger.error('Failed to serve government feed', error);
+        res.status(500).json({ error: { message: 'Internal server error' } });
+    }
+});
+
+// FEED_SOURCE=db read path: the same feeds the CDN serves, generated live
+// from Postgres instead of a prebuilt snapshot.
+app.get(['/feed-index.json', '/feeds/feed-index.json'], async (_req, res) => {
+    try {
+        const results = await StaticFeedService.generateFeedIndex();
+        res.json(results);
+    } catch (error) {
+        logger.error('Failed to serve feed index', error);
+        res.status(500).json({ error: { message: 'Internal server error' } });
+    }
+});
+
+app.get(['/expired-feed.min.json', '/feeds/expired-feed.min.json'], async (_req, res) => {
+    try {
+        const results = await StaticFeedService.generateExpiredFeed();
+        res.json(results);
+    } catch (error) {
+        logger.error('Failed to serve expired feed', error);
+        res.status(500).json({ error: { message: 'Internal server error' } });
+    }
+});
+
+app.get('/jobs/:id.json', async (req, res) => {
+    try {
+        const { id } = req.params;
+        // id is a uuid or slug; reject anything else before it reaches the DB.
+        if (!/^[a-zA-Z0-9-_]+$/.test(id)) {
+            return res.status(400).json({ error: { message: 'Invalid opportunity id' } });
+        }
+
+        const detail = await StaticFeedService.generateOpportunityDetail(id);
+        if (!detail) {
+            return res.status(404).json({ error: { message: 'Opportunity not found' } });
+        }
+        res.json(detail);
+    } catch (error) {
+        logger.error('Failed to serve opportunity detail', error);
         res.status(500).json({ error: { message: 'Internal server error' } });
     }
 });

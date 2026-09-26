@@ -174,8 +174,8 @@ function RoomCardSkeleton() {
                     <Skeleton className="h-3 w-1/3" />
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
-                    <Skeleton className="h-5 w-14 rounded-full" />
-                    <Skeleton className="h-5 w-12 rounded-full" />
+                    <Skeleton variant="pill" className="h-5 w-14" />
+                    <Skeleton variant="pill" className="h-5 w-12" />
                 </div>
             </div>
             <div className="space-y-2">

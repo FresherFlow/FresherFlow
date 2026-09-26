@@ -232,8 +232,8 @@ function PostDetailSkeleton() {
                         <Skeleton className="h-3 w-11/12" />
                     </div>
                     <div className="flex gap-2">
-                        <Skeleton className="h-9 flex-1 rounded-lg" />
-                        <Skeleton className="h-9 w-16 rounded-lg" />
+                        <Skeleton variant="panel" className="h-9 flex-1" />
+                        <Skeleton variant="panel" className="h-9 w-16" />
                     </div>
                 </div>
             </article>

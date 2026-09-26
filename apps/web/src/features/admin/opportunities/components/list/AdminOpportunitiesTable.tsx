@@ -198,7 +198,7 @@ export const AdminOpportunitiesTable = ({
       <div className="flex items-center gap-2 flex-wrap justify-end">
         <Select value={atsFilter} onValueChange={onAtsFilterChange}>
           <SelectTrigger
-            className="h-9 w-auto min-w-30 cursor-pointer text-xs"
+            className="w-auto min-w-30 cursor-pointer"
             aria-label="Filter by source"
           >
             <SelectValue placeholder="All sources" />
@@ -238,7 +238,6 @@ export const AdminOpportunitiesTable = ({
               size="sm"
               onClick={() => onBulkAction?.("PUBLISH")}
               disabled={bulkActionPending}
-              className="text-success dark:text-success hover:bg-success/10"
             >
 
               Publish ({ctx.selectedCount})
@@ -266,11 +265,10 @@ export const AdminOpportunitiesTable = ({
               </span>
             </Button>
             <Button
-              variant="outline"
+              variant="destructive"
               size="sm"
               onClick={() => onBulkAction?.("DELETE")}
               disabled={bulkActionPending}
-              className="text-destructive hover:bg-destructive/10"
             >
               <TrashIcon className="w-3.5 h-3.5 sm:mr-1.5" />
               <span className="hidden sm:inline">
@@ -304,7 +302,7 @@ export const AdminOpportunitiesTable = ({
             onValueChange={(v) => onTypeChange(v === "ALL" ? "" : v)}
           >
             <SelectTrigger
-              className="h-9 w-auto min-w-28 cursor-pointer text-xs"
+              className="w-auto min-w-28 cursor-pointer"
               aria-label="Filter by type"
             >
               <SelectValue placeholder="All types" />

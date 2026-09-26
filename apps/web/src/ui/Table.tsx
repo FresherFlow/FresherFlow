@@ -1,5 +1,41 @@
 import * as React from "react"
+import { cva, type VariantProps } from "class-variance-authority"
+
 import { cn } from "@/ui/cn"
+
+const tableHeaderVariants = cva(
+  "border-b border-border [&_tr]:border-b-0 [&_tr]:hover:bg-transparent",
+  {
+    variants: {
+      variant: {
+        default: "bg-muted/40",
+        // Opaque surface for headers pinned with `sticky` — rows scrolling
+        // underneath must not show through.
+        sticky: "bg-muted",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
+
+const tableRowVariants = cva(
+  "border-b border-border/40 transition-colors hover:bg-muted/30 data-[state=selected]:bg-muted/50",
+  {
+    variants: {
+      variant: {
+        default: "",
+        // Lift + fade for the row being dragged in a sortable table. Pair with
+        // `data-dragging` on the row.
+        dragging: "relative z-10 data-[dragging=true]:opacity-80",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+)
 
 const Table = React.forwardRef<
   HTMLTableElement,
@@ -17,14 +53,12 @@ Table.displayName = "Table"
 
 const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
-  React.HTMLAttributes<HTMLTableSectionElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLTableSectionElement> &
+    VariantProps<typeof tableHeaderVariants>
+>(({ className, variant, ...props }, ref) => (
   <thead
     ref={ref}
-    className={cn(
-      "bg-muted/40 border-b border-border [&_tr]:border-b-0 [&_tr]:hover:bg-transparent",
-      className
-    )}
+    className={cn(tableHeaderVariants({ variant }), className)}
     {...props}
   />
 ))
@@ -59,14 +93,12 @@ TableFooter.displayName = "TableFooter"
 
 const TableRow = React.forwardRef<
   HTMLTableRowElement,
-  React.HTMLAttributes<HTMLTableRowElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLTableRowElement> &
+    VariantProps<typeof tableRowVariants>
+>(({ className, variant, ...props }, ref) => (
   <tr
     ref={ref}
-    className={cn(
-      "border-b border-border/40 transition-colors hover:bg-muted/30 data-[state=selected]:bg-muted/50",
-      className
-    )}
+    className={cn(tableRowVariants({ variant }), className)}
     {...props}
   />
 ))

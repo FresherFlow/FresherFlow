@@ -115,6 +115,10 @@ For social media buttons and brand-specific UI:
 | `bg-brand-linkedin` | `--color-brand-linkedin` | LinkedIn social button |
 | `bg-brand-discord` | `--color-brand-discord` | Discord social button |
 | `bg-brand-facebook` | `--color-brand-facebook` | Facebook social button |
+| `bg-brand-google-red` | `--color-brand-google-red` | Google mark, red quadrant |
+| `bg-brand-google-yellow` | `--color-brand-google-yellow` | Google mark, yellow quadrant |
+| `bg-brand-google-blue` | `--color-brand-google-blue` | Google mark, blue quadrant |
+| `bg-brand-google-green` | `--color-brand-google-green` | Google mark, green quadrant |
 | `bg-brand-company-blue` | `--color-brand-company-blue` | Company logo fallback (TCS) |
 
 ### Surface Tokens
@@ -167,6 +171,8 @@ Font: **Inter** loaded via `next/font/google`, applied as `font-sans` via `var(-
 | Class | Size | Line Height | Use Case |
 |---|---|---|---|
 | `text-xs` | 12px | 16px | Badges, timestamps, fine print |
+| `text-micro` | 11px | ~14px | Micro-labels, hint lines under a field |
+| `text-meta` | 13px | ~18px | Metadata rows, step lists, compact meta |
 | `text-sm` | 14px | 20px | Secondary labels, metadata |
 | `text-base` | 16px | 24px | Primary body copy |
 | `text-lg` | 18px | 26px | Card titles, list headings |
@@ -289,7 +295,7 @@ Always inspect `src/ui/` for existing components before building custom UI eleme
 
 | Component | Import Path | Underlying Library | Use Case |
 |---|---|---|---|
-| `Button` | `src/ui/Button.tsx` | Custom / cva | Buttons with `default`, `secondary`, `outline`, `ghost`, `destructive`, `link` variants |
+| `Button` | `src/ui/Button.tsx` | Custom / cva | Buttons with `default`, `secondary`, `outline`, `ghost`, `admin`, `link`, `destructive` variants and `default`, `sm`, `lg`, `icon`, `cta`, `ctaCompact`, `ctaSmall`, `chip` sizes. `chip` is the compact icon + label action (40px, 6px icon gap) |
 | `Card` | `src/ui/Card.tsx` | Custom | Styled card container with `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter` |
 | `Badge` | `src/ui/Badge.tsx` | Custom / cva | Status tags and pills (`default`, `secondary`, `destructive`, `outline`, `success`, `warning`) |
 | `Dialog` | `src/ui/Dialog.tsx` | `@radix-ui/react-dialog` | Modal dialogs with accessible backdrop blur, title, description, close button |
@@ -299,7 +305,7 @@ Always inspect `src/ui/` for existing components before building custom UI eleme
 | `Tabs` | `src/ui/Tabs.tsx` | `@radix-ui/react-tabs` | Segmented tab views with `TabsList`, `TabsTrigger`, `TabsContent` |
 | `Tooltip` | `src/ui/Tooltip.tsx` | `@radix-ui/react-tooltip` | Hover tooltips for icon buttons, badges, and truncated text |
 | `Command` | `src/ui/Command.tsx` | `cmdk` | Quick search command palette, comboboxes, and filter selectors |
-| `Input` | `src/ui/Input.tsx` | Custom | Standard form input with focus ring and semantic border tokens |
+| `Input` | `src/ui/Input.tsx` | Custom | Standard form input with focus ring and semantic border tokens. Variants: `default`, `search`, `searchGlow`, `form` (normal placeholder tracking, primary focus border), `mono` (`form` plus monospaced bold type for handles) |
 | `Select` | `src/ui/Select.tsx` | Custom | Native/styled dropdown select input |
 | `Skeleton` | `src/ui/Skeleton.tsx` | Custom | Skeleton loading states for cards, text rows, avatars, list items |
 | `EmptyState` | `src/ui/EmptyState.tsx` | Custom | Contextual empty state with icon, headline, description, and action button |
@@ -340,6 +346,10 @@ Use only when its convenience API is genuinely useful, especially for existing a
 ### Select
 `src/ui/Select.tsx`
 Use for simple/native selections.
+
+### NativeSelect
+`src/ui/NativeSelect.tsx`
+The native `<select>` primitive. `variant="compact"` matches the compact `Input` field (44px, 1px rule, `rounded-xl`, `text-sm`); omit it for the Material 48px default.
 
 ### SmartSelect
 Use only when its label/help/field wrapper is useful.
@@ -423,6 +433,7 @@ When fixing hardcoded values, use this table to replace them with tokens.
 | `bg-[#0A66C2]` (LinkedIn) | `--color-brand-linkedin` | `bg-brand-linkedin` |
 | `bg-[#5865F2]` (Discord) | `--color-brand-discord` | `bg-brand-discord` |
 | `bg-[#1877F2]` (Facebook) | `--color-brand-facebook` | `bg-brand-facebook` |
+| `fill="#EA4335"` / `#FBBC05` / `#4285F4` / `#34A853` (Google G) | `--color-brand-google-*` | `fill-[var(--color-brand-google-red)]` etc. |
 | `bg-[#F5F4EF]` (warm gray) | `--color-surface-warm` | `bg-surface-warm` |
 | `bg-slate-*` / `text-slate-*` | Semantic tokens | Use `bg-card`, `text-foreground`, `text-muted-foreground`, `border-border` |
 | `bg-zinc-*` / `text-zinc-*` | Semantic tokens | Use `bg-card`, `text-foreground`, `text-muted-foreground`, `border-border` |

@@ -19,7 +19,7 @@ function RoomDetailSkeleton() {
                         <Skeleton className="h-6 w-48" />
                         <Skeleton className="h-3 w-20" />
                     </div>
-                    <Skeleton className="h-8 w-20 rounded-lg" />
+                    <Skeleton variant="panel" className="h-8 w-20" />
                 </div>
                 <Skeleton className="h-4 w-3/4" />
                 <div className="flex items-center gap-4">
@@ -30,7 +30,7 @@ function RoomDetailSkeleton() {
             </div>
             <div className="flex gap-4 border-b border-border">
                 {['Posts', 'Jobs', 'Members'].map((label) => (
-                    <Skeleton key={label} className="h-9 w-20 border-b-2 border-primary" />
+                    <Skeleton key={label} variant="tabActive" className="h-9 w-20" />
                 ))}
             </div>
             <div className="space-y-3">
@@ -182,8 +182,8 @@ function RoomPostSkeleton() {
     return (
         <div className="rounded-xl border border-border bg-card p-4 space-y-2">
             <div className="flex items-center gap-2">
-                <Skeleton className="h-5 w-24 rounded-full" />
-                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton variant="pill" className="h-5 w-24" />
+                <Skeleton variant="pill" className="h-5 w-16" />
             </div>
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-3 w-full" />

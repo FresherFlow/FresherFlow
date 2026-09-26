@@ -117,7 +117,7 @@ export function MobileTopNav() {
                                     <button
                                         onClick={() => void toggleTheme()}
                                         aria-label="Toggle theme"
-                                        className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors duration-200 outline-none active:scale-[0.97]"
+                                        className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors duration-200 outline-none active:scale-95"
                                     >
                                         <span className="relative flex h-5 w-5 items-center justify-center">
                                             {/* Mount-gated: resolvedTheme differs between SSR and

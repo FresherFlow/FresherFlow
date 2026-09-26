@@ -40,7 +40,7 @@ export default function ResourcesTabsClient({
 
     return (
         <>
-            <TabBar items={[...RESOURCE_TABS]} activeKey={active} className="mx-auto w-full max-w-7xl px-4 pt-6" />
+            <TabBar items={[...RESOURCE_TABS]} activeKey={active} />
 
             {active === 'platforms' ? (
                 <PlatformsPageView

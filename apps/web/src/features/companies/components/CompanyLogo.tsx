@@ -239,10 +239,10 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
                             width={16}
                             height={16}
                             referrerPolicy="no-referrer"
-                            className="h-full w-full scale-110 object-contain blur-[6px]"
+                            className="h-full w-full scale-110 object-contain blur-sm"
                         />
                     ) : (
-                        <span className="flex h-full w-full items-center justify-center rounded-lg bg-muted/60 text-xl font-bold text-foreground blur-[3px]">
+                        <span className="flex h-full w-full items-center justify-center rounded-lg bg-muted/60 text-xl font-bold text-foreground blur-xs">
                             {initials}
                         </span>
                     )

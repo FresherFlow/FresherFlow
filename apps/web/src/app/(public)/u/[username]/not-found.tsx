@@ -18,7 +18,7 @@ export const revalidate = false;
  */
 export default function ProfilePageNotFound() {
     return (
-        <div className="min-h-[calc(100vh-4rem)] bg-background px-4 py-16 text-foreground md:px-6">
+        <div className="min-h-dvh bg-background px-4 py-16 text-foreground md:px-6">
             <div className="mx-auto flex max-w-lg flex-col justify-center space-y-5">
                 <EmptyState
                     icon="inbox"

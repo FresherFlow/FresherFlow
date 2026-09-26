@@ -24,26 +24,51 @@ const DrawerClose = DrawerPrimitive.Close
 
 const DrawerOverlay = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Overlay>
->(({ className, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Overlay> & {
+    /** Overlay surface. `transparent` is for non-modal sheets that keep the page visible behind them. */
+    variant?: "default" | "transparent";
+  }
+>(({ className, variant = "default", ...props }, ref) => (
   <DrawerPrimitive.Overlay
     ref={ref}
-    className={cn("fixed inset-0 z-50 bg-black/80", className)}
+    className={cn(
+      "fixed inset-0 z-50 bg-black/80",
+      variant === "transparent" && "bg-transparent",
+      className
+    )}
     {...props}
   />
 ))
 DrawerOverlay.displayName = DrawerPrimitive.Overlay.displayName
 
+const DRAWER_CONTENT_VARIANTS = {
+  default: "",
+  /** Tall non-modal panel sheet: no top offset, squarer top corners, top rule
+   *  only, lifted shadow. Its overlay stays transparent so the page behind the
+   *  sheet keeps showing through. */
+  panel: "mt-0 max-h-96 rounded-t-3xl border-0 border-t pb-4 shadow-2xl",
+} as const
+
+/** Overlay each content variant brings with it. */
+const DRAWER_OVERLAY_VARIANTS = {
+  default: "default",
+  panel: "transparent",
+} as const
+
 const DrawerContent = React.forwardRef<
   React.ElementRef<typeof DrawerPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DrawerPrimitive.Content> & {
+    /** Panel geometry. Defaults to `default` (the grab-handle sheet). */
+    variant?: keyof typeof DRAWER_CONTENT_VARIANTS
+  }
+>(({ className, children, variant = "default", ...props }, ref) => (
   <DrawerPortal>
-    <DrawerOverlay />
+    <DrawerOverlay variant={DRAWER_OVERLAY_VARIANTS[variant]} />
     <DrawerPrimitive.Content
       ref={ref}
       className={cn(
         "fixed inset-x-0 bottom-0 z-50 mt-24 flex h-auto flex-col rounded-t-[10px] border bg-background",
+        DRAWER_CONTENT_VARIANTS[variant],
         className
       )}
       {...props}

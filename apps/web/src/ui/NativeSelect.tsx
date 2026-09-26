@@ -10,10 +10,22 @@ import { cn } from "@/ui/cn";
  * - font-size: 1rem (16px)
  * - Works on ALL devices without platform-specific tricks
  */
-export type NativeSelectProps = React.SelectHTMLAttributes<HTMLSelectElement>;
+export type NativeSelectProps = React.SelectHTMLAttributes<HTMLSelectElement> & {
+    /**
+     * Surface treatment owned by this primitive. `compact` matches the compact
+     * `Input` form field: 44px tall, 1px rule, `rounded-xl`, `text-sm`.
+     * Defaults to `default` (the Material 48px, 2px rule, `text-base` control).
+     */
+    variant?: "default" | "compact";
+};
+
+const nativeSelectVariants = {
+    default: "",
+    compact: "h-11 rounded-xl border text-sm",
+} as const;
 
 const NativeSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
-    ({ className, children, ...props }, ref) => {
+    ({ className, children, variant = "default", ...props }, ref) => {
         return (
             <select
                 className={cn(
@@ -24,6 +36,7 @@ const NativeSelect = React.forwardRef<HTMLSelectElement, NativeSelectProps>(
                     // Custom dropdown arrow
                     "bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHZpZXdCb3g9IjAgMCAyMCAyMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNNiA4TDEwIDEyTDE0IDgiIHN0cm9rZT0iIzZiNzI4MCIgc3Ryb2tlLXdpZHRoPSIxLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjwvc3ZnPg==')] bg-no-repeat bg-right pr-10",
                     "transition-colors",
+                    nativeSelectVariants[variant],
                     className
                 )}
                 ref={ref}
