@@ -10,23 +10,18 @@ import {
 const { join, sql } = Prisma;
 type Sql = Prisma.Sql;
 
+/**
+ * Search options that are NOT part of the public filter contract.
+ *
+ * Everything a public caller can express lives on `OpportunityFilters`
+ * (see `./filters.ts`). These are caller-trusted overrides used by the admin
+ * list, which may include drafts and soft-deleted rows.
+ */
 export interface SearchOptions {
-    /**
-     * Legacy `type` filter, now expressed across the independent dimensions.
-     * Kept as a structured object so one legacy value can expand into several
-     * column predicates (INTERNSHIP -> category + employmentTypes).
-     */
-    filterType?: {
-        category?: string;
-        recruitmentMethod?: string;
-        employmentType?: string;
-    };
     limit?: number;
     offset?: number;
     cursor?: string; // ISO string of postedAt for keyset pagination
-    locations?: string[];
     includeTotal?: boolean;
-    siteMode?: 'private' | 'govt';
     // Admin-specific filters
     statuses?: string[];
     includeDeleted?: boolean;
@@ -95,77 +90,56 @@ function parsePgEnumArray(value: unknown): string[] {
  * those read this module's filters, never the other way round.
  */
 export async function searchOpportunitiesQuery(
-    query: string,
+    filters: OpportunityFilters,
     options: SearchOptions = {}
 ): Promise<SearchResult> {
     const {
-        filterType,
-        filters,
-        limit = 20,
-        offset = 0,
+        limit = filters.limit ?? 20,
+        offset = filters.offset ?? 0,
         cursor,
-        locations,
         includeTotal = false,
-        siteMode = 'private',
         statuses = ['PUBLISHED'],
         includeDeleted = false,
         includeExpired = false,
     } = options;
 
-    // Phase 6: when the central filter set is present it owns pagination and
-    // sorting, so the public route cannot silently drop ?page/?limit/?sort.
+    // Single contract: pagination and sorting always come from the validated
+    // filter set, so the public route cannot silently drop ?page/?limit/?sort.
     const effectiveLimit = filters?.limit ?? limit;
     const effectiveOffset = filters?.offset ?? offset;
     const orderFragment: Sql | undefined = filters
         ? buildOpportunityOrderSql(filters)
         : undefined;
+    const query = filters.query;
 
     try {
-        // baseConditions: stable filters used for count queries (no cursor)
-        let baseConditions: Sql[];
-
-        if (filters) {
-            // Phase 6: the shared builder owns every public predicate, so
-            // search, feed, and the Phase 7 saved-search matcher cannot drift.
-            baseConditions = buildOpportunityFilterSql(filters, {
+        // baseConditions: stable filters used for count queries (no cursor).
+        // Every public filter dimension is built in one place (`./filters.ts`)
+        // so search, feed, and the Phase 7 saved-search matcher cannot drift.
+        // (filters.ts also owns the govt partition and taxonomy dimensions,
+        // so no legacy per-dimension branches are needed here.)
+        const baseConditions: Sql[] = filters
+            ? buildOpportunityFilterSql(filters, {
                 statuses,
                 includeDeleted,
                 includeExpired,
-            });
-        } else {
-            baseConditions = [];
-            if (!includeDeleted) baseConditions.push(sql`"deletedAt" IS NULL`);
-            if (!includeExpired) baseConditions.push(sql`"expiredAt" IS NULL`);
-            if (statuses.length > 0) baseConditions.push(sql`status::text = ANY(${statuses})`);
-            // The old single `type` column no longer exists; filter each dimension.
-            if (filterType?.category) baseConditions.push(sql`"category"::text = ${filterType.category}`);
-            if (filterType?.recruitmentMethod) {
-                baseConditions.push(sql`"recruitmentMethod"::text = ${filterType.recruitmentMethod}`);
-            }
-            if (filterType?.employmentType) {
-                baseConditions.push(sql`"employmentTypes" @> ARRAY[${filterType.employmentType}]::"EmploymentType"[]`);
-            }
-            if (locations && locations.length > 0) baseConditions.push(sql`locations && ${locations}::text[]`);
-            if (siteMode === 'govt') {
-                baseConditions.push(sql`EXISTS (SELECT 1 FROM "GovernmentJobDetails" gjd WHERE gjd."opportunityId" = "Opportunity"."id")`);
-            } else {
-                baseConditions.push(sql`NOT EXISTS (SELECT 1 FROM "GovernmentJobDetails" gjd WHERE gjd."opportunityId" = "Opportunity"."id")`);
-            }
-        }
+            })
+            : [
+                ...(!includeDeleted ? [sql`"deletedAt" IS NULL`] : []),
+                ...(!includeExpired ? [sql`"expiredAt" IS NULL`] : []),
+                ...(statuses.length > 0 ? [sql`status::text = ANY(${statuses})`] : []),
+            ];
 
         // pageConditions: adds cursor for keyset pagination
         const pageConditions: Sql[] = [...baseConditions];
         if (cursor) pageConditions.push(sql`"postedAt" < ${new Date(cursor)}`);
 
         const sanitizedQuery = query.trim();
-        const hasQuery = sanitizedQuery.length > 0;
 
-        // A filter-only search (`?workMode=REMOTE` with no `q`) is a first-class
-        // case in the new contract: return the matching set ordered by
-        // relevance, rather than short-circuiting to an empty page.
-        if (!hasQuery && !filters) {
-            return { hits: [], totalHits: includeTotal ? 0 : undefined, hasMore: false, query, nextCursor: undefined };
-        }
+        // Ranking needs a `rank` value, but a filter-only search (`?workMode=REMOTE`
+        // with no `q`) is a first-class case: fall back to recency ordering
+        // instead of returning nothing.
+        const hasQuery = sanitizedQuery.length > 0;
 
         const lowerQuery = sanitizedQuery.toLowerCase();
         const titlePrefixQuery = `${lowerQuery}%`;
@@ -271,6 +245,9 @@ export async function searchOpportunitiesQuery(
     }
 }
 
-export async function searchOpportunities(query: string, options: SearchOptions = {}): Promise<SearchResult> {
-    return searchOpportunitiesQuery(query, options);
+export async function searchOpportunities(
+    filters: OpportunityFilters,
+    options: SearchOptions = {}
+): Promise<SearchResult> {
+    return searchOpportunitiesQuery(filters, options);
 }

@@ -20,17 +20,12 @@ function adaptiveSearchLimiter(req: Request, res: Response, next: NextFunction) 
 router.get('/search', adaptiveSearchLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         // Phase 6: all 23 filter dimensions are parsed centrally in
-        // `application/opportunity/filters.ts`.
-        //
-        // The old code called `parseOpportunityTypeFilter` and then spread its
-        // Prisma where-input into `SearchOptions`, which is a different shape -
-        // so the filter was silently dropped and `?type=` had no effect. The
-        // parser also clamps page/limit and drops malformed values rather than
-        // throwing, so a stale share link can no longer 400 the endpoint.
+        // `application/opportunity/filters.ts`. The parser clamps page/limit
+        // and drops malformed values rather than throwing, so a stale share
+        // link can no longer 400 the endpoint.
         const filters = parseOpportunityFilters(req.query as Record<string, unknown>);
 
-        const searchResults = await searchOpportunities(filters.query, {
-            filters,
+        const searchResults = await searchOpportunities(filters, {
             includeTotal: true,
         });
 

@@ -8,27 +8,39 @@ import { calculateTrendingScore } from '@fresherflow/utils';
  * row for feed ranking. SavedSearch (personal matching) and Room (community
  * curation) both READ these counters but never write them — writes go
  * through this module only, so the three concerns cannot drift.
+ *
+ * Counters move with atomic increments/decrements, never with absolute sets
+ * or read-modify-write: two concurrent clicks would otherwise lose an update.
+ * Soft-deleted rows never accumulate engagement, and counters never go negative.
  */
 export async function updateOpportunityEngagement(opportunityId: string, type: 'share' | 'save' | 'unsave' | 'click') {
-    // Increment atomically in the database. A read-then-write here loses updates
-    // whenever two requests interleave, and trendingScore (which the public feed
-    // ranks on) is derived from these same counters.
-    const delta =
-        type === 'share' ? { sharesCount: 1 }
-            : type === 'save' ? { savesCount: 1 }
-                : type === 'unsave' ? { savesCount: -1 }
-                    : { clicksCount: 1 };
+    const field =
+        type === 'share' ? 'sharesCount'
+        : type === 'save' || type === 'unsave' ? 'savesCount'
+        : type === 'click' ? 'clicksCount'
+        : null;
 
-    const updated = await prisma.opportunity.updateMany({
-        // Soft-deleted and unpublished rows must not accumulate engagement.
-        where: { id: opportunityId, deletedAt: null },
-        data: delta,
-    });
+    if (!field) return;
 
-    if (updated.count === 0) return;
+    // Step 1: atomic counter move. updateMany (not update) so a missing or
+    // soft-deleted row is a no-op instead of a P2025 throw.
+    let moved;
+    if (type === 'unsave') {
+        // Decrementing is guarded so the counter cannot go negative.
+        moved = await prisma.opportunity.updateMany({
+            where: { id: opportunityId, deletedAt: null, [field]: { gt: 0 } },
+            data: { [field]: { decrement: 1 } },
+        });
+    } else {
+        moved = await prisma.opportunity.updateMany({
+            where: { id: opportunityId, deletedAt: null },
+            data: { [field]: { increment: 1 } },
+        });
+    }
 
-    // Recompute the score from the authoritative post-increment values rather than
-    // a value read earlier in the request, which may already be stale.
+    if (moved.count === 0) return;
+
+    // Step 2: read the committed counters back to derive the trending score.
     const opp = await prisma.opportunity.findUnique({
         where: { id: opportunityId },
         select: {
@@ -37,11 +49,12 @@ export async function updateOpportunityEngagement(opportunityId: string, type: '
             clicksCount: true,
             postedAt: true,
             linkHealth: true,
-        }
+        },
     });
-
     if (!opp) return;
 
+    // Step 3: trending score derived from the committed counters. Clamp
+    // at 0 as a second line of defence against a negative counter.
     await prisma.opportunity.update({
         where: { id: opportunityId },
         data: {

@@ -1,7 +1,6 @@
 import prisma, { Prisma, OpportunityStatus as DbOpportunityStatus, EducationLevel as DbEducationLevel, WorkMode as DbWorkMode, OpportunityCategory as DbOpportunityCategory, EmploymentType as DbEmploymentType } from '../database/prisma';
 import { OpportunityStatus, OpportunityCategory, EmploymentType, RecruitmentMethod, Opportunity, Profile } from '@fresherflow/types';
 import { calculateOpportunityMatch, generateSlug, generateCompanyLogoUrl } from '@fresherflow/utils';
-import { searchOpportunitiesQuery, SearchResult, SearchOptions } from '../../application/opportunity/search';
 
 /**
  * Opportunity Service - Business Logic Layer
@@ -147,15 +146,6 @@ export function buildOpportunityUpdateData(
 }
 
 export class OpportunityService {
-    /**
-     * Search Opportunities using PostgreSQL Full-Text Search.
-     */
-    static async searchOpportunities(query: string, options: SearchOptions = {}): Promise<SearchResult> {
-        return searchOpportunitiesQuery(query, options);
-    }
-
-
-
     /**
      * Create new opportunity (starts as DRAFT)
      */
@@ -435,50 +425,6 @@ export class OpportunityService {
             });
 
         return eligibleOpportunities;
-    }
-
-    /**
-     * Get single opportunity by ID (excludes soft-deleted rows).
-     */
-    static async getOpportunityById(id: string) {
-        return await prisma.opportunity.findFirst({
-            where: { id, deletedAt: null },
-            include: {
-                driveDetails: true,
-                user: {
-                    select: {
-                        fullName: true,
-                        email: true,
-                    },
-                },
-            },
-        });
-    }
-
-    /**
-     * Get single opportunity by slug or ID (backward compatible).
-     * Soft-deleted rows are never returned; the admin list/detail routes that
-     * need to see removed rows query Prisma directly with explicit filters.
-     */
-    static async getBySlugOrId(slugOrId: string) {
-        // Try by slug first (more common for SEO URLs)
-        const bySlug = await prisma.opportunity.findFirst({
-            where: { slug: slugOrId, deletedAt: null },
-            include: {
-                driveDetails: true,
-                user: {
-                    select: {
-                        fullName: true,
-                        email: true,
-                    },
-                },
-            },
-        });
-
-        if (bySlug) return bySlug;
-
-        // Fallback to ID for backward compatibility
-        return await this.getOpportunityById(slugOrId);
     }
 
     /**

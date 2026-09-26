@@ -78,13 +78,13 @@ describe("POST /api/opportunities/:id/click (apply funnel)", () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ success: true });
 
-    // The counter is incremented atomically in the DB rather than read-then-write,
-    // so the click is applied as a relative delta. A lost-update race here would
+    // The counter moves with an atomic increment (never an absolute set or
+    // read-then-write), guarded to live rows only. A lost-update race here would
     // also corrupt trendingScore, which the public feed ranks on.
     expect(prismaMock.opportunity.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ id: "opp-1", deletedAt: null }),
-        data: { clicksCount: 1 },
+        data: { clicksCount: { increment: 1 } },
       }),
     );
     // The score is then recomputed from the post-increment values.

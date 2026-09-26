@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import prisma, { OpportunityStatus as DbOpportunityStatus } from '../../../infrastructure/database/prisma';
 import { Prisma } from '@fresherflow/database';
 import { OpportunityStatus } from '@fresherflow/types';
-import { searchOpportunities } from '../../../application/opportunity';
+import { searchOpportunities, parseOpportunityFilters } from '../../../application/opportunity';
 import { requirePermission } from '../../../middleware/auth';
 import { parsePagination } from '../../../utils/pagination';
 import {
@@ -97,8 +97,22 @@ router.get('/', requirePermission('opportunity.review'), async (req: Request, re
 
         // Full-text search path
         if (keyword) {
-            const searchResults = await searchOpportunities(keyword, {
-                filterType: normalizedType,
+            // Phase 6: the admin list shares the public filter contract, so a
+            // `?type=` value here resolves across the split dimensions exactly
+            // as it does on the public route. Admin-only concerns (statuses,
+            // deleted/expired visibility) stay in the second argument.
+            const searchResults = await searchOpportunities(
+                parseOpportunityFilters({
+                    q: keyword,
+                    type: typeof type === 'string' ? type : undefined,
+                    // Mirror the admin list's own `sector` handling: a
+                    // GOVERNMENT filter means the govt site, otherwise private.
+                    siteMode:
+                        typeof sector === 'string' && sector.toUpperCase() === 'GOVERNMENT'
+                            ? 'govt'
+                            : 'private',
+                }, now),
+                {
                 limit: take,
                 offset: skip,
                 cursor: typeof cursor === 'string' ? cursor : undefined,
