@@ -1,4 +1,5 @@
 import type { Opportunity } from '@fresherflow/types';
+import { isGovernmentOpportunity, isInternshipOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 
 const HIDDEN_SALARY_PATTERNS = [
     /not\s*disclosed/i,
@@ -103,7 +104,7 @@ export const getOpportunityDisplaySalary = (opportunity: Opportunity): string | 
     // prefer it directly — it was set by admin and is the source of truth.
     const rawRange = opportunity.salaryRange || opportunity.stipend;
     if (rawRange && typeof rawRange === 'string') {
-        const isGovt = Boolean((opportunity as any).governmentJobDetails) || (opportunity as any).type === 'GOVERNMENT';
+        const isGovt = isGovernmentOpportunity(opportunity);
         if (isGovt) {
             let cleaned = rawRange;
             
@@ -148,7 +149,7 @@ export const getOpportunityDisplaySalary = (opportunity: Opportunity): string | 
 
         if (minVal !== null && maxVal !== null) {
             if (minVal <= 0 && maxVal <= 0) {
-                if (opportunity.type === 'INTERNSHIP') return 'Unpaid';
+                if (isInternshipOpportunity(opportunity)) return 'Unpaid';
                 return 'Not disclosed';
             }
 

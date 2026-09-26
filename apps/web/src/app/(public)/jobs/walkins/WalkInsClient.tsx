@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Opportunity, OpportunityType } from '@fresherflow/types';
+import { Opportunity } from '@fresherflow/types';
 import CategoryPage from '@/features/jobs/components/CategoryPage';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { WalkinEventBoard } from '@/features/jobs/components/WalkinEventBoard';
@@ -32,7 +32,7 @@ export function WalkInsClient({ initialData }: WalkInsClientProps) {
 
     return (
         <CategoryPage
-            type={OpportunityType.WALKIN}
+            type="WALKIN"
             initialData={initialData}
             topContent={topContent}
             userLocation={userLocation}

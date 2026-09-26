@@ -44,11 +44,12 @@ import { useTheme } from '@/lib/providers/ThemeContext';
 import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
 import { capitalizeSkill } from '@/features/jobs/domain/opportunityDisplay';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
+import { isGovernmentOpportunity } from '@/features/admin/opportunities/formUtils';
 
 const PROD_SITE_URL = SITE_URL.includes('localhost') ? 'https://fresherflow.in' : SITE_URL;
 
 const getOpportunityUrl = (opp: Opportunity) => {
-    const basePath = opp.type === 'GOVERNMENT' ? 'govt' : 'jobs';
+    const basePath = isGovernmentOpportunity(opp) ? 'govt' : 'jobs';
     return `${PROD_SITE_URL}/${basePath}/${opp.slug || opp.id}`;
 };
 

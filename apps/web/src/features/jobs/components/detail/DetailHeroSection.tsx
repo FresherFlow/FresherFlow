@@ -13,6 +13,7 @@ import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
 
 
 import { DriveMetadata } from '@/features/jobs/domain/driveTimeline';
+import { getPrimaryEmploymentType, isInternshipOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 
 function formatEmploymentText(text: string | null | undefined): string {
     if (!text) return 'Not specified';
@@ -76,7 +77,7 @@ export function DetailHeroSection({
                 {/* Tags row */}
                 <div className="flex flex-wrap items-center gap-1.5">
                     <span className="px-2 py-0.5 text-xs font-semibold rounded-md bg-muted/80 text-foreground border border-border/75">
-                        {isCampusDrive ? 'Hiring Drive' : opp.type === 'INTERNSHIP' ? 'Internship' : opp.type === 'WALKIN' ? 'Walk-in' : 'Job'}
+                        {isCampusDrive ? 'Hiring Drive' : isInternshipOpportunity(opp) ? 'Internship' : isWalkinOpportunity(opp) ? 'Walk-in' : 'Job'}
                     </span>
                     {opp.governmentJobDetails && (
                         <span className="px-2 py-0.5 text-xs font-semibold rounded-md bg-surface-warm dark:bg-warning/10 border border-border/50 dark:border-warning/20 text-warning dark:text-warning">
@@ -193,7 +194,7 @@ export function DetailHeroSection({
                     </span>
                     <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50 text-xs font-medium text-foreground border border-border/50">
                         <UsersIcon className="w-3 h-3 text-primary" />
-                        {formatEmploymentText(opp.employmentType)}
+                        {formatEmploymentText(getPrimaryEmploymentType(opp))}
                     </span>
                     <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted/50 text-xs font-medium text-foreground border border-border/50">
                         <CurrencyRupeeIcon className="w-3 h-3 text-primary" />

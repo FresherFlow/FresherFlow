@@ -3,7 +3,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { communityApi } from '@fresherflow/api-client';
-import type { MySubmissionItem, OpportunityType, WorkMode } from '@fresherflow/types';
+import type { MySubmissionItem, WorkMode } from '@fresherflow/types';
 import { useAuth } from '@/lib/auth/AuthContext';
 import {
     Sheet,
@@ -760,19 +760,27 @@ export function ContributeSheet({ open, onOpenChange, initialType = 'JOB', onSub
         const years = csv(values.allowedPassoutYears ?? '')
             .map(Number)
             .filter((y) => Number.isInteger(y) && y >= 1990 && y <= 2100);
+        // Independent taxonomy dimensions (v2): the submit API resolves
+        // `category` onto category/recruitmentMethod/employmentTypes. A walk-in
+        // is a recruitment method (venue fields below carry the drive), an
+        // internship is an employment type — never a single `type` enum.
+        const isWalkIn = type === 'WALKIN';
+        const oppType = isWalkIn ? 'WALKIN' : ((values.oppType ?? 'JOB').trim().toUpperCase());
+        const employmentTypeText = (values.employmentType ?? '').trim();
         return {
             sourceUrl: (values.sourceUrl ?? '').trim(),
             applyUrl: (values.applyUrl ?? '').trim() || undefined,
             title: (values.title ?? '').trim(),
             company: (values.company ?? '').trim() || undefined,
-            type:
-                type === 'WALKIN'
-                    ? ('WALKIN' as OpportunityType)
-                    : ((values.oppType ?? 'JOB') as OpportunityType),
+            category: 'EMPLOYMENT',
+            recruitmentMethod: isWalkIn ? 'WALK_IN' : 'REGULAR',
+            employmentTypes:
+                oppType === 'INTERNSHIP'
+                    ? 'INTERNSHIP'
+                    : employmentTypeText || null,
             description: (values.description ?? '').trim() || undefined,
             locations: (values.locations ?? '').trim() ? csv(values.locations).slice(0, 15) : undefined,
             workMode: (values.workMode ?? '') as WorkMode | '' as WorkMode | null,
-            employmentType: (values.employmentType ?? '').trim() || null,
             salaryRange: (values.salaryRange ?? '').trim() || null,
             salaryMin: numOrNull(values.salaryMin ?? ''),
             salaryMax: numOrNull(values.salaryMax ?? ''),

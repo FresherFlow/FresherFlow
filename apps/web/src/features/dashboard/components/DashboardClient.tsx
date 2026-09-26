@@ -4,9 +4,10 @@ import { useAuth } from '@/lib/auth/AuthContext';
 // Gate is applied once by the /jobs tab shell (JobsPageClient).
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Opportunity, OpportunityType } from '@fresherflow/types';
+import { Opportunity, OpportunityCategory } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 import { calculateOpportunityMatch, isNotEligible } from '@/features/jobs/domain/matchScore';
+import { isGovernmentOpportunity, isInternshipOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import { Button } from '@/ui/Button';
 import { Card, CardContent } from '@/ui/Card';
 import { SkeletonJobCard } from '@/features/jobs/components/OpportunitySkeletons';
@@ -293,7 +294,7 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
 
         // 5. Internships
         const internships = nonExpired
-            .filter((o) => o.type === OpportunityType.INTERNSHIP)
+            .filter((o) => isInternshipOpportunity(o))
             .slice(0, 6);
 
         // 6. Off-Campus Drives
@@ -317,7 +318,7 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
             .filter((o) => {
                 const titleLower = o.title?.toLowerCase() || '';
                 return (
-                    o.type === OpportunityType.WALKIN ||
+                    isWalkinOpportunity(o) ||
                     titleLower.includes('walk-in') ||
                     titleLower.includes('walkin')
                 );
@@ -332,7 +333,7 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
                 const tagsLower = o.tags?.map((t) => t.toLowerCase()) || [];
                 return (
                     Boolean(oppAny.isGovernment) ||
-                    o.type === OpportunityType.GOVERNMENT ||
+                    isGovernmentOpportunity(o) ||
                     companyLower.includes('railway') ||
                     companyLower.includes('upsc') ||
                     companyLower.includes('ssc') ||
@@ -347,7 +348,7 @@ export default function DashboardClient({ initialData }: { initialData?: { oppor
                 const titleLower = o.title?.toLowerCase() || '';
                 const tagsLower = o.tags?.map((t) => t.toLowerCase()) || [];
                 return (
-                    o.type === OpportunityType.HACKATHONS ||
+                    o.category === OpportunityCategory.COMPETITION ||
                     titleLower.includes('hackathon') ||
                     tagsLower.some((t) => t.includes('hackathon'))
                 );

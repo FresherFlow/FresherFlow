@@ -45,6 +45,7 @@ import CompanyLogo from '@/features/companies/components/CompanyLogo';
 // Hooks & Utils
 import { useOpportunityDetail } from '@/features/jobs/hooks/useOpportunityDetail';
 import { useOpportunityDerivedState } from '@/features/jobs/hooks/useOpportunityDerivedState';
+import { getDriveDetails, isInternshipOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 
 type Props = {
     id: string;
@@ -253,8 +254,8 @@ export default function OpportunityDetailClient({
                 <nav className="md:hidden flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground font-medium select-none mb-4">
                     <Link href="/" className="hover:text-primary transition-colors">Home</Link>
                     <span className="text-muted-foreground/40">/</span>
-                    <Link href={opp.type === 'INTERNSHIP' ? '/jobs/internships' : opp.type === 'WALKIN' ? '/jobs/walkins' : '/jobs'} className="hover:text-primary transition-colors">
-                        {opp.type === 'INTERNSHIP' ? 'Internships' : opp.type === 'WALKIN' ? 'Walk-ins' : 'Jobs'}
+                    <Link href={isInternshipOpportunity(opp) ? '/jobs/internships' : isWalkinOpportunity(opp) ? '/jobs/walkins' : '/jobs'} className="hover:text-primary transition-colors">
+                        {isInternshipOpportunity(opp) ? 'Internships' : isWalkinOpportunity(opp) ? 'Walk-ins' : 'Jobs'}
                     </Link>
                     <span className="text-muted-foreground/40">/</span>
                     <Link href={`/companies/${(opp as any).companySlug || getCompanySlug((opp as any).companyWebsite, opp.company)}`} className="hover:text-primary transition-colors truncate max-w-30">
@@ -298,8 +299,8 @@ export default function OpportunityDetailClient({
                             <ComplexityCard applicationDetails={opp.applicationDetails} />
                         )}
 
-                        {opp.type === 'WALKIN' && opp.walkInDetails && (
-                            <WalkInDetailsCard walkInDetails={opp.walkInDetails} />
+                        {isWalkinOpportunity(opp) && getDriveDetails(opp) && (
+                            <WalkInDetailsCard walkInDetails={getDriveDetails(opp) as NonNullable<Opportunity['walkInDetails']>} />
                         )}
 
                         {ds.isCampusDrive && (

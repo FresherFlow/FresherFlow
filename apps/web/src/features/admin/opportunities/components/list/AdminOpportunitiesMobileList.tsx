@@ -22,6 +22,7 @@ import {
     getStatusLabel,
     getStatusBadgeClass,
 } from '@/features/admin/opportunities/listUtils';
+import { isGovernmentOpportunity, kindFromOpportunity } from '@/features/admin/opportunities/formUtils';
 
 interface AdminOpportunitiesMobileListProps {
     opportunities: (Opportunity & { deletedAt?: string | Date | null; expiredAt?: string | Date | null })[];
@@ -95,7 +96,7 @@ export const AdminOpportunitiesMobileList = ({
                                     companyWebsite={opp.companyWebsite}
                                     companyLogoUrl={opp.companyLogoUrl}
                                     applyLink={opp.applyLink}
-                                    isGovernment={opp.type === 'GOVERNMENT' || Boolean(opp.governmentJobDetails)}
+                                    isGovernment={isGovernmentOpportunity(opp)}
                                     className="w-9 h-9 shrink-0"
                                 />
 
@@ -115,7 +116,7 @@ export const AdminOpportunitiesMobileList = ({
                                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                                         <span className="text-xs text-muted-foreground">{opp.company}</span>
                                         <span className="text-xs capitalize tracking-wide px-1.5 py-0.5 rounded bg-muted/60 border border-border text-muted-foreground">
-                                            {opp.type}
+                                            {kindFromOpportunity(opp)}
                                         </span>
                                     </div>
                                 </div>

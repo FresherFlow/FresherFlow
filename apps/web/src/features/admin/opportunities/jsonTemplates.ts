@@ -1,5 +1,5 @@
 export const JOB_TEMPLATE = `{
-  "type": "JOB",
+  "category": "job",
   "title": "Software Engineer",
   "company": "Company Name",
   "companyWebsite": "https://company.com",
@@ -15,7 +15,7 @@ export const JOB_TEMPLATE = `{
   "experienceMax": 2,
   "salaryRange": "6-8 LPA",
   "salaryPeriod": "YEARLY",
-  "employmentType": "Full Time, Permanent",
+  "employmentTypes": "FULL_TIME",
   "jobFunction": "Engineering",
   "selectionProcess": "Online Assessment > Technical Interview > HR",
   "notesHighlights": "Training period 3 months. Immediate joiners preferred.",
@@ -29,7 +29,7 @@ export const JOB_TEMPLATE = `{
 }`;
 
 export const INTERNSHIP_TEMPLATE = `{
-  "type": "INTERNSHIP",
+  "category": "internship",
   "title": "Frontend Intern",
   "company": "Company Name",
   "companyWebsite": "https://company.com",
@@ -45,7 +45,7 @@ export const INTERNSHIP_TEMPLATE = `{
   "experienceMax": 0,
   "salaryRange": "20-30k/month",
   "salaryPeriod": "MONTHLY",
-  "employmentType": "Internship",
+  "employmentTypes": "INTERNSHIP",
   "jobFunction": "Engineering",
   "selectionProcess": "Assignment > Technical Discussion",
   "notesHighlights": "PPO based on performance.",
@@ -59,7 +59,7 @@ export const INTERNSHIP_TEMPLATE = `{
 }`;
 
 export const WALKIN_TEMPLATE = `{
-  "type": "WALKIN",
+  "category": "walk-in",
   "title": "Walk-in Drive - Role",
   "company": "Company Name",
   "companyWebsite": "https://company.com",
@@ -74,11 +74,11 @@ export const WALKIN_TEMPLATE = `{
   "experienceMax": 0,
   "salaryRange": "2 LPA",
   "salaryPeriod": "YEARLY",
-  "employmentType": "Full Time, Permanent",
+  "employmentTypes": "FULL_TIME",
   "jobFunction": "Operations",
   "selectionProcess": "Walk-in Test > Face to Face Interview",
   "notesHighlights": "Bring original IDs and updated resume.",
-  "walkInDetails": {
+  "driveDetails": {
     "dateRange": "9 Feb - 13 Feb",
     "timeRange": "9:30 AM - 12:30 PM",
     "reportingTime": "9:30 AM",
@@ -96,7 +96,8 @@ export const WALKIN_TEMPLATE = `{
 }`;
 
 export const GOVERNMENT_JOB_TEMPLATE = `{
-  "type": "GOVERNMENT",
+  "category": "government",
+  "sector": "GOVERNMENT",
   "title": "SSC CGL 2026 Notification Out — 12256 Vacancies",
   "company": "Staff Selection Commission",
   "companyWebsite": "https://ssc.gov.in",
@@ -112,7 +113,7 @@ export const GOVERNMENT_JOB_TEMPLATE = `{
   "experienceMax": 0,
   "salaryRange": "₹25,500 – ₹1,51,100",
   "salaryPeriod": "MONTHLY",
-  "employmentType": "Government Service",
+  "employmentTypes": "FULL_TIME",
   "jobFunction": "Administration / Government",
   "notesHighlights": "One-Time Registration (OTR) mandatory. Sectional timing introduced in Tier 1 & 2.",
   "sourceLink": "https://ssc.gov.in",

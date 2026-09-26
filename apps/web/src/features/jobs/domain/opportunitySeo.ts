@@ -1,4 +1,6 @@
 import { Opportunity } from '@fresherflow/types';
+import type { CategoryFeedType } from '@/features/jobs/utils/walkinMapUtils';
+import { isGovernmentOpportunity, isInternshipOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import { Metadata } from 'next';
 import { cache } from 'react';
 import { getOpportunityPath } from '@/features/jobs/domain/opportunityPath';
@@ -33,7 +35,7 @@ export function getExpiryState(opportunity: ExtendedOpportunity) {
     return { isExpired: true, pastGrace: now - expiresAt.getTime() > graceMs };
 }
 
-export function getTypeHubPath(type?: Opportunity['type']) {
+export function getTypeHubPath(type?: CategoryFeedType | string | null) {
     if (type === 'JOB') return '/jobs';
     if (type === 'INTERNSHIP') return '/jobs/internships';
     if (type === 'WALKIN') return '/jobs/walkins';
@@ -185,11 +187,11 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
     const driveDates = getDriveDates(opportunity as Opportunity);
     const type = isCampusDrive
         ? 'Campus Drive'
-        : opportunity.governmentJobDetails
+        : isGovernmentOpportunity(opportunity)
             ? 'Government Job'
-        : opportunity.type === 'INTERNSHIP'
+        : isInternshipOpportunity(opportunity)
             ? 'Internship'
-            : opportunity.type === 'WALKIN'
+            : isWalkinOpportunity(opportunity)
                 ? 'Walk-in'
                 : 'Job';
 
@@ -212,7 +214,7 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
     const description = truncateDescription(rawDescription);
 
     const canonicalId = opportunity.slug || opportunity.id;
-    const canonicalPath = getOpportunityPath(opportunity.type, canonicalId);
+    const canonicalPath = getOpportunityPath(isGovernmentOpportunity(opportunity) ? 'GOVERNMENT' : undefined, canonicalId);
     const url = `${SITE_URL}${canonicalPath}`;
 
     // Use the pre-generated static OG image from R2 (generated at publish time).
@@ -321,7 +323,7 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
                 addressCountry: 'IN'
             }
         },
-        employmentType: opportunity.type === 'INTERNSHIP' ? 'INTERN' : 'FULL_TIME',
+        employmentType: isInternshipOpportunity(opportunity) ? 'INTERN' : 'FULL_TIME',
         directApply: true,
         skills: opportunity.requiredSkills?.join(', '),
         experienceRequirements: {
@@ -371,8 +373,10 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
     }
 
     const base = SITE_URL.replace(/\/+$/, '');
-    const typeLabel = opportunity.type === 'INTERNSHIP' ? 'Internships' : opportunity.type === 'WALKIN' ? 'Walk-ins' : 'Jobs';
-    const typePath = opportunity.type === 'INTERNSHIP' ? '/jobs/internships' : opportunity.type === 'WALKIN' ? '/jobs/walkins' : '/jobs';
+    const isInternSeo = isInternshipOpportunity(opportunity);
+    const isWalkinSeo = isWalkinOpportunity(opportunity);
+    const typeLabel = isInternSeo ? 'Internships' : isWalkinSeo ? 'Walk-ins' : 'Jobs';
+    const typePath = isInternSeo ? '/jobs/internships' : isWalkinSeo ? '/jobs/walkins' : '/jobs';
     const companySlug = slugify(opportunity.company || '');
 
     const breadcrumbs = {
@@ -400,7 +404,7 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
                 '@type': 'ListItem',
                 position: 4,
                 name: opportunity.title,
-                item: `${base}${getOpportunityPath(opportunity.type, opportunity.slug || opportunity.id)}`
+                item: `${base}${getOpportunityPath(isGovernmentOpportunity(opportunity) ? 'GOVERNMENT' : undefined, opportunity.slug || opportunity.id)}`
             }
         ]
     };
@@ -413,8 +417,10 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
 
 export const generateOpportunityBreadcrumbsJsonLd = (opportunity: Opportunity) => {
     const base = SITE_URL.replace(/\/+$/, '');
-    const typeLabel = opportunity.type === 'INTERNSHIP' ? 'Internships' : opportunity.type === 'WALKIN' ? 'Walk-ins' : 'Jobs';
-    const typePath = opportunity.type === 'INTERNSHIP' ? '/jobs/internships' : opportunity.type === 'WALKIN' ? '/jobs/walkins' : '/jobs';
+    const isInternSeo = isInternshipOpportunity(opportunity);
+    const isWalkinSeo = isWalkinOpportunity(opportunity);
+    const typeLabel = isInternSeo ? 'Internships' : isWalkinSeo ? 'Walk-ins' : 'Jobs';
+    const typePath = isInternSeo ? '/jobs/internships' : isWalkinSeo ? '/jobs/walkins' : '/jobs';
     const companySlug = slugify(opportunity.company || '');
     
     return {
@@ -443,7 +449,7 @@ export const generateOpportunityBreadcrumbsJsonLd = (opportunity: Opportunity) =
                 '@type': 'ListItem',
                 position: 4,
                 name: opportunity.title,
-                item: `${base}${getOpportunityPath(opportunity.type, opportunity.slug || opportunity.id)}`
+                item: `${base}${getOpportunityPath(isGovernmentOpportunity(opportunity) ? 'GOVERNMENT' : undefined, opportunity.slug || opportunity.id)}`
             }
         ]
     };

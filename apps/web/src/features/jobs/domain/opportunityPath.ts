@@ -28,7 +28,13 @@ export function getOpportunityPath(type: OpportunityType, slugOrId: string): str
     return `/jobs/${safeSegment}`;
 }
 
-export function getOpportunityPathFromItem(item: { type?: string; slug?: string | null; id: string }): string {
+export function getOpportunityPathFromItem(item: { type?: string; sector?: string; governmentJobDetails?: unknown; slug?: string | null; id: string }): string {
     const safeSlug = item.slug ? normalizeOpportunitySlugOrId(item.slug) : '';
-    return getOpportunityPath(item.type, safeSlug || item.id);
+    // New taxonomy has no `type` field: government-ness comes from the sector
+    // dimension (or the legacy `type` value when present on old payloads).
+    const isGovt =
+        item.type === 'GOVERNMENT' ||
+        item.sector === 'GOVERNMENT' ||
+        Boolean(item.governmentJobDetails);
+    return getOpportunityPath(isGovt ? 'GOVERNMENT' : undefined, safeSlug || item.id);
 }

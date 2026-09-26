@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { communityApi } from '@fresherflow/api-client';
-import type { OpportunityType, WorkMode } from '@fresherflow/types';
+import type { WorkMode } from '@fresherflow/types';
 import { useAuth } from '@/lib/auth/AuthContext';
 
 type Result =
@@ -76,11 +76,12 @@ export function PostJobForm() {
                 title: title.trim(),
                 company: company.trim() || undefined,
                 companyWebsite: companyWebsite.trim() || undefined,
-                type: type as unknown as OpportunityType,
+                // New taxonomy: the kind select maps to dimensions — INTERNSHIP
+                // via employmentType, WALKIN via the drive fields below.
+                employmentType: type === 'INTERNSHIP' ? 'INTERNSHIP' : employmentType.trim() || null,
                 description: description.trim() || undefined,
                 locations: locations.trim() ? csv(locations).slice(0, 15) : undefined,
                 workMode: (workMode || null) as unknown as WorkMode | null,
-                employmentType: employmentType.trim() || null,
                 salaryRange: salaryRange.trim() || null,
                 salaryMin: numOrNull(salaryMin),
                 salaryMax: numOrNull(salaryMax),

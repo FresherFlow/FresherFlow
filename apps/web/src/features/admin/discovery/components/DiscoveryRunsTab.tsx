@@ -16,10 +16,10 @@ export function DiscoveryRunsTab({ runs, onTriggerRun }: DiscoveryRunsTabProps) 
   return [
    {
     id: 'runId',
-    accessorFn: (row) => row.id,
+    accessorFn: (row: DiscoveryRun) => row.id,
     header: 'Run ID',
     enableSorting: true,
-    cell: ({ row }) => (
+    cell: ({ row }: { row: { original: DiscoveryRun } }) => (
      <span className="font-bold text-foreground block truncate max-w-35" title={row.original.id}>
       {row.original.id}
      </span>
@@ -27,10 +27,10 @@ export function DiscoveryRunsTab({ runs, onTriggerRun }: DiscoveryRunsTabProps) 
    },
    {
     id: 'status',
-    accessorFn: (row) => row.status,
+    accessorFn: (row: DiscoveryRun) => row.status,
     header: 'Status',
     enableSorting: true,
-    cell: ({ row }) => {
+    cell: ({ row }: { row: { original: DiscoveryRun } }) => {
      const status = row.original.status;
      return (
       <span
@@ -50,14 +50,14 @@ export function DiscoveryRunsTab({ runs, onTriggerRun }: DiscoveryRunsTabProps) 
    },
    {
     id: 'startedAt',
-    accessorFn: (row) => {
+    accessorFn: (row: DiscoveryRun) => {
      const value = row.startedAt || row.started_at;
      return value ? new Date(value).getTime() : 0;
     },
     header: 'Started At',
     enableSorting: true,
     meta: { cellClassName: 'text-muted-foreground' },
-    cell: ({ row }) => {
+    cell: ({ row }: { row: { original: DiscoveryRun } }) => {
      const startedAtStr = row.original.startedAt || row.original.started_at;
      return startedAtStr
       ? new Date(startedAtStr).toLocaleString([], { dateStyle: 'short', timeStyle: 'medium' })
@@ -66,14 +66,14 @@ export function DiscoveryRunsTab({ runs, onTriggerRun }: DiscoveryRunsTabProps) 
    },
    {
     id: 'completedAt',
-    accessorFn: (row) => {
+    accessorFn: (row: DiscoveryRun) => {
      const value = row.completedAt || row.completed_at;
      return value ? new Date(value).getTime() : 0;
     },
     header: 'Completed At',
     enableSorting: true,
     meta: { cellClassName: 'text-muted-foreground' },
-    cell: ({ row }) => {
+    cell: ({ row }: { row: { original: DiscoveryRun } }) => {
      const completedAtStr = row.original.completedAt || row.original.completed_at;
      return completedAtStr
       ? new Date(completedAtStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -82,30 +82,30 @@ export function DiscoveryRunsTab({ runs, onTriggerRun }: DiscoveryRunsTabProps) 
    },
    {
     id: 'duration',
-    accessorFn: (row) => row.durationMs ?? row.duration_ms ?? 0,
+    accessorFn: (row: DiscoveryRun) => row.durationMs ?? row.duration_ms ?? 0,
     header: 'Duration',
     enableSorting: true,
     meta: { headerClassName: 'text-right', cellClassName: 'text-right text-muted-foreground' },
-    cell: ({ row }) => {
+    cell: ({ row }: { row: { original: DiscoveryRun } }) => {
      const durationMs = row.original.durationMs ?? row.original.duration_ms;
      return durationMs ? `${(durationMs / 1000).toFixed(1)}s` : '-';
     },
    },
    {
     id: 'totalFound',
-    accessorFn: (row) => row.totalFound ?? row.total_found ?? 0,
+    accessorFn: (row: DiscoveryRun) => row.totalFound ?? row.total_found ?? 0,
     header: 'Total Found',
     enableSorting: true,
     meta: { headerClassName: 'text-right', cellClassName: 'text-right font-semibold text-foreground' },
-    cell: ({ row }) => row.original.totalFound ?? row.original.total_found ?? 0,
+    cell: ({ row }: { row: { original: DiscoveryRun } }) => row.original.totalFound ?? row.original.total_found ?? 0,
    },
    {
     id: 'accepted',
-    accessorFn: (row) => row.accepted ?? 0,
+    accessorFn: (row: DiscoveryRun) => row.accepted ?? 0,
     header: 'Accepted',
     enableSorting: true,
     meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
-    cell: ({ row }) => (
+    cell: ({ row }: { row: { original: DiscoveryRun } }) => (
      <span className="text-success dark:text-success font-bold">
       {row.original.accepted ?? 0}
      </span>
@@ -113,11 +113,11 @@ export function DiscoveryRunsTab({ runs, onTriggerRun }: DiscoveryRunsTabProps) 
    },
    {
     id: 'reviewRequired',
-    accessorFn: (row) => row.reviewRequired ?? row.review_required ?? 0,
+    accessorFn: (row: DiscoveryRun) => row.reviewRequired ?? row.review_required ?? 0,
     header: 'Review Req.',
     enableSorting: true,
     meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
-    cell: ({ row }) => {
+    cell: ({ row }: { row: { original: DiscoveryRun } }) => {
      const reviewRequired = row.original.reviewRequired ?? row.original.review_required ?? 0;
      return (
       <span className={reviewRequired > 0 ? 'text-warning dark:text-warning font-bold' : 'text-muted-foreground'}>
@@ -128,19 +128,19 @@ export function DiscoveryRunsTab({ runs, onTriggerRun }: DiscoveryRunsTabProps) 
    },
    {
     id: 'duplicates',
-    accessorFn: (row) => row.duplicates ?? 0,
+    accessorFn: (row: DiscoveryRun) => row.duplicates ?? 0,
     header: 'Duplicates',
     enableSorting: true,
     meta: { headerClassName: 'text-right', cellClassName: 'text-right text-muted-foreground' },
-    cell: ({ row }) => row.original.duplicates ?? 0,
+    cell: ({ row }: { row: { original: DiscoveryRun } }) => row.original.duplicates ?? 0,
    },
    {
     id: 'failed',
-    accessorFn: (row) => row.failed ?? 0,
+    accessorFn: (row: DiscoveryRun) => row.failed ?? 0,
     header: 'Failed',
     enableSorting: true,
     meta: { headerClassName: 'text-right', cellClassName: 'text-right' },
-    cell: ({ row }) => {
+    cell: ({ row }: { row: { original: DiscoveryRun } }) => {
      const failed = row.original.failed ?? 0;
      return (
       <span className={failed > 0 ? 'text-error dark:text-error font-bold' : 'text-muted-foreground'}>

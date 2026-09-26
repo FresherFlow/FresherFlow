@@ -1,9 +1,10 @@
-type OpportunityType = 'JOB' | 'INTERNSHIP' | 'WALKIN' | 'GOVERNMENT';
+import { kindToAdminCategory, type OpportunityKind } from './formUtils';
+
 type WorkMode = 'ONSITE' | 'HYBRID' | 'REMOTE';
 type SalaryPeriod = 'YEARLY' | 'MONTHLY';
 
 export type OpportunityFormValues = {
-    type: OpportunityType;
+    type: OpportunityKind;
     title: string;
     company: string;
     companyWebsite: string;
@@ -190,8 +191,15 @@ const parseJsonInput = <T,>(value: string): T | undefined => {
 };
 
 export const buildOpportunityPayload = (values: OpportunityFormValues): Record<string, unknown> => {
+    // Independent taxonomy dimensions (v2): the admin API resolves `category`
+    // onto category/recruitmentMethod/employmentTypes internally, reads
+    // `driveDetails` (not `walkInDetails`), and treats `governmentJobDetails`
+    // presence as the government signal (`opportunitySchema` rejects a
+    // `government` category value, so govt travels via details + `sector`).
+    const isGovt = values.isGovernmentJob || values.type === 'GOVERNMENT';
+    const kind: OpportunityKind = isGovt ? 'GOVERNMENT' : values.type;
     const walkInEndDate = values.endDate || values.startDate;
-    const derivedWalkInExpiry = values.type === 'WALKIN' ? toEndOfDayIso(walkInEndDate) : undefined;
+    const derivedWalkInExpiry = kind === 'WALKIN' ? toEndOfDayIso(walkInEndDate) : undefined;
     const normalizedSourceLink = values.sourceLink.trim();
     const normalizedApplyLink = values.applyLink.trim();
 
@@ -205,7 +213,8 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
     }
 
     const payload: Record<string, unknown> = {
-        type: values.isGovernmentJob ? 'GOVERNMENT' : values.type,
+        category: kindToAdminCategory(kind),
+        ...(isGovt ? { sector: 'GOVERNMENT' } : {}),
         title: values.title,
         company: values.company,
         companyWebsite: values.companyWebsite || null,
@@ -220,11 +229,11 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
         allowedAvailability: values.allowedAvailability ? toCsvList(values.allowedAvailability) : [],
         requiredSkills: toCsvList(values.requiredSkills),
         locations: toCsvList(values.locations),
-        workMode: values.type === 'WALKIN' ? undefined : (values.workMode || null),
+        workMode: kind === 'WALKIN' ? undefined : (values.workMode || null),
         salaryRange: values.salaryRange || formatSalaryRange(values.salaryAmount, values.salaryPeriod) || null,
         salaryPeriod: values.salaryPeriod || null,
         stipend: values.stipend || null,
-        employmentType: values.employmentType || null,
+        employmentTypes: values.employmentType?.trim() || (kind === 'INTERNSHIP' ? 'INTERNSHIP' : null),
         incentives: values.incentives || null,
         jobFunction: values.jobFunction || null,
         selectionProcess: values.selectionProcess || null,
@@ -236,7 +245,7 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
         applyLink: normalizedApplyLink || normalizedSourceLink || null,
         expiresAt: expiresAtPayload || derivedWalkInExpiry || null,
         customSlug: values.customSlug || null,
-        applicationDetails: values.isGovernmentJob ? null : {
+        applicationDetails: isGovt ? null : {
             method: values.appMethod,
             platform: (values.appMethod !== 'DIRECT' && values.appPlatform) ? values.appPlatform : undefined,
             estimatedMinutes: (values.appMethod !== 'DIRECT' && values.appDuration && parseInt(values.appDuration, 10) > 0) ? parseInt(values.appDuration, 10) : undefined,
@@ -244,10 +253,10 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
         }
     };
 
-    if (values.type === 'WALKIN') {
+    if (kind === 'WALKIN') {
         const autoDateRange = formatDateRange(values.startDate, values.endDate);
         const autoTimeRange = `${formatTime(values.startTime)} - ${formatTime(values.endTime)}`;
-        payload.walkInDetails = {
+        payload.driveDetails = {
             dateRange: autoDateRange || values.walkInDateRange || undefined,
             timeRange: autoTimeRange || values.walkInTimeRange || undefined,
             venueAddress: values.venueAddress,
@@ -260,7 +269,7 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
         };
     }
 
-    if (values.isGovernmentJob) {
+    if (isGovt) {
         payload.governmentJobDetails = {
             department: values.governmentDepartment || undefined,
             organization: values.governmentOrganization || undefined,

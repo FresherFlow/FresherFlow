@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
-import { Opportunity, OpportunityType } from "@fresherflow/types";
+import { Opportunity } from "@fresherflow/types";
+import type { CategoryFeedType } from "@/features/jobs/utils/walkinMapUtils";
 import { useOpportunitiesFeed } from "@/features/jobs/hooks/useOpportunitiesFeed";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { type FilterBarFilters } from "@/features/jobs/components/JobFilterBar";
@@ -21,7 +22,7 @@ import { sanitizeSearchQuery } from "@/features/jobs/utils/searchUtils";
 import { FEED_PAGE_SIZE } from "@/lib/utils/feedPageSize";
 
 export interface UseCategoryPageStateProps {
-  type: OpportunityType | null;
+  type: CategoryFeedType | null;
   initialData?: {
     opportunities: Opportunity[];
     total: number;
@@ -52,7 +53,7 @@ export function useCategoryPageState({
   const urlType = searchParams?.get("type");
   const type = (
     urlType ? urlType.toUpperCase() : propType
-  ) as OpportunityType | null;
+  ) as CategoryFeedType | null;
   const mode = searchParams?.get("mode");
   const sourceParam = searchParams?.get("source");
   const source = sourceParam ? sourceParam.split(",") : [];
@@ -461,7 +462,7 @@ export function useCategoryPageState({
   }, [type]);
 
   const phaseCounts = useMemo(() => {
-    if (type !== OpportunityType.GOVERNMENT) return undefined;
+    if (type !== 'GOVERNMENT') return undefined;
     const counts: Partial<Record<GovtPhaseFilter, number>> = {};
     for (const [phase, statuses] of Object.entries(GOVT_PHASE_STATUSES)) {
       const key = phase as GovtPhaseFilter;
@@ -478,7 +479,7 @@ export function useCategoryPageState({
   }, [filteredOpps, type]);
 
   const categoryCounts = useMemo(() => {
-    if (type !== OpportunityType.GOVERNMENT) return undefined;
+    if (type !== 'GOVERNMENT') return undefined;
     const counts: Record<string, number> = {};
     for (const { label } of GOVT_CATEGORIES) {
       counts[label] = filteredOpps.filter((o) =>
@@ -497,21 +498,21 @@ export function useCategoryPageState({
     const filtered = filteredOpps.filter((opp) => {
       if (filters.saved) return true;
       if (
-        type !== OpportunityType.GOVERNMENT &&
+        type !== 'GOVERNMENT' &&
         opp.expiresAt &&
         new Date(opp.expiresAt) < new Date()
       )
         return false;
-      if (type === OpportunityType.GOVERNMENT && govtPhase !== "ALL") {
+      if (type === 'GOVERNMENT' && govtPhase !== "ALL") {
         const s =
           (opp.governmentJobDetails as any)?.applicationStatus || "OPEN";
         if (!s || !GOVT_PHASE_STATUSES[govtPhase].includes(s)) return false;
       }
-      if (type === OpportunityType.GOVERNMENT && govtCategory !== null) {
+      if (type === 'GOVERNMENT' && govtCategory !== null) {
         if (!jobMatchesCategory(opp.governmentJobDetails, govtCategory))
           return false;
       }
-      if (type !== OpportunityType.GOVERNMENT) {
+      if (type !== 'GOVERNMENT') {
         if (filters.workMode && filters.workMode.length > 0) {
           const isMatch = filters.workMode.some((m) => {
             const sel = m.toLowerCase();
@@ -588,7 +589,7 @@ export function useCategoryPageState({
       }
 
       // Walk-in date filter: today or this week
-      if (type === OpportunityType.WALKIN && driveDate !== "all") {
+      if (type === 'WALKIN' && driveDate !== "all") {
         if (!isWalkinInPeriod(opp, driveDate)) return false;
       }
 
@@ -596,7 +597,7 @@ export function useCategoryPageState({
     });
 
     // For WALKIN type: compute distance from user and sort nearest-first
-    if (type === OpportunityType.WALKIN && userLocation) {
+    if (type === 'WALKIN' && userLocation) {
       const withDistance = filtered.map((opp) => ({
         ...opp,
         distanceKm: getOpportunityDistanceKm(
@@ -672,8 +673,8 @@ export function useCategoryPageState({
   useEffect(() => {
     if (
       isDesktop === true &&
-      type !== OpportunityType.GOVERNMENT &&
-      type !== OpportunityType.WALKIN
+      type !== 'GOVERNMENT' &&
+      type !== 'WALKIN'
     ) {
       if (visibleOpps.length === 0) {
         setSelectedOpp(null);
@@ -689,8 +690,8 @@ export function useCategoryPageState({
   // Ensure selectedOpp is strictly null on government and walkin pages initially
   useEffect(() => {
     if (
-      type === OpportunityType.GOVERNMENT ||
-      type === OpportunityType.WALKIN
+      type === 'GOVERNMENT' ||
+      type === 'WALKIN'
     ) {
       setSelectedOpp(null);
     }

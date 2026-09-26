@@ -31,7 +31,7 @@ import { DataTable } from '@/ui/data-table/DataTable';
 import { DataTableColumnHeader } from '@/ui/data-table/DataTableColumnHeader';
 import { DataTableToolbar } from '@/ui/data-table/DataTableToolbar';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/ui/Table';
-import { LegacyColumnDef } from '@tanstack/react-table/legacy';
+import type { ColumnDef as LegacyColumnDef } from '@tanstack/react-table';
 import { Tabs } from '@repo/ui/components/Tabs';
 
 interface GovernmentJobDetailViewProps {

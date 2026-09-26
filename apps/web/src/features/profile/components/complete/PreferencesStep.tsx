@@ -1,9 +1,20 @@
 import React, { RefObject, useEffect } from 'react';
 import { cn } from '@repo/ui/utils/cn';
-import { OPPORTUNITY_TYPES, WORK_MODES } from '@fresherflow/utils';
+import { OpportunityCategory } from '@fresherflow/types';
+import { WORK_MODES } from '@fresherflow/utils';
 import { Input } from '@/ui/Input';
 import { ArrowPathIcon, CheckCircleIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { SkillPill } from '@/features/jobs/components/SkillPill';
+
+// `interestedIn` is OpportunityCategory[] on the API — offer the categories,
+// not the removed JOB / INTERNSHIP / WALKIN values.
+const INTEREST_OPTIONS = [
+    { value: OpportunityCategory.EMPLOYMENT, label: 'Jobs' },
+    { value: OpportunityCategory.COMPETITION, label: 'Competitions' },
+    { value: OpportunityCategory.SCHOLARSHIP, label: 'Scholarships' },
+    { value: OpportunityCategory.EDUCATION, label: 'Education' },
+    { value: OpportunityCategory.EVENT, label: 'Events' },
+];
 
 interface PreferencesStepProps {
     interestedIn: string[];
@@ -66,11 +77,11 @@ export const PreferencesStep = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Field label="Looking For">
                     <div className="flex flex-wrap gap-2 mt-1">
-                        {OPPORTUNITY_TYPES.map(t => (
-                            <button key={t} onClick={() => setInterestedIn(toggleItem(interestedIn, t))}
+                        {INTEREST_OPTIONS.map(({ value, label }) => (
+                            <button key={value} onClick={() => setInterestedIn(toggleItem(interestedIn, value))}
                                 className={cn('px-5 h-10 rounded-xl border text-sm font-semibold tracking-normal transition-all duration-200 capitalize',
-                                    interestedIn.includes(t) ? 'bg-primary/10 text-primary border-primary/30' : 'bg-muted/50 border-border text-muted-foreground hover:bg-muted font-medium')}
-                            >{t === 'WALKIN' ? 'Walk-in' : t.toLowerCase()}</button>
+                                    interestedIn.includes(value) ? 'bg-primary/10 text-primary border-primary/30' : 'bg-muted/50 border-border text-muted-foreground hover:bg-muted font-medium')}
+                            >{label}</button>
                         ))}
                     </div>
                 </Field>

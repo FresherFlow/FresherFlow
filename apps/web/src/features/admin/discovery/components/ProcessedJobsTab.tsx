@@ -224,10 +224,10 @@ export function ProcessedJobsTab() {
       selectionColumn<ProcessedJob>(),
       {
         id: "company_title",
-        accessorFn: (row) => row.title || "",
+        accessorFn: (row: ProcessedJob) => row.title || "",
         header: "Job",
         enableSorting: true,
-        cell: ({ row }) => {
+        cell: ({ row }: { row: { original: ProcessedJob } }) => {
           const job = row.original;
           return (
             <div className="flex flex-col gap-1.5">
@@ -243,10 +243,10 @@ export function ProcessedJobsTab() {
       },
       {
         id: "ats",
-        accessorFn: (row) => detectAtsFromUrl(row.applyLink || row.apply_link || ""),
+        accessorFn: (row: ProcessedJob) => detectAtsFromUrl(row.applyLink || row.apply_link || ""),
         header: "ATS",
         enableSorting: true,
-        cell: ({ row }) => {
+        cell: ({ row }: { row: { original: ProcessedJob } }) => {
           const job = row.original;
           const applyUrl = job.applyLink || job.apply_link || "#";
           return (
@@ -258,10 +258,10 @@ export function ProcessedJobsTab() {
       },
       {
         id: "type",
-        accessorFn: (row) => row.type || "JOB",
+        accessorFn: (row: ProcessedJob) => row.type || "JOB",
         header: "Type",
         enableSorting: true,
-        cell: ({ row }) => {
+        cell: ({ row }: { row: { original: ProcessedJob } }) => {
           const jobType = row.original.type || "JOB";
           return (
             <span
@@ -279,10 +279,10 @@ export function ProcessedJobsTab() {
       },
       {
         id: "workMode",
-        accessorFn: (row) => row.workMode || row.work_mode || "",
+        accessorFn: (row: ProcessedJob) => row.workMode || row.work_mode || "",
         header: "Mode",
         enableSorting: true,
-        cell: ({ row }) => {
+        cell: ({ row }: { row: { original: ProcessedJob } }) => {
           const workMode = row.original.workMode || row.original.work_mode || "-";
           return (
             <span className="bg-muted/60 border border-border/40 text-muted-foreground px-2 py-0.5 rounded text-xs">
@@ -293,10 +293,10 @@ export function ProcessedJobsTab() {
       },
       {
         id: "experience",
-        accessorFn: (row) => row.experienceMin ?? row.experience_min ?? row.experienceMax ?? row.experience_max ?? 0,
+        accessorFn: (row: ProcessedJob) => row.experienceMin ?? row.experience_min ?? row.experienceMax ?? row.experience_max ?? 0,
         header: "Exp",
         enableSorting: true,
-        cell: ({ row }) => (
+        cell: ({ row }: { row: { original: ProcessedJob } }) => (
           <span className="text-muted-foreground">{formatExperience(row.original)}</span>
         ),
       },
@@ -304,7 +304,7 @@ export function ProcessedJobsTab() {
         id: "skills",
         header: "Skills",
         enableSorting: false,
-        cell: ({ row }) => {
+        cell: ({ row }: { row: { original: ProcessedJob } }) => {
           const skills = row.original.requiredSkills || row.original.required_skills || [];
           const first3Skills = skills.slice(0, 3);
           const extraSkillsCount = skills.length - 3;
@@ -327,11 +327,11 @@ export function ProcessedJobsTab() {
       },
       {
         id: "status",
-        accessorFn: (row) => row.status || "DRAFT",
+        accessorFn: (row: ProcessedJob) => row.status || "DRAFT",
         header: "Status",
         enableSorting: true,
         meta: { cellClassName: "text-center" },
-        cell: ({ row }) => (
+        cell: ({ row }: { row: { original: ProcessedJob } }) => (
           <StatusCell
             value={row.original.status || "DRAFT"}
             options={PROCESSED_STATUS_OPTIONS}
@@ -341,14 +341,14 @@ export function ProcessedJobsTab() {
       },
       {
         id: "createdAt",
-        accessorFn: (row) => {
+        accessorFn: (row: ProcessedJob) => {
           const value = row.createdAt || row.created_at;
           return value ? new Date(value).getTime() : 0;
         },
         header: "Created",
         enableSorting: true,
         meta: { cellClassName: "text-right text-muted-foreground" },
-        cell: ({ row }) => {
+        cell: ({ row }: { row: { original: ProcessedJob } }) => {
           const createdAtStr = row.original.createdAt || row.original.created_at;
           return createdAtStr
             ? new Date(createdAtStr).toLocaleString([], { dateStyle: "short", timeStyle: "short" })
@@ -360,7 +360,7 @@ export function ProcessedJobsTab() {
         header: "",
         enableSorting: false,
         meta: { cellClassName: "text-right" },
-        cell: ({ row }) => {
+        cell: ({ row }: { row: { original: ProcessedJob } }) => {
           const job = row.original;
           const applyUrl = job.applyLink || job.apply_link || "#";
           return (

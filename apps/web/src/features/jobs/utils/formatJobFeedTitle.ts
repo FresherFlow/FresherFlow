@@ -1,7 +1,7 @@
-import { OpportunityType } from '@fresherflow/types';
+import type { CategoryFeedType } from '@/features/jobs/utils/walkinMapUtils';
 
 export interface TitleFilters {
-    type?: OpportunityType | null;
+    type?: CategoryFeedType | string | null;
     workMode?: string[] | string | null;
     location?: string | null;
     skills?: string[] | null;
@@ -40,12 +40,12 @@ export function formatJobFeedTitle(filters: TitleFilters): string {
             else if (mappedModes.length === 2) parts.push(mappedModes.join(' & '));
             else if (mappedModes.length > 2) parts.push(mappedModes.slice(0, -1).join(', ') + ' & ' + mappedModes[mappedModes.length - 1]);
         }
-    } else if (filters.type === OpportunityType.REMOTE) {
+    } else if (filters.type === 'REMOTE') {
         parts.push('Remote');
     }
 
     // 2. Sector (for Gov)
-    if (filters.type === OpportunityType.GOVERNMENT || filters.sector) {
+    if (filters.type === 'GOVERNMENT' || filters.sector) {
         if (filters.sector) {
             parts.push(filters.sector);
         }
@@ -63,11 +63,11 @@ export function formatJobFeedTitle(filters: TitleFilters): string {
 
     // 4. Type
     const batchPrefix = filters.year ? `(${filters.year} Batch) ` : '';
-    if (filters.type === OpportunityType.INTERNSHIP) {
+    if (filters.type === 'INTERNSHIP') {
         parts.push(`${batchPrefix}Internship Jobs`);
-    } else if (filters.type === OpportunityType.WALKIN) {
+    } else if (filters.type === 'WALKIN') {
         parts.push(`${batchPrefix}Walk-in Drives`);
-    } else if (filters.type === OpportunityType.HACKATHONS) {
+    } else if (filters.type === 'HACKATHONS') {
         parts.push(`${batchPrefix}Hackathons`);
     } else {
         parts.push(`${batchPrefix}Jobs`);

@@ -30,6 +30,7 @@ import { AutoFitBadges } from './AutoFitBadges';
 import { JobCardMenu } from './JobCardMenu';
 import { buildMetaItems } from './JobCardMetaConfig';
 import { WalkinDateChip } from '@/features/jobs/components/WalkinEventWidgets';
+import { getDriveDetails, isGovernmentOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import {
     getAccentBorderClass,
     getJobTypeLabel,
@@ -95,8 +96,8 @@ export default function JobCard({
     const { writeTrackerItem } = useFirebaseTracker(user?.id);
 
     const isDrive = isCampusDriveOpportunity(job);
-    const isGovernment = Boolean(job.governmentJobDetails) || (job.type as string) === 'GOVERNMENT';
-    const isWalkin = job.type === 'WALKIN' || Boolean(job.walkInDetails);
+    const isGovernment = isGovernmentOpportunity(job);
+    const isWalkin = isWalkinOpportunity(job);
 
     const targetId = jobId || job.id;
     const isJobSaved = isSaved !== undefined ? isSaved : Boolean(savedJobsMap[targetId] || savedJobsMap[job.id]);
@@ -138,12 +139,13 @@ export default function JobCard({
               })
             : '';
 
+    const driveDetails = getDriveDetails(job);
     const walkinDestination =
-        job.walkInDetails?.latitude && job.walkInDetails?.longitude
-            ? `${job.walkInDetails.latitude},${job.walkInDetails.longitude}`
-            : job.walkInDetails?.venueAddress;
+        driveDetails?.latitude && driveDetails?.longitude
+            ? `${driveDetails.latitude},${driveDetails.longitude}`
+            : driveDetails?.venueAddress;
     const directionsUrl =
-        job.walkInDetails?.venueLink ||
+        driveDetails?.venueLink ||
         (walkinDestination ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(walkinDestination)}` : '');
 
     const metaItems = buildMetaItems(job, { isGovernment, isDrive, isWalkin });
@@ -172,7 +174,7 @@ export default function JobCard({
         e.stopPropagation();
         e.preventDefault();
         const targetUrl = job.applyLink || job.companyWebsite;
-        const applyAction = job.type === 'WALKIN' ? ActionType.PLANNED : ActionType.APPLIED;
+        const applyAction = isWalkinOpportunity(job) ? ActionType.PLANNED : ActionType.APPLIED;
 
         saveOpportunityToCache({ ...job, id: targetId } as Opportunity);
         writeTrackerItem(targetId, applyAction).catch(() => undefined);

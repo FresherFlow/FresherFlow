@@ -20,6 +20,7 @@ import { useState } from 'react';
 import { communityApi } from '@fresherflow/api-client';
 import type { Room } from '@fresherflow/types';
 import { getGroupedLocations } from '@/features/jobs/domain/opportunityDisplay';
+import { getPrimaryEmploymentType } from '@/features/jobs/utils/walkinMapUtils';
 
 function formatEmploymentText(text: string | null | undefined): string {
     if (!text) return 'Not specified';
@@ -216,7 +217,7 @@ export function DetailSidebarActions({
                 </div>
                 <div className="flex items-center gap-2.5">
                     <UsersIcon className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <span className="text-sm text-foreground">{formatEmploymentText(opp.employmentType)}</span>
+                    <span className="text-sm text-foreground">{formatEmploymentText(getPrimaryEmploymentType(opp))}</span>
                 </div>
                 <div className="flex items-center gap-2.5">
                     <ShieldCheckIcon className="w-4 h-4 text-muted-foreground shrink-0" />

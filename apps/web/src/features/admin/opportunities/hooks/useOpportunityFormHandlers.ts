@@ -2,7 +2,7 @@ import { useRouter } from 'next/navigation';
 import { adminApi } from '@/lib/api/admin';
 import toast from 'react-hot-toast';
 import { buildOpportunityPayload } from '../opportunityPayload';
-import { buildAdminSharePack, buildPlatformCaption, type OpportunityKind, type SharePlatform } from '@/features/admin/opportunities/formUtils';
+import { buildAdminSharePack, buildPlatformCaption, kindFromOpportunity, type SharePlatform } from '@/features/admin/opportunities/formUtils';
 import { useOpportunityForm } from '@/features/admin/opportunities/useOpportunityForm';
 import { Opportunity } from '@fresherflow/types';
 
@@ -147,7 +147,7 @@ export function useOpportunityFormHandlers(form: ReturnType<typeof useOpportunit
             form.setPublishedListing({
                 title: opp.title,
                 company: opp.company,
-                type: opp.type as OpportunityKind,
+                type: kindFromOpportunity(opp),
                 slugOrId: opp.slug || opp.id,
                 locations: opp.locations,
                 allowedPassoutYears: opp.allowedPassoutYears,

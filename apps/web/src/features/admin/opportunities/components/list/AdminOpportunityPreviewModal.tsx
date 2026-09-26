@@ -14,6 +14,7 @@ import CurrencyRupeeIcon from '@heroicons/react/24/outline/CurrencyRupeeIcon';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import Link from 'next/link';
 import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
+import { getDriveDetails, isGovernmentOpportunity, isWalkInOpportunity, kindFromOpportunity } from '@/features/admin/opportunities/formUtils';
 import { getOpportunityDisplaySalary, getGroupedLocations } from '@/features/jobs/domain/opportunityDisplay';
 import { DescriptionSection } from '@/features/jobs/components/detail/DescriptionSection';
 import { WalkInDetailsCard } from '@/features/jobs/components/detail/WalkInDetailsCard';
@@ -89,7 +90,7 @@ export const AdminOpportunityPreviewModal = ({ show, opportunityId, onClose }: A
                                     companyWebsite={opp.companyWebsite}
                                     companyLogoUrl={opp.companyLogoUrl}
                                     applyLink={opp.applyLink}
-                                    isGovernment={Boolean(opp.governmentJobDetails)}
+                                    isGovernment={isGovernmentOpportunity(opp)}
                                     className="w-10 h-10 object-contain shrink-0"
                                 />
                                 <div className="min-w-0 flex-1">
@@ -128,7 +129,10 @@ export const AdminOpportunityPreviewModal = ({ show, opportunityId, onClose }: A
                             {/* Badges */}
                             <div className="flex flex-wrap items-center gap-2">
                                 <span className="inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-md bg-muted/80 text-foreground border border-border/70">
-                                    {opp.type === 'INTERNSHIP' ? 'Internship' : opp.type === 'WALKIN' ? 'Walk-in' : opp.type === 'GOVERNMENT' ? 'Govt Job' : 'Job'}
+                                    {(() => {
+                                        const kind = kindFromOpportunity(opp);
+                                        return kind === 'INTERNSHIP' ? 'Internship' : kind === 'WALKIN' ? 'Walk-in' : kind === 'GOVERNMENT' ? 'Govt Job' : 'Job';
+                                    })()}
                                 </span>
                                 <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold rounded-md border ${
                                     opp.status === 'PUBLISHED' ? 'bg-success border-success text-success' :
@@ -191,16 +195,19 @@ export const AdminOpportunityPreviewModal = ({ show, opportunityId, onClose }: A
                             </div>
 
                             {/* Additional Metadata Badges */}
-                            {(opp.workMode || opp.employmentType || opp.jobFunction || (opp.tags && opp.tags.length > 0)) && (
+                            {(() => {
+                                const employmentTypesLabel = (opp.employmentTypes || []).join(', ');
+                                return (opp.workMode || employmentTypesLabel || opp.jobFunction || (opp.tags && opp.tags.length > 0)) && (
                                 <div className="flex flex-wrap gap-2">
                                     {opp.workMode && <span className="px-2 py-1 bg-accent/10 border border-accent/20 rounded-md text-xs font-semibold text-accent-foreground uppercase">{opp.workMode}</span>}
-                                    {opp.employmentType && <span className="px-2 py-1 bg-accent/10 border border-accent/20 rounded-md text-xs font-semibold text-accent-foreground uppercase">{opp.employmentType}</span>}
+                                    {employmentTypesLabel && <span className="px-2 py-1 bg-accent/10 border border-accent/20 rounded-md text-xs font-semibold text-accent-foreground uppercase">{employmentTypesLabel}</span>}
                                     {opp.jobFunction && <span className="px-2 py-1 bg-accent/10 border border-accent/20 rounded-md text-xs font-semibold text-accent-foreground uppercase">{opp.jobFunction}</span>}
                                     {opp.tags?.map(tag => (
                                         <span key={tag} className="px-2 py-1 bg-muted border border-border rounded-md text-xs font-medium text-muted-foreground">#{tag}</span>
                                     ))}
                                 </div>
-                            )}
+                                );
+                            })()}
 
                             {/* Description */}
                             {opp.description && (
@@ -263,14 +270,18 @@ export const AdminOpportunityPreviewModal = ({ show, opportunityId, onClose }: A
                             )}
 
                             {/* Walk-in details */}
-                            {opp.type === 'WALKIN' && opp.walkInDetails && (
+                            {(() => {
+                                const drive = getDriveDetails(opp);
+                                return isWalkInOpportunity(opp) && drive && (
                                 <div className="border-t border-border/40 pt-4 mt-2">
-                                    <WalkInDetailsCard walkInDetails={opp.walkInDetails} />
+                                    {/* WalkInDetailsCard still takes the legacy prop name (jobs area) */}
+                                    <WalkInDetailsCard walkInDetails={drive as never} />
                                 </div>
-                            )}
+                                );
+                            })()}
 
                             {/* Government Job Clean Grid */}
-                            {opp.type === 'GOVERNMENT' && opp.governmentJobDetails && (
+                            {isGovernmentOpportunity(opp) && opp.governmentJobDetails && (
                                 <div className="space-y-3 py-2 border-t border-border/40 mt-2 pt-4">
                                     <h3 className="text-sm font-bold text-foreground">Government Job Metadata</h3>
                                     <div className="grid grid-cols-2 gap-2">

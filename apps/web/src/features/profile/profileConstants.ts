@@ -7,6 +7,7 @@ import {
     normalizeSkillName,
     INDIAN_CITIES,
 } from '@fresherflow/constants';
+import { OpportunityCategory } from '@fresherflow/types';
 export {
     ALL_COURSE_OPTIONS,
     ALL_SPECIALIZATION_OPTIONS,
@@ -18,7 +19,15 @@ export {
 };
 
 export const EDUCATION_LEVELS = ['TENTH', 'INTER', 'DIPLOMA', 'DEGREE', 'PG'];
-export const OPPORTUNITY_TYPES = ['JOB', 'INTERNSHIP', 'WALKIN'];
+// `interestedIn` is OpportunityCategory[] on the API — the old
+// JOB / INTERNSHIP / WALKIN values no longer validate.
+export const OPPORTUNITY_TYPES = [
+    OpportunityCategory.EMPLOYMENT,
+    OpportunityCategory.COMPETITION,
+    OpportunityCategory.SCHOLARSHIP,
+    OpportunityCategory.EDUCATION,
+    OpportunityCategory.EVENT,
+];
 export const WORK_MODES = ['ONSITE', 'HYBRID', 'REMOTE'];
 
 const DATA_DRIVEN_PROFILE_SKILLS = [

@@ -44,10 +44,10 @@ export default function GridTestPage() {
     () => [
       {
         id: "user",
-        accessorFn: (row) => row.name,
+        accessorFn: (row: GridTestRow) => row.name,
         header: "User",
         enableSorting: true,
-        cell: ({ row }) => (
+        cell: ({ row }: { row: { original: GridTestRow } }) => (
           <div className="flex flex-col gap-0.5">
             <span className="text-foreground font-medium">{row.original.name}</span>
             <span className="text-muted-foreground text-xs">{row.original.email}</span>
@@ -56,17 +56,17 @@ export default function GridTestPage() {
       },
       {
         id: "company",
-        accessorFn: (row) => row.company,
+        accessorFn: (row: GridTestRow) => row.company,
         header: "Company",
         enableSorting: true,
-        cell: ({ row }) => <span className="text-foreground">{row.original.company}</span>,
+        cell: ({ row }: { row: { original: GridTestRow } }) => <span className="text-foreground">{row.original.company}</span>,
       },
       {
         id: "status",
-        accessorFn: (row) => row.status,
+        accessorFn: (row: GridTestRow) => row.status,
         header: "Status",
         enableSorting: true,
-        cell: ({ row }) => {
+        cell: ({ row }: { row: { original: GridTestRow } }) => {
           const s = row.original.status;
           return (
             <Badge
@@ -85,11 +85,11 @@ export default function GridTestPage() {
       },
       {
         id: "balance",
-        accessorFn: (row) => row.balance,
+        accessorFn: (row: GridTestRow) => row.balance,
         header: "Balance",
         enableSorting: true,
         meta: { cellClassName: "text-right" },
-        cell: ({ row }) => (
+        cell: ({ row }: { row: { original: GridTestRow } }) => (
           <span className="tabular-nums">
             ${row.original.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
           </span>

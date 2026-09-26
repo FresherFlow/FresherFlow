@@ -8,6 +8,7 @@ import { analytics } from '@/lib/api/analytics';
 import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
 import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
 import { buildLoginFromDetailHref, getDetailShareUrl } from '@/features/jobs/domain/opportunityDetailHelpers';
+import { isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import { getRelatedOpportunities } from '@/features/jobs/utils/detailUtils';
 import { useFirebaseTracker } from '@/features/dashboard/hooks/useFirebaseTracker';
 import { useFirebaseSaved } from '@/features/dashboard/hooks/useSavedJobs';
@@ -260,7 +261,7 @@ export function useOpportunityDetail(
         if (!opp) return;
 
         analytics.applyClick(opp.id, opp.company, !!opp.applyLink);
-        const applyAction = opp.type === 'WALKIN' ? ActionType.PLANNED : ActionType.APPLIED;
+        const applyAction = isWalkinOpportunity(opp) ? ActionType.PLANNED : ActionType.APPLIED;
         saveOpportunityToCache(opp);
         if (user) {
             writeTrackerItem(opp.id, applyAction).catch(() => undefined);

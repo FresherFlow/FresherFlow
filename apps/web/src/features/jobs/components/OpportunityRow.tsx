@@ -7,6 +7,7 @@ import BookmarkSolidIcon from '@heroicons/react/24/solid/BookmarkIcon';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
 import { getPostedLabel } from '@/features/jobs/components/JobCard/jobCardUtils';
+import { isInternshipOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 
 interface OpportunityRowProps {
     opp: Opportunity;
@@ -31,8 +32,8 @@ function getModeLabel(opp: Opportunity): string | null {
 }
 
 function getTypePrefix(opp: Opportunity): string | null {
-    if (opp.type === 'INTERNSHIP') return 'Internship';
-    if (opp.type === 'WALKIN') return 'Walk-in';
+    if (isInternshipOpportunity(opp)) return 'Internship';
+    if (isWalkinOpportunity(opp)) return 'Walk-in';
     return null;
 }
 

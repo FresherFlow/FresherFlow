@@ -150,7 +150,7 @@ export function DiscoveredJobsTab() {
         id: 'company_title',
         header: 'Company & Title',
         enableSorting: false,
-        cell: ({ row }) => {
+        cell: ({ row }: { row: { original: DiscoveredJob } }) => {
           const job = row.original;
           return (
             <div className="flex flex-col gap-1.5">
@@ -171,7 +171,7 @@ export function DiscoveredJobsTab() {
         id: 'location',
         header: 'Location',
         enableSorting: false,
-        cell: ({ row }) => (
+        cell: ({ row }: { row: { original: DiscoveredJob } }) => (
           <div className="flex items-center gap-1 text-xs text-muted-foreground">
             <MapPinIcon className="w-3.5 h-3.5 shrink-0" />
             <span className="truncate max-w-35">{row.original.location || 'Not specified'}</span>
@@ -182,7 +182,7 @@ export function DiscoveredJobsTab() {
         id: 'ats',
         header: 'ATS Type',
         enableSorting: false,
-        cell: ({ row }) => {
+        cell: ({ row }: { row: { original: DiscoveredJob } }) => {
           const applyUrl = row.original.applyLink || row.original.apply_link || '#';
           return (
             <span className="bg-muted/60 border border-border/40 text-muted-foreground px-2 py-0.5 rounded text-xs">
@@ -196,7 +196,7 @@ export function DiscoveredJobsTab() {
         header: 'Fresher Score',
         enableSorting: false,
         meta: { cellClassName: 'text-center' },
-        cell: ({ row }) => {
+        cell: ({ row }: { row: { original: DiscoveredJob } }) => {
           const score = row.original.fresherScore ?? row.original.fresher_score ?? 0;
           return (
             <span
@@ -219,14 +219,14 @@ export function DiscoveredJobsTab() {
         header: 'Status',
         enableSorting: false,
         meta: { cellClassName: 'text-center' },
-        cell: ({ row }) => <StatusBadge status={row.original.status} />,
+        cell: ({ row }: { row: { original: DiscoveredJob } }) => <StatusBadge status={row.original.status} />,
       },
       {
         id: 'createdAt',
         header: 'Created At',
         enableSorting: false,
         meta: { cellClassName: 'text-right text-muted-foreground' },
-        cell: ({ row }) => {
+        cell: ({ row }: { row: { original: DiscoveredJob } }) => {
           const createdAtStr = row.original.createdAt || row.original.created_at;
           return createdAtStr
             ? new Date(createdAtStr).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
@@ -238,7 +238,7 @@ export function DiscoveredJobsTab() {
         header: 'Actions',
         enableSorting: false,
         meta: { cellClassName: 'text-right' },
-        cell: ({ row }) => {
+        cell: ({ row }: { row: { original: DiscoveredJob } }) => {
           const job = row.original;
           const applyUrl = job.applyLink || job.apply_link || '#';
           return (

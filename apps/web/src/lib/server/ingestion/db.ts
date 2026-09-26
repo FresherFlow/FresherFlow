@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server';
 import { pool, hasDb } from '@fresherflow/pipeline/db/pool';
 
+// Server-only helper for the LEGACY ingestion database (`processed_jobs`,
+// `discovered_jobs`, `discovery_runs` via INGESTION/STAGING/DATABASE_URL in
+// `@fresherflow/pipeline/db/pool`). This is NOT the main Prisma database:
+// reads/writes here never touch Opportunity rows. Column aliases below mirror
+// the pipeline's legacy `processed_jobs` schema, so legacy names stay
+// isolated in this file — map them onto the new Opportunity taxonomy
+// (category / employmentTypes / recruitmentMethod / sector + driveDetails)
+// at the call site before sending anything to the backend API.
+
 export const hasIngestionDb = hasDb;
 
 export async function queryRows<T>(query: string, params: unknown[] = []): Promise<T[]> {
@@ -42,6 +51,10 @@ export const PROCESSED_JOB_COLUMNS = [
   'selection_process as "selectionProcess"',
   'notes_highlights as "notesHighlights"',
   'application_details as "applicationDetails"',
+  // Legacy pipeline column. The main DB renamed this relation to
+  // `driveDetails`; this alias intentionally keeps the old name because it
+  // reads the ingestion DB's `processed_jobs.walk_in_details`, not Prisma.
+  // Callers must remap it to `driveDetails` before calling the backend API.
   'walk_in_details as "walkInDetails"',
   'status',
   'created_at as "createdAt"',

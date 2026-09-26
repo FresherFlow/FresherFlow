@@ -109,9 +109,15 @@ function formatAvailability(availability: string | null): string {
 function formatOpportunityType(type: string): string {
     const upper = type.toUpperCase();
     if (upper === 'JOB') return 'Full-time Jobs';
+    if (upper === 'EMPLOYMENT') return 'Jobs';
     if (upper === 'INTERNSHIP') return 'Internships';
-    if (upper === 'WALK_IN') return 'Walk-in Drives';
-    if (upper === 'GOVT_JOB') return 'Government Jobs';
+    if (upper === 'WALKIN' || upper === 'WALK_IN') return 'Walk-in Drives';
+    if (upper === 'GOVERNMENT' || upper === 'GOVT_JOB') return 'Government Jobs';
+    if (upper === 'COMPETITION' || upper === 'HACKATHON' || upper === 'HACKATHONS') return 'Competitions';
+    if (upper === 'SCHOLARSHIP') return 'Scholarships';
+    if (upper === 'EDUCATION') return 'Education';
+    if (upper === 'EVENT') return 'Events';
+    if (upper === 'REMOTE') return 'Remote Jobs';
     return type.replace(/_/g, ' ');
 }
 

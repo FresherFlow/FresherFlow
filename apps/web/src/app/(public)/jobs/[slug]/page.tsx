@@ -17,6 +17,7 @@ import {
 } from '@/features/jobs/domain/opportunitySeo';
 import { fetchGovernmentFeed, fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { getRelatedOpportunities, getValidDirectoryLinks } from '@/features/jobs/utils/detailUtils';
+import { getFeedBadgeLabel } from '@/features/jobs/utils/walkinMapUtils';
 import {
     buildTaxonomyRegistry,
     resolveTaxonomySlug,
@@ -263,13 +264,13 @@ export default async function OpportunityDetailPage({ params }: Props) {
         // SEO Enforcement: Redirect to slug if ID was used
         if (slugOrId === opportunityData.id && opportunityData.slug) {
             logRouteResult('/[slug]', '308');
-            permanentRedirect(getOpportunityPath(opportunityData.type, opportunityData.slug));
+            permanentRedirect(getOpportunityPath(getFeedBadgeLabel(opportunityData), opportunityData.slug));
         }
 
         // Expired pages stay live for grace period, then redirect to the type hub.
         if (expiry.pastGrace) {
             logRouteResult('/[slug]', '308');
-            permanentRedirect(getTypeHubPath(opportunityData.type));
+            permanentRedirect(getTypeHubPath(getFeedBadgeLabel(opportunityData)));
         }
 
         if (feed?.opportunities) {

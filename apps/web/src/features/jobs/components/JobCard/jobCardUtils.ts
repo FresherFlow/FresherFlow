@@ -2,6 +2,7 @@ import { Opportunity } from '@fresherflow/types';
 import { getOpportunityDisplaySalary, normalizeSalaryInput } from '@/features/jobs/domain/opportunityDisplay';
 import { getDriveMetadata, isCampusDriveOpportunity } from '@/features/jobs/domain/driveTimeline';
 import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
+import { getDriveDetails, isInternshipOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 
 export function resolvePassoutYears(job: Opportunity): number[] {
     let passoutYears = [...(job.allowedPassoutYears || [])];
@@ -103,9 +104,10 @@ export function generateJobSummaryText(job: Opportunity, shareUrl: string): stri
     if (formattedBatches) lines.push(`Batches: ${formattedBatches}`);
     if (formattedEdu) lines.push(`Eligibility: ${formattedEdu}`);
 
-    if ((job.type === 'WALKIN' || isCampusDriveOpportunity(job)) && job.walkInDetails) {
-        if (job.walkInDetails.dateRange) lines.push(`Dates: ${job.walkInDetails.dateRange}`);
-        if (job.walkInDetails.venueAddress) lines.push(`Venue: ${job.walkInDetails.venueAddress}`);
+    const driveDetails = getDriveDetails(job);
+    if ((isWalkinOpportunity(job) || isCampusDriveOpportunity(job)) && driveDetails) {
+        if (driveDetails.dateRange) lines.push(`Dates: ${driveDetails.dateRange}`);
+        if (driveDetails.venueAddress) lines.push(`Venue: ${driveDetails.venueAddress}`);
     }
 
     lines.push('');
@@ -227,14 +229,14 @@ export function getSalaryLabel(job: Opportunity, isGovernment: boolean, isDrive:
 export function getJobTypeLabel(job: Opportunity, isDrive: boolean, isGovernment: boolean): string {
     if (isDrive) return 'Drive';
     if (isGovernment) return (job as { governmentJobDetails?: { jobCategory?: string[] } }).governmentJobDetails?.jobCategory?.[0] || 'Govt';
-    if (job.type === 'INTERNSHIP' || job.employmentType === 'INTERNSHIP') return 'Intern';
-    if (job.type === 'WALKIN') return 'Walk-in';
+    if (isInternshipOpportunity(job)) return 'Intern';
+    if (isWalkinOpportunity(job)) return 'Walk-in';
     return 'Job';
 }
 
 export function getAccentBorderClass(job: Opportunity, isDrive: boolean, isGovernment: boolean, isWalkin: boolean): string {
     if (isWalkin || isDrive) return 'border-l-amber-500';
     if (isGovernment) return 'border-l-slate-500';
-    if (job.type === 'INTERNSHIP' || job.employmentType === 'INTERNSHIP') return 'border-l-violet-500';
+    if (isInternshipOpportunity(job)) return 'border-l-violet-500';
     return 'border-l-primary';
 }

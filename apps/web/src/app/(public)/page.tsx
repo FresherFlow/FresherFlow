@@ -10,7 +10,8 @@ import { StatementBand } from '@/features/landing/StatementBand';
 import { SmoothScroll } from '@/features/landing/SmoothScroll';
 import { LandingMarquee } from '@/features/landing/LandingMarquee';
 import { fetchFeedIndex, fetchCompaniesMetadata } from '@/lib/api/cdnFeed';
-import { toOpportunityCardDTO, OpportunityType } from '@fresherflow/types';
+import { toOpportunityCardDTO } from '@fresherflow/types';
+import { matchesFeedType } from '@/features/jobs/utils/walkinMapUtils';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
 // On-demand revalidation via /api/revalidate — called when jobs are published/expired.
@@ -53,12 +54,12 @@ export default async function LandingPage() {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
-    // Per-type counts
-    const countByType = (t: OpportunityType) => opps.filter((o) => o.type === t).length;
-    const jobs = countByType(OpportunityType.JOB);
-    const internships = countByType(OpportunityType.INTERNSHIP);
-    const walkins = countByType(OpportunityType.WALKIN);
-    const govt = countByType(OpportunityType.GOVERNMENT);
+    // Per-type counts (same groupings as the old single-enum `type` checks,
+    // expressed in the independent taxonomy dimensions).
+    const jobs = opps.filter((o) => matchesFeedType(o, 'JOB')).length;
+    const internships = opps.filter((o) => matchesFeedType(o, 'INTERNSHIP')).length;
+    const walkins = opps.filter((o) => matchesFeedType(o, 'WALKIN')).length;
+    const govt = opps.filter((o) => matchesFeedType(o, 'GOVERNMENT')).length;
 
     // New today (posted since local midnight, capped by feed freshness)
     const newToday = opps.filter((o) => new Date(o.postedAt).getTime() >= startOfToday.getTime()).length;

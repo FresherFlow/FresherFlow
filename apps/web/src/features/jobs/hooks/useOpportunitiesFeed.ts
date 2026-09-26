@@ -9,7 +9,7 @@ import toast from 'react-hot-toast';
 import { readFeedCache, saveFeedCache } from '@/lib/cache/opportunitiesFeedCache';
 import { fetchFullFeedOnClient } from '@/lib/api/cdnFeed';
 import { calculateOpportunityMatch, isNotEligible } from '@/features/jobs/domain/matchScore';
-import { isStaleWalkin } from '@/features/jobs/utils/walkinMapUtils';
+import { isStaleWalkin, isGovernmentOpportunity, matchesFeedType } from '@/features/jobs/utils/walkinMapUtils';
 export { isStaleWalkin };
 
 import { useFirebaseSaved } from '@/features/dashboard/hooks/useSavedJobs';
@@ -285,7 +285,7 @@ export function useOpportunitiesFeed({
             }
 
             // Segregate government jobs from normal feeds
-            const isGovOpp = opp.type === 'GOVERNMENT' || Boolean(opp.governmentJobDetails);
+            const isGovOpp = isGovernmentOpportunity(opp);
             const isGovFeed = type === 'GOVERNMENT';
             if (isGovOpp !== isGovFeed) {
                 return false;
@@ -296,11 +296,9 @@ export function useOpportunitiesFeed({
                 return false;
             }
 
-            // Filter by selected type (JOB, INTERNSHIP, WALKIN)
-            if (type && type !== 'GOVERNMENT' && type !== 'REMOTE') {
-                if (opp.type !== type) {
-                    return false;
-                }
+            // Filter by selected feed kind (JOB, INTERNSHIP, WALKIN, REMOTE, HACKATHONS)
+            if (type && !matchesFeedType(opp, type)) {
+                return false;
             }
 
             if (mode) {

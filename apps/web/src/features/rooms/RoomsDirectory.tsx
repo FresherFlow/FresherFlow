@@ -170,7 +170,9 @@ function RoomCard({ room }: { room: Room }) {
             <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
                     <h3 className="text-sm font-bold text-foreground truncate">{room.name}</h3>
-                    <span className="text-xs text-muted-foreground">{room.type}</span>
+                    {room.tags && room.tags.length > 0 && (
+                        <span className="text-xs text-muted-foreground">{room.tags.map((t) => `#${t}`).join(' ')}</span>
+                    )}
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                     {room.lastActiveThisWeek && (
@@ -190,7 +192,7 @@ function RoomCard({ room }: { room: Room }) {
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span>{room.memberCount.toLocaleString()} members</span>
                 <span>{room.postCount} posts</span>
-                <span>{room.jobCount} jobs</span>
+                <span>{room.opportunityCount} jobs</span>
             </div>
         </Link>
     );

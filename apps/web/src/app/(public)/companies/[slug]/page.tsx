@@ -7,7 +7,8 @@ import { FeedPageSkeleton } from '@/features/jobs/components/OpportunitySkeleton
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
-import { toOpportunityCardDTO } from '@fresherflow/types';
+import { toOpportunityCardDTO, type Opportunity } from '@fresherflow/types';
+import { isGovernmentOpportunity, matchesFeedType } from '@/features/jobs/utils/walkinMapUtils';
 import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
 import { getCompanyDescription } from '@/features/companies/utils/companyContent';
 import { fetchCompanyShard, fetchCompaniesMetadata, fetchFeedIndex } from '@/lib/api/cdnFeed';
@@ -298,7 +299,8 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
 
     // Compute Hiring DNA in-memory from companyJobs
     const totalJobsEver = companyJobs.length;
-    const fresherJobsCount = companyJobs.filter(j => ['JOB', 'INTERNSHIP', 'WALKIN'].includes(j.type || '')).length;
+    const fresherJobsCount = companyJobs.filter((j: Opportunity) =>
+        matchesFeedType(j, 'JOB') || matchesFeedType(j, 'INTERNSHIP') || matchesFeedType(j, 'WALKIN')).length;
     let avgHiringFrequencyDays: number | string = '—';
 
     if (companyJobs.length > 1) {
@@ -348,7 +350,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                     companyWebsite={firstJob?.companyWebsite}
                     companyLogoUrl={firstJob?.companyLogoUrl}
                     applyLink={firstJob?.applyLink}
-                    isGovernment={firstJob?.type === 'GOVERNMENT' || Boolean(firstJob?.governmentJobDetails)}
+                    isGovernment={Boolean(firstJob && isGovernmentOpportunity(firstJob))}
                     className="w-16 h-16 shrink-0"
                 />
                 <div className="flex-1 text-center sm:text-left space-y-1.5 min-w-0">

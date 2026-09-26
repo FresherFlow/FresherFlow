@@ -10,7 +10,7 @@ import EllipsisVerticalIcon from '@heroicons/react/24/outline/EllipsisVerticalIc
 import CalendarDaysIcon from '@heroicons/react/24/outline/CalendarDaysIcon';
 import toast from 'react-hot-toast';
 import { isCampusDriveOpportunity } from '@/features/jobs/domain/driveTimeline';
-import { getWhatsAppShareUrl, getGoogleCalendarUrl } from '@/features/jobs/utils/walkinMapUtils';
+import { getWhatsAppShareUrl, getGoogleCalendarUrl, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import { generateJobSummaryText } from './jobCardUtils';
 import {
     DropdownMenu,
@@ -42,7 +42,7 @@ export function JobCardMenu({ job, shareUrl, isJobSaved, onSaveClick }: JobCardM
                 </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 z-50">
-                {(job.type === 'WALKIN' || Boolean(job.walkInDetails)) && (
+                {isWalkinOpportunity(job) && (
                     <DropdownMenuItem
                         onClick={(e) => {
                             e.stopPropagation();
@@ -58,7 +58,7 @@ export function JobCardMenu({ job, shareUrl, isJobSaved, onSaveClick }: JobCardM
                     onClick={(e) => {
                         e.stopPropagation();
                         const waUrl =
-                            job.type === 'WALKIN' || isDrive
+                            isWalkinOpportunity(job) || isDrive
                                 ? getWhatsAppShareUrl(job)
                                 : `https://api.whatsapp.com/send?text=${encodeURIComponent(generateJobSummaryText(job, shareUrl))}`;
                         window.open(waUrl, '_blank');

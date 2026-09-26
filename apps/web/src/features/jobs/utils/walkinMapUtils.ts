@@ -1,4 +1,143 @@
-import { Opportunity } from '@fresherflow/types';
+import { EmploymentType, Opportunity, OpportunityCategory, RecruitmentMethod, Sector } from '@fresherflow/types';
+
+/**
+ * Page-level feed kinds. These are the legacy `OpportunityType` values
+ * (JOB / INTERNSHIP / WALKIN / GOVERNMENT / REMOTE / HACKATHONS) kept as
+ * plain strings for feed routing, titles, and UI branching. Filtering and
+ * display derive from the independent taxonomy dimensions below — never
+ * read `opp.type`, which no longer exists on the model.
+ */
+export type CategoryFeedType = 'JOB' | 'INTERNSHIP' | 'WALKIN' | 'GOVERNMENT' | 'REMOTE' | 'HACKATHONS';
+
+/**
+ * Drive details regardless of which field name the payload used.
+ *
+ * The Prisma model is `DriveDetails` (relation `driveDetails`); the shared
+ * `Opportunity` type still exposes the legacy `walkInDetails` name and the
+ * grouped API contract uses `walkin`. All three shapes carry the same fields
+ * except the cluster rename (`techCluster` → `clusterName`), which is
+ * normalized here so readers can use either name.
+ */
+export interface DriveDetailsLike {
+    dates?: unknown;
+    dateRange?: string | null;
+    timeRange?: string | null;
+    venueAddress?: string | null;
+    venueLink?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+    techCluster?: string | null;
+    clusterName?: string | null;
+    city?: string | null;
+    reportingTime?: string | null;
+    requiredDocuments?: string[];
+    contactPerson?: string | null;
+    contactPhone?: string | null;
+    expiryDate?: unknown;
+    landmark?: string | null;
+    transitInfo?: string | null;
+    selectionProcess?: string | null;
+}
+
+export function getDriveDetails(opp: Opportunity): DriveDetailsLike | undefined {
+    const raw = opp as unknown as {
+        walkInDetails?: DriveDetailsLike | null;
+        driveDetails?: DriveDetailsLike | null;
+        walkin?: DriveDetailsLike | null;
+    };
+    const details = raw.walkInDetails ?? raw.driveDetails ?? raw.walkin ?? undefined;
+    if (!details) return undefined;
+    const cluster = details.techCluster ?? details.clusterName ?? undefined;
+    return { ...details, techCluster: cluster, clusterName: cluster };
+}
+
+/** Cluster / corridor label for a drive (`techCluster` or `clusterName`). */
+export function getDriveClusterName(opp: Opportunity): string | undefined {
+    return getDriveDetails(opp)?.techCluster ?? undefined;
+}
+
+/** A walk-in / drive listing: WALK_IN recruitment method or drive details present. */
+export function isWalkinOpportunity(opp: Opportunity): boolean {
+    return opp.recruitmentMethod === RecruitmentMethod.WALK_IN || Boolean(getDriveDetails(opp));
+}
+
+/** An internship listing: INTERNSHIP in the employment-types dimension. */
+export function isInternshipOpportunity(opp: Opportunity): boolean {
+    if ((opp.employmentTypes || []).includes(EmploymentType.INTERNSHIP)) return true;
+    const legacySingular = (opp as unknown as { employmentType?: unknown }).employmentType;
+    return typeof legacySingular === 'string' && legacySingular.toUpperCase() === 'INTERNSHIP';
+}
+
+/** A government listing: GOVERNMENT sector or government details present. */
+export function isGovernmentOpportunity(opp: Opportunity): boolean {
+    return opp.sector === Sector.GOVERNMENT || Boolean(opp.governmentJobDetails);
+}
+
+/** A remote listing: REMOTE work mode, or remote signals in locations/title. */
+export function isRemoteOpportunity(opp: Opportunity): boolean {
+    if (opp.workMode === 'REMOTE') return true;
+    const locLabel = (opp.locations || []).join(' ').toLowerCase();
+    if (
+        locLabel.includes('remote') ||
+        locLabel.includes('work from home') ||
+        locLabel.includes('wfh') ||
+        locLabel.includes('pan india')
+    ) {
+        return true;
+    }
+    return (opp.title || '').toLowerCase().includes('remote');
+}
+
+/** First employment-type label for display, with legacy singular fallback. */
+export function getPrimaryEmploymentType(opp: Opportunity): string | null {
+    const legacySingular = (opp as unknown as { employmentType?: unknown }).employmentType;
+    if (typeof legacySingular === 'string' && legacySingular.trim()) return legacySingular;
+    return opp.employmentTypes?.[0] ?? null;
+}
+
+/**
+ * Whether an opportunity belongs on a feed page of the given kind.
+ * Same filtering outcomes as the old single-enum `opp.type === kind`
+ * checks, expressed in the new independent dimensions.
+ */
+export function matchesFeedType(opp: Opportunity, type: CategoryFeedType | string | null | undefined): boolean {
+    if (!type) return true;
+    switch (type) {
+        case 'GOVERNMENT':
+            return isGovernmentOpportunity(opp);
+        case 'WALKIN':
+            return isWalkinOpportunity(opp);
+        case 'INTERNSHIP':
+            return isInternshipOpportunity(opp);
+        case 'HACKATHONS':
+            return opp.category === OpportunityCategory.COMPETITION;
+        case 'REMOTE':
+            return isRemoteOpportunity(opp);
+        case 'JOB':
+            return (
+                opp.category === OpportunityCategory.EMPLOYMENT &&
+                !isInternshipOpportunity(opp) &&
+                !isWalkinOpportunity(opp) &&
+                !isGovernmentOpportunity(opp) &&
+                !isRemoteOpportunity(opp)
+            );
+        default:
+            return true;
+    }
+}
+
+/**
+ * Single display badge for a card row, mirroring the old raw `opp.type`
+ * values (JOB / INTERNSHIP / WALKIN / GOVERNMENT / REMOTE / HACKATHONS).
+ */
+export function getFeedBadgeLabel(opp: Opportunity): string {
+    if (isGovernmentOpportunity(opp)) return 'GOVERNMENT';
+    if (isWalkinOpportunity(opp)) return 'WALKIN';
+    if (isInternshipOpportunity(opp)) return 'INTERNSHIP';
+    if (opp.category === OpportunityCategory.COMPETITION) return 'HACKATHONS';
+    if (isRemoteOpportunity(opp)) return 'REMOTE';
+    return 'JOB';
+}
 
 // Standard known coordinates for Hyderabad tech clusters and IT corridors
 export const CLUSTER_COORDS: Record<string, [number, number]> = {
@@ -55,7 +194,7 @@ export function getOpportunityDistanceKm(
     // getBaseCoords always returns valid coords (falls back to default center)
     // but if the opp has no real coords, the distance to default center is meaningless.
     // Check if the opp has explicit lat/lng or a known techCluster match.
-    const d = opp.walkInDetails;
+    const d = getDriveDetails(opp);
     if (!d?.latitude && !d?.longitude && !d?.techCluster) {
         // Only location-based match — still compute but mark as approximate
     }
@@ -99,7 +238,7 @@ export function getDominantCity(opportunities: Opportunity[]): string {
 }
 
 function getBaseCoords(opp: Opportunity): [number, number] {
-    const d = opp.walkInDetails;
+    const d = getDriveDetails(opp);
     if (d?.latitude && d?.longitude && !isNaN(d.latitude) && !isNaN(d.longitude)) {
         return [d.latitude, d.longitude];
     }
@@ -174,7 +313,7 @@ export function formatShortCompany(company?: string): string {
  * 1-Tap Google Calendar event generator with pre-filled document checklist & directions
  */
 export function getGoogleCalendarUrl(opp: Opportunity): string {
-    const details = opp.walkInDetails;
+    const details = getDriveDetails(opp);
     const title = encodeURIComponent(`Walk-in Interview: ${opp.company} - ${opp.normalizedRole || opp.title}`);
     const location = encodeURIComponent(details?.venueAddress || (opp.locations || []).join(', '));
     
@@ -206,7 +345,7 @@ export function getGoogleCalendarUrl(opp: Opportunity): string {
  * walking directions from nearest metro, and a Google Maps link.
  */
 export function getWhatsAppShareUrl(opp: Opportunity): string {
-    const details = opp.walkInDetails;
+    const details = getDriveDetails(opp);
     const salaryText = formatSalaryBadge(opp) ? `${formatSalaryBadge(opp)} PA` : 'Best in Industry';
     const transit = parseTransitInfo(details?.transitInfo);
     const walkingUrl = getWalkingFromStationUrl(opp);
@@ -409,17 +548,17 @@ export function parseWalkinDateRange(dateRange: string): { start: Date; end: Dat
  * Checks if a walk-in opportunity is stale (all scheduled drive dates are strictly in the past).
  */
 export function isStaleWalkin(opp: Opportunity): boolean {
-    const isWalkin = opp.type === 'WALKIN' || Boolean(opp.walkInDetails);
+    const isWalkin = isWalkinOpportunity(opp);
     if (!isWalkin) return false;
 
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
 
-    const d = opp.walkInDetails;
+    const d = getDriveDetails(opp);
 
     // 1. Check explicit expiryDate
     if (d?.expiryDate) {
-        const exp = new Date(d.expiryDate).getTime();
+        const exp = new Date(String(d.expiryDate)).getTime();
         if (!isNaN(exp) && exp < todayStart) return true;
     }
 
@@ -465,7 +604,7 @@ export function isWalkinInPeriod(
     period: WalkinDrivePeriod
 ): boolean {
     if (period === 'all') return true;
-    const d = opp.walkInDetails;
+    const d = getDriveDetails(opp);
     if (!d?.dateRange) return true; // No date info — include by default
 
     const parsed = parseWalkinDateRange(d.dateRange);
@@ -490,7 +629,7 @@ export function isWalkinInPeriod(
 }
 
 export interface TransitInfo {
-    /** Raw transit string from walkInDetails.transitInfo */
+    /** Raw transit string from driveDetails.transitInfo */
     raw: string;
     /** Extracted station/metro name (e.g. "Raidurg Metro") */
     station: string | null;
@@ -553,7 +692,7 @@ export function parseTransitInfo(transitInfo?: string | null): TransitInfo | nul
  * Falls back to directions mode if transit isn't available.
  */
 export function getTransitDirectionsUrl(opp: Opportunity): string {
-    const details = opp.walkInDetails;
+    const details = getDriveDetails(opp);
     const dest = details?.latitude && details?.longitude
         ? `${details.latitude},${details.longitude}`
         : details?.venueAddress || '';
@@ -588,7 +727,7 @@ export function getTransitDirectionsUrl(opp: Opportunity): string {
  * Used for the "Walk from Metro" button.
  */
 export function getWalkingFromStationUrl(opp: Opportunity): string | null {
-    const details = opp.walkInDetails;
+    const details = getDriveDetails(opp);
     const transit = parseTransitInfo(details?.transitInfo);
     if (!transit?.station) return null;
 

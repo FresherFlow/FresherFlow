@@ -56,10 +56,10 @@ export function AtsAdaptersTab({
   return [
    {
     id: 'adapter',
-    accessorFn: row => row.providerName || row.provider,
+    accessorFn: (row: PluginEntry) => row.providerName || row.provider,
     header: 'Adapter',
     enableSorting: true,
-    cell: ({ row }) => {
+    cell: ({ row }: { row: { original: PluginEntry } }) => {
      const adapter = row.original;
      return (
       <div className="flex items-center gap-2.5 min-w-0">
@@ -76,10 +76,10 @@ export function AtsAdaptersTab({
    },
    {
     id: 'type',
-    accessorFn: row => getAdapterTypeBadge(row.provider),
+    accessorFn: (row: PluginEntry) => getAdapterTypeBadge(row.provider),
     header: 'Type',
     enableSorting: true,
-    cell: ({ row }) => {
+    cell: ({ row }: { row: { original: PluginEntry } }) => {
      const adapter = row.original;
      const typeBadge = getAdapterTypeBadge(adapter.provider);
      return (
@@ -107,18 +107,18 @@ export function AtsAdaptersTab({
    },
    {
     id: 'targets',
-    accessorFn: row => companyTargets.filter(t => t.ats === row.provider).length,
+    accessorFn: (row: PluginEntry) => companyTargets.filter(t => t.ats === row.provider).length,
     header: 'Targets',
     enableSorting: true,
     meta: { cellClassName: 'text-center text-muted-foreground' },
-    cell: ({ row }) => `${companyTargets.filter(t => t.ats === row.original.provider).length} targets`,
+    cell: ({ row }: { row: { original: PluginEntry } }) => `${companyTargets.filter(t => t.ats === row.original.provider).length} targets`,
    },
    {
     id: 'actions',
     header: '',
     enableSorting: false,
     meta: { cellClassName: 'text-right' },
-    cell: ({ row }) => {
+    cell: ({ row }: { row: { original: PluginEntry } }) => {
      const adapter = row.original;
      const isRunning = runningAdapterId === adapter.provider;
      return (

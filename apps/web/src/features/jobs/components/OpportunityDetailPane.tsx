@@ -41,6 +41,7 @@ import { useOpportunityDerivedState } from '@/features/jobs/hooks/useOpportunity
 import { WalkinTrustStrip } from '@/features/jobs/components/WalkinTrustStrip';
 import { parseOpportunityLocation, getGroupedLocations } from '@/features/jobs/domain/opportunityDisplay';
 import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
+import { getDriveDetails, getFeedBadgeLabel, getPrimaryEmploymentType, isGovernmentOpportunity, isInternshipOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import { isNotEligible } from '@/features/jobs/domain/matchScore';
 
 interface OpportunityDetailPaneProps {
@@ -126,6 +127,11 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
     }
 
     const isGovernmentJob = Boolean(opp.governmentJobDetails);
+
+    const primaryEmployment = getPrimaryEmploymentType(opp);
+    const primaryEmploymentLabel = primaryEmployment
+        ? primaryEmployment.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase())
+        : 'Full Time';
 
     const isOppSaved = Boolean((opp as unknown as Record<string, unknown>).isSaved);
     const showApply = ds.hasApplyLink && !isMobile && ds.listingState !== 'EXPIRED';
@@ -239,7 +245,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                             {/* Badges row */}
                             <div className="flex flex-wrap items-center gap-1.5">
                                 <span className="px-2 py-0.5 text-xs font-bold rounded bg-muted text-foreground">
-                                    {ds.isCampusDrive ? 'Hiring drive' : opp.type === 'INTERNSHIP' ? 'Internship' : opp.type === 'WALKIN' ? 'Walk-in' : 'Job'}
+                                    {ds.isCampusDrive ? 'Hiring drive' : isInternshipOpportunity(opp) ? 'Internship' : isWalkinOpportunity(opp) ? 'Walk-in' : 'Job'}
                                 </span>
                                 {ds.listingState === 'ACTIVE' ? (
                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-success/10 text-success dark:text-success text-xs font-bold rounded">
@@ -268,7 +274,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                                     { icon: CurrencyRupeeIcon, value: ds.displaySalary || 'No salary listed' },
                                     ...(getGroupedLocations(opp.locations).length > 0 ? [{ icon: MapPinIcon, value: getGroupedLocations(opp.locations).join(', ') }] : []),
                                     { icon: BriefcaseIcon, value: opp.experienceMax ? `${opp.experienceMin || 0}–${opp.experienceMax} years` : 'Fresher' },
-                                    { icon: UsersIcon, value: opp.employmentType ? opp.employmentType.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (c: string) => c.toUpperCase()) : 'Full Time' },
+                                    { icon: UsersIcon, value: primaryEmploymentLabel },
                                     ...(opp.postedAt && getPostedLabel(opp.postedAt) ? [{ icon: CalendarIcon, value: `Posted ${getPostedLabel(opp.postedAt)}` }] : []),
                                 ] as const).map((item) => (
                                     <div key={item.value} className="flex items-center gap-2.5">
@@ -342,11 +348,11 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                             <ComplexityCard applicationDetails={opp.applicationDetails} />
                         )}
 
-                        {opp.type === 'WALKIN' && opp.walkInDetails && (
-                            <WalkInDetailsCard walkInDetails={opp.walkInDetails} />
+                        {isWalkinOpportunity(opp) && getDriveDetails(opp) && (
+                            <WalkInDetailsCard walkInDetails={getDriveDetails(opp) as NonNullable<Opportunity['walkInDetails']>} />
                         )}
 
-                        {opp.type === 'WALKIN' && (
+                        {isWalkinOpportunity(opp) && (
                             <WalkinTrustStrip opportunityIdOrSlug={opp.slug || opp.id} />
                         )}
 
@@ -399,7 +405,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                                                         companyWebsite={item.companyWebsite}
                                                         companyLogoUrl={item.companyLogoUrl}
                                                         applyLink={item.applyLink}
-                                                        isGovernment={item.type === 'GOVERNMENT' || Boolean(item.governmentJobDetails)}
+                                                        isGovernment={isGovernmentOpportunity(item)}
                                                         className="w-8 h-8 shrink-0 mt-0.5"
                                                     />
                                                     <div className="min-w-0">
@@ -414,7 +420,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                                                         <svg className="w-3 h-3 text-muted-foreground/75" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
                                                         {locLabel}
                                                     </span>
-                                                    <span className="font-bold text-primary/95 uppercase tracking-wide">{item.type}</span>
+                                                    <span className="font-bold text-primary/95 uppercase tracking-wide">{getFeedBadgeLabel(item)}</span>
                                                 </div>
                                             </Link>
                                         );

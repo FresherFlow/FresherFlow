@@ -68,14 +68,16 @@ export const getStatusBadgeClass = (opp: Opportunity & { expiredAt?: string | Da
     return 'bg-transparent text-muted-foreground ring-border/40';
 };
 
-import { OpportunityType } from '@fresherflow/types';
 import { getOpportunityPath } from '@/features/jobs/domain/opportunityPath';
+import { isGovernmentOpportunity, type OpportunityDimensions } from './formUtils';
 
-export const getPublicOpportunityHref = (opp: { id: string; slug?: string | null; type?: Opportunity['type'] }) => {
-    return getOpportunityPath(opp.type as OpportunityType, opp.slug || opp.id);
+export type PublicOpportunityRef = Pick<Opportunity, 'id' | 'slug'> & Partial<OpportunityDimensions>;
+
+export const getPublicOpportunityHref = (opp: PublicOpportunityRef) => {
+    return getOpportunityPath(isGovernmentOpportunity(opp) ? 'GOVERNMENT' : undefined, opp.slug || opp.id);
 };
 
-export const getPublicOpportunityUrl = (opp: { id: string; slug?: string | null; type?: Opportunity['type'] }) => {
+export const getPublicOpportunityUrl = (opp: PublicOpportunityRef) => {
     // NEXT_PUBLIC_* vars are available in the client bundle; SITE_URL is server-only so may be empty
     const envOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || SITE_URL;
     // Fallback: infer from admin window origin (e.g. https://admin.fresherflow.in -> https://fresherflow.in)
@@ -85,7 +87,7 @@ export const getPublicOpportunityUrl = (opp: { id: string; slug?: string | null;
     return `${origin}${getPublicOpportunityHref(opp)}`;
 };
 
-export type SocialOpportunity = Pick<Opportunity, 'id' | 'slug' | 'type' | 'title' | 'company' | 'locations' | 'allowedPassoutYears' | 'allowedCourses' | 'allowedDegrees'>;
+export type SocialOpportunity = Pick<Opportunity, 'id' | 'slug' | 'title' | 'company' | 'locations' | 'allowedPassoutYears' | 'allowedCourses' | 'allowedDegrees' | 'category' | 'sector' | 'recruitmentMethod' | 'employmentTypes' | 'governmentJobDetails'>;
 
 export const getEducationSummary = (opp: SocialOpportunity) => {
     const courses = (opp.allowedCourses || []).map((item) => String(item).trim()).filter(Boolean);

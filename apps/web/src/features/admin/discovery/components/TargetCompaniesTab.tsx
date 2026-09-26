@@ -76,10 +76,10 @@ export function TargetCompaniesTab({
     return [
       {
         id: 'company',
-        accessorFn: (row) => toSafeString(row.company),
+        accessorFn: (row: TargetRow) => toSafeString(row.company),
         header: 'Company',
         enableSorting: true,
-        cell: ({ row }) => {
+        cell: ({ row }: { row: { original: TargetRow } }) => {
           const companyStr = toSafeString(row.original.company);
           return (
             <div className="flex items-center gap-3 min-w-0">
@@ -98,13 +98,13 @@ export function TargetCompaniesTab({
         id: 'ats',
         // Combined sort/search key keeps the slug and raw ATS searchable via
         // the DataGrid global filter while sorting primarily by ATS group.
-        accessorFn: (row) => {
+        accessorFn: (row: TargetRow) => {
           const atsStr = toSafeString(row.ats);
           return [getAtsGroup(atsStr), atsStr, toSafeString(row.slug)].filter(Boolean).join(' ');
         },
         header: 'ATS / Slug',
         enableSorting: true,
-        cell: ({ row }) => {
+        cell: ({ row }: { row: { original: TargetRow } }) => {
           const atsStr = toSafeString(row.original.ats);
           const slugStr = toSafeString(row.original.slug);
           return (
@@ -121,11 +121,11 @@ export function TargetCompaniesTab({
       },
       {
         id: 'results',
-        accessorFn: (row) => runResults[toSafeString(row.slug)]?.saved ?? 0,
+        accessorFn: (row: TargetRow) => runResults[toSafeString(row.slug)]?.saved ?? 0,
         header: 'Status / Results',
         enableSorting: true,
         meta: { cellClassName: 'text-center' },
-        cell: ({ row }) => {
+        cell: ({ row }: { row: { original: TargetRow } }) => {
           const result = runResults[toSafeString(row.original.slug)];
           const isRunning = result?.running;
 
@@ -163,7 +163,7 @@ export function TargetCompaniesTab({
         header: '',
         enableSorting: false,
         meta: { cellClassName: 'text-right' },
-        cell: ({ row }) => {
+        cell: ({ row }: { row: { original: TargetRow } }) => {
           const target = row.original;
           const isRunning = runResults[toSafeString(target.slug)]?.running;
           return (

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { OpportunityType } from '@fresherflow/types';
+import { Sector } from '@fresherflow/types';
 import { fetchFeedIndex, fetchGovernmentFeed, fetchBootstrapFeed, type BootstrapFeedResponse } from '@/lib/api/cdnFeed';
 import { withRateLimit } from '@/lib/api/rateLimit';
 
@@ -15,16 +15,19 @@ export const dynamic = 'force-dynamic';
  * client loads the rest here, after paint. The CDN asset is signature-protected
  * and sends no CORS headers to browsers, which is why this proxy exists:
  * the signature stays server-side and the response is edge-cacheable.
+ *
+ * GOVERNMENT selects the sector=GOVERNMENT feed (new taxonomy dimension);
+ * everything else serves the main employment feed.
  */
 async function servePublicFeed(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const requested = (searchParams.get('type') || 'ALL').toUpperCase();
-    const type = requested === OpportunityType.GOVERNMENT ? OpportunityType.GOVERNMENT : 'ALL';
+    const isGovernment = requested === Sector.GOVERNMENT;
 
     try {
         let feed: BootstrapFeedResponse | null = null;
 
-        if (type === OpportunityType.GOVERNMENT) {
+        if (isGovernment) {
             feed = await fetchGovernmentFeed(false, undefined, true);
             if (!feed?.opportunities?.length) {
                 feed = await fetchFeedIndex(false, undefined, true);

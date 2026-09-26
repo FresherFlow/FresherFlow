@@ -2,7 +2,8 @@ import { Metadata } from 'next';
 import CategoryPage from '@/features/jobs/components/CategoryPage';
 import { fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
-import { toOpportunityCardDTO, OpportunityType } from '@fresherflow/types';
+import { toOpportunityCardDTO } from '@fresherflow/types';
+import { isInternshipOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 
 // On-demand revalidation via /api/revalidate — called when jobs are published/expired.
 export const revalidate = false;
@@ -37,12 +38,12 @@ export const metadata: Metadata = {
 
 export default async function InternshipsPage() {
     const bootstrapData = await fetchFeedIndex(false, undefined, true);
-    const internshipOpps = (bootstrapData?.opportunities || []).filter(o => o.type === OpportunityType.INTERNSHIP);
+    const internshipOpps = (bootstrapData?.opportunities || []).filter(o => isInternshipOpportunity(o));
     const initialData = internshipOpps.length ? {
         opportunities: internshipOpps.slice(0, FEED_PAGE_SIZE).map(toOpportunityCardDTO) as any,
         total: internshipOpps.length,
         cachedAt: new Date(bootstrapData?.generatedAt || Date.now()).getTime(),
     } : null;
 
-    return <CategoryPage type={OpportunityType.INTERNSHIP} initialData={initialData} />;
+    return <CategoryPage type="INTERNSHIP" initialData={initialData} />;
 }

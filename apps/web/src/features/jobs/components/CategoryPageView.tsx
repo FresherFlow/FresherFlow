@@ -6,7 +6,8 @@ import { useFeedHeader } from '@/lib/providers/FeedHeaderProvider';
 import Link from 'next/link';
 import { getAtsName } from '@/features/jobs/hooks/useOpportunitiesFeed';
 import { useRouter } from 'next/navigation';
-import { Opportunity, OpportunityType } from '@fresherflow/types';
+import { Opportunity } from '@fresherflow/types';
+import type { CategoryFeedType } from '@/features/jobs/utils/walkinMapUtils';
 import dynamic from 'next/dynamic';
 
 const OpportunityDetailPane = dynamic(() => import('./OpportunityDetailPane').then(m => m.OpportunityDetailPane));
@@ -62,7 +63,7 @@ const CATEGORY_CONFIG = {
     REMOTE:     { title: 'Remote Opportunities',       subtitle: 'Fresh roles you can pursue from anywhere',        icon: BriefcaseIcon },
     GOVERNMENT: { title: 'Government Jobs',            subtitle: 'Official notices and public-sector openings',     icon: ShieldCheckIcon },
     HACKATHONS: { title: 'Hackathons',                 subtitle: 'Competitions, challenges, and builder programs',  icon: AcademicCapIcon },
-} satisfies Record<OpportunityType, { title: string; subtitle: string; icon: typeof BriefcaseIcon }>;
+} satisfies Record<CategoryFeedType, { title: string; subtitle: string; icon: typeof BriefcaseIcon }>;
 
 // Ticker tag styles per applicationStatus
 const TICKER_TAG_MAP: Record<string, { tag: string; color: string }> = {
@@ -306,7 +307,7 @@ export function CategoryPageView({
     }, [isIntersecting, visibleCount, visibleOpps.length, setVisibleCount]);
 
     const tickerItems = useMemo(() => {
-        if (type !== OpportunityType.GOVERNMENT) return [];
+        if (type !== 'GOVERNMENT') return [];
         const urgentStatuses = Object.keys(TICKER_TAG_MAP);
         return filteredOpps
             .filter(o => { const s = (o.governmentJobDetails as any)?.applicationStatus; return s && urgentStatuses.includes(s); })
@@ -329,7 +330,7 @@ export function CategoryPageView({
         search: search
     }) || config.title;
 
-    const headerPortalContent = type === OpportunityType.GOVERNMENT ? (
+    const headerPortalContent = type === 'GOVERNMENT' ? (
         <>
             <div className="flex items-center shrink-0">
                 <Breadcrumb>
@@ -442,7 +443,7 @@ export function CategoryPageView({
             {/* Sticky header */}
             <div ref={headerRef} className="shrink-0 bg-background/95 border-b border-border/50 px-3 md:px-6 pt-2.5 pb-0 space-y-2">
 
-            {type === OpportunityType.GOVERNMENT ? (
+            {type === 'GOVERNMENT' ? (
                 /* Govt Compact Top Row: Search + Count on left, Filters on right */
                 <div className="flex items-center justify-between gap-3 pb-1">
                     {/* Left: Compact Search Bar + Title/Count */}
@@ -574,7 +575,7 @@ export function CategoryPageView({
             )}
 
             {/* Govt tabs — shown below title row */}
-            {type === OpportunityType.GOVERNMENT && (
+            {type === 'GOVERNMENT' && (
                 <div className="space-y-1.5 pb-1">
                     <GovtPhaseTabs
                         active={govtPhase}
@@ -689,7 +690,7 @@ export function CategoryPageView({
             {/* Scrollable content — locked in split mode, panes scroll internally */}
             <div ref={scrollContainerRef} onScroll={handleScroll} className={cn(
                 "flex-1 overflow-y-auto px-3 md:px-6 pb-2 space-y-2",
-                type !== OpportunityType.GOVERNMENT && showDetail && "xl:overflow-hidden xl:pb-0 xl:space-y-0"
+                type !== 'GOVERNMENT' && showDetail && "xl:overflow-hidden xl:pb-0 xl:space-y-0"
             )}>
             {/* Mobile filter drawer */}
             <Suspense fallback={null}>
@@ -757,7 +758,7 @@ export function CategoryPageView({
                     </div>
                 </div>
             ) : isLoading ? (
-                type === OpportunityType.GOVERNMENT ? (
+                type === 'GOVERNMENT' ? (
                     <div className="ff-reading-col mx-auto grid grid-cols-1 gap-2 pt-3.5">
                         {[1,2,3,4,5,6].map(i => <SkeletonJobCard key={i} variant={isDesktop === false ? 'compact' : 'wide'} />)}
                     </div>
@@ -810,7 +811,7 @@ export function CategoryPageView({
                         </a>
                     </p>
                     
-                    {type !== OpportunityType.GOVERNMENT && (
+                    {type !== 'GOVERNMENT' && (
                         <RelatedSearches 
                             opportunities={opportunities} 
                             search={search} 
@@ -826,7 +827,7 @@ export function CategoryPageView({
                 // ── Flat grid (filtered by phase / search) ─────────────────────
                 <div className={cn(
                     "w-full grid gap-2 items-start",
-                    (type !== OpportunityType.GOVERNMENT && showDetail)
+                    (type !== 'GOVERNMENT' && showDetail)
                         ? "grid-cols-1 xl:ff-detail-split xl:gap-0 xl:h-full xl:min-h-0 xl:bg-card xl:border xl:border-border/50 xl:rounded-2xl xl:overflow-hidden xl:shadow-sm [:root[data-show-detail='false']_&]:xl:grid-cols-1 [:root[data-show-detail='false']_&]:ff-reading-col [:root[data-show-detail='false']_&]:mx-auto [:root[data-show-detail='false']_&]:xl:bg-transparent [:root[data-show-detail='false']_&]:xl:border-0 [:root[data-show-detail='false']_&]:xl:shadow-none"
                         : "grid-cols-1 ff-reading-col mx-auto"
                 )}>
@@ -837,14 +838,14 @@ export function CategoryPageView({
                         onScroll={handleScroll}
                         className={cn(
                             "min-w-0 pt-3.5",
-                            type !== OpportunityType.GOVERNMENT && showDetail && "xl:pt-0 xl:h-full xl:min-h-0 xl:overflow-y-auto xl:px-6 [:root[data-show-detail='false']_&]:xl:h-auto [:root[data-show-detail='false']_&]:xl:overflow-y-visible [:root[data-show-detail='false']_&]:xl:px-0"
+                            type !== 'GOVERNMENT' && showDetail && "xl:pt-0 xl:h-full xl:min-h-0 xl:overflow-y-auto xl:px-6 [:root[data-show-detail='false']_&]:xl:h-auto [:root[data-show-detail='false']_&]:xl:overflow-y-visible [:root[data-show-detail='false']_&]:xl:px-0"
                         )}
                     >
                         <div className={cn(
                             "grid grid-cols-1 gap-3",
-                            type !== OpportunityType.GOVERNMENT && showDetail && "gap-2 relative xl:gap-0 xl:divide-y xl:divide-border"
+                            type !== 'GOVERNMENT' && showDetail && "gap-2 relative xl:gap-0 xl:divide-y xl:divide-border"
                         )}>
-                            {(type !== OpportunityType.GOVERNMENT && showDetail) && (
+                            {(type !== 'GOVERNMENT' && showDetail) && (
                                 <div
                                     aria-hidden
                                     className="pointer-events-none absolute inset-x-0 top-0 z-0 hidden bg-muted/40 opacity-0 ff-pane-transition duration-200 ease-out xl:block"
@@ -856,7 +857,7 @@ export function CategoryPageView({
                                 />
                             )}
                             {visibleOpps.slice(0, visibleCount).map((opp, index) => (
-                                (type !== OpportunityType.GOVERNMENT && showDetail) ? (
+                                (type !== 'GOVERNMENT' && showDetail) ? (
                                     <OpportunityRow
                                         key={opp.id}
                                         opp={opp}
@@ -890,17 +891,17 @@ export function CategoryPageView({
                                         searchQuery={search}
 priority={index < 4}
                                     isAdmin={user?.role === 'ADMIN'}
-                                    isSelected={Boolean(type !== OpportunityType.GOVERNMENT && showDetail && isDesktop && selectedOpp && opp.id === selectedOpp.id)}
+                                    isSelected={Boolean(type !== 'GOVERNMENT' && showDetail && isDesktop && selectedOpp && opp.id === selectedOpp.id)}
                                     isHovered={Boolean(hoveredOppId && opp.id === hoveredOppId)}
                                     onMouseEnter={() => setHoveredOppId(opp.id)}
                                     onMouseLeave={() => setHoveredOppId(null)}
                                     variant={
-                                        (mobileGrid || (type !== OpportunityType.GOVERNMENT && showDetail))
+                                        (mobileGrid || (type !== 'GOVERNMENT' && showDetail))
                                             ? 'compact'
                                             : 'wide'
                                     }
                                     onClick={(e) => {
-                                        if (type !== OpportunityType.GOVERNMENT && (showDetail || mobileGrid)) {
+                                        if (type !== 'GOVERNMENT' && (showDetail || mobileGrid)) {
                                             e.preventDefault();
                                             handleSelectOpportunity(opp);
                                         }
@@ -916,7 +917,7 @@ priority={index < 4}
                             </div>
                         )}
                         
-                        {visibleOpps.length > 0 && type !== OpportunityType.GOVERNMENT && (
+                        {visibleOpps.length > 0 && type !== 'GOVERNMENT' && (
                             <RelatedSearches 
                                 opportunities={opportunities} 
                                 search={search} 
@@ -939,9 +940,9 @@ priority={index < 4}
                     </div>
 
                     {/* Right Column: Map for Walk-ins / Detail Panel for Jobs (desktop) */}
-                    {type !== OpportunityType.GOVERNMENT && showDetail && (
+                    {type !== 'GOVERNMENT' && showDetail && (
                         <div className="hidden xl:flex flex-col xl:h-full xl:min-h-0 bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm mt-3.5 xl:mt-0 xl:border-0 xl:border-l xl:rounded-none xl:shadow-none [:root[data-show-detail='false']_&]:!hidden">
-                            {type === OpportunityType.WALKIN ? (
+                            {type === 'WALKIN' ? (
                                 <WalkinMapPane
                                     opportunity={selectedOpp}
                                     opportunities={visibleOpps}
@@ -987,7 +988,7 @@ priority={index < 4}
 
                     {/* Mobile Detail Bottom Sheet */}
                     <Drawer.Root
-                        open={isDesktop === false && !!selectedOpp && type !== OpportunityType.GOVERNMENT}
+                        open={isDesktop === false && !!selectedOpp && type !== 'GOVERNMENT'}
                         onOpenChange={(open) => { if (!open) handleCloseOpportunityPane(); }}
                         modal={false}
                     >
@@ -1014,7 +1015,7 @@ priority={index < 4}
                     </Drawer.Root>
 
                     {/* Mobile Map View Full Screen Overlay for Walkins */}
-                    {type === OpportunityType.WALKIN && mobileMapView && (
+                    {type === 'WALKIN' && mobileMapView && (
                         <div className="lg:hidden fixed inset-x-0 top-14 bottom-0 z-30 bg-background flex flex-col map-view-enter">
                             {/* Drag handle for visual affordance */}
                             <div className="shrink-0 flex justify-center">
@@ -1043,7 +1044,7 @@ priority={index < 4}
             )}
 
                 {/* Mobile Floating Map/List Switcher for Walkins */}
-                {type === OpportunityType.WALKIN && (
+                {type === 'WALKIN' && (
                     <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-overlay pointer-events-auto">
                         <button
                             type="button"

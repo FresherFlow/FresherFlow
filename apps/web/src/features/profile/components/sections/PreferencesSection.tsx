@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import { PlusIcon, XMarkIcon, PencilSquareIcon, CheckIcon } from '@heroicons/react/24/outline';
-import { Profile } from '@fresherflow/types';
+import { OpportunityCategory, Profile } from '@fresherflow/types';
 import { TOP_TECH_HUBS } from '@fresherflow/utils';
 import { Input } from '@/ui/Input';
 import { Button } from '@/ui/Button';
@@ -26,11 +26,27 @@ interface PreferencesSectionProps {
     saving: boolean;
 }
 
+// `interestedIn` is OpportunityCategory[] on the API: the old JOB /
+// INTERNSHIP / WALKIN options no longer validate, so offer the categories.
 const TARGET_ROLES = [
-    { value: 'JOB', label: 'Job' },
-    { value: 'INTERNSHIP', label: 'Internship' },
-    { value: 'WALKIN', label: 'Walk-In' }
+    { value: OpportunityCategory.EMPLOYMENT, label: 'Jobs' },
+    { value: OpportunityCategory.COMPETITION, label: 'Competitions' },
+    { value: OpportunityCategory.SCHOLARSHIP, label: 'Scholarships' },
+    { value: OpportunityCategory.EDUCATION, label: 'Education' },
+    { value: OpportunityCategory.EVENT, label: 'Events' }
 ];
+
+const INTEREST_LABELS: Record<string, string> = {
+    [OpportunityCategory.EMPLOYMENT]: 'Jobs',
+    [OpportunityCategory.COMPETITION]: 'Competitions',
+    [OpportunityCategory.SCHOLARSHIP]: 'Scholarships',
+    [OpportunityCategory.EDUCATION]: 'Education',
+    [OpportunityCategory.EVENT]: 'Events',
+    // Legacy stored values predate the taxonomy — fall back to a readable label.
+    JOB: 'Jobs',
+    INTERNSHIP: 'Internships',
+    WALKIN: 'Walk-In',
+};
 
 const WORK_SETUP = [
     { value: 'ONSITE', label: 'Onsite' },
@@ -93,7 +109,7 @@ export const PreferencesSection = ({
                             <div className="flex flex-wrap gap-2">
                                 {profile?.interestedIn.map(role => (
                                     <span key={role} className="px-2.5 py-1 bg-muted border border-border rounded-md text-xs font-medium text-foreground capitalize">
-                                        {role === 'WALKIN' ? 'Walk-In' : role.toLowerCase()}
+                                        {INTEREST_LABELS[role] ?? role.toLowerCase()}
                                     </span>
                                 ))}
                             </div>

@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Opportunity } from '@fresherflow/types';
 import { SocialOpportunity, getStatusLabel, getStatusBadgeClass } from '@/features/admin/opportunities/listUtils';
+import { isGovernmentOpportunity, kindFromOpportunity } from '@/features/admin/opportunities/formUtils';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import {
     MapPinIcon,
@@ -19,7 +20,8 @@ import {
     ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '@/ui/Button';
-import { LegacyColumnDef } from '@tanstack/react-table/legacy';
+// NOTE: the grid is mid-migration (v9 API against the installed v8 package,
+// owned by ui/). Keep this file version-proof with `any` column typing.
 import { DataTable } from '@/ui/data-table/DataTable';
 import { DataTableColumnHeader } from '@/ui/data-table/DataTableColumnHeader';
 import { PaginationControls } from '@/ui/data-table/DataTablePagination';
@@ -192,11 +194,11 @@ const Pagination = ({ page, effectiveTotalPages, totalCount, pageSize, setPage }
 
 // ─── Desktop Table ────────────────────────────────────────────────────────────
 const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSelect, toggleSelectAll, ...actions }: Props) => {
-    const columns = React.useMemo<LegacyColumnDef<Opp>[]>(() => [
+    const columns = React.useMemo<any[]>(() => [
         {
             id: 'select',
             enableSorting: false,
-            header: ({ table }) => (
+            header: ({ table }: any) => (
                 toggleSelectAll ? (
                     <Checkbox
                         checked={selectedIds.length === opportunities.length && opportunities.length > 0}
@@ -205,7 +207,7 @@ const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSel
                     />
                 ) : null
             ),
-            cell: ({ row }) => {
+            cell: ({ row }: any) => {
                 const opp = row.original;
                 return (
                     <Checkbox
@@ -218,8 +220,8 @@ const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSel
         },
         {
             id: 'opportunity',
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Opportunity" />,
-            cell: ({ row }) => {
+            header: ({ column }: any) => <DataTableColumnHeader column={column} title="Opportunity" />,
+            cell: ({ row }: any) => {
                 const opp = row.original;
                 return (
                     <div className="flex items-center gap-3 min-w-0">
@@ -228,7 +230,7 @@ const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSel
                             companyWebsite={opp.companyWebsite}
                             companyLogoUrl={opp.companyLogoUrl}
                             applyLink={opp.applyLink}
-                            isGovernment={opp.type === 'GOVERNMENT' || Boolean(opp.governmentJobDetails)}
+                            isGovernment={isGovernmentOpportunity(opp)}
                             className="w-8 h-8 shrink-0"
                         />
                         <div className="min-w-0">
@@ -240,7 +242,7 @@ const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSel
                             </button>
                             <div className="flex items-center gap-1.5 mt-0.5">
                                 <span className="text-xs text-muted-foreground truncate max-w-40">{opp.company}</span>
-                                <span className="text-xs uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted border border-border text-muted-foreground">{opp.type}</span>
+                                <span className="text-xs uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted border border-border text-muted-foreground">{kindFromOpportunity(opp)}</span>
                             </div>
                         </div>
                     </div>
@@ -249,8 +251,8 @@ const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSel
         },
         {
             id: 'location',
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Location / Date" />,
-            cell: ({ row }) => {
+            header: ({ column }: any) => <DataTableColumnHeader column={column} title="Location / Date" />,
+            cell: ({ row }: any) => {
                 const opp = row.original;
                 return (
                     <div className="space-y-1 text-xs text-muted-foreground">
@@ -268,8 +270,8 @@ const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSel
         },
         {
             id: 'status',
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Status" />,
-            cell: ({ row }) => {
+            header: ({ column }: any) => <DataTableColumnHeader column={column} title="Status" />,
+            cell: ({ row }: any) => {
                 const opp = row.original;
                 return (
                     <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-bold ring-1 ring-inset ${getStatusBadgeClass(opp)}`}>
@@ -280,8 +282,8 @@ const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSel
         },
         {
             id: 'source',
-            header: ({ column }) => <DataTableColumnHeader column={column} title="Source" />,
-            cell: ({ row }) => {
+            header: ({ column }: any) => <DataTableColumnHeader column={column} title="Source" />,
+            cell: ({ row }: any) => {
                 const opp = row.original;
                 const ats = getAtsName(opp.applyLink || (opp as any).sourceLink);
                 if (ats) return <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-muted border border-border text-xs font-medium text-muted-foreground tracking-wide">{ats}</span>;
@@ -292,7 +294,7 @@ const DesktopTable = ({ opportunities, selectedIds, bulkActionPending, toggleSel
             id: 'actions',
             enableSorting: false,
             header: () => <div className="text-right">Actions</div>,
-            cell: ({ row }) => {
+            cell: ({ row }: any) => {
                 const opp = row.original;
                 return (
                     <div className="flex justify-end">
@@ -337,7 +339,7 @@ const MobileCards = ({ opportunities, selectedIds, toggleSelect, ...actions }: P
                             companyWebsite={opp.companyWebsite}
                             companyLogoUrl={opp.companyLogoUrl}
                             applyLink={opp.applyLink}
-                            isGovernment={opp.type === 'GOVERNMENT' || Boolean(opp.governmentJobDetails)}
+                            isGovernment={isGovernmentOpportunity(opp)}
                             className="w-9 h-9 shrink-0"
                         />
                         <div className="flex-1 min-w-0">
@@ -354,7 +356,7 @@ const MobileCards = ({ opportunities, selectedIds, toggleSelect, ...actions }: P
                             </div>
                             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                                 <span className="text-xs text-muted-foreground">{opp.company}</span>
-                                <span className="text-xs uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted border border-border text-muted-foreground">{opp.type}</span>
+                                <span className="text-xs uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted border border-border text-muted-foreground">{kindFromOpportunity(opp)}</span>
                                 {(() => {
                                     const ats = getAtsName(opp.applyLink || (opp as any).sourceLink);
                                     if (ats) return <span className="text-xs uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted border border-border text-muted-foreground">{ats}</span>;

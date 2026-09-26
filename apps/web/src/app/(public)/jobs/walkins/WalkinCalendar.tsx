@@ -3,7 +3,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Opportunity, OpportunityType } from '@fresherflow/types';
+import { Opportunity } from '@fresherflow/types';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { EmptyState } from '@/ui/EmptyState';
 import { Button } from '@/ui/Button';
@@ -14,6 +14,7 @@ import {
     WALKIN_BUCKETS,
     type WalkinDateBucket,
 } from '@/features/jobs/utils/walkinEventUtils';
+import { isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import { cn } from '@repo/ui/utils/cn';
 
 /**
@@ -94,7 +95,7 @@ export function WalkinCalendar({
         const monthEnd = addMonths(viewMonth, 1).getTime();
 
         for (const opp of opportunities) {
-            if (opp.type !== OpportunityType.WALKIN && !opp.walkInDetails) continue;
+            if (!isWalkinOpportunity(opp)) continue;
             for (const date of getWalkinDates(opp)) {
                 const t = date.getTime();
                 if (t < monthStart || t >= monthEnd) continue;

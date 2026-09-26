@@ -2,7 +2,8 @@ import { Metadata } from 'next';
 import CategoryPage from '@/features/jobs/components/CategoryPage';
 import { fetchGovernmentFeed, fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
-import { toOpportunityCardDTO, OpportunityType } from '@fresherflow/types';
+import { toOpportunityCardDTO } from '@fresherflow/types';
+import { isGovernmentOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 
 // On-demand revalidation via /api/revalidate — called when jobs are published/expired.
 export const revalidate = false;
@@ -41,9 +42,7 @@ export default async function GovernmentJobsPage() {
         // Lightweight feed-index fallback (governmentJobDetails included in index fields)
         const feedIndexData = await fetchFeedIndex(false, undefined, true);
         if (feedIndexData && feedIndexData.opportunities) {
-            const govtOpps = feedIndexData.opportunities.filter(
-                (o) => o.type === OpportunityType.GOVERNMENT || Boolean(o.governmentJobDetails)
-            );
+            const govtOpps = feedIndexData.opportunities.filter((o) => isGovernmentOpportunity(o));
             govtData = {
                 opportunities: govtOpps,
                 count: govtOpps.length,
@@ -58,5 +57,5 @@ export default async function GovernmentJobsPage() {
         cachedAt: new Date(govtData.generatedAt || Date.now()).getTime(),
     } : null;
 
-    return <CategoryPage type={OpportunityType.GOVERNMENT} initialData={initialData} />;
+    return <CategoryPage type="GOVERNMENT" initialData={initialData} />;
 }

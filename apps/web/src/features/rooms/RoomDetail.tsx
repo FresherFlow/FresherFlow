@@ -74,7 +74,9 @@ export function RoomDetail({ slug }: { slug: string }) {
                     <div className="flex items-center gap-3">
                         <div>
                             <h1 className="text-xl font-bold text-foreground">{room.name}</h1>
-                            <span className="text-xs text-muted-foreground">{room.type}</span>
+                            {room.tags && room.tags.length > 0 && (
+                                <span className="text-xs text-muted-foreground">{room.tags.map((t) => `#${t}`).join(' ')}</span>
+                            )}
                         </div>
                     </div>
 {user && room && (
@@ -106,7 +108,7 @@ export function RoomDetail({ slug }: { slug: string }) {
                 <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <span>{room.memberCount.toLocaleString()} members</span>
                     <span>{room.postCount} posts</span>
-                    <span>{room.jobCount} jobs</span>
+                    <span>{room.opportunityCount} jobs</span>
                     {room.lastActiveThisWeek && (
                         <span className="flex items-center gap-1 rounded-full bg-signal-live/10 px-2 py-0.5 text-xs font-bold text-signal-live uppercase tracking-wider">
                             <span className="h-1.5 w-1.5 rounded-full bg-signal-live" />

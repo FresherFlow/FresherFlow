@@ -17,6 +17,9 @@ import {
   normalizePassoutYears,
   normalizeWorkModeValue,
   toStringArray,
+  kindFromOpportunity,
+  getDriveDetails,
+  prettifyEmploymentTypes,
 } from "./formUtils";
 
 function parseExpiryDateTime(val: string | Date) {
@@ -336,7 +339,7 @@ export function useOpportunityForm(
       };
       const opp = data.opportunity;
 
-      setType(opp.type as OpportunityKind);
+      setType(kindFromOpportunity(opp));
       setTitle(opp.title);
       setCompany(opp.company);
       setCompanyWebsite(opp.companyWebsite || "");
@@ -350,13 +353,20 @@ export function useOpportunityForm(
       setPassoutYears(opp?.allowedPassoutYears || []);
       setPassoutYearMin(opp?.passoutYearMin?.toString() || "");
       setPassoutYearMax(opp?.passoutYearMax?.toString() || "");
-      setAllowedAvailability(opp?.allowedAvailability || "");
+      setAllowedAvailability(
+        Array.isArray(opp?.allowedAvailability)
+          ? opp.allowedAvailability.join(", ")
+          : opp?.allowedAvailability || "",
+      );
       setWorkMode(opp.workMode || "ONSITE");
       setSalaryRange(opp.salaryRange || "");
       setSalaryAmount(opp.salaryMax?.toString() || "");
       setStipend(opp?.stipend || "");
       setJobFunction(opp.jobFunction || "");
-      setEmploymentType(opp.employmentType || "");
+      setEmploymentType(
+        prettifyEmploymentTypes(opp.employmentTypes) ||
+          String((opp as unknown as Record<string, unknown>).employmentType || ""),
+      );
       setIncentives(opp.incentives || "");
       setSelectionProcess(opp.selectionProcess || "");
       setNotesHighlights(opp.notesHighlights || "");
@@ -600,21 +610,22 @@ export function useOpportunityForm(
         
       }
 
-      if (opp.walkInDetails) {
-        setVenueAddress(opp.walkInDetails.venueAddress || "");
-        setWalkInDateRange(opp.walkInDetails.dateRange || "");
+      const driveDetails = getDriveDetails(opp);
+      if (driveDetails) {
+        setVenueAddress(driveDetails.venueAddress || "");
+        setWalkInDateRange(driveDetails.dateRange || "");
         setWalkInTimeRange(
-          opp.walkInDetails.timeRange || opp.walkInDetails.reportingTime || "",
+          driveDetails.timeRange || driveDetails.reportingTime || "",
         );
-        setVenueLink(opp.walkInDetails.venueLink || "");
+        setVenueLink(driveDetails.venueLink || "");
         setRequiredDocuments(
-          (opp.walkInDetails.requiredDocuments || []).join(", "),
+          (driveDetails.requiredDocuments || []).join(", "),
         );
-        setContactPerson(opp.walkInDetails.contactPerson || "");
-        setContactPhone(opp.walkInDetails.contactPhone || "");
+        setContactPerson(driveDetails.contactPerson || "");
+        setContactPhone(driveDetails.contactPhone || "");
 
-        if (opp.walkInDetails.dates?.length) {
-          const sorted = [...opp.walkInDetails.dates].sort(
+        if (driveDetails.dates?.length) {
+          const sorted = [...driveDetails.dates].sort(
             (a: string, b: string) =>
               new Date(a).getTime() - new Date(b).getTime(),
           );
@@ -754,8 +765,8 @@ export function useOpportunityForm(
       if (parsed.title) setTitle(parsed.title);
       if (parsed.company) setCompany(parsed.company);
       if (parsed.companyWebsite) setCompanyWebsite(parsed.companyWebsite);
-      if (parsed.type) {
-        const normalizedType = typeParamToEnum(String(parsed.type));
+      if (parsed.category || parsed.type) {
+        const normalizedType = typeParamToEnum(String(parsed.category ?? parsed.type));
         if (
           normalizedType === "JOB" ||
           normalizedType === "INTERNSHIP" ||
@@ -784,7 +795,13 @@ export function useOpportunityForm(
         if (normalizedSalaryPeriod) setSalaryPeriod(normalizedSalaryPeriod);
       }
       if (parsed.jobFunction) setJobFunction(parsed.jobFunction);
-      if (parsed.employmentType) setEmploymentType(parsed.employmentType);
+      if (parsed.employmentTypes !== undefined || parsed.employmentType) {
+        const merged = [
+          ...toStringArray(parsed.employmentTypes),
+          ...(parsed.employmentType ? [parsed.employmentType] : []),
+        ];
+        if (merged.length > 0) setEmploymentType(prettifyEmploymentTypes(merged));
+      }
       if (parsed.incentives) setIncentives(parsed.incentives);
       if (parsed.selectionProcess) setSelectionProcess(parsed.selectionProcess);
       if (parsed.notesHighlights) setNotesHighlights(parsed.notesHighlights);
@@ -810,15 +827,25 @@ export function useOpportunityForm(
 
       setDescription(text);
 
-      if (parsed.type === "WALKIN") {
+      const parsedKind = typeParamToEnum(String(parsed.category ?? parsed.type ?? ""));
+      const parsedDrive = parsed.driveDetails ?? parsed.walkInDetails;
+      if (parsedKind === "WALKIN" || parsedDrive) {
         if (parsed.venueAddress) setVenueAddress(parsed.venueAddress);
         if (parsed.venueLink) setVenueLink(parsed.venueLink);
         if (parsed.dateRange) setWalkInDateRange(parsed.dateRange);
         if (parsed.timeRange) setWalkInTimeRange(parsed.timeRange);
-        if (parsed.requiredDocuments?.length)
-          setRequiredDocuments(parsed.requiredDocuments.join(", "));
-        if (parsed.contactPerson) setContactPerson(parsed.contactPerson);
-        if (parsed.contactPhone) setContactPhone(parsed.contactPhone);
+        if (parsedDrive?.venueAddress) setVenueAddress(String(parsedDrive.venueAddress));
+        if (parsedDrive?.venueLink) setVenueLink(String(parsedDrive.venueLink));
+        if (parsedDrive?.dateRange) setWalkInDateRange(String(parsedDrive.dateRange));
+        if (parsedDrive?.timeRange) setWalkInTimeRange(String(parsedDrive.timeRange));
+        const driveDocs = toStringArray(parsedDrive?.requiredDocuments);
+        const legacyDocs = parsed.requiredDocuments ?? [];
+        if (driveDocs.length > 0) setRequiredDocuments(driveDocs.join(", "));
+        else if (legacyDocs.length) setRequiredDocuments(legacyDocs.join(", "));
+        if (parsedDrive?.contactPerson) setContactPerson(String(parsedDrive.contactPerson));
+        else if (parsed.contactPerson) setContactPerson(parsed.contactPerson);
+        if (parsedDrive?.contactPhone) setContactPhone(String(parsedDrive.contactPhone));
+        else if (parsed.contactPhone) setContactPhone(parsed.contactPhone);
       }
 
       toast.success("Form updated from text.", { id: toastId });
@@ -833,18 +860,18 @@ export function useOpportunityForm(
   };
 
   const applyJsonData = (data: Partial<ParsedJob>) => {
-    if (data.type) {
-      const normalizedType = typeParamToEnum(String(data.type));
-      if (normalizedType === "GOVERNMENT") {
-        
-      } else if (
+    if (data.category || data.type) {
+      const normalizedType = typeParamToEnum(String(data.category ?? data.type));
+      if (
+        normalizedType === "GOVERNMENT" ||
         normalizedType === "JOB" ||
         normalizedType === "INTERNSHIP" ||
         normalizedType === "WALKIN"
       ) {
         setType(normalizedType as OpportunityKind);
-        
       }
+    } else if ((data as { sector?: string }).sector === "GOVERNMENT") {
+      setType("GOVERNMENT");
     }
     if (data.title) setTitle(data.title);
     if (data.company) setCompany(data.company);
@@ -885,7 +912,13 @@ export function useOpportunityForm(
       if (normalizedSalaryPeriod) setSalaryPeriod(normalizedSalaryPeriod);
     }
     if (data.jobFunction) setJobFunction(String(data.jobFunction));
-    if (data.employmentType) setEmploymentType(String(data.employmentType));
+    if (data.employmentTypes !== undefined || data.employmentType) {
+      const merged = [
+        ...toStringArray(data.employmentTypes),
+        ...(data.employmentType ? [String(data.employmentType)] : []),
+      ];
+      if (merged.length > 0) setEmploymentType(prettifyEmploymentTypes(merged));
+    }
     if (data.incentives) setIncentives(String(data.incentives));
     if (data.selectionProcess)
       setSelectionProcess(String(data.selectionProcess));
@@ -1154,28 +1187,29 @@ export function useOpportunityForm(
         );
     }
 
-    if (data.walkInDetails) {
-      if (data.walkInDetails.dateRange)
-        setWalkInDateRange(data.walkInDetails.dateRange);
-      if (data.walkInDetails.timeRange)
-        setWalkInTimeRange(data.walkInDetails.timeRange);
-      if (data.walkInDetails.reportingTime && !data.walkInDetails.timeRange)
-        setWalkInTimeRange(data.walkInDetails.reportingTime);
-      if (data.walkInDetails.venueAddress)
-        setVenueAddress(data.walkInDetails.venueAddress);
-      if (data.walkInDetails.venueLink)
-        setVenueLink(data.walkInDetails.venueLink);
+    const jsonDrive = data.driveDetails ?? data.walkInDetails;
+    if (jsonDrive) {
+      if (jsonDrive.dateRange)
+        setWalkInDateRange(jsonDrive.dateRange);
+      if (jsonDrive.timeRange)
+        setWalkInTimeRange(jsonDrive.timeRange);
+      if (jsonDrive.reportingTime && !jsonDrive.timeRange)
+        setWalkInTimeRange(jsonDrive.reportingTime);
+      if (jsonDrive.venueAddress)
+        setVenueAddress(jsonDrive.venueAddress);
+      if (jsonDrive.venueLink)
+        setVenueLink(jsonDrive.venueLink);
       const walkInRequiredDocuments = toStringArray(
-        data.walkInDetails.requiredDocuments,
+        jsonDrive.requiredDocuments,
       );
       if (walkInRequiredDocuments.length > 0)
         setRequiredDocuments(walkInRequiredDocuments.join(", "));
-      if (data.walkInDetails.contactPerson)
-        setContactPerson(data.walkInDetails.contactPerson);
-      if (data.walkInDetails.contactPhone)
-        setContactPhone(data.walkInDetails.contactPhone);
-      if (data.walkInDetails.dates?.length) {
-        const sorted = [...data.walkInDetails.dates].sort(
+      if (jsonDrive.contactPerson)
+        setContactPerson(jsonDrive.contactPerson);
+      if (jsonDrive.contactPhone)
+        setContactPhone(jsonDrive.contactPhone);
+      if (jsonDrive.dates?.length) {
+        const sorted = [...jsonDrive.dates].sort(
           (a: string, b: string) =>
             new Date(a).getTime() - new Date(b).getTime(),
         );

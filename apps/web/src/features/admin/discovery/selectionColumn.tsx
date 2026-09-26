@@ -1,19 +1,18 @@
 "use client"
 
-import { ColumnDef, RowData, StockFeatures } from "@tanstack/react-table"
-
 /**
  * A leading checkbox column wired to TanStack row selection. Use as the first
  * entry in the columns array passed to DataGrid (enableSelection must be on).
+ *
+ * NOTE: intentionally typed with `any` row/table handles instead of the
+ * TanStack generics — the grid is mid-migration (v9 API against the installed
+ * v8 package, owned by ui/), so version-specific generics break typecheck
+ * either way. The structural shape below matches both versions at runtime.
  */
-export function selectionColumn<TRow extends RowData>(): ColumnDef<
-  StockFeatures,
-  TRow,
-  any
-> {
+export function selectionColumn<T = unknown>(): any {
   return {
     id: "select",
-    header: ({ table }) => (
+    header: ({ table }: any) => (
       <input
         type="checkbox"
         checked={table.getIsAllPageRowsSelected()}
@@ -22,7 +21,7 @@ export function selectionColumn<TRow extends RowData>(): ColumnDef<
         className="w-4 h-4 rounded border-border/80 bg-card text-primary accent-primary focus:ring-1 focus:ring-primary focus:ring-offset-0 cursor-pointer transition-colors"
       />
     ),
-    cell: ({ row }) => (
+    cell: ({ row }: any) => (
       <input
         type="checkbox"
         checked={row.getIsSelected()}

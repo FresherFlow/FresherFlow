@@ -1,13 +1,14 @@
 'use client';
 
 import { Suspense } from 'react';
-import { Opportunity, OpportunityType } from '@fresherflow/types';
+import { Opportunity } from '@fresherflow/types';
+import type { CategoryFeedType } from '@/features/jobs/utils/walkinMapUtils';
 import { FeedPageSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
 import { useCategoryPageState } from '@/features/jobs/hooks/useCategoryPageState';
 import { CategoryPageView } from '@/features/jobs/components/CategoryPageView';
 
 interface CategoryPageProps {
-    type: OpportunityType | null;
+    type: CategoryFeedType | null;
     initialData?: { opportunities: Opportunity[]; total: number; cachedAt?: number } | null;
     initialFilters?: Partial<import('@/features/jobs/components/JobFilterBar').FilterBarFilters>;
     canonicalRedirect?: boolean;
@@ -38,7 +39,7 @@ function CategoryPageContainer({ type, initialData, initialFilters, canonicalRed
 
 export default function CategoryPage({ type, initialData, initialFilters, canonicalRedirect, customTitle, topContent, bottomContent, userLocation, onLocationRequest, onLocationClear, locationLoading, locationRequested, locationDenied }: CategoryPageProps) {
     return (
-        <Suspense fallback={<FeedPageSkeleton isGovt={type === OpportunityType.GOVERNMENT} />}>
+        <Suspense fallback={<FeedPageSkeleton isGovt={type === 'GOVERNMENT'} />}>
             <CategoryPageContainer type={type} initialData={initialData} initialFilters={initialFilters} canonicalRedirect={canonicalRedirect} customTitle={customTitle} topContent={topContent} bottomContent={bottomContent} userLocation={userLocation} onLocationRequest={onLocationRequest} onLocationClear={onLocationClear} locationLoading={locationLoading} locationRequested={locationRequested} locationDenied={locationDenied} />
         </Suspense>
     );

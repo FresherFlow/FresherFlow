@@ -5,6 +5,7 @@ import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
 import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
+import { getFeedBadgeLabel, isGovernmentOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 
 type RelatedOpportunitiesProps = {
     relatedOpps: Opportunity[];
@@ -53,7 +54,7 @@ export function RelatedOpportunities({ relatedOpps, isLoadingRelated }: RelatedO
                                     companyWebsite={item.companyWebsite}
                                     companyLogoUrl={item.companyLogoUrl}
                                     applyLink={item.applyLink}
-                                    isGovernment={item.type === 'GOVERNMENT' || Boolean(item.governmentJobDetails)}
+                                    isGovernment={isGovernmentOpportunity(item)}
                                     className="w-9 h-9 shrink-0 mt-0.5"
                                 />
                                 <div className="min-w-0 flex-1">
@@ -67,7 +68,7 @@ export function RelatedOpportunities({ relatedOpps, isLoadingRelated }: RelatedO
                                             {parseOpportunityLocation(item.locations).shortLabel}
                                         </div>
                                         <div className="flex items-center gap-1 text-xs text-primary font-bold uppercase tracking-tight shrink-0">
-                                            {item.type}
+                                            {getFeedBadgeLabel(item)}
                                         </div>
                                     </div>
                                 </div>

@@ -10,11 +10,108 @@ import {
 
 export type OpportunityKind = 'JOB' | 'INTERNSHIP' | 'WALKIN' | 'GOVERNMENT';
 
+/**
+ * Independent taxonomy dimensions (v2). Prisma replaced the single
+ * `OpportunityType` (JOB/INTERNSHIP/WALKIN/GOVERNMENT) with these, so admin UI
+ * derives the legacy display kind from them instead of reading `opp.type`.
+ */
+export interface OpportunityDimensions {
+    category?: string | null;
+    recruitmentMethod?: string | null;
+    sector?: string | null;
+    employmentTypes?: Array<string | null | undefined> | string | null;
+    governmentJobDetails?: unknown;
+    driveDetails?: unknown;
+    walkInDetails?: unknown;
+    /** Legacy fallback for stale caches / parser output that still sends `type`. */
+    type?: string | null;
+}
+
+export interface DriveDetailsLike {
+    dates?: string[];
+    dateRange?: string;
+    timeRange?: string;
+    reportingTime?: string;
+    venueAddress?: string;
+    venueLink?: string;
+    requiredDocuments?: string[];
+    contactPerson?: string;
+    contactPhone?: string;
+}
+
+export const getDriveDetails = (opp?: OpportunityDimensions | null): DriveDetailsLike | null => {
+    if (!opp) return null;
+    const raw = opp as Record<string, unknown>;
+    const drive = (raw.driveDetails ?? raw.walkInDetails) as DriveDetailsLike | null | undefined;
+    return drive ?? null;
+};
+
+export const isGovernmentOpportunity = (opp?: OpportunityDimensions | null): boolean => {
+    if (!opp) return false;
+    if (opp.sector === 'GOVERNMENT') return true;
+    return Boolean((opp as Record<string, unknown>).governmentJobDetails);
+};
+
+export const isWalkInOpportunity = (opp?: OpportunityDimensions | null): boolean => {
+    if (!opp) return false;
+    if (opp.recruitmentMethod === 'WALK_IN') return true;
+    // Legacy-shaped rows (no recruitmentMethod yet) that carry drive details.
+    if (!opp.recruitmentMethod && getDriveDetails(opp)) return true;
+    return false;
+};
+
+const normalizeEmploymentTypeList = (opp?: OpportunityDimensions | null): string[] => {
+    if (!opp) return [];
+    const raw = opp.employmentTypes;
+    const list = Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(/[,/|]/) : [];
+    return list
+        .filter((v): v is string => typeof v === 'string')
+        .map((v) => v.trim().toUpperCase().replace(/[\s-]+/g, '_'))
+        .filter(Boolean);
+};
+
+/** Display / form kind derived from the independent dimensions. */
+export const kindFromOpportunity = (opp?: OpportunityDimensions | null): OpportunityKind => {
+    if (!opp) return 'JOB';
+    if (isGovernmentOpportunity(opp)) return 'GOVERNMENT';
+    if (isWalkInOpportunity(opp)) return 'WALKIN';
+    if (normalizeEmploymentTypeList(opp).includes('INTERNSHIP')) return 'INTERNSHIP';
+    const legacy = typeof opp.type === 'string' ? opp.type.trim().toUpperCase() : '';
+    if (legacy === 'GOVERNMENT') return 'GOVERNMENT';
+    if (legacy === 'WALKIN' || legacy === 'WALK-IN' || legacy === 'WALK_IN') return 'WALKIN';
+    if (legacy === 'INTERNSHIP') return 'INTERNSHIP';
+    return 'JOB';
+};
+
+/**
+ * Admin API category alias (`opportunitySchema` accepts job/internship/walk-in).
+ * Government travels via `governmentJobDetails` presence + `sector`, because the
+ * schema rejects a `government` category value.
+ */
+export const kindToAdminCategory = (kind: OpportunityKind): 'job' | 'internship' | 'walk-in' => {
+    if (kind === 'WALKIN') return 'walk-in';
+    if (kind === 'INTERNSHIP') return 'internship';
+    return 'job';
+};
+
+/** `['FULL_TIME']` -> `'FULL TIME'` for the admin free-text employment field. */
+export const prettifyEmploymentTypes = (types: unknown): string => {
+    const list = Array.isArray(types) ? types : typeof types === 'string' ? types.split(/[,/|]/) : [];
+    return list
+        .filter((v): v is string => typeof v === 'string')
+        .map((v) => v.trim().replace(/_/g, ' '))
+        .filter(Boolean)
+        .join(', ');
+};
+
 export interface ParsedJob {
     title?: string;
     company?: string;
     companyWebsite?: string;
     type?: string;
+    category?: string;
+    sector?: string;
+    employmentTypes?: string[] | string;
     locations?: string[];
     skills?: string[];
     requiredSkills?: string[];
@@ -159,6 +256,17 @@ export interface ParsedJob {
         contactPhone?: string;
         dates?: string[];
     };
+    driveDetails?: {
+        dateRange?: string;
+        timeRange?: string;
+        reportingTime?: string;
+        venueAddress?: string;
+        venueLink?: string;
+        requiredDocuments?: string[];
+        contactPerson?: string;
+        contactPhone?: string;
+        dates?: string[];
+    };
 }
 
 export type DuplicateOpportunity = {
@@ -207,9 +315,10 @@ export const extractDomain = (value?: string | null) => {
 
 export const typeParamToEnum = (value: string) => {
     const v = value.toLowerCase();
-    if (v === 'job' || v === 'jobs') return 'JOB';
+    if (v === 'job' || v === 'jobs' || v === 'employment') return 'JOB';
     if (v === 'internship' || v === 'internships') return 'INTERNSHIP';
-    if (v === 'walk-in' || v === 'walkin' || v === 'walkins' || v === 'walk-ins') return 'WALKIN';
+    if (v === 'walk-in' || v === 'walkin' || v === 'walkins' || v === 'walk-ins' || v === 'walk_in') return 'WALKIN';
+    if (v === 'government' || v === 'govt' || v === 'government-job') return 'GOVERNMENT';
     return value.toUpperCase();
 };
 

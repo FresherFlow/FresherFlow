@@ -7,6 +7,7 @@ import { logRouteResult } from '@/lib/observability';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 import { fetchFeedIndex, fetchGovernmentFeed, fetchExpiredFeed } from '@/lib/api/cdnFeed';
 import { getNextWalkinDate, getWalkinDates } from '@/features/jobs/utils/walkinEventUtils';
+import { getDriveDetails, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import type { Opportunity } from '@fresherflow/types';
 
 export const revalidate = false; // on-demand only — busted via revalidateTag on publish
@@ -27,7 +28,7 @@ export async function generateStaticParams() {
         const addWalkInCities = (opportunities: any[]) => {
             if (!opportunities) return;
             for (const opp of opportunities) {
-                if (opp.type !== 'WALKIN') continue;
+                if (!isWalkinOpportunity(opp)) continue;
                 for (const loc of opp.locations ?? []) {
                     const city = loc.trim().toLowerCase().replace(/\s+/g, '-');
                     if (city && city !== 'pan-india' && city !== 'remote' && city !== 'worldwide') {
@@ -105,7 +106,7 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
         // Validate city against feed to prevent cache poisoning by bots
         const feed = await fetchFeedIndex(false, undefined, true);
         const hasCity = feed?.opportunities?.some(opp =>
-            opp.type === 'WALKIN' &&
+            isWalkinOpportunity(opp) &&
             opp.locations?.some(loc => citySlugOf(loc) === city)
         );
 
@@ -126,7 +127,7 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
     const cityLabel = formatLabel(city);
     const cityDrives = ((feed?.opportunities ?? []) as Opportunity[])
         .filter(opp =>
-            (opp.type === 'WALKIN' || Boolean(opp.walkInDetails)) &&
+            isWalkinOpportunity(opp) &&
             opp.locations?.some(loc => citySlugOf(loc) === city)
         )
         .sort((a, b) => {
@@ -225,7 +226,7 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
                             {cityDrives.map((opp) => {
                                 const next = getNextWalkinDate(opp);
                                 const dates = getWalkinDates(opp);
-                                const d = opp.walkInDetails;
+                                const d = getDriveDetails(opp);
                                 return (
                                     <Link
                                         key={opp.id}

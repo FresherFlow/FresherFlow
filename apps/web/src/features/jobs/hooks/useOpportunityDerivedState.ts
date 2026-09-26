@@ -16,6 +16,7 @@ import {
     getCurrentActionType,
     getTrackerOptions,
 } from '@/features/jobs/domain/opportunityDetailHelpers';
+import { isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 
 export function useOpportunityDerivedState(opp: Opportunity | null, profile: Profile | null, searchParams: URLSearchParams) {
     const [now] = useState(() => Date.now());
@@ -54,7 +55,7 @@ export function useOpportunityDerivedState(opp: Opportunity | null, profile: Pro
         }
 
         const hasApplyLink = Boolean(opp.applyLink || opp.companyWebsite);
-        const isWalkinFlow = opp.type === 'WALKIN';
+        const isWalkinFlow = isWalkinOpportunity(opp);
         const currentAction = getCurrentActionType(opp);
         const trackerOptions = getTrackerOptions(isWalkinFlow);
         const timelineEvents = sortTimelineEvents(opp.events || []);

@@ -6,7 +6,7 @@ import OpportunityDetailClient from '@/features/jobs/components/detail/Opportuni
 import { OpportunityDetailSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
 import { getOpportunityPath } from '@/features/jobs/domain/opportunityPath';
 import { fetchFeedIndex, fetchGovernmentFeed } from '@/lib/api/cdnFeed';
-import { OpportunityType } from '@fresherflow/types';
+import { getFeedBadgeLabel, isGovernmentOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import { getRelatedOpportunities } from '@/features/jobs/utils/detailUtils';
 import {
     fetchOpportunityForPage,
@@ -35,7 +35,7 @@ export async function generateStaticParams() {
         ]);
         const opps = [
             ...(feed?.opportunities || []),
-            ...(feedIndex?.opportunities?.filter(o => o.type === OpportunityType.GOVERNMENT || Boolean(o.governmentJobDetails)) || [])
+            ...(feedIndex?.opportunities?.filter(o => isGovernmentOpportunity(o)) || [])
         ];
         const slugs = new Set<string>();
         opps.forEach(opp => {
@@ -93,7 +93,7 @@ export default async function GovernmentJobDetailPage({ params }: { params: Prom
 
         if (slug === opp.id && opp.slug) {
             logRouteResult('/govt/[slug]', '308');
-            permanentRedirect(getOpportunityPath(opp.type, opp.slug));
+            permanentRedirect(getOpportunityPath(getFeedBadgeLabel(opp), opp.slug));
         }
 
         if (getExpiryState(opp).pastGrace) {

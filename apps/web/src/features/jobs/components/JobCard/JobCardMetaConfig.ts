@@ -12,7 +12,7 @@ import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
 import UsersIcon from '@heroicons/react/24/outline/UsersIcon';
 import { getAtsName } from '@/features/jobs/hooks/useOpportunitiesFeed';
-import { formatDistance, getTransitWalkTimeLabel, getWalkingTimeLabel, parseTransitInfo } from '@/features/jobs/utils/walkinMapUtils';
+import { formatDistance, getDriveDetails, getTransitWalkTimeLabel, getWalkingTimeLabel, parseTransitInfo } from '@/features/jobs/utils/walkinMapUtils';
 import {
     daysToExpiry,
     formatEducationEligibility,
@@ -69,28 +69,29 @@ export function buildMetaItems(
     const govtMeta = job.governmentJobDetails as { totalVacancies?: number; applicationStatus?: string } | undefined;
 
     if (isWalkin || isDrive) {
-        if (job.walkInDetails?.dateRange) {
+        const driveDetails = getDriveDetails(job);
+        if (driveDetails?.dateRange) {
             items.push({
                 key: 'walkin-date',
                 icon: CalendarDaysIcon,
-                value: job.walkInDetails.dateRange,
+                value: driveDetails.dateRange,
                 urgent: true,
             });
         }
 
         const distKm = (job as { distanceKm?: number }).distanceKm;
         if (typeof distKm === 'number') {
-            const walkTime = getTransitWalkTimeLabel(job.walkInDetails?.transitInfo) || getWalkingTimeLabel(distKm);
+            const walkTime = getTransitWalkTimeLabel(driveDetails?.transitInfo) || getWalkingTimeLabel(distKm);
             items.push({
                 key: 'distance',
                 icon: MapPinIcon,
                 value: walkTime ? `${formatDistance(distKm)} · ${walkTime}` : formatDistance(distKm),
             });
-        } else if (job.walkInDetails?.timeRange || job.walkInDetails?.reportingTime) {
+        } else if (driveDetails?.timeRange || driveDetails?.reportingTime) {
             items.push({
                 key: 'walkin-time',
                 icon: ClockIcon,
-                value: job.walkInDetails.timeRange || job.walkInDetails.reportingTime || '',
+                value: driveDetails.timeRange || driveDetails.reportingTime || '',
             });
         }
 
@@ -105,8 +106,8 @@ export function buildMetaItems(
             items.push({ key: 'education', icon: AcademicCapIcon, value: education });
         }
 
-        if (job.walkInDetails?.venueAddress) {
-            const venue = job.walkInDetails.venueAddress;
+        if (driveDetails?.venueAddress) {
+            const venue = driveDetails.venueAddress;
             items.push({
                 key: 'venue',
                 icon: MapPinIcon,

@@ -1,5 +1,5 @@
 import type { Opportunity } from '@fresherflow/types';
-import { parseWalkinDateRange } from './walkinMapUtils';
+import { getDriveDetails, parseWalkinDateRange } from './walkinMapUtils';
 
 /**
  * Walk-in event-date engine.
@@ -8,9 +8,9 @@ import { parseWalkinDateRange } from './walkinMapUtils';
  * and the calendar page. No React, no side effects — safe to import anywhere.
  *
  * Date sources on a walk-in opportunity, in priority order:
- *  1. walkInDetails.dates[]   — explicit ISO dates (schema field, indexed)
- *  2. walkInDetails.dateRange — human string, parsed via parseWalkinDateRange
- *  3. walkInDetails.expiryDate
+ *  1. driveDetails.dates[]   — explicit ISO dates (schema field, indexed)
+ *  2. driveDetails.dateRange — human string, parsed via parseWalkinDateRange
+ *  3. driveDetails.expiryDate
  *
  * All comparisons use LOCAL midnight boundaries (users think in their own
  * calendar), matching isStaleWalkin/isWalkinInPeriod conventions.
@@ -42,9 +42,7 @@ function endOfLocalDay(d: Date): number {
  * Returns [] when nothing parseable exists.
  */
 export function getWalkinDates(opp: Opportunity): Date[] {
-    const d = opp.walkInDetails as
-        | { dates?: unknown; dateRange?: string; expiryDate?: unknown }
-        | undefined;
+    const d = getDriveDetails(opp);
     const out: Date[] = [];
 
     if (d && Array.isArray(d.dates)) {

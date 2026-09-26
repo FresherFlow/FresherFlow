@@ -35,10 +35,10 @@ export function JobBoardsTab({
   return [
    {
     id: 'provider',
-    accessorFn: row => row.providerName || row.provider,
+    accessorFn: (row: PluginEntry) => row.providerName || row.provider,
     header: 'Provider',
     enableSorting: true,
-    cell: ({ row }) => {
+    cell: ({ row }: { row: { original: PluginEntry } }) => {
      const board = row.original;
      return (
       <div className="flex items-center gap-3 min-w-0">
@@ -75,7 +75,7 @@ export function JobBoardsTab({
     header: '',
     enableSorting: false,
     meta: { cellClassName: 'text-right' },
-    cell: ({ row }) => {
+    cell: ({ row }: { row: { original: PluginEntry } }) => {
      const board = row.original;
      const isRunning = runningBoardId === board.provider || runningId === board.provider;
      return (
