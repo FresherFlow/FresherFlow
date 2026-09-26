@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { UsernameGate } from '@/features/auth/components/ProfileGate';
+import { isProfilePageActive } from '@fresherflow/utils';
 import toast from 'react-hot-toast';
 import {
     ArrowLeftIcon,
@@ -12,6 +14,7 @@ import {
     ArrowLeftOnRectangleIcon,
     CheckBadgeIcon,
     ExclamationTriangleIcon,
+    ComputerDesktopIcon,
 } from '@heroicons/react/24/outline';
 import {
     Dialog,
@@ -32,15 +35,59 @@ function maskEmail(email: string): string {
     return `${local.slice(0, 2)}***@${domain}`;
 }
 
+/** Honest client-side device label parsed from the real user agent. */
+function describeThisDevice(): string {
+    if (typeof navigator === 'undefined') return 'This browser';
+    const ua = navigator.userAgent;
+    const os = /Windows/i.test(ua)
+        ? 'Windows'
+        : /Mac OS/i.test(ua)
+          ? 'macOS'
+          : /Android/i.test(ua)
+            ? 'Android'
+            : /iPhone|iPad/i.test(ua)
+              ? 'iOS'
+              : /Linux/i.test(ua)
+                ? 'Linux'
+                : null;
+    const browser = /Edg\//i.test(ua)
+        ? 'Edge'
+        : /Chrome\//i.test(ua)
+          ? 'Chrome'
+          : /Firefox\//i.test(ua)
+            ? 'Firefox'
+            : /Safari\//i.test(ua)
+              ? 'Safari'
+              : null;
+    if (browser && os) return `${browser} on ${os}`;
+    return browser ?? os ?? 'This browser';
+}
+
 function SettingsPageContent() {
     const router = useRouter();
-    const { user, logout } = useAuth();
+    // profile is the already-cached useAuth value — reading it here adds no fetch.
+    const { user, profile, logout } = useAuth();
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [confirmInput, setConfirmInput] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
 
     const maskedEmail = user?.email ? maskEmail(user.email) : 'Not provided';
     const expectedConfirmText = user?.username || 'DELETE';
+    const publicPagePath = user?.username ? `/u/${user.username}` : null;
+    // Same activation rule the public route enforces (visibility + fresh
+    // profilePublishedAt): the View link must not point at a 404.
+    const isPublicPageLive = isProfilePageActive(profile?.profilePublishedAt ?? null);
+
+    // Copy-link toast pattern mirrors ProfilePreviewCard — never alert().
+    const copyPublicPageLink = async () => {
+        if (!publicPagePath) return;
+        try {
+            await navigator.clipboard.writeText(`https://fresherflow.in${publicPagePath}`);
+            toast.success('Profile link copied.');
+        } catch {
+            toast.error('Could not copy the link.');
+        }
+    };
 
     const handleDeleteAccount = () => {
         if (confirmInput.trim().toLowerCase() !== expectedConfirmText.toLowerCase()) {
@@ -62,6 +109,10 @@ function SettingsPageContent() {
         } else {
             router.push('/logout');
         }
+    };
+
+    const handleSignOutOthers = () => {
+        toast.error('Signing out other devices is coming soon.');
     };
 
     return (
@@ -127,6 +178,88 @@ function SettingsPageContent() {
                         <span className="text-xs text-muted-foreground">
                             {user?.fullName || 'Active User'}
                         </span>
+                    </div>
+
+                    {publicPagePath && (
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-border/40">
+                            <div>
+                                <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block">
+                                    Public Page
+                                </span>
+                                <span className="text-sm font-semibold text-foreground font-mono mt-0.5 block">
+                                    fresherflow.in{publicPagePath}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-2 self-start sm:self-auto">
+                                <button
+                                    type="button"
+                                    onClick={() => void copyPublicPageLink()}
+                                    className="px-3 py-1.5 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                                >
+                                    Copy link
+                                </button>
+                                {isPublicPageLive ? (
+                                    <a
+                                        href={publicPagePath}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="px-3 py-1.5 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold rounded-xl transition-colors"
+                                    >
+                                        View page
+                                    </a>
+                                ) : (
+                                    <Link
+                                        href="/account"
+                                        className="px-3 py-1.5 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold rounded-xl transition-colors"
+                                    >
+                                        Activate page
+                                    </Link>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </section>
+
+            {/* Active Sessions */}
+            <section className="space-y-2 pt-2">
+                <div className="flex items-center gap-2 px-1">
+                    <ComputerDesktopIcon className="w-4 h-4 text-muted-foreground" />
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                        Active Sessions
+                    </h2>
+                </div>
+
+                <div className="bg-card border border-border/70 rounded-2xl p-5 shadow-xs space-y-4">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/40">
+                        <div>
+                            <span className="text-sm font-bold text-foreground block">
+                                {describeThisDevice()}
+                            </span>
+                            <span className="text-xs text-muted-foreground mt-0.5 block">
+                                Signed in as {user?.email || `@${user?.username || 'candidate'}`}
+                            </span>
+                        </div>
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-success/10 text-success text-xs font-bold border border-success/20 self-start sm:self-auto">
+                            Current
+                        </span>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="space-y-0.5">
+                            <h3 className="text-sm font-bold text-foreground">Sign Out Other Devices</h3>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                Terminate login sessions on every other device and browser.
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleSignOutOthers}
+                            className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                        >
+                            <ArrowLeftOnRectangleIcon className="w-4 h-4" />
+                            <span>Sign Out Others</span>
+                        </button>
                     </div>
                 </div>
             </section>

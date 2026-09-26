@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/ui/Breadcrumb';
 import { cn } from '@/ui/cn';
 
 export interface TabBarItem {
@@ -13,10 +12,6 @@ export interface TabBarItem {
 }
 
 interface TabBarProps {
-    /** Single shared UI: pill tab-bar for several links, breadcrumb when only the trail matters. */
-    variant?: 'tabs' | 'breadcrumb';
-    rootLabel?: string;
-    rootHref?: string;
     items: TabBarItem[];
     activeKey: string;
     onSelect?: (key: string) => void;
@@ -24,38 +19,12 @@ interface TabBarProps {
 }
 
 /**
- * One shared tab-bar for /jobs, /settings, /community and /resources.
+ * Shared pill tab-bar for /settings, /community and /resources.
  *
- * - `tabs` renders the pill bar. `onSelect` switches in place where a client
- *   router exists, otherwise links navigate.
- * - `breadcrumb` renders Root / Active (Jobs / Saved) — used on /jobs user tabs.
+ * `onSelect` switches in place where a client router exists, otherwise
+ * links navigate.
  */
-export function TabBar({ variant = 'tabs', rootLabel, rootHref, items, activeKey, onSelect, className }: TabBarProps) {
-    if (variant === 'breadcrumb') {
-        const active = items.find((i) => i.key === activeKey);
-        return (
-            <div className={cn('w-full max-w-7xl mx-auto px-3 md:px-6 pt-4', className)}>
-                <Breadcrumb>
-                    <BreadcrumbList>
-                        {rootLabel && (
-                            <>
-                                <BreadcrumbItem>
-                                    <BreadcrumbLink asChild>
-                                        <Link href={rootHref || '/'}>{rootLabel}</Link>
-                                    </BreadcrumbLink>
-                                </BreadcrumbItem>
-                                <BreadcrumbSeparator />
-                            </>
-                        )}
-                        <BreadcrumbItem>
-                            <BreadcrumbPage>{active?.label ?? activeKey}</BreadcrumbPage>
-                        </BreadcrumbItem>
-                    </BreadcrumbList>
-                </Breadcrumb>
-            </div>
-        );
-    }
-
+export function TabBar({ items, activeKey, onSelect, className }: TabBarProps) {
     return (
         <div className={cn('w-full max-w-7xl mx-auto px-3 md:px-6 pt-4', className)}>
             <div className="flex gap-1 overflow-x-auto bg-muted/40 p-1 rounded-xl w-fit max-w-full">
@@ -68,7 +37,7 @@ export function TabBar({ variant = 'tabs', rootLabel, rootHref, items, activeKey
                             : 'text-muted-foreground hover:text-foreground'
                     );
                     return item.href ? (
-                        <Link key={item.key} href={item.href} className={classes}>
+                        <Link key={item.href} href={item.href} className={classes}>
                             {item.label}
                         </Link>
                     ) : (

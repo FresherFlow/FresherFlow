@@ -3,7 +3,6 @@ import { permanentRedirect, notFound } from 'next/navigation';
 import { logRouteResult } from '@/lib/observability';
 import { Suspense } from 'react';
 import CategoryPage from '@/features/jobs/components/CategoryPage';
-import { FeedPageSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
@@ -13,15 +12,26 @@ import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
 import { getCompanyDescription } from '@/features/companies/utils/companyContent';
 import { fetchCompanyShard, fetchCompaniesMetadata, fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { CompanySlugger } from '@/features/companies/utils/companySlugger';
+import { resolveCompanySlugAlias } from '@/features/companies/utils/companySlugAliases';
 import CompanyFollowButton from '@/features/companies/components/CompanyFollowButton';
 import { PageTagLinks } from '@/features/jobs/components/PageTagLinks';
 import { CompanyHubClient } from '@/features/jobs/components/CompanyHubIntel';
 import { getValidDirectoryLinks } from '@/features/jobs/utils/detailUtils';
 import { VALID_LOCATIONS } from '@/features/jobs/utils/locationUtils';
 import { cn } from '@repo/ui/utils/cn';
+// NOTE: fetchCompaniesMetadata / fetchCompanyShard / fetchFeedIndex are already
+// wrapped in React cache() inside lib/api/cdnFeed.ts, so generateMetadata and
+// the page component share one set of CDN round-trips per request.
 
-export const revalidate = false;
-export const dynamicParams = false;
+// ISR: company pages serve cached HTML and revalidate hourly. A cold CDN
+// fetch per slug caused ~2s TTFB on /companies/microsoft (audit); cached
+// serves fix it without any per-request work.
+export const revalidate = 3600;
+// dynamicParams = true: companies published after the last build (or slugs the
+// build-time feed snapshot missed) must render on demand instead of 404ing.
+// The page body itself is inventory-gated and calls notFound() when a company
+// has no live jobs, so this does not create thin or stale pages.
+export const dynamicParams = true;
 
 function getAtsProvider(url?: string): string {
     if (!url) return 'Custom / In-house';
@@ -106,7 +116,7 @@ export async function generateStaticParams() {
                 seen.add(slug);
                 params.push({ slug });
             }
-            
+
             // Also pre-build the raw slugified name to support the redirect
             const rawSlug = slugify(item.name);
             if (rawSlug && rawSlug !== slug && !seen.has(rawSlug) && activeCompanySlugs.has(slug)) {
@@ -123,7 +133,17 @@ export async function generateStaticParams() {
             }
         }
 
-        return params;
+        // Bound the pre-build: busiest companies first, top 150 only. The
+        // long tail renders on demand through ISR instead of slowing every
+        // build. Raw-slug duplicates carry no job count, so they sink and
+        // are sliced off first.
+        const liveCounts = new Map<string, number>();
+        for (const o of feed?.opportunities || []) {
+            const s = slugger.getSlug(o);
+            if (s) liveCounts.set(s, (liveCounts.get(s) || 0) + 1);
+        }
+        params.sort((a, b) => (liveCounts.get(b.slug) || 0) - (liveCounts.get(a.slug) || 0));
+        return params.slice(0, 150);
     } catch {
         return [];
     }
@@ -135,7 +155,11 @@ export async function generateMetadata(
     const { slug: rawSlug } = await params;
     const properSlug = slugify(decodeURIComponent(rawSlug));
     const base = SITE_URL.replace(/\/+$/, '');
-    const canonicalUrl = `${base}/companies/${properSlug}`;
+    // Metadata must declare the canonical URL we actually serve — resolve
+    // aliases here too, so an old slug's canonical points at the live page
+    // instead of endorsing itself.
+    const canonicalSlug = resolveCompanySlugAlias(properSlug);
+    const canonicalUrl = `${base}/companies/${canonicalSlug}`;
 
     const [companyDirectory, shard] = await Promise.all([
         fetchCompaniesMetadata(true),
@@ -156,7 +180,12 @@ export async function generateMetadata(
 
     const hasJobs = Boolean(activeShard && activeShard.opportunities && activeShard.opportunities.length > 0);
 
-    const title = `${companyName} Jobs & Internships for Freshers`;
+    // SEO: keep the full <title> within 50-60 chars once the root layout
+    // template ("%s | FresherFlow", 13 chars) is applied — base stays ≤47.
+    // Long company names fall back to the shorter form, then truncate.
+    let title = `${companyName} Jobs & Openings for Freshers`;
+    if (title.length > 47) title = `${companyName} Fresher Jobs 2026`;
+    if (title.length > 47) title = `${companyName.slice(0, 33).trimEnd()} Fresher Jobs`;
     const description = `Find current fresher jobs, internships and off-campus openings at ${companyName}, with direct official application links.`;
     const ogImageUrl = `${CDN_URL}/og/companies/${properSlug}.png`;
 
@@ -195,6 +224,15 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     let targetSlug = properSlug;
     let shouldRedirectTo: string | null = null;
     let matched: any = null;
+
+    // Explicit alias redirects (company renames) — checked before anything
+    // else so a renamed company's old URL never 404s, even when the CDN
+    // directory fetch fails.
+    const aliasTarget = resolveCompanySlugAlias(properSlug);
+    if (aliasTarget !== properSlug) {
+        logRouteResult('/companies/[slug]', '308');
+        permanentRedirect(`/companies/${aliasTarget}`);
+    }
 
     if (companyDirectory && companyDirectory.length > 0) {
         matched = companyDirectory.find(c => c && c.slug === properSlug);
@@ -363,7 +401,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                 />
                 <div className="flex-1 text-center sm:text-left space-y-1.5 min-w-0">
                     <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2">
-                        <h2 className="text-xl font-bold tracking-tight text-foreground">{companyName}</h2>
+                        <h1 className="text-xl font-bold tracking-tight text-foreground">{companyName}</h1>
                         <div className={cn(
                             "px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border",
                             companyJobs.length > 0 
@@ -509,22 +547,56 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         </div>
     );
 
+    // Server-rendered crawlable list of current openings. The interactive feed
+    // below is a Suspense-wrapped client component whose static prerender emits
+    // only a skeleton, so this block is what search engines index.
+    const openingsList = (
+        <section className="border border-border/50 bg-card rounded-xl p-5 space-y-3">
+            <h2 className="font-semibold text-lg text-foreground tracking-tight">Current openings at {companyName}</h2>
+            <ul className="space-y-2">
+                {companyJobs.slice(0, 15).map((j: any) => {
+                    const path = j.type === 'GOVERNMENT' || j.governmentJobDetails
+                        ? `/govt/${j.slug || j.id}`
+                        : `/jobs/${j.slug || j.id}`;
+                    return (
+                        <li key={j.id || j.slug} className="text-sm">
+                            <a href={path} className="text-primary hover:underline font-medium">{j.title}</a>
+                            {Array.isArray(j.locations) && j.locations.length > 0 && (
+                                <span className="text-muted-foreground"> — {j.locations.slice(0, 2).join(', ')}</span>
+                            )}
+                        </li>
+                    );
+                })}
+            </ul>
+            {companyJobs.length > 15 && (
+                <p className="text-xs text-muted-foreground">And {companyJobs.length - 15} more openings in the feed below.</p>
+            )}
+        </section>
+    );
+
     logRouteResult('/companies/[slug]', '200');
 
     return (
-        <Suspense fallback={<FeedPageSkeleton />}>
-            <CategoryPage
-                type={null}
-                initialData={{
-                    opportunities: companyJobs.slice(0, FEED_PAGE_SIZE).map(toOpportunityCardDTO) as any,
-                    total: companyJobs.length,
-                    cachedAt: (feed as any)?.generatedAt ? new Date((feed as any).generatedAt).getTime() : Date.now(),
-                }}
-                initialFilters={{ company: [companyName] }}
-                customTitle={`${companyName} Jobs`}
-                topContent={topContent}
-            />
-        </Suspense>
+        <>
+            {/* Rendered directly by the server — always present in the HTML,
+                independent of the client feed's Suspense state. */}
+            <div className="w-full max-w-7xl mx-auto px-3 md:px-6 pt-4">
+                {topContent}
+                {openingsList}
+            </div>
+            <Suspense fallback={null}>
+                <CategoryPage
+                    type={null}
+                    initialData={{
+                        opportunities: companyJobs.slice(0, FEED_PAGE_SIZE).map(toOpportunityCardDTO) as any,
+                        total: companyJobs.length,
+                        cachedAt: (feed as any)?.generatedAt ? new Date((feed as any).generatedAt).getTime() : Date.now(),
+                    }}
+                    initialFilters={{ company: [companyName] }}
+                    customTitle={`${companyName} Jobs`}
+                />
+            </Suspense>
+        </>
     );
 }
 

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { apiClient } from '@/lib/api/core';
 import { Button } from '@/ui/Button';
 import { Badge } from '@/ui/Badge';
+import { EmptyState } from '@/ui/EmptyState';
 import { Input } from '@/ui/Input';
 import { Skeleton } from '@/ui/Skeleton';
 
@@ -40,6 +41,35 @@ const AVAILABILITY_LABEL: Record<string, string> = {
     DAYS_15: 'Open',
     MONTH_1: 'Open',
 };
+
+function CandidateCardSkeleton() {
+    return (
+        <div className="rounded-2xl border border-border/60 bg-card p-5 space-y-3 flex flex-col" aria-hidden="true">
+            <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                </div>
+                <Skeleton className="h-5 w-20 rounded-full" />
+            </div>
+            <div className="space-y-2">
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-4/5" />
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-5 w-20 rounded-full" />
+                <Skeleton className="h-5 w-14 rounded-full" />
+            </div>
+            <Skeleton className="h-3 w-1/2" />
+            <div className="flex-1" />
+            <div className="flex items-center gap-2 border-t border-border/40 pt-3">
+                <Skeleton className="h-9 flex-1 rounded-xl" />
+                <Skeleton className="h-9 flex-1 rounded-xl" />
+            </div>
+        </div>
+    );
+}
 
 export default function RecruiterBrowsePage() {
     const [skill, setSkill] = useState('');
@@ -146,13 +176,17 @@ export default function RecruiterBrowsePage() {
             )}
 
             {isLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-2xl" />)}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" aria-hidden="true">
+                    {Array.from({ length: 6 }).map((_, index) => <CandidateCardSkeleton key={index} />)}
                 </div>
             ) : candidates.length === 0 ? (
-                <div className="rounded-xl border border-border/60 p-10 text-center text-sm text-muted-foreground">
-                    No candidates match these filters yet.
-                </div>
+                <EmptyState
+                    icon="search"
+                    size="md"
+                    title="No candidates match these filters"
+                    description=""
+                    variant="ghost"
+                />
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {candidates.map((c) => (

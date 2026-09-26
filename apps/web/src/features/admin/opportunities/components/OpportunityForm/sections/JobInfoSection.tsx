@@ -2,54 +2,41 @@ import { BriefcaseIcon } from '@heroicons/react/24/outline';
 import { CDN_URL } from '@/lib/utils/runtimeConfig';
 import { SmartInput } from '@/features/admin/ui/SmartInput';
 import { SmartTextarea } from '@/features/admin/ui/SmartTextarea';
-
-interface JobInfoSectionProps {
-    title: string;
-    setTitle: (val: string) => void;
-    company: string;
-    setCompany: (val: string) => void;
-    companyWebsite: string;
-    setCompanyWebsite: (val: string) => void;
-    companyLogoUrl: string;
-    setCompanyLogoUrl: (val: string) => void;
-    jobFunction: string;
-    setJobFunction: (val: string) => void;
-    employmentType: string;
-    setEmploymentType: (val: string) => void;
-    incentives: string;
-    setIncentives: (val: string) => void;
-    selectionProcess: string;
-    setSelectionProcess: (val: string) => void;
-    notesHighlights: string;
-    setNotesHighlights: (val: string) => void;
-    description: string;
-    setDescription: (val: string) => void;
-    customSlug: string;
-    setCustomSlug: (val: string) => void;
-    duplicateCheckComponent?: React.ReactNode;
-}
+import { Card, CardDescription, CardContent } from '@/ui/Card';
+import type { OpportunityFormApi } from '@/features/admin/opportunities/useOpportunityForm';
 
 export function JobInfoSection({
-    title, setTitle,
-    company, setCompany,
-    companyWebsite, setCompanyWebsite,
-    companyLogoUrl, setCompanyLogoUrl,
-    jobFunction, setJobFunction,
-    employmentType, setEmploymentType,
-    incentives, setIncentives,
-    selectionProcess, setSelectionProcess,
-    notesHighlights, setNotesHighlights,
-    description, setDescription,
-    customSlug, setCustomSlug,
+    form,
     duplicateCheckComponent
-}: JobInfoSectionProps) {
+}: {
+    form: OpportunityFormApi;
+    duplicateCheckComponent?: React.ReactNode;
+}) {
+    const {
+        title, setTitle,
+        company, setCompany,
+        companyWebsite, setCompanyWebsite,
+        companyLogoUrl, setCompanyLogoUrl,
+        jobFunction, setJobFunction,
+        employmentType, setEmploymentType,
+        incentives, setIncentives,
+        selectionProcess, setSelectionProcess,
+        notesHighlights, setNotesHighlights,
+        description, setDescription,
+        customSlug, setCustomSlug,
+    } = form;
     return (
-        <div className="space-y-5 border border-border rounded-lg p-4 md:p-5 bg-card shadow-sm">
-            <h3 className="text-sm md:text-base font-semibold text-foreground flex items-center gap-2 mb-4">
-                <BriefcaseIcon className="w-4 h-4 text-muted-foreground" />
-                Core details
-            </h3>
-
+        <Card>
+            <div className="p-4 md:p-5 pb-3 space-y-1">
+                <h3 className="flex items-center gap-2 text-sm md:text-base font-semibold text-foreground">
+                    <BriefcaseIcon className="w-4 h-4 text-muted-foreground" />
+                    Core details
+                </h3>
+                <CardDescription>
+                    Title, company and the description candidates read.
+                </CardDescription>
+            </div>
+            <CardContent className="space-y-5 px-4 md:px-5 pb-4 md:pb-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <SmartInput
                     label="Title"
@@ -139,6 +126,7 @@ export function JobInfoSection({
                 helpText={<>Supports line breaks, bullet lines like <span className="font-mono">- Requirement</span>, and bold section headings like <span className="font-mono">**Responsibilities**</span>.</>}
                 placeholder={"**Responsibilities**\n- Build features\n- Write tests\n\n**Requirements**\n- React\n- TypeScript"}
             />
-        </div>
+            </CardContent>
+        </Card>
     );
 }

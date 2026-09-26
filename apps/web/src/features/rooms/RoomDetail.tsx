@@ -5,7 +5,40 @@ import Link from 'next/link';
 import { communityApi } from '@fresherflow/api-client';
 import type { Room, CommunityPost, CommunityFeedResult, CommunityPostUser } from '@fresherflow/types';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { EmptyState } from '@/ui/EmptyState';
+import { Skeleton } from '@/ui/Skeleton';
 import { cn } from '@repo/ui/utils/cn';
+
+function RoomDetailSkeleton() {
+    return (
+        <div className="space-y-6" aria-hidden="true">
+            <Skeleton className="h-4 w-16" />
+            <div className="rounded-2xl border border-border bg-card p-6 space-y-3">
+                <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-2">
+                        <Skeleton className="h-6 w-48" />
+                        <Skeleton className="h-3 w-20" />
+                    </div>
+                    <Skeleton className="h-8 w-20 rounded-lg" />
+                </div>
+                <Skeleton className="h-4 w-3/4" />
+                <div className="flex items-center gap-4">
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="h-3 w-16" />
+                    <Skeleton className="h-3 w-16" />
+                </div>
+            </div>
+            <div className="flex gap-4 border-b border-border">
+                {['Posts', 'Jobs', 'Members'].map((label) => (
+                    <Skeleton key={label} className="h-9 w-20 border-b-2 border-primary" />
+                ))}
+            </div>
+            <div className="space-y-3">
+                {[1, 2].map((index) => <RoomPostSkeleton key={index} />)}
+            </div>
+        </div>
+    );
+}
 
 export function RoomDetail({ slug }: { slug: string }) {
     const { user } = useAuth();
@@ -51,7 +84,7 @@ export function RoomDetail({ slug }: { slug: string }) {
         }
     };
 
-    if (loading) return null;
+    if (loading) return <RoomDetailSkeleton />;
     if (error || !room) {
         return (
             <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-xs text-muted-foreground">
@@ -145,6 +178,34 @@ export function RoomDetail({ slug }: { slug: string }) {
     );
 }
 
+function RoomPostSkeleton() {
+    return (
+        <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+            <div className="flex items-center gap-2">
+                <Skeleton className="h-5 w-24 rounded-full" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+            </div>
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-full" />
+            <Skeleton className="h-3 w-4/5" />
+            <div className="flex items-center gap-3">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-20" />
+            </div>
+        </div>
+    );
+}
+
+function RoomJobSkeleton() {
+    return (
+        <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-1/2" />
+        </div>
+    );
+}
+
 // ─── Room Posts ──────────────────────────────────────────────────────────────
 
 function RoomPosts({ slug }: { slug: string }) {
@@ -165,13 +226,23 @@ function RoomPosts({ slug }: { slug: string }) {
 
     useEffect(() => { void load(); }, [load]);
 
-    if (loading) return <div className="space-y-3">{[1, 2].map((i) => <div key={i} className="h-20 animate-pulse rounded-xl bg-muted/40" />)}</div>;
+    if (loading) {
+        return (
+            <div className="space-y-3" aria-hidden="true">
+                {[1, 2].map((index) => <RoomPostSkeleton key={index} />)}
+            </div>
+        );
+    }
 
     if (data.posts.length === 0) {
         return (
-            <div className="p-8 text-center text-xs text-muted-foreground">
-                No posts in this room yet. Be the first to contribute!
-            </div>
+            <EmptyState
+                icon="inbox"
+                size="md"
+                title="No posts in this room yet"
+                description=""
+                variant="ghost"
+            />
         );
     }
 
@@ -215,15 +286,25 @@ function RoomJobs({ slug }: { slug: string }) {
         return () => { cancelled = true; };
     }, [slug]);
 
-    if (loading) return <div className="h-20 animate-pulse rounded-xl bg-muted/40" />;
+    if (loading) {
+        return (
+            <div className="space-y-3" aria-hidden="true">
+                {[1, 2].map((index) => <RoomJobSkeleton key={index} />)}
+            </div>
+        );
+    }
     if (error) return <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-xs text-muted-foreground">Could not load jobs.</div>;
 
     return (
         <div className="space-y-3">
             {jobs.length === 0 && (
-                <div className="p-8 text-center text-xs text-muted-foreground">
-                    No job listings in this room yet.
-                </div>
+                <EmptyState
+                    icon="inbox"
+                    size="md"
+                    title="No job listings in this room yet"
+                    description=""
+                    variant="ghost"
+                />
             )}
             {jobs.map((job) => (
                 <div key={job.id} className="rounded-xl border border-border bg-card p-4 space-y-2">
@@ -240,9 +321,13 @@ function RoomJobs({ slug }: { slug: string }) {
 function RoomMembers({ members }: { members: Array<{ user: CommunityPostUser; role: string; joinedAt: string; activeThisWeek?: boolean }> }) {
     if (members.length === 0) {
         return (
-            <div className="p-8 text-center text-xs text-muted-foreground">
-                No members yet. Be the first to join!
-            </div>
+            <EmptyState
+                icon="inbox"
+                size="md"
+                title="No members in this room yet"
+                description=""
+                variant="ghost"
+            />
         );
     }
 

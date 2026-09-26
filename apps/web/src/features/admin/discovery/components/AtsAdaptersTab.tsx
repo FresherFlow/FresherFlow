@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { ServerIcon, RocketLaunchIcon } from '@heroicons/react/24/outline';
 import { DataGrid, DataGridColumn } from '@/ui/data-grid/DataGrid';
+import { EmptyState } from '@/ui/EmptyState';
 import { PluginEntry, IngestionTarget } from '../types';
 import { Button } from '@/ui/Button';
 import { cn } from '@repo/ui/utils/cn';
@@ -149,7 +150,15 @@ export function AtsAdaptersTab({
     count={adapters.length}
     countLabel="adapters"
     searchPlaceholder="Search ATS adapters..."
-    noResults={<span className="text-muted-foreground text-xs">No ATS adapters found.</span>}
+    noResults={
+      <EmptyState
+        title="No ATS adapters found"
+        description="Adapters appear here once ingestion plugins are registered."
+        icon="inbox"
+        size="md"
+        variant="ghost"
+      />
+    }
    />
   </div>
  );

@@ -1,25 +1,28 @@
 'use client';
 
-import { useEffect, Suspense, useState } from 'react';
+import { useEffect, Suspense, useState, useCallback } from 'react';
 import { useAdmin } from '@/lib/auth/AdminContext';
 import { useRouter } from 'next/navigation';
-import { AdminOpportunitiesSkeleton } from '@/features/admin/components/AdminSkeletons';
 
 // Hooks
 import { useAdminOpportunities } from '@/features/admin/opportunities/hooks/useAdminOpportunities';
 import { useAdminOpportunityActions } from '@/features/admin/opportunities/hooks/useAdminOpportunityActions';
+import { AdminOpportunityRow } from '@/features/admin/opportunities/listUtils';
 
 // Components
 import { AdminOpportunitiesHeader } from '@/features/admin/opportunities/components/list/AdminOpportunitiesHeader';
-import { AdminOpportunitiesFilters } from '@/features/admin/opportunities/components/list/AdminOpportunitiesFilters';
 import { AdminOpportunitiesTable } from '@/features/admin/opportunities/components/list/AdminOpportunitiesTable';
+import { OPPORTUNITY_TYPE_OPTIONS, OPPORTUNITY_SORT_OPTIONS } from '@/features/admin/opportunities/columns';
+import { OPPORTUNITY_STATUS_OPTIONS } from '@/features/admin/opportunities/statuses';
 
 import { AlertDialog } from "@/ui/AlertDialog";
 import { AdminOpportunityPreviewModal } from '@/features/admin/opportunities/components/list/AdminOpportunityPreviewModal';
 
+const ALL = 'ALL';
+
 export default function AdminOpportunitiesPage() {
     return (
-        <Suspense fallback={<AdminOpportunitiesSkeleton />}>
+        <Suspense fallback={<div className="h-full p-4 md:p-8" aria-hidden />}>
             <OpportunitiesListPage />
         </Suspense>
     );
@@ -30,6 +33,7 @@ function OpportunitiesListPage() {
     const router = useRouter();
     const pageSize = 20;
     const [previewOppId, setPreviewOppId] = useState<string | null>(null);
+    const [atsFilter, setAtsFilter] = useState<string>(ALL);
 
     const {
         opportunities,
@@ -60,7 +64,7 @@ function OpportunitiesListPage() {
         handleBulkAction,
         handleRestore,
         handleCopySocialCaption
-    } = useAdminOpportunityActions(loadOpportunities);
+    } = useAdminOpportunityActions({ loadOpportunities, onCompleted: () => setSelectedIds([]) });
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -70,70 +74,83 @@ function OpportunitiesListPage() {
         void loadOpportunities();
     }, [isAuthenticated, loadOpportunities, router]);
 
+    /**
+     * Selection is owned by the actions hook (`selectedIds` drives bulk actions
+     * and the toolbar count), so the grid feeds its TanStack row selection back
+     * into it rather than duplicating the state.
+     */
+    const handleSelectedRowsChange = useCallback(
+        (rows: AdminOpportunityRow[]) => setSelectedIds(rows.map((row) => row.id)),
+        [setSelectedIds]
+    );
+
+    const handleClearFilters = useCallback(() => {
+        setSearch('');
+        setTypeFilter('');
+        setStatusFilter('');
+        setSort('postedAt_desc');
+        setAtsFilter(ALL);
+        setPage(1);
+    }, [setSearch, setTypeFilter, setStatusFilter, setSort, setPage]);
+
     const effectiveTotalPages = totalPages || Math.ceil(totalCount / pageSize) || 1;
 
     return (
-        <div className="h-full overflow-hidden pb-8 p-4 md:p-8 space-y-6 flex-1 flex flex-col">
-            <AdminOpportunitiesHeader 
-                isLoading={isLoading} 
-                onRefresh={loadOpportunities} 
-                exportUrl={exportUrl} 
+        <div className="h-full overflow-hidden p-4 md:p-8 flex-1 flex flex-col gap-3">
+            <AdminOpportunitiesHeader
+                isLoading={isLoading}
+                onRefresh={loadOpportunities}
+                exportUrl={exportUrl}
                 search={search}
                 setSearch={setSearch}
             />
 
             {lastBulkResult && (
-                <div className="rounded-lg border border-border bg-card/70 px-3 py-2 text-xs text-muted-foreground">
+                <div className="shrink-0 rounded-lg border border-border bg-card/70 px-3 py-2 text-xs text-muted-foreground">
                     Last bulk {lastBulkResult.action.toLowerCase()}: {lastBulkResult.updatedCount} updated ({new Date(lastBulkResult.at).toLocaleTimeString()}).
                 </div>
             )}
 
-            <div className="pt-2">
-                <AdminOpportunitiesFilters
-                    typeFilter={typeFilter} setTypeFilter={setTypeFilter}
-                    statusFilter={statusFilter} setStatusFilter={setStatusFilter}
-                    sort={sort} setSort={setSort}
-                    onClear={() => { setSearch(''); setTypeFilter(''); setStatusFilter(''); setSort('postedAt_desc'); setPage(1); }}
-                    selectedCount={selectedIds.length}
-                    bulkActionPending={bulkActionPending}
-                    bulkActionLabel={bulkActionLabel}
-                    onBulkAction={handleBulkAction}
-                    onBulkClear={() => setSelectedIds([])}
-                />
-            </div>
-
-
-            {/* Table area — unified component renders both mobile cards + desktop table */}
-            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                {!hasLoadedOnce && isLoading ? (
-                    <AdminOpportunitiesSkeleton />
-                ) : opportunities.length === 0 ? (
-                    <div className="bg-card border border-dashed border-border rounded-xl p-12 text-center text-muted-foreground">
-                        No results found.
-                    </div>
-                ) : (
-                    <AdminOpportunitiesTable
-                        opportunities={opportunities}
-                        selectedIds={selectedIds}
-                        bulkActionPending={bulkActionPending}
-                        toggleSelect={(id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])}
-                        toggleSelectAll={() => setSelectedIds(selectedIds.length === opportunities.length ? [] : opportunities.map(o => o.id))}
-                        handleExpire={handleExpire}
-                        handleStatusUpdate={handleStatusUpdate}
-                        handleDelete={handleDelete}
-                        handleHardDelete={handleHardDelete}
-                        handleRejectDraft={handleRejectDraft}
-                        handleRestore={handleRestore}
-                        copySocialCaption={handleCopySocialCaption}
-                        onPreview={setPreviewOppId}
-                        page={page}
-                        pageSize={pageSize}
-                        totalCount={totalCount}
-                        effectiveTotalPages={effectiveTotalPages}
-                        setPage={setPage}
-                    />
-                )}
-            </div>
+            {/* Unified grid — desktop table + mobile rows, search, sorting,
+                selection, pagination, loading and empty states. */}
+            <AdminOpportunitiesTable
+                opportunities={opportunities}
+                isLoading={isLoading && !hasLoadedOnce}
+                totalCount={totalCount}
+                page={page}
+                pageSize={pageSize}
+                totalPages={effectiveTotalPages}
+                onPageChange={setPage}
+                sort={sort}
+                onSortChange={setSort}
+                statusFilter={statusFilter}
+                onStatusChange={(value) => { setStatusFilter(value); setPage(1); }}
+                statusOptions={OPPORTUNITY_STATUS_OPTIONS}
+                atsFilter={atsFilter}
+                onAtsFilterChange={(value) => { setAtsFilter(value); setPage(1); }}
+                showTypeFilter
+                typeFilter={typeFilter}
+                onTypeChange={(value) => { setTypeFilter(value); setPage(1); }}
+                typeOptions={OPPORTUNITY_TYPE_OPTIONS}
+                onRefresh={loadOpportunities}
+                onClearFilters={handleClearFilters}
+                enableSelection
+                onSelectedRowsChange={handleSelectedRowsChange}
+                onPreview={setPreviewOppId}
+                onCopyCaption={handleCopySocialCaption}
+                onStatusUpdate={handleStatusUpdate}
+                onRejectDraft={handleRejectDraft}
+                onExpire={handleExpire}
+                onDelete={handleDelete}
+                onHardDelete={handleHardDelete}
+                onRestore={handleRestore}
+                bulkActionPending={bulkActionPending}
+                bulkActionLabel={bulkActionLabel}
+                onBulkAction={handleBulkAction}
+                title="Listings"
+                description="Every job, internship, walk-in and government listing"
+                emptyMessage="No listings match the current filters."
+            />
 
             <AlertDialog 
                 show={confirmModal.show}

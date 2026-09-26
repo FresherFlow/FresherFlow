@@ -153,6 +153,10 @@ export default function JobCard({
     const accentClass = getAccentBorderClass(job, isDrive, isGovernment, isWalkin);
     const postedLabel = getPostedLabel(job);
     const commentCount = useCommentCount(job.slug || job.id);
+    // V1 job-card requirement: the Discuss CTA must SSR even before counts
+    // hydrate client-side, so fall back to the zero-state (0 discussing).
+    const discussionCount = commentCount ?? 0;
+    const discussionHref = `${getOpportunityPathFromItem(job)}#discussion`;
 
     const handleSaveClick = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -245,18 +249,18 @@ export default function JobCard({
                             <h2 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2 sm:line-clamp-1">
                                 {job.normalizedRole || job.title}
                             </h2>
-                            <div className="flex items-center gap-1.5 mt-1 text-sm text-muted-foreground min-w-0">
-                                <span className="min-w-0 flex-1 truncate font-semibold text-foreground/80">{job.company}</span>
-                                <span className="text-muted-foreground/40 shrink-0">•</span>
-                                <span className="inline-flex items-center gap-1 truncate min-w-0 max-w-lg">
-                                    <MapPinIcon className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                            <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 mt-1.5 text-xs sm:text-sm text-muted-foreground">
+                                <span className="font-semibold text-foreground/80 truncate min-w-0 max-w-[14rem] sm:max-w-[18rem]">{job.company}</span>
+                                <span className="text-muted-foreground/40 shrink-0 hidden sm:inline">•</span>
+                                <span className="inline-flex min-w-0 flex-1 items-center gap-1">
+                                    <MapPinIcon className="w-3.5 h-3.5 shrink-0 text-muted-foreground" aria-hidden />
                                     <span className="truncate">{locationInfo.shortLabel}</span>
                                 </span>
-                                <span className="hidden sm:inline text-muted-foreground/40 shrink-0">·</span>
-                                <span className="hidden sm:inline text-sm font-semibold text-muted-foreground whitespace-nowrap shrink-0">
+                                <span className="hidden sm:inline text-muted-foreground/30 shrink-0">·</span>
+                                <span className="hidden sm:inline text-xs font-semibold tracking-wide text-muted-foreground whitespace-nowrap shrink-0">
                                     {typeLabel}
                                 </span>
-                                {isWalkin && <WalkinDateChip opp={job} className="ml-auto" />}
+                                {isWalkin && <WalkinDateChip opp={job} className="shrink-0 sm:ml-auto" />}
                             </div>
                         </div>
                         <div className="flex items-start gap-0.5 shrink-0 relative z-20 pointer-events-auto">
@@ -288,30 +292,30 @@ export default function JobCard({
                 </div>
             </div>
 
-            {/* Badges + skills wrap left, with Apply on the same row (right side) */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-2 relative z-20 pointer-events-auto">
+            {/* Badges + single action row — badges shrink, actions stay on one row */}
+            <div className="flex min-w-0 items-center gap-2 py-1.5 relative z-20 pointer-events-auto">
                 <AutoFitBadges
                     metaItems={metaItems}
                     skills={orderedSkills}
                     maxRows={1}
-                    className="relative z-20"
+                    className="relative z-20 min-w-0 flex-1"
                 />
-                {commentCount !== undefined && commentCount > 0 && (
+                <div className="flex shrink-0 items-center gap-2">
                     <a
-                        href={`${getOpportunityPathFromItem(job)}#discussion`}
+                        href={discussionHref}
                         onClick={(e) => {
                             e.stopPropagation();
                             if (onClick) onClick(e as unknown as React.MouseEvent<HTMLAnchorElement>);
-                            else router.push(`${getOpportunityPathFromItem(job)}#discussion`);
+                            else router.push(discussionHref);
                         }}
-                        className="hidden sm:inline-flex items-center gap-1 px-2 h-7 text-xs font-semibold rounded-md text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors shrink-0"
-                        title={`${commentCount} comment${commentCount === 1 ? '' : 's'} — join the discussion`}
+                        className="inline-flex items-center gap-1 px-2 h-7 text-xs font-semibold rounded-md text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors shrink-0 whitespace-nowrap"
+                        title={`${discussionCount} discussing — Discuss this job`}
+                        aria-label={`Discuss this job (${discussionCount} discussing)`}
                     >
-                        <ChatBubbleLeftRightIcon className="w-3.5 h-3.5" aria-hidden />
-                        {commentCount}
+                        <ChatBubbleLeftRightIcon className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                        <span className="hidden sm:inline">{discussionCount} discussing · Discuss</span>
+                        <span className="sm:hidden">{discussionCount} Discuss</span>
                     </a>
-                )}
-                <div className="flex shrink-0 items-center gap-2">
                     {showApplied && (
                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-success/10 text-success dark:text-success rounded text-xs font-bold uppercase tracking-wide border border-success/20 shrink-0">
                             <CheckIcon className="w-3 h-3" aria-hidden />
@@ -361,7 +365,7 @@ export default function JobCard({
                     <button
                         onClick={(e) => {
                             e.stopPropagation();
-                            router.push(`/opportunities/edit/${job.slug || job.id}`);
+                            router.push(`/admin/opportunities/edit/${job.slug || job.id}`);
                         }}
                         className="absolute top-2 right-20 p-1.5 rounded-full bg-card border border-border shadow-lg text-primary hover:bg-primary/10 transition-colors z-30"
                         aria-label="Edit Listing (Admin)"

@@ -1,40 +1,33 @@
+import { MapPinIcon } from '@heroicons/react/24/outline';
 import { SmartInput } from '@/features/admin/ui/SmartInput';
 import { SmartTextarea } from '@/features/admin/ui/SmartTextarea';
+import { Card, CardDescription, CardContent } from '@/ui/Card';
+import type { OpportunityFormApi } from '@/features/admin/opportunities/useOpportunityForm';
 
-interface WalkInDetailsSectionProps {
-    startDate: string;
-    setStartDate: (val: string) => void;
-    endDate: string;
-    setEndDate: (val: string) => void;
-    startTime: string;
-    setStartTime: (val: string) => void;
-    endTime: string;
-    setEndTime: (val: string) => void;
-    venueAddress: string;
-    setVenueAddress: (val: string) => void;
-    venueLink: string;
-    setVenueLink: (val: string) => void;
-    requiredDocuments: string;
-    setRequiredDocuments: (val: string) => void;
-    contactPerson: string;
-    setContactPerson: (val: string) => void;
-    contactPhone: string;
-    setContactPhone: (val: string) => void;
-}
-
-export function WalkInDetailsSection({
-    startDate, setStartDate,
-    endDate, setEndDate,
-    startTime, setStartTime,
-    endTime, setEndTime,
-    venueAddress, setVenueAddress,
-    venueLink, setVenueLink,
-    requiredDocuments, setRequiredDocuments,
-    contactPerson, setContactPerson,
-    contactPhone, setContactPhone
-}: WalkInDetailsSectionProps) {
+export function WalkInDetailsSection({ form }: { form: OpportunityFormApi }) {
+    const {
+        startDate, setStartDate,
+        endDate, setEndDate,
+        startTime, setStartTime,
+        endTime, setEndTime,
+        venueAddress, setVenueAddress,
+        venueLink, setVenueLink,
+        requiredDocuments, setRequiredDocuments,
+        contactPerson, setContactPerson,
+        contactPhone, setContactPhone
+    } = form;
     return (
-        <div className="space-y-5 border border-border rounded-lg p-4 md:p-5 bg-card shadow-sm">
+        <Card>
+            <div className="p-4 md:p-5 pb-3 space-y-1">
+                <h3 className="flex items-center gap-2 text-sm md:text-base font-semibold text-foreground">
+                    <MapPinIcon className="w-4 h-4 text-muted-foreground" />
+                    Walk-in drive
+                </h3>
+                <CardDescription>
+                    Dates, venue and what candidates must bring.
+                </CardDescription>
+            </div>
+            <CardContent className="space-y-5 px-4 md:px-5 pb-4 md:pb-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="grid grid-cols-2 gap-2">
                     <SmartInput
@@ -104,6 +97,7 @@ export function WalkInDetailsSection({
                     placeholder="Mobile number"
                 />
             </div>
-        </div>
+            </CardContent>
+        </Card>
     );
 }

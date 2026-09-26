@@ -27,7 +27,7 @@ import {
 } from "@/ui/sidebar"
 import { useAuth } from "@/lib/auth/AuthContext"
 import { useTheme } from "@/lib/providers/ThemeContext"
-import { Moon, Sun } from "lucide-react"
+import { ChevronsUpDown, Moon, Sun } from "lucide-react"
 
 /**
  * Sidebar user footer (adapted from shadcn sidebar-07 NavUser).
@@ -63,7 +63,7 @@ export function NavUser() {
           <SidebarMenuButton asChild tooltip="Log in">
             <Link href="/login">
               <LogIn />
-              <span>Log in</span>
+              <span className="nav-collapse-hide">Log in</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
@@ -80,15 +80,19 @@ export function NavUser() {
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <SidebarMenuButton size="lg">
+            <SidebarMenuButton
+              size="lg"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+            >
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage src={avatarSrc} alt={displayName} />
                 <AvatarFallback className="rounded-lg">{initial}</AvatarFallback>
               </Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-semibold">{displayName}</span>
-                <span className="truncate text-xs">{user.email}</span>
+              <div className="nav-collapse-hide grid flex-1 text-left text-sm leading-tight">
+                <span className="truncate font-medium">{displayName}</span>
+                <span className="truncate text-xs text-muted-foreground">{user.email}</span>
               </div>
+              <ChevronsUpDown className="nav-collapse-hide ml-auto size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -112,13 +116,23 @@ export function NavUser() {
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem asChild>
-                <Link href="/account">
-                  <span>Account</span>
+                <Link href="/account?tab=settings">
+                  <span>Account & security</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/account?tab=profile">
                   <span>Profile</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/account?tab=referral">
+                  <span>Referrals</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/account?tab=feedback">
+                  <span>Feedback</span>
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>

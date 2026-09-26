@@ -1,6 +1,9 @@
 import { Metadata } from 'next';
+import { cache } from 'react';
 import { notFound } from 'next/navigation';
-import PublicProfileClient, { type PublicProfile } from '@/features/profiles/components/PublicProfileClient';
+import PublicProfileClient from '@/features/profile/components/public/PublicProfileClient';
+import { type PublicProfile } from '@/features/profile/publicProfile';
+import { toPublicProfileData } from '@/features/profile/mapToPublicProfile';
 import { serverApiClient } from '@/lib/api/server-client';
 
 export const revalidate = 60;
@@ -9,7 +12,11 @@ interface PageProps {
     params: Promise<{ username: string }>;
 }
 
-async function getProfile(username: string): Promise<PublicProfile | null> {
+// Shared by generateMetadata + the page, so one request fetches once.
+// Returns null only for unknown handles / lapsed activation windows (the API
+// answers both with 404); transport failures and 5xx rethrow so the error
+// boundary renders instead of the "not live" 404 copy.
+const getProfile = cache(async (username: string): Promise<PublicProfile | null> => {
     try {
         const res = await serverApiClient<{ success: boolean; data: PublicProfile }>(
             `/api/public/profiles/${encodeURIComponent(username.toLowerCase())}`,
@@ -19,10 +26,11 @@ async function getProfile(username: string): Promise<PublicProfile | null> {
             { next: { revalidate: 60 } },
         );
         return res?.data ?? null;
-    } catch {
-        return null;
+    } catch (error) {
+        if ((error as { status?: number } | null)?.status === 404) return null;
+        throw error;
     }
-}
+});
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const { username } = await params;
@@ -57,5 +65,5 @@ export default async function PublicProfilePage({ params }: PageProps) {
         notFound();
     }
 
-    return <PublicProfileClient profile={profile} />;
+    return <PublicProfileClient data={toPublicProfileData(profile)} />;
 }

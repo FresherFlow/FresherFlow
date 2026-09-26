@@ -4,10 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
-import { communityApi } from '@fresherflow/api-client';
+import { communityApi } from '@/features/jobs/api/community';
 import type { InterviewExperience, InterviewExperienceListResult } from '@fresherflow/types';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { cn } from '@repo/ui/utils/cn';
+import { SkeletonInterviewRow } from '@/features/jobs/components/OpportunitySkeletons';
 
 const DIFFICULTY_COLORS: Record<string, string> = {
     EASY: 'bg-green-500/10 text-green-600',
@@ -97,7 +98,7 @@ export function InterviewExperiences({ opportunityIdOrSlug }: Props) {
             {/* List */}
             {loading ? (
                 <div className="space-y-3">
-                    {[1, 2].map((i) => <div key={i} className="h-24 animate-pulse rounded-xl bg-muted/40" />)}
+                    {[1, 2].map((i) => <SkeletonInterviewRow key={i} />)}
                 </div>
             ) : error ? (
                 <div className="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-xs text-muted-foreground">

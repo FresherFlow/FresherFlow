@@ -7,27 +7,11 @@ import { DesktopNav } from './DesktopNav';
 import { MobileTopNav } from './MobileTopNav';
 import { MobileBottomTabs } from './MobileBottomTabs';
 import { SocialSidebar } from './SocialSidebar';
+import { SIDEBAR_ROUTES, isSidebarPage } from './routeConfig';
 
-export const SIDEBAR_ROUTES = [
-    '/jobs',
-    '/jobs/internships',
-    '/jobs/walkins',
-    '/govt',
-    '/jobs/remote',
-    '/jobs/browse',
-    '/off-campus',
-    '/companies',
-    '/skills',
-    '/roles',
-    '/locations',
-    '/batch',
-    '/account',
-    '/contribute',
-    '/resources',
-    '/community',
-    '/rooms',
-    '/rooms/[slug]',
-];
+// Re-exported so existing consumers (NavigationWrapper) keep working; the route
+// list itself lives in ./routeConfig to avoid an import cycle with the headers.
+export { SIDEBAR_ROUTES, isSidebarPage };
 
 export const FEED_ROUTES = [
     '/jobs',
@@ -44,13 +28,6 @@ export const FEED_ROUTES = [
     '/batch',
     '/resources',
 ];
-
-export function isSidebarPage(pathname: string): boolean {
-    if (!pathname) return false;
-    const normalized = pathname.toLowerCase();
-    if (normalized === '/') return false;
-    return SIDEBAR_ROUTES.some((route) => normalized.startsWith(route));
-}
 
 export function isFeedPage(pathname: string): boolean {
     if (!pathname) return false;

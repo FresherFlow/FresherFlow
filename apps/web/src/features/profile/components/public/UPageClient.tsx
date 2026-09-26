@@ -10,6 +10,7 @@ import { SiteFooter } from '@/features/shell/SiteFooter';
 import { SmoothScroll } from '@/features/landing/SmoothScroll';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { profileApi } from '@/lib/api/profile';
+import { getErrorMessage } from '@/lib/utils/error';
 import toast from 'react-hot-toast';
 
 export function UPageClient() {
@@ -73,11 +74,11 @@ export function UPageClient() {
                     router.push(hadUsername ? `/u/${val}` : '/profile/complete');
                     return;
                 } else {
-                    toast.error(res.message || 'Failed to claim');
+                    toast.error(getErrorMessage(res, 'Failed to claim'));
                     return;
                 }
             } catch (err: any) {
-                toast.error(err.message || 'Failed to claim');
+                toast.error(getErrorMessage(err, 'Failed to claim'));
                 return;
             } finally {
                 setIsClaiming(false);
@@ -134,7 +135,7 @@ export function UPageClient() {
                         </div>
                         <button
                             type="submit"
-                            className="inline-flex items-center justify-center gap-2 rounded-[2px] bg-[var(--ff-accent)] px-[18px] py-[10px] text-[13.5px] font-semibold text-white transition-transform hover:-translate-y-px active:scale-[0.98] shrink-0 disabled:opacity-60"
+                            className="inline-flex items-center justify-center gap-2 rounded-[2px] bg-[var(--ff-accent)] px-[18px] py-[10px] text-[13.5px] font-semibold text-paper transition-transform hover:-translate-y-px active:scale-[0.98] shrink-0 disabled:opacity-60"
                             disabled={!username.trim() || availability === 'taken' || availability === 'invalid' || availability === 'checking' || isClaiming}
                         >
                             {isClaiming ? (
@@ -246,21 +247,21 @@ export function UPageClient() {
             </section>
 
             {/* WHY — same 3 cards as before but band style */}
-            <section className="ff-band border-y border-[#2a3448] py-14">
+            <section className="ff-band border-y border-[var(--ff-band-line)] py-14">
                 <div className="mx-auto max-w-[1120px] px-6 space-y-12">
                     <div className="text-center max-w-2xl mx-auto space-y-3">
-                        <p className="font-record text-[11px] uppercase tracking-[0.14em] text-[#8b93a5]">Why stand out</p>
-                        <h2 className="font-display text-[clamp(28px,3.6vw,44px)] font-bold leading-[1.05] tracking-[-0.02em] text-[#eef1f6]">Built for how engineering teams hire.</h2>
+                        <p className="font-record text-[11px] uppercase tracking-[0.14em] text-[var(--ff-band-muted)]">Why stand out</p>
+                        <h2 className="font-display text-[clamp(28px,3.6vw,44px)] font-bold leading-[1.05] tracking-[-0.02em] text-[var(--ff-band-ink)]">Built for how engineering teams hire.</h2>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-px border border-[#2a3448] bg-[#2a3448]">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-px border border-[var(--ff-band-line)] bg-[var(--ff-band-line)]">
                         {[
                             { title: "Interactive Project Demos", desc: "1-click live apps and GitHub docs, not just names." },
                             { title: "Structured Preferences", desc: "Job, Internship, Walk-In and work mode visible instantly." },
                             { title: "Academic Timeline", desc: "10th, 12th, UG, PG in a clean chronological view." },
                         ].map((f) => (
-                            <div key={f.title} className="bg-[#0e1420] px-6 pb-6 pt-7 space-y-2">
-                                <h3 className="font-bold text-[#eef1f6]">{f.title}</h3>
-                                <p className="text-sm text-[#8b93a5]">{f.desc}</p>
+                            <div key={f.title} className="bg-[var(--ff-band-bg)] px-6 pb-6 pt-7 space-y-2">
+                                <h3 className="font-bold text-[var(--ff-band-ink)]">{f.title}</h3>
+                                <p className="text-sm text-[var(--ff-band-muted)]">{f.desc}</p>
                             </div>
                         ))}
                     </div>
@@ -306,15 +307,15 @@ export function UPageClient() {
                             <input
                                 type="text"
                                 value={username}
-                                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                                 placeholder="yourname"
                                 className="block w-full pl-32 pr-4 py-3 bg-card border border-border/80 rounded-[2px] text-foreground font-bold text-sm outline-none"
-                                maxLength={30}
+                                maxLength={20}
                             />
                         </div>
                         <button
                             type="submit"
-                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-[2px] bg-[var(--ff-accent)] px-[18px] py-[10px] text-[13.5px] font-semibold text-white hover:-translate-y-px active:scale-[0.98] disabled:opacity-60"
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-[2px] bg-[var(--ff-accent)] px-[18px] py-[10px] text-[13.5px] font-semibold text-paper hover:-translate-y-px active:scale-[0.98] disabled:opacity-60"
                             disabled={!username.trim() || availability === 'taken' || availability === 'invalid' || availability === 'checking' || isClaiming}
                         >
                             {isClaiming ? (

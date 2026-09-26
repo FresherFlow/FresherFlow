@@ -1,14 +1,15 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
-import { communityApi } from '@fresherflow/api-client';
+import { communityApi } from '@/features/jobs/api/community';
 import { CommentType, CommentVoteValue, ReportReason } from '@fresherflow/types';
 import type { CommunityComment, CommentListResult } from '@fresherflow/types';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { cn } from '@repo/ui/utils/cn';
+import { SkeletonDiscussionRow } from '@/features/jobs/components/OpportunitySkeletons';
 import { SignalsPanel } from './SignalsPanel';
 import { ProvenanceStrip } from './ProvenanceStrip';
 import { InterviewExperiences } from './InterviewExperiences';
@@ -64,6 +65,11 @@ export function DiscussionSection({
     const [formError, setFormError] = useState<string | null>(null);
     const [reportTarget, setReportTarget] = useState<string | null>(null);
     const [showJobReport, setShowJobReport] = useState(false);
+    // V1 checklist B: Questions filter. Backend exposes totals only
+    // (GET /api/jobs/comment-counts), so per-type counts are derived
+    // client-side from the loaded thread tree (top-level + replies).
+    const [typeFilter, setTypeFilter] = useState<'ALL' | CommentType>('ALL');
+    const composerRef = useRef<HTMLTextAreaElement | null>(null);
 
     const loginHref = `/login?next=${encodeURIComponent(pathname || `/jobs/${opportunityIdOrSlug}`)}`;
 
@@ -142,6 +148,37 @@ export function DiscussionSection({
             setShowJobReport(false);
         }
     };
+
+    const typeCounts = useMemo(() => {
+        const counts: Record<string, number> = { ALL: 0 };
+        for (const t of COMMENT_TYPES) counts[t.key] = 0;
+        const walk = (list: CommunityComment[]) => {
+            for (const c of list) {
+                counts.ALL += 1;
+                if (c.commentType in counts) counts[c.commentType] += 1;
+                if (c.replies.length > 0) walk(c.replies);
+            }
+        };
+        walk(data.comments);
+        return counts;
+    }, [data.comments]);
+
+    const threadContainsType = useCallback((comment: CommunityComment, type: CommentType): boolean => {
+        if (comment.commentType === type) return true;
+        return comment.replies.some(r => threadContainsType(r, type));
+    }, []);
+
+    const filteredComments = useMemo(() => {
+        if (typeFilter === 'ALL') return data.comments;
+        return data.comments.filter(c => threadContainsType(c, typeFilter));
+    }, [data.comments, typeFilter, threadContainsType]);
+
+    const beFirstToAsk = useCallback(() => {
+        setCommentType(CommentType.QUESTION);
+        setReplyTo(null);
+        setTypeFilter('ALL');
+        requestAnimationFrame(() => composerRef.current?.focus());
+    }, []);
 
     const renderComment = (comment: CommunityComment) => (
         <div key={comment.id} className="space-y-1.5">
@@ -316,6 +353,8 @@ export function DiscussionSection({
                                 ))}
                             </div>
                             <textarea
+                                ref={composerRef}
+                                id="discussion-composer"
                                 value={text}
                                 onChange={e => setText(e.target.value)}
                                 rows={3}
@@ -345,11 +384,42 @@ export function DiscussionSection({
                         </div>
                     )}
 
+                    {/* Per-type filter with client-side counts (backend returns totals only). */}
+                    {!loading && !error && data.comments.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter discussion by type">
+                            <button
+                                type="button"
+                                onClick={() => setTypeFilter('ALL')}
+                                className={cn(
+                                    'rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors',
+                                    typeFilter === 'ALL'
+                                        ? 'border-primary/30 bg-primary/10 text-primary'
+                                        : 'border-border text-muted-foreground hover:bg-muted/40'
+                                )}
+                            >
+                                All ({typeCounts.ALL})
+                            </button>
+                            {COMMENT_TYPES.map(type => (
+                                <button
+                                    key={type.key}
+                                    type="button"
+                                    onClick={() => setTypeFilter(typeFilter === type.key ? 'ALL' : type.key)}
+                                    className={cn(
+                                        'rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors',
+                                        typeFilter === type.key
+                                            ? 'border-primary/30 bg-primary/10 text-primary'
+                                            : 'border-border text-muted-foreground hover:bg-muted/40'
+                                    )}
+                                >
+                                    {type.key === CommentType.QUESTION ? 'Questions' : `${type.label}s`} ({typeCounts[type.key] ?? 0})
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
                     {loading ? (
                         <div className="space-y-3">
-                            {[1, 2].map(i => (
-                                <div key={i} className="h-16 animate-pulse rounded-xl bg-muted/40" />
-                            ))}
+                            {[1, 2].map(i => <SkeletonDiscussionRow key={i} />)}
                         </div>
                     ) : error ? (
                         <div className="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-xs text-muted-foreground">
@@ -359,11 +429,37 @@ export function DiscussionSection({
                             </button>
                         </div>
                     ) : data.comments.length === 0 ? (
+                        <div className="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center">
+                            <p className="text-sm font-bold text-foreground">No discussion yet — be the first to ask.</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                Ask about eligibility, dates, or the process. The composer above stays open.
+                            </p>
+                            {user ? (
+                                <button
+                                    type="button"
+                                    onClick={beFirstToAsk}
+                                    className="mt-3 inline-flex h-8 items-center justify-center rounded-lg bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-all hover:bg-primary/90"
+                                >
+                                    Be the first to ask
+                                </button>
+                            ) : (
+                                <Link
+                                    href={loginHref}
+                                    className="mt-3 inline-flex h-8 items-center justify-center rounded-lg bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-all hover:bg-primary/90"
+                                >
+                                    Sign in to ask the first question
+                                </Link>
+                            )}
+                        </div>
+                    ) : filteredComments.length === 0 ? (
                         <div className="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-xs text-muted-foreground">
-                            Be the first to discuss this job.
+                            No {typeFilter === CommentType.QUESTION ? 'questions' : `${typeFilter.toLowerCase()}s`} yet.{' '}
+                            <button type="button" onClick={() => setTypeFilter('ALL')} className="font-semibold text-primary hover:underline">
+                                Show all discussion
+                            </button>
                         </div>
                     ) : (
-                        <div className="space-y-4">{data.comments.map(renderComment)}</div>
+                        <div className="space-y-4">{filteredComments.map(renderComment)}</div>
                     )}
                 </div>
             )}

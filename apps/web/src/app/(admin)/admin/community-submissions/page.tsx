@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import CommunitySubmissionsClient from './CommunitySubmissionsClient';
+import CommunitySubmissionsClient from '@/features/moderation/components/CommunitySubmissionsQueue';
 
 export const metadata: Metadata = { title: { absolute: 'Community Submissions | FresherFlow Admin' } };
 

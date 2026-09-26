@@ -152,6 +152,9 @@ export function useCategoryPageState({
     role: searchParams?.get("role")
       ? searchParams.get("role")!.split(",").filter(Boolean)
       : initialFilters?.role || [],
+    experience: searchParams?.get("experience")
+      ? searchParams.get("experience")!.split(",").filter(Boolean)
+      : initialFilters?.experience || [],
   });
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [draftLoc, setDraftLoc] = useState<string | null>(null);
@@ -171,6 +174,7 @@ export function useCategoryPageState({
   const [draftSource, setDraftSource] = useState<string[]>([]);
   const [draftCompany, setDraftCompany] = useState<string[]>([]);
   const [draftRole, setDraftRole] = useState<string[]>([]);
+  const [draftExperience, setDraftExperience] = useState<string[]>([]);
 
   const [mounted, setMounted] = useState(false);
   const [visibleCount, setVisibleCount] = useState(20);
@@ -236,6 +240,9 @@ export function useCategoryPageState({
       role: sp?.get("role")
         ? sp.get("role")!.split(",").filter(Boolean)
         : initialFilters?.role || [],
+      experience: sp?.get("experience")
+        ? sp.get("experience")!.split(",").filter(Boolean)
+        : initialFilters?.experience || [],
     });
   }, [searchParams, pathname]);
 
@@ -257,6 +264,7 @@ export function useCategoryPageState({
     filters.source,
     filters.company,
     filters.role,
+    filters.experience,
     driveDate,
   ]);
 
@@ -272,7 +280,8 @@ export function useCategoryPageState({
     (filters.skills && filters.skills.length > 0 ? 1 : 0) +
     (filters.source && filters.source.length > 0 ? 1 : 0) +
     (filters.company && filters.company.length > 0 ? 1 : 0) +
-    (filters.role && filters.role.length > 0 ? 1 : 0);
+    (filters.role && filters.role.length > 0 ? 1 : 0) +
+    (filters.experience && filters.experience.length > 0 ? 1 : 0);
 
   useEffect(() => {
     if (!mounted) return;
@@ -377,6 +386,12 @@ export function useCategoryPageState({
       updateParam("role", null);
     }
 
+    if (filters.experience && filters.experience.length > 0) {
+      updateParam("experience", filters.experience.join(","));
+    } else {
+      updateParam("experience", null);
+    }
+
     // Board pages (canonicalRedirect && initialFilters) encode their filter in
     // the path — e.g. `/jobs/javascript` ~ skills=JavaScript. Final pass strips
     // any board-implied param so the URL stays canonical (no `?skills=` echo),
@@ -425,6 +440,7 @@ export function useCategoryPageState({
     filters.source,
     filters.company,
     filters.role,
+    filters.experience,
     filters.workMode,
     driveDate,
     mounted,
@@ -453,6 +469,7 @@ export function useCategoryPageState({
     selectedYear: filters.year,
     skills: filters.skills,
     roles: filters.role,
+    experience: filters.experience,
     search,
     initialData,
   });
@@ -714,6 +731,7 @@ export function useCategoryPageState({
     setDraftSource(filters.source || []);
     setDraftCompany(filters.company || []);
     setDraftRole(filters.role || []);
+    setDraftExperience(filters.experience ?? []);
     setIsMobileFilterOpen(true);
   };
 
@@ -731,6 +749,7 @@ export function useCategoryPageState({
       source: draftSource,
       company: draftCompany,
       role: draftRole,
+      experience: draftExperience ?? [],
     });
     setIsMobileFilterOpen(false);
   };
@@ -751,6 +770,7 @@ export function useCategoryPageState({
       source: [],
       company: [],
       role: [],
+      experience: [],
     });
   };
 
@@ -811,6 +831,8 @@ export function useCategoryPageState({
     setDraftCompany,
     draftRole,
     setDraftRole,
+    draftExperience,
+    setDraftExperience,
     mobileActiveCount,
     openMobileFilters,
     applyMobileFilters,

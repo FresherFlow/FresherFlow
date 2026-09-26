@@ -11,7 +11,6 @@ export const revalidate = false;
 export const metadata: Metadata = {
     title: 'Government Jobs in India | Govt Jobs & Recruitment',
     description: 'Find verified government job notifications, SSC, banking, railway, UPSC and public sector recruitment opportunities with official apply links.',
-    keywords: 'government jobs, govt jobs, government jobs India, SSC jobs, railway jobs, banking jobs, UPSC jobs, Sarkari jobs',
     alternates: {
         canonical: '/govt',
     },

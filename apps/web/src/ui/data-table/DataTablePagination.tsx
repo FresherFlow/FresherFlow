@@ -1,7 +1,6 @@
 "use client"
 
-import type { RowData } from "@tanstack/react-table"
-import { LegacyReactTable } from "@tanstack/react-table/legacy"
+import type { ReactTable, RowData, StockFeatures } from "@tanstack/react-table"
 import {
   ChevronLeft,
   ChevronRight,
@@ -196,7 +195,7 @@ export function PaginationControls({
 }
 
 interface DataTablePaginationProps<TData extends RowData> {
-  table: LegacyReactTable<TData>
+  table: ReactTable<StockFeatures, TData>
 }
 
 export function DataTablePagination<TData extends RowData>({
@@ -204,17 +203,19 @@ export function DataTablePagination<TData extends RowData>({
 }: DataTablePaginationProps<TData>) {
   return (
     <PaginationControls
-      pageIndex={table.getState().pagination.pageIndex}
-      pageSize={table.getState().pagination.pageSize}
+      pageIndex={table.state.pagination.pageIndex}
+      pageSize={table.state.pagination.pageSize}
       pageCount={table.getPageCount()}
-      totalRows={table.options.rowCount ?? table.getFilteredRowModel()?.rows?.length ?? 0}
-      selectedRows={table.getFilteredSelectedRowModel()?.rows?.length ?? 0}
+      totalRows={table.getRowCount()}
+      selectedRows={table.getSelectedRowModel()?.rows?.length ?? 0}
       canPreviousPage={table.getCanPreviousPage()}
       canNextPage={table.getCanNextPage()}
-      setPageIndex={table.setPageIndex}
-      setPageSize={table.setPageSize}
-      previousPage={table.previousPage}
-      nextPage={table.nextPage}
+      // v9 moves instance methods to shared prototypes, so they must be
+      // called through the instance instead of detached.
+      setPageIndex={(index) => table.setPageIndex(index)}
+      setPageSize={(size) => table.setPageSize(size)}
+      previousPage={() => table.previousPage()}
+      nextPage={() => table.nextPage()}
     />
   )
 }

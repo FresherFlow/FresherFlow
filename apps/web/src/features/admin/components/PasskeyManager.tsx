@@ -13,6 +13,27 @@ interface Passkey {
     name: string;
 }
 
+/** One-line, user-facing message for WebAuthn failures. Technical detail stays in the console. */
+function friendlyPasskeyError(error: unknown): string {
+    const name = error instanceof DOMException || error instanceof Error ? error.name : '';
+    switch (name) {
+        case 'NotAllowedError':
+            return 'Passkey setup was cancelled or timed out. Try again.';
+        case 'InvalidStateError':
+            return 'This device already has a passkey. Nothing was added.';
+        case 'NotSupportedError':
+            return "This browser doesn't support passkeys. Try Chrome, Edge, or Safari.";
+        case 'SecurityError':
+            return 'Passkeys need a secure connection (HTTPS or localhost).';
+        case 'AbortError':
+            return 'Passkey setup was cancelled.';
+        case 'TimeoutError':
+            return 'Passkey setup timed out. Try again.';
+        default:
+            return "Couldn't add this passkey. Try again.";
+    }
+}
+
 export default function PasskeyManager() {
     const [keys, setKeys] = useState<Passkey[]>([]);
     const [loading, setLoading] = useState(true);
@@ -65,8 +86,7 @@ export default function PasskeyManager() {
             }
         } catch (error: unknown) {
             console.error("Passkey registration error:", error);
-            const message = error instanceof Error ? error.message : "Failed to add passkey";
-            toast.error(message);
+            toast.error(friendlyPasskeyError(error));
         } finally {
             setRegistering(false);
         }
@@ -80,8 +100,8 @@ export default function PasskeyManager() {
             toast.success("Passkey removed");
             setKeys(keys.filter(k => k.id !== id));
         } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : "Failed to remove passkey";
-            toast.error(message);
+            console.error("Passkey removal error:", error);
+            toast.error("Couldn't remove passkey. Try again.");
         }
     };
 

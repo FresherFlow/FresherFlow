@@ -4,7 +4,7 @@ import { permanentRedirect, notFound } from 'next/navigation';
 import { logRouteResult } from '@/lib/observability';
 import { Suspense } from 'react';
 import OpportunityDetailClient from '@/features/jobs/components/detail/OpportunityDetailClient';
-import { OpportunityDetailSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
+import { OpportunityDetailSkeleton, FeedPageSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
 import { getOpportunityPath } from '@/features/jobs/domain/opportunityPath';
 import {
     fetchOpportunityForPage,
@@ -17,7 +17,7 @@ import {
 } from '@/features/jobs/domain/opportunitySeo';
 import { fetchGovernmentFeed, fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { getRelatedOpportunities, getValidDirectoryLinks } from '@/features/jobs/utils/detailUtils';
-import { getFeedBadgeLabel } from '@/features/jobs/utils/walkinMapUtils';
+import { getFeedBadgeLabel, isInternshipOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import {
     buildTaxonomyRegistry,
     resolveTaxonomySlug,
@@ -30,7 +30,7 @@ import {
 import { TopicBoardPage } from '@/features/jobs/components/TopicBoardPage';
 import { truncateTitleByPixels, truncateDescription } from '@/lib/seo/seoMetrics';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
-import { FeedPageSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
+
 
 
 /** Returns true for errors thrown by notFound() or redirect()/permanentRedirect() in Next.js 15+/16. */
@@ -289,8 +289,31 @@ export default async function OpportunityDetailPage({ params }: Props) {
         logRouteResult('/[slug]', '200');
     }
 
+    // Server-rendered H1 + summary so crawlers always see real content —
+    // the interactive detail view below is a Suspense-wrapped client
+    // component whose static HTML is just a skeleton.
+    const detailHeading = opportunityData ? (
+        <div className="w-full max-w-4xl mx-auto px-4 pt-4 sr-only">
+            <h1 className="text-xl font-bold text-foreground tracking-tight">
+                {opportunityData.title} at {opportunityData.company}
+            </h1>
+            <p>
+                {isInternshipOpportunity(opportunityData)
+                    ? 'Internship'
+                    : isWalkinOpportunity(opportunityData)
+                        ? 'Walk-in drive'
+                        : 'Job opening'}{' '}
+                at {opportunityData.company}.
+                {opportunityData.description
+                    ? ` ${opportunityData.description.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300)}`
+                    : ''}
+            </p>
+        </div>
+    ) : null;
+
     return (
         <>
+            {detailHeading}
             {opportunityData && !getExpiryState(opportunityData).isExpired && (
                 <script
                     type="application/ld+json"

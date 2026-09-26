@@ -24,7 +24,6 @@ const LANDING_DESCRIPTION =
 export const metadata: Metadata = {
     title: { absolute: LANDING_TITLE },
     description: LANDING_DESCRIPTION,
-    keywords: ['off campus jobs', 'fresher jobs', 'internships', 'walk-ins', 'entry level jobs', 'jobs for freshers'],
     alternates: { canonical: '/' },
     openGraph: {
         siteName: 'FresherFlow',
@@ -100,12 +99,16 @@ export default async function LandingPage() {
 
     const refreshedAt = feed?.generatedAt ? new Date(feed.generatedAt) : null;
 
+    // V1 §G: hero Ask/Discuss CTA deep-links to the first latest job's
+    // discussion; falls back to the board when the feed is empty.
+    const discussHref = latest[0] ? `/jobs/${latest[0].slug}#discussion` : '/jobs';
+
     return (
         <>
             <SmoothScroll />
             <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
             <LandingMarquee newToday={newToday} refreshedAt={refreshedAt} walkins={walkins} />
-            <HeroSection newToday={newToday} refreshedAt={refreshedAt} />
+            <HeroSection newToday={newToday} refreshedAt={refreshedAt} discussHref={discussHref} />
             <StatBand data={{ total: opps.length, internships, walkins, companies: companyCounts.size }} />
             <BoardsSection data={{ jobs, internships, walkins, govt }} />
             <ProofSection perDay={perDay} latest={latest} />

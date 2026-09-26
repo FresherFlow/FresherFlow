@@ -205,3 +205,38 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
         },
     ];
 }
+
+/**
+ * Routes that render the app sidebar + SiteHeader instead of the public
+ * DesktopNav. Kept here (not in Navigation.tsx) so headers such as
+ * MobileTopNav can ask "is this a sidebar page?" without importing
+ * Navigation, which renders those headers.
+ */
+export const SIDEBAR_ROUTES = [
+    '/jobs',
+    '/jobs/internships',
+    '/jobs/walkins',
+    '/govt',
+    '/jobs/remote',
+    '/jobs/browse',
+    '/off-campus',
+    '/companies',
+    '/skills',
+    '/roles',
+    '/locations',
+    '/batch',
+    '/account',
+    '/contribute',
+    '/resources',
+    '/community',
+    '/rooms',
+    '/rooms/[slug]',
+];
+
+export function isSidebarPage(pathname: string): boolean {
+    if (!pathname) return false;
+    const normalized = pathname.toLowerCase();
+    if (normalized === '/') return false;
+    return SIDEBAR_ROUTES.some((route) => normalized.startsWith(route));
+}
+

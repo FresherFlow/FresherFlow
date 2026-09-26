@@ -70,7 +70,7 @@ export function DetailHeroSection({
             {isGovernmentJob && (
                 <>
                     <div className="absolute inset-x-0 top-0 h-24 bg-primary" />
-                    <div className="absolute -top-12 right-0 h-40 w-40 rounded-full bg-white/10 blur-3xl" />
+                    <div className="absolute -top-12 right-0 h-40 w-40 rounded-full bg-paper/10 blur-3xl" />
                 </>
             )}
             <div className="relative z-10 space-y-3">

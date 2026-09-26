@@ -195,6 +195,18 @@ export default function OpportunityDetailClient({
                         formatDeadline={ds.formatDeadline}
                     />
 
+                    {/* V1 checklist B: government pages get the same discussion access as other jobs. */}
+                    <DiscussionSection
+                        opportunityIdOrSlug={opp.slug || opp.id}
+                        postedByUsername={
+                            (opp as { user?: { username?: string | null; fullName?: string | null } }).user?.username ||
+                            (opp as { referredByUsername?: string }).referredByUsername ||
+                            null
+                        }
+                        postedAt={(opp as { postedAt?: string | Date }).postedAt ?? null}
+                        sourceLink={opp.sourceLink ?? null}
+                    />
+
                     {relatedForMode.length > 0 && (
                         <div className="pt-6 border-t border-border">
                             <RelatedOpportunities relatedOpps={relatedForMode} isLoadingRelated={isLoadingRelated} />
@@ -413,7 +425,7 @@ export default function OpportunityDetailClient({
                         {isMounted && user?.role === 'ADMIN' && (
                             <div className="lg:hidden bg-card p-4 border border-primary/20 rounded-xl space-y-2">
                                 <h4 className="text-xs font-bold text-primary">Admin Control</h4>
-                                <Link href={`/opportunities/edit/${opp.id}`} className="block">
+                                <Link href={`/admin/opportunities/edit/${opp.id}`} className="block">
                                     <Button size="sm" variant="outline" className="w-full">Edit Opportunity</Button>
                                 </Link>
                             </div>

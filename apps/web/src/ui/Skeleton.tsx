@@ -7,9 +7,10 @@ type SkeletonProps = React.HTMLAttributes<HTMLDivElement> & {
      * Shape variants — Skeleton owns the corner radius; call sites own sizing
      * through className (for example h-8 and w-24). 'default' keeps the base
      * `rounded` from the class list below, 'pill' is a fully round
-     * chip/avatar, and 'panel' is a card/tile-scale block.
+     * chip/avatar, 'panel' is a card/tile-scale block, 'action' matches compact
+     * button geometry, and 'surface' is a bordered card surface.
      */
-    variant?: 'default' | 'pill' | 'panel';
+    variant?: 'default' | 'pill' | 'panel' | 'action' | 'surface';
 };
 
 /** Shape classes per variant. `default` adds nothing — the base already carries `rounded`. */
@@ -17,12 +18,18 @@ const VARIANT_CLASSES: Record<NonNullable<SkeletonProps['variant']>, string> = {
     default: '',
     pill: 'rounded-full',
     panel: 'rounded-lg',
+    action: 'rounded-md',
+    surface: 'rounded-xl border border-border/60 bg-card',
 };
 
 export function Skeleton({ className, variant = 'default', ...props }: SkeletonProps) {
     return (
         <div
-            className={cn("animate-pulse rounded bg-muted", VARIANT_CLASSES[variant], className)}
+            className={cn(
+                "animate-pulse motion-reduce:animate-none rounded bg-muted",
+                VARIANT_CLASSES[variant],
+                className
+            )}
             {...props}
         />
     );

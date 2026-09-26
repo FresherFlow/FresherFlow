@@ -1,34 +1,12 @@
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon } from '@heroicons/react/20/solid';
 import { SmartInput } from '@/features/admin/ui/SmartInput';
 import { SmartTextarea } from '@/features/admin/ui/SmartTextarea';
 import { SmartSelect } from '@/features/admin/ui/SmartSelect';
-
-interface EligibilitySectionProps {
-    allowedDegrees: string[];
-    handleDegreeToggle: (deg: string) => void;
-    allowedCourses: string[];
-    handleCourseToggle: (course: string) => void;
-    allowedSpecializations: string[];
-    handleSpecializationToggle: (spec: string) => void;
-    experienceMin: string;
-    setExperienceMin: (val: string) => void;
-    experienceMax: string;
-    setExperienceMax: (val: string) => void;
-    passoutYears: number[];
-    handlePassoutYearsChange: (val: string) => void;
-    requiredSkills: string;
-    setRequiredSkills: (val: string) => void;
-    passoutYearMin: string;
-    setPassoutYearMin: (val: string) => void;
-    passoutYearMax: string;
-    setPassoutYearMax: (val: string) => void;
-    allowedAvailability: string;
-    setAllowedAvailability: (val: string) => void;
-    commonDegrees: string[];
-    visibleCourseOptions: string[];
-    visibleSpecializationOptions: string[];
-    customDegrees: string[];
-}
+import { Card, CardDescription, CardContent } from '@/ui/Card';
+import { Badge } from '@/ui/Badge';
+import { Button } from '@/ui/Button';
+import type { OpportunityFormApi } from '@/features/admin/opportunities/useOpportunityForm';
 
 const getDegreeLabel = (deg: string) => {
     switch (deg) {
@@ -53,62 +31,92 @@ const getDegreeBadgeLabel = (deg: string) => {
 };
 
 export function EligibilitySection({
-    allowedDegrees, handleDegreeToggle,
-    allowedCourses, handleCourseToggle,
-    allowedSpecializations, handleSpecializationToggle,
-    experienceMin, setExperienceMin,
-    experienceMax, setExperienceMax,
-    passoutYears, handlePassoutYearsChange,
-    requiredSkills, setRequiredSkills,
-    passoutYearMin, setPassoutYearMin,
-    passoutYearMax, setPassoutYearMax,
-    allowedAvailability, setAllowedAvailability,
+    form,
+    handleDegreeToggle,
+    handleCourseToggle,
+    handleSpecializationToggle,
+    handlePassoutYearsChange,
     commonDegrees,
     visibleCourseOptions,
     visibleSpecializationOptions,
     customDegrees,
-}: EligibilitySectionProps) {
+}: {
+    form: OpportunityFormApi;
+    handleDegreeToggle: (deg: string) => void;
+    handleCourseToggle: (course: string) => void;
+    handleSpecializationToggle: (spec: string) => void;
+    handlePassoutYearsChange: (val: string) => void;
+    commonDegrees: string[];
+    visibleCourseOptions: string[];
+    visibleSpecializationOptions: string[];
+    customDegrees: string[];
+}) {
+    const {
+        allowedDegrees,
+        allowedCourses,
+        allowedSpecializations,
+        experienceMin, setExperienceMin,
+        experienceMax, setExperienceMax,
+        passoutYears,
+        requiredSkills, setRequiredSkills,
+        passoutYearMin, setPassoutYearMin,
+        passoutYearMax, setPassoutYearMax,
+        allowedAvailability, setAllowedAvailability,
+    } = form;
     return (
-        <div className="space-y-5 border border-border rounded-lg p-4 md:p-5 bg-card shadow-sm">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
-                <h3 className="text-sm md:text-base font-semibold text-foreground flex items-center gap-2">
+        <Card>
+            <div className="p-4 md:p-5 pb-3 space-y-1">
+                <h3 className="flex items-center gap-2 text-sm md:text-base font-semibold text-foreground">
                     <AcademicCapIcon className="w-4 h-4 text-muted-foreground" />
                     Requirements
                 </h3>
-                <div className="flex flex-col gap-2 md:w-64">
-                    <SmartSelect
-                        placeholder="Select Education Level"
-                        value=""
-                        onChange={(val) => {
-                            if (val) {
-                                handleDegreeToggle(val);
-                            }
-                        }}
-                        options={commonDegrees.map(deg => ({
-                            label: `${allowedDegrees.includes(deg) ? ' ' : ''}${getDegreeLabel(deg)}`,
-                            value: deg
-                        }))}
-                    />
-                    {allowedDegrees.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 justify-end">
-                            {allowedDegrees.map(deg => (
-                                <span key={deg} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-primary text-primary-foreground">
+                <CardDescription>
+                    Who can apply: education, experience and skills.
+                </CardDescription>
+            </div>
+            <CardContent className="space-y-5 px-4 md:px-5 pb-4 md:pb-5">
+            <div className="flex flex-col gap-2 md:max-w-64">
+                <SmartSelect
+                    placeholder="Select Education Level"
+                    value=""
+                    onChange={(val) => {
+                        if (val) {
+                            handleDegreeToggle(val);
+                        }
+                    }}
+                    options={commonDegrees.map(deg => ({
+                        label: getDegreeLabel(deg),
+                        value: deg
+                    }))}
+                />
+                {allowedDegrees.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                        {allowedDegrees.map(deg => (
+                            <Badge key={deg} variant="default">
+                                <span className="flex items-center gap-1 normal-case">
                                     {getDegreeBadgeLabel(deg)}
-                                    <button type="button" onClick={() => handleDegreeToggle(deg)} className="hover:text-error ml-0.5">–</button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleDegreeToggle(deg)}
+                                        aria-label={`Remove ${getDegreeBadgeLabel(deg)}`}
+                                        className="flex items-center rounded-full p-0.5 transition-colors hover:bg-primary-foreground/20"
+                                    >
+                                        <XMarkIcon className="w-3 h-3" />
+                                    </button>
                                 </span>
-                            ))}
-                        </div>
-                    )}
-                    {customDegrees.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 justify-end pt-1">
-                            {customDegrees.map((degree) => (
-                                <span key={degree} className="px-2 py-0.5 rounded-md text-xs font-semibold border bg-primary/5 text-primary border-primary/20">
-                                    {degree}
-                                </span>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                            </Badge>
+                        ))}
+                    </div>
+                )}
+                {customDegrees.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                        {customDegrees.map((degree) => (
+                            <Badge key={degree} variant="outline">
+                                <span className="normal-case">{degree}</span>
+                            </Badge>
+                        ))}
+                    </div>
+                )}
             </div>
 
             <div className="space-y-5 pb-1">
@@ -123,7 +131,8 @@ export function EligibilitySection({
                                     key={course}
                                     type="button"
                                     onClick={() => handleCourseToggle(course)}
-                                    className={`px-2 py-1 rounded-sm text-sm font-medium transition-none border ${allowedCourses.includes(course)
+                                    aria-pressed={allowedCourses.includes(course)}
+                                    className={`h-7 rounded-md px-2.5 text-xs font-medium transition-colors border ${allowedCourses.includes(course)
                                         ? 'bg-primary text-primary-foreground border-primary'
                                         : 'bg-background border-input text-foreground hover:bg-muted'
                                         }`}
@@ -144,7 +153,8 @@ export function EligibilitySection({
                                     key={specialization}
                                     type="button"
                                     onClick={() => handleSpecializationToggle(specialization)}
-                                    className={`px-2 py-1 rounded-sm text-sm font-medium transition-none border ${allowedSpecializations.includes(specialization)
+                                    aria-pressed={allowedSpecializations.includes(specialization)}
+                                    className={`h-7 rounded-md px-2.5 text-xs font-medium transition-colors border ${allowedSpecializations.includes(specialization)
                                         ? 'bg-primary text-primary-foreground border-primary'
                                         : 'bg-background border-input text-foreground hover:bg-muted'
                                         }`}
@@ -215,9 +225,10 @@ export function EligibilitySection({
                 value={requiredSkills}
                 onChange={(e) => setRequiredSkills(e.target.value)}
                 rows={4}
-               
+
                 placeholder="E.g. React, Node.js, strong communication skills..."
             />
-        </div>
+            </CardContent>
+        </Card>
     );
 }

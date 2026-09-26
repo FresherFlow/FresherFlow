@@ -3,10 +3,9 @@
 import Link from 'next/link';
 import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { useTheme } from '@/lib/providers/ThemeContext';
 import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { toastError } from '@/lib/utils/error';
+import { getErrorMessage, toastError } from '@/lib/utils/error';
 import {
     ArrowPathIcon,
     ChevronLeftIcon,
@@ -15,8 +14,6 @@ import {
     UsersIcon,
     EnvelopeIcon,
     LockClosedIcon,
-    SunIcon,
-    MoonIcon,
 } from '@heroicons/react/24/outline';
 import type { User } from '@fresherflow/types';
 import { useAuthFormData } from '@/lib/auth/AuthFormDataContext';
@@ -27,7 +24,7 @@ import { isSafeInternalRedirect } from '@/lib/config/paths';
 import LoadingScreen from '@/features/shell/LoadingScreen';
 import { profileApi } from '@/lib/api/profile';
 import { usernameApi } from '@fresherflow/api-client';
-import { LogoImage } from '@/features/shell/LogoImage';
+import { AuthShell } from '@/features/auth/components/AuthShell';
 
 type LoginStep = 'email' | 'otp' | 'username';
 
@@ -52,7 +49,6 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
     useEffect(() => { setMounted(true); }, []);
 
     const { sendOtp, verifyOtp, loginWithGoogle, user, isLoading, refreshUser } = useAuth();
-    const { resolvedTheme, toggleTheme } = useTheme();
     const searchParams = useSearchParams();
 
     // username claim state — same as choose-username but inside same shell (no separate page) — mandatory like Twitter, no skip
@@ -61,6 +57,7 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
     const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
     const [usernameError, setUsernameError] = useState<string | null>(null);
     const [isClaiming, setIsClaiming] = useState(false);
+    const [claimDone, setClaimDone] = useState(false);
 
     useEffect(() => {
         if (searchParams.get('expired') === 'true') {
@@ -74,7 +71,6 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
     const source = searchParams.get('source') || undefined;
     const refCode = searchParams.get('ref') || undefined;
     const redirectParam = searchParams.get('redirect');
-    const prefillUsername = searchParams.get('username') || undefined;
     const isInviteFlow = source === 'dashboard_invite' || Boolean(refCode);
 
     const redirectTarget = useMemo(
@@ -171,27 +167,14 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
             navigateAfterLogin(authedUser);
         } catch (err: unknown) {
             setIsProcessing(false);
-            const errMsg = (err as Error).message || '';
+            const errMsg = getErrorMessage(err);
             if (!errMsg.includes('auth/popup-closed-by-user') && !errMsg.includes('cancelled-by-user')) {
-                toast.error(errMsg || 'Google login failed.');
+                toast.error(getErrorMessage(err, 'Google login failed.'));
             }
         }
     }, [loginWithGoogle, navigateAfterLogin, refCode, trackingSource, source]);
 
     const isSignupIntent = mode === 'signup' || searchParams.get('intent') === 'signup' || isInviteFlow;
-
-    const modeHref = useMemo(() => {
-        const build = (base: string) => {
-            const params = new URLSearchParams();
-            if (redirectParam) params.set('redirect', redirectParam);
-            if (refCode) params.set('ref', refCode);
-            if (source) params.set('source', source);
-            if (prefillUsername) params.set('username', prefillUsername);
-            const qs = params.toString();
-            return qs ? `${base}?${qs}` : base;
-        };
-        return { signin: build('/login'), signup: build('/signup') };
-    }, [redirectParam, refCode, source, prefillUsername]);
 
     useEffect(() => {
         if (process.env.NODE_ENV === 'development') return;
@@ -227,7 +210,9 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
     }, [email, setEmail, sendOtp, isProcessing, isSignupIntent]);
 
     const submitOtpCode = useCallback(async (code: string) => {
-        if (code.length !== 6) return;
+        // OTPs are single-use: ignore re-submits (auto-submit on 6th digit
+        // racing the Verify button/Enter) once a verify is in flight.
+        if (code.length !== 6 || isProcessing) return;
         setIsProcessing(true);
         try {
             const authedUser = await verifyOtp(email.trim().toLowerCase(), code, trackingSource || source, refCode);
@@ -236,7 +221,7 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
             setIsProcessing(false);
             toastError(err, 'Invalid or expired code.');
         }
-    }, [email, verifyOtp, trackingSource, source, refCode, navigateAfterLogin]);
+    }, [email, verifyOtp, trackingSource, source, refCode, navigateAfterLogin, isProcessing]);
 
     const handleVerifyOtp = (e: React.FormEvent) => {
         e.preventDefault();
@@ -292,7 +277,17 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
             const res = await profileApi.claimUsername(username);
             if (res.success) {
                 toast.success('Username claimed!');
-                await refreshUser();
+                setClaimDone(true);
+                // /onboarding boots from fresh server state — never trap the
+                // user on this screen if the profile refresh stalls.
+                try {
+                    await Promise.race([
+                        refreshUser(),
+                        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('profile refresh timed out')), 6000)),
+                    ]);
+                } catch {
+                    // navigate anyway — the next page loads fresh state
+                }
                 // username done → onboarding (big left/right, covers all profile) — implemented at /onboarding
                 window.location.replace('/onboarding');
             } else setUsernameError(res.message || 'Failed to claim');
@@ -302,43 +297,68 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
     const isUsernameValid = username.length >= 3 && username.length <= 20 && isAvailable && !isChecking;
 
     return (
-        <div className="flex-1 flex items-center justify-center p-4 md:p-8 bg-background">
-            <div className="w-full max-w-5xl bg-card rounded-[32px] border border-border shadow-[0_8px_40px_rgba(0,0,0,0.06)] overflow-hidden animate-in fade-in duration-300">
-                <div className="flex items-center justify-between px-6 md:px-8 py-4 border-b border-border bg-card">
-                    <Link href="/" className="flex items-center gap-2 font-bold text-[18px] tracking-tight hover:opacity-80 transition-opacity"><LogoImage width={22} height={22} className="h-5 w-5 shrink-0" /> FresherFlow</Link>
-                    <button onClick={toggleTheme} className="p-2 rounded-xl hover:bg-muted transition-colors" aria-label="Toggle theme" suppressHydrationWarning>
-                        {mounted && resolvedTheme === 'dark' ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
-                    </button>
-                </div>
-                <div className="md:grid md:grid-cols-2 min-h-[560px]">
-                <div className="hidden md:flex flex-col relative overflow-hidden bg-muted/30 p-8 border-r border-border">
-                    <div className="relative flex-1 flex flex-col justify-center gap-5 py-2">
+        <AuthShell
+            left={
+                <>
+                    <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+                        <span className="ff-hero-note ff-pin-in relative shrink-0 self-start">
+                            <span aria-hidden className="text-[var(--ff-accent)]">·</span>{' '}
+                            {step === 'username' ? (<><b>CLAIM</b> — your public link</>) : (<><b>LIVE</b> — fresher jobs</>)}
+                        </span>
+                        <div aria-hidden className="pointer-events-none relative min-h-0 flex-1 shrink" />
                         {step === 'username' ? (
-                            <div className="space-y-3">
-                                <span className="ff-hero-note ff-pin-in text-xs"><span aria-hidden className="text-[var(--ff-accent)]">·</span> <b>CLAIM</b> — your public link</span>
-                                <h2 className="font-display text-[32px] font-extrabold leading-[0.98] tracking-[-0.03em]">
-                                    Your public profile, your name.
+                            <>
+                                <h2 className="ff-hero-h1 font-display text-[clamp(28px,2.4vw,36px)] font-extrabold leading-[1.02] tracking-[-0.02em]">
+                                    <span className="line" style={{ animationDelay: '0.05s' }}>
+                                        Your public profile,
+                                    </span>
+                                    <span className="line" style={{ animationDelay: '0.18s' }}>
+                                        your <span className="accent">name.</span>
+                                    </span>
                                 </h2>
-                                <p className="ff-hero-sub !mt-2 text-sm">Pick a username — it becomes <span className="font-mono font-bold text-foreground">fresherflow.in/u/yourname</span></p>
-                            </div>
+                                <p className="ff-hero-sub">
+                                    Pick a username — it becomes{' '}
+                                    <span className="font-mono font-bold text-foreground">fresherflow.in/u/yourname</span>
+                                </p>
+                            </>
                         ) : (
-                            <div className="space-y-3">
-                                <span className="ff-hero-note ff-pin-in text-xs"><span aria-hidden className="text-[var(--ff-accent)]">·</span> <b>LIVE</b> — fresher jobs</span>
-                                <h2 className="font-display text-[32px] font-extrabold leading-[0.98] tracking-[-0.03em]">
-                                    Find jobs. Share opportunities. Help other freshers.
+                            <>
+                                <h2 className="ff-hero-h1 font-display text-[clamp(28px,2.4vw,36px)] font-extrabold leading-[1.02] tracking-[-0.02em]">
+                                    <span className="line" style={{ animationDelay: '0.05s' }}>
+                                        Find jobs.
+                                    </span>
+                                    <span className="line" style={{ animationDelay: '0.18s' }}>
+                                        Help other <span className="accent">freshers.</span>
+                                    </span>
                                 </h2>
-                                <p className="ff-hero-sub !mt-2 text-sm">Off-campus drives, internships and walk-ins across India — shared by the community.</p>
-                            </div>
+                                <p className="ff-hero-sub">
+                                    Off-campus drives, internships and walk-ins across India — shared by the community.
+                                </p>
+                            </>
                         )}
-                        <div className="ff-hero-meta !mt-2 text-xs">
-                            <span>· <b>100% FREE</b> FOR FRESHERS</span>
-                            <span>· RECRUITER-READY</span>
+                        <ul className="relative mt-6 mb-6 shrink-0 space-y-2.5">
+                            {[['Free', 'for freshers'], ['Pan-India', 'drives & walk-ins'], ['Community', 'shared by freshers']].map(([value, label]) => (
+                                <li key={label} className="flex items-center gap-2.5 text-[13px] leading-none">
+                                    <span aria-hidden className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--ff-accent)]" />
+                                    <span className="font-bold text-foreground">{value}</span>
+                                    <span className="text-muted-foreground">{label}</span>
+                                </li>
+                            ))}
+                        </ul>
+                        <div className="relative mt-auto shrink-0">
+                            <div className="ff-hero-meta">
+                                <span>
+                                    · <b>100% FREE</b> FOR FRESHERS
+                                </span>
+                                <span>· MADE FOR FRESHERS</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-
-                <div className="w-full flex flex-col justify-center bg-card p-7 md:p-10 space-y-6">
-                <div className="space-y-2 text-center">
+                </>
+            }
+        >
+            <div className="m-auto flex w-full max-w-[min(580px,100%)] flex-col gap-5 lg:max-w-[min(580px,75%)]">
+                <div className="space-y-3">
                     {step !== 'email' && step !== 'username' && (
                         <button onClick={() => { setStep('email'); navigatedRef.current=false; }} className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary mb-1 transition-colors cursor-pointer active:scale-95">
                             <ChevronLeftIcon className="w-3.5 h-3.5" /><span>{isSignupIntent ? 'Back to sign up options' : 'Back to sign in options'}</span>
@@ -366,18 +386,18 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
 
                 <div className="space-y-4">
                     {step === 'email' && (
-                        <form onSubmit={(e) => { e.preventDefault(); void handleSendOtp(); }} className="space-y-4">
-                            <div className="space-y-1.5">
-                                <label htmlFor="auth-email" className="text-xs font-semibold text-foreground">Email address</label>
+                        <form onSubmit={(e) => { e.preventDefault(); void handleSendOtp(); }} className="space-y-5">
+                            <div className="space-y-2">
+                                <label htmlFor="auth-email" className="block pl-1 text-xs font-semibold text-foreground">Email address</label>
                                 <div className="relative group">
-                                    <EnvelopeIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/40 group-focus-within:text-primary transition-colors z-10" />
-                                    <Input id="auth-email" type="email" required autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10 h-12 rounded-xl text-sm" placeholder="Enter your email address" />
+                                    <EnvelopeIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-muted-foreground/40 group-focus-within:text-primary transition-colors duration-200 z-10 pointer-events-none" />
+                                    <Input id="auth-email" type="email" required autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-11 h-12 rounded-xl placeholder:tracking-normal transition-colors duration-200 focus:border-primary/60" placeholder="Enter your email address" />
                                 </div>
                             </div>
-                            <button type="submit" disabled={(mounted && isLoading) || isProcessing || !email.trim() || !EMAIL_PATTERN.test(email.trim())} className="w-full h-12 rounded-xl bg-[var(--ff-accent)] text-white font-semibold text-sm flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-100">
+                            <button type="submit" disabled={(mounted && isLoading) || isProcessing || !email.trim() || !EMAIL_PATTERN.test(email.trim())} className="w-full h-12 rounded-xl bg-[var(--ff-accent)] text-paper font-semibold text-sm flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-100">
                                 {isProcessing ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : <>Continue <span aria-hidden>→</span></>}
                             </button>
-                            <div className="relative py-2"><div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div><div className="relative flex justify-center"><span className="bg-card px-3 text-xs text-muted-foreground">or</span></div></div>
+                            <div className="relative py-3"><div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div><div className="relative flex justify-center"><span className="bg-card px-3 text-xs text-muted-foreground">or</span></div></div>
                             <button type="button" onClick={handleGoogleSignIn} disabled={(mounted && isLoading) || isProcessing} className="w-full h-12 rounded-xl border border-border bg-card text-foreground font-medium text-sm flex items-center justify-center gap-2.5 hover:bg-muted active:scale-[0.98] transition-all disabled:opacity-50">
                                 {isProcessing ? <svg className="w-5 h-5 shrink-0 animate-spin text-muted-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24"><path fill="#EA4335" d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.37 0 3.412 2.667 1.48 6.555l3.786 3.21z" /><path fill="#FBBC05" d="M1.48 6.555A12.049 12.049 0 0 0 0 12c0 1.927.455 3.746 1.258 5.373l3.967-3.07a7.086 7.086 0 0 1-.225-2.303c0-1.442.434-2.776 1.18-3.885L1.48 6.555z" /><path fill="#4285F4" d="M12 24c3.245 0 5.973-1.076 7.964-2.912l-3.836-2.973c-1.127.755-2.564 1.203-4.128 1.203-3.18 0-5.88-2.154-6.845-5.064L1.258 17.373C3.12 21.294 7.234 24 12 24z" /><path fill="#34A853" d="M24 12c0-.864-.077-1.697-.22-2.509H12v4.8h6.732c-.29 1.549-1.164 2.863-2.477 3.745l3.836 2.973C22.336 19.167 24 15.827 24 12z" /></svg>}
                                 <span>{isProcessing ? 'Connecting...' : 'Google'}</span>
@@ -386,12 +406,12 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
                         </form>
                     )}
                     {step === 'otp' && (
-                        <form onSubmit={handleVerifyOtp} className="space-y-4">
+                        <form onSubmit={handleVerifyOtp} className="space-y-5">
                             <div className="space-y-2.5">
-                                <label className="text-xs font-semibold text-foreground text-center block">6-Digit Verification Code</label>
+                                <label className="text-xs font-semibold text-foreground block">6-Digit Verification Code</label>
                                 <div className="flex justify-between gap-1.5">
                                     {otpArray.map((digit, idx) => (
-                                        <input key={idx} id={`otp-${idx}`} type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={1} value={digit} onChange={(e) => handleOtpChange(e.target.value, idx)} onKeyDown={(e) => handleOtpKeyDown(e, idx)} onPaste={handleOtpPaste} className="w-11 h-12 rounded-xl border border-border/80 bg-background text-center text-lg font-bold text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all active:scale-95" autoFocus={idx === 0} />
+                                        <input key={idx} id={`otp-${idx}`} type="text" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]*" maxLength={1} value={digit} onChange={(e) => handleOtpChange(e.target.value, idx)} onKeyDown={(e) => handleOtpKeyDown(e, idx)} onPaste={handleOtpPaste} className="min-w-0 flex-1 h-12 rounded-xl border border-border/80 bg-background text-center text-lg font-bold text-foreground focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors duration-200" autoFocus={idx === 0} />
                                     ))}
                                 </div>
                                 <div className="flex justify-between items-center px-0.5 pt-1">
@@ -405,12 +425,25 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
                         </form>
                     )}
                     {step === 'username' && (
-                        <form onSubmit={handleClaim} className="space-y-4">
-                            <div className="space-y-1.5">
-                                <label htmlFor="username-input" className="text-xs font-semibold text-foreground">Username</label>
+                        claimDone ? (
+                            <div className="ff-pin-in flex flex-col items-center gap-3 py-10 text-center" role="status" aria-live="polite">
+                                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-success/15">
+                                    <svg className="h-7 w-7 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                                </span>
+                                <p className="font-mono text-lg font-bold text-foreground">@{username}</p>
+                                <p className="text-sm font-semibold text-foreground">Username claimed!</p>
+                                <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                                    <ArrowPathIcon className="h-4 w-4 animate-spin" aria-hidden />
+                                    Setting up your profile…
+                                </p>
+                            </div>
+                        ) : (
+                        <form onSubmit={handleClaim} className="space-y-5">
+                            <div className="space-y-2">
+                                <label htmlFor="username-input" className="block pl-1 text-xs font-semibold text-foreground">Username</label>
                                 <div className="relative group">
-                                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm z-10">@</span>
-                                    <Input id="username-input" type="text" autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder="your_username" value={username} onChange={handleUsernameChange} maxLength={20} disabled={isClaiming} className="pl-9 pr-10 font-mono text-sm font-bold" />
+                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium text-sm z-10 pointer-events-none">@</span>
+                                    <Input id="username-input" type="text" autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder="your_username" value={username} onChange={handleUsernameChange} maxLength={20} disabled={isClaiming} className="pl-10 pr-10 h-12 font-mono text-sm font-bold placeholder:tracking-normal transition-colors duration-200 focus:border-primary/60" />
                                     <div className="absolute right-3.5 top-1/2 -translate-y-1/2 flex items-center z-10">
                                         {isChecking && <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />}
                                         {!isChecking && isAvailable === true && <svg className="w-5 h-5 text-success" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>}
@@ -428,6 +461,7 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
                                 {isClaiming ? <ArrowPathIcon className="w-4 h-4 animate-spin mx-auto" /> : 'Confirm username →'}
                             </Button>
                         </form>
+                        )
                     )}
                 </div>
                 <div className="pt-4 border-t border-border/50 flex flex-col items-center gap-2 text-center">
@@ -437,10 +471,8 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
                         <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
                     </div>
                 </div>
-                </div>
-                </div>
             </div>
-        </div>
+        </AuthShell>
     );
 }
 

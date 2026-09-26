@@ -19,7 +19,7 @@ export function ShareListingBanner({
                     <p className="text-sm text-muted-foreground mt-1">Copy platform captions or open the listings page.</p>
                 </div>
                 <Link
-                    href="/opportunities"
+                    href="/admin/opportunities"
                     className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
                 >
                     Back to listings

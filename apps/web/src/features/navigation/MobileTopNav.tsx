@@ -7,13 +7,14 @@ import { useContext, useEffect, useState, Suspense } from 'react';
 import { AuthContext } from '@/lib/auth/AuthContext';
 import { cn } from "@/ui/cn";
 import Bars3Icon from '@heroicons/react/24/outline/Bars3Icon';
-import { useUnreadNotifications } from '@/features/notifications/hooks/useUnreadNotifications';
 import { AlertsDropdown } from '@/features/notifications/components/AlertsDropdown';
 import { Sheet, SheetContent, SheetTitle } from '@/ui/Sheet';
+import { useTheme } from '@/lib/providers/ThemeContext';
+import { Moon, Sun } from 'lucide-react';
 import { MobileNavTree } from '@/features/navigation/AppSidebar';
 import { AdminMobileNavTree } from '@/features/admin/layout/AdminSidebar';
 
-import { getNavRoutes } from './routeConfig';
+import { getNavRoutes, isSidebarPage } from './routeConfig';
 
 function getMobileTitle(pathname: string): string {
     const navRoutes = getNavRoutes();
@@ -34,13 +35,16 @@ export function MobileTopNav() {
     const pathname = usePathname();
     const isAuthRoute = pathname === '/login' || pathname === '/register' || pathname === '/choose-username';
     const isCandidatePortfolioRoute = pathname.startsWith('/u/');
-    const { unreadCount } = useUnreadNotifications();
+    // Sidebar pages keep the notification bell in the mobile header; public
+    // pages (home, /u) never show it.
+    const isSidebarRoute = isSidebarPage(pathname || '');
     const context = useContext(AuthContext);
     const user = context?.user;
     const [isMounted, setIsMounted] = useState(false);
     const resolvedUser = isMounted ? user : null;
     const [menuOpen, setMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
+    const { resolvedTheme, toggleTheme } = useTheme();
 
     useEffect(() => { setIsMounted(true); }, []);
 
@@ -101,15 +105,31 @@ export function MobileTopNav() {
                             </div>
                         ) : (
                             <>
-                                {resolvedUser && !isAuthRoute && (
+                                {resolvedUser && !isAuthRoute && isSidebarRoute && (
                                     <AlertsDropdown />
                                 )}
                                 {!isAuthRoute && (
                                     <button onClick={() => setMenuOpen(true)} className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all duration-150 ease-out active:scale-95" aria-label="Open menu">
-                                        <div className="relative">
-                                            <Bars3Icon className="w-5 h-5" />
-                                            {resolvedUser && unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-primary rounded-full ring-1 ring-background" />}
-                                        </div>
+                                        <Bars3Icon className="w-5 h-5" />
+                                    </button>
+                                )}
+                                {isAuthRoute && (
+                                    <button
+                                        onClick={() => void toggleTheme()}
+                                        aria-label="Toggle theme"
+                                        className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors duration-200 outline-none active:scale-[0.97]"
+                                    >
+                                        <span className="relative flex h-5 w-5 items-center justify-center">
+                                            {/* Mount-gated: resolvedTheme differs between SSR and
+                                                the client (stored preference), so rendering the
+                                                icons immediately causes a hydration mismatch. */}
+                                            {isMounted && (
+                                                <>
+                                                    <Sun className={`absolute transition-all duration-300 ${resolvedTheme === 'dark' ? 'opacity-0 rotate-90 scale-75' : 'opacity-100 rotate-0 scale-100'}`} size={18} />
+                                                    <Moon className={`absolute transition-all duration-300 ${resolvedTheme === 'dark' ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-75'}`} size={18} />
+                                                </>
+                                            )}
+                                        </span>
                                     </button>
                                 )}
                             </>

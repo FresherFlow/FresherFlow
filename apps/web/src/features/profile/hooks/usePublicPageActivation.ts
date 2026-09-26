@@ -3,6 +3,7 @@
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/lib/utils/error';
 import { profileApi } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/AuthContext';
 import {
@@ -41,7 +42,7 @@ export function usePublicPageActivation() {
             toast.success(`Your page is live for the next ${PROFILE_PAGE_ACTIVE_DAYS} days.`);
             if (options?.navigateToPage && pagePath) router.push(pagePath);
         } catch (err) {
-            toast.error((err as Error).message || 'Could not activate your page. Try again.');
+            toast.error(getErrorMessage(err, 'Could not activate your page. Try again.'));
         } finally {
             setIsPublishing(false);
         }

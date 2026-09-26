@@ -1,182 +1,222 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
+import { Link2, Trash2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { profileApi } from '@/lib/api/profile';
-import toast from 'react-hot-toast';
 import { Input } from '@/ui/Input';
+import { Textarea } from '@/ui/Textarea';
 import { Button } from '@/ui/Button';
-import { PlusIcon, PencilSquareIcon, CheckIcon } from '@heroicons/react/24/outline';
-import { cn } from '@/ui/cn';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/ui/Dialog';
+import { ProfileSectionCard } from '@/features/profile/components/sections/ProfileSectionCard';
+import {
+    buildHeadlinePayload,
+    splitFullName,
+    validateHeadlinePayload,
+    type HeadlineDraft as Draft,
+} from '@/features/profile/headline';
 
-interface HeadlineSectionProps {
-    isEditingExternal?: boolean;
-    onCloseExternal?: () => void;
-}
+/**
+ * Headline & Bio — a form, always open.
+ *
+ * Photo: minimal professional URL input only — no preset gallery. Users who
+ * want a photo paste a URL; empty falls back to initials. Preview is a
+ * h-16 w-16 rounded-full on the left, URL field on the right. Public photo
+ * appears at fresherflow.in/u/[username].
+ */
+export function HeadlineSection() {
+    const { user, profile, updateProfileState } = useAuth();
 
-export function HeadlineSection({ isEditingExternal, onCloseExternal }: HeadlineSectionProps = {}) {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { user, profile, updateProfileState, refreshUser } = useAuth();
-    const [internalIsEditing, setInternalIsEditing] = useState(false);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [isSubmitting, setIsSubmitting] = useState(false);
-
-    const isEditing = isEditingExternal ?? internalIsEditing;
-    const setIsEditing = (val: boolean) => {
-        setInternalIsEditing(val);
-        if (!val && onCloseExternal) onCloseExternal();
+    const saved: Draft = {
+        ...splitFullName(user?.fullName),
+        headline: profile?.headline || '',
+        about: profile?.about || '',
+        avatarUrl: profile?.avatarUrl || '',
     };
 
-    const [firstName, setFirstName] = useState('');
-    const [lastName, setLastName] = useState('');
-    const [headline, setHeadline] = useState(profile?.headline || '');
-    const [about, setAbout] = useState(profile?.about || '');
-    const [avatarUrl, setAvatarUrl] = useState(profile?.avatarUrl || '');
+    const [draft, setDraft] = useState<Draft>(saved);
+    const [saving, setSaving] = useState(false);
+    const [avatarBroken, setAvatarBroken] = useState(false);
 
+    // Re-hydrate when the stored profile changes underneath us.
     useEffect(() => {
-        if (user?.fullName) {
-            const parts = user.fullName.trim().split(' ');
-            setFirstName(parts[0] || '');
-            setLastName(parts.slice(1).join(' ') || '');
-        } else {
-            setFirstName('');
-            setLastName('');
-        }
-        if (profile) {
-            setHeadline(profile.headline || '');
-            setAbout(profile.about || '');
-            setAvatarUrl(profile.avatarUrl || '');
-        }
+        setDraft({
+            ...splitFullName(user?.fullName),
+            headline: profile?.headline || '',
+            about: profile?.about || '',
+            avatarUrl: profile?.avatarUrl || '',
+        });
+        setAvatarBroken(false);
     }, [user?.fullName, profile]);
 
-    const handleSave = () => {
-        const combinedName = `${firstName.trim()} ${lastName.trim()}`.trim();
-        if (!combinedName) {
-            toast.error('Full name cannot be empty');
+    const isDirty =
+        draft.firstName !== saved.firstName ||
+        draft.lastName !== saved.lastName ||
+        draft.headline !== saved.headline ||
+        draft.about !== saved.about ||
+        draft.avatarUrl !== saved.avatarUrl;
+
+    const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
+        setDraft((prev) => ({ ...prev, [key]: value }));
+
+    const handleSave = async () => {
+        const payload = buildHeadlinePayload(draft);
+        const problem = validateHeadlinePayload(payload);
+        if (problem) {
+            toast.error(problem);
             return;
         }
 
-        const payload = {
-            fullName: combinedName,
-            headline: headline.trim() || undefined,
-            about: about.trim() || undefined,
-            avatarUrl: avatarUrl.trim() || null,
-        };
-
-        // Local first -> Firebase RTDB -> Non-blocking API sync
-        updateProfileState(payload, () => profileApi.updateProfile(payload as any));
-        toast.success('Updated successfully!');
-        setIsEditing(false);
+        setSaving(true);
+        try {
+            // Persist first, then update the local cache — the UI never says
+            // "saved" for a write the server rejected.
+            await profileApi.updateProfile(payload as never);
+            updateProfileState(payload);
+            toast.success('Profile updated.');
+        } catch {
+            toast.error('Could not save. Check your connection and try again.');
+        } finally {
+            setSaving(false);
+        }
     };
 
-    const hasContent = Boolean(profile?.headline || profile?.about);
+    const initials = (draft.firstName[0] || '') + (draft.lastName[0] || '');
+    const trimmedAvatar = draft.avatarUrl.trim();
+    const hasAvatar = Boolean(trimmedAvatar) && !avatarBroken;
 
     return (
-        <div className="w-full">
-            <div className="flex justify-between items-start mb-2">
-                <h3 className="text-base font-bold text-foreground">Headline & Bio</h3>
-            </div>
-
-            {hasContent ? (
-                <div className="space-y-2 mt-1">
-                    {profile?.headline && (
-                        <p className="text-base font-semibold text-foreground">{profile.headline}</p>
-                    )}
-                    {profile?.about && (
-                        <p className="text-sm text-foreground/80 whitespace-pre-line">{profile.about}</p>
-                    )}
-                </div>
-            ) : (
-                <p className="text-sm text-muted-foreground italic">Add a professional headline and bio.</p>
-            )}
-
-            <Dialog open={isEditing} onOpenChange={setIsEditing}>
-                <DialogContent className="max-w-2xl max-h-180 overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle>Edit Identity, Headline & Bio</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-6">
-                            {/* Candidate Name Fields */}
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-foreground">Candidate Full Name</label>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div>
-                                        <Input
-                                            type="text"
-                                            value={firstName}
-                                            onChange={(e) => setFirstName(e.target.value)}
-                                            placeholder="First Name"
-                                            disabled={isSubmitting}
-                                            className="h-10"
-                                        />
-                                    </div>
-                                    <div>
-                                        <Input
-                                            type="text"
-                                            value={lastName}
-                                            onChange={(e) => setLastName(e.target.value)}
-                                            placeholder="Last Name"
-                                            disabled={isSubmitting}
-                                            className="h-10"
-                                        />
-                                    </div>
-                                </div>
+        <ProfileSectionCard title="Headline & Bio">
+            <form
+                className="space-y-5"
+                onSubmit={(e) => {
+                    e.preventDefault();
+                    void handleSave();
+                }}
+            >
+                {/* Photo — clean premium: preview left, single URL input right */}
+                <div className="flex gap-4">
+                    <div className="shrink-0">
+                        {hasAvatar ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                                src={trimmedAvatar}
+                                alt="Profile photo preview"
+                                onError={() => setAvatarBroken(true)}
+                                className="h-16 w-16 rounded-full border border-border/60 object-cover shadow-sm"
+                            />
+                        ) : (
+                            <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border/60 bg-muted text-sm font-semibold text-muted-foreground shadow-sm">
+                                {initials.toUpperCase() || 'U'}
                             </div>
+                        )}
+                    </div>
 
-                            {/* Avatar URL */}
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-foreground">Avatar / Logo URL (Optional)</label>
-                                <Input
-                                    type="url"
-                                    value={avatarUrl}
-                                    onChange={(e) => setAvatarUrl(e.target.value)}
-                                    placeholder="https://example.com/my-avatar.png"
-                                    disabled={isSubmitting}
-                                    className="h-10"
-                                />
-                            </div>
-
-                            {/* Headline */}
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-foreground">Professional Headline</label>
-                                <Input
-                                    type="text"
-                                    value={headline}
-                                    onChange={(e) => setHeadline(e.target.value)}
-                                    placeholder="e.g. Full Stack Developer | Final Year CS Undergrad"
-                                    disabled={isSubmitting}
-                                    className="h-10"
-                                />
-                            </div>
-
-                            {/* Bio / About */}
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-foreground">Executive Summary / Bio</label>
-                                <textarea
-                                    rows={4}
-                                    value={about}
-                                    onChange={(e) => setAbout(e.target.value)}
-                                    placeholder="Tell recruiters about your background, key achievements, and career aspirations..."
-                                    disabled={isSubmitting}
-                                    className={cn(
-                                        "flex w-full rounded-md border border-border bg-background px-3 py-2 text-sm",
-                                        "placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20",
-                                        "disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-                                    )}
-                                />
-                            </div>
-                            
-                            <div className="flex justify-end gap-4 pt-1">
-                                <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} disabled={isSubmitting}>Cancel</Button>
-                                <Button size="sm" onClick={handleSave} disabled={isSubmitting}>
-                                    <CheckIcon className="w-3.5 h-3.5" /> Save Changes
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                        <div className="flex items-center gap-2">
+                            <label
+                                htmlFor="profile-avatar"
+                                className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground"
+                            >
+                                <Link2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                                Photo URL
+                            </label>
+                            {hasAvatar && (
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        setAvatarBroken(false);
+                                        set('avatarUrl', '');
+                                    }}
+                                    className="ml-auto inline-flex items-center gap-1.5 whitespace-nowrap text-xs h-7 px-2"
+                                >
+                                    <Trash2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                    Remove photo
                                 </Button>
-                            </div>
+                            )}
                         </div>
-                </DialogContent>
-            </Dialog>
-        </div>
+                        <Input
+                            id="profile-avatar"
+                            type="url"
+                            inputMode="url"
+                            value={draft.avatarUrl}
+                            onChange={(e) => {
+                                setAvatarBroken(false);
+                                set('avatarUrl', e.target.value);
+                            }}
+                            placeholder="https://example.com/photo.jpg"
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                            Shown on fresherflow.in/u/{user?.username ?? 'username'} — leave empty to use initials
+                        </p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                        <label htmlFor="profile-first-name" className="text-xs font-medium text-foreground">
+                            First name
+                        </label>
+                        <Input
+                            id="profile-first-name"
+                            value={draft.firstName}
+                            onChange={(e) => set('firstName', e.target.value)}
+                            autoComplete="given-name"
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label htmlFor="profile-last-name" className="text-xs font-medium text-foreground">
+                            Last name
+                        </label>
+                        <Input
+                            id="profile-last-name"
+                            value={draft.lastName}
+                            onChange={(e) => set('lastName', e.target.value)}
+                            autoComplete="family-name"
+                        />
+                    </div>
+                </div>
+
+                <div className="space-y-1.5">
+                    <label htmlFor="profile-headline" className="text-xs font-medium text-foreground">
+                        Headline
+                    </label>
+                    <Input
+                        id="profile-headline"
+                        value={draft.headline}
+                        onChange={(e) => set('headline', e.target.value)}
+                        placeholder="Final-year CSE student · Python & SQL"
+                        maxLength={120}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        {draft.headline.length}/120 — this is the line on your profile card.
+                    </p>
+                </div>
+
+                <div className="space-y-1.5">
+                    <label htmlFor="profile-about" className="text-xs font-medium text-foreground">
+                        About
+                    </label>
+                    <Textarea
+                        id="profile-about"
+                        rows={5}
+                        value={draft.about}
+                        onChange={(e) => set('about', e.target.value)}
+                        placeholder="What you have built, what you are learning, and the kind of role you want."
+                    />
+                </div>
+
+                <div className="flex items-center justify-end gap-3 border-t border-border/50 pt-4">
+                    <span className="mr-auto text-xs text-muted-foreground" aria-live="polite">
+                        {saving ? 'Saving…' : isDirty ? 'Unsaved changes' : 'All changes saved'}
+                    </span>
+                    <Button type="submit" size="sm" disabled={!isDirty || saving}>
+                        {saving ? 'Saving…' : 'Save'}
+                    </Button>
+                </div>
+            </form>
+        </ProfileSectionCard>
     );
 }
-

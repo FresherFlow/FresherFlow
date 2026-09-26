@@ -33,8 +33,7 @@ function resolveTab(tab: string | null): CommunityTabKey {
 
 /**
  * /community is one page: discussions, referral board, salary reports, rooms
- * and saved searches are ?tab= views on one shared pill TabBar, with a
- * Breadcrumb (Community / Referrals) for clarity.
+ * and saved searches are ?tab= views on one shared pill TabBar.
  */
 export default function CommunityTabsClient() {
     const searchParams = useSearchParams();
@@ -48,7 +47,7 @@ export default function CommunityTabsClient() {
                 <p className="text-sm text-muted-foreground">
                     Discuss job opportunities, share experiences, and connect with fellow freshers.
                 </p>
-                <TabBar variant="tabs" items={[...COMMUNITY_TABS]} activeKey={active} className="px-0 pt-0 max-w-none" />
+                <TabBar items={[...COMMUNITY_TABS]} activeKey={active} className="px-0 pt-0 max-w-none" />
             </header>
             <TabContent />
         </main>

@@ -1,42 +1,29 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '@/lib/auth/AuthContext';
 import { cn } from "@/ui/cn";
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import BellIcon from '@heroicons/react/24/outline/BellIcon';
-import UserCircleIcon from '@heroicons/react/24/outline/UserCircleIcon';
 import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
 import { LogoImage } from '@/features/shell/LogoImage';
-import { useUnreadNotifications } from '@/features/notifications/hooks/useUnreadNotifications';
-import { AlertsDropdown } from '@/features/notifications/components/AlertsDropdown';
 import { useOfflineActionQueue } from '@/hooks/useOfflineActionQueue';
 import { getNavRoutes } from './routeConfig';
-import { useTheme } from '@/lib/providers/ThemeContext';
 import { useMarqueeHidden } from '@/hooks/useMarqueeHidden';
 import { NavMegaMenu } from './NavMegaMenu';
 
 
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { Button } from '@/ui/Button';
-import { Cog6ToothIcon, ArrowRightOnRectangleIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
 
 export function DesktopNav() {
     const context = useContext(AuthContext);
     const user = context?.user;
-    const logout = context?.logout;
 
-    const router = useRouter();
     const pathname = usePathname();
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { unreadCount } = useUnreadNotifications();
     const [isMounted, setIsMounted] = useState(false);
     const pendingSyncCount = useOfflineActionQueue(isMounted ? user?.id : undefined);
     const [scrolled, setScrolled] = useState(false);
-    const { theme, toggleTheme } = useTheme();
     const isAuthRoute = pathname === '/login' || pathname === '/register' || pathname === '/choose-username';
 
     useEffect(() => { setIsMounted(true); }, []);
@@ -70,10 +57,6 @@ export function DesktopNav() {
     // Landing rides the marquee: nav moves to top-0 when the marquee hides on scroll down
     const marqueeHidden = useMarqueeHidden(isLandingPage);
     const isCandidatePortfolioRoute = pathname.startsWith('/u/');
-
-    const handleLogout = () => { if (logout) void logout('/login'); };
-
-    const initialLetter = resolvedUser ? (resolvedUser.fullName?.[0] || resolvedUser.username?.[0] || 'U').toUpperCase() : 'U';
 
     // ONE header everywhere: same 60px height, same border, same actions.
     // Only the landing sits under the marquee (top-7 → top-0 on scroll).
@@ -167,50 +150,19 @@ export function DesktopNav() {
                                 </span>
                             )}
 
-                            {resolvedUser && !isAuthRoute ? (
-                        <div className="flex items-center gap-2">
-                            <AlertsDropdown />
-
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <button aria-label="User Menu" suppressHydrationWarning className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border border-border/60 text-xs font-bold uppercase transition-all duration-150 ease-out active:scale-95 hover:border-primary/40 cursor-pointer focus:outline-none">
-                                        {initialLetter}
-                                    </button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-56">
-                                    <DropdownMenuLabel>
-                                        <div className="flex flex-col space-y-1">
-                                            <p className="text-sm font-medium leading-none truncate">{resolvedUser.fullName || resolvedUser.username}</p>
-                                            <p className="text-xs leading-none text-muted-foreground truncate">{resolvedUser.email}</p>
-                                        </div>
-                                    </DropdownMenuLabel>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => router.push('/account')} className="cursor-pointer flex items-center">
-                                        <Squares2X2Icon className="mr-2 h-4 w-4" />
-                                        <span>Account</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => router.push('/account?tab=profile')} className="cursor-pointer flex items-center">
-                                        <UserCircleIcon className="mr-2 h-4 w-4" />
-                                        <span>Profile</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem className="cursor-pointer" onSelect={handleLogout}>
-                                        <ArrowRightOnRectangleIcon className="mr-2 h-4 w-4" />
-                                        <span>Log out</span>
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                        </div>
-                    ) : (!isAuthRoute) ? (
-                        <div className="flex items-center gap-2.5">
-                            <Link href="/login" className="ff-nav-btn">
-                                Sign in
-                            </Link>
-                            <Link href="/post" className="ff-nav-btn ff-nav-btn-primary">
-                                Post 
-                            </Link>
-                        </div>
-                    ) : null}
+                            {/* Header rule: no bell, no avatar, ever. Sign in / Post stay
+                                as plain control buttons. Account and log out live in the
+                                sidebar user footer (NavUser). */}
+                            {!isAuthRoute && (
+                                <div className="flex items-center gap-2.5">
+                                    <Link href="/login" className="ff-nav-btn">
+                                        Sign in
+                                    </Link>
+                                    <Link href="/post" className="ff-nav-btn ff-nav-btn-primary">
+                                        Post
+                                    </Link>
+                                </div>
+                            )}
                     </>
                     )}
                 </div>

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { communityApi } from '@fresherflow/api-client';
 import type { Room, RoomListResult } from '@fresherflow/types';
+import { EmptyState } from '@/ui/EmptyState';
+import { Skeleton } from '@/ui/Skeleton';
 import { cn } from '@repo/ui/utils/cn';
 
 const ROOM_TYPES = [
@@ -113,8 +115,8 @@ export function RoomsDirectory() {
 
             {/* Room list */}
             {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {[1, 2, 3, 4].map((i) => <div key={i} className="h-28 animate-pulse rounded-2xl bg-muted/40" />)}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" aria-hidden="true">
+                    {[1, 2, 3, 4].map((index) => <RoomCardSkeleton key={index} />)}
                 </div>
             ) : error ? (
                 <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-xs text-muted-foreground">
@@ -122,9 +124,13 @@ export function RoomsDirectory() {
                     <button type="button" onClick={() => void load()} className="font-semibold text-primary hover:underline">Retry</button>
                 </div>
             ) : data.rooms.length === 0 ? (
-                <div className="p-8 text-center text-xs text-muted-foreground">
-                    {debouncedSearch || type ? 'No rooms match your filters.' : 'No rooms yet.'}
-                </div>
+                <EmptyState
+                    icon={debouncedSearch || type ? 'search' : 'inbox'}
+                    size="md"
+                    title={debouncedSearch || type ? 'No rooms match your filters' : 'No rooms yet'}
+                    description=""
+                    variant="ghost"
+                />
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {data.rooms.map((room) => (
@@ -155,6 +161,32 @@ export function RoomsDirectory() {
                     </button>
                 </div>
             )}
+        </div>
+    );
+}
+
+function RoomCardSkeleton() {
+    return (
+        <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+            <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1 space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/3" />
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                    <Skeleton className="h-5 w-14 rounded-full" />
+                    <Skeleton className="h-5 w-12 rounded-full" />
+                </div>
+            </div>
+            <div className="space-y-2">
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-4/5" />
+            </div>
+            <div className="flex items-center gap-3">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-3 w-16" />
+            </div>
         </div>
     );
 }

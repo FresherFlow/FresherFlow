@@ -6,6 +6,7 @@ import {
     normalizeSpecializationName,
     normalizeSkillName,
     INDIAN_CITIES,
+    INDIAN_STATES,
 } from '@fresherflow/constants';
 import { OpportunityCategory } from '@fresherflow/types';
 export {
@@ -16,6 +17,7 @@ export {
     normalizeSpecializationName,
     normalizeSkillName,
     INDIAN_CITIES,
+    INDIAN_STATES,
 };
 
 export const EDUCATION_LEVELS = ['TENTH', 'INTER', 'DIPLOMA', 'DEGREE', 'PG'];
@@ -29,6 +31,14 @@ export const OPPORTUNITY_TYPES = [
     OpportunityCategory.EVENT,
 ];
 export const WORK_MODES = ['ONSITE', 'HYBRID', 'REMOTE'];
+
+/**
+ * Ceiling for the skills editor.
+ *
+ * A rule, not a style value, so it does not live in the section that happens to render it.
+ * The section imports it, the toggle rule in `skills.ts` enforces it.
+ */
+export const MAX_SKILLS = 10;
 
 const DATA_DRIVEN_PROFILE_SKILLS = [
     'python',
@@ -153,51 +163,7 @@ export const AVAILABILITY_OPTIONS = [
     { value: 'MONTH_1', label: '30 Days' },
 ];
 
-export const DIPLOMA_DEGREES = [
-    'Diploma in Computer Science', 'Diploma in IT', 'Diploma in Electronics',
-    'Diploma in Mechanical', 'Diploma in Civil', 'Diploma in Electrical',
-    'Diploma in Artificial Intelligence', 'Other'
-];
-
-export const UG_DEGREES = [
-    'B.Tech / B.E.',
-    'B.Sc',
-    'BCA',
-    'BBA',
-    'B.Com',
-    'B.A',
-    'B.Des',
-    'B.Ed',
-    'B.Pharma',
-    'B.Voc',
-    'CA',
-    'Other',
-];
-
-export const PG_DEGREES = [
-    'M.Tech / M.E.',
-    'M.Sc',
-    'MCA',
-    'MBA',
-    'M.Com',
-    'M.A',
-    'MS',
-    'PhD',
-    'Any Postgraduate',
-    'Other',
-];
-
-export const DEGREE_SPECIALIZATIONS: Record<string, string[]> = {
-    'B.Tech / B.E.': ['Computer Science', 'Information Technology', 'Electronics & Communication', 'Electrical & Electronics', 'Mechanical Engineering', 'Civil', 'AI/ML', 'Data Science', 'Cyber Security', 'Other'],
-    'B.Sc': ['Computer Science', 'Physics', 'Mathematics', 'Chemistry', 'Information Technology', 'Data Science', 'Other'],
-    'BCA': ['Software Development', 'Web Applications', 'Database Systems', 'Other'],
-    'M.Tech / M.E.': ['Computer Science', 'VLSI Design', 'Cloud Computing', 'AI/ML', 'Data Science', 'Other'],
-    'MCA': ['Computer Applications', 'Application Development', 'System Architecture', 'Cloud Tech', 'Other'],
-    'MBA': ['Finance', 'Marketing', 'Human Resources', 'Operations', 'Business Analytics', 'Other'],
-    default: [...ALL_SPECIALIZATION_OPTIONS]
-};
-
-export function getSpecializations(course: string): string[] {
-    const normalizedCourse = normalizeCourseName(course);
-    return DEGREE_SPECIALIZATIONS[normalizedCourse] ?? DEGREE_SPECIALIZATIONS.default;
-}
+/* The degree and specialization lists (DIPLOMA_DEGREES, UG_DEGREES, PG_DEGREES,
+   getSpecializations) used to be duplicated here as well as in
+   `@fresherflow/utils`. Every consumer already imports them from the package, so
+   the copies were dead — deleted rather than kept as a second home. */

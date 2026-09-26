@@ -8,9 +8,9 @@ import type { CommentCountMap } from '@fresherflow/types';
  *
  * One request per feed page (not per card): cards register their ids on
  * mount, the provider coalesces them and fetches
- * GET /api/jobs/comment-counts?ids=... in a single batch. Counts are
- * client-only decoration — SSR renders nothing and missing ids simply
- * render no badge, so the API can stay public and cacheable.
+ * GET /api/jobs/comment-counts?ids=... in a single batch. Counts hydrate
+ * client-side — cards render the `0 discussing` zero-state on SSR and swap
+ * in the real count when it arrives, so the API can stay public and cacheable.
  */
 
 const BATCH_DELAY_MS = 120;
@@ -45,7 +45,7 @@ export function CommentCountsProvider({ children }: { children: React.ReactNode 
         for (let i = 0; i < ids.length; i += MAX_IDS_PER_REQUEST) {
             const batch = ids.slice(i, i + MAX_IDS_PER_REQUEST);
             try {
-                const { communityApi } = await import('@fresherflow/api-client');
+                const { communityApi } = await import('@/features/jobs/api/community');
                 const result = await communityApi.getCommentCounts(batch);
                 setCounts((prev) => ({ ...prev, ...result.counts }));
             } catch {
@@ -87,9 +87,10 @@ export function CommentCountsProvider({ children }: { children: React.ReactNode 
 }
 
 /**
- * Returns the visible comment count for a job, or undefined while loading /
- * when the job has no comments yet. Renders nothing for undefined so cards
- * without discussion stay clean.
+ * Returns the comment count for a job, or undefined while loading / when the
+ * provider is absent. Callers must render the zero-state themselves
+ * (`count ?? 0`) so the Discuss CTA exists on SSR before counts hydrate
+ * client-side (V1 job-card requirement: Discuss must exist even when N = 0).
  */
 export function useCommentCount(opportunityId: string | null | undefined): number | undefined {
     const ctx = useContext(CommentCountsContext);

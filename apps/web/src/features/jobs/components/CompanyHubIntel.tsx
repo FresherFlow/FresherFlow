@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { fresherNeedsApi } from '@fresherflow/api-client';
 import type { CompanyHubResult } from '@fresherflow/api-client';
 import Link from 'next/link';
+import { SkeletonCommunityPanel } from '@/features/jobs/components/OpportunitySkeletons';
 
 function formatLpa(thousands: number | null | undefined): string {
     if (thousands == null) return '—';
@@ -43,7 +44,7 @@ export function CompanyHubClient({ companyName }: { companyName: string }) {
     }, [companyName]);
 
     if (loading) {
-        return <div className="h-48 animate-pulse rounded-2xl bg-muted/40" />;
+        return <SkeletonCommunityPanel />;
     }
 
     if (error || !hub) {

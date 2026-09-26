@@ -21,6 +21,7 @@ import { communityApi } from '@fresherflow/api-client';
 import type { Room } from '@fresherflow/types';
 import { getGroupedLocations } from '@/features/jobs/domain/opportunityDisplay';
 import { getPrimaryEmploymentType } from '@/features/jobs/utils/walkinMapUtils';
+import { SkeletonListRow } from '@/features/jobs/components/OpportunitySkeletons';
 
 function formatEmploymentText(text: string | null | undefined): string {
     if (!text) return 'Not specified';
@@ -178,7 +179,10 @@ export function DetailSidebarActions({
                     {roomPickerOpen && (
                         <div className="rounded-xl border border-border bg-card p-2 max-h-48 overflow-y-auto space-y-0.5">
                             {roomsLoading ? (
-                                <div className="p-3 text-xs text-muted-foreground animate-pulse">Loading rooms…</div>
+                                <div className="space-y-1" aria-busy="true" aria-label="Loading rooms">
+                                    <SkeletonListRow className="rounded-lg border-0 bg-muted/20 px-2 py-2" />
+                                    <SkeletonListRow className="rounded-lg border-0 bg-muted/20 px-2 py-2" />
+                                </div>
                             ) : !rooms || rooms.length === 0 ? (
                                 <div className="p-3 text-xs text-muted-foreground">No rooms available.</div>
                             ) : (
@@ -299,7 +303,7 @@ export function DetailSidebarActions({
             {/* -- Admin -- */}
             {user?.role === 'ADMIN' && (
                 <div className="pt-3 border-t border-border/40">
-                    <Link href={`/opportunities/edit/${opp.id}`} className="block">
+                    <Link href={`/admin/opportunities/edit/${opp.id}`} className="block">
                         <Button size="sm" variant="outline" className="w-full">
                             Edit
                         </Button>

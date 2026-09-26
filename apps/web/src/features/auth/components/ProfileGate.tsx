@@ -33,7 +33,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         }
     }, [user, isLoading, pathname, router, mounted]);
 
-    if (!mounted || isLoading) {
+    // Stale-while-revalidate: a signed-in user keeps seeing the page while a
+    // background refresh runs. Blanket-loading on every isLoading flip is what
+    // made every gated page flash Loading → content → Loading → content, since
+    // the Firebase auth listener triggers a non-silent loadUser on mount.
+    if (!mounted || (isLoading && !user)) {
         return (
             <div className="relative w-full h-screen flex flex-col items-center justify-center">
                 <LoadingScreen message="Loading..." fullScreen={false} className="z-40" />
@@ -84,7 +88,9 @@ export function UsernameGate({ children }: { children: React.ReactNode }) {
         }
     }, [user, isLoading, pathname, router, mounted]);
 
-    if (!mounted || isLoading) {
+    // Same stale-while-revalidate rule as AuthGate above: never blank a
+    // signed-in user for a background refresh.
+    if (!mounted || (isLoading && !user)) {
         return (
             <div className="relative w-full h-screen flex flex-col items-center justify-center">
                 <LoadingScreen message="Loading..." fullScreen={false} className="z-40" />

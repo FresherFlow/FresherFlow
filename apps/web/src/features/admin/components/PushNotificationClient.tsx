@@ -6,6 +6,7 @@ import { adminApi } from '@/lib/api/admin';
 import { toast } from 'react-hot-toast';
 import { PaperAirplaneIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/solid';
 import { apiClient } from '@/lib/api/core';
+import { getErrorMessage } from '@/lib/utils/error';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
 export default function PushNotificationClient() {
@@ -57,8 +58,8 @@ export default function PushNotificationClient() {
                 setUrl('');
             }
         } catch (error: any) {
-            console.error('Failed to send push notification:', error);
-            toast.error(error?.message || 'Failed to send push notification');
+            console.error(`Failed to send push notification - ${getErrorMessage(error)}`);
+            toast.error(getErrorMessage(error, 'Failed to send push notification'));
         } finally {
             setIsSending(false);
         }

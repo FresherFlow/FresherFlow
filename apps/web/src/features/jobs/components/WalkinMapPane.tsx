@@ -225,7 +225,7 @@ export function WalkinMapPane({
         // Add "You are here" marker if user location is available
         if (userLocation) {
             const userIcon = L.divIcon({
-                html: `<div style="width:12px;height:12px;background:#3b82f6;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.2);"></div>`,
+                html: `<div style="width:12px;height:12px;background:#3b82f6;border:2px solid var(--color-paper);border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,0.2);"></div>`,
                 className: 'walkin-venue-marker',
                 iconSize: L.point(0, 0),
                 iconAnchor: L.point(0, 0),

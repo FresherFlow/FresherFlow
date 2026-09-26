@@ -4,10 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
-import { communityApi } from '@fresherflow/api-client';
+import { communityApi } from '@/features/jobs/api/community';
 import type { ApplicationUpdate, ApplicationUpdateListResult } from '@fresherflow/types';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { cn } from '@repo/ui/utils/cn';
+import { SkeletonUpdateRow } from '@/features/jobs/components/OpportunitySkeletons';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
     APPLIED: { label: 'Applied', color: 'bg-blue-500/10 text-blue-600' },
@@ -95,7 +96,7 @@ export function ApplicationUpdates({ opportunityIdOrSlug }: Props) {
             {/* Timeline */}
             {loading ? (
                 <div className="space-y-3">
-                    {[1, 2].map((i) => <div key={i} className="h-16 animate-pulse rounded-xl bg-muted/40" />)}
+                    {[1, 2].map((i) => <SkeletonUpdateRow key={i} />)}
                 </div>
             ) : error ? (
                 <div className="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-xs text-muted-foreground">

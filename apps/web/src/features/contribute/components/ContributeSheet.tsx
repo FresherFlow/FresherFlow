@@ -2,7 +2,7 @@
 /* eslint-disable shadcn/no-arbitrary-values, shadcn/no-unknown-classes, shadcn/no-restyle, shadcn/require-static-classes, shadcn/no-raw-colors */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { communityApi } from '@fresherflow/api-client';
+import { communityApi } from '@/features/contribute/api/contributions';
 import type { MySubmissionItem, WorkMode } from '@fresherflow/types';
 import { useAuth } from '@/lib/auth/AuthContext';
 import {

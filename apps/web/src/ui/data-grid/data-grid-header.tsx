@@ -30,6 +30,7 @@ export function DataGridHeader<TData extends RowData>({
             return (
               <HeaderTh<TData>
                 key={header.id}
+                table={table}
                 header={header}
                 enableSelection={enableSelection}
               />
@@ -42,11 +43,13 @@ export function DataGridHeader<TData extends RowData>({
 }
 
 interface HeaderThProps<TData extends RowData> {
+  table: Table<StockFeatures, TData>
   header: Header<StockFeatures, TData>
   enableSelection: boolean
 }
 
 function HeaderTh<TData extends RowData>({
+  table,
   header,
   enableSelection,
 }: HeaderThProps<TData>) {
@@ -73,7 +76,7 @@ function HeaderTh<TData extends RowData>({
         className="py-2.5 pl-4 pr-0 w-10 normal-case tracking-normal"
         style={{ width: 40 }}
       >
-        <SelectionHeader table={header.table} />
+        <SelectionHeader table={table} />
       </TableHead>
     )
   }

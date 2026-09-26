@@ -197,7 +197,12 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
 
     let rawTitle = `${role} at ${company} | ${type}`;
     if (batch) rawTitle += ` | ${batch}`;
-    rawTitle += ` | ${location}`;
+    // Location is the least important segment: append it only when the title
+    // stays within ~65 chars, so common titles don't get pixel-truncated to
+    // "..." mid-word (audit: "Title too long" on /jobs pages).
+    if (rawTitle.length + location.length + 3 <= 65) {
+        rawTitle += ` | ${location}`;
+    }
     const seoTitle = truncateTitleByPixels(rawTitle);
 
     const eligibility = opportunity.allowedPassoutYears.length > 0
@@ -225,15 +230,6 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
     return {
         title: seoTitle,
         description,
-        keywords: Array.from(new Set([
-            opportunity.title,
-            opportunity.company,
-            type,
-            ...(opportunity.tags || []),
-            ...(opportunity.governmentJobDetails?.seoTags || []),
-            opportunity.governmentJobDetails?.department || '',
-            opportunity.governmentJobDetails?.organization || '',
-        ].filter(Boolean))),
         robots: {
             index: !expiry.pastGrace,
             follow: true,

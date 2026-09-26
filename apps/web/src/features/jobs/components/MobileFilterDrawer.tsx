@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/ui/Button';
 import { SkillPill } from '@/features/jobs/components/SkillPill';
+import { FRESHER_EXPERIENCE_VALUE } from '@/features/jobs/components/JobFilterBar';
 import { cn } from '@repo/ui/utils/cn';
 import { Drawer } from 'vaul';
 
@@ -22,7 +23,7 @@ const CORP_COURSES = ['B.Tech/B.E.', 'M.C.A.', 'MBA', 'B.Sc/B.Com/B.A', 'Diploma
 
 // Removed hardcoded years and skills
 
-type OpenSection = 'type' | 'location' | 'year' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | 'source' | 'company' | null;
+type OpenSection = 'type' | 'experience' | 'location' | 'year' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | 'source' | 'company' | null;
 
 interface MobileFilterDrawerProps {
     isOpen: boolean;
@@ -51,6 +52,8 @@ interface MobileFilterDrawerProps {
     setDraftSource?: (val: string[]) => void;
     draftCompany?: string[];
     setDraftCompany?: (val: string[]) => void;
+    draftExperience?: string[];
+    setDraftExperience?: (val: string[]) => void;
     isLoggedIn: boolean;
     pageType?: string;
     aggregates?: {
@@ -142,6 +145,8 @@ export function MobileFilterDrawer({
     setDraftSource,
     draftCompany,
     setDraftCompany,
+    draftExperience,
+    setDraftExperience,
     pageType,
     aggregates,
     onApply,
@@ -173,6 +178,7 @@ export function MobileFilterDrawer({
         draftCourse,
         draftSource && draftSource.length > 0 ? 'source' : null,
         draftCompany && draftCompany.length > 0 ? 'company' : null,
+        draftExperience && draftExperience.length > 0 ? 'experience' : null,
         draftClosingSoon ? 'closing' : null,
         draftShowOnlySaved ? 'saved' : null,
     ].filter(Boolean).length;
@@ -242,6 +248,33 @@ export function MobileFilterDrawer({
                                         {option.label}
                                     </Pill>
                                 ))}
+                            </div>
+                        </Section>
+                    ) : null}
+
+                    {setDraftExperience ? (
+                        <Section
+                            title="Experience"
+                            isOpen={openSection === 'experience'}
+                            onToggle={() => setOpenSection(openSection === 'experience' ? null : 'experience')}
+                        >
+                            <div className="flex flex-wrap gap-2">
+                                <Pill active={(draftExperience ?? []).length === 0} onClick={() => setDraftExperience([])}>Any</Pill>
+                                {(() => {
+                                    const fresherActive = (draftExperience ?? []).includes(FRESHER_EXPERIENCE_VALUE);
+                                    return (
+                                        <Pill
+                                            active={fresherActive}
+                                            onClick={() => setDraftExperience(
+                                                fresherActive
+                                                    ? (draftExperience ?? []).filter(e => e !== FRESHER_EXPERIENCE_VALUE)
+                                                    : [...(draftExperience ?? []), FRESHER_EXPERIENCE_VALUE]
+                                            )}
+                                        >
+                                            Fresher
+                                        </Pill>
+                                    );
+                                })()}
                             </div>
                         </Section>
                     ) : null}

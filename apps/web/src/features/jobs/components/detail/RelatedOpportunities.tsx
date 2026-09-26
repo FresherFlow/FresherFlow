@@ -6,6 +6,7 @@ import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
 import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
 import { getFeedBadgeLabel, isGovernmentOpportunity } from '@/features/jobs/utils/walkinMapUtils';
+import { SkeletonJobCard } from '@/features/jobs/components/OpportunitySkeletons';
 
 type RelatedOpportunitiesProps = {
     relatedOpps: Opportunity[];
@@ -33,7 +34,7 @@ export function RelatedOpportunities({ relatedOpps, isLoadingRelated }: RelatedO
             {isLoadingRelated ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {[1, 2, 3].map((i) => (
-                        <div key={i} className="h-24 bg-card border border-border rounded-xl animate-pulse" />
+                        <SkeletonJobCard key={i} variant="compact" />
                     ))}
                 </div>
             ) : relatedOpps.length === 0 ? (

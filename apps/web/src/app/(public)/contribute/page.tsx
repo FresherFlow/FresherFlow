@@ -20,10 +20,33 @@ export default function ContributePage() {
             </header>
             <Suspense
                 fallback={
-                    <div className="grid gap-4 sm:grid-cols-3">
-                        <Skeleton className="h-36 w-full" />
-                        <Skeleton className="h-36 w-full" />
-                        <Skeleton className="h-36 w-full" />
+                    // Mirrors the real ContributeHub layout: the 5 contribution
+                    // cards in the same responsive grid, then the
+                    // "Your contributions" heading, action and history rows.
+                    <div className="space-y-10" aria-hidden>
+                        <section className="space-y-4">
+                            <div className="grid gap-4 sm:grid-cols-3">
+                                {Array.from({ length: 5 }).map((_, i) => (
+                                    <div key={i} className="space-y-3 rounded-2xl border border-border bg-card p-5">
+                                        <Skeleton className="h-5 w-3/4" />
+                                        <Skeleton className="h-4 w-full" />
+                                        <Skeleton className="h-4 w-2/3" />
+                                        <Skeleton className="h-3 w-1/2" />
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                        <section className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <Skeleton className="h-6 w-44" />
+                                <Skeleton className="h-8 w-32" />
+                            </div>
+                            <div className="space-y-3">
+                                <Skeleton className="h-20 w-full" />
+                                <Skeleton className="h-20 w-full" />
+                                <Skeleton className="h-20 w-full" />
+                            </div>
+                        </section>
                     </div>
                 }
             >

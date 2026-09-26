@@ -5,7 +5,6 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { type Opportunity } from '@fresherflow/types';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTriangleIcon';
-import ArrowPathIcon from '@heroicons/react/24/outline/ArrowPathIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
 import ArrowsPointingOutIcon from '@heroicons/react/24/outline/ArrowsPointingOutIcon';
@@ -34,6 +33,7 @@ import { DetailCampusDriveInfo } from '@/features/jobs/components/detail/DetailC
 import { ExpiredWarning } from '@/features/jobs/components/detail/ExpiredWarning';
 import { DescriptionSection } from '@/features/jobs/components/detail/DescriptionSection';
 import { GovernmentJobDetailView } from '@/features/jobs/components/detail/GovernmentJobDetailView';
+import { OpportunityDetailPaneSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
 
 // Hooks
 import { useOpportunityDetail } from '@/features/jobs/hooks/useOpportunityDetail';
@@ -86,8 +86,6 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
         opp,
         isLoading,
         error,
-        relatedOpps,
-        isLoadingRelated,
         isUpdatingAction,
         loadOpportunity,
         handleToggleSave,
@@ -101,12 +99,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
 
 
     if (isLoading) {
-        return (
-            <div className="flex flex-col items-center justify-center h-64 space-y-4">
-                <ArrowPathIcon className="w-8 h-8 text-primary animate-spin" />
-                <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Loading details...</span>
-            </div>
-        );
+        return <OpportunityDetailPaneSkeleton />;
     }
 
     if (error || !opp) {
@@ -137,7 +130,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
     const showApply = ds.hasApplyLink && !isMobile && ds.listingState !== 'EXPIRED';
 
     return (
-        <div className="flex flex-col h-full bg-card relative">
+        <div className="flex flex-col h-full bg-transparent relative">
             {/* Header — title + actions in one row */}
             <div className="relative flex items-center justify-between px-4 md:px-6 py-4 border-b border-border/40 shrink-0 gap-3">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -372,7 +365,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                         {user?.role === 'ADMIN' && (
                             <div className="bg-card p-4 border border-primary/20 rounded-xl space-y-2">
                                 <h4 className="text-xs font-bold text-primary">Admin Control</h4>
-                                <Link href={`/opportunities/edit/${opp.id}`} className="block">
+                                <Link href={`/admin/opportunities/edit/${opp.id}`} className="block">
                                     <Button variant="outline" size="sm" className="w-full">
                                         Edit Opportunity
                                     </Button>
@@ -380,54 +373,6 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                             </div>
                         )}
 
-                        {/* Horizontal related jobs carousel */}
-                        {!isLoadingRelated && relatedOpps && relatedOpps.length > 0 && (
-                            <div className="pt-6 border-t border-border/40 space-y-3">
-                                <div className="flex items-center justify-between px-1">
-                                    <h4 className="text-xs font-bold tracking-wide text-primary flex items-center gap-1.5">
-                                        <span className="w-1 h-3.5 bg-primary rounded-full" />
-                                        Explore Jobs
-                                    </h4>
-                                </div>
-                                <div className="flex overflow-x-auto snap-x snap-mandatory gap-3 pb-3 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
-                                    {relatedOpps.slice(0, 5).map((item) => {
-                                        const path = getOpportunityPathFromItem(item);
-                                        const locLabel = parseOpportunityLocation(item.locations).shortLabel;
-                                        return (
-                                            <Link
-                                                key={item.id}
-                                                href={path}
-                                                className="snap-start shrink-0 w-64 p-3.5 bg-card border border-border hover:border-primary/40 hover:shadow-sm rounded-xl transition-all flex flex-col justify-between group"
-                                            >
-                                                <div className="flex items-start gap-2.5">
-                                                    <CompanyLogo
-                                                        companyName={item.company}
-                                                        companyWebsite={item.companyWebsite}
-                                                        companyLogoUrl={item.companyLogoUrl}
-                                                        applyLink={item.applyLink}
-                                                        isGovernment={isGovernmentOpportunity(item)}
-                                                        className="w-8 h-8 shrink-0 mt-0.5"
-                                                    />
-                                                    <div className="min-w-0">
-                                                        <p className="text-xs font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">
-                                                            {item.title}
-                                                        </p>
-                                                        <p className="text-xs font-semibold text-muted-foreground mt-0.5 truncate">{item.company}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/30 text-xs text-muted-foreground">
-                                                    <span className="flex items-center gap-1">
-                                                        <svg className="w-3 h-3 text-muted-foreground/75" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"/></svg>
-                                                        {locLabel}
-                                                    </span>
-                                                    <span className="font-bold text-primary/95 uppercase tracking-wide">{getFeedBadgeLabel(item)}</span>
-                                                </div>
-                                            </Link>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
                     </div>
                 )}
             </div>

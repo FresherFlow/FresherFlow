@@ -93,7 +93,7 @@ export const REGISTRY = {
     profile: { name: 'Profile', href: '/account?tab=profile', icon: UserIcon, requiresAuth: true },
     following: { name: 'Following', href: '/companies?tab=following', icon: Building, requiresAuth: true },
     referrals: { name: 'Referrals', href: '/account?tab=referral', icon: UserPlusIcon, requiresAuth: true },
-    settings: { name: 'Settings', href: '/account', icon: Cog6ToothIcon, requiresAuth: true },
+    settings: { name: 'Settings', href: '/account?tab=settings', icon: Cog6ToothIcon, requiresAuth: true },
     alerts: { name: 'Alerts', href: '/jobs?tab=alerts', icon: BellIcon, requiresAuth: true },
     notifications: { name: 'Notifications', href: '/jobs?tab=notifications', icon: BellIcon, requiresAuth: true },
     feedback: { name: 'Feedback', href: '/account?tab=feedback', icon: ChatBubbleLeftRightIcon, requiresAuth: true },
@@ -121,6 +121,7 @@ export const DEFAULT_NAV_ITEMS: NavItem[] = [
 
 /** Jobs space nav items */
 export const JOBS_NAV_ITEMS: NavItem[] = [
+    nav('dashboard'),
     nav('jobs'),
     nav('internships'),
     nav('remote'),
@@ -148,6 +149,7 @@ export const GOVT_NAV_ITEMS: NavItem[] = [
 ];
 
 export const ACCOUNT_NAV_ITEMS: NavItem[] = [
+    nav('account'),
     nav('profile'),
     nav('tracker'),
     nav('saved'),
@@ -155,6 +157,7 @@ export const ACCOUNT_NAV_ITEMS: NavItem[] = [
     nav('referrals'),
     nav('contribute'),
     nav('settings'),
+    nav('feedback'),
 ];
 
 /* The retired 4-context model (`getNavContext` / `getNavItemsForContext`, plus a

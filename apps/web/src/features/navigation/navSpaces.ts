@@ -83,7 +83,6 @@ export const SPACES: Space[] = [
                     { title: REGISTRY.notifications.name, href: REGISTRY.notifications.href, icon: REGISTRY.notifications.icon, requiresAuth: REGISTRY.notifications.requiresAuth },
                 ],
                 collapsible: true,
-                defaultOpen: true,
             },
             {
                 label: 'Discover',
@@ -92,7 +91,6 @@ export const SPACES: Space[] = [
                     ...pick(ACCOUNT_NAV_ITEMS, 'following'),
                 ],
                 collapsible: true,
-                defaultOpen: true,
             },
         ],
     },
@@ -118,7 +116,6 @@ export const SPACES: Space[] = [
                     'govtEngineering'
                 ),
                 collapsible: true,
-                defaultOpen: true,
             },
             {
                 label: 'More',
@@ -137,10 +134,9 @@ export const SPACES: Space[] = [
 export const PERSONAL_GROUP: SpaceNavGroup = {
     label: 'Personal',
     items: [
-        ...pick(ACCOUNT_NAV_ITEMS, 'profile', 'referrals', 'feedback', 'settings'),
+        ...pick(ACCOUNT_NAV_ITEMS, 'account', 'profile', 'referrals', 'feedback', 'settings'),
     ],
     collapsible: true,
-    defaultOpen: true,
 };
 
 export const COMMUNITY_GROUP: SpaceNavGroup = {
@@ -152,7 +148,6 @@ export const COMMUNITY_GROUP: SpaceNavGroup = {
         { title: 'Saved Searches', href: '/community?tab=saved-searches', icon: REGISTRY.community.icon },
     ],
     collapsible: true,
-    defaultOpen: true,
 };
 
 export function getSpace(id: SpaceId): Space {

@@ -9,16 +9,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { NavMain } from "@/features/navigation/NavMain"
 import { NavUser } from "@/features/navigation/NavUser"
 import { SpaceSwitcher } from "@/features/navigation/SpaceSwitcher"
-// @deprecated: TeamSwitcher shim — prefer SpaceSwitcher
-const TeamSwitcher = SpaceSwitcher;
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarRail,
   useSidebar,
 } from "@/ui/sidebar"
@@ -26,6 +21,7 @@ import { useAuth } from "@/lib/auth/AuthContext"
 import { SiteHeader } from "@/features/navigation/SiteHeader"
 import { LogoImage } from "@/features/shell/LogoImage"
 import { cn } from "@/ui/cn"
+import { persistSpaceId, readSpaceId } from "@/features/navigation/sidebarState"
 import {
   COMMUNITY_GROUP,
   PERSONAL_GROUP,
@@ -61,11 +57,27 @@ function useSpaceSelection() {
   }, [])
 
   React.useEffect(() => {
-    if (lastPathnameRef.current === pathname) return
-    lastPathnameRef.current = pathname
-    const synced = getSpaceForPathname(pathname)
-    if (synced) setSpaceId(synced)
-  }, [pathname, setSpaceId])
+    if (lastPathnameRef.current !== pathname) {
+      lastPathnameRef.current = pathname
+      const synced = getSpaceForPathname(pathname)
+      if (synced) setSpaceId(synced)
+    }
+    // Remember every space-owned route (deep links included) so a remount
+    // on a space-neutral route can restore it below.
+    const owned = getSpaceForPathname(pathname)
+    if (owned) persistSpaceId(owned)
+  }, [pathname])
+
+  // Cross-group navigation (`(public)` ↔ `(user)`) remounts the sidebar and
+  // re-runs the initializer above — space-neutral routes like `/account`
+  // always initialize to Jobs. Restore the remembered space instead.
+  // `setSpaceId` is a plain setter, not a `useState` updater, so the
+  // no-op check compares against the current value in scope.
+  React.useEffect(() => {
+    if (getSpaceForPathname(pathname)) return
+    const stored = readSpaceId()
+    if (stored && stored !== spaceId) setSpaceId(stored)
+  }, [pathname, spaceId, setSpaceId])
 
   const { user } = useAuth()
   const [mounted, setMounted] = React.useState(false)
@@ -89,34 +101,36 @@ function useSpaceSelection() {
 
 /**
  * Brand block at the top of the sidebar, restoring the past layout where the
- * logo sits above the Jobs / Govt switcher. In collapsed (icon) mode only the
- * logo tile shows. Logo links to the dashboard for signed-in users, home for
- * everyone else.
+ * logo sits above the Jobs / Govt switcher. A plain link like open-seo's
+ * brand — deliberately not a `SidebarMenuButton`, whose menu chrome
+ * (`focus-visible:ring-1`, truncation pressure, tight tracking) made the
+ * wordmark render ringed and cramped instead of instantly readable.
+ * In collapsed (icon) mode only the logo tile shows.
  */
 function SidebarBrand({ href, className }: { href: string; className?: string }) {
   return (
-    <SidebarMenu className={cn(className)}>
-      <SidebarMenuItem>
-        <SidebarMenuButton
-          asChild
-          size="lg"
-          className="h-9 justify-start px-2 hover:bg-transparent hover:text-sidebar-foreground active:bg-transparent group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
-        >
-          <Link href={href} aria-label="FresherFlow home" suppressHydrationWarning>
-            <span className="sidebar-expanded-only truncate text-[20px] font-low tracking-tight leading-none">
-              FresherFlow
-            </span>
-            <span className="sidebar-collapsed-only flex items-center justify-center">
-              <LogoImage
-                width={24}
-                height={24}
-                className="h-6 w-6 shrink-0 object-contain"
-              />
-            </span>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-    </SidebarMenu>
+    <div
+      className={cn(
+        "sidebar-brand flex h-9 items-center px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0",
+        className
+      )}
+    >
+      <Link
+        href={href}
+        aria-label="FresherFlow home"
+        suppressHydrationWarning
+        className="min-w-0 flex-1 truncate text-base font-semibold text-sidebar-foreground outline-none hover:text-sidebar-foreground focus:outline-none focus-visible:outline-none"
+      >
+        <span className="sidebar-expanded-only">FresherFlow</span>
+        <span className="sidebar-collapsed-only flex items-center justify-center">
+          <LogoImage
+            width={24}
+            height={24}
+            className="h-6 w-6 shrink-0 object-contain"
+          />
+        </span>
+      </Link>
+    </div>
   )
 }
 
@@ -140,21 +154,13 @@ function AppSidebarRail() {
     <Sidebar collapsible="icon">
       <SidebarHeader
         className={cn(
-          "sticky top-0 z-10 gap-1.5 bg-sidebar/95 p-2 backdrop-blur-sm supports-[backdrop-filter]:bg-sidebar/80 relative",
+          "sticky top-0 z-10 gap-1.5 bg-background p-2 relative",
           "border-b border-transparent transition-colors",
-          isScrolled && "border-sidebar-border shadow-[0_4px_12px_-4px_rgb(0_0_0/0.12)]"
+          isScrolled && "border-border"
         )}
       >
         <SidebarBrand href={logoHref} />
-        <TeamSwitcher spaces={SPACES} activeId={spaceId} onChange={handleSpaceChange} />
-        {/* blur fade so scrolled items feel going under header */}
-        <div
-          aria-hidden
-          className={cn(
-            "pointer-events-none absolute inset-x-0 -bottom-3 h-3 bg-gradient-to-b from-sidebar to-transparent opacity-0 transition-opacity",
-            isScrolled && "opacity-100"
-          )}
-        />
+        <SpaceSwitcher spaces={SPACES} activeId={spaceId} onChange={handleSpaceChange} />
       </SidebarHeader>
       <SidebarContent
         onScroll={(e) => setIsScrolled(e.currentTarget.scrollTop > 2)}
@@ -215,8 +221,8 @@ export function MobileNavTree({ onNavigate }: { onNavigate: () => void }) {
   }
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground">
-      <div className="flex h-14 shrink-0 items-center justify-end border-b border-sidebar-border px-4">
+    <div className="flex h-full w-full flex-col overflow-hidden bg-background text-sidebar-foreground">
+      <div className="flex h-14 shrink-0 items-center justify-end border-b border-border px-4">
         <button
           type="button"
           onClick={onNavigate}
@@ -228,7 +234,7 @@ export function MobileNavTree({ onNavigate }: { onNavigate: () => void }) {
       </div>
       <div className="flex-1 overflow-y-auto px-2 py-3">
         <SidebarBrand href={logoHref} className="mb-1" />
-        <TeamSwitcher spaces={SPACES} activeId={spaceId} onChange={handleSpaceChange} />
+        <SpaceSwitcher spaces={SPACES} activeId={spaceId} onChange={handleSpaceChange} />
         {/* Every nav row is a link, so any click in here is a navigation and
             should close the Sheet. */}
         <div className="mt-2" onClickCapture={onNavigate}>
@@ -256,7 +262,7 @@ export function MobileNavTree({ onNavigate }: { onNavigate: () => void }) {
           )}
         </div>
       </div>
-      <div className="shrink-0 border-t border-sidebar-border p-2">
+      <div className="shrink-0 border-t border-border p-2">
         <NavUser />
       </div>
     </div>

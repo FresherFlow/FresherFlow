@@ -2,14 +2,16 @@
 
 import { usePathname } from 'next/navigation';
 import { AuthHeader } from './_components/AuthHeader';
+import { MobileTopNav } from '@/features/navigation/MobileTopNav';
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isPure = pathname === '/login' || pathname.startsWith('/login?') || pathname === '/onboarding' || pathname.startsWith('/onboarding?') || pathname === '/choose-username' || pathname.startsWith('/choose-username?');
   if (isPure) {
     return (
-      <main className="min-h-screen flex flex-col bg-background dark:bg-background relative overflow-hidden">
-        <div className="flex-1 flex flex-col min-h-screen">
+      <main className="flex h-[100svh] flex-col overflow-hidden bg-background dark:bg-background relative pt-[calc(3.5rem+env(safe-area-inset-top))] lg:pt-0">
+        <MobileTopNav />
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
           {children}
         </div>
       </main>

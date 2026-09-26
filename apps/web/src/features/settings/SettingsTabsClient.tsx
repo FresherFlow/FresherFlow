@@ -1,11 +1,11 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import { TabBar } from '@/ui/TabBar';
 import AccountTab from '@/features/settings/tabs/AccountTab';
-import ProfileTab from '@/features/settings/tabs/ProfileTab';
+import ProfileEditor from '@/features/profile/components/editor/ProfileEditor';
 import FeedbackTab from '@/features/settings/tabs/FeedbackTab';
 import ReferralTab from '@/features/settings/tabs/ReferralTab';
+import AccountOverview from '@/features/settings/AccountOverview';
 
 const SETTINGS_TABS = [
     { key: 'profile', label: 'Profile', href: '/account?tab=profile' },
@@ -16,34 +16,26 @@ const SETTINGS_TABS = [
 
 type SettingsTabKey = (typeof SETTINGS_TABS)[number]['key'];
 
-const DEFAULT_TAB: SettingsTabKey = 'settings';
-
 const TAB_COMPONENTS: Record<SettingsTabKey, React.ComponentType> = {
-    profile: ProfileTab,
+    profile: ProfileEditor,
     settings: AccountTab,
     referral: ReferralTab,
     feedback: FeedbackTab,
 };
 
-function resolveTab(tab: string | null): SettingsTabKey {
-    return SETTINGS_TABS.some((t) => t.key === tab) ? (tab as SettingsTabKey) : DEFAULT_TAB;
-}
-
 /**
- * /settings is the single account page: profile, account & security,
- * referrals and feedback are ?tab= views. One shared pill TabBar on top,
- * plus a Breadcrumb (Settings / Profile) for clarity.
- * Each tab component keeps its own auth gate, so exactly one gate is active.
+ * /account without ?tab= is its own page (account hub linking every
+ * section). A ?tab= value renders that section directly; unknown values
+ * fall back to the hub, never to a wrong section.
  */
 export default function SettingsTabsClient() {
     const searchParams = useSearchParams();
-    const active = resolveTab(searchParams.get('tab'));
-    const TabContent = TAB_COMPONENTS[active];
+    const key = searchParams.get('tab');
+    const TabContent =
+        key != null && key in TAB_COMPONENTS
+            ? TAB_COMPONENTS[key as SettingsTabKey]
+            : null;
 
-    return (
-        <>
-            <TabBar variant="tabs" items={[...SETTINGS_TABS]} activeKey={active} />
-            <TabContent />
-        </>
-    );
+    if (!TabContent) return <AccountOverview />;
+    return <TabContent />;
 }

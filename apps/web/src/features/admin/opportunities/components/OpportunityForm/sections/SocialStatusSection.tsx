@@ -2,6 +2,7 @@
 
 import { ArrowPathIcon, ExclamationTriangleIcon, CheckCircleIcon, ClockIcon, NoSymbolIcon } from '@heroicons/react/24/outline';
 import { adminApi } from '@/lib/api/admin';
+import { getErrorMessage } from '@/lib/utils/error';
 import toast from 'react-hot-toast';
 import { useState } from 'react';
 import { SocialPost } from '@fresherflow/types';
@@ -21,7 +22,7 @@ export function SocialStatusSection({ socialPosts, onRefresh }: SocialStatusSect
       toast.success('Retry triggered successfully');
       setTimeout(onRefresh, 1500); // Give backend a moment before refreshing
     } catch (err: unknown) {
-      toast.error(`Retry failed: ${(err as Error).message}`);
+      toast.error(`Retry failed: ${getErrorMessage(err)}`);
     } finally {
       setRetryingIds(prev => ({ ...prev, [postId]: false }));
     }

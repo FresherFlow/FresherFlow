@@ -6,98 +6,120 @@
 
 /* ──────────────────────────────────────────────────────────────────────
    Design Tokens — single source of truth (v4 CSS-first)
-   
+
    Light mode values live here. Dark mode overrides them in .dark below.
    Component CSS references these via var(--color-*).
    ────────────────────────────────────────────────────────────────────── */
 @theme {
   /* ── Core palette ─────────────────────────────────────────────── */
-  --color-primary: oklch(20.6% 0.039 266);            /* Deep navy */
-  --color-primary-foreground: oklch(100% 0.000 90);    /* White */
+  --color-primary: oklch(20.6% 0.039 266); /* Deep navy */
+  --color-primary-foreground: var(--color-paper); /* Paper — never pure white */
 
-  --color-secondary: oklch(96.1% 0.004 248);           /* Light gray */
-  --color-secondary-foreground: oklch(20.6% 0.039 266);/* Navy */
+  --color-secondary: oklch(96.1% 0.003 248); /* Light gray */
+  --color-secondary-foreground: oklch(20.6% 0.039 266); /* Navy */
 
-  --color-accent: oklch(20.6% 0.039 266);              /* Navy (same as primary) */
-  --color-accent-foreground: oklch(100% 0.000 90);     /* White */
+  --color-accent: oklch(20.6% 0.039 266); /* Navy (same as primary) */
+  --color-accent-foreground: oklch(100% 0 90); /* White */
 
-  --color-background: oklch(93.6% 0.010 248);          /* Page bg — strong card separation */
-  --color-foreground: oklch(20.6% 0.039 266);          /* Primary text */
+  --color-background: oklch(
+    93.6% 0.003 248
+  ); /* Page bg — strong card separation */
+  --color-foreground: oklch(20.6% 0.039 266); /* Primary text */
 
-  --color-card: oklch(100% 0.000 90);                  /* Card bg */
-  --color-card-foreground: oklch(20.6% 0.039 266);     /* Card text */
-  --color-popover: oklch(100% 0.000 90);               /* Popover / menu bg */
-  --color-popover-foreground: oklch(20.6% 0.039 266);  /* Popover text */
+  --color-card: oklch(100% 0 90); /* Card bg */
+  --color-card-foreground: oklch(20.6% 0.039 266); /* Card text */
+  --color-popover: oklch(100% 0 90); /* Popover / menu bg */
+  --color-popover-foreground: oklch(20.6% 0.039 266); /* Popover text */
 
   /* ── Borders & inputs ────────────────────────────────────────── */
-  --color-border: oklch(80.4% 0.023 255);              /* Visible borders */
-  --color-input: oklch(80.4% 0.023 255);               /* Input borders */
-  --color-ring: oklch(20.6% 0.039 266);                /* Focus ring = primary */
+  --color-border: oklch(80.4% 0.008 255); /* Visible borders */
+  --color-input: oklch(80.4% 0.008 255); /* Input borders */
+  --color-ring: oklch(20.6% 0.039 266); /* Focus ring = primary */
 
   /* ── Muted ───────────────────────────────────────────────────── */
-  --color-muted: oklch(88.9% 0.014 248);               /* Muted bg */
-  --color-muted-foreground: oklch(35.7% 0.037 257);    /* Muted text */
+  --color-muted: oklch(88.9% 0.004 248); /* Muted bg */
+  --color-muted-foreground: oklch(35.7% 0.037 257); /* Muted text */
 
   /* ── Semantic states ─────────────────────────────────────────── */
-  --color-destructive: oklch(63.6% 0.208 25);          /* Destructive red */
-  --color-destructive-foreground: oklch(98.5% 0.000 90);
+  --color-destructive: oklch(63.6% 0.208 25); /* Destructive red */
+  --color-destructive-foreground: oklch(98.5% 0 90);
 
-  --color-success: oklch(61.1% 0.147 154);             /* Green */
-  --color-error: oklch(61.2% 0.228 27);                /* Red */
-  --color-warning: oklch(75.5% 0.170 64);              /* Amber */
+  --color-success: oklch(61.1% 0.147 154); /* Green */
+  --color-error: oklch(61.2% 0.228 27); /* Red */
+  --color-warning: oklch(75.5% 0.17 64); /* Amber */
 
   /* ── Signal language (plan 17 §17.3, additive) ───────────────── */
   /* The truth system in type and color: used for stamps, board
      eyebrows, urgency chips and the hero signal strip. Hues reuse the
      existing success/warning/error palette so nothing new is invented. */
-  --color-signal-live: oklch(61.1% 0.147 154);         /* emerald — confirmed live */
-  --color-signal-aging: oklch(75.5% 0.170 64);         /* amber — aging / unconfirmed */
-  --color-signal-dead: oklch(61.2% 0.228 27);          /* rose — reported dead */
-  --color-signal-heat: oklch(66.2% 0.133 236);         /* sky — discussion heat */
-  --color-pin: oklch(57.2% 0.213 27);                  /* pin red — pin dots and live indicators only */
+  --color-signal-live: oklch(61.1% 0.147 154); /* emerald — confirmed live */
+  --color-signal-aging: oklch(75.5% 0.17 64); /* amber — aging / unconfirmed */
+  --color-signal-dead: oklch(61.2% 0.228 27); /* rose — reported dead */
+  --color-signal-heat: oklch(66.2% 0.133 236); /* sky — discussion heat */
+  --color-pin: oklch(
+    57.2% 0.213 27
+  ); /* pin red — pin dots and live indicators only */
 
   /* ── Chip / pill active states ───────────────────────────────── */
-  --color-chip-active: oklch(88.9% 0.012 248);         /* Soft silver-gray */
-  --color-chip-active-text: oklch(20.6% 0.039 266);    /* Navy */
-  --color-chip-active-border: oklch(77.1% 0.027 255);  /* Slightly darker than border */
+  --color-chip-active: oklch(88.9% 0.005 248); /* Soft silver-gray */
+  --color-chip-active-text: oklch(20.6% 0.039 266); /* Navy */
+  --color-chip-active-border: oklch(
+    77.1% 0.027 255
+  ); /* Slightly darker than border */
 
   /* ── Dropdown hover ──────────────────────────────────────────── */
-  --color-dropdown-hover: oklch(88.9% 0.014 248);      /* Same as muted */
+  --color-dropdown-hover: oklch(88.9% 0.014 248); /* Same as muted */
   --color-dropdown-hover-text: oklch(20.6% 0.039 266);
 
   /* Sidebar tokens (shadcn) */
-  --color-sidebar: oklch(100% 0.000 90);
+  --color-sidebar: var(--color-paper); /* Sidebar bg — paper, not #fff */
   --color-sidebar-foreground: oklch(20.6% 0.039 266);
   --color-sidebar-primary: oklch(20.6% 0.039 266);
-  --color-sidebar-primary-foreground: oklch(100% 0.000 90);
+  --color-sidebar-primary-foreground: var(--color-paper);
   --color-sidebar-accent: oklch(96.1% 0.004 248);
   --color-sidebar-accent-foreground: oklch(20.6% 0.039 266);
   --color-sidebar-border: oklch(80.4% 0.023 255);
   --color-sidebar-ring: oklch(20.6% 0.039 266); /* Same as foreground */
 
   /* ── Brand / third-party colors ──────────────────────────────── */
-  --color-brand-telegram: oklch(66.2% 0.133 236);      /* #229ED9 */
-  --color-brand-whatsapp: oklch(76.1% 0.201 150);      /* #25D366 */
-  --color-brand-whatsapp-hover: oklch(71.7% 0.190 150);/* #22c35e */
-  --color-brand-linkedin: oklch(51.6% 0.163 255);      /* #0A66C2 */
-  --color-brand-discord: oklch(57.7% 0.209 274);       /* #5865F2 */
-  --color-brand-facebook: oklch(58.9% 0.203 258);      /* #1877F2 */
-  --color-brand-company-blue: oklch(46.0% 0.129 250);  /* #005a9c */
+  --color-brand-telegram: oklch(66.2% 0.133 236); /* #229ED9 */
+  --color-brand-whatsapp: oklch(76.1% 0.201 150); /* #25D366 */
+  --color-brand-whatsapp-hover: oklch(71.7% 0.19 150); /* #22c35e */
+  --color-brand-linkedin: oklch(51.6% 0.163 255); /* #0A66C2 */
+  --color-brand-discord: oklch(57.7% 0.209 274); /* #5865F2 */
+  --color-brand-facebook: oklch(58.9% 0.203 258); /* #1877F2 */
+  --color-brand-company-blue: oklch(46% 0.129 250); /* #005a9c */
 
   /* ── Landing accent (brand orange #ff571a = --ff-accent) ──────── */
-  --color-ff-accent: oklch(64.8% 0.22 32);              /* #ff571a — hero CTA, marquee, section dots */
-  --color-logo-bg: oklch(16% 0.02 260);                 /* #0e1420 — logo tile, fixed in light & dark */
+  --color-ff-accent: oklch(
+    64.8% 0.22 32
+  ); /* #ff571a — hero CTA, marquee, section dots */
+  --color-logo-bg: oklch(
+    16% 0.02 260
+  ); /* #0e1420 — logo tile, fixed in light & dark */
 
   /* ── Surface colors ──────────────────────────────────────────── */
-  --color-surface-warm: oklch(96.7% 0.007 97);          /* #F5F4EF — CaptionsTool warm gray */
+  --color-surface-warm: oklch(
+    96.7% 0.007 97
+  ); /* #F5F4EF — CaptionsTool warm gray */
+
+  /* -- Paper: the value that replaces pure white only ----------------- */
+  /*
+     Scope is strictly pure white. Paper is what cards, popovers, the sidebar
+     and text-on-navy/orange/red use instead of #ffffff. Every other light
+     token (background, borders, muted, chips, hovers) is untouched.
+  */
+  --color-paper: oklch(95.2% 0.018 250);
 
   /* ── Typography ──────────────────────────────────────────────── */
-  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, sans-serif;
   /* Plan 17 §17.2 identity layer: display + "official record" voices.
      Distinct utility names (font-display / font-record) so adding them
      cannot change any existing surface's typography. */
-  --font-display: var(--font-bricolage), 'Inter', system-ui, -apple-system, sans-serif;
-  --font-record: var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display:
+    var(--font-bricolage), "Inter", system-ui, -apple-system, sans-serif;
+  --font-record:
+    var(--font-plex-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* ── Spacing ─────────────────────────────────────────────────── */
   --spacing-18: 4.5rem;
@@ -142,25 +164,25 @@
     --space-12: 48px;
 
     /* Base Logo */
-    --logo-image: url('/logo-white-optimized.png?v=3');
+    --logo-image: url("/logo-white-optimized.png?v=3");
   }
 
   .dark {
     color-scheme: dark;
 
     /* Core palette — OLED-style deep black */
-    --color-background: oklch(10.3% 0.007 196);          /* #020404 */
-    --color-foreground: oklch(97.7% 0.003 229);          /* #F5F7F8 */
+    --color-background: oklch(10.3% 0.007 196); /* #020404 */
+    --color-foreground: oklch(97.7% 0.003 229); /* #F5F7F8 */
 
-    --color-card: oklch(17.1% 0.004 220);                /* 5% white lift */
+    --color-card: oklch(17.1% 0.004 220); /* 5% white lift */
     --color-card-foreground: oklch(97.7% 0.003 229);
-    --color-popover: oklch(21.5% 0.005 220);             /* Elevated menu surface */
+    --color-popover: oklch(21.5% 0.005 220); /* Elevated menu surface */
     --color-popover-foreground: oklch(97.7% 0.003 229);
 
     --color-primary: oklch(97.7% 0.003 229);
     --color-primary-foreground: oklch(10.3% 0.007 196);
 
-    --color-secondary: oklch(24.0% 0.007 220);
+    --color-secondary: oklch(24% 0.007 220);
     --color-secondary-foreground: oklch(97.7% 0.003 229);
 
     --color-accent: oklch(97.7% 0.003 229);
@@ -170,13 +192,13 @@
     --color-border: oklch(26.2% 0.008 220);
     --color-input: oklch(26.2% 0.008 220);
 
-    --color-muted: oklch(24.0% 0.007 220);               /* Slightly lighter than card */
+    --color-muted: oklch(24% 0.007 220); /* Slightly lighter than card */
     --color-muted-foreground: oklch(80.8% 0.017 229);
 
     --color-ring: oklch(97.7% 0.003 229);
 
     --color-destructive: oklch(56.1% 0.195 26);
-    --color-destructive-foreground: oklch(98.5% 0.000 90);
+    --color-destructive-foreground: oklch(98.5% 0 90);
 
     --color-success: oklch(66.6% 0.134 157);
     --color-error: oklch(66.7% 0.156 22);
@@ -186,36 +208,48 @@
     --color-chip-active-text: oklch(97.7% 0.003 229);
     --color-chip-active-border: oklch(36.5% 0.013 220);
 
-    --color-dropdown-hover: oklch(24.0% 0.007 220);
+    --color-dropdown-hover: oklch(24% 0.007 220);
     --color-dropdown-hover-text: oklch(97.7% 0.003 229);
 
     --color-sidebar: oklch(17.1% 0.004 220);
     --color-sidebar-foreground: oklch(97.7% 0.003 229);
     --color-sidebar-primary: oklch(97.7% 0.003 229);
     --color-sidebar-primary-foreground: oklch(10.3% 0.007 196);
-    --color-sidebar-accent: oklch(24.0% 0.007 220);
+    --color-sidebar-accent: oklch(24% 0.007 220);
     --color-sidebar-accent-foreground: oklch(97.7% 0.003 229);
     --color-sidebar-border: oklch(26.2% 0.008 220);
     --color-sidebar-ring: oklch(97.7% 0.003 229);
 
-    --logo-image: url('/logo-white-optimized.png?v=3');
+    --logo-image: url("/logo-white-optimized.png?v=3");
   }
 
   /* Theme-aware native form controls */
-  input, textarea, select {
+  input,
+  textarea,
+  select {
     color-scheme: light;
   }
 
-  .dark input, .dark textarea, .dark select {
+  .dark input,
+  .dark textarea,
+  .dark select {
     color-scheme: dark;
   }
 
-  .dark .bg-card input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+  .dark
+    .bg-card
+    input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not(
+      [type="button"]
+    ),
   .dark .bg-card select,
   .dark .bg-card textarea,
   .dark .bg-card .bg-secondary\/20,
   .dark .bg-card .bg-muted\/20,
-  .dark form input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+  .dark
+    form
+    input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not(
+      [type="button"]
+    ),
   .dark form select,
   .dark form textarea {
     background-color: oklch(26.2% 0.008 220) !important;
@@ -243,11 +277,13 @@
   }
 
   /* PWA fix: dark mode status-bar background */
-  html.dark, .dark html {
+  html.dark,
+  .dark html {
     background-color: #0d0f14;
   }
 
-  html, body {
+  html,
+  body {
     /* Fast switch by default; view-transition handles the animation */
   }
 
@@ -301,7 +337,8 @@
 
 @layer components {
   /* ── Typography ───────────────────────────────────────────────── */
-  h1, .h1 {
+  h1,
+  .h1 {
     font-size: var(--fs-h1);
     font-weight: 800;
     line-height: 1.2;
@@ -309,14 +346,16 @@
     color: var(--color-foreground);
   }
 
-  h2, .h2 {
+  h2,
+  .h2 {
     font-size: var(--fs-h2);
     font-weight: 700;
     line-height: 1.3;
     color: var(--color-foreground);
   }
 
-  h3, .h3 {
+  h3,
+  .h3 {
     font-size: var(--fs-h3);
     font-weight: 600;
     line-height: 1.4;
@@ -357,7 +396,7 @@
   /* Global Icon Standards */
   svg.icon {
     color: var(--color-foreground);
-  }  /* Ensure Heroicons in common containers follow the rule */
+  } /* Ensure Heroicons in common containers follow the rule */
   .feature-icon svg {
     color: var(--color-foreground);
   }
@@ -424,6 +463,44 @@ html[data-sidebar="collapsed"] .sidebar-team-icon {
   margin-left: auto !important;
   margin-right: auto !important;
 }
+/* Pre-hydration collapsed rail: SSR HTML has no data-collapsible (the
+   server cannot read the cookie without forcing dynamic rendering, which
+   public SEO routes must not do), so icon sizing must also key off
+   html[data-sidebar], which HeadInjections sets before paint. Mirrors the
+   primitive's icon rules with equal values, so post-hydration nothing
+   changes. Shadcn files untouched — this is our override layer. */
+html[data-sidebar="collapsed"] [data-sidebar="menu-button"] {
+  width: 2rem !important;
+  height: 2rem !important;
+  padding: 0.5rem !important;
+}
+html[data-sidebar="collapsed"] [data-sidebar="menu-button"] > svg {
+  width: 1rem !important;
+  height: 1rem !important;
+}
+html[data-sidebar="collapsed"] [data-sidebar="group-label"] {
+  display: none;
+}
+html[data-sidebar="collapsed"] [data-nav-active-bar],
+html[data-sidebar="collapsed"] [data-nav-badge] {
+  display: none;
+}
+/* Collapsed box chrome + footer text must also key off html[data-sidebar]:
+   pre-hydration (and slow dev reloads) have no data-collapsible yet, so the
+   white switcher box and the full user card would render squeezed into the
+   narrow rail. Unlayered CSS beats layered utilities deterministically. */
+html[data-sidebar="collapsed"] .nav-switcher-btn {
+  background-color: transparent;
+  border-width: 0;
+}
+html[data-sidebar="collapsed"]
+  [data-sidebar="footer"]
+  [data-sidebar="menu-button"] {
+  padding: 0 !important;
+}
+html[data-sidebar="collapsed"] .nav-collapse-hide {
+  display: none !important;
+}
 
 /* Hidden Scrollbar - Scroll functionality preserved */
 ::-webkit-scrollbar {
@@ -437,8 +514,12 @@ html {
 
 /* Live ticker scrolling animation */
 @keyframes ticker {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
 }
 
 /* ── Landing identity (HydraDB-structure study, docs/research/) ──────────
@@ -451,7 +532,9 @@ html {
 }
 
 /* Always-dark "instrument band" palette (mock: #0e1420 family).
-   Theme-independent so light AND dark mode render the mock exactly. */
+   Theme-independent so light AND dark mode render the mock exactly.
+   Sidebar utilities resolve to OUR theme tokens (single source: @theme).
+   The legacy --sidebar-* names remain only as aliases for var() references. */
 :root {
   --ff-band-bg: #0e1420;
   --ff-band-surface: #151d2e;
@@ -459,6 +542,14 @@ html {
   --ff-band-ink: #eef1f6;
   --ff-band-muted: #8b93a5;
   --ff-accent: #ff571a;
+  --sidebar: var(--color-sidebar);
+  --sidebar-foreground: var(--color-sidebar-foreground);
+  --sidebar-primary: var(--color-sidebar-primary);
+  --sidebar-primary-foreground: var(--color-sidebar-primary-foreground);
+  --sidebar-accent: var(--color-sidebar-accent);
+  --sidebar-accent-foreground: var(--color-sidebar-accent-foreground);
+  --sidebar-border: var(--color-sidebar-border);
+  --sidebar-ring: var(--color-sidebar-ring);
 }
 
 .ff-marquee-track {
@@ -591,7 +682,9 @@ html.ff-smooth {
   border: 1px solid var(--color-foreground);
   background: transparent;
   color: var(--color-foreground);
-  transition: transform 0.15s ease, opacity 0.15s ease;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
 }
 .ff-nav-btn:hover {
   transform: translateY(-1px);
@@ -722,8 +815,10 @@ html.ff-smooth {
   overflow: hidden;
   background: var(--color-card);
   border: 1px solid oklch(from var(--color-border) l c h / 0.5);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.12);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
   position: relative;
   z-index: 2;
 }
@@ -753,7 +848,7 @@ html.ff-smooth {
   background: var(--color-card);
   padding: 3px 8px;
   border-radius: 999px;
-  box-shadow: 0 1px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -782,7 +877,7 @@ html.ff-smooth {
 
 .venue-pill-wrapper.state-selected .venue-pill-circle {
   transform: scale(1.15);
-  box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
 }
 
 .venue-pill-wrapper.state-selected .venue-pill-flyout {
@@ -814,14 +909,14 @@ html.ff-smooth {
   left: 0;
   transform: translate(-50%, -50%);
   border-radius: 50%;
-  color: #fff;
+  color: var(--color-paper);
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
 
   background: #059669;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
 }
 
 .dark .cluster-pill-wrapper {
@@ -890,7 +985,9 @@ html.ff-smooth {
 /* Leaflet.markercluster animation */
 .leaflet-cluster-anim .leaflet-marker-icon,
 .leaflet-cluster-anim .leaflet-marker-shadow {
-  transition: transform 0.3s ease-out, opacity 0.3s ease-in;
+  transition:
+    transform 0.3s ease-out,
+    opacity 0.3s ease-in;
 }
 
 /* Spider leg lines (thin and subtle) */
@@ -914,8 +1011,14 @@ html.ff-smooth {
 }
 
 @keyframes slide-up-fade {
-  from { opacity: 0; transform: translateY(12px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 /* ── Layout & stacking utilities ─────────────────────────
    Named utilities for layout/stacking values that have no Tailwind scale
@@ -991,3 +1094,6 @@ html.ff-smooth {
     transform: scale(0.98);
   }
 }
+
+/* Legacy shadcn dark sidebar block deleted: --color-sidebar-* already carry
+   dark oklch values in .dark above, and --sidebar-* are aliases of them. */

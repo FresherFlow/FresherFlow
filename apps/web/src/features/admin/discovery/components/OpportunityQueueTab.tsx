@@ -64,22 +64,22 @@ export function OpportunityQueueTab({
  </div>
  </div>
 
- {isLoading ? (
- <div className="space-y-3 py-2">
- <Skeleton className="h-4 w-1/3" />
- <Skeleton className="h-4 w-full" />
- <Skeleton className="h-4 w-2/3" />
- </div>
- ) : opportunities.length === 0 ? (
- <div className="py-6">
- <EmptyState
- title="No items in this section"
- description="Discovered opportunities from ATS connectors will stream here automatically."
- icon="inbox"
- size="md"
- variant="ghost"
- />
- </div>
+  {isLoading ? (
+  <div className="space-y-3 py-2">
+  <Skeleton className="h-4 w-1/3" />
+  <Skeleton className="h-4 w-full" />
+  <Skeleton className="h-4 w-2/3" />
+  </div>
+  ) : opportunities.length === 0 ? (
+  <div className="py-6">
+  <EmptyState
+  title="No items in this section"
+  description="Discovered opportunities from ATS connectors will stream here automatically."
+  icon="inbox"
+  size="md"
+  variant="ghost"
+  />
+  </div>
  ) : (
  <div className="border border-border/60 rounded-xl bg-card/60 backdrop-blur-md overflow-hidden shadow-xs flex flex-col flex-1 min-h-0">
  <div className="overflow-auto flex-1 min-h-0">

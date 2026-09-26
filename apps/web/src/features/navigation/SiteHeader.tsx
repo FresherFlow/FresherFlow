@@ -1,15 +1,12 @@
 'use client';
 
 import { Suspense, useContext, Fragment, useState, useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { AuthContext } from '@/lib/auth/AuthContext';
 import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
 import { AlertsDropdown } from '@/features/notifications/components/AlertsDropdown';
 import { useOfflineActionQueue } from '@/hooks/useOfflineActionQueue';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/ui/DropdownMenu';
-import { Cog6ToothIcon, ArrowRightOnRectangleIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
-import UserCircleIcon from '@heroicons/react/24/outline/UserCircleIcon';
 import { SidebarTrigger } from '@/ui/sidebar';
 import { Separator } from '@/ui/separator';
 import { formatSegment, getAdminTitle, isFeedHeaderRoute } from './headerContent';
@@ -20,26 +17,25 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
  * Merged site header for sidebar routes (Sidebar 07 `site-header` pattern):
  * SidebarTrigger + header portal target / breadcrumb fallback + the
  * TopUtilityBar cluster (theme, alerts, user menu). Positioning contract
- * is unchanged: fixed, `left: var(--sidebar-w)`, desktop only.
+ * is unchanged: fixed, `left: var(--sidebar-w)`, desktop only. This is the
+ * single desktop header for sidebar routes — public routes use DesktopNav,
+ * mobile uses MobileTopNav, admin uses TopHeaderBar. One header per
+ * breakpoint, one offset token, flat (no new boxes).
  */
 function SiteHeaderContent() {
     const pathname = usePathname() || '';
 
     const context = useContext(AuthContext);
     const user = context?.user;
-    const isLoading = context?.isLoading ?? true;
-    const logout = context?.logout;
-    const router = useRouter();
     const pendingSyncCount = useOfflineActionQueue(user?.id);
     const [mounted, setMounted] = useState(false);
     useEffect(() => setMounted(true), []);
 
+    // Mount-gated: SSR and the first client paint must agree on the utility cluster.
+    const resolvedUser = mounted ? user : undefined;
+
     const isAuthRoute = pathname === '/login' || pathname === '/register' || pathname === '/choose-username';
     const isCandidatePortfolioRoute = pathname?.startsWith('/u/');
-
-    const handleLogout = () => { if (logout) void logout('/login'); };
-
-    const initialLetter = user ? (user.fullName?.[0] || user.username?.[0] || 'U').toUpperCase() : 'U';
 
     if (pathname === '/') return null;
 
@@ -53,7 +49,7 @@ function SiteHeaderContent() {
 
     return (
         <div
-            className="hidden lg:flex fixed top-0 right-0 h-14 items-center gap-2 border-b border-border/40 bg-background/95 backdrop-blur-sm z-50 pr-6 pl-4 transition-all duration-200 ease-linear"
+            className="hidden lg:flex fixed top-0 right-0 h-14 items-center gap-2 border-b border-border/40 bg-background/95 backdrop-blur-sm z-50 pr-6 pl-4 transition-all duration-300 ease-out motion-reduce:transition-none"
             style={{ left: SIDEBAR_W_VAR }}
         >
             <SidebarTrigger className="-ml-1 h-7 w-7 shrink-0 [&_svg]:size-4!" />
@@ -113,13 +109,9 @@ function SiteHeaderContent() {
                 <div className="flex items-center gap-2 shrink-0" suppressHydrationWarning>
                     <ThemeSwitcher />
 
-                    {!mounted || isLoading ? (
-                        // SSR + first client paint: render skeleton matching the logged-out size
-                        // so server HTML === client HTML until AuthContext hydrates
-                        <div className="h-8 w-20 animate-pulse rounded-lg bg-muted/50" aria-hidden />
-                    ) : isCandidatePortfolioRoute ? (
+                    {isCandidatePortfolioRoute ? (
                         <div className="flex items-center gap-2">
-                            {user ? (
+                            {resolvedUser ? (
                                 <Link
                                     href="/jobs?tab=for-you"
                                     className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-95 shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
@@ -135,58 +127,26 @@ function SiteHeaderContent() {
                                 </Link>
                             )}
                         </div>
+                    ) : !resolvedUser ? (
+                        <div className="flex items-center gap-2">
+                            <Link
+                                href="/login"
+                                className="px-3 py-1.5 text-xs font-semibold text-foreground hover:text-primary transition-all duration-150 ease-out active:scale-95 shrink-0"
+                            >
+                                Log in
+                            </Link>
+                        </div>
                     ) : (
-                        <>
-                            {user ? (
-                                <div className="flex items-center gap-2">
-                                    {pendingSyncCount > 0 && (
-                                        <span className="inline-flex items-center rounded-full border border-signal-aging/30 bg-signal-aging/10 px-2 py-0.5 text-xs font-semibold tracking-wide text-signal-aging">
-                                            {pendingSyncCount} pending
-                                        </span>
-                                    )}
-
-                                    <AlertsDropdown />
-
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <button aria-label="User Menu" className="flex h-8 w-8 items-center justify-center rounded-full bg-muted border border-border/60 text-xs font-bold uppercase transition-all duration-150 ease-out active:scale-95 hover:border-primary/40 cursor-pointer focus:outline-none">
-                                                {initialLetter}
-                                            </button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-56">
-                                            <DropdownMenuLabel>
-                                                <div className="flex flex-col space-y-1">
-                                                    <p className="text-sm font-medium leading-none truncate">{user?.fullName || user?.username || 'User'}</p>
-                                                    <p className="text-xs leading-none text-muted-foreground truncate">{user?.email || 'Loading...'}</p>
-                                                </div>
-                                            </DropdownMenuLabel>
-                                            <DropdownMenuSeparator />
-                                            <DropdownMenuItem onClick={() => router.push('/account')} className="cursor-pointer flex items-center">
-                                                <Squares2X2Icon className="mr-2 h-4 w-4" />
-                                                <span>Account</span>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => router.push('/account?tab=profile')} className="cursor-pointer flex items-center">
-                                                <UserCircleIcon className="mr-2 h-4 w-4" />
-                                                <span>Profile</span>
-                                            </DropdownMenuItem>                                      
-                                            <DropdownMenuItem className="cursor-pointer" onSelect={handleLogout}>
-                                                <ArrowRightOnRectangleIcon className="mr-2 h-4 w-4" />
-                                                <span>Log out</span>
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
-                            ) : (
-                                <div className="flex items-center gap-2">
-                                    <Link
-                                        href="/login"
-                                        className="px-3 py-1.5 text-xs font-semibold text-foreground hover:text-primary transition-all duration-150 ease-out active:scale-95 shrink-0"
-                                    >
-                                        Log in
-                                    </Link>
-                                </div>
+                        <div className="flex items-center gap-2">
+                            {pendingSyncCount > 0 && (
+                                <span className="inline-flex items-center rounded-full border border-signal-aging/30 bg-signal-aging/10 px-2 py-0.5 text-xs font-semibold tracking-wide text-signal-aging">
+                                    {pendingSyncCount} pending
+                                </span>
                             )}
-                        </>
+
+                            {/* Sidebar pages keep the notification bell — no avatar here. */}
+                            <AlertsDropdown />
+                        </div>
                     )}
                 </div>
             )}
@@ -196,7 +156,7 @@ function SiteHeaderContent() {
 
 export function SiteHeader() {
     return (
-        <Suspense fallback={<div className="hidden lg:block fixed top-0 right-0 h-14 z-40 transition-all duration-200 ease-linear" style={{ left: SIDEBAR_W_VAR }} />}>
+        <Suspense fallback={<div className="hidden lg:block fixed top-0 right-0 h-14 z-40 transition-all duration-300 ease-out motion-reduce:transition-none" style={{ left: SIDEBAR_W_VAR }} />}>
             <SiteHeaderContent />
         </Suspense>
     );

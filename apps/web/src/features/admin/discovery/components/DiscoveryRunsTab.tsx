@@ -167,24 +167,30 @@ export function DiscoveryRunsTab({ runs, onTriggerRun }: DiscoveryRunsTabProps) 
     searchPlaceholder="Search run ID or status..."
     noResults={
      runs.length === 0 ? (
-      <EmptyState
-       title="No discovery runs found"
-       description="Trigger a run to start scraping target sources."
-       icon="inbox"
-       size="md"
-       variant="ghost"
-       action={
-        <button
-         onClick={onTriggerRun}
-         className="h-9 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold transition-all duration-150 active:scale-95 shadow-xs flex items-center gap-2 cursor-pointer mx-auto"
-        >
-         <PlayIcon className="w-3.5 h-3.5 fill-current" />
-         <span>Trigger New Run</span>
-        </button>
-       }
+       <EmptyState
+        title="No discovery runs found"
+        description="Trigger a run to start scraping target sources."
+        icon="inbox"
+        size="md"
+        variant="ghost"
+        action={
+         <button
+          onClick={onTriggerRun}
+          className="h-9 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold transition-all duration-150 active:scale-95 shadow-xs flex items-center gap-2 cursor-pointer mx-auto"
+         >
+          <PlayIcon className="w-3.5 h-3.5 fill-current" />
+          <span>Trigger New Run</span>
+         </button>
+        }
       />
      ) : (
-      <p className="text-muted-foreground text-xs">No matching run logs found.</p>
+      <EmptyState
+        title="No matching run logs"
+        description="Try adjusting your search."
+        icon="search"
+        size="md"
+        variant="ghost"
+      />
      )
     }
     actions={() => (

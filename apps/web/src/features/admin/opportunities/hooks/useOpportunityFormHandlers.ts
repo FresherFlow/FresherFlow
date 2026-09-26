@@ -1,6 +1,7 @@
 import { useRouter } from 'next/navigation';
 import { adminApi } from '@/lib/api/admin';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/lib/utils/error';
 import { buildOpportunityPayload } from '../opportunityPayload';
 import { buildAdminSharePack, buildPlatformCaption, kindFromOpportunity, type SharePlatform } from '@/features/admin/opportunities/formUtils';
 import { useOpportunityForm } from '@/features/admin/opportunities/useOpportunityForm';
@@ -161,7 +162,7 @@ export function useOpportunityFormHandlers(form: ReturnType<typeof useOpportunit
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         } catch (err: unknown) {
-            toast.error(`Operation failed: ${(err as Error).message}`, { id: toastId });
+            toast.error(`Operation failed: ${getErrorMessage(err)}`, { id: toastId });
         } finally {
             form.setIsLoading(false);
         }

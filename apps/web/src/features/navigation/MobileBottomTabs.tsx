@@ -10,7 +10,9 @@ import {
     getSpace,
     getSpaceForPathname,
     isSpaceItemActive,
+    type SpaceId,
 } from './navConfig';
+import { readSpaceId } from './sidebarState';
 
 
 export function MobileBottomTabs() {
@@ -24,8 +26,21 @@ export function MobileBottomTabs() {
     // Mirrors the sidebar's space model: the active space's first five
     // destinations, or the default nav on routes belonging to no space. This
     // replaces the retired 4-context model, so the bottom bar and the sidebar
-    // can no longer disagree about which nav you are in.
-    const spaceId = getSpaceForPathname(pathname || '/');
+    // can no longer disagree about which nav you are in. On space-neutral
+    // routes (e.g. /account) the sidebar restores the remembered space via
+    // getSpaceForPathname + persisted choice — the tabs do the same here so
+    // a cross-group remount cannot flip the bar back to the default set.
+    const ownedSpaceId = getSpaceForPathname(pathname || '/');
+    const [restoredSpaceId, setRestoredSpaceId] = useState<SpaceId | null>(null);
+    useEffect(() => {
+        if (!ownedSpaceId) {
+            const stored = readSpaceId();
+            if (stored) setRestoredSpaceId(stored);
+        } else {
+            setRestoredSpaceId(null);
+        }
+    }, [ownedSpaceId]);
+    const spaceId = ownedSpaceId ?? restoredSpaceId;
     const spaceItems = spaceId
         ? getSpace(spaceId).groups.flatMap((group) => group.items)
         : DEFAULT_NAV_ITEMS;

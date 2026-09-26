@@ -25,6 +25,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/ui/DropdownMenu';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { getOpportunityDisplaySalary, parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
+import { SkeletonTrackerTable } from '@/features/jobs/components/OpportunitySkeletons';
 
 // Primary Status Tabs
 type TrackerTabKey = 'ALL' | 'SAVED' | 'APPLIED' | 'INTERVIEWED' | 'SELECTED' | 'REJECTED' | 'PLANNED';
@@ -368,8 +369,8 @@ function TrackerPageContent() {
                     </button>
                     <div className="flex items-center gap-3">
                         <h1 className="text-2xl font-bold tracking-tight text-foreground">Application Tracker</h1>
-                        <span className="inline-flex items-center justify-center rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold px-2.5 py-0.5 tabular-nums">
-                            {trackedItems.length} Total
+                        <span className="text-xs font-semibold tabular-nums text-muted-foreground">
+                            {trackedItems.length} total
                         </span>
                     </div>
                 </div>
@@ -406,8 +407,8 @@ function TrackerPageContent() {
                         >
                             {tab.label}
                             <span className={cn(
-                                'text-xs px-1.5 py-0.5 rounded-full font-bold tabular-nums',
-                                isActive ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'
+                                'text-xs font-bold tabular-nums',
+                                isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'
                             )}>
                                 {count}
                             </span>
@@ -418,11 +419,7 @@ function TrackerPageContent() {
 
             {/* High-Density Table View */}
             {isLoading ? (
-                <div className="space-y-3">
-                    {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="h-14 bg-card/40 border border-border/40 rounded-xl animate-pulse" />
-                    ))}
-                </div>
+                <SkeletonTrackerTable />
             ) : filteredItems.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center space-y-4 max-w-xl mx-auto">
                     <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto text-muted-foreground/50">

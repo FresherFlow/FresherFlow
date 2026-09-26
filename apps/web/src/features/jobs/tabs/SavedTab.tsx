@@ -12,9 +12,9 @@ import FunnelIcon from '@heroicons/react/24/outline/FunnelIcon';
 import JobCard from '@/features/jobs/components/JobCard';
 import { fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { readFeedCache, getOpportunityFromCache } from '@/lib/cache/opportunitiesFeedCache';
-import { SkeletonJobCard } from '@/features/jobs/components/OpportunitySkeletons';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import { Button } from '@/ui/Button';
+import { SkeletonJobCard } from '@/features/jobs/components/OpportunitySkeletons';
 
 function SavedJobsPageContent() {
     const router = useRouter();
@@ -100,8 +100,8 @@ function SavedJobsPageContent() {
                     </button>
                     <div className="flex items-center gap-3">
                         <h1 className="text-2xl font-bold tracking-tight text-foreground">Saved Jobs</h1>
-                        <span className="inline-flex items-center justify-center rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold px-2.5 py-0.5 tabular-nums">
-                            {savedOpportunities.length} Saved
+                        <span className="text-xs font-semibold tabular-nums text-muted-foreground">
+                            {savedOpportunities.length} saved
                         </span>
                     </div>
                 </div>

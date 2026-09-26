@@ -40,6 +40,7 @@ import {
     MagnifyingGlassIcon,
     GlobeAltIcon,
     ChevronLeftIcon,
+    FlagIcon,
 } from '@heroicons/react/24/outline';
 
 /** Kept for MobileNavMenu: it maps `item.label`. Do not rename fields. */
@@ -48,6 +49,9 @@ export const mainNavItems = [
     { href: '/admin/opportunities', label: 'Listings', icon: BriefcaseIcon, exact: true },
     { href: '/admin/profile-pages', label: 'Profile Pages', icon: UserGroupIcon },
     { href: '/admin/community-submissions', label: 'Submissions', icon: QueueListIcon },
+    { href: '/admin/reports', label: 'Reports', icon: FlagIcon },
+    { href: '/admin/users', label: 'Users & moderators', icon: UserGroupIcon },
+    { href: '/admin/audit', label: 'Audit log', icon: CheckCircleIcon },
     { href: '/admin/opportunities/create', label: 'New listing', icon: PlusCircleIcon },
     { href: '/admin/discovery', label: 'Discovery Engine', icon: ShieldCheckIcon, hasSubmenu: true },
 ];
@@ -164,15 +168,9 @@ function AdminBrand({ href, title }: { href: string; title: string }) {
     );
 }
 
-function AdminSidebarRail({ feedbackAlertCount = 0 }: { feedbackAlertCount?: number }) {
+function AdminSidebarNav({ feedbackAlertCount = 0 }: { feedbackAlertCount?: number }) {
     const pathname = usePathname() || '';
     const searchParams = useSearchParams();
-    const [isScrolled, setIsScrolled] = React.useState(false);
-
-    const [hostname, setHostname] = useState<string>('');
-    useEffect(() => {
-        setHostname(window.location.hostname);
-    }, []);
 
     const effectiveFeedbackAlertCount =
         pathname.startsWith('/feedback') || pathname.startsWith('/admin/feedback')
@@ -181,6 +179,20 @@ function AdminSidebarRail({ feedbackAlertCount = 0 }: { feedbackAlertCount?: num
 
     const { groups, headerTitle, homeHref } = getAdminGroups(pathname, effectiveFeedbackAlertCount);
 
+    return { groups, headerTitle, homeHref, pathname, searchParams } as const;
+}
+
+function AdminSidebarRail({ feedbackAlertCount = 0 }: { feedbackAlertCount?: number }) {
+    const [isScrolled, setIsScrolled] = React.useState(false);
+
+    const [hostname, setHostname] = useState<string>('');
+    useEffect(() => {
+        setHostname(window.location.hostname);
+    }, []);
+
+    // Keep shell always mounted — only the nav list suspends. This prevents
+    // the entire rail from disappearing (blink) when useSearchParams suspends
+    // on navigation (common with Next's opt-in Suspense bailout).
     return (
         <Sidebar collapsible="icon">
             <SidebarHeader
@@ -190,7 +202,10 @@ function AdminSidebarRail({ feedbackAlertCount = 0 }: { feedbackAlertCount?: num
                     isScrolled && 'border-sidebar-border shadow-[0_4px_12px_-4px_rgb(0_0_0/0.12)]'
                 )}
             >
-                <AdminBrand href={homeHref} title={headerTitle} />
+                {/* Brand is resolved inside the suspended nav so it updates with route, but we render a stable fallback */}
+                <React.Suspense fallback={<AdminBrand href="/admin/dashboard" title="Admin Portal" />}>
+                    <AdminSidebarBrandResolver feedbackAlertCount={feedbackAlertCount} />
+                </React.Suspense>
                 {/* blur fade so scrolled items feel going under header */}
                 <div
                     aria-hidden
@@ -201,7 +216,9 @@ function AdminSidebarRail({ feedbackAlertCount = 0 }: { feedbackAlertCount?: num
                 />
             </SidebarHeader>
             <SidebarContent onScroll={(e) => setIsScrolled(e.currentTarget.scrollTop > 2)}>
-                <NavMain groups={groups} pathname={pathname} searchParams={searchParams} isAuthed />
+                <React.Suspense fallback={<div className="p-2 opacity-0" aria-hidden />}>
+                    <AdminSidebarNavContent feedbackAlertCount={feedbackAlertCount} />
+                </React.Suspense>
             </SidebarContent>
             <SidebarFooter>
                 <div className="flex items-center justify-between gap-2 p-2 group-data-[collapsible=icon]:justify-center">
@@ -217,6 +234,16 @@ function AdminSidebarRail({ feedbackAlertCount = 0 }: { feedbackAlertCount?: num
             <SidebarRail />
         </Sidebar>
     );
+}
+
+function AdminSidebarBrandResolver({ feedbackAlertCount = 0 }: { feedbackAlertCount?: number }) {
+    const { homeHref, headerTitle } = AdminSidebarNav({ feedbackAlertCount });
+    return <AdminBrand href={homeHref} title={headerTitle} />;
+}
+
+function AdminSidebarNavContent({ feedbackAlertCount = 0 }: { feedbackAlertCount?: number }) {
+    const { groups, pathname, searchParams } = AdminSidebarNav({ feedbackAlertCount });
+    return <NavMain groups={groups} pathname={pathname} searchParams={searchParams} isAuthed />;
 }
 
 /**
@@ -283,9 +310,7 @@ export function AdminSidebar({
 }) {
     return (
         <div className="hidden lg:block">
-            <React.Suspense fallback={null}>
-                <AdminSidebarRail feedbackAlertCount={feedbackAlertCount} />
-            </React.Suspense>
+            <AdminSidebarRail feedbackAlertCount={feedbackAlertCount} />
         </div>
     );
 }

@@ -7,7 +7,12 @@ import { cn } from "@/ui/cn";
 
 import { FeedHeaderProvider } from '@/lib/providers/FeedHeaderProvider';
 import { SidebarProvider } from '@/ui/sidebar';
-import { SIDEBAR_W_VAR, useSidebarOpenState } from '@/features/navigation/sidebarState';
+import { ensureSidebarRepeatGuard, SIDEBAR_W_VAR, useSidebarOpenState } from '@/features/navigation/sidebarState';
+
+// Module scope (not an effect): effects in the shadcn provider mount
+// before ours, so only import-time registration gets ahead of its
+// keydown listener to swallow auto-repeat. No-op on the server.
+ensureSidebarRepeatGuard();
 
 export function NavigationWrapper({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -18,9 +23,8 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
 
     // Controlled collapse state: the single source of truth for the rail width
     // and for the fixed header offset (`left: var(--sidebar-w)`), both fed from
-    // SIDEBAR_W_VAR. Without this the stock SidebarProvider keeps its own
-    // internal `open` while `--sidebar-w` stays at the load-time value, so the
-    // header overlaps the rail when expanded.
+    // SIDEBAR_W_VAR. The rail's own gap element reserves content space, so no
+    // second content offset is added here — one token, one offset.
     const [sidebarOpen, handleSidebarOpenChange] = useSidebarOpenState();
 
     return (

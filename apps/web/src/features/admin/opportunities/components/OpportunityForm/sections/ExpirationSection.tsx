@@ -1,92 +1,86 @@
 import { ClockIcon } from '@heroicons/react/24/outline';
 import XMarkIcon from '@heroicons/react/20/solid/XMarkIcon';
+import { SmartInput } from '@/features/admin/ui/SmartInput';
+import { Card, CardDescription, CardContent } from '@/ui/Card';
+import { Button } from '@/ui/Button';
+import type { OpportunityFormApi } from '@/features/admin/opportunities/useOpportunityForm';
 
-interface ExpirationSectionProps {
-    expiryDate: string;
-    setExpiryDate: (val: string) => void;
-    expiryTime: string;
-    setExpiryTime: (val: string) => void;
-    onToggleAmPm: (target: 'AM' | 'PM') => void;
-}
-
-export function ExpirationSection({
-    expiryDate, setExpiryDate,
-    expiryTime, setExpiryTime,
-    onToggleAmPm
-}: ExpirationSectionProps) {
+export function ExpirationSection({ form }: { form: OpportunityFormApi }) {
+    const {
+        expiryDate, setExpiryDate,
+        expiryTime, setExpiryTime,
+        onToggleAmPm
+    } = form;
     const handleClear = () => {
         setExpiryDate('');
         setExpiryTime('');
     };
 
     return (
-        <div className="space-y-5 border border-border rounded-lg p-4 md:p-5 bg-card shadow-sm md:col-span-2">
-            <h3 className="text-sm md:text-base font-semibold text-foreground flex items-center gap-2 mb-4">
-                <ClockIcon className="w-4 h-4 text-muted-foreground" />
-                Expiration
-            </h3>
-
+        <Card>
+            <div className="p-4 md:p-5 pb-3 space-y-1">
+                <h3 className="flex items-center gap-2 text-sm md:text-base font-semibold text-foreground">
+                    <ClockIcon className="w-4 h-4 text-muted-foreground" />
+                    Expiration
+                </h3>
+                <CardDescription>
+                    When the listing stops accepting applications.
+                </CardDescription>
+            </div>
+            <CardContent className="space-y-4 px-4 md:px-5 pb-4 md:pb-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Date */}
-                <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-muted-foreground/80 block">
-                        Date (Optional)
-                    </label>
-                    <div className="relative">
-                         <input
-                            type="date"
-                            value={expiryDate}
-                            onChange={(e) => setExpiryDate(e.target.value)}
-                            min={new Date().toISOString().split('T')[0]}
-                            className="flex w-full rounded-lg px-3.5 py-2.5 text-sm outline-none transition-colors duration-200 border border-solid border-input bg-background hover:border-border focus:bg-background focus:border-foreground/30 pr-9"
-                        />
-                        {expiryDate && (
-                            <button
-                                type="button"
-                                onClick={handleClear}
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-muted hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors"
-                                aria-label="Clear date"
-                            >
-                                <XMarkIcon className="w-3.5 h-3.5" />
-                            </button>
-                        )}
-                    </div>
+                <div className="relative">
+                    <SmartInput
+                        label="Date (optional)"
+                        type="date"
+                        value={expiryDate}
+                        onChange={(e) => setExpiryDate(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                    />
+                    {expiryDate && (
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            onClick={handleClear}
+                            aria-label="Clear expiry date"
+                            className="absolute right-1.5 top-8 h-6 w-6 rounded-full p-0 text-muted-foreground hover:text-destructive"
+                        >
+                            <XMarkIcon className="w-3.5 h-3.5" />
+                        </Button>
+                    )}
                 </div>
 
-                {/* Time */}
-                <div className="space-y-1.5">
-                    <label className="text-sm font-medium text-muted-foreground/80 block">
-                        Time (Default 23:59)
-                    </label>
-                    <input
-                        type="time"
-                        value={expiryTime}
-                        onChange={(e) => setExpiryTime(e.target.value)}
-                        className="flex w-full rounded-lg px-3.5 py-2.5 text-sm outline-none transition-colors duration-200 border border-solid border-input bg-background hover:border-border focus:bg-background focus:border-foreground/30"
-                    />
-                </div>
+                <SmartInput
+                    label="Time (default 23:59)"
+                    type="time"
+                    value={expiryTime}
+                    onChange={(e) => setExpiryTime(e.target.value)}
+                />
             </div>
 
             {/* AM/PM quick set — only shown when a date is selected */}
             {expiryDate && (
                 <div className="flex items-center gap-2 pt-1">
                     <span className="text-sm font-medium text-muted-foreground">Quick set:</span>
-                    <button
+                    <Button
                         type="button"
+                        variant="outline"
                         onClick={() => onToggleAmPm('AM')}
-                        className="px-3 py-1 rounded bg-muted hover:bg-muted-foreground/10 text-xs font-semibold capitalize tracking-normal transition-colors"
+                        className="h-7 rounded-md px-3 text-xs font-semibold"
                     >
                         Force AM
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="button"
+                        variant="outline"
                         onClick={() => onToggleAmPm('PM')}
-                        className="px-3 py-1 rounded bg-muted hover:bg-muted-foreground/10 text-xs font-semibold capitalize tracking-normal transition-colors"
+                        className="h-7 rounded-md px-3 text-xs font-semibold"
                     >
                         Force PM
-                    </button>
+                    </Button>
                 </div>
             )}
-        </div>
+            </CardContent>
+        </Card>
     );
 }

@@ -39,7 +39,10 @@ export function useTheme() {
     
     const toggleTheme = async () => {
         const nextTheme = resolvedTheme === 'dark' ? 'light' : 'dark';
-        if (!document.startViewTransition || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        // Touch devices get an instant swap: the view-transition wipe
+        // paints in visible stages on mobile GPUs and feels broken.
+        const isTouch = window.matchMedia('(hover: none), (pointer: coarse)').matches;
+        if (!document.startViewTransition || isTouch || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
             setTheme(nextTheme);
             return;
         }

@@ -25,6 +25,7 @@ import { cn } from "@/ui/cn";
 import { DiscoveredJob } from '../types';
 import { PayloadModal } from '../modals/PayloadModal';
 import { toast } from 'react-hot-toast';
+import { getErrorMessage } from '@/lib/utils/error';
 import { detectAtsFromUrl } from '../utils';
 import { DataGrid, DataGridColumn, DataGridActionsContext } from '@/ui/data-grid/DataGrid';
 import { FilterSelect } from '@/ui/data-grid/FilterSelect';
@@ -109,10 +110,10 @@ export function DiscoveredJobsTab() {
         toast.success('Jobs deleted successfully');
       } else {
         const error = await res.json();
-        toast.error(`Failed to delete: ${error.error || 'Unknown error'}`);
+        toast.error(`Failed to delete: ${getErrorMessage(error.error, 'Unknown error')}`);
       }
     } catch (e) {
-      console.error(e);
+      console.error(`Failed to delete jobs - ${getErrorMessage(e)}`);
       toast.error('Failed to delete jobs');
     }
   };
@@ -135,10 +136,10 @@ export function DiscoveredJobsTab() {
         setSelectedJobIds(newSet);
       } else {
         const error = await res.json();
-        toast.error(`Failed to process: ${error.error || 'Unknown error'}`, { id: toastId });
+        toast.error(`Failed to process: ${getErrorMessage(error.error, 'Unknown error')}`, { id: toastId });
       }
     } catch (e) {
-      console.error(e);
+      console.error(`Failed to process jobs - ${getErrorMessage(e)}`);
       toast.error('Failed to process jobs', { id: toastId });
     }
   };
@@ -374,7 +375,7 @@ export function DiscoveredJobsTab() {
             </button>
             <button
               onClick={confirmDelete}
-              className="px-4 py-2 rounded-md text-sm font-medium bg-error text-white hover:bg-error cursor-pointer"
+              className="px-4 py-2 rounded-md text-sm font-medium bg-error text-paper hover:bg-error cursor-pointer"
             >
               Delete
             </button>

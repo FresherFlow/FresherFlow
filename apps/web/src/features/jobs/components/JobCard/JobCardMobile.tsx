@@ -97,6 +97,15 @@ export function JobCardMobile({
     const accentClass = getAccentBorderClass(job, isDrive, isGovernment, isWalkin);
     const postedLabel = getPostedLabel(job);
     const commentCount = useCommentCount(job.slug || job.id);
+    // V1 job-card requirement: the Discuss CTA must SSR even before counts
+    // hydrate client-side, so fall back to the zero-state (0 discussing).
+    const discussionCount = commentCount ?? 0;
+    const discussionHref = `${getOpportunityPathFromItem(job)}#discussion`;
+    const handleDiscussClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+        e.stopPropagation();
+        if (onClick) onClick(e as unknown as React.MouseEvent<HTMLAnchorElement>);
+        else router.push(discussionHref);
+    };
 
     const driveDetails = getDriveDetails(job);
     const walkinDestination =
@@ -191,12 +200,12 @@ export function JobCardMobile({
                     <h2 className="text-sm font-semibold text-foreground leading-snug line-clamp-2">
                         {job.normalizedRole || job.title}
                     </h2>
-                    <div className="flex items-center gap-1.5 mt-0.5 text-sm text-muted-foreground min-w-0">
-                        <span className="min-w-0 flex-1 truncate font-semibold text-foreground/80">
+                    <div className="flex min-w-0 items-center gap-1.5 mt-0.5 text-sm text-muted-foreground">
+                        <span className="font-semibold text-foreground/80 truncate min-w-0 max-w-36">
                             {job.company}
                         </span>
                         <span className="text-muted-foreground/40 shrink-0">•</span>
-                        <span className="inline-flex items-center gap-1 truncate min-w-0">
+                        <span className="inline-flex min-w-0 flex-1 items-center gap-1">
                             <MapPinIcon className="w-3.5 h-3.5 shrink-0" aria-hidden />
                             <span className="truncate">{locationInfo.shortLabel}</span>
                         </span>
@@ -217,24 +226,21 @@ export function JobCardMobile({
             </div>
 
             {metaItems.length > 0 || displaySkills.length > 0 || skillOverflow > 0 ? (
-                <div className="flex flex-wrap items-center gap-1.5 relative z-20 pointer-events-auto">
-                    <JobCardBadges metaItems={metaItems} skills={displaySkills} overflow={skillOverflow} compact />
-                    <div className="ml-auto flex shrink-0 items-center gap-2">
-                        {commentCount !== undefined && commentCount > 0 && (
-                            <a
-                                href={`${getOpportunityPathFromItem(job)}#discussion`}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (onClick) onClick(e as unknown as React.MouseEvent<HTMLAnchorElement>);
-                                    else router.push(`${getOpportunityPathFromItem(job)}#discussion`);
-                                }}
-                                className="inline-flex items-center gap-1 px-1.5 h-6 text-xs font-semibold rounded-md text-muted-foreground hover:text-primary transition-colors shrink-0"
-                                title={`${commentCount} comment${commentCount === 1 ? '' : 's'} — join the discussion`}
-                            >
-                                <ChatBubbleLeftRightIcon className="w-3 h-3" aria-hidden />
-                                {commentCount}
-                            </a>
-                        )}
+                <div className="flex min-w-0 items-center gap-1.5 relative z-20 pointer-events-auto">
+                    <div className="min-w-0 flex-1">
+                        <JobCardBadges metaItems={metaItems} skills={displaySkills} overflow={skillOverflow} compact />
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                        <a
+                            href={discussionHref}
+                            onClick={handleDiscussClick}
+                            className="inline-flex items-center gap-1 px-1.5 h-6 text-xs font-semibold rounded-md text-muted-foreground hover:text-primary transition-colors shrink-0"
+                            title={`${discussionCount} discussing — Discuss this job`}
+                            aria-label={`Discuss this job (${discussionCount} discussing)`}
+                        >
+                            <ChatBubbleLeftRightIcon className="w-3 h-3" aria-hidden />
+                            {discussionCount} discussing · Discuss
+                        </a>
                         {isWalkin ? (
                             <>
                                 {directionsUrl && (
@@ -274,7 +280,17 @@ export function JobCardMobile({
                     </div>
                 </div>
             ) : (
-                <div className="flex justify-end pt-1 relative z-20 pointer-events-auto">
+                <div className="flex items-center justify-end gap-2 pt-1 relative z-20 pointer-events-auto">
+                    <a
+                        href={discussionHref}
+                        onClick={handleDiscussClick}
+                        className="inline-flex items-center gap-1 px-1.5 h-6 text-xs font-semibold rounded-md text-muted-foreground hover:text-primary transition-colors shrink-0"
+                        title={`${discussionCount} discussing — Discuss this job`}
+                        aria-label={`Discuss this job (${discussionCount} discussing)`}
+                    >
+                        <ChatBubbleLeftRightIcon className="w-3 h-3" aria-hidden />
+                        {discussionCount} discussing · Discuss
+                    </a>
                     {isWalkin ? (
                         <button
                             type="button"

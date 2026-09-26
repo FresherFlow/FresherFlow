@@ -29,7 +29,7 @@ export default function InstallAppBanner() {
                 </button>
                 
                 <div className="flex items-center gap-3.5 mb-4 pr-8">
-                    <div className="w-[52px] h-[52px] shrink-0 rounded-[14px] bg-white border border-border flex items-center justify-center p-1.5 shadow-sm">
+                    <div className="w-[52px] h-[52px] shrink-0 rounded-[14px] bg-paper border border-border flex items-center justify-center p-1.5 shadow-sm">
                         <Image 
                             src="/icon-192x192.png" 
                             alt="FresherFlow Logo" 

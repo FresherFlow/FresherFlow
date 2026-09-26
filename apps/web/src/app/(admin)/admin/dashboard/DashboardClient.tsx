@@ -18,6 +18,7 @@ import { useFirebaseAdmin } from '@/features/admin/hooks/useFirebaseAdmin';
 import { adminApi } from '@/lib/api/admin';
 import { CDN_URL } from '@/lib/utils/runtimeConfig';
 import { Button } from '@/ui/Button';
+import { getErrorMessage } from '@/lib/utils/error';
 
 
 interface DashboardState {
@@ -83,8 +84,8 @@ export default function AdminDashboardHome() {
                 setRegenStatus({ type: 'error', message: res?.message || 'Failed to regenerate feeds' });
             }
         } catch (err: any) {
-            console.error('[Regenerate Feeds Error]', err);
-            setRegenStatus({ type: 'error', message: err?.message || 'An unexpected error occurred' });
+            console.error(`[Regenerate Feeds Error] ${getErrorMessage(err)}`);
+            setRegenStatus({ type: 'error', message: getErrorMessage(err, 'An unexpected error occurred') });
         } finally {
             setRegenerating(false);
         }
@@ -104,8 +105,8 @@ export default function AdminDashboardHome() {
                 setRegenStatus({ type: 'error', message: res?.message || 'Failed to refresh website cache' });
             }
         } catch (err: unknown) {
-            console.error('[Website Cache Revalidate Error]', err);
-            setRegenStatus({ type: 'error', message: err instanceof Error ? err.message : 'An unexpected error occurred' });
+            console.error(`[Website Cache Revalidate Error] ${getErrorMessage(err)}`);
+            setRegenStatus({ type: 'error', message: getErrorMessage(err, 'An unexpected error occurred') });
         } finally {
             setRegenerating(false);
         }
@@ -177,7 +178,7 @@ export default function AdminDashboardHome() {
             const count = data?.downloads || 0;
             setDashboard((prev) => ({ ...prev, totalUsers: count }));
         }, (err) => {
-            console.error('[Firebase Global Stats Fetch Fail]', err);
+            console.error(`[Firebase Global Stats Fetch Fail] ${getErrorMessage(err)}`);
         });
 
         return () => unsubscribeUsers();
@@ -204,7 +205,7 @@ export default function AdminDashboardHome() {
                 totalApplies: appliesCount,
             }));
         }, (err) => {
-            console.error('[Firebase Stats Fetch Fail]', err);
+            console.error(`[Firebase Stats Fetch Fail] ${getErrorMessage(err)}`);
         });
 
         return () => unsubscribeStats();
@@ -227,7 +228,7 @@ export default function AdminDashboardHome() {
             }
             setDashboard((prev) => ({ ...prev, totalComments: commentsCount }));
         }, (err) => {
-            console.error('[Firebase Comments Fetch Fail]', err);
+            console.error(`[Firebase Comments Fetch Fail] ${getErrorMessage(err)}`);
         });
 
         return () => unsubscribeComments();
@@ -273,7 +274,7 @@ export default function AdminDashboardHome() {
     ];
 
     return (
-        <div className="p-4 md:p-6 lg:p-8 pt-16 md:pt-6 lg:pt-8 space-y-6 flex-1 min-h-0 overflow-y-auto pb-28 md:pb-8 animate-in fade-in duration-500 text-foreground w-full font-sans antialiased relative z-0">
+        <div className="p-4 md:p-6 lg:p-8 pt-16 md:pt-6 lg:pt-8 space-y-6 flex-1 min-h-0 overflow-y-auto pb-28 md:pb-8 text-foreground w-full font-sans antialiased relative z-0">
             {/* Header */}
             <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5 md:border-none md:pb-0">
                 <div className="flex items-center gap-3 md:hidden">

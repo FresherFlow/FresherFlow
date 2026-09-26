@@ -5,7 +5,7 @@ import { OpportunityFormPage } from '@/features/admin/opportunities/components/O
 
 export default function CreateOpportunityPage() {
     return (
-        <Suspense fallback={<div className="p-10 text-center text-muted-foreground animate-pulse">Loading editor...</div>}>
+        <Suspense fallback={<div className="p-10" aria-hidden />}>
             <OpportunityFormPage mode="create" />
         </Suspense>
     );

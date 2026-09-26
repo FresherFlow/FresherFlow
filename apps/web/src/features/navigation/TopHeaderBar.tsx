@@ -6,6 +6,12 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 import { formatSegment, getAdminTitle, isFeedHeaderRoute } from './headerContent';
 import { SIDEBAR_W_VAR } from './sidebarState';
 
+/**
+ * Admin desktop header. Single desktop header for admin routes — sidebar
+ * routes use SiteHeader, public routes use DesktopNav, mobile uses
+ * MobileTopNav. Same offset contract: fixed, `left: var(--sidebar-w)`,
+ * flat (no new boxes).
+ */
 function TopHeaderBarContent() {
     const pathname = usePathname() || '';
 
@@ -20,7 +26,7 @@ function TopHeaderBarContent() {
     const isFeedRoute = !isAdminRoute && isFeedHeaderRoute(segments);
     return (
         <div 
-            className="hidden lg:flex fixed top-0 right-0 h-14 items-center border-b border-border/40 bg-background/95 backdrop-blur-sm z-40 pr-6 px-5 transition-all duration-200 ease-linear"
+            className="hidden lg:flex fixed top-0 right-0 h-14 items-center border-b border-border/40 bg-background/95 backdrop-blur-sm z-40 pr-6 px-5 transition-all duration-300 ease-out motion-reduce:transition-none"
             style={{ left: SIDEBAR_W_VAR }}
         >
             {/* The portal target. Hidden when empty. Serves as a peer. */}
@@ -75,7 +81,7 @@ function TopHeaderBarContent() {
 
 export function TopHeaderBar() {
     return (
-        <Suspense fallback={<div className="hidden lg:block fixed top-0 right-0 h-14 z-40 transition-all duration-200 ease-linear" style={{ left: SIDEBAR_W_VAR }} />}>
+        <Suspense fallback={<div className="hidden lg:block fixed top-0 right-0 h-14 z-40 transition-all duration-300 ease-out motion-reduce:transition-none" style={{ left: SIDEBAR_W_VAR }} />}>
             <TopHeaderBarContent />
         </Suspense>
     );

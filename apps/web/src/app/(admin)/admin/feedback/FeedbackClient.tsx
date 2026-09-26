@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { adminApi } from '@/lib/api/admin';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/lib/utils/error';
 import { cn } from '@repo/ui/utils/cn';
 import { AdminFeedbackSkeleton } from '@/features/admin/components/AdminSkeletons';
 import {
@@ -158,7 +159,7 @@ export default function FeedbackPage() {
 
             setOpportunityLookup(lookup);
         } catch (err: unknown) {
-            console.error('Failed to pre-cache opportunities names:', err);
+            console.error(`Failed to pre-cache opportunities names - ${getErrorMessage(err)}`);
         } finally {
             setLoadingListings(false);
         }
@@ -233,7 +234,7 @@ export default function FeedbackPage() {
             setAppFeedback(feedbackList);
             setIsLoading(false);
         }, (err) => {
-            console.error('[Firebase Users Fetch Fail]', err);
+            console.error(`[Firebase Users Fetch Fail] ${getErrorMessage(err)}`);
             toast.error('Failed to load community feedback');
             setIsLoading(false);
         });
@@ -268,7 +269,7 @@ export default function FeedbackPage() {
             commentsList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
             setLiveComments(commentsList);
         }, (err) => {
-            console.error('[Firebase Comments Fetch Fail]', err);
+            console.error(`[Firebase Comments Fetch Fail] ${getErrorMessage(err)}`);
         });
 
         return () => {
@@ -290,7 +291,7 @@ export default function FeedbackPage() {
                     await remove(ref(database, `/comments/${jobId}/${commentId}`));
                     toast.success('Comment deleted successfully', { id: tid });
                 } catch (error) {
-                    console.error('Failed to delete comment:', error);
+                    console.error(`Failed to delete comment - ${getErrorMessage(error)}`);
                     toast.error('Failed to delete comment', { id: tid });
                 }
             }
@@ -309,7 +310,7 @@ export default function FeedbackPage() {
                     await remove(ref(database, `/users/${userId}/feedback/opportunities/${jobId}`));
                     toast.success('Report dismissed successfully', { id: tid });
                 } catch (error) {
-                    console.error('Failed to dismiss report:', error);
+                    console.error(`Failed to dismiss report - ${getErrorMessage(error)}`);
                     toast.error('Failed to dismiss report', { id: tid });
                 }
             }
@@ -328,7 +329,7 @@ export default function FeedbackPage() {
                     await remove(ref(database, `/users/${userId}/feedback/global/${pushId}`));
                     toast.success('Feedback deleted successfully', { id: tid });
                 } catch (error) {
-                    console.error('Failed to delete feedback:', error);
+                    console.error(`Failed to delete feedback - ${getErrorMessage(error)}`);
                     toast.error('Failed to delete feedback', { id: tid });
                 }
             }
@@ -354,6 +355,14 @@ export default function FeedbackPage() {
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
                 <div>
                     <h1 className="text-2xl font-semibold tracking-tight text-foreground">Community moderation</h1>
+                    <div className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-sm text-muted-foreground">
+                        Legacy Firebase view — read-only signal, not a moderation dependency. Triage user
+                        reports in the canonical queue:{' '}
+                        <Link href="/admin/reports" className="font-semibold text-foreground underline">
+                            Admin → Reports (Prisma)
+                        </Link>
+                        .
+                    </div>
                     <p className="text-sm text-muted-foreground mt-1 hidden md:flex items-center gap-2 flex-wrap">
                         <span>Monitor active user reports, app feedback, and live opportunity comments.</span>
                         <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-bold bg-success/10 text-success border border-success/20">
@@ -613,7 +622,7 @@ export default function FeedbackPage() {
                                     }
                                 }}
                                 disabled={confirmState.isLoading}
-                                className="h-9 px-4 rounded-xl bg-error hover:bg-error text-white text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                                className="h-9 px-4 rounded-xl bg-error hover:bg-error text-paper text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50"
                             >
                                 {confirmState.isLoading ? (
                                     <>

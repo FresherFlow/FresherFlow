@@ -155,3 +155,59 @@ export function useSidebarOpenState() {
 
     return [open, handleOpenChange] as const;
 }
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Remembered space (Jobs / Govt).
+   Same idea as open-seo's remembered project id: route groups (`(public)`
+   vs `(user)`) remount the sidebar on cross-group navigation, which re-runs
+   `useState(getInitialSpace(...))` — and every space-neutral route like
+   `/account` initializes to Jobs, wiping a Govt context. Persisting the last
+   space-owned route (or explicit switch) lets a remount restore it.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+const SPACE_STORAGE_KEY = 'ff:spaceId';
+
+export function readSpaceId(): 'jobs' | 'govt' | null {
+    try {
+        const v = localStorage.getItem(SPACE_STORAGE_KEY);
+        return v === 'jobs' || v === 'govt' ? v : null;
+    } catch {
+        return null;
+    }
+}
+
+export function persistSpaceId(id: string) {
+    try {
+        if (id === 'jobs' || id === 'govt') {
+            localStorage.setItem(SPACE_STORAGE_KEY, id);
+        }
+    } catch {
+        // Storage unavailable — space still applies this session.
+    }
+}
+
+let repeatGuardInstalled = false;
+
+/**
+ * Holding Ctrl/Cmd+B fires key auto-repeat, which machine-guns the toggle
+ * listener and blinks the rail between expanded and collapsed. That
+ * listener lives inside the shadcn primitive, so the repeat check cannot
+ * go there — instead this guard registers first (module evaluation always
+ * precedes effects, so it sits ahead of the primitive's own listener) and
+ * swallows repeat presses via stopImmediatePropagation. First presses
+ * pass through untouched. Idempotent, client-only, app-lifetime.
+ */
+export function ensureSidebarRepeatGuard() {
+    if (repeatGuardInstalled || typeof window === 'undefined') return;
+    repeatGuardInstalled = true;
+    window.addEventListener(
+        'keydown',
+        (event) => {
+            if (event.repeat && (event.metaKey || event.ctrlKey) && event.key === 'b') {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            }
+        },
+        true
+    );
+}

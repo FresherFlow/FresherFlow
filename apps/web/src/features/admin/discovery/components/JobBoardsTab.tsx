@@ -1,8 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { BriefcaseIcon, BoltIcon } from '@heroicons/react/24/outline';
+import { BoltIcon } from '@heroicons/react/24/outline';
 import { DataGrid, DataGridColumn } from '@/ui/data-grid/DataGrid';
+import { EmptyState } from '@/ui/EmptyState';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { PluginEntry } from '../types';
 import { Button } from '@/ui/Button';
@@ -108,10 +109,13 @@ export function JobBoardsTab({
     countLabel="boards"
     searchPlaceholder="Search job boards..."
     noResults={
-     <div className="flex flex-col items-center gap-2">
-      <BriefcaseIcon className="w-6 h-6 opacity-50 mx-auto" />
-      <span className="text-muted-foreground text-xs">No job boards found.</span>
-     </div>
+     <EmptyState
+       title="No job boards found"
+       description="Boards appear here once ingestion plugins are registered."
+       icon="inbox"
+       size="md"
+       variant="ghost"
+     />
     }
    />
   </div>

@@ -7,19 +7,7 @@ import { Input } from '@/ui/Input';
 import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
-
-export interface CompanyDirectoryItem {
-    name: string;
-    slug: string;
-    count: number;
-    logoUrl?: string | null;
-    website?: string | null;
-    atsProvider?: string | null;
-    companyStage?: string | null;
-    companySize?: string | null;
-    companyIndustry?: string[];
-    companyTopics?: string[];
-}
+import type { CompanyDirectoryItem } from '@/features/companies/types';
 
 interface CompaniesDirectoryClientProps {
     companies: CompanyDirectoryItem[];

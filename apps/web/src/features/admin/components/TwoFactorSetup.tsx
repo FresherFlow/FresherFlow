@@ -143,7 +143,7 @@ export default function TwoFactorSetup() {
 
                         {setupStep === "qr" && (
                             <div className="space-y-4 animate-in fade-in slide-in-from-top-4">
-                                <div className="flex flex-col items-center justify-center p-6 border rounded-lg bg-white">
+                                <div className="flex flex-col items-center justify-center p-6 border rounded-lg bg-paper">
                                     {qrCode && (
                                         <Image
                                             src={qrCode}

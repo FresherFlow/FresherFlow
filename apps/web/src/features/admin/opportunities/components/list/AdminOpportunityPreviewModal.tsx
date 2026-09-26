@@ -4,14 +4,14 @@ import React, { useEffect, useState } from 'react';
 import { Opportunity } from '@fresherflow/types';
 import { adminApi } from '@/lib/api/admin';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
-import ArrowPathIcon from '@heroicons/react/24/outline/ArrowPathIcon';
-import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTriangleIcon';
 import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
 import CurrencyRupeeIcon from '@heroicons/react/24/outline/CurrencyRupeeIcon';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
+import { EmptyState } from '@/ui/EmptyState';
+import { Skeleton } from '@/ui/Skeleton';
 import Link from 'next/link';
 import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
 import { getDriveDetails, isGovernmentOpportunity, isWalkInOpportunity, kindFromOpportunity } from '@/features/admin/opportunities/formUtils';
@@ -67,18 +67,25 @@ export const AdminOpportunityPreviewModal = ({ show, opportunityId, onClose }: A
             <div className="relative w-full max-w-3xl bg-card rounded-2xl border border-border shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 z-10" style={{ height: '90vh' }}>
 
                 {isLoading ? (
-                    <div className="flex flex-col items-center justify-center h-full space-y-4">
-                        <ArrowPathIcon className="w-8 h-8 text-primary animate-spin" />
-                        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Loading preview...</span>
+                    <div className="flex h-full flex-col justify-center space-y-2 p-6" aria-hidden="true">
+                        <Skeleton className="h-3 w-3/4" />
+                        <Skeleton className="h-3 w-1/2" />
+                        <Skeleton className="h-3 w-2/3" />
                     </div>
                 ) : error ? (
-                    <div className="flex flex-col items-center justify-center h-full p-6 text-center space-y-4">
-                        <ExclamationTriangleIcon className="w-8 h-8 text-destructive" />
-                        <h3 className="text-base font-bold text-foreground">Failed to load preview</h3>
-                        <p className="text-xs text-muted-foreground">{error}</p>
-                        <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground">
-                            Close
-                        </button>
+                    <div className="flex h-full items-center justify-center p-6">
+                        <EmptyState
+                            title="Failed to load preview"
+                            description={error}
+                            icon="search"
+                            size="md"
+                            variant="ghost"
+                            action={
+                                <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground">
+                                    Close
+                                </button>
+                            }
+                        />
                     </div>
                 ) : opp ? (
                     <>

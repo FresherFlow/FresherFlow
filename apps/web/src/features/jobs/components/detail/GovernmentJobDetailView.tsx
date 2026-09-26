@@ -31,7 +31,7 @@ import { DataTable } from '@/ui/data-table/DataTable';
 import { DataTableColumnHeader } from '@/ui/data-table/DataTableColumnHeader';
 import { DataTableToolbar } from '@/ui/data-table/DataTableToolbar';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/ui/Table';
-import type { ColumnDef as LegacyColumnDef } from '@tanstack/react-table';
+import { ColumnDef, StockFeatures } from '@tanstack/react-table';
 import { Tabs } from '@repo/ui/components/Tabs';
 
 interface GovernmentJobDetailViewProps {
@@ -148,7 +148,7 @@ const VacancyTable = ({ data }: { data: { columns: string[]; rows: (string | num
         return val;
     };
 
-    const tableColumns = React.useMemo<LegacyColumnDef<any, any>[]>(() => {
+    const tableColumns = React.useMemo<ColumnDef<StockFeatures, any, any>[]>(() => {
         return columns.map((col, idx) => {
             const isNumeric = isNumericColumn[idx];
             return {
@@ -202,7 +202,7 @@ const VacancyTable = ({ data }: { data: { columns: string[]; rows: (string | num
                     />
                 </div>
             ) : (
-                <div className="p-8 text-center text-muted-foreground w-full">
+                <div className="border border-border rounded-lg p-8 text-center text-muted-foreground w-full">
                     No results found.
                 </div>
             )}
@@ -266,7 +266,7 @@ const ExamCentersWidget = ({ centers }: { centers: string[] }) => {
                         {filtered.length > 0 ? (
                             <div className="grid grid-cols-2 gap-2">
                                 {filtered.map((center: string, idx: number) => (
-                                    <div key={idx} className="bg-muted/10 p-2 rounded text-center truncate font-semibold text-foreground/80 hover:bg-muted/20 transition-colors">
+                                    <div key={idx} className="bg-muted/10 border border-border/30 p-2 rounded text-center truncate font-semibold text-foreground/80 hover:bg-muted/20 hover:border-border transition-colors">
                                         {center}
                                     </div>
                                 ))}
@@ -478,7 +478,7 @@ export function GovernmentJobDetailView({
         (r: any) => r.notes && r.notes.trim() !== '' && r.notes.trim() !== '-'
     );
 
-    const relaxationColumns: LegacyColumnDef<any, any>[] = hasAnyRelaxationNotes
+    const relaxationColumns: ColumnDef<StockFeatures, any, any>[] = hasAnyRelaxationNotes
         ? [
             { accessorKey: "category", header: "Category", enableSorting: false },
             { accessorKey: "relaxation", header: "Age Relaxation", enableSorting: false },
@@ -505,7 +505,7 @@ export function GovernmentJobDetailView({
 
     // Mapping exam pattern syllabus tabs
     const syllabusTabs = (Array.isArray(details.examPattern?.tiers) ? details.examPattern.tiers : []).map((tier: any, index: number) => {
-        const subjectsColumns: LegacyColumnDef<any, any>[] = [
+        const subjectsColumns: ColumnDef<StockFeatures, any, any>[] = [
             { accessorKey: "subject", header: "Subject", enableSorting: false },
             { accessorKey: "questions", header: "Questions", enableSorting: false },
             { accessorKey: "marks", header: "Marks", enableSorting: false },
@@ -548,7 +548,7 @@ export function GovernmentJobDetailView({
                 </div>
 
                 {tier.notes && (
-                    <p className="text-xs text-muted-foreground bg-muted/40 p-2.5 rounded">
+                    <p className="text-xs text-muted-foreground bg-muted/40 p-2.5 rounded border border-border/50">
                         {tier.notes}
                     </p>
                 )}
@@ -687,7 +687,7 @@ export function GovernmentJobDetailView({
         }
         if (applicationStatus === 'ANSWER_KEY_RELEASED' && details.answerKeyUrl) {
             return (
-                <a href={details.answerKeyUrl} target="_blank" rel="noopener noreferrer" className={`${base} bg-brand-discord hover:bg-brand-discord text-white border-brand-discord`}>
+                <a href={details.answerKeyUrl} target="_blank" rel="noopener noreferrer" className={`${base} bg-brand-discord hover:bg-brand-discord text-paper border-brand-discord`}>
                      View Answer Key
                     <ArrowTopRightOnSquareIcon className="w-4 h-4" />
                 </a>
@@ -695,7 +695,7 @@ export function GovernmentJobDetailView({
         }
         if (applicationStatus === 'RESULT_DECLARED' && details.resultUrl) {
             return (
-                <a href={details.resultUrl} target="_blank" rel="noopener noreferrer" className={`${base} bg-warning hover:bg-warning text-white border-warning`}>
+                <a href={details.resultUrl} target="_blank" rel="noopener noreferrer" className={`${base} bg-warning hover:bg-warning text-paper border-warning`}>
                       View Result
                     <ArrowTopRightOnSquareIcon className="w-4 h-4" />
                 </a>
@@ -755,7 +755,7 @@ export function GovernmentJobDetailView({
                 
                 {/* Important Links List */}
                 {(details.officialNotificationUrl || details.officialWebsiteUrl || details.notificationPdfUrl || details.admitCardUrl || details.resultUrl || details.answerKeyUrl || details.syllabusUrl || details.previousPapersUrl) && (
-                    <div className="divide-y divide-border/50 rounded-lg overflow-hidden">
+                    <div className="divide-y divide-border/50 border border-border rounded-lg overflow-hidden">
                         {/* Download Notification */}
                         {(details.notificationPdfUrl || details.officialNotificationUrl) && (
                             <div className="flex justify-between items-center p-2.5 gap-2 hover:bg-muted/10 transition-colors bg-card">
@@ -942,7 +942,7 @@ export function GovernmentJobDetailView({
                     {isStructuredFee ? (
                         <>
                             {((feeDetails as any).rows as Array<{ category: string; amount: string | number }>).map((row, idx) => (
-                                <div key={idx} className="flex justify-between items-center bg-muted/10 p-2.5 rounded-lg text-sm leading-snug">
+                                <div key={idx} className="flex justify-between items-center bg-muted/10 border border-border/50 p-2.5 rounded-lg text-sm leading-snug">
                                     <span className="text-xs font-semibold text-muted-foreground leading-normal pr-4">{row.category}</span>
                                     <span className="font-bold text-foreground shrink-0">
                                         {typeof row.amount === 'string' && row.amount.startsWith('₹') ? row.amount : formatFee(row.amount)}
@@ -969,7 +969,7 @@ export function GovernmentJobDetailView({
                         </>
                     ) : (
                         groupedFees.map(([amount, categories]) => (
-                            <div key={amount} className="flex justify-between items-center bg-muted/10 p-2.5 rounded-lg text-sm leading-snug">
+                            <div key={amount} className="flex justify-between items-center bg-muted/10 border border-border/50 p-2.5 rounded-lg text-sm leading-snug">
                                 <span className="text-xs font-semibold text-muted-foreground leading-normal pr-4">{categories.join(', ')}</span>
                                 <span className="font-bold text-foreground shrink-0">
                                     {amount}
@@ -979,7 +979,7 @@ export function GovernmentJobDetailView({
                     )}
                 </div>
             ) : (
-                <div className="flex justify-between items-center bg-muted/10 p-2.5 rounded-lg text-sm leading-snug">
+                <div className="flex justify-between items-center bg-muted/10 border border-border/50 p-2.5 rounded-lg text-sm leading-snug">
                     <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">General Fee</span>
                     <span className="font-bold text-foreground shrink-0">
                         {details.applicationFee || 'Refer to Circular'}
@@ -1053,7 +1053,7 @@ export function GovernmentJobDetailView({
                             const infoLabel = getStageSubLabel(stageName, stageQualifying);
 
                             return (
-                                <div key={stageName} className="flex flex-col gap-1.5 justify-center bg-muted/5 p-4 rounded-xl hover:bg-muted/10 transition-colors">
+                                <div key={stageName} className="flex flex-col gap-1.5 justify-center bg-muted/5 border border-border/50 p-4 rounded-xl hover:border-primary/20 transition-colors">
                                     <div className="flex items-center justify-between gap-2.5">
                                         <div className="flex items-center gap-2.5">
                                             <div className="w-5 h-5 flex items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary shrink-0">
@@ -1087,7 +1087,7 @@ export function GovernmentJobDetailView({
                             isLeft ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3" : "grid-cols-1"
                         )}>
                             {details.skillTests.map((test: any, idx: number) => (
-                                <div key={idx} className="bg-muted/10 p-3 rounded-lg flex flex-col justify-between">
+                                <div key={idx} className="bg-muted/10 border border-border/40 p-3 rounded-lg flex flex-col justify-between">
                                     <div className="flex items-start justify-between gap-3">
                                         <p className="font-semibold text-foreground text-sm">{test.name}</p>
                                         <span className={cn(
@@ -1323,7 +1323,7 @@ export function GovernmentJobDetailView({
                             
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {(details.basicPay || details.payLevel) && (
-                                    <div className="bg-muted/10 p-4 rounded-xl space-y-2">
+                                    <div className="bg-muted/10 border border-border/40 p-4 rounded-xl space-y-2">
                                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pay Scale & Structure</p>
                                         <div className="space-y-1">
                                             {details.basicPay && (
@@ -1342,7 +1342,7 @@ export function GovernmentJobDetailView({
                                 )}
 
                                 {details.allowances && details.allowances.length > 0 && (
-                                    <div className="bg-muted/10 p-4 rounded-xl space-y-2">
+                                    <div className="bg-muted/10 border border-border/40 p-4 rounded-xl space-y-2">
                                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Allowances & Perks</p>
                                         <div className="flex flex-wrap gap-1.5 pt-1">
                                             {details.allowances.map((allowance: string, idx: number) => (
@@ -1524,7 +1524,7 @@ export function GovernmentJobDetailView({
                                     : "grid-cols-1 md:grid-cols-2"
                             )}>
                                 {details.qualificationDetails.map((q: any, idx: number) => (
-                                    <div key={idx} className="bg-muted/10 p-3 rounded-lg flex flex-col gap-1 justify-between">
+                                    <div key={idx} className="bg-muted/10 border border-border/40 p-3 rounded-lg flex flex-col gap-1 justify-between">
                                         <p className="text-sm font-semibold text-foreground">{q.post || q.postName}</p>
                                         <p className="text-sm text-muted-foreground leading-relaxed mt-1">{q.requirement || q.qualification}</p>
                                     </div>
@@ -1550,7 +1550,7 @@ export function GovernmentJobDetailView({
                                     <div className="space-y-2.5">
                                         {validRequiredDocumentDetails.length > 0 ? (
                                             validRequiredDocumentDetails.map((doc: any, idx: any) => (
-                                                <div key={idx} className="bg-muted/10 p-3 rounded-lg flex flex-col justify-between space-y-1">
+                                                <div key={idx} className="bg-muted/10 border border-border/45 p-3 rounded-lg flex flex-col justify-between space-y-1">
                                                     <div className="flex items-start justify-between gap-3">
                                                         <p className="font-semibold text-foreground leading-snug">{doc.name}</p>
                                                         <span className={cn(
@@ -1726,7 +1726,7 @@ export function GovernmentJobDetailView({
                                 <CurrencyRupeeIcon className="w-4 h-4 text-muted-foreground" />
                                 <h3 className="text-base font-semibold text-foreground">Post-wise Pay Scale & Salary</h3>
                             </div>
-                            <div className="rounded-lg overflow-x-auto">
+                            <div className="border border-border rounded-lg overflow-x-auto">
                                 <Table >
                                     <TableHeader >
                                         <TableRow>
@@ -1777,7 +1777,7 @@ export function GovernmentJobDetailView({
                                                 return match ? Number(match.marks).toFixed(2) : '—';
                                             };
                                             return (
-                                                <div className="rounded-lg overflow-x-auto">
+                                                <div className="border border-border rounded-lg overflow-x-auto">
                                                     <Table >
                                                         <TableHeader>
                                                             <TableRow>
@@ -1837,7 +1837,7 @@ export function GovernmentJobDetailView({
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                                 {examRegions.map((reg: any, idx: number) => (
-                                    <div key={idx} className="bg-muted/10 p-3.5 rounded-lg flex flex-col gap-1.5 justify-between">
+                                    <div key={idx} className="bg-muted/10 border border-border/40 p-3.5 rounded-lg flex flex-col gap-1.5 justify-between">
                                         <div>
                                             <p className="font-bold text-foreground text-sm">{reg.region}</p>
                                             <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">

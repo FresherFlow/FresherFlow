@@ -33,6 +33,9 @@ export const authApi = {
 
     me: () => apiClient('/api/auth/me'),
 
+    myPermissions: () =>
+        apiClient<{ roles: string[]; permissions: string[] }>('/api/auth/permissions'),
+
     handshake: async (idToken: string, ref?: string) => {
         return apiClient<AuthResponse>('/api/auth/handshake', {
             method: 'POST',

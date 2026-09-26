@@ -1,14 +1,13 @@
 "use client"
 
-import type { RowData } from "@tanstack/react-table"
-import type { LegacyReactTable } from "@tanstack/react-table/legacy"
+import type { ReactTable, RowData, StockFeatures } from "@tanstack/react-table"
 import { X } from "lucide-react"
 
 import { Button } from "@/ui/Button"
 import { Input } from "@/ui/Input"
 
 interface DataTableToolbarProps<TData extends RowData> {
-  table: LegacyReactTable<TData>
+  table: ReactTable<StockFeatures, TData>
   searchColumn?: string
   searchPlaceholder?: string
 }
@@ -18,7 +17,7 @@ export function DataTableToolbar<TData extends RowData>({
   searchColumn,
   searchPlaceholder,
 }: DataTableToolbarProps<TData>) {
-  const isFiltered = table.getState().columnFilters.length > 0
+  const isFiltered = table.state.columnFilters.length > 0
 
   return (
     <div className="flex items-center justify-between">

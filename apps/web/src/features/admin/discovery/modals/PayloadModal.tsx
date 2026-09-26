@@ -201,7 +201,7 @@ export function PayloadModal({
  {onApprove && (
  <button
  onClick={() => { onApprove(data.id); onClose(); }}
- className="h-8 px-3 rounded-md bg-success hover:bg-success text-white text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
+ className="h-8 px-3 rounded-md bg-success hover:bg-success text-paper text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
  >
  <CheckCircleIcon className="w-3.5 h-3.5" />
  Approve & Publish

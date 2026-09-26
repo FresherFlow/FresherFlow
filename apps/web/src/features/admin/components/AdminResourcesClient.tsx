@@ -15,6 +15,7 @@ import {
     ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
+import { getErrorMessage } from '@/lib/utils/error';
 import { SmartInput } from '@/features/admin/ui/SmartInput';
 import { SmartTextarea } from '@/features/admin/ui/SmartTextarea';
 import { SmartSelect } from '@/features/admin/ui/SmartSelect';
@@ -241,7 +242,7 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
             setResources(response.resources || []);
             setTotalPages(response.pagination?.pages || 1);
         } catch (error) {
-            console.error('Failed to load resources:', error);
+            console.error(`Failed to load resources - ${getErrorMessage(error)}`);
             toast.error('Failed to load resources');
         } finally {
             setIsLoading(false);
@@ -259,7 +260,7 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
             toast.success('Resource approved');
             loadResources();
         } catch (error) {
-            console.error(error);
+            console.error(`Failed to approve resource - ${getErrorMessage(error)}`);
             toast.error('Failed to approve resource');
         }
     };
@@ -277,7 +278,7 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
             loadResources();
             setResourceToDelete(null);
         } catch (error) {
-            console.error(error);
+            console.error(`Failed to delete resource - ${getErrorMessage(error)}`);
             toast.error('Failed to delete resource');
         } finally {
             setIsDeleting(false);
@@ -394,8 +395,8 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
             setEditingResource(null);
             loadResources();
         } catch (error: any) {
-            console.error(error);
-            toast.error(error?.message || 'Failed to save resource');
+            console.error(`Failed to save resource - ${getErrorMessage(error)}`);
+            toast.error(getErrorMessage(error, 'Failed to save resource'));
         } finally {
             setIsSaving(false);
         }

@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { RunLog, RunResult } from '../types';
+import { EmptyState } from '@/ui/EmptyState';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/ui/Table';
 import { PaginationControls } from '@/ui/data-table/DataTablePagination';
-import { EmptyState } from '@/ui/EmptyState';
 
 interface CrawlerRunsTabProps {
  logs: RunLog[];

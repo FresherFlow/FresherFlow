@@ -37,7 +37,7 @@ import { SkillPill } from '@/features/jobs/components/SkillPill';
 import { Button } from '@/ui/Button';
 import { Hint } from '@/ui/Tooltip';
 import { Input } from '@/ui/Input';
-import { SkeletonJobCard, OpportunityDetailSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
+import { OpportunityDetailPaneSkeleton, SkeletonJobCard } from '@/features/jobs/components/OpportunitySkeletons';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { EmptyState } from '@/ui/EmptyState';
 import { JobsFilterBar } from '@/features/jobs/components/JobsFilterBar';
@@ -142,6 +142,7 @@ export function CategoryPageView({
     draftClosingSoon, setDraftClosingSoon, draftShowOnlySaved, setDraftShowOnlySaved,
     draftSector, setDraftSector, draftQualification, setDraftQualification, draftCourse, setDraftCourse,
     draftWorkMode, setDraftWorkMode, draftSkills, setDraftSkills, draftSource, setDraftSource, draftCompany, setDraftCompany,
+    draftExperience, setDraftExperience,
     mobileActiveCount, openMobileFilters, applyMobileFilters, clearAll,
     visibleCount, setVisibleCount, isJobSaved, isJobApplied, toggleSave, reload,
     customTitle, topContent, bottomContent, userLocation, driveDate, setDriveDate,
@@ -283,6 +284,7 @@ export function CategoryPageView({
         filters.source,
         filters.company,
         filters.role,
+        filters.experience,
         driveDate,
         govtPhase,
         govtCategory,
@@ -591,7 +593,7 @@ export function CategoryPageView({
             )}
 
             {/* Active Chips */}
-            {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0) || (filters.source && filters.source.length > 0) || (filters.company && filters.company.length > 0)) ? (
+            {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0) || (filters.source && filters.source.length > 0) || (filters.company && filters.company.length > 0) || (filters.experience && filters.experience.length > 0)) ? (
                 <div className="flex flex-wrap items-center gap-1.5 pb-2">
                     {search && (
                         <button onClick={() => setSearch('')} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
@@ -624,6 +626,13 @@ export function CategoryPageView({
                     {filters.skills?.map(s => (
                         <button key={s} onClick={() => setFilters({...filters, skills: filters.skills!.filter(x => x !== s)})} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
                             <SkillPill skill={s} variant="bare" />
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
+                        </button>
+                    ))}
+                    {filters.experience?.map(e => (
+                        <button key={e} onClick={() => setFilters({...filters, experience: filters.experience!.filter(x => x !== e)})} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                            <BriefcaseIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span>{e}</span>
                             <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
                     ))}
@@ -708,6 +717,7 @@ export function CategoryPageView({
                     draftSkills={draftSkills} setDraftSkills={setDraftSkills}
                     draftSource={draftSource} setDraftSource={setDraftSource}
                     draftCompany={draftCompany} setDraftCompany={setDraftCompany}
+                    draftExperience={draftExperience} setDraftExperience={setDraftExperience}
                     isLoggedIn={!!user}
                     pageType={type ?? undefined}
                     aggregates={filterAggregates}
@@ -720,6 +730,7 @@ export function CategoryPageView({
                         if (setDraftSkills) setDraftSkills([]);
                         if (setDraftSource) setDraftSource([]);
                         if (setDraftCompany) setDraftCompany([]);
+                        if (setDraftExperience) setDraftExperience([]);
                     }}
                 />
             </Suspense>
@@ -960,7 +971,7 @@ priority={index < 4}
                                 />
                             ) : selectedOpp ? (
                                 <div className="flex-1 overflow-y-auto">
-                                    <Suspense fallback={<OpportunityDetailSkeleton />}>
+                                    <Suspense fallback={<OpportunityDetailPaneSkeleton />}>
                                         <OpportunityDetailPane
                                             oppId={selectedOpp.slug || selectedOpp.id}
                                             initialData={selectedOpp}
@@ -969,11 +980,7 @@ priority={index < 4}
                                     </Suspense>
                                 </div>
                             ) : visibleOpps.length > 0 ? (
-                                <div className="flex-1 p-8 animate-pulse flex flex-col gap-4">
-                                    <div className="h-8 bg-muted/50 rounded w-1/2" />
-                                    <div className="h-4 bg-muted/50 rounded w-1/4" />
-                                    <div className="h-40 bg-muted/50 rounded-xl w-full mt-4" />
-                                </div>
+                                <OpportunityDetailPaneSkeleton />
                             ) : (
                                 <div className="flex-1 flex items-center justify-center bg-muted/20">
                                     <EmptyState
@@ -1000,7 +1007,7 @@ priority={index < 4}
                                 </div>
                                 <div className="flex-1 min-h-0 flex flex-col ff-safe-bottom">
                                     {selectedOpp && (
-                                        <Suspense fallback={<OpportunityDetailSkeleton />}>
+                                        <Suspense fallback={<OpportunityDetailPaneSkeleton />}>
                                             <OpportunityDetailPane
                                                 oppId={selectedOpp.slug || selectedOpp.id}
                                                 initialData={selectedOpp}

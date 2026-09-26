@@ -51,6 +51,16 @@ export const isOpportunityExpired = (opp: { expiresAt?: string | Date | null; ex
     return new Date(opp.expiresAt).getTime() <= Date.now();
 };
 
+/**
+ * Row shape used by the admin opportunity grids: an `Opportunity` plus the two
+ * soft-delete / expiry markers the admin API returns on list endpoints and that
+ * `getStatusLabel` reads. Declared once so every list and column shares it.
+ */
+export type AdminOpportunityRow = Opportunity & {
+    expiredAt?: string | Date | null;
+    deletedAt?: string | Date | null;
+};
+
 export const getStatusLabel = (opp: Opportunity & { expiredAt?: string | Date | null; deletedAt?: string | Date | null }) => {
     if (opp.deletedAt) return 'DELETED';
     if (opp.status === 'ARCHIVED') return 'ARCHIVED';

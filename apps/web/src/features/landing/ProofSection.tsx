@@ -1,39 +1,19 @@
-import Link from 'next/link';
 import { OpportunityCardDTO } from '@fresherflow/types';
 import { LiveStatsBox } from './LiveStatsBox';
+import { LatestJobsList } from './LatestJobsList';
 
 /**
  * "The board moves every day." — matches the accepted mock:
  * left: dark 7-day bar chart box (accent bar on today, ▲ header);
  * right: latest real postings with LIVE/AGING stamps (signal tokens) and
- * mono uppercase meta + timestamps. No chart lib, no CLS.
+ * mono uppercase meta + timestamps, plus community actions
+ * ("N discussing · Discuss · Apply" via LatestJobsList, V1 checklist §G).
+ * No chart lib, no CLS.
  */
 
 interface ProofSectionProps {
     perDay: number[]; // 7 values, oldest → today
     latest: OpportunityCardDTO[];
-}
-
-function stampFor(o: OpportunityCardDTO): { label: 'LIVE' | 'AGING'; cls: string } {
-    const days = Math.floor((Date.now() - new Date(o.postedAt).getTime()) / 86400000);
-    if (days <= 2) {
-        return {
-            label: 'LIVE',
-            cls: 'text-[var(--color-signal-live)] border-[color-mix(in_srgb,var(--color-signal-live)_45%,transparent)] bg-[color-mix(in_srgb,var(--color-signal-live)_8%,transparent)]',
-        };
-    }
-    return {
-        label: 'AGING',
-        cls: 'text-[var(--color-signal-aging)] border-[color-mix(in_srgb,var(--color-signal-aging)_45%,transparent)] bg-[color-mix(in_srgb,var(--color-signal-aging)_8%,transparent)]',
-    };
-}
-
-function timeAgo(iso: string): string {
-    const mins = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
-    if (mins < 60) return `${Math.max(1, mins)}M AGO`;
-    const h = Math.floor(mins / 60);
-    if (h < 24) return `${h}H AGO`;
-    return h < 48 ? 'YDA' : `${Math.floor(h / 24)}D AGO`;
 }
 
 const DAY_LABELS = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
@@ -74,7 +54,7 @@ export function ProofSection({ perDay, latest }: ProofSectionProps) {
                                     className={
                                         i === todayIdx
                                             ? 'border-t-2 border-[var(--ff-accent)] bg-[color-mix(in_srgb,var(--ff-accent)_30%,transparent)]'
-                                            : 'border-t-2 border-[#8b93a5]/50 bg-[#eef1f6]/[0.08]'
+                                            : 'border-t-2 border-[var(--ff-band-muted)]/50 bg-[var(--ff-band-ink)]/[0.08]'
                                     }
                                     style={{ height: `${Math.max(2, (v / max) * 100)}%` }}
                                     aria-label={`${DAY_LABELS[i]}: ${v}`}
@@ -88,40 +68,9 @@ export function ProofSection({ perDay, latest }: ProofSectionProps) {
                 </div>
                 </div>
 
-                {/* Latest postings board */}
+                {/* Latest postings board with discussion counts + Discuss/Apply */}
                 <div className="border border-border bg-card">
-                    {latest.length === 0 ? (
-                        <div className="px-5 py-10 text-center text-sm text-muted-foreground">
-                            New openings are being gathered right now — check the feed.
-                        </div>
-                    ) : (
-                        latest.map((o) => {
-                            const stamp = stampFor(o);
-                            return (
-                                <Link
-                                    key={o.id}
-                                    href={`/jobs/${o.slug}`}
-                                    className="grid grid-cols-[56px_1fr_auto] items-center gap-4 border-b border-border px-5 py-4 transition-colors last:border-b-0 hover:bg-muted/40"
-                                >
-                                    <span
-                                        className={`border py-[3px] text-center font-record text-[10px] font-semibold tracking-[0.1em] ${stamp.cls}`}
-                                    >
-                                        {stamp.label}
-                                    </span>
-                                    <span className="min-w-0">
-                                        <span className="block truncate text-[14.5px] font-semibold">{o.title}</span>
-                                        <span className="mt-0.5 block truncate font-record text-[11px] tracking-[0.02em] text-muted-foreground">
-                                            {o.company.toUpperCase()}
-                                            {o.locations[0] ? ` · ${o.locations[0].toUpperCase()}` : ''}
-                                        </span>
-                                    </span>
-                                    <span className="whitespace-nowrap font-record text-[11px] text-muted-foreground/70">
-                                        {timeAgo(String(o.postedAt))}
-                                    </span>
-                                </Link>
-                            );
-                        })
-                    )}
+                    <LatestJobsList jobs={latest} />
                 </div>
             </div>
             </div>

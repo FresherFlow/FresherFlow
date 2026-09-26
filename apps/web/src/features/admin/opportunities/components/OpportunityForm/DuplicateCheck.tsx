@@ -33,7 +33,7 @@ export function DuplicateCheck({ checking, candidates }: DuplicateCheckProps) {
                         {candidates.map((dup) => (
                             <Link
                                 key={dup.id}
-                                href={`/opportunities/edit/${dup.id}`}
+                                href={`/admin/opportunities/edit/${dup.id}`}
                                 className="flex items-center justify-between rounded-md border border-border bg-card px-2.5 py-2 hover:bg-muted/30 transition-colors"
                             >
                                 <div className="min-w-0">

@@ -25,6 +25,7 @@ import {
 import { cn } from "@/ui/cn";
 import { ProcessedJob } from "../types";
 import { toast } from "react-hot-toast";
+import { getErrorMessage } from "@/lib/utils/error";
 import { DataGrid, DataGridColumn, DataGridActionsContext } from "@/ui/data-grid/DataGrid";
 import { FilterSelect } from "@/ui/data-grid/FilterSelect";
 import { selectionColumn } from "../selectionColumn";
@@ -107,10 +108,10 @@ export function ProcessedJobsTab() {
         }
       } else {
         const error = await res.json();
-        toast.error(`Failed to push: ${error.error || "Unknown error"}`);
+        toast.error(`Failed to push: ${getErrorMessage(error.error, "Unknown error")}`);
       }
     } catch (e) {
-      console.error(e);
+      console.error(`Failed to push jobs - ${getErrorMessage(e)}`);
       toast.error("Failed to push jobs");
     }
   };
@@ -194,10 +195,10 @@ export function ProcessedJobsTab() {
         toast.success("Jobs deleted successfully");
       } else {
         const error = await res.json();
-        toast.error(`Failed to delete: ${error.error || "Unknown error"}`);
+        toast.error(`Failed to delete: ${getErrorMessage(error.error, "Unknown error")}`);
       }
     } catch (e) {
-      console.error(e);
+      console.error(`Failed to delete jobs - ${getErrorMessage(e)}`);
       toast.error("Failed to delete jobs");
     }
   };
@@ -510,7 +511,7 @@ export function ProcessedJobsTab() {
             <button onClick={() => setDeleteDialog({ open: false, ids: [] })} className="px-4 py-2 rounded-md text-sm font-medium border border-border/80 hover:bg-muted text-foreground cursor-pointer">
               Cancel
             </button>
-            <button onClick={confirmDelete} className="px-4 py-2 rounded-md text-sm font-medium bg-error text-white hover:bg-error cursor-pointer">
+            <button onClick={confirmDelete} className="px-4 py-2 rounded-md text-sm font-medium bg-error text-paper hover:bg-error cursor-pointer">
               Delete
             </button>
           </DialogFooter>

@@ -4,16 +4,22 @@ import { ArrowRightIcon } from '@heroicons/react/24/outline';
 /**
  * Landing hero — matches the accepted mock:
  * LIVE note chip, 3 headline lines (one per sentence, block-level so no
- * mid-sentence wraps), orange accent on "freshers.", one CTA, mono meta
- * row, BOARD 00 eyebrow. Light brand surface in both themes.
+ * mid-sentence wraps), orange accent on "learn.", three CTAs (board,
+ * discussion, post), mono meta row, BOARD 00 eyebrow. Light brand surface
+ * in both themes.
+ *
+ * Headline is the V1 product message: "Find jobs. Ask people. Share what
+ * you learn." (see files/checklists/v1-job-community-checklist.md §G).
  */
 
 interface HeroSectionProps {
     newToday: number;
     refreshedAt: Date | null;
+    /** Deep link to a live discussion (first latest job), falls back to /jobs. */
+    discussHref?: string;
 }
 
-export function HeroSection({ newToday, refreshedAt }: HeroSectionProps) {
+export function HeroSection({ newToday, refreshedAt, discussHref = '/jobs' }: HeroSectionProps) {
     const mins = refreshedAt ? Math.max(0, Math.floor((Date.now() - refreshedAt.getTime()) / 60000)) : null;
     const age =
         mins === null
@@ -41,24 +47,37 @@ export function HeroSection({ newToday, refreshedAt }: HeroSectionProps) {
                         Find jobs.
                     </span>
                     <span className="line" style={{ animationDelay: '0.18s' }}>
-                        Share opportunities.
+                        Ask people.
                     </span>
                     <span className="line" style={{ animationDelay: '0.34s' }}>
-                        Help other <span className="accent">freshers.</span>
+                        Share what you <span className="accent">learn.</span>
                     </span>
                 </h1>
 
                 <p className="ff-hero-sub">
-                    Off-campus drives, internships and walk-ins across India — shared by the community, linked straight
-                    to official pages. No dead links, no guesswork.
+                    Off-campus drives, internships and walk-ins across India — with real discussion on every job. Ask
+                    questions, share interview experiences, and help the next fresher. All roles link straight to
+                    official pages.
                 </p>
 
                 <div className="ff-hero-ctas">
                     <Link
                         href="/jobs"
-                        className="inline-flex items-center gap-2 rounded-[2px] bg-[var(--ff-accent)] px-[18px] py-[10px] text-[13.5px] font-semibold text-white transition-transform hover:-translate-y-px active:scale-[0.98]"
+                        className="inline-flex items-center gap-2 rounded-[2px] bg-[var(--ff-accent)] px-[18px] py-[10px] text-[13.5px] font-semibold text-paper transition-transform hover:-translate-y-px active:scale-[0.98]"
                     >
                         Browse the board <ArrowRightIcon className="h-4 w-4" />
+                    </Link>
+                    <Link
+                        href={discussHref}
+                        className="inline-flex items-center gap-2 rounded-[2px] border border-foreground/80 px-[18px] py-[10px] text-[13.5px] font-semibold text-foreground transition-transform hover:-translate-y-px active:scale-[0.98]"
+                    >
+                        Ask / Discuss
+                    </Link>
+                    <Link
+                        href="/post"
+                        className="inline-flex items-center gap-2 rounded-[2px] border border-border px-[18px] py-[10px] text-[13.5px] font-semibold text-foreground transition-transform hover:-translate-y-px hover:border-foreground/40 active:scale-[0.98]"
+                    >
+                        Post an opportunity
                     </Link>
                 </div>
 

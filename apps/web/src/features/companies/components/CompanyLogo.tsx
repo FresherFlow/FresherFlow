@@ -128,6 +128,28 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
         }
     }
 
+    // A tiny, cheap-to-download version of the exact same logo, used as the
+    // blurred placeholder while the full one streams in. Only Google favicons
+    // expose a size knob; for anything else we fall back to an initials chip.
+    const placeholderSrc = useMemo(() => {
+        if (!currentSrc) return null;
+        try {
+            const parsed = new URL(currentSrc);
+            const host = parsed.hostname.toLowerCase();
+            if ((host === 'google.com' || host.endsWith('.google.com')) && parsed.pathname.includes('/s2/favicons')) {
+                parsed.searchParams.set('sz', '16');
+                return parsed.toString();
+            }
+        } catch {
+            // Not a parseable URL — fall through to the initials chip.
+        }
+        return null;
+    }, [currentSrc]);
+
+    const initials = companyName
+        ? companyName.split(' ').filter(Boolean).map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+        : 'C';
+
     const handleError = () => {
         if (attemptIndex < candidates.length - 1) {
             const nextIndex = attemptIndex + 1;
@@ -172,24 +194,30 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
         if (isTcsBrand) {
             return (
                 <div className={cn("w-12 h-12 bg-brand-company-blue border border-brand-company-blue rounded flex items-center justify-center shrink-0", className)}>
-                    <span className="text-white text-xs font-bold tracking-wide">TCS</span>
+                    <span className="text-paper text-xs font-bold tracking-wide">TCS</span>
                 </div>
             );
         }
         return (
-            <div className={cn("w-12 h-12 bg-muted text-foreground font-bold text-xl rounded flex items-center justify-center shrink-0", className)}>
-                {companyName ? companyName.split(' ').filter(Boolean).map(w => w[0]).join('').slice(0, 2).toUpperCase() : 'C'}
+            // Initials fallback keeps a faint chip so text stays legible on any
+            // surface, but no border/shadow box around it.
+            <div className={cn("w-12 h-12 bg-muted/60 text-foreground font-bold text-xl rounded-lg flex items-center justify-center shrink-0", className)}>
+                {initials}
             </div>
         );
     }
 
     return (
         <div className={cn(
+            // No background box: transparent wrapper, logo renders bare.
             isGovDetected
-                ? "relative w-16 h-16 shrink-0 flex items-center justify-center bg-white rounded-lg p-1 border border-border/50 shadow-sm"
-                : "relative w-12 h-12 rounded-lg shrink-0 flex items-center justify-center bg-white p-1 border border-border/50 shadow-sm overflow-hidden",
+                ? "relative w-16 h-16 shrink-0 flex items-center justify-center"
+                : "relative w-12 h-12 shrink-0 flex items-center justify-center overflow-hidden",
             className
         )}>
+            {/* Blurred stand-in. It paints immediately, so a slow connection shows
+                a soft preview of the logo instead of a blank tile, then fades out
+                the moment the full-resolution logo has decoded. */}
             <BlurImage
                 src={currentSrc}
                 alt={`${companyName} logo`}
@@ -202,6 +230,23 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
                 loading={priority ? undefined : 'lazy'}
                 referrerPolicy="no-referrer"
                 unoptimized={true}
+                blurPlaceholder={
+                    placeholderSrc ? (
+                        // eslint-disable-next-line @next/next/no-img-element -- 16px preview, must skip the optimizer
+                        <img
+                            src={placeholderSrc}
+                            alt=""
+                            width={16}
+                            height={16}
+                            referrerPolicy="no-referrer"
+                            className="h-full w-full scale-110 object-contain blur-[6px]"
+                        />
+                    ) : (
+                        <span className="flex h-full w-full items-center justify-center rounded-lg bg-muted/60 text-xl font-bold text-foreground blur-[3px]">
+                            {initials}
+                        </span>
+                    )
+                }
             />
         </div>
     );

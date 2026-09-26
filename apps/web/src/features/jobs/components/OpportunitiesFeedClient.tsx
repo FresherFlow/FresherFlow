@@ -6,6 +6,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
 import { cn } from '@repo/ui/utils/cn';
 import { OpportunityDetailPane } from './OpportunityDetailPane';
+import { OpportunityDetailPaneSkeleton } from './OpportunitySkeletons';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
@@ -139,6 +140,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         skills: [],
         source: [],
         company: [],
+        experience: [],
     });
 
     // Mobile draft state (kept separate so apply is atomic)
@@ -153,6 +155,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
     const [draftCourse, setDraftCourse] = useState<string | null>(null);
     const [draftSource, setDraftSource] = useState<string[]>([]);
     const [draftCompany, setDraftCompany] = useState<string[]>([]);
+    const [draftExperience, setDraftExperience] = useState<string[]>([]);
 
     const mobileActiveCount =
         (filters.location ? 1 : 0) +
@@ -163,7 +166,8 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         (filters.course ? 1 : 0) +
         (filters.year ? 1 : 0) +
         (filters.source && filters.source.length > 0 ? 1 : 0) +
-        (filters.company && filters.company.length > 0 ? 1 : 0);
+        (filters.company && filters.company.length > 0 ? 1 : 0) +
+        (filters.experience && filters.experience.length > 0 ? 1 : 0);
 
     const {
         filteredOpps,
@@ -185,6 +189,9 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         selectedYear: filters.year,
         source: filters.source,
         company: filters.company,
+        skills: filters.skills,
+        roles: filters.role,
+        experience: filters.experience,
         initialData,
     });
 
@@ -244,7 +251,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
     // Reset visible count when filters change
     useEffect(() => {
         setVisibleCount(FEED_PAGE_SIZE);
-    }, [search, selectedType, filters.location, filters.sector, filters.qualification, filters.course, filters.year, filters.closingSoon, filters.saved, filters.source, filters.company]);
+    }, [search, selectedType, filters.location, filters.sector, filters.qualification, filters.course, filters.year, filters.closingSoon, filters.saved, filters.source, filters.company, filters.skills, filters.role, filters.experience]);
 
     // Push filtered count to TopHeaderBar
     useEffect(() => {
@@ -305,6 +312,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         setDraftCourse(filters.course);
         setDraftSource(filters.source);
         setDraftCompany(filters.company);
+        setDraftExperience(filters.experience ?? []);
         setIsMobileFilterOpen(true);
     };
 
@@ -322,6 +330,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
             skills: [],
             source: draftSource,
             company: draftCompany,
+            experience: draftExperience,
         });
         setIsMobileFilterOpen(false);
     };
@@ -464,6 +473,8 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                     setDraftSource={setDraftSource}
                     draftCompany={draftCompany}
                     setDraftCompany={setDraftCompany}
+                    draftExperience={draftExperience}
+                    setDraftExperience={setDraftExperience}
                     isLoggedIn={!!user}
                     aggregates={filterAggregates}
                     onApply={applyMobileFilters}
@@ -478,6 +489,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                         setDraftCourse(null);
                         setDraftSource([]);
                         setDraftCompany([]);
+                        setDraftExperience([]);
                     }}
                 />
 
@@ -508,7 +520,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                                     onClearFilters={() => {
                                         setSearch('');
                                         updateType(null);
-                                        setFilters({ location: null, sector: null, qualification: null, course: null, year: null, closingSoon: false, saved: false, workMode: null, skills: [], source: [], company: [] });
+                                        setFilters({ location: null, sector: null, qualification: null, course: null, year: null, closingSoon: false, saved: false, workMode: null, skills: [], source: [], company: [], experience: [] });
                                     }}
                                 />
                                 {(visibleCount < filteredOpps.length || isLoadingMore || isFeedPending) && (
@@ -529,11 +541,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                                         />
                                     </div>
                                 ) : filteredOpps.length > 0 ? (
-                                    <div className="flex-1 p-8 animate-pulse flex flex-col gap-4">
-                                        <div className="h-8 bg-muted/50 rounded w-1/2" />
-                                        <div className="h-4 bg-muted/50 rounded w-1/4" />
-                                        <div className="h-40 bg-muted/50 rounded-xl w-full mt-4" />
-                                    </div>
+                                    <OpportunityDetailPaneSkeleton />
                                 ) : (
                                     <div className="flex-1 flex items-center justify-center bg-muted/20">
                                         <EmptyState

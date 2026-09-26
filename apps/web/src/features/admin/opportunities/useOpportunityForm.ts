@@ -3,6 +3,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { adminApi } from "@/lib/api/admin";
 import { Opportunity, SocialPost } from "@fresherflow/types";
 import toast from "react-hot-toast";
+import { getErrorMessage } from "@/lib/utils/error";
 import {
   type OpportunityKind,
   type TimelineEvent,
@@ -654,7 +655,7 @@ export function useOpportunityForm(
         setAppRequiredItems([]);
       }
     } catch (err: unknown) {
-      toast.error(`Failed to load listing: ${(err as Error).message}`);
+      toast.error(`Failed to load listing: ${getErrorMessage(err)}`);
       router.push("/admin/opportunities");
     }
   }, [opportunityId, router]);
@@ -701,7 +702,7 @@ export function useOpportunityForm(
       setNewEventSourceLink("");
       void loadTimelineEvents();
     } catch (err: unknown) {
-      toast.error(`Failed to add event: ${(err as Error).message}`);
+      toast.error(`Failed to add event: ${getErrorMessage(err)}`);
     } finally {
       setTimelineBusyId(null);
     }
@@ -721,7 +722,7 @@ export function useOpportunityForm(
       toast.success("Event updated.");
       void loadTimelineEvents();
     } catch (err: unknown) {
-      toast.error(`Update failed: ${(err as Error).message}`);
+      toast.error(`Update failed: ${getErrorMessage(err)}`);
     } finally {
       setTimelineBusyId(null);
     }
@@ -736,7 +737,7 @@ export function useOpportunityForm(
       toast.success("Event deleted.");
       void loadTimelineEvents();
     } catch (err: unknown) {
-      toast.error(`Delete failed: ${(err as Error).message}`);
+      toast.error(`Delete failed: ${getErrorMessage(err)}`);
     } finally {
       setTimelineBusyId(null);
     }
@@ -1622,3 +1623,9 @@ export function useOpportunityForm(
     setNewEventSourceLink,
   };
 }
+
+/**
+ * The single form object. Sections take this one prop instead of dozens of
+ * drilled value/setter pairs — the stepping stone to `useFormContext()`.
+ */
+export type OpportunityFormApi = ReturnType<typeof useOpportunityForm>;

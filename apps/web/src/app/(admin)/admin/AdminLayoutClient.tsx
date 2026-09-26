@@ -54,7 +54,7 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
             <div className="flex h-dvh w-screen overflow-hidden bg-background text-foreground">
                 <AdminSidebar />
                 <TopHeaderBar />
-            <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background md:bg-muted/10 transition-all duration-300 ease-out motion-reduce:transition-none">
+            <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background md:bg-muted/10">
                 <MobileTopNav />
                 <main className="flex-1 h-full min-w-0 min-h-0 flex flex-col overflow-hidden pt-14 md:pt-18 md:px-4 md:pb-4">
                     <div className="w-full h-full flex-1 min-w-0 relative flex flex-col overflow-hidden">

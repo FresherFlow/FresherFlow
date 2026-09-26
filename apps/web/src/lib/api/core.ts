@@ -1,4 +1,5 @@
 import { markDetailSyncedNow, markFeedSyncedNow } from '@/lib/cache/syncStatus';
+import { toCleanMessage } from '@/lib/utils/error';
 
 // Thrown when a request is made with no network connectivity.
 // Callers can check `err instanceof OfflineError` to skip toast notifications.
@@ -35,7 +36,25 @@ function logClientWarning(message: string, error?: unknown) {
         if (error instanceof Error && error.message.includes('status 500')) {
             return;
         }
-        console.warn(`[Client] ${message}`, error);
+        console.warn(`[Client] ${message} ${toCleanMessage(err?.message || 'Request handled')}`);
+    }
+}
+
+function stripStackFromData<T>(data: T): T {
+    if (!data || typeof data !== 'object') return data;
+    try {
+        const copy = { ...(data as Record<string, unknown>) };
+        const errPart = copy.error;
+        if (errPart && typeof errPart === 'object') {
+            const errCopy = { ...(errPart as Record<string, unknown>) };
+            delete errCopy.stack;
+            delete errCopy.statusCode;
+            copy.error = errCopy;
+        }
+        if ('stack' in copy) delete (copy as Record<string, unknown>).stack;
+        return copy as T;
+    } catch {
+        return data;
     }
 }
 
@@ -181,6 +200,17 @@ function isUserProtectedEndpoint(endpoint: string): boolean {
         '/api/dashboard',
         '/api/referrals/me',
         '/api/feedback',
+        // Authed discussion/community writes (job comments, votes, reports,
+        // signals, interviews, updates) and contribute reads/submits. Reads on
+        // these paths stay public via optionalAuth — the Bearer header is only
+        // attached when a token exists, so guest reads are unchanged.
+        '/api/jobs',
+        '/api/rooms',
+        '/api/community',
+        '/api/interviews',
+        '/api/updates',
+        '/api/notifications',
+        '/api/resources',
     ];
     return protectedPrefixes.some((prefix) => endpoint.startsWith(prefix));
 }
@@ -198,6 +228,10 @@ function isAdminProtectedEndpoint(endpoint: string): boolean {
 }
 
 function shouldAttemptSessionRefresh(endpoint: string): boolean {
+    // Admin API uses its own token with no user-session refresh. Attempting a
+    // user refresh here only produces "No refresh token provided" spam and can
+    // log the user out because of an unrelated admin 401.
+    if (endpoint.startsWith('/api/admin')) return false;
     const authEndpointsThatShouldNotRefresh = [
         '/api/auth/login',
         '/api/auth/google',
@@ -404,16 +438,26 @@ export async function apiClient<T = unknown>(
                         });
 
                         if (!refreshResponse.ok) {
-                            clearClientSessionHints();
-                            clearUserTokens();
+                            // Only wipe the session on definitive auth rejection.
+                            // Transient 5xx/network failures must not destroy a live refresh token.
+                            const status = refreshResponse.status || 401;
+                            if (status === 401 || status === 403) {
+                                clearClientSessionHints();
+                                clearUserTokens();
+                            }
                             const err = new UnauthorizedError('Refresh failed');
-                            (err as Error & { status?: number }).status = refreshResponse.status || 401;
+                            (err as Error & { status?: number }).status = status;
                             throw err;
                         }
                         try {
-                            const refreshPayload = await refreshResponse.json() as { accessToken?: string };
+                            const refreshPayload = await refreshResponse.json() as {
+                                accessToken?: string;
+                                refreshToken?: string;
+                            };
                             if (refreshPayload.accessToken) {
-                                setUserTokens(refreshPayload.accessToken, null);
+                                // Persist the rotated refresh token too — the cookie can be
+                                // cleared by a racing 401; the header fallback must match it.
+                                setUserTokens(refreshPayload.accessToken, refreshPayload.refreshToken ?? null);
                             }
                         } catch {
                             // Ignore malformed refresh body
@@ -468,12 +512,13 @@ export async function apiClient<T = unknown>(
 
         if (!response.ok) {
             let errorMessage = 'Request failed';
-            let errorData: { error?: { message?: string } | string; completionPercentage?: number; requiredCompletion?: number } = {};
+            let errorData: { error?: { message?: string; code?: string; requestId?: string } | string; completionPercentage?: number; requiredCompletion?: number } = {};
 
             try {
                 errorData = await response.json();
                 const errorObj = errorData.error;
-                errorMessage = typeof errorObj === 'object' && errorObj !== null ? errorObj.message || errorMessage : (typeof errorObj === 'string' ? errorObj : errorMessage);
+                const rawMessage = typeof errorObj === 'object' && errorObj !== null ? errorObj.message || errorMessage : (typeof errorObj === 'string' ? errorObj : errorMessage);
+                errorMessage = toCleanMessage(rawMessage);
             } catch {
                 // Fallback if response is not JSON
                 if (response.status === 429) {
@@ -517,15 +562,15 @@ export async function apiClient<T = unknown>(
             }
 
             if (shouldLogClientError({ statusCode: response.status, message: errorMessage })) {
-                console.error(`API request failed: ${method} ${endpoint} (${response.status}) - ${errorMessage}`, errorData);
+                console.error(`API request failed: ${method} ${endpoint} (${response.status}) - ${toCleanMessage(errorMessage)}`);
             }
 
-            const httpError = new Error(errorMessage) as Error & {
+            const httpError = new Error(toCleanMessage(errorMessage)) as Error & {
                 statusCode?: number;
                 data?: typeof errorData;
             };
             httpError.statusCode = response.status;
-            httpError.data = errorData;
+            httpError.data = stripStackFromData(errorData);
             throw httpError;
         }
 
@@ -559,7 +604,8 @@ export async function apiClient<T = unknown>(
         }
 
         if (shouldLogClientError(error)) {
-            console.error('API Error:', error);
+            const errForLog = error as { statusCode?: number; message?: string };
+            console.error(`API request failed: ${method} ${endpoint} (${errForLog.statusCode ?? 'network'}) - ${toCleanMessage(errForLog.message || 'Request failed')}`);
         } else {
             logClientWarning('API request handled:', error);
         }

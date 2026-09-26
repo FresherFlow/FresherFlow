@@ -37,7 +37,7 @@ export default function NotFoundPage() {
 
                         <div className="grid gap-3 grid-cols-1">
                             <Link href="/jobs" className="group flex items-center gap-4 rounded-xl border border-border/70 bg-card p-3.5 transition-all duration-300 hover:border-primary/30 hover:shadow-lg">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-paper">
                                     <Briefcase className="h-5 w-5" />
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -50,7 +50,7 @@ export default function NotFoundPage() {
                                 <ArrowRight className="h-4 w-4 text-muted-foreground transition-all duration-300 transform group-hover:translate-x-1 group-hover:text-primary" />
                             </Link>
                             <Link href="/jobs/internships" className="group flex items-center gap-4 rounded-xl border border-border/70 bg-card p-3.5 transition-all duration-300 hover:border-primary/30 hover:shadow-lg">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-paper">
                                     <GraduationCap className="h-5 w-5" />
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -63,7 +63,7 @@ export default function NotFoundPage() {
                                 <ArrowRight className="h-4 w-4 text-muted-foreground transition-all duration-300 transform group-hover:translate-x-1 group-hover:text-primary" />
                             </Link>
                             <Link href="/jobs/walkins" className="group flex items-center gap-4 rounded-xl border border-border/70 bg-card p-3.5 transition-all duration-300 hover:border-primary/30 hover:shadow-lg">
-                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-white">
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-paper">
                                     <MapPin className="h-5 w-5" />
                                 </div>
                                 <div className="flex-1 min-w-0">

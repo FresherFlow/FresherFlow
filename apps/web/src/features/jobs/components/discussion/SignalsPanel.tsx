@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { communityApi } from '@fresherflow/api-client';
+import { communityApi } from '@/features/jobs/api/community';
 import { JobSignalType } from '@fresherflow/types';
 import type { SignalState } from '@fresherflow/types';
 import { useAuth } from '@/lib/auth/AuthContext';

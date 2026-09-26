@@ -2,24 +2,26 @@
 
 import * as React from "react"
 import {
-  flexRender,
-  SortingState,
+  ColumnDef,
   ColumnFiltersState,
+  createCoreRowModel,
+  createFilteredRowModel,
+  createPaginatedRowModel,
+  createSortedRowModel,
+  flexRender,
+  PaginationState,
+  ReactTable,
   RowData,
+  RowSelectionState,
+  SortingState,
+  stockFeatures,
+  StockFeatures,
+  Updater,
+  useTable,
 } from "@tanstack/react-table"
-import {
-  getCoreRowModel,
-  useLegacyTable,
-  getSortedRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
-  LegacyColumnDef,
-  LegacyTable,
-  LegacyReactTable,
-} from "@tanstack/react-table/legacy"
 
 import {
-  Table,
+  Table as UITable,
   TableBody,
   TableCell,
   TableHead,
@@ -29,8 +31,20 @@ import {
 import { EmptyState } from "@/ui/EmptyState"
 import { DataTablePagination } from "./DataTablePagination"
 
+// Row models in v9 are feature slots, not `get*RowModel()` table options. The
+// core model is built in; the rest must be registered or the table renders
+// every row and sorting/filtering/pagination stay inert.
+const dataTableFeatures = {
+  ...stockFeatures,
+  coreRowModel: createCoreRowModel(),
+  filteredRowModel: createFilteredRowModel(),
+  sortedRowModel: createSortedRowModel(),
+  paginatedRowModel: createPaginatedRowModel(),
+}
+
 interface DataTableProps<TData extends RowData, TValue> {
-  columns: LegacyColumnDef<TData, any>[]
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  columns: ColumnDef<StockFeatures, TData, any>[]
   data: TData[]
   enableSorting?: boolean
   enableFiltering?: boolean
@@ -43,9 +57,9 @@ interface DataTableProps<TData extends RowData, TValue> {
     pageIndex: number
     pageSize: number
   }
-  onPaginationChange?: (updater: any) => void
+  onPaginationChange?: (updater: Updater<PaginationState>) => void
   onRowSelectionChange?: (selectedRows: TData[]) => void
-  toolbar?: (table: LegacyReactTable<TData>) => React.ReactNode
+  toolbar?: (table: ReactTable<StockFeatures, TData>) => React.ReactNode
 }
 
 export function DataTable<TData extends RowData, TValue>({
@@ -65,8 +79,8 @@ export function DataTable<TData extends RowData, TValue>({
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
-  const [rowSelection, setRowSelection] = React.useState({})
-  
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
+
   // Local pagination state for client-side pagination
   const [localPagination, setLocalPagination] = React.useState({
     pageIndex: 0,
@@ -80,17 +94,16 @@ export function DataTable<TData extends RowData, TValue>({
     }
   }, [sorting, columnFilters, manualPagination])
 
-  const table = useLegacyTable({
+  const table = useTable<StockFeatures, TData>({
+    features: dataTableFeatures,
     data,
     columns,
-    getCoreRowModel: getCoreRowModel(),
     onSortingChange: setSorting,
-    getSortedRowModel: enableSorting ? getSortedRowModel() : undefined,
     onColumnFiltersChange: setColumnFilters,
-    getFilteredRowModel: enableFiltering ? getFilteredRowModel() : undefined,
-    getPaginationRowModel: enablePagination && !manualPagination ? getPaginationRowModel() : undefined,
     onRowSelectionChange: setRowSelection,
     enableRowSelection,
+    enableSorting,
+    enableColumnFilters: enableFiltering,
     manualPagination,
     pageCount,
     rowCount,
@@ -99,14 +112,16 @@ export function DataTable<TData extends RowData, TValue>({
       sorting,
       columnFilters,
       rowSelection,
-      ...(enablePagination ? { pagination: manualPagination ? pagination : localPagination } : {}),
+      ...(enablePagination
+        ? { pagination: manualPagination ? pagination : localPagination }
+        : {}),
     },
   })
 
   React.useEffect(() => {
     if (onRowSelectionChange) {
       const selectedData = table
-        .getFilteredSelectedRowModel()
+        .getSelectedRowModel()
         .rows.map((row) => row.original)
       onRowSelectionChange(selectedData)
     }
@@ -117,7 +132,7 @@ export function DataTable<TData extends RowData, TValue>({
       {toolbar && toolbar(table)}
       <div className="rounded-lg border border-border/40 overflow-hidden">
         <div className="relative w-full overflow-auto max-h-[70vh]">
-          <Table>
+          <UITable>
             <TableHeader className="sticky top-0 z-10 bg-card">
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
@@ -164,7 +179,7 @@ export function DataTable<TData extends RowData, TValue>({
                 </TableRow>
               )}
             </TableBody>
-          </Table>
+          </UITable>
         </div>
       </div>
       {enablePagination && <DataTablePagination table={table} />}

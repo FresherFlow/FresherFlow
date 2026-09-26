@@ -14,10 +14,10 @@ export const profileApi = {
         fullName?: string;
         educationLevel: string;
         tenthYear: number;
-        twelfthYear: number;
-        gradCourse: string;
-        gradSpecialization: string;
-        gradYear: number;
+        twelfthYear?: number;
+        gradCourse?: string;
+        gradSpecialization?: string;
+        gradYear?: number;
         collegeId?: string | null;
         collegeName?: string | null;
         collegeState?: string | null;

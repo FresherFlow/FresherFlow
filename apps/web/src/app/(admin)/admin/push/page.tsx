@@ -16,7 +16,7 @@ export default function PushNotificationsPage() {
                 </p>
             </div>
 
-            <Suspense fallback={<div className="p-8 text-center text-muted-foreground animate-pulse">Loading composer...</div>}>
+            <Suspense fallback={<div className="p-8" aria-hidden />}>
                 <PushNotificationClient />
             </Suspense>
         </div>

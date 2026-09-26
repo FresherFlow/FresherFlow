@@ -95,6 +95,25 @@ export function useOpportunityDetail(
             }
 
             if (!opportunity) {
+                // CDN shard missing (feed publishes lag behind index) — fall back
+                // to the same-origin bootstrap-feed proxy, which serves the full
+                // record including description. Raw fetch: the proxy shape differs
+                // from apiClient's unwrapping and 404 here is a clean miss.
+                try {
+                    const res = await fetch(`/api/public/job?id=${encodeURIComponent(id)}`);
+                    if (res.ok) {
+                        const detail = await res.json() as { opportunity?: Opportunity };
+                        if (detail?.opportunity?.id) {
+                            setOpp({ ...detail.opportunity, isSaved: false } as Opportunity);
+                            return;
+                        }
+                    }
+                } catch {
+                    // fall through to offline cache / 404 below
+                }
+            }
+
+            if (!opportunity) {
                 // Fallback to recent viewed in case of offline / local cache
                 const cachedOpportunity = getRecentViewedByIdOrSlug(id);
                 if (cachedOpportunity) {
@@ -139,17 +158,38 @@ export function useOpportunityDetail(
     const initialDataId = initialData?.id;
     // Index-sourced items carry card fields but no description. Upgrade silently
     // from the jobs/{id}.json shard (~2.5KB) without blocking the pane render.
+    // If the shard is missing (404), fall back to the live API detail endpoint.
     const initialHasDescription = Boolean(initialData?.description);
     useEffect(() => {
         if (!initialData || initialHasDescription) return;
         let cancelled = false;
-        void fetchOpportunityDetail(initialData.id).then((full) => {
-            if (cancelled || !full?.description) return;
-            setOpp((prev) =>
-                prev && prev.id === full.id
-                    ? { ...prev, ...full, isSaved: prev.isSaved || false }
-                    : prev
-            );
+        void fetchOpportunityDetail(initialData.id).then(async (full) => {
+            if (cancelled) return;
+            if (full?.description) {
+                setOpp((prev) =>
+                    prev && prev.id === full.id
+                        ? { ...prev, ...full, isSaved: prev.isSaved || false }
+                        : prev
+                );
+                return;
+            }
+            // Shard unavailable — pull the full record from the same-origin
+            // bootstrap-feed proxy instead (resolves by id or slug).
+            try {
+                const res = await fetch(`/api/public/job?id=${encodeURIComponent(initialData.id)}`);
+                if (res.ok) {
+                    const detail = await res.json() as { opportunity?: Opportunity };
+                    if (!cancelled && detail?.opportunity?.description) {
+                        setOpp((prev) =>
+                            prev && prev.id === detail.opportunity!.id
+                                ? { ...prev, description: detail.opportunity!.description, isSaved: prev.isSaved || false }
+                                : prev
+                        );
+                    }
+                }
+            } catch {
+                // description stays hidden; not an error surface
+            }
         }).catch(() => {});
         return () => {
             cancelled = true;

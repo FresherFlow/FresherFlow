@@ -3,10 +3,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { communityApi } from '@fresherflow/api-client';
 import type { CommunityNotification } from '@fresherflow/types';
+import { apiClient } from '@/lib/api/core';
 import { ArrowLeftIcon, Cog6ToothIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
 import { cn } from '@repo/ui/utils/cn';
+import { SkeletonListRow } from '@/features/jobs/components/OpportunitySkeletons';
+import { Skeleton } from '@/ui/Skeleton';
 
 type NotificationItem = {
     id: string;
@@ -88,7 +90,7 @@ function NotificationsPageContent() {
         setLoading(true);
         setError(false);
         try {
-            const result = await communityApi.listNotifications();
+            const result = await apiClient<{ notifications: CommunityNotification[] }>('/api/notifications');
             setNotifications(result.notifications.map(toDisplayItem));
         } catch {
             setError(true);
@@ -105,7 +107,7 @@ function NotificationsPageContent() {
         if (!notifications.some(n => !n.isRead)) return;
         setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
         try {
-            await communityApi.markNotificationsRead();
+            await apiClient('/api/notifications/read', { method: 'POST', body: JSON.stringify({}) });
         } catch {
             void load();
         }
@@ -114,7 +116,10 @@ function NotificationsPageContent() {
     const markRead = async (notifId: string) => {
         setNotifications(prev => prev.map(n => (n.id === notifId ? { ...n, isRead: true } : n)));
         try {
-            await communityApi.markNotificationsRead([notifId]);
+            await apiClient('/api/notifications/read', {
+                method: 'POST',
+                body: JSON.stringify({ ids: [notifId] }),
+            });
         } catch {
             void load();
         }
@@ -125,10 +130,23 @@ function NotificationsPageContent() {
 
     if (loading) {
         return (
-            <div className="w-full max-w-2xl mx-auto px-4 py-8 space-y-4">
-                {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="h-16 bg-muted/40 rounded-xl animate-pulse" />
-                ))}
+            <div className="w-full max-w-2xl mx-auto px-4 py-4 md:py-8 space-y-5" aria-busy="true" aria-label="Loading notifications">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Skeleton variant="panel" className="h-9 w-9" />
+                        <div className="space-y-1.5">
+                            <Skeleton className="h-5 w-32" />
+                            <Skeleton className="h-3 w-20" />
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <Skeleton variant="panel" className="h-8 w-20" />
+                        <Skeleton variant="panel" className="h-9 w-9" />
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    {[1, 2, 3, 4].map(i => <SkeletonListRow key={i} />)}
+                </div>
             </div>
         );
     }

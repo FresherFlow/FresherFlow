@@ -46,7 +46,7 @@ export default function LoadingScreen({
         )}>
             <div className="relative flex items-center justify-center mb-5">
                 {/* Brand Logo - Same as User Site */}
-                <div className="animate-pulse">
+                <div className="animate-pulse motion-reduce:animate-none">
                     <LogoImage width={36} height={36} className="w-9 h-9" />
                 </div>
             </div>

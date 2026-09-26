@@ -6,6 +6,10 @@ import { ContributeSheet, type ContributeType } from './ContributeSheet';
 import { ContributionHistory } from './ContributionHistory';
 import { Button } from '@/ui/Button';
 
+// One card per submit flow `ContributeSheet` actually implements. Community
+// posts and resource shares are read-only here today — `ContributionHistory`
+// lists them once they exist, but the sheet has no form or submit path for
+// them, so offering a card would open a sheet that cannot do anything.
 const CARDS: Array<{
     type: ContributeType;
     label: string;

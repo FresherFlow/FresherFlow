@@ -165,10 +165,20 @@ const AdminTabNavigator = () => {
                 component={AnalyticsNavigator}
                 options={{ tabBarLabel: 'Dashboard' }}
             />
+            {/* The opportunities stack owns its own screens; hide the tab bar as
+                soon as a detail/form screen is pushed, like Settings below. */}
             <Tab.Screen
                 name="Opportunities"
                 component={OpportunitiesNavigator}
-                options={{ tabBarLabel: 'Opportunities' }}
+                options={({ route }) => {
+                    const routeName = getFocusedRouteNameFromRoute(route) ?? 'OpportunitiesList';
+                    return {
+                        tabBarLabel: 'Opportunities',
+                        tabBarStyle: {
+                            display: routeName === 'OpportunitiesList' ? 'flex' : 'none',
+                        },
+                    };
+                }}
             />
             <Tab.Screen
                 name="Pending"

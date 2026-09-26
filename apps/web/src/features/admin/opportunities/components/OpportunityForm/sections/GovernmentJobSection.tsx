@@ -1,140 +1,86 @@
 import BuildingOffice2Icon from '@heroicons/react/24/outline/BuildingOffice2Icon';
+import { ChevronRight } from 'lucide-react';
 import { SmartInput } from '@/features/admin/ui/SmartInput';
 import { SmartTextarea } from '@/features/admin/ui/SmartTextarea';
 import { SmartSelect } from '@/features/admin/ui/SmartSelect';
+import { Card } from '@/ui/Card';
+import { Checkbox } from '@/ui/Checkbox';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/ui/Collapsible';
+import type { OpportunityFormApi } from '@/features/admin/opportunities/useOpportunityForm';
 
-interface GovernmentJobSectionProps {
-    governmentTags: string;
-    setGovernmentTags: (value: string) => void;
-    department: string;
-    setDepartment: (value: string) => void;
-    organization: string;
-    setOrganization: (value: string) => void;
-    recruitingBody: string;
-    setRecruitingBody: (value: string) => void;
-    officialWebsiteUrl: string;
-    setOfficialWebsiteUrl: (value: string) => void;
-    officialNotificationUrl: string;
-    setOfficialNotificationUrl: (value: string) => void;
-    advertisementNumber: string;
-    setAdvertisementNumber: (value: string) => void;
-    postName: string;
-    setPostName: (value: string) => void;
-    applicationMode: string;
-    setApplicationMode: (value: string) => void;
-    vacancyCount: string;
-    setVacancyCount: (value: string) => void;
-    vacancyBreakdownJson: string;
-    setVacancyBreakdownJson: (val: string) => void;
-    applicationFee: string;
-    setApplicationFee: (value: string) => void;
-    applicationFeeJson: string;
-    setApplicationFeeJson: (value: string) => void;
-    ageMin: string;
-    setAgeMin: (value: string) => void;
-    ageMax: string;
-    setAgeMax: (value: string) => void;
-    ageRelaxation: string;
-    setAgeRelaxation: (value: string) => void;
-    eligibilityDetailsJson: string;
-    setEligibilityDetailsJson: (value: string) => void;
-    reservationNotes: string;
-    setReservationNotes: (value: string) => void;
-    importantInstructions: string;
-    setImportantInstructions: (value: string) => void;
-    applicationStartDate: string;
-    setApplicationStartDate: (value: string) => void;
-    applicationEndDate: string;
-    setApplicationEndDate: (value: string) => void;
-    notificationIssuedDate: string;
-    setNotificationIssuedDate: (value: string) => void;
-    examDate: string;
-    setExamDate: (value: string) => void;
-    examDatesJson: string;
-    setExamDatesJson: (value: string) => void;
-    admitCardDate: string;
-    setAdmitCardDate: (value: string) => void;
-    resultDate: string;
-    setResultDate: (value: string) => void;
-    selectionStages: string;
-    setSelectionStages: (value: string) => void;
-    governmentRequiredDocuments: string;
-    setGovernmentRequiredDocuments: (value: string) => void;
-    governmentRequiredDocumentsJson: string;
-    setGovernmentRequiredDocumentsJson: (value: string) => void;
+const hasText = (...values: (string | undefined)[]) =>
+    values.some((value) => (value ?? '').trim().length > 0);
 
-    // Missing Props
-    examName: string;
-    setExamName: (value: string) => void;
-    categoryVacanciesJson: string;
-    setCategoryVacanciesJson: (value: string) => void;
-    cadreDetailsJson: string;
-    setCadreDetailsJson: (value: string) => void;
-    postPreferencesJson: string;
-    setPostPreferencesJson: (value: string) => void;
-    serviceBondJson: string;
-    setServiceBondJson: (value: string) => void;
-    reservationDetailsJson: string;
-    setReservationDetailsJson: (value: string) => void;
-    referenceLinksJson: string;
-    setReferenceLinksJson: (value: string) => void;
-    cutOffMarksJson: string;
-    setCutOffMarksJson: (value: string) => void;
-
-    // New Fields
-    examCenters: string;
-    setExamCenters: (value: string) => void;
-    examPatternJson: string;
-    setExamPatternJson: (value: string) => void;
-    skillTestsJson: string;
-    setSkillTestsJson: (value: string) => void;
-    examStagesJson: string;
-    setExamStagesJson: (value: string) => void;
-    importantDatesJson: string;
-    setImportantDatesJson: (value: string) => void;
-    qualificationDetailsJson: string;
-    setQualificationDetailsJson: (value: string) => void;
-    physicalStandardsJson: string;
-    setPhysicalStandardsJson: (value: string) => void;
-    extraMetadataJson: string;
-    setExtraMetadataJson: (value: string) => void;
-    feeBreakdownJson: string;
-    setFeeBreakdownJson: (value: string) => void;
-    ageRelaxationRulesJson: string;
-    setAgeRelaxationRulesJson: (value: string) => void;
-    officialSourceVerified: boolean;
-    setOfficialSourceVerified: (value: boolean) => void;
-    notificationPdfUrl: string;
-    setNotificationPdfUrl: (value: string) => void;
-    admitCardUrl: string;
-    setAdmitCardUrl: (value: string) => void;
-    resultUrl: string;
-    setResultUrl: (value: string) => void;
-    answerKeyUrl: string;
-    setAnswerKeyUrl: (value: string) => void;
-    syllabusUrl: string;
-    setSyllabusUrl: (value: string) => void;
-    previousPapersUrl: string;
-    setPreviousPapersUrl: (value: string) => void;
-    applicationStatus: string;
-    setApplicationStatus: (value: string) => void;
-    governmentLevel: string;
-    setGovernmentLevel: (value: string) => void;
-    vacancyNature: string;
-    setVacancyNature: (value: string) => void;
-    jobCategory: string;
-    setJobCategory: (value: string) => void;
-    basicPay: string;
-    setBasicPay: (value: string) => void;
-    payLevel: string;
-    setPayLevel: (value: string) => void;
-    allowances: string;
-    setAllowances: (value: string) => void;
+/**
+ * One collapsible group inside the government section. Sections open by
+ * default when they already hold values (editing) so admins see filled data,
+ * and stay collapsed when empty (creating) so the notice scans fast.
+ */
+function GovtSubSection({
+    number,
+    title,
+    defaultOpen = true,
+    children,
+}: {
+    number: string;
+    title: string;
+    defaultOpen?: boolean;
+    children: React.ReactNode;
+}) {
+    return (
+        <Collapsible defaultOpen={defaultOpen} className="group/govt overflow-hidden rounded-xl border border-border/60 bg-card">
+            <CollapsibleTrigger className="flex w-full items-center gap-2.5 px-4 py-3 text-left transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-primary/10 text-xs font-bold text-primary">
+                    {number}
+                </span>
+                <span className="text-sm font-semibold text-foreground">{title}</span>
+                <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]/govt:rotate-90" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="px-4 py-4">
+                {children}
+            </CollapsibleContent>
+        </Collapsible>
+    );
 }
 
-export function GovernmentJobSection(props: GovernmentJobSectionProps) {
+export function GovernmentJobSection({ form }: { form: OpportunityFormApi }) {
+    // The section's historic field names (`department`, `organization`) map to
+    // the hook's `governmentDepartment` / `governmentOrganization` states.
+    const props = {
+        ...form,
+        department: form.governmentDepartment,
+        setDepartment: form.setGovernmentDepartment,
+        organization: form.governmentOrganization,
+        setOrganization: form.setGovernmentOrganization,
+    };
+    const vacancyOpen = hasText(
+        props.vacancyCount, props.vacancyBreakdownJson, props.categoryVacanciesJson,
+        props.cadreDetailsJson, props.postPreferencesJson, props.serviceBondJson
+    );
+    const eligibilityOpen = hasText(
+        props.ageMin, props.ageMax, props.ageRelaxation, props.reservationNotes,
+        props.reservationDetailsJson, props.ageRelaxationRulesJson, props.eligibilityDetailsJson,
+        props.qualificationDetailsJson, props.physicalStandardsJson
+    );
+    const feesOpen = hasText(props.applicationFee, props.applicationFeeJson, props.feeBreakdownJson);
+    const datesOpen = hasText(
+        props.notificationIssuedDate, props.applicationStartDate, props.applicationEndDate,
+        props.examDate, props.admitCardDate, props.resultDate
+    );
+    const examOpen = hasText(
+        props.applicationMode, props.examCenters, props.selectionStages, props.importantInstructions,
+        props.examDatesJson, props.examPatternJson, props.skillTestsJson, props.examStagesJson,
+        props.cutOffMarksJson, props.importantDatesJson
+    );
+    const linksOpen = hasText(
+        props.officialWebsiteUrl, props.officialNotificationUrl, props.notificationPdfUrl,
+        props.admitCardUrl, props.resultUrl, props.answerKeyUrl, props.syllabusUrl,
+        props.previousPapersUrl, props.governmentRequiredDocuments, props.governmentRequiredDocumentsJson,
+        props.referenceLinksJson, props.extraMetadataJson, props.governmentTags
+    );
+
     return (
-        <div className="space-y-8 rounded-xl p-5 md:p-7 bg-card border border-border/50 shadow-sm">
+        <Card className="space-y-8 p-5 md:p-7">
             <div className="flex items-center gap-3 border-b border-border/40 pb-4 mb-4">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted/50 text-muted-foreground border border-border/50">
                     <BuildingOffice2Icon className="w-4 h-4" />
@@ -151,13 +97,9 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 xl:gap-8 items-start">
                 {/* Column 1: Info, Vacancy, Eligibility, Fees */}
-                <div className="space-y-8">
+                <div className="space-y-3">
                     {/* Section 1: Basic Info */}
-                    <div className="space-y-5">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-primary/10 text-primary text-xs font-bold">1</span>
-                            <h4 className="text-sm font-semibold text-foreground">Basic Info & Classification</h4>
-                        </div>
+                    <GovtSubSection number="1" title="Basic Info & Classification">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Field label="Department" value={props.department} onChange={props.setDepartment} placeholder="e.g. Central Government" />
                             <Field label="Organization" value={props.organization} onChange={props.setOrganization} placeholder="e.g. Staff Selection Commission" />
@@ -183,7 +125,6 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                                     { value: 'DOCUMENT_VERIFICATION', label: 'Document Verification' },
                                     { value: 'COMPLETED', label: 'Completed' },
                                     { value: 'CANCELLED', label: 'Cancelled' },
-                                    { value: 'ADMIT_CARD_RELEASED', label: 'Admit Card Released' }, // backward fallback
                                 ]}
                             />
                             <SelectField
@@ -215,26 +156,20 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                             <Field label="Job Categories" value={props.jobCategory} onChange={props.setJobCategory} placeholder="e.g. Graduate, SSC, Group B (comma separated)" />
                             <Field label="Advertisement Number" value={props.advertisementNumber} onChange={props.setAdvertisementNumber} placeholder="e.g. SSC/2026/01" />
                             <div className="flex items-center gap-2 pt-6">
-                                <input
-                                    type="checkbox"
+                                <Checkbox
                                     id="officialSourceVerified"
                                     checked={props.officialSourceVerified}
-                                    onChange={(e) => props.setOfficialSourceVerified(e.target.checked)}
-                                    className="h-4 w-4 rounded border-muted text-primary focus:ring-primary"
+                                    onCheckedChange={(checked) => props.setOfficialSourceVerified(checked === true)}
                                 />
                                 <label htmlFor="officialSourceVerified" className="text-sm font-medium text-foreground">
                                     Official Source Verified
                                 </label>
                             </div>
                         </div>
-                    </div>
+                    </GovtSubSection>
 
                     {/* Section 2: Vacancy Details */}
-                    <div className="space-y-5 pt-4 border-t border-border/40">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-brand-facebook/10 text-brand-facebook text-xs font-bold">2</span>
-                            <h4 className="text-sm font-semibold text-foreground">Vacancy Details</h4>
-                        </div>
+                    <GovtSubSection number="2" title="Vacancy Details" defaultOpen={vacancyOpen}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="md:col-span-2">
                                 <Field label="Vacancy Count" type="number" value={props.vacancyCount} onChange={props.setVacancyCount} placeholder="e.g. 250" />
@@ -247,14 +182,10 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                             <JsonArea label="Post Preferences (JSON)" value={props.postPreferencesJson} onChange={props.setPostPreferencesJson} rows={4} placeholder={`[]`} help="Available preferences." />
                             <JsonArea label="Service Bond (JSON)" value={props.serviceBondJson} onChange={props.setServiceBondJson} rows={4} placeholder={`{ "amount": 50000, "durationYears": 3 }`} help="Service bond terms." />
                         </div>
-                    </div>
+                    </GovtSubSection>
 
                     {/* Section 4: Eligibility & Qualifications */}
-                    <div className="space-y-5 pt-4 border-t border-border/40">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-signal-aging/10 text-signal-aging text-xs font-bold">4</span>
-                            <h4 className="text-sm font-semibold text-foreground">Eligibility & Qualifications</h4>
-                        </div>
+                    <GovtSubSection number="4" title="Eligibility & Qualifications" defaultOpen={eligibilityOpen}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Field label="Age Min" type="number" value={props.ageMin} onChange={props.setAgeMin} placeholder="18" />
                             <Field label="Age Max" type="number" value={props.ageMax} onChange={props.setAgeMax} placeholder="27" />
@@ -268,14 +199,10 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                                 <JsonArea label="Physical Standards (JSON)" value={props.physicalStandardsJson} onChange={props.setPhysicalStandardsJson} rows={5} placeholder={`{\n  "applicablePosts": ["Sub-Inspector"],\n  "notes": "Physical standards apply"\n}`} help="Height, weight, and vision standards." />
                             </div>
                         </div>
-                    </div>
+                    </GovtSubSection>
 
                     {/* Section 6: Fees */}
-                    <div className="space-y-5 pt-4 border-t border-border/40">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-signal-aging/10 text-destructive text-xs font-bold">6</span>
-                            <h4 className="text-sm font-semibold text-foreground">Application Fees</h4>
-                        </div>
+                    <GovtSubSection number="6" title="Application Fees" defaultOpen={feesOpen}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="md:col-span-2">
                                 <Area label="Application Fee" value={props.applicationFee} onChange={props.setApplicationFee} placeholder="General/OBC: Rs.100, SC/ST/PwBD/Women: Nil" rows={2} />
@@ -283,17 +210,13 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                             <JsonArea label="Application Fee (JSON)" value={props.applicationFeeJson} onChange={props.setApplicationFeeJson} rows={4} placeholder={`{\n  "general": 100,\n  "obc": 100,\n  "sc": 0,\n  "st": 0,\n  "pwd": 0,\n  "female": 0\n}`} help="Machine-readable fee map for filters and future badges." />
                             <JsonArea label="Fee Breakdown (JSON)" value={props.feeBreakdownJson} onChange={props.setFeeBreakdownJson} rows={4} placeholder={`{\n  "General": 100,\n  "OBC": 100,\n  "SC": 0\n}`} help="Detailed fee breakup mapping." />
                         </div>
-                    </div>
+                    </GovtSubSection>
                 </div>
 
                 {/* Column 2: Dates, Exam, Links */}
-                <div className="space-y-8">
+                <div className="space-y-3">
                     {/* Section 3: Key Dates */}
-                    <div className="space-y-5 pt-4 border-t border-border/40 lg:pt-0 lg:border-t-0">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-success/10 text-success text-xs font-bold">3</span>
-                            <h4 className="text-sm font-semibold text-foreground">Key Dates</h4>
-                        </div>
+                    <GovtSubSection number="3" title="Key Dates" defaultOpen={datesOpen}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Field label="Notification Date" value={props.notificationIssuedDate} onChange={props.setNotificationIssuedDate} placeholder="2026-05-21" />
                             <Field label="Application Start" value={props.applicationStartDate} onChange={props.setApplicationStartDate} placeholder="e.g. 27 March 2026" />
@@ -302,14 +225,10 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                             <Field label="Admit Card Date" value={props.admitCardDate} onChange={props.setAdmitCardDate} placeholder="e.g. Before exam" />
                             <Field label="Result Date" value={props.resultDate} onChange={props.setResultDate} placeholder="e.g. Will be notified" />
                         </div>
-                    </div>
+                    </GovtSubSection>
 
                     {/* Section 5: Exam & Selection Process */}
-                    <div className="space-y-5 pt-4 border-t border-border/40">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-brand-discord/10 text-brand-discord text-xs font-bold">5</span>
-                            <h4 className="text-sm font-semibold text-foreground">Exam & Selection Process</h4>
-                        </div>
+                    <GovtSubSection number="5" title="Exam & Selection Process" defaultOpen={examOpen}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Field label="Application Mode" value={props.applicationMode} onChange={props.setApplicationMode} placeholder="e.g. Online" />
                             <Field label="Exam Centers" value={props.examCenters} onChange={props.setExamCenters} placeholder="Agra, Patna, Delhi (comma separated)" />
@@ -322,14 +241,10 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                             <JsonArea label="Cut Off Marks (JSON)" value={props.cutOffMarksJson} onChange={props.setCutOffMarksJson} rows={4} placeholder={`[\n  { "year": "2025", "category": "General", "marks": 130 }\n]`} help="Previous cut-off marks for this exam." />
                             <JsonArea label="Important Dates (JSON)" value={props.importantDatesJson} onChange={props.setImportantDatesJson} rows={4} placeholder={`[\n  { "label": "Apply Online Starts", "date": "2026-05-21" }\n]`} help="Key timeline dates breakdown." />
                         </div>
-                    </div>
+                    </GovtSubSection>
 
                     {/* Section 7: Documents, Links & Extra */}
-                    <div className="space-y-5 pt-4 border-t border-border/40">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="flex items-center justify-center w-5 h-5 rounded-md bg-signal-live/10 text-signal-live text-xs font-bold">7</span>
-                            <h4 className="text-sm font-semibold text-foreground">Links, Documents & Extra</h4>
-                        </div>
+                    <GovtSubSection number="7" title="Links, Documents & Extra" defaultOpen={linksOpen}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Field label="Official Website" type="url" value={props.officialWebsiteUrl} onChange={props.setOfficialWebsiteUrl} placeholder="https://..." />
                             <Field label="Official Notification URL" type="url" value={props.officialNotificationUrl} onChange={props.setOfficialNotificationUrl} placeholder="https://..." />
@@ -348,10 +263,10 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                                 <Area label="SEO / Search Tags" value={props.governmentTags} onChange={props.setGovernmentTags} placeholder="Government Job, SSC Vacancy, Graduate Jobs, Central Government" rows={3} help="Comma-separated tags like Government Job, SSC, Graduate Jobs, Central Government." />
                             </div>
                         </div>
-                    </div>
+                    </GovtSubSection>
                 </div>
             </div>
-        </div>
+        </Card>
     );
 }
 

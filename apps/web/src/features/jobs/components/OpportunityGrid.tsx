@@ -73,11 +73,10 @@ export function OpportunityGrid({
     }
 
     return (
-        <div className="space-y-4 md:space-y-6">
-            <div className={cn(
-                "grid gap-4 md:gap-6",
-                isSplitView ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"
-            )} role="list" aria-label="Job listings">
+        <div className={cn(
+            "grid gap-4 md:gap-6",
+            isSplitView ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"
+        )} role="list" aria-label="Job listings">
                 {opportunities.map((opp, index) => (
                     <div 
                         key={opp.id} 
@@ -101,7 +100,6 @@ export function OpportunityGrid({
                                 variant={isSplitView ? 'compact' : 'wide'}
                                 isSelected={opp.id === selectedOppId || (opp as any).slug === selectedOppId}
                                 searchQuery={searchQuery}
-                                className="bg-card/60 border-border/60 shadow-sm hover:shadow"
                                 onClick={(e) => {
                                     if (onSelectOpportunity) {
                                         e.preventDefault();
@@ -111,7 +109,6 @@ export function OpportunityGrid({
                             />
                     </div>
                 ))}
-            </div>
         </div>
     );
 }

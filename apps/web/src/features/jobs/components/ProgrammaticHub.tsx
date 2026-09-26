@@ -9,6 +9,7 @@ import { PageTagLinks } from '@/features/jobs/components/PageTagLinks';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { EmptyState } from '@/ui/EmptyState';
 import { OpportunityDetailPane } from './OpportunityDetailPane';
+import { OpportunityDetailPaneSkeleton } from './OpportunitySkeletons';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { SkillIcon } from '@/features/jobs/components/SkillPill';
 
@@ -190,11 +191,7 @@ export default function ProgrammaticHub({
                                     />
                                 </div>
                             ) : visibleOpportunities.length > 0 ? (
-                                <div className="flex-1 p-8 animate-pulse flex flex-col gap-4">
-                                    <div className="h-8 bg-muted/50 rounded w-1/2" />
-                                    <div className="h-4 bg-muted/50 rounded w-1/4" />
-                                    <div className="h-40 bg-muted/50 rounded-xl w-full mt-4" />
-                                </div>
+                                <OpportunityDetailPaneSkeleton />
                             ) : (
                                 <div className="flex-1 flex items-center justify-center bg-muted/20">
                                     <EmptyState

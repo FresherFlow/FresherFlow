@@ -11,7 +11,6 @@ export const revalidate = false;
 export const metadata: Metadata = {
     title: 'Internships for Students & Freshers in India',
     description: 'Find verified internships for students and freshers in India, including paid internships, technical internships and career-start opportunities.',
-    keywords: 'internships for students, internships for freshers, paid internships, fresher internships, internship opportunities India, technical internships',
     alternates: {
         canonical: '/jobs/internships',
     },

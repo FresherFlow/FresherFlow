@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import toast from 'react-hot-toast';
 
-import { FormHeader } from './OpportunityForm/components/FormHeader';
 import { DuplicateCheck } from './OpportunityForm/DuplicateCheck';
 import { TypeSelection } from './OpportunityForm/sections/TypeSelection';
 import { JobInfoSection } from './OpportunityForm/sections/JobInfoSection';
@@ -19,12 +18,18 @@ import { WalkInDetailsSection } from './OpportunityForm/sections/WalkInDetailsSe
 import { GovernmentJobSection } from './OpportunityForm/sections/GovernmentJobSection';
 import { ParserSection } from './OpportunityForm/sections/ParserSection';
 import { TimelineSection } from './OpportunityForm/sections/TimelineSection';
-import { PaperAirplaneIcon, BoltIcon } from '@heroicons/react/24/outline';
+import { BoltIcon, ChevronLeftIcon } from '@heroicons/react/24/outline';
+import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
+
+// UI primitives
+import { Button } from '@/ui/Button';
+import { Badge } from '@/ui/Badge';
+import { Progress } from '@/ui/Progress';
+import { Dialog, DialogContent } from '@/ui/Dialog';
 
 // Hooks & Utils
 import { useOpportunityForm } from '../useOpportunityForm';
-import { GOVERNMENT_JOB_TEMPLATE, INTERNSHIP_TEMPLATE, JOB_TEMPLATE, WALKIN_TEMPLATE } from '../jsonTemplates';
 import { useOpportunityFormDerived } from '@/features/admin/opportunities/hooks/useOpportunityFormDerived';
 import { useOpportunityFormHandlers } from '@/features/admin/opportunities/hooks/useOpportunityFormHandlers';
 
@@ -33,6 +38,59 @@ export type OpportunityFormPageProps = {
     opportunityId?: string;
     initialGovernmentMode?: boolean;
 };
+
+const TYPE_LABELS: Record<string, string> = {
+    JOB: 'Job',
+    INTERNSHIP: 'Internship',
+    WALKIN: 'Walk-in',
+    GOVERNMENT: 'Government',
+};
+
+type OpportunityFormState = ReturnType<typeof useOpportunityForm>;
+
+/**
+ * Listing completeness: the checks an admin must satisfy before a listing is
+ * publish-ready. Drives the progress meter in the sticky action bar.
+ */
+function getCompleteness(form: OpportunityFormState): { percent: number; next: string | null } {
+    const checks: { label: string; done: boolean }[] = [
+        { label: 'Add a title', done: form.title.trim().length > 0 },
+        { label: 'Add the company', done: form.company.trim().length > 0 },
+        { label: 'Write the description', done: form.description.trim().length > 0 },
+        { label: 'Add locations', done: form.locations.trim().length > 0 },
+        {
+            label: 'Add a source or apply URL',
+            done: form.sourceLink.trim().length > 0 || form.applyLink.trim().length > 0,
+        },
+    ];
+
+    if (form.type === 'WALKIN') {
+        checks.push(
+            { label: 'Add the venue address', done: form.venueAddress.trim().length > 0 },
+            { label: 'Add the walk-in date', done: form.startDate.trim().length > 0 },
+            { label: 'Add the walk-in time', done: form.startTime.trim().length > 0 },
+        );
+    } else if (form.isGovernmentJob || form.type === 'GOVERNMENT') {
+        checks.push(
+            { label: 'Add the organization', done: form.governmentOrganization.trim().length > 0 },
+            { label: 'Add the department', done: form.governmentDepartment.trim().length > 0 },
+        );
+    } else {
+        checks.push({
+            label: 'Add compensation',
+            done:
+                form.salaryAmount.trim().length > 0 ||
+                form.salaryRange.trim().length > 0 ||
+                form.stipend.trim().length > 0,
+        });
+    }
+
+    const done = checks.filter((check) => check.done).length;
+    return {
+        percent: Math.round((done / checks.length) * 100),
+        next: checks.find((check) => !check.done)?.label ?? null,
+    };
+}
 
 export function OpportunityFormPage({ mode = 'create', opportunityId, initialGovernmentMode = false }: OpportunityFormPageProps) {
     const { isAuthenticated } = useAdmin();
@@ -74,121 +132,72 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
         form.setPassoutYears(years);
     };
 
+    // Shared by the top-bar Auto-fill button: fast path fills from a JSON
+    // clipboard, otherwise opens the parser dialog.
+    const handleAutoFillAction = async () => {
+        if (form.title) {
+            form.setShowParser(true);
+            return;
+        }
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text && text.trim().startsWith('{')) {
+                try {
+                    form.applyJsonData(JSON.parse(text));
+                    toast.success('Form updated from JSON clipboard.');
+                } catch {
+                    toast.error('Clipboard does not contain valid JSON data.');
+                }
+            } else if (text) {
+                toast.error('Clipboard does not contain valid JSON data.');
+            } else {
+                toast.error('Clipboard is empty.');
+            }
+        } catch {
+            toast.error('Could not read clipboard. Opening the auto-fill dialog.');
+            form.setShowParser(true);
+        }
+    };
+
+    const { percent, next } = getCompleteness(form);
+
     return (
-        <div className="flex-1 h-full min-h-0 flex flex-col overflow-hidden max-w-400 mx-auto px-4 md:px-8">
-            <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-md border-b border-border pb-4 pt-2 shrink-0">
-                <FormHeader
-                    isEditMode={isEditMode}
-                    showParser={form.showParser}
-                    setShowParser={form.setShowParser}
-                />
-            </div>
-
-            <div className="flex-1 min-h-0 overflow-y-auto space-y-6 pt-4 pb-24 pr-2">
-
-
-
-            {/* {isEditMode && form.socialPosts?.length > 0 && (
-                <div className="mb-8 animate-in zoom-in-95 duration-200">
-                    <SocialStatusSection
-                        socialPosts={form.socialPosts}
-                        onRefresh={form.fetchOpportunityForEdit}
-                    />
-                </div>
-            )} */}
-
-            {form.showParser && (
-                <div 
-                    onClick={() => form.setShowParser(false)}
-                    className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200"
-                >
-                    <div 
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-full max-w-2xl bg-card border border-border rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 p-1"
+        <div className="flex-1 h-full min-h-0 flex flex-col overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto">
+                <div className="mx-auto max-w-6xl px-4 md:px-8 py-4 md:py-6 pb-24">
+                    <Dialog
+                        open={form.showParser}
+                        onOpenChange={(open) => {
+                            if (!open) form.setShowParser(false);
+                        }}
                     >
-                        <ParserSection
-                            pastedText={form.pastedText}
-                            setPastedText={form.setPastedText}
-                            pastedJson={form.pastedJson}
-                            setPastedJson={form.setPastedJson}
-                            isParsing={form.isParsing}
-                            handleAutoFill={() => void form.handleAutoFill(form.pastedText)}
-                            applyJsonToForm={(overrideJson?: string) => {
-                                try {
-                                    const jsonStr = overrideJson ?? form.pastedJson;
-                                    const parsed = JSON.parse(jsonStr);
-                                    if (overrideJson) form.setPastedJson(overrideJson);
-                                    form.applyJsonData(parsed);
-                                    form.setShowParser(false);
-                                } catch {
-                                    toast.error('Invalid JSON: Please check the pasted JSON structure.');
-                                }
-                            }}
-                            jsonReport={null}
-                            closeParser={() => form.setShowParser(false)}
-                            jobTemplate={JOB_TEMPLATE}
-                            internshipTemplate={INTERNSHIP_TEMPLATE}
-                            walkinTemplate={WALKIN_TEMPLATE}
-                            governmentTemplate={GOVERNMENT_JOB_TEMPLATE}
-                            clearAllFields={form.clearAllFields}
-                        />
-                    </div>
-                </div>
-            )}
+                        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+                            <ParserSection
+                                form={form}
+                                applyJsonToForm={(overrideJson?: string) => {
+                                    try {
+                                        const jsonStr = overrideJson ?? form.pastedJson;
+                                        const parsed = JSON.parse(jsonStr);
+                                        if (overrideJson) form.setPastedJson(overrideJson);
+                                        form.applyJsonData(parsed);
+                                        form.setShowParser(false);
+                                    } catch {
+                                        toast.error('Invalid JSON: Please check the pasted JSON structure.');
+                                    }
+                                }}
+                                jsonReport={null}
+                                closeParser={() => form.setShowParser(false)}
+                            />
+                        </DialogContent>
+                    </Dialog>
 
-            {/* Mobile Floating Action Button (FAB) for Auto-fill */}
-            <button
-                type="button"
-                disabled={form.isParsing}
-                onClick={async () => {
-                    if (!form.title) {
-                        try {
-                            const text = await navigator.clipboard.readText();
-                            if (text && text.trim().startsWith('{')) {
-                                try {
-                                    const parsed = JSON.parse(text);
-                                    form.applyJsonData(parsed);
-                                    toast.success("Form updated from JSON clipboard.");
-                                } catch {
-                                    toast.error("Clipboard does not contain valid JSON data.");
-                                }
-                            } else if (text) {
-                                toast.error("Clipboard does not contain valid JSON data.");
-                            } else {
-                                toast.error("Clipboard is empty.");
-                            }
-                        } catch {
-                            toast.error("Could not read clipboard. Please use the manual parser menu.");
-                        }
-                    } else {
-                        form.setShowParser(true);
-                    }
-                }}
-                className="fixed bottom-20 right-4 z-50 md:hidden flex items-center justify-center w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-colors outline-none disabled:opacity-50"
-                aria-label="Auto-fill helper"
-            >
-                {form.isParsing ? (
-                    <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                ) : (
-                    <BoltIcon className="w-6 h-6 animate-pulse" />
-                )}
-            </button>
+                    <form id="opportunity-form" onSubmit={(e) => void handleSubmit(e)} className="space-y-4">
+                        <TypeSelection form={form} />
 
-            <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4 md:space-y-4">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-                    <div className="lg:col-span-8 space-y-4 md:space-y-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                            <div className="lg:col-span-2 space-y-4">
                         <JobInfoSection
-                            title={form.title} setTitle={form.setTitle}
-                            company={form.company} setCompany={form.setCompany}
-                            companyWebsite={form.companyWebsite} setCompanyWebsite={form.setCompanyWebsite}
-                            companyLogoUrl={form.companyLogoUrl} setCompanyLogoUrl={form.setCompanyLogoUrl}
-                            jobFunction={form.jobFunction} setJobFunction={form.setJobFunction}
-                            employmentType={form.employmentType} setEmploymentType={form.setEmploymentType}
-                            incentives={form.incentives} setIncentives={form.setIncentives}
-                            selectionProcess={form.selectionProcess} setSelectionProcess={form.setSelectionProcess}
-                            notesHighlights={form.notesHighlights} setNotesHighlights={form.setNotesHighlights}
-                            description={form.description} setDescription={form.setDescription}
-                            customSlug={form.customSlug} setCustomSlug={form.setCustomSlug}
+                            form={form}
                             duplicateCheckComponent={
                                 <DuplicateCheck
                                     checking={form.checkingDuplicates}
@@ -198,20 +207,11 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                         />
 
                         <EligibilitySection
-                            allowedDegrees={form.allowedDegrees}
+                            form={form}
                             handleDegreeToggle={(deg) => form.setAllowedDegrees(prev => prev.includes(deg) ? prev.filter(d => d !== deg) : [...prev, deg])}
-                            allowedCourses={form.allowedCourses}
                             handleCourseToggle={(course) => form.setAllowedCourses(prev => prev.includes(course) ? prev.filter(c => c !== course) : [...prev, course])}
-                            allowedSpecializations={form.allowedSpecializations}
                             handleSpecializationToggle={(spec) => form.setAllowedSpecializations(prev => prev.includes(spec) ? prev.filter(s => s !== spec) : [...prev, spec])}
-                            experienceMin={form.experienceMin} setExperienceMin={form.setExperienceMin}
-                            experienceMax={form.experienceMax} setExperienceMax={form.setExperienceMax}
-                            passoutYears={form.passoutYears}
                             handlePassoutYearsChange={handlePassoutYearsChange}
-                            passoutYearMin={form.passoutYearMin} setPassoutYearMin={form.setPassoutYearMin}
-                            passoutYearMax={form.passoutYearMax} setPassoutYearMax={form.setPassoutYearMax}
-                            allowedAvailability={form.allowedAvailability} setAllowedAvailability={form.setAllowedAvailability}
-                            requiredSkills={form.requiredSkills} setRequiredSkills={form.setRequiredSkills}
                             commonDegrees={commonDegrees}
                             visibleCourseOptions={visibleCourseOptions}
                             visibleSpecializationOptions={visibleSpecializationOptions}
@@ -219,284 +219,105 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                         />
 
                         {!form.isGovernmentJob && (
-                            <ApplicationDetailsSection
-                                appMethod={form.appMethod}
-                                setAppMethod={form.setAppMethod}
-                                appPlatform={form.appPlatform}
-                                setAppPlatform={form.setAppPlatform}
-                                appDuration={form.appDuration}
-                                setAppDuration={form.setAppDuration}
-                                appRequiredItems={form.appRequiredItems}
-                                setAppRequiredItems={form.setAppRequiredItems}
-                            />
+                            <ApplicationDetailsSection form={form} />
                         )}
 
-
                         {form.type === 'WALKIN' && (
-                            <WalkInDetailsSection
-                                startDate={form.startDate} setStartDate={form.setStartDate}
-                                endDate={form.endDate} setEndDate={form.setEndDate}
-                                startTime={form.startTime} setStartTime={form.setStartTime}
-                                endTime={form.endTime} setEndTime={form.setEndTime}
-                                venueAddress={form.venueAddress} setVenueAddress={form.setVenueAddress}
-                                venueLink={form.venueLink} setVenueLink={form.setVenueLink}
-                                requiredDocuments={form.requiredDocuments} setRequiredDocuments={form.setRequiredDocuments}
-                                contactPerson={form.contactPerson} setContactPerson={form.setContactPerson}
-                                contactPhone={form.contactPhone} setContactPhone={form.setContactPhone}
-                            />
+                            <WalkInDetailsSection form={form} />
                         )}
 
                         {isEditMode && opportunityId && (
                             <TimelineSection
+                                form={form}
                                 isEditMode={isEditMode}
-                                timelineEvents={form.timelineEvents}
-                                setTimelineEvents={form.setTimelineEvents}
-                                timelineLoading={form.timelineLoading}
-                                timelineBusyId={form.timelineBusyId}
-                                newEventType={form.newEventType}
-                                setNewEventType={form.setNewEventType}
-                                newEventDate={form.newEventDate}
-                                setNewEventDate={form.setNewEventDate}
-                                newEventTitle={form.newEventTitle}
-                                setNewEventTitle={form.setNewEventTitle}
-                                newEventNotes={form.newEventNotes}
-                                setNewEventNotes={form.setNewEventNotes}
-                                newEventSourceLink={form.newEventSourceLink}
-                                setNewEventSourceLink={form.setNewEventSourceLink}
-                                handleCreateTimelineEvent={form.handleCreateTimelineEvent}
-                                handleUpdateTimelineEvent={form.handleUpdateTimelineEvent}
-                                handleDeleteTimelineEvent={form.handleDeleteTimelineEvent}
                             />
                         )}
-                    </div>
+                            </div>
 
-                    <div className="lg:col-span-4 space-y-4 md:space-y-4">
-                        <TypeSelection
-                            type={form.type}
-                            setType={form.setType}
-                        />
+                            {/* Publish rail: the fields that gate publishing stay visible while scrolling */}
+                            <div className="space-y-4 lg:sticky lg:top-4 self-start">
+                                <ApplyLinkSection form={form} />
 
-                        <ApplyLinkSection
-                            sourceLink={form.sourceLink} setSourceLink={form.setSourceLink}
-                            applyLink={form.applyLink} setApplyLink={form.setApplyLink}
-                            showUrlError={form.showUrlError}
-                        />
+                                <LogisticsSection
+                                    form={form}
+                                    handleQuickLocation={handleQuickLocation}
+                                />
 
-                        <LogisticsSection
-                            type={form.type}
-                            locations={form.locations} setLocations={form.setLocations}
-                            handleQuickLocation={handleQuickLocation}
-                            workMode={form.workMode} setWorkMode={form.setWorkMode}
-                        />
+                                <SalarySection form={form} />
 
-                        <SalarySection
-                            salaryRange={form.salaryRange} setSalaryRange={form.setSalaryRange}
-                            salaryAmount={form.salaryAmount} setSalaryAmount={form.setSalaryAmount}
-                            salaryPeriod={form.salaryPeriod}
-                            setSalaryPeriod={form.setSalaryPeriod}
-                            stipend={form.stipend}
-                            setStipend={form.setStipend}
-                        />
+                                <ExpirationSection form={form} />
+                            </div>
+                        </div>
 
-
-                        <ExpirationSection
-                            expiryDate={form.expiryDate} setExpiryDate={form.setExpiryDate}
-                            expiryTime={form.expiryTime} setExpiryTime={form.setExpiryTime}
-                            onToggleAmPm={form.onToggleAmPm}
-                        />
-                    </div>
+                        {form.isGovernmentJob && (
+                            <div className="w-full">
+                                <GovernmentJobSection form={form} />
+                            </div>
+                        )}
+                    </form>
                 </div>
+            </div>
 
-                {form.isGovernmentJob && (
-                    <div className="w-full pt-4">
-                        <GovernmentJobSection
-                            governmentTags={form.governmentTags}
-                            setGovernmentTags={form.setGovernmentTags}
-                            department={form.governmentDepartment}
-                            setDepartment={form.setGovernmentDepartment}
-                            organization={form.governmentOrganization}
-                            setOrganization={form.setGovernmentOrganization}
-                            recruitingBody={form.recruitingBody}
-                            setRecruitingBody={form.setRecruitingBody}
-                            officialWebsiteUrl={form.officialWebsiteUrl}
-                            setOfficialWebsiteUrl={form.setOfficialWebsiteUrl}
-                            officialNotificationUrl={form.officialNotificationUrl}
-                            setOfficialNotificationUrl={form.setOfficialNotificationUrl}
-                            advertisementNumber={form.advertisementNumber}
-                            setAdvertisementNumber={form.setAdvertisementNumber}
-                            postName={form.postName}
-                            setPostName={form.setPostName}
-                            examName={form.examName}
-                            setExamName={form.setExamName}
-                            applicationMode={form.applicationMode}
-                            setApplicationMode={form.setApplicationMode}
-                            notificationIssuedDate={form.notificationIssuedDate}
-                            setNotificationIssuedDate={form.setNotificationIssuedDate}
-                            vacancyCount={form.vacancyCount}
-                            setVacancyCount={form.setVacancyCount}
-                            vacancyBreakdownJson={form.vacancyBreakdownJson}
-                            setVacancyBreakdownJson={form.setVacancyBreakdownJson}
-                            categoryVacanciesJson={form.categoryVacanciesJson}
-                            setCategoryVacanciesJson={form.setCategoryVacanciesJson}
-                            applicationFee={form.applicationFee}
-                            setApplicationFee={form.setApplicationFee}
-                            applicationFeeJson={form.applicationFeeJson}
-                            setApplicationFeeJson={form.setApplicationFeeJson}
-                            ageMin={form.ageMin}
-                            setAgeMin={form.setAgeMin}
-                            ageMax={form.ageMax}
-                            setAgeMax={form.setAgeMax}
-                            ageRelaxation={form.ageRelaxation}
-                            setAgeRelaxation={form.setAgeRelaxation}
-                            eligibilityDetailsJson={form.eligibilityDetailsJson}
-                            setEligibilityDetailsJson={form.setEligibilityDetailsJson}
-                            reservationNotes={form.reservationNotes}
-                            setReservationNotes={form.setReservationNotes}
-                            importantInstructions={form.importantInstructions}
-                            setImportantInstructions={form.setImportantInstructions}
-                            applicationStartDate={form.applicationStartDate}
-                            setApplicationStartDate={form.setApplicationStartDate}
-                            applicationEndDate={form.applicationEndDate}
-                            setApplicationEndDate={form.setApplicationEndDate}
-                            examDate={form.examDate}
-                            setExamDate={form.setExamDate}
-                            examDatesJson={form.examDatesJson}
-                            setExamDatesJson={form.setExamDatesJson}
-                            admitCardDate={form.admitCardDate}
-                            setAdmitCardDate={form.setAdmitCardDate}
-                            resultDate={form.resultDate}
-                            setResultDate={form.setResultDate}
-                            selectionStages={form.selectionStages}
-                            setSelectionStages={form.setSelectionStages}
-                            governmentRequiredDocuments={form.governmentRequiredDocuments}
-                            setGovernmentRequiredDocuments={form.setGovernmentRequiredDocuments}
-                            governmentRequiredDocumentsJson={form.governmentRequiredDocumentsJson}
-                            setGovernmentRequiredDocumentsJson={form.setGovernmentRequiredDocumentsJson}
-                            
-                            // New fields wired to UI
-                            examCenters={form.examCenters}
-                            setExamCenters={form.setExamCenters}
-                            examPatternJson={form.examPatternJson}
-                            setExamPatternJson={form.setExamPatternJson}
-                            skillTestsJson={form.skillTestsJson}
-                            setSkillTestsJson={form.setSkillTestsJson}
-                            examStagesJson={form.examStagesJson}
-                            setExamStagesJson={form.setExamStagesJson}
-                            importantDatesJson={form.importantDatesJson}
-                            setImportantDatesJson={form.setImportantDatesJson}
-                            qualificationDetailsJson={form.qualificationDetailsJson}
-                            setQualificationDetailsJson={form.setQualificationDetailsJson}
-                            physicalStandardsJson={form.physicalStandardsJson}
-                            setPhysicalStandardsJson={form.setPhysicalStandardsJson}
-                            extraMetadataJson={form.extraMetadataJson}
-                            setExtraMetadataJson={form.setExtraMetadataJson}
-                            feeBreakdownJson={form.feeBreakdownJson}
-                            setFeeBreakdownJson={form.setFeeBreakdownJson}
-                            ageRelaxationRulesJson={form.ageRelaxationRulesJson}
-                            setAgeRelaxationRulesJson={form.setAgeRelaxationRulesJson}
-                            officialSourceVerified={form.officialSourceVerified}
-                            setOfficialSourceVerified={form.setOfficialSourceVerified}
-                            notificationPdfUrl={form.notificationPdfUrl}
-                            setNotificationPdfUrl={form.setNotificationPdfUrl}
-                            admitCardUrl={form.admitCardUrl}
-                            setAdmitCardUrl={form.setAdmitCardUrl}
-                            resultUrl={form.resultUrl}
-                            setResultUrl={form.setResultUrl}
-                            answerKeyUrl={form.answerKeyUrl}
-                            setAnswerKeyUrl={form.setAnswerKeyUrl}
-                            syllabusUrl={form.syllabusUrl}
-                            setSyllabusUrl={form.setSyllabusUrl}
-                            previousPapersUrl={form.previousPapersUrl}
-                            setPreviousPapersUrl={form.setPreviousPapersUrl}
-                            cadreDetailsJson={form.cadreDetailsJson}
-                            setCadreDetailsJson={form.setCadreDetailsJson}
-                            postPreferencesJson={form.postPreferencesJson}
-                            setPostPreferencesJson={form.setPostPreferencesJson}
-                            serviceBondJson={form.serviceBondJson}
-                            setServiceBondJson={form.setServiceBondJson}
-                            reservationDetailsJson={form.reservationDetailsJson}
-                            setReservationDetailsJson={form.setReservationDetailsJson}
-                            referenceLinksJson={form.referenceLinksJson}
-                            setReferenceLinksJson={form.setReferenceLinksJson}
-                            cutOffMarksJson={form.cutOffMarksJson}
-                            setCutOffMarksJson={form.setCutOffMarksJson}
-                            applicationStatus={form.applicationStatus}
-                            setApplicationStatus={form.setApplicationStatus}
-                            governmentLevel={form.governmentLevel}
-                            setGovernmentLevel={form.setGovernmentLevel}
-                            vacancyNature={form.vacancyNature}
-                            setVacancyNature={form.setVacancyNature}
-                            jobCategory={form.jobCategory}
-                            setJobCategory={form.setJobCategory}
-                            basicPay={form.basicPay}
-                            setBasicPay={form.setBasicPay}
-                            payLevel={form.payLevel}
-                            setPayLevel={form.setPayLevel}
-                            allowances={form.allowances}
-                            setAllowances={form.setAllowances}
-                        />
-                    </div>
-                )}
-
-                {/* Compact floating action pill */}
-                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-background border border-border rounded-full shadow-lg px-2 py-2">
-                    <Link
-                        href="/admin/opportunities"
-                        className="inline-flex h-9 items-center justify-center rounded-full border border-input bg-background px-5 text-sm font-semibold text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-                    >
-                        Cancel
+            {/* Floating action pill: back, progress and actions hover over the form */}
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full border border-border bg-background/95 py-2 pl-2 pr-2 shadow-lg backdrop-blur-md">
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    asChild
+                    aria-label="Back to listings"
+                    className="h-9 w-9 shrink-0 rounded-full"
+                >
+                    <Link href="/admin/opportunities">
+                        <ChevronLeftIcon className="h-5 w-5" />
                     </Link>
-                    <button
-                        type="submit"
-                        disabled={form.isLoading}
-                        className="inline-flex h-9 items-center justify-center rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground hover:bg-primary/90 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition-colors"
-                    >
-                        {form.isLoading ? (
-                            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                        ) : (
-                            <PaperAirplaneIcon className="w-4 h-4 mr-2" />
-                        )}
-                        {form.isLoading ? (isEditMode ? 'Updating...' : 'Publishing...') : (isEditMode ? 'Update' : 'Publish')}
-                    </button>
-                    <button
-                        type="button"
-                        disabled={form.isParsing}
-                        onClick={async () => {
-                            if (!form.title) {
-                                try {
-                                    const text = await navigator.clipboard.readText();
-                                    if (text && text.trim().startsWith('{')) {
-                                        try {
-                                            const parsed = JSON.parse(text);
-                                            form.applyJsonData(parsed);
-                                            toast.success("Form updated from JSON clipboard.");
-                                        } catch {
-                                            toast.error("Clipboard does not contain valid JSON data.");
-                                        }
-                                    } else if (text) {
-                                        toast.error("Clipboard does not contain valid JSON data.");
-                                    } else {
-                                        toast.error("Clipboard is empty.");
-                                    }
-                                } catch {
-                                    toast.error("Could not read clipboard. Please use the manual parser menu.");
-                                }
-                            } else {
-                                form.setShowParser(true);
-                            }
-                        }}
-                        className="hidden md:inline-flex h-9 items-center justify-center rounded-full border border-input bg-background px-5 text-sm font-semibold text-foreground hover:bg-accent hover:text-accent-foreground transition-colors gap-1.5 disabled:opacity-50"
-                    >
-                        {form.isParsing ? (
-                            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                            <BoltIcon className="w-4 h-4 text-primary" />
-                        )}
-                        {form.isParsing ? 'Processing...' : (!form.title ? 'Paste & Fill' : 'Auto-fill')}
-                    </button>
+                </Button>
+
+                <div className="hidden min-w-0 md:block">
+                    <div className="flex items-center gap-2">
+                        <span className="truncate text-sm font-semibold text-foreground">
+                            {isEditMode ? 'Edit listing' : 'New listing'}
+                        </span>
+                        <Badge variant="outline" className="shrink-0">
+                            {TYPE_LABELS[form.type] ?? form.type}
+                        </Badge>
+                    </div>
+                    <div className="mt-1 flex items-center gap-2">
+                        <Progress value={percent} className="h-1.5 w-28" aria-label={`Listing ${percent}% complete`} />
+                        <span className="truncate text-xs text-muted-foreground">
+                            {percent}%{next ? ` · Next: ${next}` : ' · Ready'}
+                        </span>
+                    </div>
                 </div>
 
-            </form>
+                <div className="h-6 w-px shrink-0 bg-border hidden md:block" />
+
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={form.isParsing}
+                    onClick={() => void handleAutoFillAction()}
+                    className="shrink-0 rounded-full"
+                >
+                    {form.isParsing ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                        <BoltIcon className="w-4 h-4 text-primary" />
+                    )}
+                    <span className="hidden sm:inline">
+                        {form.isParsing ? 'Filling…' : 'Auto-fill'}
+                    </span>
+                </Button>
+                <Button
+                    type="submit"
+                    form="opportunity-form"
+                    size="sm"
+                    disabled={form.isLoading}
+                    className="h-9 shrink-0 rounded-full px-5 font-semibold shadow-sm"
+                >
+                    {form.isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+                    {form.isLoading ? (isEditMode ? 'Updating…' : 'Publishing…') : (isEditMode ? 'Update' : 'Publish')}
+                </Button>
             </div>
         </div>
     );

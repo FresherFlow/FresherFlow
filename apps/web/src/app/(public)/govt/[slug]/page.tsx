@@ -3,7 +3,7 @@ import { permanentRedirect, notFound } from 'next/navigation';
 import { logRouteResult } from '@/lib/observability';
 import { Suspense } from 'react';
 import OpportunityDetailClient from '@/features/jobs/components/detail/OpportunityDetailClient';
-import { OpportunityDetailSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
+import { Skeleton } from '@/ui/Skeleton';
 import { getOpportunityPath } from '@/features/jobs/domain/opportunityPath';
 import { fetchFeedIndex, fetchGovernmentFeed } from '@/lib/api/cdnFeed';
 import { getFeedBadgeLabel, isGovernmentOpportunity } from '@/features/jobs/utils/walkinMapUtils';
@@ -66,6 +66,69 @@ function isNextNavigationError(err: unknown): boolean {
     return digest === 'NEXT_HTTP_ERROR_FALLBACK;404' || digest.startsWith('NEXT_REDIRECT');
 }
 
+function GovernmentDetailSkeleton() {
+    return (
+        <div className="mx-auto max-w-7xl space-y-6 px-4 py-6" aria-hidden="true">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <div className="space-y-4 lg:col-span-2">
+                    <div className="rounded-xl border border-border bg-card p-5 md:p-6">
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1 space-y-3">
+                                <div className="flex items-center gap-2">
+                                    <Skeleton className="h-5 w-20 rounded-full" />
+                                    <Skeleton className="h-5 w-16 rounded-full" />
+                                </div>
+                                <Skeleton className="h-3 w-32" />
+                                <Skeleton className="h-7 w-3/4" />
+                                <Skeleton className="h-4 w-5/6" />
+                            </div>
+                            <Skeleton variant="pill" className="h-16 w-16" />
+                        </div>
+                        <div className="mt-5 grid grid-cols-3 gap-4 border-t border-border pt-4">
+                            {Array.from({ length: 3 }).map((_, index) => (
+                                <div key={index} className="space-y-2">
+                                    <Skeleton className="h-3 w-20" />
+                                    <Skeleton className="h-4 w-16" />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="overflow-hidden rounded-xl border border-border bg-card">
+                        <div className="border-b border-border bg-muted/30 px-5 py-3">
+                            <Skeleton className="h-4 w-32" />
+                        </div>
+                        <div className="space-y-3 p-5">
+                            {Array.from({ length: 5 }).map((_, index) => (
+                                <div key={index} className="flex items-center justify-between gap-4 border-b border-border/40 pb-3 last:border-0 last:pb-0">
+                                    <Skeleton className="h-3 w-28" />
+                                    <Skeleton className="h-3 w-32" />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="rounded-xl border border-border bg-card p-5">
+                        <Skeleton className="h-4 w-40" />
+                        <div className="mt-4 space-y-3">
+                            <Skeleton className="h-3 w-full" />
+                            <Skeleton className="h-3 w-11/12" />
+                            <Skeleton className="h-3 w-4/5" />
+                        </div>
+                    </div>
+                </div>
+                <div className="space-y-4">
+                    {Array.from({ length: 4 }).map((_, index) => (
+                        <div key={index} className="rounded-xl border border-border bg-card p-4">
+                            <Skeleton className="h-4 w-28" />
+                            <Skeleton className="mt-4 h-3 w-3/4" />
+                            <Skeleton className="mt-2 h-3 w-1/2" />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default async function GovernmentJobDetailPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params;
     if (isInvalidSlug(slug)) {
@@ -119,7 +182,7 @@ export default async function GovernmentJobDetailPage({ params }: { params: Prom
                     <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(generateOpportunityBreadcrumbsJsonLd(opp)) }} />
                 </>
             )}
-            <Suspense fallback={<OpportunityDetailSkeleton />}>
+            <Suspense fallback={<GovernmentDetailSkeleton />}>
                 <OpportunityDetailClient id={slug} initialData={opp} initialRelatedData={related} />
             </Suspense>
         </>

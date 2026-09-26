@@ -1,219 +1,100 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Plus, Search, Trash2, X } from 'lucide-react';
+import type { Project } from '@fresherflow/types';
+import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/lib/utils/error';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { profileApi } from '@/lib/api/profile';
-import toast from 'react-hot-toast';
 import { Input } from '@/ui/Input';
+import { Textarea } from '@/ui/Textarea';
 import { Button } from '@/ui/Button';
-import { NativeSelect as Select } from "@/ui/NativeSelect";
-import { PencilSquareIcon, PlusIcon, CheckIcon, LinkIcon, TrashIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/ui/Dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/Select';
+import {
+    buildInitialLinks,
+    buildLinksPayload,
+    getLinkPlaceholder,
+    githubRepoApiUrl,
+    githubUserReposUrl,
+    mapRepoList,
+    isRepoSelected,
+    LINK_TYPES,
+    mapRepo,
+    MAX_LINKS,
+    MAX_PINNED_REPOS,
+    parseGithubRepoInput,
+    toPinnedRepos,
+    toggleRepoSelection,
+    extractGithubUsername,
+    type LinkItem,
+    type LinkType,
+    type PinnedRepoItem,
+} from '@/features/profile/socialLinks';
+import { ProfileSectionCard } from '@/features/profile/components/sections/ProfileSectionCard';
+import { SectionFooter, useSectionSave } from '@/features/profile/components/editor/SectionFooter';
 
-const MAX_LINKS = 5;
-
-export const LINK_TYPES = ['Resume', 'Portfolio', 'GitHub', 'LinkedIn', 'Other'] as const;
-export type LinkType = (typeof LINK_TYPES)[number];
-
-export interface LinkItem {
-    id: string;
-    type: LinkType;
-    url: string;
-}
-
-export interface PinnedRepoItem {
-    id: number | string;
-    name: string;
-    description: string | null;
-    html_url: string;
-    language: string | null;
-    stargazers_count?: number;
-    updated_at?: string | null;
-    homepage?: string | null;
-}
-
-export function formatSocialUrl(type: string, input: string): string {
-    if (!input) return '';
-    const trimmed = input.trim();
-    if (!trimmed) return '';
-
-    if (/^https?:\/\//i.test(trimmed)) {
-        return trimmed;
-    }
-
-    const clean = trimmed.replace(/^@/, '');
-
-    if (type === 'LinkedIn') {
-        if (clean.startsWith('linkedin.com/')) return `https://${clean}`;
-        if (clean.startsWith('www.linkedin.com/')) return `https://${clean}`;
-        if (clean.startsWith('in/')) return `https://linkedin.com/${clean}`;
-        if (clean.includes('.')) return `https://${clean}`;
-        return `https://linkedin.com/in/${clean}`;
-    }
-
-    if (type === 'GitHub') {
-        if (clean.startsWith('github.com/')) return `https://${clean}`;
-        if (clean.startsWith('www.github.com/')) return `https://${clean}`;
-        if (clean.includes('.')) return `https://${clean}`;
-        return `https://github.com/${clean}`;
-    }
-
-    return `https://${clean}`;
-}
-
-function extractGithubUsername(githubUrl: string | null | undefined): string | null {
-    if (!githubUrl) return null;
-    const trimmed = githubUrl.trim();
-    if (!trimmed) return null;
-    const cleanUrl = trimmed.replace(/\/+$/, '');
-    const match = cleanUrl.match(/(?:github\.com\/|^@?)([a-zA-Z0-9-]+)$/i);
-    if (match && match[1]) {
-        const name = match[1];
-        if (name.toLowerCase() !== 'github.com') return name;
-    }
-    const parts = cleanUrl.split('/');
-    const last = parts[parts.length - 1]?.replace(/^@/, '');
-    return last || null;
-}
-
-function getPlaceholder(type: LinkType): string {
-    switch (type) {
-        case 'LinkedIn': return 'https://linkedin.com/in/username';
-        case 'GitHub': return 'github.com/username or @username';
-        case 'Portfolio': return 'https://yourportfolio.com';
-        case 'Resume': return 'https://drive.google.com/... or resume URL';
-        case 'Other': return 'https://example.com';
-        default: return 'https://...';
-    }
-}
-
-function parseGithubRepoInput(input: string): { owner: string; repo: string } | null {
-    if (!input) return null;
-    const trimmed = input.trim().replace(/\/+$/, '');
-    if (!trimmed) return null;
-
-    const urlMatch = trimmed.match(/(?:github\.com\/|^)([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_.-]+)$/i);
-    if (urlMatch && urlMatch[1] && urlMatch[2]) {
-        return { owner: urlMatch[1], repo: urlMatch[2].replace(/\.git$/i, '') };
-    }
-    return null;
-}
-
+/**
+ * Links & Work — one form, one save.
+ *
+ * Links, projects and pinned repositories are the same concern (what a recruiter
+ * clicks), so they are one section with one submit rather than three editors
+ * with three toggles, three Cancel buttons and three separate writes. Nothing
+ * here opens a dialog or hides behind a "Close" button.
+ *
+ * The URL, repo and pin rules live in `features/profile/socialLinks.ts`; this
+ * file renders them and nothing else.
+ */
 export function SocialLinksSection() {
     const { profile, updateProfileState } = useAuth();
-    const [isEditing, setIsEditing] = useState(false);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [linksList, setLinksList] = useState<LinkItem[]>([]);
+    const { saving, save } = useSectionSave();
 
-    // Pinned Repos State
-    const [isPinModalOpen, setIsPinModalOpen] = useState(false);
+    const [linksList, setLinksList] = useState<LinkItem[]>(() => buildInitialLinks(profile ?? null));
+    const [projects, setProjects] = useState<EditableProject[]>(() => toEditableProjects(profile?.projects));
+    const [selectedRepos, setSelectedRepos] = useState<PinnedRepoItem[]>(() => toPinnedRepos(profile?.githubPinnedRepos));
+
+    const [repoSearch, setRepoSearch] = useState('');
     const [fetchedRepos, setFetchedRepos] = useState<PinnedRepoItem[]>([]);
     const [isFetchingRepos, setIsFetchingRepos] = useState(false);
-    const [selectedRepos, setSelectedRepos] = useState<PinnedRepoItem[]>([]);
+    const [reposLoaded, setReposLoaded] = useState(false);
     const [customRepoInput, setCustomRepoInput] = useState('');
     const [isAddingCustomRepo, setIsAddingCustomRepo] = useState(false);
 
     const githubUsername = extractGithubUsername(profile?.githubUrl);
-    const existingPinned: PinnedRepoItem[] = Array.isArray((profile as any)?.githubPinnedRepos)
-        ? (profile as any).githubPinnedRepos
-        : [];
+    const pinnedRepos = useMemo(() => toPinnedRepos(profile?.githubPinnedRepos), [profile]);
+    const savedProjects = useMemo(() => toEditableProjects(profile?.projects), [profile]);
+    const savedLinks = useMemo(() => buildInitialLinks(profile ?? null), [profile]);
 
-    const buildInitialLinks = (): LinkItem[] => {
-        const list: LinkItem[] = [];
-        if (profile?.linkedinUrl) list.push({ id: 'linkedin', type: 'LinkedIn', url: profile.linkedinUrl });
-        if (profile?.githubUrl) list.push({ id: 'github', type: 'GitHub', url: profile.githubUrl });
-        if (profile?.portfolioUrl) list.push({ id: 'portfolio', type: 'Portfolio', url: profile.portfolioUrl });
-        if (list.length === 0) list.push({ id: '1', type: 'LinkedIn', url: '' });
-        return list;
-    };
-
+    // The fields take their values from the profile whenever it changes, which is
+    // after a successful save (every handler hands the saved values back).
     useEffect(() => {
-        setLinksList(buildInitialLinks());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        setLinksList(buildInitialLinks(profile ?? null));
+        setProjects(toEditableProjects(profile?.projects));
+        setSelectedRepos(toPinnedRepos(profile?.githubPinnedRepos));
+        setReposLoaded(false);
     }, [profile]);
-
-    const handleOpenEdit = () => {
-        setLinksList(buildInitialLinks());
-        setIsEditing(true);
-    };
 
     const handleAddLink = () => {
         if (linksList.length >= MAX_LINKS) {
             toast.error(`Maximum ${MAX_LINKS} links allowed.`);
             return;
         }
-        const usedTypes = linksList.map(l => l.type);
-        const nextType = LINK_TYPES.find(t => !usedTypes.includes(t)) || 'Other';
-        setLinksList(prev => [...prev, { id: Date.now().toString(), type: nextType, url: '' }]);
+        const used = linksList.map((link) => link.type);
+        const nextType = LINK_TYPES.find((type) => !used.includes(type)) || 'Other';
+        setLinksList((prev) => [...prev, { id: String(Date.now()), type: nextType, url: '' }]);
     };
 
-    const handleRemoveLink = (index: number) => {
-        setLinksList(prev => prev.filter((_, i) => i !== index));
-    };
-
-    const handleTypeChange = (index: number, newType: LinkType) => {
-        setLinksList(prev => prev.map((item, i) => i === index ? { ...item, type: newType } : item));
-    };
-
-    const handleUrlChange = (index: number, newUrl: string) => {
-        setLinksList(prev => prev.map((item, i) => i === index ? { ...item, url: newUrl } : item));
-    };
-
-    const handleSave = () => {
-        if (linksList.length > MAX_LINKS) {
-            toast.error(`Maximum ${MAX_LINKS} links allowed.`);
-            return;
-        }
-
-        const linkedinLink = linksList.find(l => l.type === 'LinkedIn' && l.url.trim());
-        const githubLink = linksList.find(l => l.type === 'GitHub' && l.url.trim());
-        const portfolioLink = linksList.find(l => (l.type === 'Portfolio' || l.type === 'Resume' || l.type === 'Other') && l.url.trim());
-
-        const formattedLinkedin = linkedinLink ? formatSocialUrl('LinkedIn', linkedinLink.url) : undefined;
-        const formattedGithub = githubLink ? formatSocialUrl('GitHub', githubLink.url) : undefined;
-        const formattedPortfolio = portfolioLink ? formatSocialUrl(portfolioLink.type, portfolioLink.url) : undefined;
-
-        const payload = {
-            linkedinUrl: formattedLinkedin || null,
-            githubUrl: formattedGithub || null,
-            portfolioUrl: formattedPortfolio || null,
-        };
-
-        updateProfileState(payload as any, () => profileApi.updateProfile(payload as any));
-        toast.success('Links updated successfully');
-        setIsEditing(false);
-    };
-
-    // Pinned Repos Handlers
-    const handleOpenPinModal = async () => {
-        setIsPinModalOpen(true);
-        setSelectedRepos(existingPinned);
-        setCustomRepoInput('');
-        if (!githubUsername) {
-            setFetchedRepos([]);
-            return;
-        }
+    /** Fetched on request rather than on mount: one less call per profile visit. */
+    const loadRepositories = async () => {
+        if (!githubUsername) return;
         setIsFetchingRepos(true);
+        setReposLoaded(true);
         try {
-            const res = await fetch(`https://api.github.com/users/${encodeURIComponent(githubUsername)}/repos?per_page=100&sort=updated`);
-            if (!res.ok) throw new Error('Failed to fetch repositories');
-            const data = await res.json();
-            if (Array.isArray(data)) {
-                setFetchedRepos(
-                    data.map((r: any) => ({
-                        id: r.id,
-                        name: r.name,
-                        description: r.description || null,
-                        html_url: r.html_url || `https://github.com/${githubUsername}/${r.name}`,
-                        language: r.language || null,
-                        stargazers_count: r.stargazers_count ?? 0,
-                        updated_at: r.updated_at || r.pushed_at || null,
-                        homepage: r.homepage || null,
-                    }))
-                );
-            }
+            const res = await fetch(githubUserReposUrl(githubUsername));
+            if (!res.ok) throw new Error('Failed to load repositories');
+            setFetchedRepos(mapRepoList(await res.json(), githubUsername));
         } catch {
+            setReposLoaded(false);
             toast.error('Could not load repositories from GitHub');
         } finally {
             setIsFetchingRepos(false);
@@ -223,354 +104,469 @@ export function SocialLinksSection() {
     const handleAddCustomRepo = async () => {
         const parsed = parseGithubRepoInput(customRepoInput);
         if (!parsed) {
-            toast.error('Invalid format. Enter URL or owner/repo (e.g. facebook/react)');
+            toast.error('Enter a repo URL or owner/repo (e.g. facebook/react)');
             return;
         }
-        if (selectedRepos.length >= 3) {
-            toast.error('Maximum 3 repositories can be pinned.');
-            return;
-        }
-        const alreadySelected = selectedRepos.some(
-            (r) => r.name.toLowerCase() === parsed.repo.toLowerCase() || r.html_url.toLowerCase().includes(`${parsed.owner.toLowerCase()}/${parsed.repo.toLowerCase()}`)
-        );
-        if (alreadySelected) {
-            toast.error('This repository is already pinned.');
+        if (selectedRepos.length >= MAX_PINNED_REPOS) {
+            toast.error(`Maximum ${MAX_PINNED_REPOS} repositories can be pinned.`);
             return;
         }
 
         setIsAddingCustomRepo(true);
-        let newRepo: PinnedRepoItem;
+        let repo: PinnedRepoItem;
         try {
-            const res = await fetch(`https://api.github.com/repos/${encodeURIComponent(parsed.owner)}/${encodeURIComponent(parsed.repo)}`);
-            if (res.ok) {
-                const data = await res.json();
-                newRepo = {
-                    id: data.id || `${parsed.owner}/${parsed.repo}`,
-                    name: data.name || parsed.repo,
-                    description: data.description || null,
-                    html_url: data.html_url || `https://github.com/${parsed.owner}/${parsed.repo}`,
-                    language: data.language || null,
-                    stargazers_count: data.stargazers_count ?? 0,
-                    updated_at: data.updated_at || data.pushed_at || null,
-                    homepage: data.homepage || null,
-                };
-            } else {
-                newRepo = {
-                    id: `${parsed.owner}/${parsed.repo}`,
-                    name: parsed.repo,
-                    description: null,
-                    html_url: `https://github.com/${parsed.owner}/${parsed.repo}`,
-                    language: null,
-                    stargazers_count: 0,
-                    updated_at: null,
-                    homepage: null,
-                };
-            }
+            const res = await fetch(githubRepoApiUrl(parsed.owner, parsed.repo));
+            const href = `https://github.com/${parsed.owner}/${parsed.repo}`;
+            repo = res.ok
+                ? mapRepo(await res.json(), href, parsed.repo)
+                : mapRepo({ name: parsed.repo }, href, parsed.repo);
         } catch {
-            newRepo = {
-                id: `${parsed.owner}/${parsed.repo}`,
-                name: parsed.repo,
-                description: null,
-                html_url: `https://github.com/${parsed.owner}/${parsed.repo}`,
-                language: null,
-                stargazers_count: 0,
-                updated_at: null,
-                homepage: null,
-            };
+            repo = mapRepo({ name: parsed.repo }, `https://github.com/${parsed.owner}/${parsed.repo}`, parsed.repo);
         } finally {
             setIsAddingCustomRepo(false);
         }
 
-        setSelectedRepos((prev) => [...prev, newRepo]);
-        setFetchedRepos((prev) => {
-            const exists = prev.some((r) => r.id === newRepo.id || r.name === newRepo.name);
-            return exists ? prev : [newRepo, ...prev];
-        });
+        if (isRepoSelected(selectedRepos, repo)) {
+            toast.error('This repository is already pinned.');
+            return;
+        }
+
+        setSelectedRepos((prev) => [...prev, repo]);
+        setFetchedRepos((prev) => (isRepoSelected(prev, repo) ? prev : [repo, ...prev]));
         setCustomRepoInput('');
-        toast.success(`Pinned ${newRepo.name}!`);
     };
 
     const handleToggleRepo = (repo: PinnedRepoItem) => {
-        const isSelected = selectedRepos.some((r) => r.id === repo.id || r.name === repo.name);
-        if (isSelected) {
-            setSelectedRepos((prev) => prev.filter((r) => r.id !== repo.id && r.name !== repo.name));
-        } else {
-            if (selectedRepos.length >= 3) {
-                toast.error('Maximum 3 repositories can be pinned.');
-                return;
-            }
-            setSelectedRepos((prev) => [...prev, repo]);
+        const { next, error } = toggleRepoSelection(selectedRepos, repo);
+        if (error) {
+            toast.error(getErrorMessage(error));
+            return;
         }
+        setSelectedRepos(next);
     };
 
-    const handleSavePinnedRepos = () => {
-        updateProfileState({ githubPinnedRepos: selectedRepos } as any, () =>
-            profileApi.updateProfile({ githubPinnedRepos: selectedRepos } as any)
+    /** Unpinning is one click — no need to search the list again to undo one. */
+    const handleUnpinRepo = (repo: PinnedRepoItem) => {
+        setSelectedRepos((prev) => prev.filter((item) => item.id !== repo.id && item.name !== repo.name));
+    };
+
+    const visibleRepos = repoSearch.trim()
+        ? fetchedRepos.filter((repo) =>
+              `${repo.name} ${repo.language ?? ''}`.toLowerCase().includes(repoSearch.trim().toLowerCase()),
+          )
+        : fetchedRepos;
+
+    const addProject = () => setProjects((prev) => [...prev, emptyProject()]);
+
+    const isDirty = useMemo(() => {
+        const linkKey = (list: LinkItem[]) =>
+            list
+                .map((link) => `${link.type}\u0000${(link.url || '').trim()}`)
+                .sort()
+                .join('|');
+        const projectKey = (list: EditableProject[]) =>
+            JSON.stringify(
+                list
+                    .filter((project) => project.name.trim())
+                    .map((project) => [
+                        project.name.trim(),
+                        project.description.trim(),
+                        project.githubUrl.trim(),
+                        project.liveUrl.trim(),
+                    ]),
+            );
+        const repoKey = (list: PinnedRepoItem[]) => list.map((repo) => repo.name).sort().join('|');
+
+        return (
+            linkKey(linksList) !== linkKey(savedLinks) ||
+            projectKey(projects) !== projectKey(savedProjects) ||
+            repoKey(selectedRepos) !== repoKey(pinnedRepos)
         );
-        toast.success('Pinned repositories saved!');
-        setIsPinModalOpen(false);
+    }, [linksList, savedLinks, projects, savedProjects, selectedRepos, pinnedRepos]);
+
+    /** One write for the whole section. */
+    const handleSave = async () => {
+        const namedProjects = projects
+            .filter((project) => project.name.trim())
+            .map((project) => ({
+                ...project,
+                name: project.name.trim(),
+                description: project.description.trim() || null,
+                githubUrl: project.githubUrl.trim() || null,
+                liveUrl: project.liveUrl.trim() || null,
+            }));
+
+        const payload = {
+            ...buildLinksPayload(linksList),
+            // The public page reads `title ?? name`, description and the two links.
+            projects: namedProjects as unknown as Project[],
+            githubPinnedRepos: selectedRepos,
+        } as never;
+
+        await profileApi.updateProfile(payload);
+        updateProfileState(payload);
+        return true;
     };
 
-    const displayLinks = buildInitialLinks().filter(l => Boolean(l.url.trim()));
-    const hasLinks = displayLinks.length > 0;
+    const summary = [
+        `${linksList.length}/${MAX_LINKS} links`,
+        namedProjectCount(projects),
+        `${selectedRepos.length}/${MAX_PINNED_REPOS} repos`,
+    ].join(' · ');
 
     return (
-        <div className="w-full bg-card rounded-xl border border-border/60 shadow-sm p-5 h-full flex flex-col justify-between">
-            <div>
-                <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-base font-bold text-foreground">Links</h3>
-                    {!isEditing && (
-                        <Button variant="ghost" size="sm" onClick={handleOpenEdit}>
-                            {hasLinks ? <PencilSquareIcon className="w-4 h-4" /> : <PlusIcon className="w-4 h-4" />}
-                        </Button>
-                    )}
-                </div>
+        <ProfileSectionCard
+            title="Links & Work"
+            description={`Portfolio, GitHub, projects and the repositories worth clicking · ${summary}`}
+        >
+            <form
+                className="space-y-6"
+                onSubmit={(event) => {
+                    event.preventDefault();
+                    void save(handleSave, 'Links & work saved.');
+                }}
+            >
+                <fieldset className="space-y-3">
+                    <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Links
+                    </legend>
 
-                {hasLinks ? (
-                    <div className="flex flex-col gap-2.5">
-                        {displayLinks.map(link => (
-                            <a
-                                key={link.id}
-                                href={formatSocialUrl(link.type, link.url)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center justify-between p-2.5 rounded-xl border border-border/80 bg-muted/40 hover:bg-accent/40 hover:border-primary/40 transition-all text-xs font-semibold text-foreground group"
-                            >
-                                <div className="flex items-center gap-2.5 min-w-0">
-                                    {link.type === 'LinkedIn' ? (
-                                        <svg className="w-4 h-4 shrink-0 fill-current text-signal-heat dark:text-signal-heat" viewBox="0 0 24 24">
-                                            <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z"/>
-                                        </svg>
-                                    ) : link.type === 'GitHub' ? (
-                                        <svg className="w-4 h-4 shrink-0 fill-current text-foreground" viewBox="0 0 24 24">
-                                            <path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.1-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.92 0-1.11.38-2 1.03-2.71-.1-.25-.45-1.29.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.35.2 2.39.1 2.64.65.71 1.03 1.6 1.03 2.71 0 3.82-2.34 4.66-4.57 4.91.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z"/>
-                                        </svg>
-                                    ) : link.type === 'Resume' ? (
-                                        <DocumentTextIcon className="w-4 h-4 shrink-0 text-success dark:text-success" />
-                                    ) : (
-                                        <LinkIcon className="w-4 h-4 shrink-0 text-primary" />
-                                    )}
-                                    <span className="truncate">{link.type}</span>
-                                </div>
-                                <span className="text-muted-foreground group-hover:text-primary transition-colors text-xs shrink-0 font-bold ml-2">↗</span>
-                            </a>
-                        ))}
-                    </div>
-                ) : (
-                    <p className="text-sm text-muted-foreground italic">No links added.</p>
-                )}
-
-                {/* PINNED GITHUB REPOSITORIES UI */}
-                <div className="mt-4 pt-3 border-t border-border/50 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                             Pinned Repositories ({existingPinned.length}/3)
-                        </span>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleOpenPinModal}
-                           
-                        >
-                            Select Repositories to Pin
-                        </Button>
-                    </div>
-
-                    {existingPinned.length > 0 ? (
-                        <div className="space-y-1.5">
-                            {existingPinned.map((repo) => (
-                                <div
-                                    key={repo.id || repo.name}
-                                    className="p-2 rounded-lg bg-muted/30 border border-border/60 flex items-center justify-between text-xs"
+                    <ul className="space-y-3">
+                        {linksList.map((link, index) => (
+                            <li key={link.id || index} className="flex items-center gap-2">
+                                <Select
+                                    value={link.type}
+                                    onValueChange={(type) =>
+                                        setLinksList((prev) =>
+                                            prev.map((item, i) => (i === index ? { ...item, type: type as LinkType } : item)),
+                                        )
+                                    }
+                                    disabled={saving}
                                 >
-                                    <div className="min-w-0 pr-2">
-                                        <p className="font-bold text-foreground truncate">{repo.name}</p>
-                                        {repo.language && (
-                                            <p className="text-xs text-muted-foreground">{repo.language}</p>
-                                        )}
-                                    </div>
-                                    <span className="text-xs font-semibold px-1.5 py-0.5 bg-card rounded border border-border/50 shrink-0 text-muted-foreground">Pinned</span>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="text-xs text-muted-foreground italic">No repositories pinned yet. Click above to select up to 3 repos for your public profile.</p>
-                    )}
-                </div>
-            </div>
-
-            {/* EDIT LINKS MODAL */}
-            <Dialog open={isEditing} onOpenChange={setIsEditing}>
-                <DialogContent className="max-w-2xl max-h-180 overflow-y-auto">
-                    <DialogHeader>
-                        <DialogTitle>Edit Links</DialogTitle>
-                        <p className="text-xs text-muted-foreground">Add up to {MAX_LINKS} external links (Resume, Portfolio, GitHub, LinkedIn, Other)</p>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                            {linksList.map((item, index) => (
-                                <div key={item.id || index} className="flex items-center gap-2">
-                                    <Select
-                                        value={item.type}
-                                        onChange={(e) => handleTypeChange(index, e.target.value as LinkType)}
-                                        disabled={isSubmitting}
-                                        className="shrink-0"
-                                    >
-                                        {LINK_TYPES.map((t) => (
-                                            <option key={t} value={t}>
-                                                {t}
-                                            </option>
+                                    <SelectTrigger className="w-32 shrink-0" aria-label="Link type">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {LINK_TYPES.map((type) => (
+                                            <SelectItem key={type} value={type}>
+                                                {type}
+                                            </SelectItem>
                                         ))}
-                                    </Select>
-                                    <Input
-                                        type="text"
-                                        value={item.url}
-                                        onChange={(e) => handleUrlChange(index, e.target.value)}
-                                        placeholder={getPlaceholder(item.type)}
-                                        disabled={isSubmitting}
-                                        className="h-10 flex-1"
-                                    />
-                                    {linksList.length > 1 && (
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleRemoveLink(index)}
-                                            disabled={isSubmitting}
-                                            title="Remove link"
-                                        >
-                                            <TrashIcon className="w-4 h-4" />
-                                        </Button>
-                                    )}
-                                </div>
-                            ))}
-
-                            {linksList.length < MAX_LINKS && (
+                                    </SelectContent>
+                                </Select>
+                                <Input
+                                    value={link.url}
+                                    onChange={(e) =>
+                                        setLinksList((prev) => prev.map((item, i) => (i === index ? { ...item, url: e.target.value } : item)))
+                                    }
+                                    placeholder={getLinkPlaceholder(link.type)}
+                                    disabled={saving}
+                                    className="flex-1"
+                                />
                                 <Button
                                     type="button"
-                                    variant="outline"
+                                    variant="ghost"
                                     size="sm"
-                                    onClick={handleAddLink}
-                                    disabled={isSubmitting}
-                                   
+                                    onClick={() => setLinksList((prev) => prev.filter((_, i) => i !== index))}
+                                    aria-label={`Remove ${link.type} link`}
                                 >
-                                    <PlusIcon className="w-3.5 h-3.5" /> Add Link ({linksList.length}/{MAX_LINKS})
+                                    <Trash2 className="h-4 w-4" aria-hidden="true" />
                                 </Button>
-                            )}
+                            </li>
+                        ))}
+                    </ul>
 
-                            <div className="flex justify-end gap-4 pt-2 border-t border-border/40">
-                                <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} disabled={isSubmitting}>Cancel</Button>
-                                <Button size="sm" onClick={handleSave} disabled={isSubmitting}><CheckIcon className="w-3.5 h-3.5" /> Save</Button>
+                    {linksList.length < MAX_LINKS && (
+                        <Button type="button" variant="outline" size="sm" onClick={handleAddLink} disabled={saving}>
+                            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                            Add link
+                        </Button>
+                    )}
+                </fieldset>
+
+                <fieldset className="space-y-3 border-t border-border/50 pt-5">
+                    <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Projects
+                    </legend>
+                    <p className="text-xs text-muted-foreground">
+                        A project with a link is worth ten bullet points. The first one shows on your public page.
+                    </p>
+
+                    {projects.map((project, index) => (
+                        <div key={project.id} className="space-y-3 rounded-xl border border-border/70 p-3">
+                            <div className="flex items-center gap-2">
+                                <Input
+                                    value={project.name}
+                                    onChange={(e) =>
+                                        setProjects((prev) =>
+                                            prev.map((item, i) => (i === index ? { ...item, name: e.target.value } : item)),
+                                        )
+                                    }
+                                    placeholder="Project name"
+                                    aria-label="Project name"
+                                    disabled={saving}
+                                    className="flex-1"
+                                />
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setProjects((prev) => prev.filter((_, i) => i !== index))}
+                                    aria-label={`Remove ${project.name || 'project'}`}
+                                >
+                                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                                </Button>
+                            </div>
+                            <Textarea
+                                rows={2}
+                                value={project.description}
+                                onChange={(e) =>
+                                    setProjects((prev) =>
+                                        prev.map((item, i) => (i === index ? { ...item, description: e.target.value } : item)),
+                                    )
+                                }
+                                placeholder="What it does, and what you built"
+                                aria-label="Project description"
+                                disabled={saving}
+                            />
+                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                <Input
+                                    type="url"
+                                    value={project.githubUrl}
+                                    onChange={(e) =>
+                                        setProjects((prev) =>
+                                            prev.map((item, i) => (i === index ? { ...item, githubUrl: e.target.value } : item)),
+                                        )
+                                    }
+                                    placeholder="GitHub URL"
+                                    aria-label="Project GitHub URL"
+                                    disabled={saving}
+                                />
+                                <Input
+                                    type="url"
+                                    value={project.liveUrl}
+                                    onChange={(e) =>
+                                        setProjects((prev) =>
+                                            prev.map((item, i) => (i === index ? { ...item, liveUrl: e.target.value } : item)),
+                                        )
+                                    }
+                                    placeholder="Live URL"
+                                    aria-label="Project live URL"
+                                    disabled={saving}
+                                />
                             </div>
                         </div>
-                </DialogContent>
-            </Dialog>
+                    ))}
 
-            {/* PINNED REPOSITORIES SELECTION MODAL */}
-            <Dialog open={isPinModalOpen} onOpenChange={setIsPinModalOpen}>
-                <DialogContent className="max-w-lg max-h-180 flex flex-col">
-                    <DialogHeader>
-                        <DialogTitle>Select Repositories to Pin</DialogTitle>
-                        <p className="text-xs text-muted-foreground">Select up to 3 repositories to feature on your public profile</p>
-                    </DialogHeader>
+                    {/* Only offered once the last row is actually named — the old
+                        button stacked blank project forms on every click. */}
+                    {projects.length < MAX_PROJECTS && (projects.length === 0 || projects[projects.length - 1]?.name.trim()) && (
+                        <Button type="button" variant="outline" size="sm" onClick={addProject} disabled={saving}>
+                            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+                            Add project
+                        </Button>
+                    )}
+                </fieldset>
 
-                        {/* Custom / Org Repository Input */}
-                        <div className="space-y-1.5 bg-muted/30 p-3 rounded-xl border border-border/60">
-                            <label className="text-xs font-semibold text-foreground">
-                                Add custom/org repository URL or name
-                            </label>
-                            <div className="flex gap-2">
+                <fieldset className="space-y-3 border-t border-border/50 pt-5">
+                    <legend className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Pinned repositories
+                    </legend>
+                    <p className="text-xs text-muted-foreground">
+                        Optional — up to {MAX_PINNED_REPOS}, shown with language and stars.
+                    </p>
+
+                    {selectedRepos.length > 0 && (
+                        <ul className="grid gap-2 sm:grid-cols-3">
+                            {selectedRepos.map((repo) => (
+                                <li key={repo.id || repo.name} className="group relative rounded-xl border border-border/70 p-3">
+                                    <a
+                                        href={repo.html_url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block text-sm font-medium text-foreground hover:text-primary"
+                                    >
+                                        {repo.name}
+                                    </a>
+                                    <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                                        {repo.language && <span>{repo.language}</span>}
+                                        {Boolean(repo.stargazers_count) && (
+                                            <span className="tabular-nums">★ {repo.stargazers_count}</span>
+                                        )}
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleUnpinRepo(repo)}
+                                        disabled={saving}
+                                        aria-label={`Unpin ${repo.name}`}
+                                        className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100 focus:opacity-100"
+                                    >
+                                        <X className="h-3.5 w-3.5" aria-hidden="true" />
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+
+                    {githubUsername ? (
+                        <div className="overflow-hidden rounded-xl border border-border/70">
+                            <div className="flex items-center gap-2 border-b border-border/60 px-3 py-2">
+                                <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                                <input
+                                    value={repoSearch}
+                                    onChange={(e) => setRepoSearch(e.target.value)}
+                                    onFocus={() => {
+                                        if (!reposLoaded && !isFetchingRepos) void loadRepositories();
+                                    }}
+                                    placeholder="Filter your repositories"
+                                    aria-label="Filter repositories"
+                                    className="h-7 w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+                                />
+                                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                                    {selectedRepos.length}/{MAX_PINNED_REPOS}
+                                </span>
+                            </div>
+
+                            {isFetchingRepos ? (
+                                <div className="space-y-2 p-3">
+                                    {[1, 2, 3].map((i) => (
+                                        <div key={i} className="h-10 animate-pulse rounded-lg bg-muted/50" />
+                                    ))}
+                                </div>
+                            ) : reposLoaded && visibleRepos.length > 0 ? (
+                                <ul className="max-h-64 divide-y divide-border/50 overflow-y-auto">
+                                    {visibleRepos.map((repo) => {
+                                        const checked = isRepoSelected(selectedRepos, repo);
+                                        return (
+                                            <li key={repo.id}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleToggleRepo(repo)}
+                                                    aria-pressed={checked}
+                                                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-muted/60"
+                                                >
+                                                    <span
+                                                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                                                            checked ? 'border-primary bg-primary text-primary-foreground' : 'border-border'
+                                                        }`}
+                                                        aria-hidden="true"
+                                                    >
+                                                        {checked && (
+                                                            <svg viewBox="0 0 20 20" fill="currentColor" className="h-3 w-3">
+                                                                <path
+                                                                    fillRule="evenodd"
+                                                                    d="M16.7 5.3a1 1 0 0 1 0 1.4l-7.5 7.5a1 1 0 0 1-1.4 0L3.3 9.7a1 1 0 1 1 1.4-1.4l3.8 3.8 6.8-6.8a1 1 0 0 1 1.4 0Z"
+                                                                    clipRule="evenodd"
+                                                                />
+                                                            </svg>
+                                                        )}
+                                                    </span>
+                                                    <span className="min-w-0 flex-1 truncate text-sm text-foreground">{repo.name}</span>
+                                                    {repo.language && (
+                                                        <span className="shrink-0 text-xs text-muted-foreground">{repo.language}</span>
+                                                    )}
+                                                    {Boolean(repo.stargazers_count) && (
+                                                        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                                                            ★ {repo.stargazers_count}
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            ) : reposLoaded ? (
+                                <p className="px-3 py-6 text-center text-xs text-muted-foreground">
+                                    {repoSearch.trim()
+                                        ? `No repository matches “${repoSearch}”.`
+                                        : `No public repositories found for @${githubUsername}.`}
+                                </p>
+                            ) : (
+                                <div className="flex items-center justify-between gap-3 px-3 py-3">
+                                    <p className="text-xs text-muted-foreground">
+                                        Load your public repositories to pick from them.
+                                    </p>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => void loadRepositories()}>
+                                        Load repos
+                                    </Button>
+                                </div>
+                            )}
+
+                            <div className="flex items-center gap-2 border-t border-border/60 bg-muted/30 px-3 py-2">
                                 <Input
-                                    type="text"
                                     value={customRepoInput}
                                     onChange={(e) => setCustomRepoInput(e.target.value)}
-                                    placeholder="https://github.com/org/repo or org/repo"
-                                    disabled={isAddingCustomRepo}
-                                    className="h-9 flex-1"
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
                                             e.preventDefault();
-                                            handleAddCustomRepo();
+                                            void handleAddCustomRepo();
                                         }
                                     }}
+                                    placeholder="Or paste owner/repo"
+                                    aria-label="Add a repository by name"
+                                    disabled={isAddingCustomRepo}
+                                    className="h-8 flex-1"
                                 />
                                 <Button
                                     type="button"
                                     size="sm"
-                                    onClick={handleAddCustomRepo}
+                                    variant="outline"
+                                    onClick={() => void handleAddCustomRepo()}
                                     disabled={isAddingCustomRepo || !customRepoInput.trim()}
-                                   
                                 >
-                                    {isAddingCustomRepo ? 'Adding...' : 'Add Repo'}
+                                    {isAddingCustomRepo ? 'Adding…' : 'Add'}
                                 </Button>
                             </div>
                         </div>
+                    ) : (
+                        <p className="rounded-xl border border-dashed border-border/70 px-3 py-4 text-center text-xs text-muted-foreground">
+                            Add a GitHub link above and your repositories can be pinned here.
+                        </p>
+                    )}
+                </fieldset>
 
-                        <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                            {isFetchingRepos ? (
-                                <div className="space-y-2 py-4">
-                                    {[1, 2, 3].map((i) => (
-                                        <div key={i} className="h-14 bg-muted/40 animate-pulse rounded-xl" />
-                                    ))}
-                                </div>
-                            ) : fetchedRepos.length > 0 ? (
-                                fetchedRepos.map((repo) => {
-                                    const isChecked = selectedRepos.some((r) => r.id === repo.id || r.name === repo.name);
-                                    return (
-                                        <div
-                                            key={repo.id}
-                                            onClick={() => handleToggleRepo(repo)}
-                                            className={`p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-3 ${
-                                                isChecked
-                                                    ? 'bg-primary/5 border-primary/50 text-foreground'
-                                                    : 'bg-muted/30 border-border/60 hover:bg-muted/60 text-muted-foreground'
-                                            }`}
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={isChecked}
-                                                onChange={() => {}}
-                                                className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer"
-                                            />
-                                            <div className="min-w-0 flex-1">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <p className="font-bold text-sm text-foreground truncate">{repo.name}</p>
-                                                    {repo.language && (
-                                                        <span className="px-2 py-0.5 text-xs font-semibold bg-card rounded border border-border/50 shrink-0">
-                                                            {repo.language}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                {repo.description && (
-                                                    <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
-                                                        {repo.description}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    );
-                                })
-                            ) : (
-                                <p className="text-sm text-muted-foreground text-center py-6">
-                                    {githubUsername ? `No public repositories found for @${githubUsername}.` : 'Enter a repository URL or name above to pin.'}
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="flex items-center justify-between pt-3 border-t border-border/40">
-                            <span className="text-xs font-semibold text-muted-foreground">
-                                Selected {selectedRepos.length} / 3
-                            </span>
-                            <div className="flex gap-2">
-                                <Button variant="outline" size="sm" onClick={() => setIsPinModalOpen(false)}>
-                                    Cancel
-                                </Button>
-                                <Button size="sm" onClick={handleSavePinnedRepos}>
-                                    Save Pinned Repos
-                                </Button>
-                            </div>
-                        </div>
-                </DialogContent>
-            </Dialog>
-        </div>
+                <SectionFooter isDirty={isDirty} saving={saving} saveLabel="Save links & work" />
+            </form>
+        </ProfileSectionCard>
     );
 }
+
+/** A project row as this editor edits it. Links are what recruiters click. */
+type EditableProject = {
+    id: string;
+    name: string;
+    description: string;
+    githubUrl: string;
+    liveUrl: string;
+};
+
+const MAX_PROJECTS = 5;
+
+function emptyProject(): EditableProject {
+    return { id: String(Date.now() + Math.random()), name: '', description: '', githubUrl: '', liveUrl: '' };
+}
+
+/** "2 projects" / "No projects" — the count, not the padding. */
+function namedProjectCount(projects: EditableProject[]) {
+    const count = projects.filter((project) => project.name.trim()).length;
+    return count === 1 ? '1 project' : `${count} projects`;
+}
+
+/** Reads both the stored shape (`name`) and the public API shape (`title`). */
+function toEditableProjects(value: unknown): EditableProject[] {
+    if (!Array.isArray(value)) return [];
+    return (value as Array<Record<string, unknown>>)
+        .map((project, index) => {
+            const name = (project?.name as string) || (project?.title as string) || '';
+            if (!name) return null;
+            return {
+                id: String(project?.id ?? `${name}-${index}`),
+                name,
+                description: (project?.description as string) || '',
+                githubUrl: (project?.githubUrl as string) || '',
+                liveUrl: (project?.liveUrl as string) || '',
+            };
+        })
+        .filter((project): project is EditableProject => project !== null);
+}
+

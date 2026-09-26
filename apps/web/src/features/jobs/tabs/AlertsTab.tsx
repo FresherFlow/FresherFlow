@@ -9,6 +9,7 @@ import { ArrowLeftIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { database } from '@/lib/api/firebase';
 import { ref, get, update as updateRtdb } from 'firebase/database';
+import { SkeletonSettingsPanel } from '@/features/jobs/components/OpportunitySkeletons';
 
 type AlertPreference = {
     privateJobsEnabled: boolean;
@@ -229,13 +230,7 @@ function AlertSettingsContent() {
     };
 
     if (isLoading || loadingPrefs) {
-        return (
-            <div className="w-full max-w-2xl mx-auto px-4 py-8 space-y-4">
-                {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="h-14 bg-muted/40 rounded-xl animate-pulse" />
-                ))}
-            </div>
-        );
+        return <SkeletonSettingsPanel />;
     }
 
     const anyChannelEnabled = prefs.privateJobsEnabled || prefs.govtJobsEnabled;

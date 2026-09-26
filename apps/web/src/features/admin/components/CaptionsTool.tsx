@@ -39,6 +39,7 @@ function XBrandIcon({ className }: { className?: string }) {
 }
 import { Opportunity } from '@fresherflow/types';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/lib/utils/error';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { useTheme } from '@/lib/providers/ThemeContext';
 import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
@@ -449,7 +450,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
             toast.success(`Sent to ${PLATFORM_LABEL[platform]}!`);
             setTimeout(() => setSendStatuses(prev => ({ ...prev, [key]: 'idle' })), 4000);
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Unknown error';
+            const msg = getErrorMessage(err);
             setSendStatuses(prev => ({ ...prev, [key]: 'error' }));
             toast.error(`${PLATFORM_LABEL[platform]} failed: ${msg}`);
             setTimeout(() => setSendStatuses(prev => ({ ...prev, [key]: 'idle' })), 5000);
@@ -655,7 +656,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
             toast.success(`Scheduled to ${PLATFORM_LABEL[platform]}!`);
             setTimeout(() => setScheduleStatuses(prev => ({ ...prev, [key]: 'idle' })), 4000);
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Unknown error';
+            const msg = getErrorMessage(err);
             setScheduleStatuses(prev => ({ ...prev, [key]: 'error' }));
             toast.error(`Schedule failed: ${msg}`);
             setTimeout(() => setScheduleStatuses(prev => ({ ...prev, [key]: 'idle' })), 5000);
@@ -692,7 +693,7 @@ More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
             });
             toast.success(`Cancelled schedule for ${PLATFORM_LABEL[platform as SendPlatform] || platform}`);
         } catch (err: unknown) {
-            const msg = err instanceof Error ? err.message : 'Unknown error';
+            const msg = getErrorMessage(err);
             toast.error(`Could not cancel: ${msg}`);
         }
     };

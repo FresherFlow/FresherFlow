@@ -1,9 +1,9 @@
 import { Metadata } from 'next';
 import { Suspense } from 'react';
 import JobsPageClient from '@/features/jobs/components/JobsPageClient';
-import { FeedPageSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
-import { fetchFeedIndex } from '@/lib/api/cdnFeed';
+import { fetchCompaniesMetadata, fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
+import { buildCompanyFollowMap } from '@/features/companies/utils/companyDirectory';
 
 // On-demand revalidation via /api/revalidate — called when jobs are published/expired.
 export const revalidate = false;
@@ -11,7 +11,6 @@ export const revalidate = false;
 export const metadata: Metadata = {
     title: 'Fresher Jobs in India | Off-Campus Jobs & Walk-ins',
     description: 'Browse verified jobs for freshers across India, including full-time roles, off-campus drives, internships and walk-in interviews.',
-    keywords: 'fresher jobs, jobs for freshers, fresher jobs India, off campus jobs, entry level jobs, graduate jobs, walk in jobs',
     alternates: {
         canonical: '/jobs',
     },
@@ -50,8 +49,17 @@ export default async function JobsPage() {
     // Lightweight feed-index (~565KB raw / ~100KB gzip vs ~2MB bootstrap):
     // card-rendering fields only. Detail pane upgrades descriptions on demand
     // via jobs/{id}.json shards through useOpportunityDetail.
-    const feedIndexData = await fetchFeedIndex(false, undefined, true);
+    // Companies metadata is fetched alongside the index so the Following tab can
+    // show a followed company's real name, logo and live role count — the same
+    // values /companies renders (buildCompanyDirectory). Both fetches are
+    // CDN-cached and shared with the companies route, so this is a cache hit in
+    // production.
+    const [feedIndexData, companiesMetadata] = await Promise.all([
+        fetchFeedIndex(false, undefined, true),
+        fetchCompaniesMetadata(),
+    ]);
     const opportunities = feedIndexData?.opportunities || [];
+    const companyDirectory = buildCompanyFollowMap(opportunities, companiesMetadata || []);
     const initialData = opportunities.length ? {
         opportunities: opportunities.slice(0, FEED_PAGE_SIZE),
         total: feedIndexData?.count ?? opportunities.length,
@@ -60,8 +68,8 @@ export default async function JobsPage() {
     } : null;
 
     return (
-        <Suspense fallback={<FeedPageSkeleton />}>
-            <JobsPageClient initialData={initialData} />
+        <Suspense fallback={null}>
+            <JobsPageClient initialData={initialData} companyDirectory={companyDirectory} />
         </Suspense>
     );
 }

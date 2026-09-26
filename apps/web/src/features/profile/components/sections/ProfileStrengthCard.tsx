@@ -1,98 +1,167 @@
 'use client';
 
-import { CheckCircleIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import { useState } from 'react';
+import { ChevronDown, CircleCheck } from 'lucide-react';
+import { Button } from '@/ui/Button';
+import { cn } from '@/ui/cn';
+import { countChecklist, type ProfileChecklistItem } from '@/features/profile/profileChecklist';
+import type { ProfileSectionId } from '@/features/profile/profileSections';
 
-type ProfileLike = {
-    avatarUrl?: string | null;
-    headline?: string | null;
-    about?: string | null;
-    skills?: string[] | null;
-    gradYear?: number | null;
-    pgYear?: number | null;
-    gradCourse?: string | null;
-    pgCourse?: string | null;
-    gradSpecialization?: string | null;
-    pgSpecialization?: string | null;
-    educationLevel?: string | null;
-    projects?: unknown[] | null;
-    githubPinnedRepos?: unknown[] | null;
-    linkedinUrl?: string | null;
-    resumeUrl?: string | null;
-    resumeKey?: string | null;
-    preferredCities?: string[] | null;
-    location?: string | null;
-};
-
+/**
+ * Completion, read from the one checklist in profileChecklist.ts.
+ *
+ * This card used to be two things at once: a score, and a nine-row list of
+ * everything you had not done yet — the loudest element on the page, and the
+ * least useful, because a badge-new profile saw nine identical instructions.
+ * Now it leads with the score and the single next thing worth doing; the rest
+ * is one click away.
+ *
+ * SINGLE-COMPLETION-STORY NOTE: this card is deliberately a *checklist count*
+ * (done/total from profileChecklist.ts), never a %. The % bars — onboarding
+ * (app/(auth)/onboarding/page.tsx reads profile.completionPercentage) and the
+ * dashboard header — both show the weighted completionPercentage, i.e.
+ * calculateProfileCompletion (packages/utils/src/profile/completion.ts).
+ * Keeping this card in x/y form is what ends the two-% confusion; do not
+ * reintroduce a % here and do not redesign the scoring.
+ */
 export function ProfileStrengthCard({
-    profile,
+    checklist,
     onNavigateSection,
+    compact = false,
+    className,
 }: {
-    profile?: ProfileLike | null;
-    onNavigateSection?: (sectionId: 'headline' | 'education' | 'skills' | 'preferences' | 'social') => void;
+    checklist: ProfileChecklistItem[];
+    onNavigateSection?: (sectionId: ProfileSectionId) => void;
+    /** One row: score, bar, and the next step. Used under the content on phones. */
+    compact?: boolean;
+    className?: string;
 }) {
-    const photoDone = Boolean(profile?.avatarUrl);
-    const headlineDone = Boolean(profile?.headline || profile?.about);
-    const skillsDone = Boolean(profile?.skills && profile.skills.length > 0);
-    const gradYearDone = Boolean(profile?.gradYear || profile?.pgYear);
-    const degreeDone = Boolean((profile?.gradCourse || profile?.pgCourse) && (profile?.gradSpecialization || profile?.pgSpecialization || profile?.educationLevel));
-    const projectsDone = Boolean(
-        (profile?.projects && profile.projects.length > 0) ||
-        (profile?.githubPinnedRepos && Array.isArray(profile.githubPinnedRepos) && profile.githubPinnedRepos.length > 0)
-    );
-    const linkedinDone = Boolean(profile?.linkedinUrl);
-    const resumeDone = Boolean(profile?.resumeUrl || profile?.resumeKey);
-    const locationDone = Boolean((profile?.preferredCities && profile.preferredCities.length > 0) || profile?.location);
+    const [showAll, setShowAll] = useState(false);
 
-    const checklist = [
-        { label: 'Profile photo uploaded', done: photoDone, section: 'headline' as const },
-        { label: 'Headline / bio filled', done: headlineDone, section: 'headline' as const },
-        { label: 'At least 1 skill added', done: skillsDone, section: 'skills' as const },
-        { label: 'Graduation year set (batch year)', done: gradYearDone, section: 'education' as const },
-        { label: 'Degree & branch filled', done: degreeDone, section: 'education' as const },
-        { label: 'At least 1 project added', done: projectsDone, section: 'social' as const },
-        { label: 'LinkedIn URL added', done: linkedinDone, section: 'social' as const },
-        { label: 'Resume uploaded', done: resumeDone, section: 'preferences' as const },
-        { label: 'Location set', done: locationDone, section: 'preferences' as const },
-    ];
+    const { done, total } = countChecklist(checklist);
+    const score = total > 0 ? Math.round((done / total) * 100) : 0;
+    const open = checklist.filter((item) => !item.done);
+    const [next, ...rest] = open;
 
-    const completedCount = checklist.filter((item) => item.done).length;
-    const score = Math.round((completedCount / checklist.length) * 100);
+    if (compact) {
+        return (
+            <section className={cn('rounded-2xl border border-border/70 bg-card p-3.5 shadow-sm', className)}>
+                <div className="flex items-center gap-3">
+                    <span className="shrink-0 text-xs font-medium text-foreground">Profile checklist</span>
+                    <div
+                        className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-muted"
+                        role="progressbar"
+                        aria-valuenow={score}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label="Profile checklist progress"
+                    >
+                        <div
+                            className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
+                            style={{ width: `${score}%` }}
+                        />
+                    </div>
+                    <span className="shrink-0 text-xs font-semibold tabular-nums text-primary">
+                        {done}/{total}
+                    </span>
+                </div>
+
+                {next ? (
+                    <div className="mt-3 flex items-center justify-between gap-3">
+                        <p className="min-w-0 truncate text-xs text-muted-foreground">
+                            {done} of {total} done
+                        </p>
+                        <Button variant="outline" size="sm" onClick={() => onNavigateSection?.(next.section)}>
+                            {next.shortLabel ?? next.label}
+                        </Button>
+                    </div>
+                ) : (
+                    <p className="mt-3 flex items-center gap-1.5 text-xs text-success">
+                        <CircleCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                        Everything is filled in
+                    </p>
+                )}
+            </section>
+        );
+    }
 
     return (
-        <div className="bg-card border border-border/60 rounded-xl p-4 space-y-3 shadow-sm">
-            <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-foreground text-sm">Profile Strength</h3>
-                <span className="text-2xl font-bold text-primary tabular-nums">{score}%</span>
+        <section className={cn('rounded-2xl border border-border/70 bg-card p-4 shadow-sm', className)}>
+            <div className="flex items-baseline justify-between gap-2">
+                <h2 className="text-sm font-medium text-foreground">Profile checklist</h2>
+                <span className="text-sm font-semibold tabular-nums text-primary">
+                    {done}/{total}
+                </span>
             </div>
-            <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+
+            <div
+                className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted"
+                role="progressbar"
+                aria-valuenow={score}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Profile checklist progress"
+            >
                 <div
-                    className="bg-primary h-2 rounded-full transition-all duration-300"
+                    className="h-full rounded-full bg-primary transition-all duration-300 ease-out"
                     style={{ width: `${score}%` }}
                 />
             </div>
-            <ul className="space-y-2 pt-1">
-                {checklist.map((item) => (
-                    <li key={item.label} className="flex items-center gap-2 text-xs">
-                        {item.done ? (
-                            <CheckCircleIcon className="w-4 h-4 text-success shrink-0" />
-                        ) : (
-                            <ExclamationCircleIcon className="w-4 h-4 text-warning shrink-0" />
-                        )}
-                        <span className={item.done ? 'text-muted-foreground line-through' : 'text-foreground font-medium'}>
-                            {item.label}
-                        </span>
-                        {!item.done && (
+
+            {open.length === 0 ? (
+                <p className="mt-3 flex items-center gap-1.5 text-xs text-success">
+                    <CircleCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                    Everything is filled in
+                </p>
+            ) : (
+                <>
+                    {next && (
+                        <div className="mt-3 space-y-2 border-t border-border/60 pt-3">
+                            <p className="text-xs text-muted-foreground">{done} of {total} done · next up</p>
                             <button
                                 type="button"
-                                onClick={() => onNavigateSection?.(item.section)}
-                                className="text-xs text-primary hover:underline font-semibold ml-auto shrink-0"
+                                onClick={() => onNavigateSection?.(next.section)}
+                                className="w-full rounded-lg bg-primary px-3 py-2 text-left text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
                             >
-                                Fix ·
+                                {next.shortLabel ?? next.label}
                             </button>
-                        )}
-                    </li>
-                ))}
-            </ul>
-        </div>
+                        </div>
+                    )}
+
+                    {rest.length > 0 && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={() => setShowAll((value) => !value)}
+                                aria-expanded={showAll}
+                                className="mt-2 flex w-full items-center gap-1 rounded-lg px-1 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                            >
+                                <ChevronDown
+                                    className={cn('h-3.5 w-3.5 transition-transform', showAll && 'rotate-180')}
+                                    aria-hidden="true"
+                                />
+                                {showAll ? 'Hide' : `${rest.length} more`}
+                            </button>
+
+                            {showAll && (
+                                <ul className="mt-1 space-y-0.5">
+                                    {rest.map((item) => (
+                                        <li key={item.id}>
+                                            <button
+                                                type="button"
+                                                onClick={() => onNavigateSection?.(item.section)}
+                                                className="w-full truncate rounded-lg px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                            >
+                                                {item.shortLabel ?? item.label}
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                        </>
+                    )}
+                </>
+            )}
+        </section>
     );
 }

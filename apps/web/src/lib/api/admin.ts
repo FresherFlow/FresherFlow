@@ -6,6 +6,115 @@ export const adminApi = {
     getUsers: () =>
         apiClient('/api/admin/users'),
 
+    setUserStatus: (userId: string, status: 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED', reason?: string) =>
+        apiClient(`/api/admin/users/${userId}/status`, {
+            method: 'POST',
+            body: JSON.stringify({ status, reason })
+        }),
+
+    // Moderator role management (admin-only: moderator.manage)
+    getModerators: () =>
+        apiClient<{ moderators: Array<{ id: string; fullName: string | null; username: string | null; email: string | null; role: string; status: 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED'; trustLevel: string; assignedAt: string; assignedBy: string | null }> }>('/api/admin/moderators'),
+
+    grantModerator: (userId: string, reason?: string) =>
+        apiClient(`/api/admin/moderators/${encodeURIComponent(userId)}`, {
+            method: 'POST',
+            body: JSON.stringify({ reason })
+        }),
+
+    revokeModerator: (userId: string) =>
+        apiClient(`/api/admin/moderators/${encodeURIComponent(userId)}`, {
+            method: 'DELETE'
+        }),
+
+    // Audit trail (admin-only: audit.view)
+    getAuditLog: (params?: { actorId?: string; action?: string; targetId?: string; page?: number; limit?: number }) => {
+        const query = new URLSearchParams();
+        if (params?.actorId) query.append('actorId', params.actorId);
+        if (params?.action) query.append('action', params.action);
+        if (params?.targetId) query.append('targetId', params.targetId);
+        if (params?.page !== undefined) query.append('page', String(params.page));
+        if (params?.limit !== undefined) query.append('limit', String(params.limit));
+        const queryString = query.toString();
+        return apiClient(`/api/admin/audit${queryString ? `?${queryString}` : ''}`);
+    },
+
+    // Community triage queues shared by the admin and moderator areas
+    getModerationQueue: (params?: { kind?: 'interview' | 'update' | 'hiring-post'; status?: 'ACTIVE' | 'ARCHIVED' | 'DELETED'; page?: number; limit?: number }) => {
+        const query = new URLSearchParams();
+        if (params?.kind) query.append('kind', params.kind);
+        if (params?.status) query.append('status', params.status);
+        if (params?.page !== undefined) query.append('page', String(params.page));
+        if (params?.limit !== undefined) query.append('limit', String(params.limit));
+        const queryString = query.toString();
+        return apiClient(`/api/admin/community/moderation-queue${queryString ? `?${queryString}` : ''}`);
+    },
+
+    // Prisma report triage queue (canonical moderation queue)
+    getReports: (params?: { status?: string; page?: number; limit?: number }) => {
+        const query = new URLSearchParams();
+        if (params?.status) query.append('status', params.status);
+        if (params?.page !== undefined) query.append('page', String(params.page));
+        if (params?.limit !== undefined) query.append('limit', String(params.limit));
+        const queryString = query.toString();
+        return apiClient(`/api/admin/reports${queryString ? `?${queryString}` : ''}`);
+    },
+
+    resolveReport: (id: string, note?: string) =>
+        apiClient(`/api/admin/reports/${id}/resolve`, {
+            method: 'POST',
+            body: JSON.stringify({ note })
+        }),
+
+    dismissReport: (id: string, note?: string) =>
+        apiClient(`/api/admin/reports/${id}/dismiss`, {
+            method: 'POST',
+            body: JSON.stringify({ note })
+        }),
+
+    // Community moderation (posts / comments / interviews / updates)
+    adminDeleteCommunityPost: (id: string, reason?: string) =>
+        apiClient(`/api/admin/community/posts/${id}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ reason: reason || 'Removed by moderator' })
+        }),
+
+    adminSpamCommunityPost: (id: string, reason?: string) =>
+        apiClient(`/api/admin/community/posts/${id}/spam`, {
+            method: 'POST',
+            body: JSON.stringify({ reason: reason || 'Flagged as spam' })
+        }),
+
+    adminDeleteCommunityComment: (commentId: string, reason?: string) =>
+        apiClient(`/api/admin/community/posts/comments/${commentId}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ reason: reason || 'Removed by moderator' })
+        }),
+
+    adminDeleteJobComment: (commentId: string, reason?: string) =>
+        apiClient(`/api/admin/community/comments/${commentId}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ reason: reason || 'Removed by moderator' })
+        }),
+
+    adminDeleteInterview: (id: string, reason?: string) =>
+        apiClient(`/api/admin/community/interviews/${id}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ reason: reason || 'Removed by moderator' })
+        }),
+
+    adminSpamInterview: (id: string, reason?: string) =>
+        apiClient(`/api/admin/community/interviews/${id}/spam`, {
+            method: 'POST',
+            body: JSON.stringify({ reason: reason || 'Flagged as spam' })
+        }),
+
+    adminDeleteUpdate: (id: string, reason?: string) =>
+        apiClient(`/api/admin/community/updates/${id}`, {
+            method: 'DELETE',
+            body: JSON.stringify({ reason: reason || 'Removed by moderator' })
+        }),
+
     // Analytics overview
     getAnalyticsOverview: () =>
         apiClient('/api/admin/analytics/overview'),

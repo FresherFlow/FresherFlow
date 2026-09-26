@@ -42,7 +42,7 @@ function ToggleRow(props: {
                 className={`relative mt-1 inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition-colors ${checked ? "bg-primary border-primary" : "bg-muted border-border"} ${disabled ? "opacity-60 cursor-not-allowed" : ""}`}
             >
                 <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${checked ? "translate-x-6" : "translate-x-1"}`}
+                    className={`inline-block h-5 w-5 transform rounded-full bg-paper shadow transition-transform ${checked ? "translate-x-6" : "translate-x-1"}`}
                 />
             </button>
         </label>

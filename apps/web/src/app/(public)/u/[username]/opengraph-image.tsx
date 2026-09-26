@@ -1,4 +1,6 @@
 import { ImageResponse } from 'next/og';
+import { serverApiClient } from '@/lib/api/server-client';
+import type { PublicProfile } from '@/features/profile/publicProfile';
 
 export const runtime = 'nodejs';
 export const alt = 'Candidate Profile on FresherFlow';
@@ -12,10 +14,33 @@ type Props = {
     params: Promise<{ username: string }>;
 };
 
+/**
+ * Per-user card: display name + headline + skills come from the live public
+ * profile, so two handles render different titles. On any fetch failure the
+ * card falls back to the handle-only layout — a stale/generic image is
+ * better than a broken OG response.
+ */
+async function getOgProfile(username: string): Promise<PublicProfile | null> {
+    try {
+        const res = await serverApiClient<{ success: boolean; data: PublicProfile }>(
+            `/api/public/profiles/${encodeURIComponent(username.toLowerCase())}`,
+            { next: { revalidate: 60 } },
+        );
+        return res?.data ?? null;
+    } catch {
+        return null;
+    }
+}
+
 export default async function Image({ params }: Props) {
     const { username } = await params;
-    const formattedUsername = username ? `@${username}` : '@candidate';
-    const initial = username ? username[0].toUpperCase() : 'C';
+    const profile = username ? await getOgProfile(username) : null;
+    const displayName = profile?.fullName || (username ? `@${username}` : '@candidate');
+    const initial = (profile?.fullName?.[0] || username?.[0] || 'C').toUpperCase();
+    const headline =
+        profile?.headline ||
+        (profile?.degree ? `${profile.degree}${profile.gradYear ? ` · ${profile.gradYear}` : ''}` : null);
+    const skills = (profile?.skills || []).slice(0, 3);
 
     return new ImageResponse(
         (
@@ -107,11 +132,31 @@ export default async function Image({ params }: Props) {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         <div style={{ fontSize: '44px', fontWeight: 900, letterSpacing: '-1px' }}>
-                            {formattedUsername}
+                            {displayName}
                         </div>
                         <div style={{ fontSize: '24px', color: '#94a3b8', fontWeight: 500 }}>
-                            Verified Candidate on FresherFlow Platform
+                            {headline || `@${username || 'candidate'} · Fresher on FresherFlow`}
                         </div>
+                        {skills.length > 0 && (
+                            <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                                {skills.map((skill) => (
+                                    <span
+                                        key={skill}
+                                        style={{
+                                            background: 'rgba(99, 102, 241, 0.15)',
+                                            border: '1px solid rgba(99, 102, 241, 0.3)',
+                                            padding: '6px 18px',
+                                            borderRadius: '999px',
+                                            color: '#c7d2fe',
+                                            fontSize: '20px',
+                                            fontWeight: 700,
+                                        }}
+                                    >
+                                        {skill}
+                                    </span>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </div>
 

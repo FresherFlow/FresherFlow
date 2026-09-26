@@ -139,8 +139,11 @@ export default function AdminProfilePagesPage() {
 
             {isLoading ? (
                 <div className="space-y-3">
-                    {Array.from({ length: 4 }).map((_, i) => (
-                        <Skeleton key={i} className="h-20 w-full" />
+                    {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="space-y-2 py-3">
+                            <Skeleton className="h-4 w-3/4 bg-muted/60" />
+                            <Skeleton className="h-3 w-1/2 bg-muted/60" />
+                        </div>
                     ))}
                 </div>
             ) : tab === 'intros' ? (

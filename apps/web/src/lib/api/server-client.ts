@@ -88,7 +88,8 @@ export async function serverApiClient<T = any>(endpoint: string, options: Reques
             let errorMessage = 'Request failed';
             try {
                 const errorData = await response.json();
-                errorMessage = errorData.error?.message || errorData.error || errorMessage;
+                const rawMessage = errorData.error?.message || errorData.error || errorMessage;
+                errorMessage = typeof rawMessage === 'string' ? rawMessage.split('\n')[0].trim() || errorMessage : errorMessage;
             } catch {
                 if (response.status === 429) {
                     errorMessage = 'Too many requests. Please wait a moment and try again.';
@@ -98,14 +99,20 @@ export async function serverApiClient<T = any>(endpoint: string, options: Reques
                     errorMessage = `Request failed (${response.status})`;
                 }
             }
-            throw new Error(errorMessage);
+            // Carry the HTTP status so callers can tell "not found" (render a 404)
+            // apart from transport/5xx failures (throw to the error boundary).
+            // The message stays sanitized single-line; only the status is attached.
+            const statusError = new Error(errorMessage) as Error & { status?: number };
+            statusError.status = response.status;
+            throw statusError;
         }
 
         // Handle 204 No Content or empty responses
         const text = await response.text();
         return (text ? JSON.parse(text) : null) as T;
     } catch (error) {
-        console.error(`mServer API Error (${endpoint}):`, error);
+        const clean = error instanceof Error ? error.message.split('\n')[0].trim() : 'Request failed';
+        console.error(`Server API Error (${endpoint}) - ${clean}`);
         throw error;
     }
 }

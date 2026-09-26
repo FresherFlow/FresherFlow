@@ -1,7 +1,6 @@
 "use client"
 
-import type { RowData } from "@tanstack/react-table"
-import { LegacyColumn } from "@tanstack/react-table/legacy"
+import type { Column, RowData, StockFeatures } from "@tanstack/react-table"
 import { ArrowDown, ArrowUp, ChevronsUpDown, EyeOff } from "lucide-react"
 
 import { cn } from "@/ui/cn"
@@ -16,7 +15,7 @@ import {
 
 interface DataTableColumnHeaderProps<TData extends RowData, TValue>
   extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
-  column: LegacyColumn<TData, TValue>
+  column: Column<StockFeatures, TData, TValue>
   title: React.ReactNode
 }
 

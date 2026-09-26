@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { useFirebaseFollowedCompanies } from '@/features/companies/hooks/useFirebaseFollowedCompanies';
 import { PlusIcon, CheckIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 import { promptLoginToast } from '@/lib/utils/toastUtils';
@@ -12,11 +12,17 @@ type Props = {
     companyName: string;
 };
 
+/**
+ * Follow toggle on /companies/{slug}. Persists through the same Firebase store
+ * the followed-companies list reads, so a follow shows up in the user's
+ * Following tab instead of only flipping this button's local state.
+ */
 export default function CompanyFollowButton({ companySlug, companyName }: Props) {
-    const router = useRouter();
     const { user } = useAuth();
-    const [isFollowing, setIsFollowing] = useState(false);
+    const { followedMap, loading, toggleFollow } = useFirebaseFollowedCompanies(user?.id);
     const [isUpdating, setIsUpdating] = useState(false);
+
+    const isFollowing = !!followedMap[companySlug];
 
     const handleToggleFollow = async () => {
         if (!user) {
@@ -24,24 +30,12 @@ export default function CompanyFollowButton({ companySlug, companyName }: Props)
             return;
         }
 
-        const nextState = !isFollowing;
         setIsUpdating(true);
-
         try {
-            const res = await fetch(`/api/companies/${companySlug}/follow`, {
-                method: nextState ? 'POST' : 'DELETE',
-            });
-
-            if (res.ok || res.status === 404) {
-                setIsFollowing(nextState);
-                toast.success(nextState ? `Following ${companyName}!` : `Unfollowed ${companyName}`);
-            } else {
-                setIsFollowing(nextState);
-                toast.success(nextState ? `Following ${companyName}!` : `Unfollowed ${companyName}`);
-            }
+            await toggleFollow(companySlug);
+            toast.success(isFollowing ? `Unfollowed ${companyName}` : `Following ${companyName}!`);
         } catch {
-            setIsFollowing(nextState);
-            toast.success(nextState ? `Following ${companyName}!` : `Unfollowed ${companyName}`);
+            toast.error('Failed to update follow status');
         } finally {
             setIsUpdating(false);
         }
@@ -51,7 +45,7 @@ export default function CompanyFollowButton({ companySlug, companyName }: Props)
         <button
             type="button"
             onClick={handleToggleFollow}
-            disabled={isUpdating}
+            disabled={isUpdating || loading}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 ease-out active:scale-95 cursor-pointer flex items-center justify-center min-w-35 ${
                 isFollowing
                     ? 'bg-muted text-foreground border border-border hover:bg-muted/80'

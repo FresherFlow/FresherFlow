@@ -1,11 +1,17 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { adminApi } from '@/lib/api/admin';
+import { getErrorMessage } from '@/lib/utils/error';
 import { buildSocialCaption } from '@/features/admin/opportunities/listUtils';
 
 import { SocialOpportunity } from '@/features/admin/opportunities/listUtils';
 
-export function useAdminOpportunityActions(loadOpportunities: () => Promise<void>) {
+export function useAdminOpportunityActions(options: {
+    loadOpportunities: () => Promise<void>;
+    /** Called after a bulk action completes so the caller can clear the grid selection. */
+    onCompleted?: () => void;
+}) {
+    const { loadOpportunities, onCompleted } = options;
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [bulkActionPending, setBulkActionPending] = useState(false);
     const [bulkActionLabel, setBulkActionLabel] = useState('');
@@ -62,7 +68,7 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
                     loadOpportunities();
                     setConfirmModal(prev => ({ ...prev, show: false }));
                 } catch (err: unknown) {
-                    toast.error(err instanceof Error ? err.message : 'An error occurred', { id: tid });
+                    toast.error(getErrorMessage(err, 'An error occurred'), { id: tid });
                 }
             }
         });
@@ -75,7 +81,7 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
             toast.success('Listing updated', { id: tid });
             loadOpportunities();
         } catch (err: unknown) {
-            toast.error(err instanceof Error ? err.message : 'An error occurred', { id: tid });
+            toast.error(getErrorMessage(err, 'An error occurred'), { id: tid });
         }
     };
 
@@ -96,7 +102,7 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
                     loadOpportunities();
                     setConfirmModal(prev => ({ ...prev, show: false }));
                 } catch (err: unknown) {
-                    toast.error(err instanceof Error ? err.message : 'An error occurred', { id: tid });
+                    toast.error(getErrorMessage(err, 'An error occurred'), { id: tid });
                 }
             }
         });
@@ -118,7 +124,7 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
                     loadOpportunities();
                     setConfirmModal(prev => ({ ...prev, show: false }));
                 } catch (err: unknown) {
-                    toast.error(err instanceof Error ? err.message : 'An error occurred', { id: tid });
+                    toast.error(getErrorMessage(err, 'An error occurred'), { id: tid });
                 }
             }
         });
@@ -141,7 +147,7 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
                     loadOpportunities();
                     setConfirmModal(prev => ({ ...prev, show: false }));
                 } catch (err: unknown) {
-                    toast.error(err instanceof Error ? err.message : 'An error occurred', { id: tid });
+                    toast.error(getErrorMessage(err, 'An error occurred'), { id: tid });
                 }
             }
         });
@@ -160,21 +166,22 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
                 try {
                     setBulkActionPending(true);
                     setBulkActionLabel(labels[action]);
-                     
+
                     const res = await adminApi.bulkAction(selectedIds, action) as any;
-                    setLastBulkResult({ 
-                        action, 
-                        requestedCount: res.requestedCount || selectedIds.length, 
-                        updatedCount: res.updatedCount || 0, 
-                        skippedCount: res.skippedCount || 0, 
-                        at: Date.now() 
+                    setLastBulkResult({
+                        action,
+                        requestedCount: res.requestedCount || selectedIds.length,
+                        updatedCount: res.updatedCount || 0,
+                        skippedCount: res.skippedCount || 0,
+                        at: Date.now()
                     });
                     toast.success('Bulk action complete', { id: tid });
                     setSelectedIds([]);
+                    onCompleted?.();
                     loadOpportunities();
                     setConfirmModal(prev => ({ ...prev, show: false }));
                 } catch (err: unknown) {
-                    toast.error(err instanceof Error ? err.message : 'An error occurred', { id: tid });
+                    toast.error(getErrorMessage(err, 'An error occurred'), { id: tid });
                 } finally {
                     setBulkActionPending(false);
                 }
@@ -189,7 +196,7 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
             toast.success('Listing restored', { id: tid });
             loadOpportunities();
         } catch (err: unknown) {
-            toast.error(err instanceof Error ? err.message : 'An error occurred', { id: tid });
+            toast.error(getErrorMessage(err, 'An error occurred'), { id: tid });
         }
     };
 

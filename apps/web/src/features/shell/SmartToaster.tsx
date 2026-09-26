@@ -59,13 +59,13 @@ export function SmartToaster() {
                 success: {
                     iconTheme: {
                         primary: '#10b981',
-                        secondary: 'white',
+                        secondary: 'var(--color-paper)',
                     },
                 },
                 error: {
                     iconTheme: {
                         primary: '#ef4444',
-                        secondary: 'white',
+                        secondary: 'var(--color-paper)',
                     },
                 }
             }}

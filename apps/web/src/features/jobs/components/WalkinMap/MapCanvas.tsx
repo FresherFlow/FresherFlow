@@ -166,7 +166,7 @@ export function MapCanvas({
                     border-color: #27272a !important;
                 }
                 .leaflet-control-zoom a {
-                    background-color: #ffffff !important;
+                    background-color: var(--color-paper) !important;
                     color: #09090b !important;
                     border-bottom: 1px solid #e4e4e7 !important;
                 }

@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { adminAuthApi } from '@/lib/api/client';
 import { setAdminAccessToken } from '@/lib/api/client';
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/lib/utils/error';
 import { Button } from '@/ui/Button';
 import {
     ShieldCheckIcon,
@@ -22,6 +23,15 @@ export default function AdminLoginPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [showOtherOptions, setShowOtherOptions] = useState(false);
     const [totpCode, setTotpCode] = useState('');
+    // TOTP enrolment state: shown when login/totp 401s with "not enabled".
+    // generate/verify run behind requireAdmin, so a passkey session must exist first.
+    const [needsEnrolment, setNeedsEnrolment] = useState(false);
+    const [enrolQr, setEnrolQr] = useState('');
+    const [enrolSecret, setEnrolSecret] = useState('');
+    const [enrolCode, setEnrolCode] = useState('');
+    const [enrolLoading, setEnrolLoading] = useState(false);
+    const [enrolNoSession, setEnrolNoSession] = useState(false);
+    const loginCodeRef = useRef<HTMLInputElement | null>(null);
 
     function setAdminSessionHint() {
         const secure = window.location.protocol === 'https:' ? '; Secure' : '';
@@ -68,7 +78,7 @@ export default function AdminLoginPage() {
             const status = error?.statusCode || error?.status;
             const message = status === 503 || status === 504
                 ? 'Infrastructure is currently unavailable. Please check the database status.'
-                : error.message || 'Registration failed.';
+                : getErrorMessage(error, 'Registration failed.');
             toast.error(message);
         } finally {
             setIsLoading(false);
@@ -110,10 +120,58 @@ export default function AdminLoginPage() {
             const status = error?.statusCode || error?.status;
             const message = status === 503 || status === 504
                 ? 'Authentication service or database is unavailable. Please try again later.'
-                : error.message || 'Verification failed.';
+                : getErrorMessage(error, 'Verification failed.');
             toast.error(message);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const startEnrolment = async () => {
+        setEnrolLoading(true);
+        setEnrolNoSession(false);
+        try {
+            const data = await adminAuthApi.generateTotp();
+            setEnrolQr(data.qrCode);
+            setEnrolSecret(data.secret);
+            setNeedsEnrolment(true);
+        } catch (err: unknown) {
+            const error = err as { statusCode?: number; status?: number };
+            const status = error?.statusCode ?? error?.status;
+            if (status === 401) {
+                // No admin session yet (totp/generate is behind requireAdmin).
+                // Passkey Quick Access mints one — guide there instead of a dead retry.
+                setNeedsEnrolment(true);
+                setEnrolNoSession(true);
+                toast.error('Sign in with your passkey first, then enable the authenticator.');
+            } else {
+                toast.error(getErrorMessage(err, 'Could not start authenticator setup.'));
+            }
+        } finally {
+            setEnrolLoading(false);
+        }
+    };
+
+    const handleEnrolVerify = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!/^\d{6}$/.test(enrolCode)) {
+            toast.error('Enter the 6-digit code from your authenticator app');
+            return;
+        }
+        setEnrolLoading(true);
+        try {
+            await adminAuthApi.verifyTotp(enrolCode);
+            setNeedsEnrolment(false);
+            setEnrolQr('');
+            setEnrolSecret('');
+            setEnrolCode('');
+            setEnrolNoSession(false);
+            toast.success('TOTP enabled, sign in');
+            loginCodeRef.current?.focus();
+        } catch (err: unknown) {
+            toast.error(getErrorMessage(err, 'Invalid verification code.'));
+        } finally {
+            setEnrolLoading(false);
         }
     };
 
@@ -147,10 +205,18 @@ export default function AdminLoginPage() {
         } catch (err: unknown) {
             const error = err as { statusCode?: number; status?: number; message?: string };
             const status = error?.statusCode || error?.status;
-            const message = status === 503 || status === 504
+            // Not-enrolled is 401 'TOTP login is not enabled for this admin'; a wrong
+            // code is 400 'Invalid authenticator code'. Only the former routes to enrolment.
+            const message = getErrorMessage(error, '').toLowerCase();
+            if (status === 401 && message.includes('not enabled')) {
+                toast.error('Authenticator is required for admin sign-in — enable it below, then sign in.');
+                void startEnrolment();
+                return;
+            }
+            const displayMessage = status === 503 || status === 504
                 ? 'Database connection failed. Admin services are temporarily offline.'
-                : error.message || 'TOTP verification failed.';
-            toast.error(message);
+                : getErrorMessage(error, 'TOTP verification failed.');
+            toast.error(displayMessage);
         } finally {
             setIsLoading(false);
         }
@@ -182,7 +248,7 @@ export default function AdminLoginPage() {
                         disabled={isLoading}
                         className="w-full group relative flex flex-col items-center justify-center p-8 bg-primary text-primary-foreground border border-primary/20 transition-all disabled:opacity-50"
                     >
-                        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-paper/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                         <FingerPrintIcon className="w-12 h-12 mb-3" />
                         <span className="text-base font-bold capitalize tracking-widest">
                             {isLoading ? 'Verifying...' : 'Quick Access'}
@@ -248,6 +314,7 @@ export default function AdminLoginPage() {
                                 Authenticator Code
                             </label>
                             <input
+                                ref={loginCodeRef}
                                 type="text"
                                 inputMode="numeric"
                                 autoComplete="one-time-code"
@@ -267,8 +334,84 @@ export default function AdminLoginPage() {
                             Login with Authenticator
                         </Button>
                         <p className="text-xs text-muted-foreground capitalize tracking-wider">
-                            Alternative path: use authenticator instead of passkey.
+                            Required second factor — an authenticator code is needed to complete admin sign-in.
                         </p>
+                        {needsEnrolment && (
+                            <div className="p-4 bg-background border border-primary/30 space-y-4">
+                                <p className="text-xs font-bold text-foreground capitalize tracking-widest">
+                                    Enable your authenticator
+                                </p>
+                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                    An authenticator is required as a second factor for admin sign-in — a passkey
+                                    alone is not enough.
+                                </p>
+                                {enrolNoSession || !enrolQr ? (
+                                    <div className="space-y-3">
+                                        <p className="text-xs text-muted-foreground leading-relaxed">
+                                            Use Quick Access above to sign in with your passkey first, then come back
+                                            here to finish setup.
+                                        </p>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            className="w-full"
+                                            disabled={enrolLoading}
+                                            onClick={() => void startEnrolment()}
+                                        >
+                                            {enrolLoading ? 'Starting setup...' : 'Retry setup'}
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <form onSubmit={handleEnrolVerify} className="space-y-3">
+                                        <div className="flex flex-col items-center justify-center p-4 border border-border bg-paper">
+                                            {enrolQr && (
+                                                <img
+                                                    src={enrolQr}
+                                                    alt="Authenticator setup QR code"
+                                                    width={192}
+                                                    height={192}
+                                                    className="mb-3"
+                                                />
+                                            )}
+                                            <p className="text-xs text-center text-muted-foreground break-all max-w-50">
+                                                Secret: <span className="font-mono select-all">{enrolSecret}</span>
+                                            </p>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            inputMode="numeric"
+                                            autoComplete="one-time-code"
+                                            maxLength={6}
+                                            placeholder="123456"
+                                            value={enrolCode}
+                                            onChange={(e) => setEnrolCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                                            className="w-full bg-background border border-border px-4 py-3 text-sm text-center focus:outline-none focus:border-primary transition-all tracking-widest"
+                                        />
+                                        <Button
+                                            type="submit"
+                                            size="sm"
+                                            className="w-full"
+                                            disabled={enrolLoading || enrolCode.length !== 6}
+                                        >
+                                            {enrolLoading ? 'Verifying...' : 'Verify and enable'}
+                                        </Button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setNeedsEnrolment(false);
+                                                setEnrolQr('');
+                                                setEnrolSecret('');
+                                                setEnrolCode('');
+                                                setEnrolNoSession(false);
+                                            }}
+                                            className="w-full py-1 text-xs font-bold text-muted-foreground hover:text-foreground capitalize tracking-widest transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </form>
+                                )}
+                            </div>
+                        )}
                     </form>
 
                     <button

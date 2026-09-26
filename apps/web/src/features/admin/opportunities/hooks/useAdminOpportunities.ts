@@ -3,6 +3,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { adminApi } from '@/lib/api/admin';
 import type { Opportunity } from '@fresherflow/types';
 import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/lib/utils/error';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
     typeParamToEnum,
@@ -65,7 +66,7 @@ export function useAdminOpportunities(pageSize: number = 20) {
             setTotalPages(data.totalPages || 1);
             setHasLoadedOnce(true);
         } catch (err: unknown) {
-            const errorMsg = (err as Error).message || 'Failed to load opportunities';
+            const errorMsg = getErrorMessage(err, 'Failed to load opportunities');
             toast.error(errorMsg);
             if (errorMsg.includes('403') || errorMsg.includes('Unauthorized')) {
                 router.push('/admin/login');

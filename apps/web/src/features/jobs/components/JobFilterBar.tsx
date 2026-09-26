@@ -23,8 +23,16 @@ export interface FilterBarFilters {
     source: string[];
     company: string[];
     role?: string[];
+    experience?: string[];
     driveDate?: 'all' | 'today' | 'thisWeek';
 }
+
+/**
+ * Explicit fresher-experience filter value (V1 A5). Matches the hook's
+ * existing `matchesExperience` semantics: any value containing 'Fresher'
+ * matches opportunities with `experienceMin === 0`.
+ */
+export const FRESHER_EXPERIENCE_VALUE = 'Fresher';
 
 const GOVT_SECTORS = ['Defense', 'Railways', 'Banking', 'Teaching', 'Police', 'SSC / UPSC', 'PSU'];
 const GOVT_QUALIFICATIONS = ['10th Pass', '12th Pass', 'Diploma', 'Graduate', 'Postgraduate'];
@@ -560,6 +568,34 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
                     , document.body)}
                 </div>
             )}
+
+            {/* Fresher quick filter — explicit experience pill (V1 A5).
+                Toggles filters.experience between [] and ['Fresher']; the feed
+                hook's existing matchesExperience logic treats 'Fresher' as
+                experienceMin === 0. Independent of the Type dropdown so it
+                composes with Jobs / Internships / Walk-ins. */}
+            {(() => {
+                const fresherActive = (filters.experience ?? []).includes(FRESHER_EXPERIENCE_VALUE);
+                return (
+                    <button
+                        type="button"
+                        onClick={() => setFilters({
+                            ...filters,
+                            experience: fresherActive ? [] : [FRESHER_EXPERIENCE_VALUE],
+                        })}
+                        aria-pressed={fresherActive}
+                        title="Show only fresher opportunities (0 years experience)"
+                        className={cn(pillBase, fresherActive ? 'bg-muted text-foreground ring-1 ring-border' : pillDefault)}
+                    >
+                        Fresher
+                        {fresherActive && (
+                            <span className="bg-muted text-foreground rounded-md px-1.5 text-sm font-medium shrink-0 flex items-center justify-center h-5 min-w-5">
+                                1
+                            </span>
+                        )}
+                    </button>
+                );
+            })()}
 
             {/* Location pill — always visible (2nd default) */}
             <div className="relative" onMouseLeave={closeOnLeave}>
