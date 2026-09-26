@@ -30,29 +30,42 @@ import {
   COMMUNITY_GROUP,
   PERSONAL_GROUP,
   SPACES,
-  getInitialSpace,
   getSpace,
   getSpaceForPathname,
   type SpaceId,
 } from "@/features/navigation/navConfig"
 
 /**
- * Space selection shared by the rail and the mobile tree: initial space from the
- * URL, then the user's choice wins. A space is only auto-selected when the
- * pathname itself changes (a deep link or a cross-space link), never on
- * selection.
+ * Last space the user was actually looking at. Module-level on purpose: the
+ * rail and the mobile drawer tree each mount their own `useSpaceSelection`,
+ * and `Navbar` swaps between `AppSidebar` and `DesktopNav` on navigation, so
+ * the choice has to survive remounts.
+ */
+let rememberedSpace: SpaceId | null = null;
+
+/**
+ * Space selection shared by the rail and the mobile tree: the route owns the
+ * space when it maps to one (deep link or cross-space link), otherwise the
+ * user's remembered choice wins. Never inferred from a non-space route.
  */
 function useSpaceSelection() {
   const pathname = usePathname() || ""
-  const [spaceId, setSpaceId] = React.useState<SpaceId>(() => getInitialSpace(pathname))
+  const [spaceId, setSpaceIdState] = React.useState<SpaceId>(
+    () => getSpaceForPathname(pathname) ?? rememberedSpace ?? "jobs"
+  )
   const lastPathnameRef = React.useRef(pathname)
+
+  const setSpaceId = React.useCallback((next: SpaceId) => {
+    rememberedSpace = next
+    setSpaceIdState(next)
+  }, [])
 
   React.useEffect(() => {
     if (lastPathnameRef.current === pathname) return
     lastPathnameRef.current = pathname
     const synced = getSpaceForPathname(pathname)
     if (synced) setSpaceId(synced)
-  }, [pathname])
+  }, [pathname, setSpaceId])
 
   const { user } = useAuth()
   const [mounted, setMounted] = React.useState(false)

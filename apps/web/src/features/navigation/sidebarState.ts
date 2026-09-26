@@ -5,9 +5,10 @@ import * as React from 'react';
 /**
  * Single home for sidebar collapse persistence.
  *
- * Two SidebarProviders exist (the app shell in `NavigationWrapper` and the
- * shadcn demo in `dev/dashboard`), and both must read/write the SAME store —
- * otherwise toggling one poisons the other on reload, since the stock
+ * Three `SidebarProvider`s exist — the app shell (`NavigationWrapper`), the
+ * admin shell (`AdminLayoutClient`), and the standalone shadcn demo under
+ * `dev/sidebar` — and every tree reads/writes the SAME store, otherwise
+ * toggling one poisons the others on reload, since the stock
  * `SidebarProvider` always writes the same `sidebar_state` cookie.
  *
  * Priority: `sidebar_state` cookie first, legacy `ff:sidebarCollapsed`
@@ -30,7 +31,15 @@ export function readSidebarOpen(): boolean {
 }
 
 /** The single width token the shell and the fixed header both consume. */
-const SIDEBAR_W = { expanded: '12rem', collapsed: '3rem' } as const;
+export const SIDEBAR_W = { expanded: '12rem', collapsed: '3rem' } as const;
+
+/**
+ * Single `var(--sidebar-w, …)` expression for every inline reader — the fixed
+ * header offset (`left`), the rail binding (`--sidebar-width`), and their
+ * Suspense fallbacks. Reading it from here keeps the header and the rail from
+ * ever falling back to two different widths.
+ */
+export const SIDEBAR_W_VAR = `var(--sidebar-w, ${SIDEBAR_W.expanded})`;
 
 /** Resizable range: our small 12rem ↔ shadcn regular ~15rem (192px ↔ 240px) — decreased from 256px per feedback. */
 export const SIDEBAR_WIDTH_MIN = 192;
@@ -88,10 +97,10 @@ export function persistSidebarOpen(next: boolean) {
     }
     try {
         document.documentElement.setAttribute('data-sidebar', next ? 'expanded' : 'collapsed');
-        // No CSS rule owns `--sidebar-w`, so it must be set here. The shell
-        // (`lg:pl-[var(--sidebar-w)]`) and the fixed header (`left:
-        // var(--sidebar-w)`) both read it — without this write they stay at
-        // the load-time value while the rail animates away underneath them.
+        // No CSS rule owns `--sidebar-w`, so it must be set here. The rail
+        // binding (`--sidebar-width: var(--sidebar-w)`) and the fixed header
+        // (`left: var(--sidebar-w)`) both read it — without this write they
+        // stay at the load-time value while the header lags the rail.
         if (next) {
             // Restore resizable width if user dragged before.
             const stored = readSidebarWidth();

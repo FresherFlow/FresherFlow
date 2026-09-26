@@ -30,7 +30,7 @@ export function WalkInDetailsCard({ walkInDetails }: WalkInDetailsCardProps) {
             
             {/* Venue & Directions */}
             {walkInDetails.venueAddress && (
-                <div className="flex flex-col gap-1 text-sm bg-background/60 dark:bg-background/40 p-3 rounded-xl border border-warning/50 dark:border-warning/40">
+                <div className="flex flex-col gap-1 text-sm bg-background/60 dark:bg-background/40 p-3 rounded-xl">
                     <div className="flex items-start justify-between gap-2">
                         <div>
                             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Venue Location</span>
@@ -51,7 +51,7 @@ export function WalkInDetailsCard({ walkInDetails }: WalkInDetailsCardProps) {
 
                     {/* Venue Embedded Map */}
                     {query && (
-                        <div className="w-full h-44 mt-2 rounded-lg overflow-hidden border border-border/80 relative">
+                        <div className="w-full h-44 mt-2 rounded-lg overflow-hidden relative">
                             <iframe
                                 title="Venue Map Location"
                                 className="w-full h-full border-0 dark:invert dark:hue-rotate-180 dark:contrast-90 dark:brightness-95 transition-all duration-300"
@@ -66,14 +66,14 @@ export function WalkInDetailsCard({ walkInDetails }: WalkInDetailsCardProps) {
             {/* Date & Time Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {walkInDetails.dateRange && (
-                    <div className="bg-background/60 dark:bg-background/40 p-2.5 rounded-xl border border-warning/50 dark:border-warning/40">
+                    <div className="bg-background/60 dark:bg-background/40 p-2.5 rounded-xl">
                         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Drive Dates</span>
                         <span className="text-foreground font-bold mt-0.5 block">{walkInDetails.dateRange}</span>
                     </div>
                 )}
                 
                 {(walkInDetails.timeRange || walkInDetails.reportingTime) && (
-                    <div className="bg-background/60 dark:bg-background/40 p-2.5 rounded-xl border border-warning/50 dark:border-warning/40">
+                    <div className="bg-background/60 dark:bg-background/40 p-2.5 rounded-xl">
                         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Reporting Time</span>
                         <span className="text-foreground font-bold mt-0.5 block">{walkInDetails.timeRange || walkInDetails.reportingTime}</span>
                     </div>
@@ -81,7 +81,7 @@ export function WalkInDetailsCard({ walkInDetails }: WalkInDetailsCardProps) {
             </div>
 
             {/* Documents checklist */}
-            <div className="bg-background/60 dark:bg-background/40 p-3 rounded-xl border border-warning/50 dark:border-warning/40">
+            <div className="bg-background/60 dark:bg-background/40 p-3 rounded-xl">
                 <p className="text-xs font-bold text-foreground mb-2 flex items-center gap-1.5">
                     <ClipboardDocumentCheckIcon className="w-4 h-4 text-primary" />
                     <span>Mandatory Documents to Carry:</span>

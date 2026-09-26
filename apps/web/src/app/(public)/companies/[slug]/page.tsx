@@ -256,6 +256,14 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     }
 
     if (companyJobs.length === 0) {
+        // Audit fix (33x /companies/* 404s): a slug the directory knows but
+        // with zero live jobs is gone inventory, not a dead end — 301 to the
+        // closest live page (/companies). Unknown slugs 404 and stay out of
+        // the sitemap and internal links (both are live-companies-only).
+        if (matched) {
+            logRouteResult('/companies/[slug]', '301');
+            permanentRedirect('/companies');
+        }
         logRouteResult('/companies/[slug]', '404');
         notFound();
     }

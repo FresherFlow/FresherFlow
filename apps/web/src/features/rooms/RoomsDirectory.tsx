@@ -122,7 +122,7 @@ export function RoomsDirectory() {
                     <button type="button" onClick={() => void load()} className="font-semibold text-primary hover:underline">Retry</button>
                 </div>
             ) : data.rooms.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-xs text-muted-foreground">
+                <div className="p-8 text-center text-xs text-muted-foreground">
                     {debouncedSearch || type ? 'No rooms match your filters.' : 'No rooms yet.'}
                 </div>
             ) : (

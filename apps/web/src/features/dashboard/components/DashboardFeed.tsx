@@ -46,67 +46,40 @@ export const DashboardFeed = ({
     }, [isIntersecting, opportunities.length, mobileVisibleCount, mobileStep, isLoadingMore, setMobileVisibleCount]);
 
     return (
-        <>
-            {/* Mobile Feed */}
-            <div className="md:hidden min-h-150">
-                {isLoading ? (
-                    <div className="space-y-4"><SkeletonJobCard /><SkeletonJobCard /></div>
-                ) : opportunities.length === 0 ? (
-                    <div className="p-10 text-center border border-dashed border-border rounded-xl text-xs text-muted-foreground">No listings here yet.</div>
-                ) : (
-                    <div className="space-y-4">
-                        {opportunities.slice(0, mobileVisibleCount).map((opp, idx) => (
-                            <JobCard
-                                key={`mob-${opp.id}`}
-                                job={opp}
-                                jobId={opp.id}
-                                isApplied={hasAppliedAction(opp)}
-                                isSaved={opp.isSaved}
-                                onToggleSave={() => onToggleSave(opp.id)}
-                                isAdmin={isAdmin}
-                                priority={idx < 2}
-                                searchQuery={searchQuery}
-                            />
-                        ))}
-                        {(opportunities.length > mobileVisibleCount || isLoadingMore) && (
-                            <div ref={loadMoreRef} className="flex justify-center pt-8 pb-4">
-                                <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
-
-            {/* Desktop Feed */}
-            <div className="hidden md:block min-h-150">
-                {isLoading ? (
-                    <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
-                        {[1, 2, 3, 4].map(i => <SkeletonJobCard key={i} />)}
-                    </div>
-                ) : opportunities.length === 0 ? (
-                    <div className="p-12 text-center border border-dashed border-border rounded-xl">
-                        <p className="text-sm font-medium text-muted-foreground">No results found in this section.</p>
-                        <Button size="sm" onClick={() => router.push('/jobs')} variant="outline" className="mt-4">
-                            Browse all feed
-                        </Button>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
-                        {opportunities.slice(0, desktopLimit).map((opp) => (
-                            <JobCard
-                                key={`desk-${opp.id}`}
-                                job={opp}
-                                jobId={opp.id}
-                                isApplied={hasAppliedAction(opp)}
-                                isSaved={opp.isSaved}
-                                onToggleSave={() => onToggleSave(opp.id)}
-                                isAdmin={isAdmin}
-                                searchQuery={searchQuery}
-                            />
-                        ))}
-                    </div>
-                )}
-            </div>
-        </>
+        <div className="min-h-150">
+            {isLoading ? (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {[1, 2, 3, 4].map(i => <SkeletonJobCard key={i} />)}
+                </div>
+            ) : opportunities.length === 0 ? (
+                <div className="p-10 text-center text-xs text-muted-foreground">
+                    <p className="text-sm font-medium">No listings here yet.</p>
+                    <Button size="sm" onClick={() => router.push('/jobs')} variant="outline" className="mt-4">
+                        Browse all feed
+                    </Button>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {opportunities.slice(0, Math.max(mobileVisibleCount, desktopLimit)).map((opp, idx) => (
+                        <JobCard
+                            key={opp.id}
+                            job={opp}
+                            jobId={opp.id}
+                            isApplied={hasAppliedAction(opp)}
+                            isSaved={opp.isSaved}
+                            onToggleSave={() => onToggleSave(opp.id)}
+                            isAdmin={isAdmin}
+                            priority={idx < 2}
+                            searchQuery={searchQuery}
+                        />
+                    ))}
+                    {(opportunities.length > mobileVisibleCount || isLoadingMore) && (
+                        <div ref={loadMoreRef} className="flex justify-center pt-8 pb-4">
+                            <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
     );
 };

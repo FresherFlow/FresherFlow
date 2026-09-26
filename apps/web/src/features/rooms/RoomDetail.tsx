@@ -169,7 +169,7 @@ function RoomPosts({ slug }: { slug: string }) {
 
     if (data.posts.length === 0) {
         return (
-            <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-xs text-muted-foreground">
+            <div className="p-8 text-center text-xs text-muted-foreground">
                 No posts in this room yet. Be the first to contribute!
             </div>
         );
@@ -221,7 +221,7 @@ function RoomJobs({ slug }: { slug: string }) {
     return (
         <div className="space-y-3">
             {jobs.length === 0 && (
-                <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-xs text-muted-foreground">
+                <div className="p-8 text-center text-xs text-muted-foreground">
                     No job listings in this room yet.
                 </div>
             )}
@@ -240,7 +240,7 @@ function RoomJobs({ slug }: { slug: string }) {
 function RoomMembers({ members }: { members: Array<{ user: CommunityPostUser; role: string; joinedAt: string; activeThisWeek?: boolean }> }) {
     if (members.length === 0) {
         return (
-            <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-xs text-muted-foreground">
+            <div className="p-8 text-center text-xs text-muted-foreground">
                 No members yet. Be the first to join!
             </div>
         );

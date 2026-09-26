@@ -58,11 +58,11 @@ export function DetailCampusDriveInfo({ driveMeta, hasApplyLink, handleApply }: 
                             const rows = driveMeta.salaryRows.filter((row: DriveSalaryRow) => row.cadre === cadre);
                             if (rows.length === 0) return null;
                             return (
-                                <div key={cadre} className="rounded-lg border border-border bg-muted/20 px-3 py-2.5">
+                                <div key={cadre} className="rounded-lg bg-muted/20 px-3 py-2.5">
                                     <p className="text-sm font-bold text-primary">{cadre} Cadre</p>
                                     <div className="mt-2 space-y-1.5">
                                         {rows.map((row: DriveSalaryRow) => (
-                                            <div key={`${row.cadre}-${row.experience}`} className="rounded-md border border-border/70 bg-background/30 px-2 py-1.5">
+                                            <div key={`${row.cadre}-${row.experience}`} className="rounded-md bg-background/30 px-2 py-1.5">
                                                 <p className="text-sm font-bold text-foreground/70">{row.experience}</p>
                                                 <div className="mt-0.5 flex items-center justify-between gap-2 text-sm font-semibold text-foreground">
                                                     <span>UG: {formatLpaValue(row.ug)}</span>

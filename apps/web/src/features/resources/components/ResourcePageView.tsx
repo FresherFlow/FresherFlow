@@ -257,6 +257,7 @@ export function ResourcePageView({ feed }: { feed: ResourcesFeed }) {
                         title="No resources found"
                         description={search.trim() || activeSkills.length > 0 ? "Try removing some filters or search keywords." : undefined}
                         action={search.trim() || activeSkills.length > 0 ? <Button size="sm" variant="outline" onClick={() => { setSearch(''); setActiveSkills([]); }}>Clear all filters</Button> : undefined}
+                        variant="ghost"
                     />
                 ) : (
                     <div className="flex flex-col gap-4 max-w-3xl mx-auto w-full">

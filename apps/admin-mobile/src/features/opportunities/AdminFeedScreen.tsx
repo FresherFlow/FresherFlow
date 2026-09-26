@@ -26,7 +26,7 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { alpha } from '../../theme';
 import { SPACING, RADIUS } from '../../theme/dimensions';
 import { adminOpportunitiesApi } from '@fresherflow/api-client';
-import { Opportunity } from '@fresherflow/types';
+import { Opportunity, OpportunityCategory, EmploymentType, RecruitmentMethod } from '@fresherflow/types';
 import { useLiveJobStats } from '../../hooks/useLiveJobStats';
 import { OpportunitiesStackParamList } from '../../navigation/OpportunitiesNavigator';
 
@@ -49,11 +49,21 @@ const JobCardItem: React.FC<{
             .join(' ');
     };
 
+    function getTypeLabel(opp: Opportunity): string {
+        if (opp.recruitmentMethod === RecruitmentMethod.WALK_IN) return 'Walk-in';
+        if (opp.category === OpportunityCategory.COMPETITION) return 'Competition';
+        if (opp.category === OpportunityCategory.SCHOLARSHIP) return 'Scholarship';
+        if (opp.category === OpportunityCategory.EDUCATION) return 'Education';
+        if (opp.category === OpportunityCategory.EVENT) return 'Event';
+        if (opp.employmentTypes?.includes(EmploymentType.INTERNSHIP)) return 'Internship';
+        return 'Job';
+    }
+
     const handleCopyCaption = async (platform: string) => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         let caption = '';
         if (platform === 'whatsapp' || platform === 'telegram') {
-            caption = `🚀 *${opportunity.title}* at *${opportunity.company}*\n📍 ${opportunity.locations?.join(', ') || 'Remote'}\n💼 ${opportunity.type || 'Job'}\n\nApply now: ${opportunity.applyLink}\n\n#Jobs #FresherFlow`;
+            caption = `🚀 *${opportunity.title}* at *${opportunity.company}*\n📍 ${opportunity.locations?.join(', ') || 'Remote'}\n💼 ${getTypeLabel(opportunity)}\n\nApply now: ${opportunity.applyLink}\n\n#Jobs #FresherFlow`;
         } else if (platform === 'linkedin') {
             caption = `We are hiring a ${opportunity.title} at ${opportunity.company}!\n\n📍 Location: ${opportunity.locations?.join(', ') || 'Remote'}\n\nApply here: ${opportunity.applyLink}\n\n#Hiring #${opportunity.company.replace(/\s+/g, '')} #Jobs`;
         } else {
@@ -103,10 +113,10 @@ const JobCardItem: React.FC<{
                             {opportunity.status}
                         </Text>
                     </View>
-                    {opportunity.type && (
+                    {getTypeLabel(opportunity) && (
                         <View style={[styles.badge, { backgroundColor: alpha(currentTheme.colors.textMuted, 0.1) }]}>
                             <Text style={[styles.badgeText, { color: currentTheme.colors.textMuted }]}>
-                                {toTitleCase(opportunity.type)}
+                                {getTypeLabel(opportunity)}
                             </Text>
                         </View>
                     )}

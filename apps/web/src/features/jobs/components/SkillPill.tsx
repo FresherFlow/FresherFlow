@@ -104,7 +104,7 @@ export function SkillPill({ skill, className, size = 'sm', variant = 'default', 
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-md border font-medium whitespace-nowrap',
+        'inline-flex items-center gap-1.5 rounded-md border font-medium whitespace-nowrap min-w-0 max-w-full overflow-hidden',
         size === 'xs' ? 'h-5 px-1.5 text-xs' : 'h-[26px] px-2.5 text-sm',
         hasIcon
           ? 'border-transparent bg-muted/40 text-foreground/80'
@@ -123,7 +123,7 @@ export function SkillPill({ skill, className, size = 'sm', variant = 'default', 
           )}
         />
       )}
-      {formatSkillTitleCase(skill)}
+      <span className="truncate min-w-0">{formatSkillTitleCase(skill)}</span>
     </span>
   );
 }

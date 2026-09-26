@@ -616,7 +616,7 @@ export function CommunityFeedClient() {
                     </button>
                 </div>
             ) : posts.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-xs text-muted-foreground">
+                <div className="p-8 text-center text-xs text-muted-foreground">
                     {hasActiveFilters
                         ? 'No posts match your filters. Try removing some filters.'
                         : 'No discussions yet. Be the first to start one!'}

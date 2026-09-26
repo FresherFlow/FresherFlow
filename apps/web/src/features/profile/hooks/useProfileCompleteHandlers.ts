@@ -55,18 +55,28 @@ export function useProfileCompleteHandlers(
 
         setIsLoading(true);
 
+        // Destructured so the required years are narrowed to `number` here rather
+        // than relying on the optional properties of the published validation
+        // result type, which the education endpoint does not accept.
+        const { tenthYear, twelfthYear, gradYear, pgYear } = validation.years;
+        if (tenthYear === undefined || twelfthYear === undefined || gradYear === undefined) {
+            setIsLoading(false);
+            toast.error(validation.error || 'Invalid education data');
+            return;
+        }
+
         const payload = {
             fullName: form.fullName,
             educationLevel: form.educationLevel,
-            tenthYear: validation.years.tenthYear,
-            twelfthYear: validation.years.twelfthYear,
+            tenthYear,
+            twelfthYear,
             gradCourse: form.gradCourse,
             gradSpecialization: form.gradSpecialization,
-            gradYear: validation.years.gradYear,
+            gradYear,
             ...(validation.includePG && {
                 pgCourse: form.pgCourse,
                 pgSpecialization: form.pgSpecialization,
-                pgYear: validation.years.pgYear,
+                pgYear,
             }),
         };
 

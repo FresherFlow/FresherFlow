@@ -127,7 +127,7 @@ export function SavedSearchesClient() {
             {error && <p className="text-sm text-destructive">Something went wrong. Try refreshing.</p>}
 
             {!error && searches.length === 0 && (
-                <div className="rounded-2xl border border-border p-8 text-center">
+                <div className="p-8 text-center">
                     <p className="text-sm font-medium text-foreground">No saved searches yet</p>
                     <p className="mt-1 text-xs text-muted-foreground">
                         Save &quot;2026 batch + Bangalore&quot; and we&apos;ll count new matches for you.

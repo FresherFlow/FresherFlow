@@ -43,7 +43,18 @@ export function NavUser() {
     setMounted(true)
   }, [])
 
-  if (!mounted) return null
+  // Before mount the auth source of truth is unknown, so the row itself cannot
+  // render yet (SSR HTML must equal first client paint). Reserve its footprint
+  // instead: returning `null` here collapsed the footer and made the nav list
+  // jump up by one row once auth hydrated.
+  if (!mounted)
+    return (
+      <SidebarMenu aria-hidden>
+        <SidebarMenuItem>
+          <SidebarMenuButton size="lg" tabIndex={-1} className="pointer-events-none" />
+        </SidebarMenuItem>
+      </SidebarMenu>
+    )
 
   if (!user) {
     return (

@@ -8,10 +8,13 @@ import { SITE_URL } from '@/lib/utils/runtimeConfig';
 import { HeaderPortal } from '@/features/navigation/HeaderPortal';
 import CompaniesDirectoryClient, { CompanyDirectoryItem } from '@/features/companies/components/CompaniesDirectoryClient';
 
-export const revalidate = false;
+// ISR: directory HTML is cached and revalidated hourly; the client tab
+// switch (?tab=following) never changes the served HTML.
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
-    title: 'Companies Hiring Freshers in India',
+    // 38 chars base + 13-char " | FresherFlow" template = 51 total (50-60).
+    title: 'Companies Hiring Freshers in India 2026',
     description: 'Browse companies hiring freshers in India and discover their active entry-level jobs, internships and off-campus opportunities.',
     alternates: { canonical: `${SITE_URL}/companies` },
 };

@@ -28,7 +28,7 @@ export const ExpiredWarning = ({ opportunityId, opportunityTitle }: ExpiredWarni
                     </p>
                 </div>
             </div>
-            <div className="rounded-xl border border-border bg-card p-3 md:p-4">
+            <div className="rounded-xl p-3 md:p-4">
                 <p className="text-sm text-muted-foreground mb-2">
                     Interested in discussing this opportunity with the community?
                 </p>

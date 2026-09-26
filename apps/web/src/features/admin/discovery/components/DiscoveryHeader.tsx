@@ -55,7 +55,7 @@ export function DiscoveryHeader({
  hoursOld,
  setHoursOld,
 }: DiscoveryHeaderProps) {
- const { theme, toggleTheme } = useTheme();
+ const { theme } = useTheme();
 
  const [headerTarget, setHeaderTarget] = useState<Element | null>(null);
 

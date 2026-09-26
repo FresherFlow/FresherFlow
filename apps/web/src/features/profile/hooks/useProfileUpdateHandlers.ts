@@ -44,21 +44,30 @@ export function useProfileUpdateHandlers(form: any, _refreshUser?: () => Promise
             toast.error(validation.error || 'Invalid education data');
             return;
         }
-        
+
+        // Destructured so the required years are narrowed to `number` here rather
+        // than relying on the optional properties of the published validation
+        // result type, which the education endpoint does not accept.
+        const { tenthYear, twelfthYear, gradYear, pgYear } = validation.years;
+        if (tenthYear === undefined || twelfthYear === undefined || gradYear === undefined) {
+            toast.error(validation.error || 'Invalid education data');
+            return;
+        }
+
         const payload = {
             educationLevel: form.educationLevel,
-            tenthYear: validation.years.tenthYear,
-            twelfthYear: validation.years.twelfthYear,
+            tenthYear,
+            twelfthYear,
             gradCourse: form.gradCourse,
             gradSpecialization: form.gradSpecialization,
-            gradYear: validation.years.gradYear,
+            gradYear,
             collegeId: form.collegeId || null,
             collegeName: form.collegeName || null,
             collegeState: form.collegeState || null,
-            ...(validation.includePG && { 
-                pgCourse: form.pgCourse, 
-                pgSpecialization: form.pgSpecialization, 
-                pgYear: validation.years.pgYear 
+            ...(validation.includePG && {
+                pgCourse: form.pgCourse,
+                pgSpecialization: form.pgSpecialization,
+                pgYear
             })
         };
 

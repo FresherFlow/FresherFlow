@@ -2,16 +2,27 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { ExternalLink } from 'lucide-react-native';
 import { theme } from '@/theme';
+import { OpportunityCategory, EmploymentType, RecruitmentMethod } from '@fresherflow/types';
 import type { Opportunity } from '@/lib/api';
 
 interface DetailGridProps {
     opp: Opportunity;
 }
 
+function getTypeLabel(opp: Opportunity): string {
+    if (opp.recruitmentMethod === RecruitmentMethod.WALK_IN) return 'Walk-in';
+    if (opp.category === OpportunityCategory.COMPETITION) return 'Competition';
+    if (opp.category === OpportunityCategory.SCHOLARSHIP) return 'Scholarship';
+    if (opp.category === OpportunityCategory.EDUCATION) return 'Education';
+    if (opp.category === OpportunityCategory.EVENT) return 'Event';
+    if (opp.employmentTypes?.includes(EmploymentType.INTERNSHIP)) return 'Internship';
+    return 'Job';
+}
+
 export const DetailGrid = ({ opp }: DetailGridProps) => {
     return (
         <View style={styles.detailsGrid}>
-            <DetailRow label="Type" value={String(opp.type)} />
+            <DetailRow label="Type" value={getTypeLabel(opp)} />
             <DetailRow label="Work Mode" value={String(opp.workMode ?? '—')} />
             <DetailRow label="Locations" value={Array.isArray(opp.locations) ? opp.locations.join(', ') : '—'} />
             {opp.salaryRange && <DetailRow label="Salary" value={`${String(opp.salaryRange)} (${String(opp.salaryPeriod ?? 'YEARLY')})`} />}
@@ -24,7 +35,7 @@ export const DetailGrid = ({ opp }: DetailGridProps) => {
             {Array.isArray(opp.allowedDegrees) && (opp.allowedDegrees as string[]).length > 0 &&
                 <DetailRow label="Degrees" value={(opp.allowedDegrees as string[]).join(', ')} />}
             {opp.jobFunction && <DetailRow label="Function" value={String(opp.jobFunction)} />}
-            {opp.employmentType && <DetailRow label="Employment" value={String(opp.employmentType)} />}
+            {opp.employmentTypes && opp.employmentTypes.length > 0 && <DetailRow label="Employment" value={opp.employmentTypes.join(', ')} />}
             
             {opp.sourceLink && (
                 <TouchableOpacity style={styles.linkRow} onPress={() => Linking.openURL(String(opp.sourceLink))}>
@@ -68,7 +79,7 @@ export const DetailGrid = ({ opp }: DetailGridProps) => {
             <DetailRow label="Slug" value={String(opp.slug)} />
 
             {/* Walk-in details */}
-            {opp.type === 'WALKIN' && opp.walkInDetails && (() => {
+            {opp.recruitmentMethod === RecruitmentMethod.WALK_IN && opp.walkInDetails && (() => {
                 const wd = opp.walkInDetails;
                 return (
                     <View style={styles.walkInCard}>

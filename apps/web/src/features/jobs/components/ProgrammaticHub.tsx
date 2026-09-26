@@ -179,7 +179,7 @@ export default function ProgrammaticHub({
                         </div>
 
                         {/* Right Column: Detail Panel / Empty State (Desktop only) */}
-                        <div className="hidden xl:flex flex-col sticky top-14 h-full bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm">
+                        <div className="hidden xl:flex flex-col sticky top-14 h-full bg-card border-l border-border/50">
                             {selectedOpp ? (
                                 <div className="flex-1 overflow-y-auto">
                                     <OpportunityDetailPane

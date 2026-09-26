@@ -4,6 +4,7 @@ import { Suspense, Fragment } from 'react';
 import { usePathname } from 'next/navigation';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/ui/Breadcrumb';
 import { formatSegment, getAdminTitle, isFeedHeaderRoute } from './headerContent';
+import { SIDEBAR_W_VAR } from './sidebarState';
 
 function TopHeaderBarContent() {
     const pathname = usePathname() || '';
@@ -19,8 +20,8 @@ function TopHeaderBarContent() {
     const isFeedRoute = !isAdminRoute && isFeedHeaderRoute(segments);
     return (
         <div 
-            className="hidden lg:flex fixed top-0 right-0 h-14 items-center border-b border-border/40 bg-background/95 backdrop-blur-sm z-40 pr-6 px-5 transition-all duration-300 ease-out"
-            style={{ left: 'var(--sidebar-w, 12rem)' }}
+            className="hidden lg:flex fixed top-0 right-0 h-14 items-center border-b border-border/40 bg-background/95 backdrop-blur-sm z-40 pr-6 px-5 transition-all duration-200 ease-linear"
+            style={{ left: SIDEBAR_W_VAR }}
         >
             {/* The portal target. Hidden when empty. Serves as a peer. */}
             <div id="top-header-portal-target" className="peer empty:hidden flex items-center gap-6 w-full relative" />
@@ -74,7 +75,7 @@ function TopHeaderBarContent() {
 
 export function TopHeaderBar() {
     return (
-        <Suspense fallback={<div className="hidden lg:block fixed top-0 right-0 h-14 z-40 transition-all duration-300 ease-out" style={{ left: 'var(--sidebar-w, 12rem)' }} />}>
+        <Suspense fallback={<div className="hidden lg:block fixed top-0 right-0 h-14 z-40 transition-all duration-200 ease-linear" style={{ left: SIDEBAR_W_VAR }} />}>
             <TopHeaderBarContent />
         </Suspense>
     );

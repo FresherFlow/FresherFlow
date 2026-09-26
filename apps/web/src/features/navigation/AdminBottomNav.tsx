@@ -66,11 +66,11 @@ export default function AdminBottomNav() {
                     if (item.label === 'Dashboard') {
                         isActive = pathname === '/dashboard' || pathname === '/admin' || pathname === '/admin/dashboard';
                     } else if (item.label === 'Post') {
-                        isActive = pathname === '/opportunities/create' || pathname === '/admin/opportunities/create';
+                        isActive = pathname === '/jobs/create' || pathname === '/admin/opportunities/create';
                     } else if (item.label === 'Search') {
                         isActive =
-                            pathname === '/opportunities' ||
-                            (pathname.startsWith('/opportunities/') && pathname !== '/opportunities/create') ||
+                            pathname === '/jobs' ||
+                            (pathname.startsWith('/jobs/') && pathname !== '/jobs/create') ||
                             pathname === '/admin/opportunities' ||
                             (pathname.startsWith('/admin/opportunities/') && pathname !== '/admin/opportunities/create');
                     } else if (item.label === 'Feedback') {

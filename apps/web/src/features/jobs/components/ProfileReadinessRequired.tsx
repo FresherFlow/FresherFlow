@@ -23,7 +23,7 @@ export function ProfileReadinessRequired({ percentage, message }: ProfileReadine
                 <p className="text-sm font-medium text-muted-foreground leading-relaxed">
                     {message}
                 </p>
-                <div className="bg-muted/40 p-6 rounded-2xl border border-border">
+                <div className="bg-muted/40 p-6 rounded-2xl">
                     <div className="flex items-center justify-center gap-6">
                         <div className="text-center">
                             <div className="text-3xl font-bold text-primary">{percentage}%</div>

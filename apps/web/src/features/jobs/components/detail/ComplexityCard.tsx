@@ -32,11 +32,11 @@ export function ComplexityCard({ applicationDetails }: ComplexityCardProps) {
             {/* Header and Metadata (Left-aligned) */}
             <div className="flex items-start gap-4">
                 {isAssessment ? (
-                    <div className="p-3 bg-muted text-muted-foreground rounded-xl shrink-0 shadow-sm border border-border/30">
+                    <div className="p-3 bg-muted text-muted-foreground rounded-xl shrink-0 shadow-sm">
                         <CodeBracketIcon className="w-6 h-6" />
                     </div>
                 ) : (
-                    <div className="p-3 bg-muted text-muted-foreground rounded-xl shrink-0 shadow-sm border border-border/30">
+                    <div className="p-3 bg-muted text-muted-foreground rounded-xl shrink-0 shadow-sm">
                         <ClipboardDocumentListIcon className="w-6 h-6" />
                     </div>
                 )}

@@ -57,6 +57,7 @@ export function ContributionHistory({ onContribute, refreshKey }: { onContribute
                 description="Your shares, their review status, and what got published — all in one place."
                 icon="inbox"
                 action={<Button onClick={onContribute}>Contribute something</Button>}
+                variant="ghost"
             />
         );
     }
@@ -82,6 +83,7 @@ export function ContributionHistory({ onContribute, refreshKey }: { onContribute
                 description="Share a job, a walk-in drive, or your interview experience. Everything you share shows up here with its status."
                 icon="inbox"
                 action={onContribute ? <Button onClick={onContribute}>Contribute something</Button> : undefined}
+                variant="ghost"
             />
         );
     }

@@ -22,6 +22,11 @@ import {
   stockFeatures,
 } from "@tanstack/react-table"
 
+/** Pagination/sorting state shapes, aliased so the public props stay readable. */
+export type GridPaginationState = PaginationState
+/** Sorting state for the (optionally controlled) `sorting` prop. */
+export type GridSortingState = SortingState
+
 import { Badge } from "@/ui/Badge"
 import {
   Card,
@@ -32,22 +37,11 @@ import {
   CardTitle,
 } from "@/ui/Card"
 import { Input } from "@/ui/Input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/ui/Select"
 import { Skeleton } from "@/ui/Skeleton"
-import {
-  Table as UITable,
-  TableBody,
-  TableCell,
-  TableRow,
-} from "@/ui/Table"
+import { Table as UITable, TableBody, TableCell, TableRow } from "@/ui/Table"
 import { cn } from "@/ui/cn"
 import { Button } from "@/ui/Button"
+import { FilterSelect } from "./FilterSelect"
 import { DataGridHeader } from "./data-grid-header"
 import { DataGridPagination } from "./data-grid-pagination"
 import { EmptyState } from "@/ui/EmptyState"
@@ -84,6 +78,20 @@ export interface DataGridActionsContext<TData extends RowData> {
   clearSelection: () => void
 }
 
+/**
+ * Server-side paging contract. When a caller owns paging (its data source is
+ * paginated server-side), it passes the current page and total page count; the
+ * grid then renders every row it was handed and the footer navigates through
+ * `onPageChange` instead of slicing rows locally.
+ */
+export interface DataGridServerPagination {
+  /** Zero-based index of the page currently rendered. */
+  pageIndex: number
+  /** Total pages known to the server. */
+  pageCount: number
+  onPageChange: (pageIndex: number) => void
+}
+
 export interface DataGridProps<TData extends RowData> {
   data: TData[]
   columns: DataGridColumn<TData>[]
@@ -106,6 +114,15 @@ export interface DataGridProps<TData extends RowData> {
   actions?: (ctx: DataGridActionsContext<TData>) => React.ReactNode
   onSelectedRowsChange?: (rows: TData[]) => void
   className?: string
+  /**
+   * Controlled sorting. Pass both when the sort belongs to the caller — e.g. it
+   * maps to a server `sort` query param or a toolbar dropdown. Without them the
+   * grid sorts locally, which is the default.
+   */
+  sorting?: GridSortingState
+  onSortingChange?: (updater: React.SetStateAction<GridSortingState>) => void
+  /** Server-side paging; omit to page locally. */
+  serverPagination?: DataGridServerPagination
 }
 
 export function DataGrid<TData extends RowData>({
@@ -130,15 +147,37 @@ export function DataGrid<TData extends RowData>({
   actions,
   onSelectedRowsChange,
   className,
+  sorting: controlledSorting,
+  onSortingChange: controlledOnSortingChange,
+  serverPagination,
 }: DataGridProps<TData>) {
-  const [sorting, setSorting] = React.useState<SortingState>([])
+  const [localSorting, setLocalSorting] = React.useState<GridSortingState>([])
   const [globalFilter, setGlobalFilter] = React.useState("")
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
-  const [pagination, setPagination] = React.useState<PaginationState>({
+  const [localPagination, setLocalPagination] = React.useState<GridPaginationState>({
     pageIndex: 0,
     pageSize: defaultPageSize,
   })
+
+  const isServerPaginated = Boolean(serverPagination)
+  const sorting = controlledSorting ?? localSorting
+  const setSorting = controlledOnSortingChange ?? setLocalSorting
+  const pagination: GridPaginationState = serverPagination
+    ? { pageIndex: serverPagination.pageIndex, pageSize: data.length || defaultPageSize }
+    : localPagination
+  const setPagination = (
+    updater: React.SetStateAction<GridPaginationState>
+  ) => {
+    if (serverPagination) {
+      const next = typeof updater === "function" ? updater(pagination) : updater
+      if (next.pageIndex !== pagination.pageIndex) {
+        serverPagination.onPageChange(next.pageIndex)
+      }
+      return
+    }
+    setLocalPagination(updater)
+  }
 
   const table = useTable<StockFeatures, TData>({
     features: dataGridFeatures,
@@ -198,7 +237,9 @@ export function DataGrid<TData extends RowData>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedIdsKey])
 
-  const totalRows = table.getPrePaginatedRowModel().rows.length
+  const totalRows = isServerPaginated
+    ? (count ?? data.length)
+    : table.getPrePaginatedRowModel().rows.length
   const displayCount = count ?? data.length
 
   const handleClear = () => {
@@ -217,11 +258,12 @@ export function DataGrid<TData extends RowData>({
     )
 
   React.useEffect(() => {
+    if (isServerPaginated) return
     if (table.getRowModel().rows.length === 0 && pagination.pageIndex > 0) {
       setPagination((prev) => ({ ...prev, pageIndex: 0 }))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [table.getRowModel().rows.length, pagination.pageIndex])
+  }, [table.getRowModel().rows.length, pagination.pageIndex, isServerPaginated])
 
   return (
     <Card
@@ -260,23 +302,14 @@ export function DataGrid<TData extends RowData>({
             />
           </div>
           {statusOptions && onStatusChange && (
-            <Select value={statusValue} onValueChange={onStatusChange}>
-              <SelectTrigger className="h-9 w-auto min-w-[130px] text-xs">
-                <SelectValue
-                  placeholder={
-                    statusOptions.find((o) => o.value === statusValue)
-                      ?.label ?? "All statuses"
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {statusOptions.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FilterSelect
+              value={statusValue ?? statusOptions[0]?.value ?? ""}
+              onChange={onStatusChange}
+              options={statusOptions}
+              ariaLabel="Filter by status"
+              placeholder="All statuses"
+              className="w-auto min-w-32"
+            />
           )}
           {hasActiveFilters && (
             <Button
@@ -314,15 +347,29 @@ export function DataGrid<TData extends RowData>({
         <DataGridPagination
           pageIndex={pagination.pageIndex}
           pageSize={pagination.pageSize}
-          pageCount={table.getPageCount()}
+          pageCount={isServerPaginated ? serverPagination!.pageCount : table.getPageCount()}
           totalRows={totalRows}
           selectedRows={selectedRows.length}
-          canPreviousPage={table.getCanPreviousPage()}
-          canNextPage={table.getCanNextPage()}
-          setPageIndex={table.setPageIndex}
-          setPageSize={table.setPageSize}
-          previousPage={table.previousPage}
-          nextPage={table.nextPage}
+          canPreviousPage={
+            isServerPaginated ? pagination.pageIndex > 0 : table.getCanPreviousPage()
+          }
+          canNextPage={
+            isServerPaginated
+              ? pagination.pageIndex < serverPagination!.pageCount - 1
+              : table.getCanNextPage()
+          }
+          setPageIndex={(index) => setPagination((prev) => ({ ...prev, pageIndex: index }))}
+          setPageSize={
+            isServerPaginated
+              ? () => {}
+              : (size) => setPagination((prev) => ({ ...prev, pageSize: size, pageIndex: 0 }))
+          }
+          previousPage={() =>
+            setPagination((prev) => ({ ...prev, pageIndex: Math.max(0, prev.pageIndex - 1) }))
+          }
+          nextPage={() =>
+            setPagination((prev) => ({ ...prev, pageIndex: prev.pageIndex + 1 }))
+          }
           pageSizeOptions={pageSizeOptions}
         />
       </CardFooter>

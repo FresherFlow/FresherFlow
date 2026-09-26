@@ -1,10 +1,11 @@
 'use client';
 
 import { useMemo } from 'react';
-import { PlayIcon, ServerIcon } from '@heroicons/react/24/outline';
+import { PlayIcon } from '@heroicons/react/24/outline';
 import { DiscoveryRun } from '../types';
 import { cn } from "@/ui/cn";
 import { DataGrid, DataGridColumn } from '@/ui/data-grid/DataGrid';
+import { EmptyState } from '@/ui/EmptyState';
 
 interface DiscoveryRunsTabProps {
  runs: DiscoveryRun[];
@@ -166,11 +167,22 @@ export function DiscoveryRunsTab({ runs, onTriggerRun }: DiscoveryRunsTabProps) 
     searchPlaceholder="Search run ID or status..."
     noResults={
      runs.length === 0 ? (
-      <div className="border-2 border-dashed border-border/60 rounded-xl flex flex-col items-center gap-2 text-muted-foreground text-xs p-6">
-       <ServerIcon className="w-8 h-8 opacity-50 text-muted-foreground" />
-       <p className="font-semibold text-foreground text-sm">No discovery runs found</p>
-       <p className="text-muted-foreground">Trigger a run to start scraping target sources.</p>
-      </div>
+      <EmptyState
+       title="No discovery runs found"
+       description="Trigger a run to start scraping target sources."
+       icon="inbox"
+       size="md"
+       variant="ghost"
+       action={
+        <button
+         onClick={onTriggerRun}
+         className="h-9 px-4 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold transition-all duration-150 active:scale-95 shadow-xs flex items-center gap-2 cursor-pointer mx-auto"
+        >
+         <PlayIcon className="w-3.5 h-3.5 fill-current" />
+         <span>Trigger New Run</span>
+        </button>
+       }
+      />
      ) : (
       <p className="text-muted-foreground text-xs">No matching run logs found.</p>
      )

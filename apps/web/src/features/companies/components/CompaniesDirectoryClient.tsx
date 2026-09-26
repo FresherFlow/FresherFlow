@@ -83,7 +83,7 @@ export default function CompaniesDirectoryClient({ companies, totalJobs }: Compa
             <div className="space-y-6 text-center pt-8 pb-4">
                 <div className="space-y-2">
                     <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-foreground">
-                        Monitored Companies
+                        Companies Hiring Freshers in India
                     </h1>
                     <p className="text-base text-muted-foreground font-medium max-w-2xl mx-auto pt-1">
                         Explore monitored companies hiring freshers in India.
@@ -176,6 +176,7 @@ export default function CompaniesDirectoryClient({ companies, totalJobs }: Compa
                     <EmptyState
                         title="No companies match your filters"
                         description="Try searching for a different company name or clear active filters."
+                        variant="ghost"
                         action={
                             <Button variant="outline" size="sm" onClick={handleResetFilters}>
                                 Reset All Filters

@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CpuChipIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { RunLog, RunResult } from '../types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/ui/Table';
 import { PaginationControls } from '@/ui/data-table/DataTablePagination';
+import { EmptyState } from '@/ui/EmptyState';
 
 interface CrawlerRunsTabProps {
  logs: RunLog[];
@@ -31,12 +32,14 @@ export function CrawlerRunsTab({ logs, onInspectJobs }: CrawlerRunsTabProps) {
  </div>
 
       {logs.length === 0 ? (
-        <div className="p-12 text-center border border-dashed border-border/80 rounded-2xl bg-card/40 backdrop-blur-xs">
-          <CpuChipIcon className="w-8 h-8 text-muted-foreground mx-auto mb-3 opacity-60" />
-          <p className="text-sm font-bold text-foreground">No execution logs in session</p>
-          <p className="text-xs text-muted-foreground mt-1.5">
-            Click &quot;Run Crawler&quot;, &quot;Run Board Scraper&quot;, or &quot;Run All Crawlers&quot; to record live execution trace.
-          </p>
+        <div className="py-6">
+          <EmptyState
+            title="No execution logs in session"
+            description={'Click "Run Crawler", "Run Board Scraper", or "Run All Crawlers" to record a live execution trace.'}
+            icon="inbox"
+            size="md"
+            variant="ghost"
+          />
         </div>
       ) : (
         <div className="border border-border/60 rounded-xl bg-card/60 backdrop-blur-md overflow-hidden shadow-xs flex flex-col flex-1 min-h-0">

@@ -110,7 +110,7 @@ export function AlertsDropdown({ className }: { className?: string }) {
 
         setIsOpen(false);
         if (item.opportunity?.slug) {
-            router.push(`/opportunities/${item.opportunity.slug}`);
+            router.push(`/jobs/${item.opportunity.slug}`);
         } else {
             router.push('/jobs?tab=alerts');
         }
@@ -126,7 +126,7 @@ export function AlertsDropdown({ className }: { className?: string }) {
                         'relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all cursor-pointer focus:outline-none',
                         className
                     )}
-                    aria-label="Notifications"
+                    aria-label="Job alerts"
                 >
                     <BellIcon className="w-4.5 h-4.5" />
                     {unreadCount > 0 && (
@@ -142,7 +142,7 @@ export function AlertsDropdown({ className }: { className?: string }) {
                 {/* Header */}
                 <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 bg-muted/40">
                     <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-foreground tracking-wide">Notifications</span>
+                        <span className="text-xs font-bold text-foreground tracking-wide">Job Alerts</span>
                         {unreadCount > 0 ? (
                             <span className="px-2 py-0.5 text-xs font-extrabold rounded-full bg-primary/10 text-primary border border-primary/20">
                                 {unreadCount} unread
@@ -176,7 +176,7 @@ export function AlertsDropdown({ className }: { className?: string }) {
                     </div>
                 </div>
 
-                {/* Notification Feed Items */}
+                {/* Alert feed items */}
                 <div className="max-h-90 overflow-y-auto divide-y divide-border/30">
                     {loading && deliveries.length === 0 ? (
                         <div className="p-6 space-y-3">

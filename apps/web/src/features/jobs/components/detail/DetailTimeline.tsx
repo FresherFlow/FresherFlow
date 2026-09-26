@@ -29,8 +29,8 @@ export function DetailTimeline({ timelineEvents, upcomingTimelineEvents }: Detai
                         <div
                             key={event.id}
                             className={cn(
-                                "rounded-lg border p-2.5",
-                                isPast ? "border-border/70 bg-muted/20" : "border-primary/20 bg-primary/5"
+                                "rounded-lg p-2.5",
+                                isPast ? "bg-muted/20" : "bg-primary/5"
                             )}
                         >
                             <div className="flex items-center justify-between gap-2">

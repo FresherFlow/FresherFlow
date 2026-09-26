@@ -519,7 +519,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                             </div>
 
                             {/* Right Column: Detail Panel / Empty State (Desktop only) */}
-                            <div className="hidden lg:flex flex-col sticky top-24 h-full bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm">
+                            <div className="hidden lg:flex flex-col sticky top-24 h-full bg-card border-l border-border/50">
                                 {selectedOpp ? (
                                     <div className="flex-1 overflow-y-auto">
                                         <OpportunityDetailPane

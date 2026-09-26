@@ -18,10 +18,20 @@ import { PremiumHeader, AppText } from '../../components/common/PremiumPrimitive
 import { useTheme } from '../../theme/ThemeProvider';
 import { alpha } from '../../theme';
 import { adminOpportunitiesApi } from '@fresherflow/api-client';
-import { Opportunity } from '@fresherflow/types';
+import { Opportunity, OpportunityCategory, EmploymentType, RecruitmentMethod } from '@fresherflow/types';
 import { OpportunitiesStackParamList } from '../../navigation/OpportunitiesNavigator';
 
 type NavigationProp = NativeStackNavigationProp<OpportunitiesStackParamList, 'OpportunityDetail'>;
+
+function getTypeLabel(opp: Opportunity): string {
+    if (opp.recruitmentMethod === RecruitmentMethod.WALK_IN) return 'Walk-in';
+    if (opp.category === OpportunityCategory.COMPETITION) return 'Competition';
+    if (opp.category === OpportunityCategory.SCHOLARSHIP) return 'Scholarship';
+    if (opp.category === OpportunityCategory.EDUCATION) return 'Education';
+    if (opp.category === OpportunityCategory.EVENT) return 'Event';
+    if (opp.employmentTypes?.includes(EmploymentType.INTERNSHIP)) return 'Internship';
+    return 'Job';
+}
 
 export default function OpportunityDetailScreen() {
     const { currentTheme } = useTheme();
@@ -128,9 +138,9 @@ export default function OpportunityDetailScreen() {
                         <View style={[styles.badge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
                             <Text style={[styles.badgeText, { color: currentTheme.colors.primary }]}>{job.status}</Text>
                         </View>
-                        {job.type && (
+                        {getTypeLabel(job) && (
                             <View style={[styles.badge, { backgroundColor: alpha(currentTheme.colors.textMuted, 0.1) }]}>
-                                <Text style={[styles.badgeText, { color: currentTheme.colors.textMuted }]}>{job.type}</Text>
+                                <Text style={[styles.badgeText, { color: currentTheme.colors.textMuted }]}>{getTypeLabel(job)}</Text>
                             </View>
                         )}
                     </View>

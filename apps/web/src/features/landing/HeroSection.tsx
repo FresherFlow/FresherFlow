@@ -4,7 +4,7 @@ import { ArrowRightIcon } from '@heroicons/react/24/outline';
 /**
  * Landing hero — matches the accepted mock:
  * LIVE note chip, 3 headline lines (one per sentence, block-level so no
- * mid-sentence wraps), orange accent on "freshers.", two CTAs, mono meta
+ * mid-sentence wraps), orange accent on "freshers.", one CTA, mono meta
  * row, BOARD 00 eyebrow. Light brand surface in both themes.
  */
 
@@ -59,12 +59,6 @@ export function HeroSection({ newToday, refreshedAt }: HeroSectionProps) {
                         className="inline-flex items-center gap-2 rounded-[2px] bg-[var(--ff-accent)] px-[18px] py-[10px] text-[13.5px] font-semibold text-white transition-transform hover:-translate-y-px active:scale-[0.98]"
                     >
                         Browse the board <ArrowRightIcon className="h-4 w-4" />
-                    </Link>
-                    <Link
-                        href="/post"
-                        className="inline-flex items-center gap-2 rounded-[2px] border border-foreground/80 px-[18px] py-[10px] text-[13.5px] font-semibold text-foreground transition-transform hover:-translate-y-px active:scale-[0.98]"
-                    >
-                        Post an opportunity
                     </Link>
                 </div>
 

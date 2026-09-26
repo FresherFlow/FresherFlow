@@ -2,6 +2,7 @@
 
 import { ArrowTopRightOnSquareIcon, CodeBracketIcon } from '@heroicons/react/24/outline';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/ui/Dialog';
+import { EmptyState } from '@/ui/EmptyState';
 import { SkillPill } from '@/features/jobs/components/SkillPill';
 import { RunResult, NormalizedJob } from '../types';
 
@@ -34,8 +35,14 @@ export function DryRunModal({ open, result, onClose, onInspectJob }: DryRunModal
 
  <div className="flex-1 overflow-y-auto space-y-3 pr-1 py-2">
  {!result.jobs || result.jobs.length === 0 ? (
- <div className="p-8 text-center border border-dashed border-border rounded-xl">
- <p className="text-xs text-muted-foreground">No jobs extracted in dry run.</p>
+ <div className="py-4">
+ <EmptyState
+ title="No jobs extracted"
+ description="This dry run returned no normalized jobs. Run a full crawl to ingest results."
+ icon="inbox"
+ size="md"
+ variant="ghost"
+ />
  </div>
  ) : (
  result.jobs.map((job, idx) => (

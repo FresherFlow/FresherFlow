@@ -192,7 +192,7 @@ export function JobCardMobile({
                         {job.normalizedRole || job.title}
                     </h2>
                     <div className="flex items-center gap-1.5 mt-0.5 text-sm text-muted-foreground min-w-0">
-                        <span className="font-semibold text-foreground/80 truncate max-w-md shrink-0">
+                        <span className="min-w-0 flex-1 truncate font-semibold text-foreground/80">
                             {job.company}
                         </span>
                         <span className="text-muted-foreground/40 shrink-0">•</span>

@@ -13,6 +13,7 @@ import UserCircleIcon from '@heroicons/react/24/outline/UserCircleIcon';
 import { SidebarTrigger } from '@/ui/sidebar';
 import { Separator } from '@/ui/separator';
 import { formatSegment, getAdminTitle, isFeedHeaderRoute } from './headerContent';
+import { SIDEBAR_W_VAR } from './sidebarState';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/ui/Breadcrumb';
 
 /**
@@ -53,7 +54,7 @@ function SiteHeaderContent() {
     return (
         <div
             className="hidden lg:flex fixed top-0 right-0 h-14 items-center gap-2 border-b border-border/40 bg-background/95 backdrop-blur-sm z-50 pr-6 pl-4 transition-all duration-200 ease-linear"
-            style={{ left: 'var(--sidebar-w, 12rem)' }}
+            style={{ left: SIDEBAR_W_VAR }}
         >
             <SidebarTrigger className="-ml-1 h-7 w-7 shrink-0 [&_svg]:size-4!" />
             <Separator orientation="vertical" className="mr-2 h-4" />
@@ -195,7 +196,7 @@ function SiteHeaderContent() {
 
 export function SiteHeader() {
     return (
-        <Suspense fallback={<div className="hidden lg:block fixed top-0 right-0 h-14 z-40 transition-all duration-300 ease-out" style={{ left: 'var(--sidebar-w, 12rem)' }} />}>
+        <Suspense fallback={<div className="hidden lg:block fixed top-0 right-0 h-14 z-40 transition-all duration-200 ease-linear" style={{ left: SIDEBAR_W_VAR }} />}>
             <SiteHeaderContent />
         </Suspense>
     );

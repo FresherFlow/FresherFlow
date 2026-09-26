@@ -1,6 +1,43 @@
 import * as React from "react";
 import { Skeleton } from "@/ui/Skeleton";
 
+/** Stat cell: pill icon plus label/value lines. Cells carry no border of their own. */
+function StatSkeleton() {
+    return (
+        <div className="flex items-center gap-3">
+            <Skeleton variant="pill" className="h-8 w-8 shrink-0" />
+            <div className="min-w-0 space-y-2">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-8 w-12" />
+            </div>
+        </div>
+    );
+}
+
+/** One rounded-xl bordered grid holds the whole stat group; per-stat borders are dropped. */
+function StatGridSkeleton({ count, className }: { count: number; className: string }) {
+    return (
+        <div className="rounded-xl border border-border bg-card p-4 md:p-5">
+            <div className={className}>
+                {Array.from({ length: count }).map((_, index) => (
+                    <StatSkeleton key={index} />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+/** Three lines stand in for a large empty placeholder box. */
+function LineBlockSkeleton() {
+    return (
+        <div className="space-y-3">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-2/3" />
+        </div>
+    );
+}
+
 export function AdminOverviewSkeleton() {
     return (
         <div className="space-y-4 md:space-y-6 animate-pulse pb-8">
@@ -8,17 +45,13 @@ export function AdminOverviewSkeleton() {
                 <Skeleton className="h-7 w-48" />
                 <Skeleton className="h-4 w-36" />
             </div>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-                {Array.from({ length: 4 }).map((_, index) => (
-                    <div key={index} className="bg-card p-4 md:p-5 rounded-lg border border-border space-y-2">
-                        <Skeleton className="h-3 w-20" />
-                        <Skeleton className="h-7 w-12" />
-                    </div>
-                ))}
-            </div>
+            <StatGridSkeleton
+                count={4}
+                className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6"
+            />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                <Skeleton className="h-28 w-full" />
-                <Skeleton className="h-28 w-full" />
+                <LineBlockSkeleton />
+                <LineBlockSkeleton />
             </div>
             <div className="bg-card rounded-lg border border-border p-4 md:p-5 space-y-3">
                 <Skeleton className="h-5 w-32" />
@@ -37,15 +70,11 @@ export function AdminAnalyticsSkeleton() {
                 <Skeleton className="h-8 w-36" />
                 <Skeleton className="h-4 w-52" />
             </div>
-            <Skeleton className="h-24 w-full" />
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-6">
-                {Array.from({ length: 5 }).map((_, index) => (
-                    <div key={index} className="bg-card/50 rounded-xl border border-border/50 p-3 md:p-5 space-y-2">
-                        <Skeleton className="h-3 w-20" />
-                        <Skeleton className="h-7 w-16" />
-                    </div>
-                ))}
-            </div>
+            <LineBlockSkeleton />
+            <StatGridSkeleton
+                count={5}
+                className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6"
+            />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {Array.from({ length: 4 }).map((_, index) => (
                     <div key={index} className="bg-card/30 rounded-xl border border-border/50 p-4 md:p-6 space-y-3">
@@ -71,23 +100,15 @@ export function AdminFeedbackSkeleton() {
                     </div>
                     <Skeleton className="h-8 w-24" />
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-                    {Array.from({ length: 3 }).map((_, index) => (
-                        <div key={index} className="bg-card p-3 md:p-5 rounded-lg border border-border space-y-2">
-                            <Skeleton className="h-3 w-24" />
-                            <Skeleton className="h-7 w-16" />
-                        </div>
-                    ))}
-                </div>
+                <StatGridSkeleton
+                    count={3}
+                    className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6"
+                />
             </div>
             {Array.from({ length: 3 }).map((_, index) => (
                 <div key={index} className="bg-card rounded-lg border border-border p-4 md:p-5 space-y-3">
                     <Skeleton className="h-5 w-2/3" />
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        <Skeleton className="h-20 w-full" />
-                        <Skeleton className="h-20 w-full" />
-                        <Skeleton className="h-20 w-full" />
-                    </div>
+                    <LineBlockSkeleton />
                 </div>
             ))}
         </div>
@@ -136,12 +157,7 @@ export function AdminFormSkeleton() {
             {Array.from({ length: 4 }).map((_, index) => (
                 <div key={index} className="bg-card border border-border rounded-lg p-6 space-y-4">
                     <Skeleton className="h-5 w-40" />
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Skeleton className="h-11 w-full" />
-                        <Skeleton className="h-11 w-full" />
-                        <Skeleton className="h-11 w-full" />
-                        <Skeleton className="h-11 w-full" />
-                    </div>
+                    <LineBlockSkeleton />
                 </div>
             ))}
         </div>

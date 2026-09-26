@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CpuChipIcon, CodeBracketIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
+import { CodeBracketIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/ui/Table';
 import { PaginationControls } from '@/ui/data-table/DataTablePagination';
+import { Skeleton } from '@/ui/Skeleton';
+import { EmptyState } from '@/ui/EmptyState';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { Opportunity, HashTab } from '../types';
 
@@ -63,16 +65,20 @@ export function OpportunityQueueTab({
  </div>
 
  {isLoading ? (
- <div className="p-12 text-center border border-dashed border-border/80 rounded-2xl bg-card/40 backdrop-blur-xs">
- <p className="text-xs text-muted-foreground animate-pulse">Loading opportunities...</p>
+ <div className="space-y-3 py-2">
+ <Skeleton className="h-4 w-1/3" />
+ <Skeleton className="h-4 w-full" />
+ <Skeleton className="h-4 w-2/3" />
  </div>
  ) : opportunities.length === 0 ? (
- <div className="p-16 text-center border border-dashed border-border/80 rounded-2xl max-w-md mx-auto my-6 bg-card/40 backdrop-blur-xs">
- <CpuChipIcon className="w-8 h-8 text-muted-foreground mx-auto mb-3 opacity-60" />
- <p className="text-sm font-bold text-foreground">No items in this section</p>
- <p className="text-xs text-muted-foreground mt-1.5">
- Discovered opportunities from ATS connectors will stream here automatically.
- </p>
+ <div className="py-6">
+ <EmptyState
+ title="No items in this section"
+ description="Discovered opportunities from ATS connectors will stream here automatically."
+ icon="inbox"
+ size="md"
+ variant="ghost"
+ />
  </div>
  ) : (
  <div className="border border-border/60 rounded-xl bg-card/60 backdrop-blur-md overflow-hidden shadow-xs flex flex-col flex-1 min-h-0">

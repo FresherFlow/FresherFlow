@@ -246,7 +246,7 @@ export default function JobCard({
                                 {job.normalizedRole || job.title}
                             </h2>
                             <div className="flex items-center gap-1.5 mt-1 text-sm text-muted-foreground min-w-0">
-                                <span className="font-semibold text-foreground/80 truncate max-w-md shrink-0">{job.company}</span>
+                                <span className="min-w-0 flex-1 truncate font-semibold text-foreground/80">{job.company}</span>
                                 <span className="text-muted-foreground/40 shrink-0">•</span>
                                 <span className="inline-flex items-center gap-1 truncate min-w-0 max-w-lg">
                                     <MapPinIcon className="w-3.5 h-3.5 shrink-0" aria-hidden />
@@ -289,7 +289,7 @@ export default function JobCard({
             </div>
 
             {/* Badges + skills wrap left, with Apply on the same row (right side) */}
-            <div className="flex items-center gap-3 py-2 relative z-20 pointer-events-auto">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-2 relative z-20 pointer-events-auto">
                 <AutoFitBadges
                     metaItems={metaItems}
                     skills={orderedSkills}

@@ -13,7 +13,6 @@ import {
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator } from "@/ui/DropdownMenu";
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/ui/Select";
 import { detectAtsFromUrl } from "../utils";
 import {
   Dialog,
@@ -27,6 +26,7 @@ import { cn } from "@/ui/cn";
 import { ProcessedJob } from "../types";
 import { toast } from "react-hot-toast";
 import { DataGrid, DataGridColumn, DataGridActionsContext } from "@/ui/data-grid/DataGrid";
+import { FilterSelect } from "@/ui/data-grid/FilterSelect";
 import { selectionColumn } from "../selectionColumn";
 import { StatusCell, PROCESSED_STATUS_OPTIONS } from "../statuses";
 
@@ -429,17 +429,17 @@ export function ProcessedJobsTab() {
       return (
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1.5">
-            <Select value={atsFilter} onValueChange={setAtsFilter}>
-              <SelectTrigger className="h-9 min-w-30 w-auto cursor-pointer">
-                <SelectValue placeholder="All ATS" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL}>All ATS</SelectItem>
-                {uniqueAtsTypes.map((ats) => (
-                  <SelectItem key={ats} value={ats}>{ats}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FilterSelect
+              value={atsFilter}
+              onChange={setAtsFilter}
+              placeholder="All ATS"
+              ariaLabel="Filter by ATS"
+              className="min-w-30"
+              options={[
+                { value: ALL, label: 'All ATS' },
+                ...uniqueAtsTypes.map((ats) => ({ value: ats, label: ats })),
+              ]}
+            />
           </div>
           <button
             onClick={() => loadData(true)}

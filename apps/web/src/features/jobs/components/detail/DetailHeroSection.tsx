@@ -171,15 +171,15 @@ export function DetailHeroSection({
                 {/* Government job stats */}
                 {isGovernmentJob && (
                     <div className="grid grid-cols-3 gap-2 pt-1">
-                        <div className="rounded-xl border border-border bg-card/90 px-3 py-3">
+                        <div className="rounded-xl bg-card/90 px-3 py-3">
                             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Vacancies</p>
                             <p className="mt-0.5 text-2xl font-extrabold text-foreground">{govDetails?.vacancyCount ?? 'NA'}</p>
                         </div>
-                        <div className="rounded-xl border border-border bg-card/90 px-3 py-3">
+                        <div className="rounded-xl bg-card/90 px-3 py-3">
                             <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Opens</p>
                             <p className="mt-0.5 text-sm font-bold text-foreground">{applicationStart || '—'}</p>
                         </div>
-                        <div className="rounded-xl border border-error bg-error/90 px-3 py-3">
+                        <div className="rounded-xl bg-error/90 px-3 py-3">
                             <p className="text-xs font-bold uppercase tracking-wider text-error">Last Date</p>
                             <p className="mt-0.5 text-sm font-bold text-error">{applicationEnd || formatDeadline(opp) || '—'}</p>
                         </div>
