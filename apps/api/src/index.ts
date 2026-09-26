@@ -447,7 +447,6 @@ if (isUserMode) {
     app.use('/api/saved', savedRoutes);
     app.use('/api/dashboard', dashboardRoutes);
     app.use('/api/alerts', alertsRoutes);
-    app.use('/api/targets', adminTargetsRoutes);
     app.use('/api/public/companies', companyRoutes);
     app.use('/api/public/sitemap', sitemapRoutes);
     app.use('/api/public', joblinksRoutes);

@@ -5,7 +5,9 @@ import { AppError } from './errorHandler';
 export function validate(schema: { parseAsync: (data: unknown) => Promise<unknown> }) {
     return async (req: Request, res: Response, next: NextFunction) => {
         try {
-            await schema.parseAsync(req.body);
+            // Use the parsed output so Zod defaults/coercion and strict stripping
+            // are applied to downstream handlers.
+            req.body = await schema.parseAsync(req.body);
             next();
         } catch (error) {
             if (error instanceof ZodError) {

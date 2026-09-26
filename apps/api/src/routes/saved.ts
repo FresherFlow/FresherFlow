@@ -88,12 +88,16 @@ router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunct
     try {
         const userId = req.userId!;
         const saved = await prisma.savedOpportunity.findMany({
-            where: { userId },
+            // A bookmark created before a listing was soft-deleted must not keep
+            // its full record readable through this endpoint. This filter has to
+            // live in the top-level `where`: Prisma ignores `where` nested inside
+            // `include`, which would silently leak soft-deleted opportunities.
+            where: {
+                userId,
+                opportunity: { deletedAt: null }
+            },
             include: {
                 opportunity: {
-                    // A bookmark created before a listing was soft-deleted must
-                    // not keep its full record readable through this endpoint.
-                    where: { deletedAt: null },
                     include: {
                         driveDetails: true,
                         user: {
@@ -108,15 +112,10 @@ router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunct
             orderBy: { createdAt: 'desc' }
         });
 
-        // Prisma returns saved rows whose opportunity no longer matches the
-        // nested filter with `opportunity: null`; drop them so the response
-        // shape stays a flat list of opportunities.
-        const opportunities = saved
-            .filter((s) => s.opportunity !== null)
-            .map((s) => ({
-                ...(s.opportunity as NonNullable<typeof s.opportunity>),
-                isSaved: true
-            }));
+        const opportunities = saved.map((s) => ({
+            ...(s.opportunity as NonNullable<typeof s.opportunity>),
+            isSaved: true
+        }));
 
         res.json({ opportunities });
     } catch (error) {

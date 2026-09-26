@@ -1,6 +1,7 @@
 import prisma from '../database/prisma';
 import { OrganizationType, OrgRole, MembershipStatus } from '@fresherflow/types';
 import { slugify } from '@fresherflow/utils';
+import { AppError } from '../../middleware/errorHandler';
 
 export class OrganizationService {
     /**
@@ -109,7 +110,26 @@ export class OrganizationService {
     }
 
     /**
-     * Invite a team member to an Organization
+     * Check whether a user is an ACTIVE member of an organization.
+     */
+    static async isActiveMember(organizationId: string, userId: string) {
+        const membership = await prisma.organizationMembership.findFirst({
+            where: {
+                organizationId,
+                userId,
+                status: MembershipStatus.APPROVED
+            },
+            select: { role: true }
+        });
+
+        return membership;
+    }
+
+    /**
+     * Invite a team member to an Organization.
+     *
+     * Only ACTIVE members of the target organization may invite. Enforced here
+     * (not in the route) so no caller can bypass the membership check.
      */
     static async inviteTeamMember(data: {
         organizationId: string;
@@ -117,13 +137,30 @@ export class OrganizationService {
         email: string;
         role?: OrgRole;
     }) {
+        const membership = await OrganizationService.isActiveMember(
+            data.organizationId,
+            data.invitedByUserId
+        );
+
+        if (!membership) {
+            throw new AppError('You are not an active member of this organization', 403);
+        }
+
+        // Only owners/admins may grant elevated roles.
+        const requestedRole = data.role || OrgRole.RECRUITER;
+        const canGrant = membership.role === OrgRole.OWNER || membership.role === OrgRole.ADMIN;
+
+        if (!canGrant && requestedRole !== OrgRole.RECRUITER) {
+            throw new AppError('You do not have permission to invite with this role', 403);
+        }
+
         const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
         return prisma.organizationInvite.create({
             data: {
                 organizationId: data.organizationId,
                 email: data.email.toLowerCase().trim(),
-                role: data.role || OrgRole.RECRUITER,
+                role: requestedRole,
                 invitedBy: data.invitedByUserId,
                 expiresAt
             }

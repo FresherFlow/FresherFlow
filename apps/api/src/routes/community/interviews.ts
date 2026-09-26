@@ -99,8 +99,8 @@ router.post(
         const userId = requireMember(req, next);
         if (!userId) return;
         const result = await createInterviewExperience({
-            authorId: userId,
             ...req.body,
+            authorId: userId,
         });
         return res.status(201).json(result);
     })
