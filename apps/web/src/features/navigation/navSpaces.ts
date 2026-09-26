@@ -172,9 +172,11 @@ export function getSpace(id: SpaceId): Space {
     return SPACES.find((space) => space.id === id) ?? SPACES[0];
 }
 
-/** Initial team from URL: /govt* selects Government, everything else Jobs. */
+/** Initial team from URL: /govt* selects Government, /drives* selects Drives, everything else Jobs. */
 export function getInitialSpace(pathname: string): SpaceId {
-    return pathname.startsWith('/govt') ? 'govt' : 'jobs';
+    if (pathname.startsWith('/govt')) return 'govt';
+    if (pathname.startsWith('/drives') || pathname.startsWith('/off-campus')) return 'drives';
+    return 'jobs';
 }
 
 /**
@@ -187,7 +189,6 @@ export function getSpaceForPathname(pathname: string): SpaceId | null {
     if (
         pathname.startsWith('/jobs') ||
         pathname.startsWith('/companies') ||
-        pathname.startsWith('/off-campus') ||
         pathname.startsWith('/skills') ||
         pathname.startsWith('/roles') ||
         pathname.startsWith('/locations') ||

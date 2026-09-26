@@ -178,7 +178,7 @@ export function readSpaceId(): 'jobs' | 'drives' | 'govt' | null {
 
 export function persistSpaceId(id: string) {
     try {
-        if (id === 'jobs' || id === 'govt') {
+        if (id === 'jobs' || id === 'drives' || id === 'govt') {
             localStorage.setItem(SPACE_STORAGE_KEY, id);
         }
     } catch {
