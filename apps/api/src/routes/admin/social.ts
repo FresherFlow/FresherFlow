@@ -1,10 +1,17 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { SocialPlatform, SocialPostStatus } from '@prisma/client';
 import { listSocialPosts, retrySocialPost } from '../../infrastructure/services/social/socialPost.service';
+import { requireAdmin } from '../../middleware/auth';
 
 import { z } from 'zod';
 
 const router = Router();
+
+// This router is mounted behind ensureDomainHost(), which is a hostname check
+// only: it lets any request carrying an Authorization header through. Without a
+// real auth guard here, any signed-in candidate could list every social post
+// attempt and trigger a retry against a connected account.
+router.use(requireAdmin);
 
 const listQuerySchema = z.object({
   platform: z.nativeEnum(SocialPlatform).optional(),

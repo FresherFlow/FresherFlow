@@ -48,13 +48,18 @@ function account(id: string, patch?: Partial<AccountState>): AccountState {
 }
 
 const txMock = {
-    user: { findUnique: vi.fn() },
+    // The admin status route runs its user write and its session revocation
+    // inside one transaction, so the transaction client needs the same surface
+    // as the top-level mock.
+    user: { findUnique: vi.fn(), update: vi.fn(), count: vi.fn() },
+    refreshToken: { updateMany: vi.fn() },
     accessRole: { findUnique: vi.fn() },
     userAccessRole: { findUnique: vi.fn(), create: vi.fn(), delete: vi.fn() },
 };
 
 const prismaMock = {
-    user: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
+    user: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn(), count: vi.fn() },
+    refreshToken: { updateMany: vi.fn() },
     accessRole: { findUnique: vi.fn() },
     userAccessRole: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), delete: vi.fn() },
     report: { findMany: vi.fn(), count: vi.fn(), findUnique: vi.fn(), update: vi.fn() },
@@ -293,6 +298,10 @@ describe('moderator least-privilege boundary', () => {
 
     it('CAN suspend a plain abusive user (explicitly-required account action)', async () => {
         account('abuser-1');
+        // The write happens on the transaction client: the status change and the
+        // session revocation are one unit of work.
+        txMock.user.count.mockResolvedValue(2);
+        txMock.user.update.mockResolvedValue({ id: 'abuser-1', status: 'SUSPENDED', trustLevel: 'BANNED' });
         prismaMock.user.update.mockResolvedValue({ id: 'abuser-1', status: 'SUSPENDED', trustLevel: 'BANNED' });
 
         const res = await request(app)
@@ -300,6 +309,21 @@ describe('moderator least-privilege boundary', () => {
             .set(moderatorAuth)
             .send({ status: 'SUSPENDED', reason: 'Spamming job discussions' });
         expect(res.status).toBe(200);
+
+        // A suspended account must not keep live sessions.
+        expect(txMock.refreshToken.updateMany).toHaveBeenCalled();
+    });
+
+    it('refuses to suspend the last remaining active admin', async () => {
+        account('last-admin', { role: 'ADMIN' });
+        // No other active admin exists.
+        txMock.user.count.mockResolvedValue(0);
+
+        const res = await request(app)
+            .post('/api/admin/users/last-admin/status')
+            .set(adminAuth)
+            .send({ status: 'SUSPENDED', reason: 'testing lockout guard' });
+        expect(res.status).toBe(409);
     });
 });
 

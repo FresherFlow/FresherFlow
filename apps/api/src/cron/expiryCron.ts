@@ -40,17 +40,31 @@ export async function runExpiryCycle() {
     });
 
     try {
-        // 1. EXPIRE JOBS & INTERNSHIPS
-        const expiredJobsResult = await prisma.opportunity.updateMany({
+        // 1. EXPIRE BY EXPLICIT EXPIRY + ALL DEADLINE AXES (all categories)
+        // Phase 5: competitions close on registrationDeadline, employment on
+        // applicationDeadline, everything on expiresAt/endsAt. The old cron
+        // only expired EMPLOYMENT rows via expiresAt, so scholarships and
+        // competitions stayed live forever after their deadline.
+        const expiredByDeadlineResult = await prisma.opportunity.updateMany({
             where: {
-                category: OpportunityCategory.EMPLOYMENT,
                 status: OpportunityStatus.PUBLISHED,
-                expiresAt: { lt: nowUTC }
+                deletedAt: null,
+                expiredAt: null,
+                OR: [
+                    { expiresAt: { lt: nowUTC } },
+                    { registrationDeadline: { lt: nowUTC } },
+                    { applicationDeadline: { lt: nowUTC } },
+                    { endsAt: { lt: nowUTC } },
+                ],
             },
             data: {
                 expiredAt: nowUTC
             }
         });
+
+        // 1b. Legacy narrow pass kept for alert parity: notify engaged users
+        // about newly expired employment rows.
+        const expiredJobsResult = expiredByDeadlineResult;
 
         // Notify engaged users about expired jobs
         if (expiredJobsResult.count > 0) {
@@ -58,7 +72,7 @@ export async function runExpiryCycle() {
                 where: {
                     category: OpportunityCategory.EMPLOYMENT,
                     status: OpportunityStatus.PUBLISHED,
-                    expiredAt: { not: null }
+                    expiredAt: { gte: startTime },
                 },
                 select: { id: true }
             });
@@ -71,7 +85,8 @@ export async function runExpiryCycle() {
         const activeWalkIns = await prisma.opportunity.findMany({
             where: {
                 recruitmentMethod: RecruitmentMethod.WALK_IN,
-                status: OpportunityStatus.PUBLISHED
+                status: OpportunityStatus.PUBLISHED,
+                deletedAt: null
             },
             include: { driveDetails: true }
         });
@@ -98,7 +113,11 @@ export async function runExpiryCycle() {
         }
 
         const expiredWalkInsResult = await prisma.opportunity.updateMany({
-            where: { id: { in: walkInIdsToExpire }, status: OpportunityStatus.PUBLISHED },
+            // deletedAt: null throughout: the expiry cycle must not stamp
+            // expiredAt onto a listing an admin has already removed, and the
+            // stale-warning count must not report removed listings as actionable.
+            // expiredAt: null keeps the cycle idempotent across reruns.
+            where: { id: { in: walkInIdsToExpire }, status: OpportunityStatus.PUBLISHED, deletedAt: null, expiredAt: null },
             data: { expiredAt: nowUTC }
         });
 
@@ -110,6 +129,7 @@ export async function runExpiryCycle() {
         const staleListings = await prisma.opportunity.count({
             where: {
                 status: OpportunityStatus.PUBLISHED,
+                deletedAt: null,
                 expiresAt: null,
                 recruitmentMethod: { not: RecruitmentMethod.WALK_IN },
                 lastVerified: { lt: staleThreshold }
@@ -134,6 +154,18 @@ export async function runExpiryCycle() {
             where: { createdAt: { lt: logsPruneThreshold } }
         });
 
+        // Expired refresh tokens are dead weight: they can never authenticate, and
+        // the table only grows because rotation adds a row per refresh. Keep a
+        // short grace window past expiry for forensics, then delete.
+        const refreshTokenPruneDays = Number(process.env.PRUNE_REFRESH_TOKENS_DAYS || 7);
+        const refreshTokenPruneThreshold = new Date(nowUTC);
+        refreshTokenPruneThreshold.setDate(
+            refreshTokenPruneThreshold.getDate() - refreshTokenPruneDays
+        );
+        const refreshTokensPruned = await prisma.refreshToken.deleteMany({
+            where: { expiresAt: { lt: refreshTokenPruneThreshold } }
+        });
+
         // 5. PUBLIC PAGE ACTIVATION REMINDERS
         // A public page lapses when its activation window closes, so warn owners inside
         // the last day. Isolated: a failure here must never break job expiry.
@@ -151,7 +183,7 @@ export async function runExpiryCycle() {
             durationMs,
             totalExpired: expiredJobsResult.count + expiredWalkInsResult.count,
             staleWarnings: staleListings,
-            pruned: { raw: rawPruned.count, logs: logsPruned.count },
+            pruned: { raw: rawPruned.count, logs: logsPruned.count, refreshTokens: refreshTokensPruned.count },
             profilePageReminders
         };
 
@@ -162,7 +194,7 @@ export async function runExpiryCycle() {
             jobsInternshipsExpired: expiredJobsResult.count,
             walkInsExpired: expiredWalkInsResult.count,
             staleWarnings: summary.staleWarnings,
-            prunedCount: rawPruned.count + logsPruned.count
+            prunedCount: rawPruned.count + logsPruned.count + refreshTokensPruned.count
         });
 
         // Trigger bootstrap feed refresh if anything expired

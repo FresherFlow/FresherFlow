@@ -7,6 +7,49 @@ import {
 import { logger } from '@fresherflow/utils';
 import { EmailService } from './email.service';
 import { getAdminDeliveryControls } from './adminDeliveryControl.service';
+import { AlertDispatchReason, AlertDispatchStatus, AlertKind } from '@fresherflow/database';
+import crypto from 'crypto';
+
+function newCorrelationId(): string {
+    try {
+        return crypto.randomUUID();
+    } catch {
+        return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    }
+}
+
+/** Best-effort dispatch logging: a logging failure must never fail the alert. */
+async function logAlertDispatch(params: {
+    correlationId: string;
+    userId?: string | null;
+    opportunityId?: string | null;
+    kind: AlertKind;
+    channel?: 'APP' | 'EMAIL' | 'PUSH' | null;
+    status: AlertDispatchStatus;
+    reason?: AlertDispatchReason | null;
+    dedupeKey?: string | null;
+    errorMessage?: string | null;
+}): Promise<void> {
+    try {
+        await prisma.alertDispatchLog.create({
+            data: {
+                correlationId: params.correlationId,
+                userId: params.userId ?? null,
+                opportunityId: params.opportunityId ?? null,
+                kind: params.kind,
+                channel: params.channel ?? null,
+                status: params.status,
+                reason: params.reason ?? null,
+                dedupeKey: params.dedupeKey ?? null,
+                errorMessage: params.errorMessage ?? null,
+            },
+        });
+    } catch (error) {
+        logger.warn('[alerts] Failed to write dispatch log', {
+            error: error instanceof Error ? error.message : String(error),
+        });
+    }
+}
 
 
 // AlertPreference is fetched from DB
@@ -53,22 +96,46 @@ async function sendDailyDigestForUser(
     if (ranked.length === 0) return false;
 
     const dedupeKey = `${user.id}:DAILY_DIGEST:${current.dateKey}`;
+    const correlationId = newCorrelationId();
     const existing = await prisma.alertDelivery.findUnique({ where: { dedupeKey } });
-    if (existing) return false;
+    if (existing) {
+        await logAlertDispatch({
+            correlationId,
+            userId: user.id,
+            kind: 'DAILY_DIGEST' as AlertKind,
+            status: AlertDispatchStatus.SKIPPED,
+            reason: AlertDispatchReason.DEDUPE_HIT,
+            dedupeKey,
+        });
+        return false;
+    }
 
     const shouldSendEmail = controls.userEmailNotificationsEnabled && preference.emailEnabled;
 
     if (shouldSendEmail) {
-        await EmailService.sendOpportunityDigest(
-            user.email,
-            user.fullName,
-            ranked.map((item) => ({
-                title: item.opportunity.title,
-                company: item.opportunity.company,
-                location: item.opportunity.locations?.[0] || null,
-                applyUrl: buildOpportunityUrl(frontendUrl, item.opportunity.slug, item.opportunity.category),
-            }))
-        );
+        try {
+            await EmailService.sendOpportunityDigest(
+                user.email,
+                user.fullName,
+                ranked.map((item) => ({
+                    title: item.opportunity.title,
+                    company: item.opportunity.company,
+                    location: item.opportunity.locations?.[0] || null,
+                    applyUrl: buildOpportunityUrl(frontendUrl, item.opportunity.slug, item.opportunity.category),
+                }))
+            );
+        } catch (error) {
+            await logAlertDispatch({
+                correlationId,
+                userId: user.id,
+                kind: 'DAILY_DIGEST' as AlertKind,
+                channel: 'EMAIL',
+                status: AlertDispatchStatus.FAILED,
+                reason: AlertDispatchReason.CHANNEL_ERROR,
+                dedupeKey: `${dedupeKey}:EMAIL`,
+                errorMessage: error instanceof Error ? error.message : String(error),
+            });
+        }
     }
 
     const operations = [
@@ -107,6 +174,15 @@ async function sendDailyDigestForUser(
     }
 
     await prisma.$transaction(operations);
+    await logAlertDispatch({
+        correlationId,
+        userId: user.id,
+        kind: 'DAILY_DIGEST' as AlertKind,
+        channel: 'APP',
+        status: AlertDispatchStatus.SENT,
+        reason: AlertDispatchReason.SENT_OK,
+        dedupeKey: `${dedupeKey}:APP`,
+    });
     return true;
 }
 
@@ -136,20 +212,46 @@ async function sendClosingSoonForUser(
 
         const dayKey = now.toISOString().slice(0, 10);
         const dedupeKey = `${user.id}:CLOSING_SOON:${item.opportunity.id}:${dayKey}`;
+        const correlationId = newCorrelationId();
         const alreadySent = await prisma.alertDelivery.findUnique({ where: { dedupeKey } });
-        if (alreadySent) continue;
+        if (alreadySent) {
+            await logAlertDispatch({
+                correlationId,
+                userId: user.id,
+                opportunityId: item.opportunity.id,
+                kind: 'CLOSING_SOON' as AlertKind,
+                status: AlertDispatchStatus.SKIPPED,
+                reason: AlertDispatchReason.DEDUPE_HIT,
+                dedupeKey,
+            });
+            continue;
+        }
 
         const expiresText = formatExpiresText(hoursLeft);
 
         const shouldSendEmail = controls.userEmailNotificationsEnabled && preference.emailEnabled;
 
         if (shouldSendEmail) {
-            await EmailService.sendClosingSoonAlert(user.email, user.fullName, {
-                title: item.opportunity.title,
-                company: item.opportunity.company,
-                expiresText,
-                applyUrl: buildOpportunityUrl(frontendUrl, item.opportunity.slug, item.opportunity.category),
-            });
+            try {
+                await EmailService.sendClosingSoonAlert(user.email, user.fullName, {
+                    title: item.opportunity.title,
+                    company: item.opportunity.company,
+                    expiresText,
+                    applyUrl: buildOpportunityUrl(frontendUrl, item.opportunity.slug, item.opportunity.category),
+                });
+            } catch (error) {
+                await logAlertDispatch({
+                    correlationId,
+                    userId: user.id,
+                    opportunityId: item.opportunity.id,
+                    kind: 'CLOSING_SOON' as AlertKind,
+                    channel: 'EMAIL',
+                    status: AlertDispatchStatus.FAILED,
+                    reason: AlertDispatchReason.CHANNEL_ERROR,
+                    dedupeKey: `${dedupeKey}:EMAIL`,
+                    errorMessage: error instanceof Error ? error.message : String(error),
+                });
+            }
         }
 
         await prisma.alertDelivery.createMany({
@@ -172,6 +274,16 @@ async function sendClosingSoonForUser(
                 }] : [])
             ],
             skipDuplicates: true
+        });
+        await logAlertDispatch({
+            correlationId,
+            userId: user.id,
+            opportunityId: item.opportunity.id,
+            kind: 'CLOSING_SOON' as AlertKind,
+            channel: 'APP',
+            status: AlertDispatchStatus.SENT,
+            reason: AlertDispatchReason.SENT_OK,
+            dedupeKey: `${dedupeKey}:APP`,
         });
         return true;
     }
@@ -420,5 +532,23 @@ export async function runAlertsCycle() {
         trendingSent
     });
 
-    return { usersChecked: users.length, digestSent, closingSoonSent, eventRemindersSent, trendingSent };
+    // Phase 7 registration / campus-drive producers share the same cycle so one
+    // cron tick covers every alert kind. Failures here never fail the core
+    // digest/closing counts above.
+    let registration: { registrationOpen: number; registrationClosing: number; campusDrive: number; closingSoonDeadline: number } = {
+        registrationOpen: 0,
+        registrationClosing: 0,
+        campusDrive: 0,
+        closingSoonDeadline: 0,
+    };
+    try {
+        const { runRegistrationAlertsCycle } = await import('./registrationAlerts.service');
+        registration = await runRegistrationAlertsCycle(now);
+    } catch (error) {
+        logger.warn('[alerts] Registration alerts cycle failed', {
+            error: error instanceof Error ? error.message : String(error),
+        });
+    }
+
+    return { usersChecked: users.length, digestSent, closingSoonSent, eventRemindersSent, trendingSent, ...registration };
 }

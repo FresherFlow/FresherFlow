@@ -7,7 +7,8 @@ import {
     generateAccessToken,
     generateRefreshToken,
     verifyRefreshToken,
-    hashRefreshToken
+    hashRefreshToken,
+    logger
 } from '@fresherflow/utils';
 import { validate } from '../middleware/validate';
 import { sendOtpSchema, verifyOtpSchema, googleAuthSchema } from '../utils/validation';
@@ -43,6 +44,31 @@ const anonymousAuthLimiter = createRateLimiter({
     max: 10, // Max 10 creations per window per IP
     message: 'Too many requests to register anonymous accounts. Please try again later.',
     keyPrefix: 'rate:auth:anonymous'
+});
+
+// Handshake exchanges a Firebase identity for a local session: bound it like
+// the other credential-exchange routes.
+const handshakeLimiter = createRateLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    message: 'Too many sign-in attempts. Please try again later.',
+    keyPrefix: 'rate:auth:handshake'
+});
+
+// Refresh and logout both present a bearer-grade secret (the refresh token).
+// They are cheap to call and attractive to brute-force, so both are limited.
+const refreshLimiter = createRateLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 60,
+    message: 'Too many session refresh attempts. Please try again later.',
+    keyPrefix: 'rate:auth:refresh'
+});
+
+const logoutLimiter = createRateLimiter({
+    windowMs: 15 * 60 * 1000,
+    max: 30,
+    message: 'Too many logout attempts. Please try again later.',
+    keyPrefix: 'rate:auth:logout'
 });
 
 const router: Router = express.Router();
@@ -105,11 +131,13 @@ function toAuthRouteError(
         return new AppError('Database is temporarily unavailable. Please try again shortly.', 503);
     }
 
-    const message = error instanceof Error ? error.message : fallbackMessage;
-    return new AppError(message, fallbackStatus);
+    // Never forward raw error text to the client: Prisma/connection messages
+    // would leak internals through the operational 4xx path. Callers supply
+    // a safe fallback; details stay in server logs via the error handler.
+    return new AppError(fallbackMessage, fallbackStatus);
 }
 
-async function setAuthCookies(user: User, res: Response) {
+export async function setAuthCookies(user: User, res: Response) {
     const accessToken = generateAccessToken(user.id);
     const { token: refreshToken, hash: tokenHash } = generateRefreshToken(user.id);
 
@@ -145,14 +173,6 @@ async function hydrateProfileCompletion(userId: string, profile: Profile | null)
     return updatedProfile as unknown as Profile;
 }
 
-/**
- * Common logic to handle merging of anonymous activity into a signed-in account.
- * (Deprecated: Now handled via Firebase Linkage)
- */
-async function tryMergeAnonymousIdentity(_req: Request, _userId: string) {
-    // Legacy support or internal tracking if needed
-}
-
 // POST /api/auth/anonymous
 router.post('/anonymous', (_req: Request, res: Response) => {
     return res.status(404).json({ error: 'Not available' });
@@ -165,7 +185,7 @@ router.post('/anonymous', (_req: Request, res: Response) => {
  * Migrates/links a Firebase-authenticated user to our local Prisma DB.
  * Used by mobile app to initialize session after Firebase sign-in.
  */
-router.post('/handshake', verifyFirebaseToken, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/handshake', handshakeLimiter, verifyFirebaseToken, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const firebaseUser = req.firebaseUser;
         if (!firebaseUser) return next(new AppError('Firebase user not found in request', 401));
@@ -231,7 +251,6 @@ router.post('/otp/verify', authVerifyLimiter, validate(verifyOtpSchema), async (
         });
 
         // Merge guest data if x-fresherflow-anon-id is present
-        await tryMergeAnonymousIdentity(req, user.id);
 
         // Generate Firebase Custom Token
         const uidForToken = user.firebase_uid || user.id;
@@ -269,7 +288,6 @@ router.post('/google', authVerifyLimiter, validate(googleAuthSchema), async (req
         });
 
         // Merge guest data if x-fresherflow-anon-id is present
-        await tryMergeAnonymousIdentity(req, user.id);
 
         const uidForToken = user.firebase_uid || user.id;
         const auth = getFirebaseAuth();
@@ -287,7 +305,7 @@ router.post('/google', authVerifyLimiter, validate(googleAuthSchema), async (req
 });
 
 // POST /api/auth/refresh
-router.post('/refresh', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/refresh', refreshLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const headerRefreshToken = req.header('x-refresh-token') || req.header('x-refresh-token'.toLowerCase());
         const refreshToken = req.cookies.refreshToken || headerRefreshToken;
@@ -311,6 +329,7 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
         const REFRESH_REUSE_GRACE_MS = 60 * 1000;
 
         const tokenHash = hashRefreshToken(refreshToken);
+        let reuseDetected = false;
         const rotation = await prisma.$transaction(async (tx) => {
             const liveToken = await tx.refreshToken.findFirst({
                 where: { tokenHash, userId, revokedAt: null, expiresAt: { gt: new Date() } }
@@ -323,6 +342,9 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
                 return true;
             }
 
+            // The presented token is not live. Either it was revoked moments ago
+            // by a sibling tab racing this same refresh, or it was already spent
+            // and replayed, which means it was stolen.
             const recentlyRevoked = await tx.refreshToken.findFirst({
                 where: {
                     tokenHash,
@@ -330,21 +352,29 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
                     revokedAt: { gt: new Date(Date.now() - REFRESH_REUSE_GRACE_MS) }
                 }
             });
-            if (!recentlyRevoked) return false;
-
-            // Retire whatever is currently live so only one token stays valid.
-            const current = await tx.refreshToken.findFirst({
-                where: { userId, revokedAt: null, expiresAt: { gt: new Date() } },
-                orderBy: { createdAt: 'desc' }
-            });
-            if (current) {
-                await tx.refreshToken.update({
-                    where: { id: current.id },
-                    data: { revokedAt: new Date() }
-                });
+            if (recentlyRevoked) {
+                // Rotation race tolerance: a sibling tab just rotated this token.
+                // Leave the caller's own live session alone; reissuing below
+                // creates a parallel session for it. Revoking "the current token"
+                // here is wrong, because the newest live token may belong to the
+                // other tab rather than to the attacker.
+                return true;
             }
-            return true;
+
+            // Replay of an already-spent token. Treat it as theft: drop every
+            // live session for this user so the attacker and the legitimate user
+            // must both re-authenticate, and log the event for alerting.
+            reuseDetected = true;
+            await tx.refreshToken.updateMany({
+                where: { userId, revokedAt: null },
+                data: { revokedAt: new Date() }
+            });
+            return false;
         });
+
+        if (reuseDetected) {
+            logger.error('Refresh token reuse detected; revoked all sessions for user', { userId });
+        }
 
         if (!rotation) {
             clearAuthCookieVariants(res);
@@ -373,7 +403,7 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
 });
 
 // POST /api/auth/logout
-router.post('/logout', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/logout', logoutLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const refreshToken = req.cookies.refreshToken;
         if (refreshToken) {
@@ -393,6 +423,29 @@ router.post('/logout', async (req: Request, res: Response, next: NextFunction) =
         res.setHeader('Expires', '0');
 
         res.json({ message: 'Logged out successfully' });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// POST /api/auth/logout/all
+// Revokes every live refresh token for the caller (all devices/sessions).
+// The caller proves ownership with their access token via requireAuth, so the
+// revoked userId always comes from the verified session, never the body.
+router.post('/logout/all', logoutLimiter, requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        await prisma.refreshToken.updateMany({
+            where: { userId: req.userId as string, revokedAt: null },
+            data: { revokedAt: new Date() }
+        });
+
+        clearAuthCookieVariants(res);
+
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
+        res.json({ message: 'Logged out from all sessions successfully' });
     } catch (error) {
         next(error);
     }
@@ -451,6 +504,7 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
                 fullName: user.fullName, 
                 username: user.username || null,
                 role: user.role,
+                isTwoFactorEnabled: user.isTwoFactorEnabled ?? false,
                 memberships: user.organizationMemberships
             },
             profile

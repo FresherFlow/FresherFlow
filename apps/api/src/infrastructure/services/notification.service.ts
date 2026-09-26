@@ -107,8 +107,11 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         });
     }
 
-    const rawOpportunity = await prisma.opportunity.findUnique({
-        where: { id: opportunityId },
+    const rawOpportunity = await prisma.opportunity.findFirst({
+        // A soft-deleted listing must not generate alerts: pushing notifications
+        // for content the platform has already removed is both user-visible noise
+        // and a way to keep a removed posting alive.
+        where: { id: opportunityId, deletedAt: null },
         include: { driveDetails: true }
     });
 

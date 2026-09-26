@@ -6,6 +6,15 @@ import { updateOpportunityEngagement } from '../application/opportunity/engageme
 
 const router: Router = express.Router();
 
+/** Prisma's unique-constraint failure, by code rather than by message text. */
+function isUniqueViolation(error: unknown): boolean {
+    return (
+        typeof error === 'object' &&
+        error !== null &&
+        (error as { code?: unknown }).code === 'P2002'
+    );
+}
+
 
 /**
  * POST /api/saved/:id
@@ -32,49 +41,45 @@ router.post('/:id', requireAuth, async (req: Request, res: Response, next: NextF
         });
 
         if (!opportunity) {
-            return res.json({ saved: false });
+            // Unknown id or slug: 404, but keep `saved: false` in the body so
+            // existing clients that only read the flag keep working.
+            return res.status(404).json({
+                saved: false,
+                error: { message: 'Opportunity not found' },
+            });
         }
 
         const opportunityId = opportunity.id;
 
-        // 2. Check if already saved
-        const existing = await prisma.savedOpportunity.findUnique({
-            where: {
-                userId_opportunityId: {
-                    userId,
-                    opportunityId
-                }
-            }
+        // 2. Toggle. deleteMany / a P2002-tolerant create replace the previous
+        // read-then-write: two concurrent taps on the bookmark button both read
+        // "not saved", both tried to insert, and the loser surfaced a 500 from
+        // the unique constraint. The counter only moves for the branch that
+        // actually changed the row, so it cannot double-count.
+        const { count: deleted } = await prisma.savedOpportunity.deleteMany({
+            where: { userId, opportunityId }
         });
 
-        if (existing) {
-            // 3. Unsave (Delete)
-            await prisma.savedOpportunity.delete({
-                where: {
-                    userId_opportunityId: {
-                        userId,
-                        opportunityId
-                    }
-                }
-            });
-
+        if (deleted > 0) {
             await updateOpportunityEngagement(opportunityId, 'unsave');
-
-            res.json({ saved: false, message: 'Removed from bookmarks' });
-        } else {
-            // 4. Save (Create)
-            await prisma.savedOpportunity.create({
-                data: {
-                    userId,
-                    opportunityId
-                }
-            });
-
-            await updateOpportunityEngagement(opportunityId, 'save');
-
-            res.json({ saved: true, message: 'Saved to bookmarks' });
+            return res.json({ saved: false, message: 'Removed from bookmarks' });
         }
 
+        try {
+            await prisma.savedOpportunity.create({
+                data: { userId, opportunityId }
+            });
+        } catch (createError) {
+            // Lost a concurrent insert; the row now exists, so the desired end
+            // state (saved) is achieved. Treat it as a successful save.
+            if (isUniqueViolation(createError)) {
+                return res.json({ saved: true, message: 'Saved to bookmarks' });
+            }
+            throw createError;
+        }
+
+        await updateOpportunityEngagement(opportunityId, 'save');
+        return res.json({ saved: true, message: 'Saved to bookmarks' });
     } catch (error) {
         next(error);
     }

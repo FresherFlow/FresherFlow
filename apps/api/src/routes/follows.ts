@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { FollowType, prisma } from '@fresherflow/database';
 import { requireAuth } from '../middleware/auth';
+import { AppError } from '../middleware/errorHandler';
 import { z } from 'zod';
 
 const router = Router();
@@ -11,10 +12,10 @@ const FollowSchema = z.object({
 });
 
 // GET /api/follows
-router.get('/', requireAuth, async (req, res) => {
+router.get('/', requireAuth, async (req, res, next) => {
   try {
     if (!req.userId) {
-      return res.status(401).json({ error: 'Authentication required' });
+      return next(new AppError('Authentication required', 401));
     }
 
     const follows = await prisma.userFollow.findMany({
@@ -26,18 +27,18 @@ router.get('/', requireAuth, async (req, res) => {
       companies: follows.filter((f) => f.type === FollowType.COMPANY).map((f) => f.value),
       contributors: follows.filter((f) => f.type === FollowType.CONTRIBUTOR).map((f) => f.value),
     });
-  } catch {
-    res.status(500).json({ error: 'Failed to fetch follows' });
+  } catch (error) {
+    next(error);
   }
 });
 
 // POST /api/follows
-router.post('/', requireAuth, async (req, res) => {
+router.post('/', requireAuth, async (req, res, next) => {
   try {
     const { type, value } = FollowSchema.parse(req.body);
     const userId = req.userId;
     if (!userId) {
-      return res.status(401).json({ error: 'Authentication required' });
+      return next(new AppError('Authentication required', 401));
     }
 
     // Limit check (20 per type)
@@ -46,7 +47,7 @@ router.post('/', requireAuth, async (req, res) => {
     });
 
     if (count >= 20) {
-      return res.status(400).json({ error: `You can only follow up to 20 ${type.toLowerCase()}s` });
+      return next(new AppError(`You can only follow up to 20 ${type.toLowerCase()}s`, 400));
     }
 
     const follow = await prisma.userFollow.upsert({
@@ -60,19 +61,20 @@ router.post('/', requireAuth, async (req, res) => {
     res.json(follow);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: error.issues });
+      const messages = error.issues.map((e) => `${e.path.join('.')}: ${e.message}`);
+      return next(new AppError(messages.join(', '), 400));
     }
-    res.status(500).json({ error: 'Failed to follow' });
+    next(error);
   }
 });
 
 // DELETE /api/follows
-router.delete('/', requireAuth, async (req, res) => {
+router.delete('/', requireAuth, async (req, res, next) => {
   try {
     const { type, value } = FollowSchema.parse(req.body);
     const userId = req.userId;
     if (!userId) {
-      return res.status(401).json({ error: 'Authentication required' });
+      return next(new AppError('Authentication required', 401));
     }
 
     await prisma.userFollow.delete({
@@ -84,10 +86,16 @@ router.delete('/', requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ error: error.issues });
+      const messages = error.issues.map((e) => `${e.path.join('.')}: ${e.message}`);
+      return next(new AppError(messages.join(', '), 400));
     }
-    // Record not found is fine, treat as success
-    res.json({ success: true });
+    // Idempotent delete: a missing row is already the desired end state.
+    // Only the Prisma "record not found" code is swallowed; anything else
+    // (connection loss, constraint failure) goes to the error handler.
+    if (typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2025') {
+      return res.json({ success: true });
+    }
+    return next(error);
   }
 });
 

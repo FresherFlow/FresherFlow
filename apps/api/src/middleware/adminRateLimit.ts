@@ -13,7 +13,10 @@ function isRedisEnabled() {
  * Admin Rate Limiting Middleware
  * Enforces 100 create/edit actions per admin per hour
  *
- * Keyed by: adminId + hour window
+ * Keyed by: adminId (admin session) or userId (staff session: a moderator
+ * acting through the normal login via requireStaff) + hour window. Keying on
+ * the admin session alone would 401 every moderator write on staff-gated
+ * routes such as report resolve or user status changes.
  */
 export async function adminRateLimit(req: Request, res: Response, next: NextFunction) {
     // Skip rate limiting in development or test
@@ -21,13 +24,14 @@ export async function adminRateLimit(req: Request, res: Response, next: NextFunc
         return next();
     }
 
-    if (!req.adminId) {
+    const actor = req.adminId ?? req.userId;
+    if (!actor) {
         return next(new AppError('Admin ID not found', 401));
     }
 
     const nowMs = Date.now();
     const currentHour = Math.floor(nowMs / (1000 * 60 * 60));
-    const key = `${req.adminId}:${currentHour}`;
+    const key = `${actor}:${currentHour}`;
 
     if (isRedisEnabled()) {
         try {

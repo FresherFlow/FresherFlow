@@ -10,6 +10,7 @@ const prismaMock = {
     findFirst: vi.fn(),
     findUnique: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn().mockResolvedValue({ count: 1 }),
   },
 };
 
@@ -77,11 +78,20 @@ describe("POST /api/opportunities/:id/click (apply funnel)", () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ success: true });
 
-    // Engagement counter incremented from 4 -> 5.
+    // The counter is incremented atomically in the DB rather than read-then-write,
+    // so the click is applied as a relative delta. A lost-update race here would
+    // also corrupt trendingScore, which the public feed ranks on.
+    expect(prismaMock.opportunity.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: "opp-1", deletedAt: null }),
+        data: { clicksCount: 1 },
+      }),
+    );
+    // The score is then recomputed from the post-increment values.
     expect(prismaMock.opportunity.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "opp-1" },
-        data: expect.objectContaining({ clicksCount: 5 }),
+        data: expect.objectContaining({ trendingScore: expect.any(Number) }),
       }),
     );
 

@@ -105,16 +105,24 @@ export async function requireAuth(req: express.Request, res: Response, next: Nex
 
         if (userId) {
             // V1 moderation: suspended/deactivated/banned users cannot write.
+            // A transient DB error must not turn this check into a no-op: failing
+            // open here would let a suspended account keep acting during exactly
+            // the incident window an operator is trying to shut off. Fail closed
+            // with 503 instead, which is retryable and does not look like a
+            // credentials problem.
             try {
                 const account = await prisma.user.findUnique({
                     where: { id: userId },
                     select: { status: true, trustLevel: true },
                 });
-                if (account && (account.status !== 'ACTIVE' || account.trustLevel === 'BANNED')) {
+                if (!account) {
+                    return next(new AppError('Account not found', 401));
+                }
+                if (account.status !== 'ACTIVE' || account.trustLevel === 'BANNED') {
                     return next(new AppError('Account suspended. Contact support.', 403));
                 }
             } catch {
-                // Fail open on transient DB errors for reads; writes still validate downstream.
+                return next(new AppError('Unable to verify account status. Please retry.', 503));
             }
             req.userId = userId;
             req.isAnonymous = false;

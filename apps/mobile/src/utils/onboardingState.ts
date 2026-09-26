@@ -193,5 +193,25 @@ export async function flushOnboardingSyncQueue(userId: string, firebaseUid?: str
   }
 
   setQueue(remaining);
+
+  // Mobile claims a handle but never activated the page, so the link stayed dead for
+  // app-first users. Activate once this user's profile data has actually reached the
+  // server (nothing left queued) — the page is only live for a bounded window.
+  const stillPendingForUser = remaining.some(
+    (item) =>
+      item.userId === userId ||
+      (firebaseUid && (item.userId === firebaseUid || item.firebaseUid === firebaseUid)),
+  );
+  if (flushed > 0 && !stillPendingForUser) {
+    try {
+      await profileApi.publishProfile();
+      if (__DEV__) { console.log('[onboardingState] Activated public page') }
+    } catch (error) {
+      // Best-effort: never block the flush on activation. The user can reactivate
+      // from their profile, and the next flush will try again.
+      if (__DEV__) { console.warn('[onboardingState] Page activation failed:', (error as any)?.status) }
+    }
+  }
+
   return flushed;
 }

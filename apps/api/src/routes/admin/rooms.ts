@@ -1,6 +1,8 @@
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { z } from 'zod';
 import { requireAdmin } from '../../middleware/auth';
+import { adminRateLimit } from '../../middleware/adminRateLimit';
+import { withAdminAudit } from '../../middleware/adminAudit';
 import { normaliseRoomTags } from '../../infrastructure/services/community.service';
 import { validate } from '../../middleware/validate';
 import { AppError } from '../../middleware/errorHandler';
@@ -25,14 +27,16 @@ const createRoomSchema = z.object({
     name: z.string().min(2).max(100),
     description: z.string().max(2000).optional(),
     icon: z.string().max(10).optional(),
-    type: z.enum(['BATCH', 'SKILL', 'LOCATION', 'COMPANY', 'TOPIC', 'CUSTOM']).optional(),
+    // Free-form community tags (#2026, #tcs). Tags describe the room; they
+    // never execute opportunity matching.
+    tags: z.array(z.string().min(1).max(50)).max(30).optional().default([]),
 });
 
 const updateRoomSchema = z.object({
     name: z.string().min(2).max(100).optional(),
     description: z.string().max(2000).nullable().optional(),
     icon: z.string().max(10).nullable().optional(),
-    type: z.enum(['BATCH', 'SKILL', 'LOCATION', 'COMPANY', 'TOPIC', 'CUSTOM']).optional(),
+    tags: z.array(z.string().min(1).max(50)).max(30).optional(),
     status: z.enum(['ACTIVE', 'ARCHIVED', 'DELETED']).optional(),
 });
 
@@ -60,7 +64,9 @@ router.get(
 
 router.post(
     '/',
+    adminRateLimit,
     validate(createRoomSchema),
+    withAdminAudit('CREATE'),
     asyncHandler(async (req: Request, res: Response) => {
         const adminId = req.adminId;
         if (!adminId) throw new AppError('Admin authentication required', 401);
@@ -102,16 +108,18 @@ router.post(
 
 router.patch(
     '/:id',
+    adminRateLimit,
     validate(updateRoomSchema),
+    withAdminAudit('UPDATE'),
     asyncHandler(async (req: Request, res: Response) => {
         const room = await prisma.room.findUnique({ where: { id: String(req.params.id) }, select: { id: true, slug: true } });
         if (!room) throw new AppError('Room not found', 404);
 
-        const data: Record<string, unknown> = {};
+        const data: { name?: string; description?: string | null; icon?: string | null; tags?: string[]; status?: 'ACTIVE' | 'ARCHIVED' | 'DELETED' } = {};
         if (req.body.name !== undefined) data.name = String(req.body.name).trim();
         if (req.body.description !== undefined) data.description = req.body.description?.trim() || null;
         if (req.body.icon !== undefined) data.icon = req.body.icon || null;
-        if (req.body.type !== undefined) data.type = req.body.type;
+        if (req.body.tags !== undefined) data.tags = normaliseRoomTags(req.body.tags);
         if (req.body.status !== undefined) data.status = req.body.status;
 
         const updated = await prisma.room.update({

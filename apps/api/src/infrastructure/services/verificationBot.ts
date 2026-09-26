@@ -186,11 +186,37 @@ const verificationStats = {
 
 
 async function pingUrl(url: string): Promise<LinkCheckResult> {
+    // SSRF guard: opportunity links are untrusted input. Parse with new URL,
+    // allow http(s) only, and refuse private/blocked hosts before fetching.
+    // Logs carry the hostname only so full upstream URLs never hit the logs.
+    let parsed: URL;
+    try {
+        parsed = new URL(url.trim());
+    } catch {
+        logger.error('Verification Bot: unparseable link', { host: 'unparseable' });
+        return 'SOFT_FAIL';
+    }
+    const host = parsed.hostname.toLowerCase();
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return 'SOFT_FAIL';
+    if (parsed.username || parsed.password) return 'SOFT_FAIL';
+    if (
+        host === 'localhost' ||
+        host.endsWith('.local') ||
+        host.endsWith('.internal') ||
+        /^10\./.test(host) ||
+        /^192\.168\./.test(host) ||
+        /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+        host === '127.0.0.1' ||
+        host === '169.254.169.254'
+    ) {
+        logger.error('Verification Bot: blocked link host', { host });
+        return 'SOFT_FAIL';
+    }
     try {
         const ctrl = new AbortController();
         const tid = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT);
 
-        const res = await fetch(url, {
+        const res = await fetch(parsed.toString(), {
             method: 'HEAD',
             signal: ctrl.signal,
             redirect: 'follow',

@@ -1,5 +1,4 @@
-import dotenv from 'dotenv';
-dotenv.config();
+import './bootstrap';
 
 import { logger } from '@fresherflow/utils';
 import { eventService } from './infrastructure/services/event.service';
@@ -35,12 +34,42 @@ startEventFlushCycle().catch(err => {
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-    logger.info('Worker SIGTERM received, shutting down');
-    process.exit(0);
-});
+// Flush buffered events to Postgres before exiting; process.exit() alone would
+// discard up to one flush interval of analytics.
+let isShuttingDown = false;
 
-process.on('SIGINT', () => {
-    logger.info('Worker SIGINT received, shutting down');
+async function shutdown(signal: string): Promise<void> {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+
+    logger.info(`Worker ${signal} received, shutting down`);
+
+    const forceExitTimer = setTimeout(() => {
+        logger.error('Worker graceful shutdown timed out, forcing exit');
+        process.exit(1);
+    }, 10_000);
+    forceExitTimer.unref();
+
+    try {
+        await eventService.flush();
+        logger.info('Pending events flushed');
+    } catch (error) {
+        logger.error('Error flushing events during shutdown', error);
+    }
+
+    try {
+        const { prisma } = await import('./infrastructure/database/prisma');
+        await prisma.$disconnect();
+        logger.info('Prisma disconnected');
+    } catch (error) {
+        logger.error('Error disconnecting Prisma', error);
+    }
+
+    clearTimeout(forceExitTimer);
+    logger.info('Worker shutdown complete');
     process.exit(0);
-});
+}
+
+process.on('SIGTERM', () => { void shutdown('SIGTERM'); });
+
+process.on('SIGINT', () => { void shutdown('SIGINT'); });

@@ -11,6 +11,19 @@ import { logger } from '@fresherflow/utils';
 
 const router: Router = express.Router();
 
+/**
+ * Phase 8 boundary — UserAction is the LIGHTWEIGHT SIGNAL only.
+ *
+ * One row per (user, opportunity), overwritten on each tap: VIEWED / SHARED /
+ * PLANNED / OA and similar ephemeral marks. It is NOT the application funnel.
+ *
+ * The funnel record is OpportunityApplication (routes/applications.ts for the
+ * candidate's own journey, routes/pipeline/applications.ts for recruiters):
+ * stage, currentStage, outcome, history, dashboard queries. This router never
+ * writes OpportunityApplication, and the application routers never write
+ * UserAction, so the two concepts cannot blur.
+ */
+
 
 // POST /api/opportunities/:id/action
 router.post('/:id/action', requireAuth, validate(userActionSchema), async (req: Request, res: Response, next: NextFunction) => {
@@ -23,8 +36,8 @@ router.post('/:id/action', requireAuth, validate(userActionSchema), async (req: 
                     actionType;
 
         // Fetch opportunity with walk-in details
-        const opportunity = await prisma.opportunity.findUnique({
-            where: { id: opportunityId },
+        const opportunity = await prisma.opportunity.findFirst({
+            where: { id: opportunityId, deletedAt: null },
             include: {
                 driveDetails: true
             }
@@ -102,7 +115,16 @@ router.post('/:id/action', requireAuth, validate(userActionSchema), async (req: 
             }
         });
 
-        res.json({ action, message: 'Action recorded successfully' });
+        res.json({
+            action,
+            message: 'Action recorded successfully',
+            // Signal-only hint: an APPLIED tap here does NOT create a funnel
+            // record. Candidates track applications via
+            // POST /api/applications/:opportunityId.
+            ...(normalizedActionType === 'APPLIED'
+                ? { funnelHint: 'POST /api/applications/:opportunityId tracks the application funnel' }
+                : {}),
+        });
     } catch (error) {
         next(error);
     }

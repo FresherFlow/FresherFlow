@@ -1505,6 +1505,48 @@ export interface MySubmissionsResult {
     submissions: MySubmissionItem[];
 }
 
+export interface MyHiringPost {
+    id: string;
+    title: string;
+    category: string;
+    status: string;
+    createdAt: string;
+}
+
+export interface MyInterviewContribution {
+    id: string;
+    role: string;
+    moderationStatus: string;
+    createdAt: string;
+    opportunity: { id: string; slug: string; title: string } | null;
+}
+
+export interface MyUpdateContribution {
+    id: string;
+    updateStatus: string;
+    description: string | null;
+    createdAt: string;
+    opportunity: { id: string; slug: string; title: string } | null;
+}
+
+export interface MyContributionsResult {
+    posts: MyHiringPost[];
+    interviews: MyInterviewContribution[];
+    updates: MyUpdateContribution[];
+}
+
+export interface MyResourceContribution {
+    id: string;
+    title: string;
+    status: string;
+    createdAt: string;
+    itemCount: number;
+}
+
+export interface MyResourcesResult {
+    resources: MyResourceContribution[];
+}
+
 export interface ReportResult {
     id: string;
     deduped?: boolean;

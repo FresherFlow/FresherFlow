@@ -14,6 +14,44 @@ const API_KEY = process.env.FRESHERFLOW_API_KEY;
 // Hard output cap so one response can never flood the model's context window.
 const MAX_DESCRIPTION_CHARS = 4000;
 
+// Server-side clients cannot rely on browsers' ambient authority, so the API's
+// CSRF gate requires an explicit first-party identity header on state-changing
+// requests. This is the same value the web/mobile api-client sends; it does not
+// weaken CSRF (browsers still cannot set this header cross-origin).
+const FIRST_PARTY_CLIENT_HEADER = 'fresherflow-client';
+
+/**
+ * Strip filesystem paths and V8 stack frames from an upstream message so
+ * server internals can never leak to MCP clients. URLs are left intact.
+ */
+function scrubErrorText(value: string): string {
+	return value
+		.replace(/[A-Za-z]:\\[^\s"'<>]*/g, '[path]')
+		.replace(/\/[^\s"'<>]*node_modules\/[^\s"'<>]*/g, '[path]')
+		.replace(/\n\s*at\s+[^\n]*/g, '')
+		.trim();
+}
+
+/**
+ * Build a safe, useful error message from a non-2xx upstream response.
+ * Forwards the upstream message (minus paths/stacks); HTML bodies and
+ * unparseable payloads collapse to a generic status message.
+ */
+async function toSafeApiError(res: Response): Promise<string> {
+	const fallback = `FresherFlow API error (${res.status})`;
+	try {
+		const contentType = res.headers.get('content-type') ?? '';
+		const text = await res.text();
+		if (!text || contentType.includes('text/html') || /^\s*</.test(text)) return fallback;
+		const body = JSON.parse(text) as { error?: { message?: unknown }; message?: unknown };
+		const raw = body?.error?.message ?? body?.message;
+		if (typeof raw !== 'string' || !raw.trim()) return fallback;
+		return scrubErrorText(raw).slice(0, 300) || fallback;
+	} catch {
+		return fallback;
+	}
+}
+
 async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
 	const url = new URL(path, API_BASE_URL);
 	// Defense-in-depth: only allow http(s) to the configured API origin.
@@ -21,22 +59,41 @@ async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
 		throw new Error('Unsupported API protocol');
 	}
 
-	const headers: Record<string, string> = { Accept: 'application/json' };
+	const headers: Record<string, string> = {
+		Accept: 'application/json',
+		'X-Requested-From': FIRST_PARTY_CLIENT_HEADER,
+	};
 	if (API_KEY) headers['x-api-key'] = API_KEY;
+	if (init.headers) {
+		for (const [key, value] of Object.entries(init.headers as Record<string, string>)) {
+			headers[key] = value;
+		}
+	}
 
-	const res = await fetch(url, {
-		...init,
-		headers,
-		signal: AbortSignal.timeout(10_000),
-	});
+	let res: Response;
+	try {
+		res = await fetch(url, {
+			...init,
+			headers,
+			signal: AbortSignal.timeout(10_000),
+		});
+	} catch {
+		logger.error('FresherFlow API unreachable', { path });
+		throw new Error('Cannot reach the FresherFlow API. Please try again shortly.');
+	}
 	if (res.status === 404) {
 		throw new Error('Job not found. It may have expired or been removed.');
 	}
 	if (!res.ok) {
 		logger.error('FresherFlow API request failed', { path, status: res.status });
-		throw new Error(`FresherFlow API error (${res.status})`);
+		throw new Error(await toSafeApiError(res));
 	}
-	return res.json() as Promise<T>;
+	try {
+		return (await res.json()) as T;
+	} catch {
+		logger.error('FresherFlow API returned a non-JSON response', { path });
+		throw new Error('Unexpected response from the FresherFlow API. Please try again shortly.');
+	}
 }
 
 // ─── Shared field mappers (schema-bound output only) ─────────────────────────

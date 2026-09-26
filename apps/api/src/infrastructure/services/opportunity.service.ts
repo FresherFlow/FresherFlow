@@ -13,6 +13,139 @@ import { searchOpportunitiesQuery, SearchResult, SearchOptions } from '../../app
  * - Soft delete handling
  */
 
+/**
+ * Fields an admin may edit on an existing opportunity.
+ *
+ * Spreading the request body straight into `Prisma.OpportunityUpdateInput` lets a
+ * caller write columns that are derived or privileged: `deletedAt` (un-delete a
+ * soft-deleted row), `savesCount`/`clicksCount`/`trendingScore` (denormalized
+ * counters owned by engagement.ts), `slug`, `createdAt` and `id`. Everything the
+ * route actually accepts has to be named here.
+ *
+ * Phase 5: covers every independent taxonomy dimension plus the eligibility,
+ * compensation-projection, deadline, trust, provenance, and org-ownership
+ * columns. Counters, `deletedAt`, `postedByUserId`, and `search_vector` stay
+ * off this list on purpose.
+ */
+const EDITABLE_OPPORTUNITY_FIELDS = [
+    'title',
+    'description',
+    'company',
+    'companyWebsite',
+    'companyLogoUrl',
+    'companyStage',
+    'companySize',
+    'companyIndustry',
+    'companyTopics',
+    'location',
+    'city',
+    'state',
+    'category',
+    'employmentTypes',
+    'recruitmentMethod',
+    'workMode',
+    'sector',
+    'experienceLevel',
+    'experienceMin',
+    'experienceMax',
+    'sourceKind',
+    'sourceExternalId',
+    'sourceLink',
+    'applyLink',
+    'allowedDegrees',
+    'allowedCourses',
+    'allowedSpecializations',
+    'allowedPassoutYears',
+    'passoutYearMin',
+    'passoutYearMax',
+    'allowedAvailability',
+    'requiredSkills',
+    'locations',
+    'structuredLocations',
+    'applicantLocationRequirements',
+    'eligibleGrades',
+    'minimumAge',
+    'maximumAge',
+    'applyUrl',
+    'applyEmail',
+    'applyPhone',
+    'externalApplyUrl',
+    'applicationStartDate',
+    'applicationDeadline',
+    'registrationDeadline',
+    'startsAt',
+    'endsAt',
+    'deadline',
+    'expiresAt',
+    'postedAt',
+    'publishedAt',
+    'status',
+    'organizationId',
+    'trustLevel',
+    'linkHealth',
+    'walkInDate',
+    'walkInTime',
+    'walkInVenue',
+    'contactPerson',
+    'contactEmail',
+    'contactPhone',
+    'stipend',
+    'ctc',
+    'salaryMin',
+    'salaryMax',
+    'salaryRange',
+    'salaryPeriod',
+    'incentives',
+    'jobFunction',
+    'selectionProcess',
+    'notesHighlights',
+    'documentsRequired',
+    'numberOfOpenings',
+    'isFeatured',
+    'isUrgent',
+    'isVerified',
+    'sourceUrl',
+    'sourceName',
+    'notes',
+    'tags',
+    'attributes',
+    'applicationDetails',
+    'driveDetails',
+] as const;
+
+/**
+ * Build the Prisma update payload for an opportunity edit from a request body,
+ * dropping any key that is not explicitly editable.
+ */
+export function buildOpportunityUpdateData(
+    data: Record<string, unknown>,
+    existing: { id: string; title: string; company: string }
+): Prisma.OpportunityUpdateInput {
+    const updateData: Record<string, unknown> = {};
+
+    for (const field of EDITABLE_OPPORTUNITY_FIELDS) {
+        if (Object.prototype.hasOwnProperty.call(data, field) && data[field] !== undefined) {
+            updateData[field] = data[field];
+        }
+    }
+
+    updateData.lastVerified = new Date();
+
+    if (data.companyLogoUrl !== undefined) {
+        updateData.companyLogoUrl = (data.companyLogoUrl as string) || null;
+    } else if (data.companyWebsite !== undefined) {
+        updateData.companyLogoUrl = generateCompanyLogoUrl(data.companyWebsite as string);
+    }
+
+    if (data.title || data.company) {
+        const newTitle = (data.title || existing.title) as string;
+        const newCompany = (data.company || existing.company) as string;
+        updateData.slug = generateSlug(newTitle, newCompany, existing.id as string);
+    }
+
+    return updateData as Prisma.OpportunityUpdateInput;
+}
+
 export class OpportunityService {
     /**
      * Search Opportunities using PostgreSQL Full-Text Search.
@@ -61,8 +194,8 @@ export class OpportunityService {
      * Publish opportunity (DRAFT → ACTIVE)
      */
     static async publishOpportunity(id: string, adminId: string) {
-        const opportunity = await prisma.opportunity.findUnique({
-            where: { id },
+        const opportunity = await prisma.opportunity.findFirst({
+            where: { id, deletedAt: null },
         });
 
         if (!opportunity) {
@@ -93,8 +226,8 @@ export class OpportunityService {
      * Update opportunity
      */
     static async updateOpportunity(id: string, data: Partial<Opportunity>, adminId: string) {
-        const existing = await prisma.opportunity.findUnique({
-            where: { id },
+        const existing = await prisma.opportunity.findFirst({
+            where: { id, deletedAt: null },
         });
 
         if (!existing) {
@@ -105,23 +238,10 @@ export class OpportunityService {
             throw new Error('Unauthorized');
         }
 
-        // Regenerate slug if title or company changed
-        const updateData: Prisma.OpportunityUpdateInput = {
-            ...(data as unknown as Prisma.OpportunityUpdateInput),
-            lastVerified: new Date(),
-        };
-
-        if (data.companyLogoUrl !== undefined) {
-            updateData.companyLogoUrl = data.companyLogoUrl || null;
-        } else if (data.companyWebsite !== undefined) {
-            updateData.companyLogoUrl = generateCompanyLogoUrl(data.companyWebsite);
-        }
-
-        if (data.title || data.company) {
-            const newTitle = (data.title || existing.title) as string;
-            const newCompany = (data.company || existing.company) as string;
-            updateData.slug = generateSlug(newTitle, newCompany, existing.id as string);
-        }
+        const updateData = buildOpportunityUpdateData(
+            data as Record<string, unknown>,
+            existing as unknown as { id: string; title: string; company: string }
+        );
 
         const updated = await prisma.opportunity.update({
             where: { id },
@@ -139,8 +259,10 @@ export class OpportunityService {
      * Soft delete opportunity (sets deletedAt)
      */
     static async deleteOpportunity(id: string, adminId: string, reason: string) {
-        const existing = await prisma.opportunity.findUnique({
-            where: { id },
+        // Only live rows are eligible: re-deleting an already-deleted row would
+        // refresh deletedAt and erase the original deletion timestamp.
+        const existing = await prisma.opportunity.findFirst({
+            where: { id, deletedAt: null },
         });
 
         if (!existing) {
@@ -316,11 +438,11 @@ export class OpportunityService {
     }
 
     /**
-     * Get single opportunity by ID
+     * Get single opportunity by ID (excludes soft-deleted rows).
      */
     static async getOpportunityById(id: string) {
-        return await prisma.opportunity.findUnique({
-            where: { id },
+        return await prisma.opportunity.findFirst({
+            where: { id, deletedAt: null },
             include: {
                 driveDetails: true,
                 user: {
@@ -334,12 +456,14 @@ export class OpportunityService {
     }
 
     /**
-     * Get single opportunity by slug or ID (backward compatible)
+     * Get single opportunity by slug or ID (backward compatible).
+     * Soft-deleted rows are never returned; the admin list/detail routes that
+     * need to see removed rows query Prisma directly with explicit filters.
      */
     static async getBySlugOrId(slugOrId: string) {
         // Try by slug first (more common for SEO URLs)
-        const bySlug = await prisma.opportunity.findUnique({
-            where: { slug: slugOrId },
+        const bySlug = await prisma.opportunity.findFirst({
+            where: { slug: slugOrId, deletedAt: null },
             include: {
                 driveDetails: true,
                 user: {
@@ -367,30 +491,44 @@ export class OpportunityService {
 
         switch (action) {
             case 'DELETE':
+                // Only live rows are eligible: re-deleting an already-deleted row
+                // would refresh its deletedAt and erase the original deletion
+                // timestamp, breaking audit and any restore window.
                 result = await prisma.opportunity.updateMany({
-                    where: { id: { in: ids } },
+                    where: { id: { in: ids }, deletedAt: null },
                     data: { status: OpportunityStatus.ARCHIVED as unknown as DbOpportunityStatus, deletedAt: now, deletionReason: reason || 'Bulk deleted by admin' },
                 });
                 break;
             case 'ARCHIVE':
                 result = await prisma.opportunity.updateMany({
-                    where: { id: { in: ids } },
+                    where: { id: { in: ids }, deletedAt: null },
                     data: { status: OpportunityStatus.ARCHIVED as unknown as DbOpportunityStatus },
                 });
                 break;
-            case 'PUBLISH':
-                idsNeedingAlerts = (await prisma.opportunity.findMany({
-                    where: { id: { in: ids }, status: { not: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus } },
-                    select: { id: true },
-                })).map(item => item.id);
-                result = await prisma.opportunity.updateMany({
-                    where: { id: { in: ids } },
-                    data: { status: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus, expiredAt: null, deletedAt: null },
-                });
+            case 'PUBLISH': {
+                // Publishing must never resurrect a soft-deleted listing. The old
+                // query had no deletedAt guard while explicitly setting
+                // deletedAt: null, so a bulk publish could silently un-delete rows
+                // that had been removed and return them to the public feed.
+                const liveIds = (await prisma.opportunity.findMany({
+                    where: { id: { in: ids }, deletedAt: null },
+                    select: { id: true, status: true },
+                })).filter((row) =>
+                    row.status !== (OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus)
+                ).map((row) => row.id);
+
+                idsNeedingAlerts = liveIds;
+                result = liveIds.length > 0
+                    ? await prisma.opportunity.updateMany({
+                        where: { id: { in: liveIds }, deletedAt: null },
+                        data: { status: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus, expiredAt: null },
+                    })
+                    : { count: 0 };
                 break;
+            }
             case 'EXPIRE':
                 result = await prisma.opportunity.updateMany({
-                    where: { id: { in: ids } },
+                    where: { id: { in: ids }, deletedAt: null },
                     data: { expiredAt: now },
                 });
                 break;
@@ -399,7 +537,7 @@ export class OpportunityService {
         }
 
         const oppsForTags = await prisma.opportunity.findMany({
-            where: { id: { in: ids } },
+            where: { id: { in: ids }, deletedAt: null },
             select: { id: true, slug: true, company: true, category: true, employmentTypes: true, recruitmentMethod: true, sector: true, locations: true, requiredSkills: true, title: true, allowedPassoutYears: true }
         });
 

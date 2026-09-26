@@ -4,6 +4,10 @@ import { adminSystemApi } from './system';
 import { adminAnalyticsApi } from './analytics';
 import { adminFeedbackApi } from './feedback';
 import { adminUsersApi } from './users';
+import { adminModeratorsApi } from './moderators';
+import { adminAuditApi } from './audit';
+import { adminReportsApi } from './reports';
+import { adminCommunityApi } from './community';
 import { adminIngestionApi } from './ingestion';
 
 export const adminApi = {
@@ -13,6 +17,10 @@ export const adminApi = {
     ...adminAnalyticsApi,
     ...adminFeedbackApi,
     ...adminUsersApi,
+    ...adminModeratorsApi,
+    ...adminAuditApi,
+    ...adminReportsApi,
+    ...adminCommunityApi,
     ...adminIngestionApi,
     
     // Explicit Aliases for frontend compatibility
@@ -42,6 +50,11 @@ export * from './system';
 export * from './analytics';
 export * from './feedback';
 export * from './users';
+export * from './moderators';
+export * from './moderation';
+export * from './audit';
+export * from './reports';
+export * from './community';
 export * from './resources';
 export * from './ingestion';
 

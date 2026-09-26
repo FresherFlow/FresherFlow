@@ -1,4 +1,4 @@
-import './bootstrap';
+﻿import './bootstrap';
 
 
 import fs from 'fs';
@@ -27,9 +27,12 @@ import { csrfGate } from './middleware/csrf';
 import { optionalAuth } from './middleware/auth';
 // Import routes
 import authRoutes from './routes/auth';
+import authTwoFactorRoutes from './routes/authTwoFactor';
+import authPasskeysRoutes from './routes/authPasskeys';
 import profileRoutes from './routes/profile';
 import opportunitiesRoutes from './routes/opportunities';
 import actionsRoutes from './routes/actions';
+import applicationsRoutes from './routes/applications';
 import feedbackRoutes from './routes/feedback';
 import appFeedbackRoutes from './routes/appFeedback';
 import savedRoutes from './routes/saved';
@@ -51,10 +54,14 @@ import adminAuditRoutes from './routes/admin/audit';
 import adminReportsRoutes from './routes/admin/reports';
 import adminCommunityRoutes from './routes/admin/community';
 import adminModerationRoutes from './routes/admin/moderation';
+import adminTrustRoutes from './routes/admin/trust';
+import adminNotificationsRoutes from './routes/admin/notifications';
 import adminRoomsRoutes from './routes/admin/rooms';
 import adminTargetsRoutes from './routes/admin/targets';
 import adminProfilesRoutes from './routes/admin/profiles';
+import adminIngestionRoutes from './routes/admin/ingestion';
 import healthRoutes from './routes/public/health';
+import readyRoutes from './routes/public/ready';
 import companyRoutes from './routes/public/companies';
 import sitemapRoutes from './routes/public/sitemap';
 import cronRoutes from './routes/cron';
@@ -68,13 +75,15 @@ import resourcesRoutes from './routes/resources';
 import deviceTokenRoutes from './routes/deviceToken';
 import { StaticFeedService } from './infrastructure/services/staticFeed.service';
 import { initializeQueueListeners } from './infrastructure/services/push-notification.service';
+import { installShutdownHandlers, markReady } from './utils/readiness';
 
 import adminGovernmentJobsRoutes from './routes/admin/governmentJobs';
 import adminResourcesRoutes from './routes/admin/resources';
 import publicGovernmentJobsRoutes from './routes/public/governmentJobs';
 import publicProfilesRoutes from './routes/public/profiles';
 import expireJobsRoute from './routes/pipeline/expireJobs';
-import organizationsRoutes from './routes/organizations';
+import pipelineRoutes from './routes/pipeline/index';
+import organizationsRoutes, { inviteRouter } from './routes/organizations';
 import recruiterCandidatesRoutes from './routes/recruiterCandidates';
 import candidateInterestsRoutes from './routes/candidateInterests';
 import candidateProjectsRoutes from './routes/candidateProjects';
@@ -230,9 +239,16 @@ app.use(observabilityMiddleware);
 // Lightweight Health Check (Zero-DB, Zero-Auth)
 app.use('/api', healthRoutes);
 
+// Readiness probe. Mounted BEFORE the isAppReady gate below on purpose: that
+// gate answers 503 with a generic "Service initializing..." body, which is the
+// opposite of what a probe needs. /ready has to run its own dependency check
+// and report a structured verdict while the app is still starting up.
+app.use('/api', readyRoutes);
+
 // Readiness Middleware for all other routes
 app.use((req, res, next) => {
     if (req.path === '/health' || req.path === '/api/health') return next();
+    if (req.path === '/ready' || req.path === '/api/ready') return next();
     if (!isAppReady) {
         return res.status(503).json({ error: { message: 'Service initializing...' } });
     }
@@ -290,6 +306,10 @@ if (isUserMode) {
     app.use('/api/public/stats', publicStatsRoutes);
     app.use('/api/cron', cronRoutes);
     app.use('/api/pipeline', expireJobsRoute);
+    // Phase 12 hiring pipelines. Mounted as a sibling on the same prefix:
+    // expireJobsRoute owns its own job-expiry paths and is untouched, while this
+    // router handles /organizations, /stages and /applications under it.
+    app.use('/api/pipeline', pipelineRoutes);
 }
 
 // ============================================================================
@@ -349,7 +369,7 @@ app.get(['/bootstrap-feed.min.json', '/feeds/bootstrap-feed.min.json'], async (r
         StaticFeedService.scheduleRefresh();
     } catch (error) {
         logger.error('Failed to serve bootstrap feed', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: { message: 'Internal server error' } });
     }
 });
 
@@ -363,7 +383,7 @@ app.get(['/government-feed.json', '/feeds/government-feed.json'], async (_req, r
         res.json(results);
     } catch (error) {
         logger.error('Failed to serve government feed', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: { message: 'Internal server error' } });
     }
 });
 
@@ -379,7 +399,7 @@ app.get('/companies-directory.min.json', async (req, res) => {
         res.json(results);
     } catch (error) {
         logger.error('Failed to serve companies directory', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: { message: 'Internal server error' } });
     }
 });
 
@@ -388,17 +408,17 @@ app.get('/categories/:id.json', async (req, res) => {
         const { id } = req.params;
         // Prevent path traversal using a strict alphanumeric check
         if (!/^[a-zA-Z0-9-_]+$/.test(id)) {
-            return res.status(400).json({ error: 'Invalid category ID' });
+            return res.status(400).json({ error: { message: 'Invalid category ID' } });
         }
 
         const filePath = path.join(process.cwd(), 'public', 'categories', `${path.basename(id)}.json`);
         if (fs.existsSync(filePath)) {
             return res.sendFile(filePath);
         }
-        res.status(404).json({ error: 'Category shard not found' });
+        res.status(404).json({ error: { message: 'Category shard not found' } });
     } catch (error) {
         logger.error('Failed to serve category shard', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: { message: 'Internal server error' } });
     }
 });
 
@@ -432,7 +452,7 @@ app.get(/^\/(sitemaps\/)?sitemap.*\.xml$/, async (req, res) => {
         res.status(404).send('Sitemap not found');
     } catch (error) {
         logger.error('Failed to serve sitemap', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: { message: 'Internal server error' } });
     }
 });
 
@@ -441,9 +461,12 @@ if (isUserMode) {
     app.use('/api/auth/register', registerLimiter);
     app.use('/api/auth/login', authLimiter);
     app.use('/api/auth', authRoutes);
+    app.use('/api/auth/2fa', authTwoFactorRoutes);
+    app.use('/api/auth/passkeys', authPasskeysRoutes);
     app.use('/api/profile', profileRoutes);
     app.use('/api/opportunities', optionalAuth, opportunitiesRoutes);
     app.use('/api/actions', actionsRoutes);
+    app.use('/api/applications', applicationsRoutes);
     app.use('/api/saved', savedRoutes);
     app.use('/api/dashboard', dashboardRoutes);
     app.use('/api/alerts', alertsRoutes);
@@ -461,6 +484,9 @@ if (isUserMode) {
     app.use('/api/device-token', deviceTokenRoutes);
     app.use('/api/public/government-jobs', publicGovernmentJobsRoutes);
     app.use('/api/public/profiles', publicProfilesRoutes);
+    // Invite acceptance is mounted first so `/invites/*` is matched before the
+    // organization router's `/:id` patterns can claim those paths.
+    app.use('/api/organizations', inviteRouter);
     app.use('/api/organizations', organizationsRoutes);
     app.use('/api/recruiter', recruiterCandidatesRoutes);
     app.use('/api/interests', candidateInterestsRoutes);
@@ -497,11 +523,14 @@ if (isAdminMode) {
     app.use('/api/admin/reports', restrictAdmin, adminReportsRoutes);
     app.use('/api/admin/community', restrictAdmin, adminCommunityRoutes);
     app.use('/api/admin/moderation', restrictAdmin, adminModerationRoutes);
+    app.use('/api/admin/trust', restrictAdmin, adminTrustRoutes);
+    app.use('/api/admin/notifications', restrictAdmin, adminNotificationsRoutes);
     app.use('/api/admin/rooms', restrictAdmin, adminRoomsRoutes);
     app.use('/api/admin/government-jobs', restrictAdmin, adminGovernmentJobsRoutes);
     app.use('/api/admin/resources', restrictAdmin, adminResourcesRoutes);
     app.use('/api/admin/targets', restrictAdmin, adminTargetsRoutes);
     app.use('/api/admin/profiles', restrictAdmin, adminProfilesRoutes);
+    app.use('/api/admin/ingestion', restrictAdmin, adminIngestionRoutes);
 }
 
 // ============================================================================
@@ -579,6 +608,7 @@ async function initializeBackgroundServices() {
         }
 
         isAppReady = true;
+        markReady();
         logger.info('Background services initialized successfully. Service is ready.');
     } catch (err) {
         logger.error('Critical failure in background initialization', err);
@@ -586,18 +616,29 @@ async function initializeBackgroundServices() {
         // or you could leave it false to keep returning 503 depending on requirements.
         // Let's set it to true so the API isn't completely dead.
         isAppReady = true;
+        markReady();
     }
 }
 
-// Graceful shutdown
-process.on('SIGTERM', () => {
-    logger.info('SIGTERM received, shutting down gracefully');
-    process.exit(0);
-});
-
-process.on('SIGINT', () => {
-    logger.info('SIGINT received, shutting down gracefully');
-    process.exit(0);
+// Graceful shutdown.
+// The drain contract lives in `src/utils/readiness.ts` (shared with the
+// `/api/ready` probe): first flip to draining so the load balancer stops
+// sending work, then stop accepting new connections while in-flight requests
+// finish, then release Redis and the Prisma pool. The watchdog in `shutdown()`
+// bounds the whole sequence by SHUTDOWN_TIMEOUT_MS (default 10s).
+installShutdownHandlers({
+    stopHttp: () =>
+        new Promise<void>((resolve, reject) => {
+            server.close((err) => {
+                if (err) {
+                    logger.error('Error closing HTTP server', err);
+                    reject(err);
+                    return;
+                }
+                logger.info('HTTP server closed');
+                resolve();
+            });
+        }),
 });
 
 // Unhandled promise rejections
@@ -609,3 +650,5 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 export default app;
+
+

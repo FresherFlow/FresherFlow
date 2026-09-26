@@ -106,23 +106,6 @@ router.post('/share', requireAuth, async (req: Request, res: Response, next: Nex
             });
         }
 
-        const rawOpportunity = await prisma.rawOpportunity.create({
-            data: {
-                sourceId,
-                sourceLink: normalizedUrl,
-                createdByUserId: userId || undefined,
-                status: 'FETCHED',
-                rawPayload: {
-                    sharedByUserId: userId,
-                    originalUrl: url,
-                    source: 'mobile_share',
-                    parsedTitle: bodyTitle,
-                    parsedCompany: bodyCompany
-                }
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            } as any
-        });
-
         // 3. Synchronous DRAFT creation (Bypassing ingestion queue)
         let companyName = bodyCompany || 'Unknown Company';
         if (!bodyCompany) {
@@ -134,31 +117,57 @@ router.post('/share', requireAuth, async (req: Request, res: Response, next: Nex
             }
         }
 
-        const title = bodyTitle || 'New Opportunity';
-        const baseSlug = `${title.toLowerCase().replace(/\s+/g, '-')}-at-${companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-        const uniqueSlug = `${baseSlug}-${rawOpportunity.id.slice(-6)}`;
+        // Multi-table write (raw ingestion row + published draft + link-back)
+        // must be atomic: a crash between statements would otherwise orphan a
+        // raw row or leave a draft with no traceability. Side-effects
+        // (cache invalidation) stay outside the transaction.
+        const { rawOpportunityId, opportunityId } = await prisma.$transaction(async (tx) => {
+            const raw = await tx.rawOpportunity.create({
+                data: {
+                    sourceId,
+                    sourceLink: normalizedUrl,
+                    createdByUserId: userId || undefined,
+                    status: 'FETCHED',
+                    rawPayload: {
+                        sharedByUserId: userId,
+                        originalUrl: url,
+                        source: 'mobile_share',
+                        parsedTitle: bodyTitle,
+                        parsedCompany: bodyCompany
+                    }
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                } as any
+            });
 
-        const opportunity = await prisma.opportunity.create({
-            data: {
-                slug: uniqueSlug,
-                title,
-                company: companyName,
-                category: 'EMPLOYMENT',
-                status: 'DRAFT',
-                sourceLink: normalizedUrl,
-                applyLink: normalizedUrl,
-                postedByUserId: userId,
-                sharesCount: 1,
-            }
-        });
+            const title = bodyTitle || 'New Opportunity';
+            const baseSlug = `${title.toLowerCase().replace(/\s+/g, '-')}-at-${companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+            const uniqueSlug = `${baseSlug}-${raw.id.slice(-6)}`;
 
-        await prisma.rawOpportunity.update({
-            where: { id: rawOpportunity.id },
-            data: {
-                status: 'DRAFT_CREATED',
-                mappedOpportunityId: opportunity.id
-            }
+            const created = await tx.opportunity.create({
+                data: {
+                    slug: uniqueSlug,
+                    title,
+                    company: companyName,
+                    category: 'EMPLOYMENT',
+                    status: 'DRAFT',
+                    sourceLink: normalizedUrl,
+                    applyLink: normalizedUrl,
+                    postedByUserId: userId,
+                    sharesCount: 1,
+                }
+            });
+
+            await tx.rawOpportunity.update({
+                where: { id: raw.id },
+                data: {
+                    status: 'DRAFT_CREATED',
+                    mappedOpportunityId: created.id
+                }
+            });
+
+            return { rawOpportunityId: raw.id, opportunityId: created.id };
         });
+        void opportunityId;
 
         // Invalidate admin cache so the new draft appears immediately in the Admin Web Drafts tab
         adminCache.invalidateLists();
@@ -166,7 +175,7 @@ router.post('/share', requireAuth, async (req: Request, res: Response, next: Nex
         res.status(202).json({
             success: true,
             message: 'Link shared successfully! It has been saved as a draft for review.',
-            id: rawOpportunity.id
+            id: rawOpportunityId
         });
     } catch (error) {
         next(error);

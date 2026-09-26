@@ -7,6 +7,7 @@ import type {
     SignalState,
     SubmitJobResult,
     MySubmissionsResult,
+    MyContributionsResult,
     ReportResult,
     NotificationListResult,
     UserActivityResult,
@@ -73,6 +74,9 @@ export const communityApi = {
 
     listMySubmissions: () =>
         apiClient<MySubmissionsResult>('/api/jobs/submissions/mine'),
+
+    listMyContributions: () =>
+        apiClient<MyContributionsResult>('/api/community/mine'),
 
     submitJob: (data: {
         sourceUrl: string;

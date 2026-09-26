@@ -49,6 +49,35 @@ router.post('/bulk', requireRawBulkPermission, async (req: Request & { adminId?:
             });
 
             for (const rawOpp of rawOpps) {
+                const applyLink = rawOpp.applyLink || rawOpp.sourceLink;
+                const sourceLink = rawOpp.sourceLink;
+                // Duplicate protection: a resubmitted URL must not create a
+                // second live row. Mark the raw row DEDUPED and skip it.
+                if (applyLink || sourceLink) {
+                    const duplicate = await prisma.opportunity.findFirst({
+                        where: {
+                            deletedAt: null,
+                            OR: [
+                                ...(applyLink ? [{ applyLink }, { sourceLink: applyLink }] : []),
+                                ...(sourceLink && sourceLink !== applyLink
+                                    ? [{ sourceLink }, { applyLink: sourceLink }]
+                                    : []),
+                            ],
+                        },
+                        select: { id: true },
+                    });
+                    if (duplicate) {
+                        await prisma.rawOpportunity.update({
+                            where: { id: rawOpp.id },
+                            data: {
+                                status: RawOpportunityStatus.DEDUPED as unknown as DbRawStatus,
+                                mappedOpportunityId: duplicate.id,
+                            },
+                        });
+                        continue;
+                    }
+                }
+
                 const tempId = crypto.randomUUID();
                 const slug = generateSlug(rawOpp.title || 'Untitled', rawOpp.company || 'Unknown', tempId);
                 const { category, recruitmentMethod, employmentTypes } = resolveOpportunityDimensions({
@@ -67,6 +96,7 @@ router.post('/bulk', requireRawBulkPermission, async (req: Request & { adminId?:
                         company: rawOpp.company || 'Unknown Company',
                         sourceLink: rawOpp.sourceLink,
                         applyLink: rawOpp.applyLink || rawOpp.sourceLink,
+                        sourceKind: 'USER_SUBMITTED',
                         status: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus,
                         postedByUserId: rawOpp.createdByUserId || actorId(req) || 'system',
                         publishedAt: now,
@@ -156,7 +186,7 @@ router.post('/:id/link', requirePermission('opportunity.edit'), async (req: Requ
             return res.status(404).json({ message: 'Submission not found' });
         }
 
-        const opp = await prisma.opportunity.findUnique({ where: { id: opportunityId } });
+        const opp = await prisma.opportunity.findFirst({ where: { id: opportunityId, deletedAt: null } });
         if (!opp) {
             return res.status(404).json({ message: 'Opportunity not found' });
         }

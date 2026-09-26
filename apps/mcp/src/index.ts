@@ -1,10 +1,11 @@
 import 'dotenv/config';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import express, { type Request, type Response } from 'express';
+import express, { type NextFunction, type Request, type Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';
 import { SearchJobsInput, GetJobInput, GetJobSignalsInput, GetJobCommentsInput, SubmitOpportunityInput } from './schemas.js';
+import { config } from './config.js';
 import { searchJobs, getJob, getJobSignals, getJobComments, submitOpportunity } from './apiClient.js';
 import { logger } from './logger.js';
 
@@ -76,13 +77,16 @@ function registerSearchJobs(server: McpServer) {
     annotations: { readOnlyHint: true, openWorldHint: false, destructiveHint: false },
   },
   async (input: SearchJobsInput) => {
+    // Parse here (not just in the SDK layer) so cross-field refinements
+    // such as minSalary <= maxSalary are enforced before any upstream call.
+    const parsed = SearchJobsInput.parse(input);
     const result = await searchJobs({
-      query: input.query,
-      location: input.location,
-      jobType: input.jobType,
-      minSalary: input.minSalary,
-      maxSalary: input.maxSalary,
-      limit: input.limit ?? 10,
+      query: parsed.query,
+      location: parsed.location,
+      jobType: parsed.jobType,
+      minSalary: parsed.minSalary,
+      maxSalary: parsed.maxSalary,
+      limit: parsed.limit,
     });
     return {
       structuredContent: result,
@@ -295,7 +299,11 @@ function registerSubmitOpportunity(server: McpServer) {
             annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
         },
         async (input: SubmitOpportunityInput) => {
-            const result = await submitOpportunity(input);
+            // Parse here (not just in the SDK layer) so refinements such as
+            // the HTTPS-only jobUrl/sourceUrl rule are enforced before any
+            // upstream call.
+            const parsed = SubmitOpportunityInput.parse(input);
+            const result = await submitOpportunity(parsed);
             return {
                 structuredContent: result,
                 content: [
@@ -378,7 +386,22 @@ app.post('/mcp', mcpHttpHandler);
 app.get('/mcp', mcpHttpHandler);
 app.delete('/mcp', mcpHttpHandler);
 
-const PORT = Number(process.env.PORT) || 3001;
+// Malformed JSON must never surface Express's default HTML stack page:
+// return a JSON-RPC parse error instead, with no internals.
+app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+  if (!err || res.headersSent) {
+    next(err as Error);
+    return;
+  }
+  logger.error('Malformed MCP request body');
+  res.status(400).json({
+    jsonrpc: '2.0',
+    error: { code: -32700, message: 'Invalid JSON in request body' },
+    id: null,
+  });
+});
+
+const PORT = config.port;
 
 app.listen(PORT, () => {
   logger.info(`FresherFlow MCP server listening on :${PORT} (endpoint: /mcp)`);

@@ -1,4 +1,4 @@
-import prisma from '../infrastructure/database/prisma';
+import prisma, { Prisma } from '../infrastructure/database/prisma';
 import express, { NextFunction, Request, Response, Router } from 'express';
 import { OpportunityStatus, Profile, Opportunity } from '@fresherflow/types';
 
@@ -51,6 +51,20 @@ async function countVisibleUnreadAlerts(userId: string, profile: Profile | null)
             readAt: null,
             channel: 'APP',
             opportunityId: { not: null },
+            // Push the visibility rules into the query. Filtering in JS after
+            // loading meant a full row of deleted/expired alerts silently reduced
+            // the unread count instead of being excluded at the source.
+            opportunity: {
+                is: {
+                    status: OpportunityStatus.PUBLISHED,
+                    deletedAt: null,
+                    expiredAt: null,
+                    OR: [
+                        { expiresAt: null },
+                        { expiresAt: { gt: now } },
+                    ],
+                },
+            },
         },
         select: {
             opportunity: {
@@ -109,14 +123,10 @@ router.get('/feed', requireAuth, async (req: Request, res: Response, next: NextF
         const limitRaw = Number(req.query.limit || 50);
         const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 100) : 50;
 
-        const where: {
-            userId: string;
-            kind?: 'DAILY_DIGEST' | 'CLOSING_SOON' | 'HIGHLIGHT' | 'APP_UPDATE' | 'NEW_JOB' | 'EVENT_REMINDER';
-            channel?: 'APP';
-        } = { userId };
-        where.channel = 'APP';
+        const where: Prisma.AlertDeliveryWhereInput = { userId, channel: 'APP' };
 
-        if (['DAILY_DIGEST', 'CLOSING_SOON', 'HIGHLIGHT', 'APP_UPDATE', 'NEW_JOB', 'EVENT_REMINDER'].includes(kindRaw)) {
+        // Phase 7: every AlertKind in the frozen schema is a valid feed filter.
+        if (['DAILY_DIGEST', 'CLOSING_SOON', 'HIGHLIGHT', 'APP_UPDATE', 'NEW_JOB', 'EVENT_REMINDER', 'CAMPUS_DRIVE', 'REGISTRATION_OPEN', 'REGISTRATION_CLOSING', 'APPLICATION_UPDATE'].includes(kindRaw)) {
             where.kind = kindRaw as typeof where.kind;
         }
 
@@ -125,6 +135,25 @@ router.get('/feed', requireAuth, async (req: Request, res: Response, next: NextF
             select: { profile: true }
         });
         const profile = userWithProfile?.profile || null;
+
+        const feedNow = new Date();
+        if (profile) {
+            // Only surface alerts whose opportunity is still live. Applied in the
+            // query rather than after fetching, otherwise a page sized from rows
+            // that are then discarded comes back under-filled and can look empty
+            // while matching alerts still exist further down the list.
+            where.opportunity = {
+                is: {
+                    status: OpportunityStatus.PUBLISHED,
+                    deletedAt: null,
+                    expiredAt: null,
+                    OR: [
+                        { expiresAt: null },
+                        { expiresAt: { gt: feedNow } },
+                    ],
+                },
+            };
+        }
 
         const deliveries = await prisma.alertDelivery.findMany({
             where,
@@ -194,6 +223,14 @@ router.get('/feed', requireAuth, async (req: Request, res: Response, next: NextF
             newJob: normalizedDeliveries.filter((item: any) => (item.kind as string) === 'NEW_JOB').length,
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             eventReminder: normalizedDeliveries.filter((item: any) => (item.kind as string) === 'EVENT_REMINDER').length,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            campusDrive: normalizedDeliveries.filter((item: any) => (item.kind as string) === 'CAMPUS_DRIVE').length,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            registrationOpen: normalizedDeliveries.filter((item: any) => (item.kind as string) === 'REGISTRATION_OPEN').length,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            registrationClosing: normalizedDeliveries.filter((item: any) => (item.kind as string) === 'REGISTRATION_CLOSING').length,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            applicationUpdate: normalizedDeliveries.filter((item: any) => (item.kind as string) === 'APPLICATION_UPDATE').length,
         };
 
         const unreadCount = await countVisibleUnreadAlerts(userId, profile as Profile | null);
@@ -335,6 +372,45 @@ router.get('/unread-count', requireAuth, async (req: Request, res: Response, nex
 
         setCachedUnreadCount(userId, count);
         res.json({ count });
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
+ * GET /api/alerts/dispatch-log
+ * Phase 7 dispatch transparency: the caller's own AlertDispatchLog rows
+ * (INITIATED / SENT / SKIPPED / FAILED with reasons), newest first.
+ */
+router.get('/dispatch-log', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.userId;
+        if (!userId) return next(new AppError('Unauthorized', 401));
+
+        const limitRaw = Number(req.query.limit || 50);
+        const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 100) : 50;
+
+        const logs = await prisma.alertDispatchLog.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' },
+            take: limit,
+            select: {
+                id: true,
+                correlationId: true,
+                opportunityId: true,
+                kind: true,
+                channel: true,
+                status: true,
+                reason: true,
+                dedupeKey: true,
+                errorMessage: true,
+                attemptedAt: true,
+                deliveredAt: true,
+                createdAt: true,
+            },
+        });
+
+        res.json({ logs });
     } catch (error) {
         next(error);
     }

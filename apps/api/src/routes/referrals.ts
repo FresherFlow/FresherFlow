@@ -58,7 +58,7 @@ router.get('/:code', async (req: Request, res: Response, next: NextFunction) => 
             where: { referralCode: code.toUpperCase() },
             select: { id: true, fullName: true },
         });
-        if (!user) return res.status(404).json({ error: 'Invalid referral code' });
+        if (!user) return res.status(404).json({ error: { message: 'Invalid referral code' } });
         res.json({ valid: true, referrerId: user.id });
     } catch (e) { next(e); }
 });
@@ -73,7 +73,7 @@ router.post('/:code/click', clickLimiter, async (req: Request, res: Response, ne
             where: { referralCode: code.toUpperCase() },
             select: { id: true },
         });
-        if (!referrer) return res.status(404).json({ error: 'Invalid code' });
+        if (!referrer) return res.status(404).json({ error: { message: 'Invalid code' } });
 
         // Use Unified Event System
         await eventService.track({
@@ -100,7 +100,7 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
             where: { id: userId },
             select: { id: true, referralCode: true },
         });
-        if (!user) return res.status(404).json({ error: 'Not found' });
+        if (!user) return res.status(404).json({ error: { message: 'Not found' } });
 
         if (!user.referralCode) {
             let codeGenerated = false;
@@ -120,7 +120,7 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
                     maxRetries--;
                 }
             }
-            if (!codeGenerated) return res.status(500).json({ error: 'Failed to generate code' });
+            if (!codeGenerated) return res.status(500).json({ error: { message: 'Failed to generate code' } });
         }
 
         const code = user.referralCode!;

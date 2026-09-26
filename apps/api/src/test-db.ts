@@ -1,7 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import './bootstrap';
+import prisma from './infrastructure/database/prisma';
 import { logger } from '@fresherflow/utils';
-
-const prisma = new PrismaClient();
 
 async function main() {
   try {

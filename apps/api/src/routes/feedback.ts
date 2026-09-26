@@ -95,9 +95,10 @@ router.post('/:id/feedback', requireAuth, validate(feedbackSchema), async (req: 
             message: reportCount >= 3 ? 'Opportunity archived due to community reports.' : 'Feedback submitted successfully'
         });
     } catch (error: unknown) {
-        // Handle unique constraint violation
+        // A repeat report hits the (user, opportunity) unique constraint: the
+        // desired end state already exists, so this is a 409, not a 400.
         if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
-            return next(new AppError('You have already submitted feedback for this opportunity', 400));
+            return next(new AppError('You have already submitted feedback for this opportunity', 409));
         }
         next(error);
     }

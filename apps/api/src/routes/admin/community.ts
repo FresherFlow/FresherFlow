@@ -236,6 +236,57 @@ router.post(
     },
 );
 
+/** DELETE /api/admin/community/salary/:id — remove salary report (soft). */
+router.delete(
+    '/salary/:id',
+    adminRateLimit,
+    validateReason,
+    withAdminAudit('DELETE'),
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const id = String(req.params.id);
+            const existing = await prisma.salaryReport.findUnique({
+                where: { id },
+                select: { id: true },
+            });
+            if (!existing) throw new AppError('Salary report not found', 404);
+            const report = await prisma.salaryReport.update({
+                where: { id },
+                data: { status: 'DELETED' },
+                select: { id: true, status: true },
+            });
+            return res.json({ success: true, report, message: 'Salary report removed' });
+        } catch (error) {
+            next(error);
+        }
+    },
+);
+
+/** POST /api/admin/community/salary/:id/restore — undo a removal. */
+router.post(
+    '/salary/:id/restore',
+    adminRateLimit,
+    withAdminAudit('UPDATE'),
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const id = String(req.params.id);
+            const existing = await prisma.salaryReport.findUnique({
+                where: { id },
+                select: { id: true },
+            });
+            if (!existing) throw new AppError('Salary report not found', 404);
+            const report = await prisma.salaryReport.update({
+                where: { id },
+                data: { status: 'ACTIVE' },
+                select: { id: true, status: true },
+            });
+            return res.json({ success: true, report, message: 'Salary report restored' });
+        } catch (error) {
+            next(error);
+        }
+    },
+);
+
 /**
  * DELETE /api/admin/community/updates/:id — remove hiring update.
  * ApplicationUpdate has no status/deletedAt column, so removal is a hard

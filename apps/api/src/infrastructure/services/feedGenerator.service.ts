@@ -415,18 +415,51 @@ export class FeedGeneratorService {
                 select: { company: true }
             });
 
-            const opportunities = await prisma.opportunity.findMany({
-                where: { status: OpportunityStatus.PUBLISHED, deletedAt: null },
-                orderBy: { postedAt: 'desc' },
-                take: 1000,
-                select: {
-                    id: true,
-                    slug: true,
-                    category: true,
-                    postedAt: true,
-                    updatedAt: true
+            // Paginate rather than `take: 1000`. A hard cap silently dropped every
+            // listing older than the newest 1000 from the sitemap, so those pages
+            // were never submitted to search engines and drifted out of the index.
+            // Sitemaps are capped at 50,000 URLs per file upstream, so batching on
+            // the stable (postedAt, id) ordering keeps this correct and resumable.
+            const SITEMAP_PAGE_SIZE = 1000;
+            const sitemapOpportunities: Array<{
+                id: string;
+                slug: string | null;
+                category: unknown;
+                postedAt: Date | null;
+                updatedAt: Date;
+            }> = [];
+            let cursor: { id: string; postedAt: Date | null } | undefined;
+            const seenIds = new Set<string>();
+
+            // Hard stop so a bug in the loop cannot spin forever.
+            for (let page = 0; page < 50; page++) {
+                const batch = await prisma.opportunity.findMany({
+                    where: { status: OpportunityStatus.PUBLISHED, deletedAt: null },
+                    orderBy: [{ postedAt: 'desc' }, { id: 'desc' }],
+                    take: SITEMAP_PAGE_SIZE,
+                    ...(cursor ? { cursor: { id: cursor.id }, skip: 1 } : {}),
+                    select: {
+                        id: true,
+                        slug: true,
+                        category: true,
+                        postedAt: true,
+                        updatedAt: true
+                    }
+                });
+
+                if (batch.length === 0) break;
+
+                for (const row of batch) {
+                    if (seenIds.has(row.id)) continue;
+                    seenIds.add(row.id);
+                    sitemapOpportunities.push(row);
                 }
-            });
+
+                if (batch.length < SITEMAP_PAGE_SIZE) break;
+                cursor = { id: batch[batch.length - 1].id, postedAt: batch[batch.length - 1].postedAt };
+            }
+
+            const opportunities = sitemapOpportunities;
 
             if (this.companySlugMap.size === 0) {
                 await this.loadCompanySlugMap();

@@ -1,4 +1,4 @@
-import { Prisma, OpportunityEventType, OpportunityStatus as DbOpportunityStatus, GovernmentLevel, VacancyNature, GovernmentApplicationStatus, EmploymentType, type OpportunityCategory, type RecruitmentMethod, type Sector } from '@fresherflow/database';
+import { Prisma, OpportunityEventType, OpportunityStatus as DbOpportunityStatus, GovernmentLevel, VacancyNature, GovernmentApplicationStatus, EmploymentType, OpportunitySourceKind, type OpportunityCategory, type RecruitmentMethod, type Sector } from '@fresherflow/database';
 import { OpportunityStatus, EducationLevel } from '@fresherflow/types';
 import { extractDegreesFromQualifications, deriveGovtLocations } from '@fresherflow/constants';
 import { normalizeEducationBuckets } from '@fresherflow/utils';
@@ -309,6 +309,136 @@ export function buildGovernmentJobDetailsCreate(data: AdminOpportunityRequest) {
 
 export function buildGovernmentJobDetailsUpsert(data: AdminOpportunityRequest) {
     const built = buildGovernmentJobDetailsCreate(data);
+    if (!built) return undefined;
+    return { upsert: { create: built.create, update: built.create } };
+}
+
+// ── Phase 5: provenance / org / institution / compensation / event ──────────
+// These fields arrive on the same admin form but were previously dropped on
+// the floor by create/update. They are parsed here (never thrown) so the
+// routes stay thin and the application create use case can share the
+// duplicate/lifecycle rules without importing route code.
+
+const SOURCE_KIND_VALUES = new Set<string>(Object.values(OpportunitySourceKind));
+const COMPENSATION_TYPE_VALUES = new Set([
+    'SALARY', 'STIPEND', 'EQUITY', 'BONUS', 'COMMISSION', 'PER_DIEM', 'REIMBURSEMENT', 'OTHER',
+]);
+
+/** Extended admin payload: base form plus Phase 5 provenance/org/kind fields. */
+export type ExtendedAdminOpportunityData = AdminOpportunityRequest & {
+    sourceKind?: unknown;
+    sourceExternalId?: unknown;
+    organizationId?: unknown;
+    sector?: unknown;
+    workMode?: unknown;
+    experienceLevel?: unknown;
+    institutionIds?: unknown;
+    compensations?: unknown;
+    eventDetails?: unknown;
+    applicationDeadline?: unknown;
+    registrationDeadline?: unknown;
+    startsAt?: unknown;
+    endsAt?: unknown;
+    applicantLocationRequirements?: unknown;
+};
+
+export function parseSourceKind(raw: unknown): OpportunitySourceKind | undefined {
+    if (typeof raw !== 'string') return undefined;
+    const normalized = raw.trim().toUpperCase();
+    return SOURCE_KIND_VALUES.has(normalized) ? (normalized as OpportunitySourceKind) : undefined;
+}
+
+export function parseOrganizationId(raw: unknown): string | undefined {
+    if (typeof raw !== 'string') return undefined;
+    const trimmed = raw.trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)) return undefined;
+    return trimmed;
+}
+
+/** UUID list for OpportunityInstitution targeting (college drives). */
+export function parseInstitutionIds(raw: unknown): string[] {
+    const list = Array.isArray(raw) ? raw : typeof raw === 'string' ? raw.split(',') : [];
+    const out: string[] = [];
+    for (const entry of list) {
+        if (typeof entry !== 'string') continue;
+        const trimmed = entry.trim();
+        if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed) && !out.includes(trimmed)) {
+            out.push(trimmed);
+        }
+        if (out.length >= 25) break;
+    }
+    return out;
+}
+
+function toFiniteNumber(value: unknown): number | undefined {
+    if (typeof value === 'number' && Number.isFinite(value)) return value;
+    if (typeof value === 'string' && /^-?\d+(\.\d+)?$/.test(value.trim())) {
+        const parsed = Number(value.trim());
+        return Number.isFinite(parsed) ? parsed : undefined;
+    }
+    return undefined;
+}
+
+/** Nested creates for OpportunityCompensation rows (salary is the indexed projection; these are the full picture). */
+export function buildCompensationCreates(raw: unknown): Prisma.OpportunityCompensationCreateWithoutOpportunityInput[] | undefined {
+    if (!Array.isArray(raw)) return undefined;
+    const out: Prisma.OpportunityCompensationCreateWithoutOpportunityInput[] = [];
+    for (const entry of raw.slice(0, 10)) {
+        if (!entry || typeof entry !== 'object') continue;
+        const row = entry as Record<string, unknown>;
+        const type = typeof row.type === 'string' ? row.type.trim().toUpperCase() : '';
+        if (!COMPENSATION_TYPE_VALUES.has(type)) continue;
+        out.push({
+            type: type as never,
+            minAmount: toFiniteNumber(row.minAmount) !== undefined ? Math.trunc(toFiniteNumber(row.minAmount) as number) : undefined,
+            maxAmount: toFiniteNumber(row.maxAmount) !== undefined ? Math.trunc(toFiniteNumber(row.maxAmount) as number) : undefined,
+            currency: typeof row.currency === 'string' && row.currency.trim() ? row.currency.trim().slice(0, 8).toUpperCase() : 'INR',
+            period: typeof row.period === 'string' && ['MONTHLY', 'YEARLY'].includes(row.period.trim().toUpperCase())
+                ? (row.period.trim().toUpperCase() as never)
+                : undefined,
+            note: typeof row.note === 'string' ? row.note.trim().slice(0, 500) || undefined : undefined,
+            isNegotiable: row.isNegotiable === true,
+        });
+    }
+    return out.length > 0 ? out : undefined;
+}
+
+function compactDate(value: unknown): Date | undefined {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) return value;
+    if (typeof value !== 'string' || !value.trim()) return undefined;
+    const parsed = new Date(value.trim());
+    return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+}
+
+/** Nested create for EventDetails (competitions, hackathons, workshops). */
+export function buildEventDetailsCreate(raw: unknown) {
+    if (!raw || typeof raw !== 'object') return undefined;
+    const d = raw as Record<string, unknown>;
+    const prizeAmount = toFiniteNumber(d.prizeAmount);
+    const teamSizeMin = toFiniteNumber(d.teamSizeMin);
+    const teamSizeMax = toFiniteNumber(d.teamSizeMax);
+    const payload = {
+        prizeAmount: prizeAmount !== undefined ? Math.trunc(prizeAmount) : undefined,
+        prizeCurrency: typeof d.prizeCurrency === 'string' && d.prizeCurrency.trim() ? d.prizeCurrency.trim().slice(0, 8).toUpperCase() : undefined,
+        teamSizeMin: teamSizeMin !== undefined ? Math.trunc(teamSizeMin) : undefined,
+        teamSizeMax: teamSizeMax !== undefined ? Math.trunc(teamSizeMax) : undefined,
+        isTeamEvent: d.isTeamEvent === true || teamSizeMax !== undefined,
+        participantLimit: toFiniteNumber(d.participantLimit) !== undefined ? Math.trunc(toFiniteNumber(d.participantLimit) as number) : undefined,
+        tracks: Array.isArray(d.tracks) ? d.tracks.filter((t): t is string => typeof t === 'string').map((t) => t.trim()).filter(Boolean).slice(0, 20) : undefined,
+        eligibilityNotes: typeof d.eligibilityNotes === 'string' ? d.eligibilityNotes.trim().slice(0, 5000) || undefined : undefined,
+        rulesUrl: typeof d.rulesUrl === 'string' ? d.rulesUrl.trim() || undefined : undefined,
+        registrationUrl: typeof d.registrationUrl === 'string' ? d.registrationUrl.trim() || undefined : undefined,
+        platformUrl: typeof d.platformUrl === 'string' ? d.platformUrl.trim() || undefined : undefined,
+        supportEmail: typeof d.supportEmail === 'string' ? d.supportEmail.trim() || undefined : undefined,
+        resultAnnouncementDate: compactDate(d.resultAnnouncementDate),
+        organizerName: typeof d.organizerName === 'string' ? d.organizerName.trim().slice(0, 200) || undefined : undefined,
+    };
+    const hasValue = Object.values(payload).some((v) => v !== undefined && (!Array.isArray(v) || v.length > 0));
+    return hasValue ? { create: payload } : undefined;
+}
+
+export function buildEventDetailsUpsert(raw: unknown) {
+    const built = buildEventDetailsCreate(raw);
     if (!built) return undefined;
     return { upsert: { create: built.create, update: built.create } };
 }

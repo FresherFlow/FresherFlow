@@ -92,6 +92,19 @@ export async function handleOpportunityPublished(
     });
   });
 
+  // 3b. Saved-search matching (Phase 7 gate): a matching opportunity produces
+  // exactly one intended notification per (user, search, opportunity) via the
+  // central dispatcher (dedupeKey + dispatch log). Fire-and-forget, same policy
+  // as the generic alerts above.
+  import('./savedSearchAlert.service')
+    .then(({ notifySavedSearchMatches }) => notifySavedSearchMatches(opportunity.id))
+    .catch((err) => {
+      logger.error('[publish] Saved-search alerts dispatch failed', {
+        opportunityId: opportunity.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    });
+
   // 5. Cache Invalidation
   const invalidationIds = [opportunity.id, opportunity.slug];
   if (oldSlug && oldSlug !== opportunity.slug) {

@@ -91,6 +91,27 @@ router.delete('/saved-searches/:id', requireAuth, async (req: Request, res: Resp
 });
 
 // ============================================================================
+// SAVED SEARCH EXECUTION (Phase 7)
+// Run one owned saved search against live listings with the shared matcher.
+// ============================================================================
+
+router.get('/saved-searches/:id/matches', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const result = await fresherNeeds.executeSavedSearch(
+            req.userId as string,
+            paramString(req.params.id),
+            {
+                page: parsePositiveInt(req.query.page, 1, 100),
+                limit: parsePositiveInt(req.query.limit, 20, 50),
+            }
+        );
+        res.json(result);
+    } catch (err) {
+        next(err);
+    }
+});
+
+// ============================================================================
 // REFERRAL REQUEST BOARD
 // ============================================================================
 

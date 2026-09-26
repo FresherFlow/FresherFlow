@@ -1,6 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../../infrastructure/database/prisma';
-import { requireAdmin } from '../../middleware/auth';
+import { requireAdmin, requirePermission } from '../../middleware/auth';
+import { adminRateLimit } from '../../middleware/adminRateLimit';
+import { withAdminAudit } from '../../middleware/adminAudit';
 import { AppError } from '../../middleware/errorHandler';
 import { ProfileVisibility } from '@prisma/client';
 import { getProfilePageState } from '@fresherflow/utils';
@@ -55,7 +57,7 @@ router.get('/intro-requests', requireAdmin, async (req: Request, res: Response, 
 });
 
 /** PATCH /api/admin/profiles/intro-requests/:id/status — PENDING | CONTACTED | ARCHIVED */
-router.patch('/intro-requests/:id/status', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+router.patch('/intro-requests/:id/status', requireAdmin, requirePermission('user.manage'), adminRateLimit, withAdminAudit('UPDATE'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { status } = req.body as { status?: string };
         if (!status || !INTRO_STATUSES.includes(status as IntroStatus)) {
@@ -140,7 +142,7 @@ router.get('/', requireAdmin, async (req: Request, res: Response, next: NextFunc
 });
 
 /** PATCH /api/admin/profiles/:userId/visibility — force-hide a profile (PUBLIC | UNLISTED | PRIVATE) */
-router.patch('/:userId/visibility', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+router.patch('/:userId/visibility', requireAdmin, requirePermission('user.manage'), adminRateLimit, withAdminAudit('UPDATE'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { visibility } = req.body as { visibility?: string };
         if (!visibility || !['PUBLIC', 'UNLISTED', 'PRIVATE'].includes(visibility)) {

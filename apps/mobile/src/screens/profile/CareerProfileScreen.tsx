@@ -13,13 +13,14 @@ import { SkillsView } from './EditSkillsScreen';
 import { PreferencesView } from './EditPreferencesScreen';
 import { PersonalDetailsView } from './EditDemographicsScreen';
 import { AVAILABILITY_OPTIONS } from '@/utils/constants';
+import { PublicPageCard } from './PublicPageCard';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CareerProfile'>;
 
 const CareerProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const insets = useSafeAreaInsets();
   const { currentTheme } = useTheme();
-  const { user, profile } = useProfile();
+  const { user, profile, fetchProfile } = useProfile();
   const isAnonymous = !user || user.isAnonymous;
 
   const availabilityLabel = AVAILABILITY_OPTIONS.find(o => o.value === profile?.availability)?.label || 'Immediate';
@@ -53,6 +54,13 @@ const CareerProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         <PersonalDetailsView
             onEdit={() => onNavigate('EditDemographics')}
             currentTheme={currentTheme}
+        />
+
+        {/* Public page lifecycle — a live page lapses and needs reactivating. */}
+        <PublicPageCard
+            username={user?.username}
+            publishedAt={profile?.profilePublishedAt}
+            onActivated={fetchProfile}
         />
 
         <View style={styles.container}>

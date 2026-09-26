@@ -154,6 +154,32 @@ export class EmailService {
     }
 
     /**
+     * Application stage-change update (Phase 8 funnel notification).
+     */
+    static async sendApplicationUpdate(
+        email: string,
+        fullName: string | null | undefined,
+        payload: { title: string; company: string; stage: string; outcome: string | null }
+    ): Promise<void> {
+        const greeting = fullName ? `Hi ${fullName.split(' ')[0]},` : 'Hi,';
+        const outcomeLine = payload.outcome ? `<p style="font-size: 14px; color: #333;">Outcome: ${payload.outcome}</p>` : '';
+
+        const html = `
+            <div style="font-family: sans-serif; max-width: 640px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                <p style="font-size: 15px; color: #333;">${greeting}</p>
+                <h2 style="color: #111; margin: 8px 0 12px;">Application update</h2>
+                <p style="font-size: 15px; color: #333; margin: 8px 0;">
+                    <strong>${payload.title}</strong> at ${payload.company} moved to <strong>${payload.stage}</strong>.
+                </p>
+                ${outcomeLine}
+                <p style="font-size: 13px; color: #666;">Track the full history from your applications dashboard.</p>
+            </div>
+        `;
+
+        await this.pushToQueue(email, `Application update: ${payload.title} — ${payload.stage}`, html);
+    }
+
+    /**
      * Nudge the owner that their public page is about to go dark.
      * Public pages are live for a bounded activation window, so this is the one
      * email that keeps the link alive — it has to say exactly what to do.

@@ -72,6 +72,9 @@ export default [
     files: ["**/*.ts", "**/*.tsx"],
     languageOptions: {
       parser: tseslint.parser,
+      parserOptions: {
+        tsconfigRootDir: __dirname,
+      },
     },
   },
   js.configs.recommended,

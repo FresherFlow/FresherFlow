@@ -30,6 +30,12 @@ export const adminUsersApi = {
     vetUserHandle: (userId: string) =>
         apiClient<{ success: boolean; user: User }>(`/api/admin/users/${userId}/vet`, { method: 'POST' }),
 
+    setUserStatus: (userId: string, status: 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED', reason?: string) =>
+        apiClient<{ success: boolean; user: User }>(`/api/admin/users/${userId}/status`, {
+            method: 'POST',
+            body: JSON.stringify({ status, reason }),
+        }),
+
     getReferrers: () =>
         apiClient<{ referrers: ReferrerStats[] }>('/api/admin/users/referrers'),
 };

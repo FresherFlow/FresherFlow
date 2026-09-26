@@ -287,11 +287,18 @@ export async function resolveOpportunity(slugOrId: string) {
 // Comments (P0.3)
 // ========================================
 
+/**
+ * Upper bound on comments loaded for one opportunity. This is a hard cap, not
+ * pagination: replies are threaded in memory, so the result is a prefix of the
+ * thread rather than a page of it.
+ */
+const COMMENTS_PAGE_CAP = 300;
+
 export async function listComments(opportunityId: string, viewer: CommunityViewer = {}) {
     const rows = await prisma.opportunityComment.findMany({
         where: { opportunityId, deletedAt: null },
         orderBy: { createdAt: 'asc' },
-        take: 300,
+        take: COMMENTS_PAGE_CAP,
         select: {
             id: true,
             text: true,
@@ -347,7 +354,11 @@ export async function listComments(opportunityId: string, viewer: CommunityViewe
         }
     }
 
-    return { comments: roots, total: rows.length };
+    // Return { comments, total, truncated }. `total` is the number of visible
+    // comments actually loaded, not the true thread length, so callers can tell
+    // an empty thread from a capped one. Without `truncated` a busy thread
+    // silently looks like a complete one.
+    return { comments: roots, total: rows.length, truncated: rows.length >= COMMENTS_PAGE_CAP };
 }
 
 /**
@@ -1194,6 +1205,93 @@ export async function createReport(input: {
 }
 
 // ========================================
+// PHASE 9: community post / comment reports
+// ========================================
+// Report.communityPosts / communityPostComments are implicit many-to-many
+// relations, so a report on a post connects the new Report row to the post
+// instead of filling opportunityId/commentId. Dedupe: one OPEN report per
+// (reporter, target, reason).
+
+export async function createCommunityReport(input: {
+    reporterId: string;
+    postId?: string | null;
+    communityCommentId?: string | null;
+    reason: ReportReason;
+    message?: string | null;
+}) {
+    const targets = [input.postId, input.communityCommentId].filter(Boolean);
+    if (targets.length !== 1) {
+        throw new AppError('Provide exactly one report target', 400);
+    }
+
+    if (input.postId) {
+        const post = await prisma.communityPost.findUnique({
+            where: { id: input.postId },
+            select: { id: true },
+        });
+        if (!post) throw new AppError('Community post not found', 404);
+        const existing = await prisma.report.findFirst({
+            where: {
+                reporterId: input.reporterId,
+                status: 'OPEN',
+                reason: input.reason,
+                communityPosts: { some: { id: input.postId } },
+            },
+            select: { id: true },
+        });
+        if (existing) return { id: existing.id, deduped: true };
+        // Auto-hide at ≥3 open reports (09c §14): count first, hide after create.
+        const created = await prisma.report.create({
+            data: {
+                reporterId: input.reporterId,
+                reason: input.reason,
+                message: input.message?.trim() || null,
+                status: 'OPEN',
+                communityPosts: { connect: { id: input.postId } },
+            },
+            select: { id: true },
+        });
+        const openCount = await prisma.report.count({
+            where: { status: 'OPEN', communityPosts: { some: { id: input.postId } } },
+        });
+        if (openCount >= 3) {
+            await prisma.communityPost.update({
+                where: { id: input.postId },
+                data: { status: 'ARCHIVED' },
+            });
+        }
+        return { id: created.id, deduped: false };
+    }
+
+    const comment = await prisma.communityPostComment.findUnique({
+        where: { id: input.communityCommentId as string },
+        select: { id: true },
+    });
+    if (!comment) throw new AppError('Comment not found', 404);
+    const existing = await prisma.report.findFirst({
+        where: {
+            reporterId: input.reporterId,
+            status: 'OPEN',
+            reason: input.reason,
+            communityPostComments: { some: { id: input.communityCommentId as string } },
+        },
+        select: { id: true },
+    });
+    if (existing) return { id: existing.id, deduped: true };
+    const created = await prisma.report.create({
+        data: {
+            reporterId: input.reporterId,
+            reason: input.reason,
+            message: input.message?.trim() || null,
+            status: 'OPEN',
+            communityPostComments: { connect: { id: input.communityCommentId as string } },
+        },
+        select: { id: true },
+    });
+    return { id: created.id, deduped: false };
+}
+
+// ========================================
 // Notifications (P0.6 / P0.11)
 // ========================================
 
@@ -1348,6 +1446,71 @@ function mapCommunityPostUser(user: {
     };
 }
 
+// ========================================
+// PHASE 9: anonymous posting rules
+// ========================================
+// Rule: only signed-in members may post; guests (isAnonymous identities) are
+// rejected at the route layer via requireMember. A signed-in member may set
+// isAnonymous:true to hide their identity from readers. The authorId is always
+// stored (moderation + ownership need it) but public reads mask it to null
+// with a stable per-post/per-comment anon label. anonId is minted
+// server-side with crypto — never trusted from the client.
+
+export function mintAnonId(): string {
+    return `anon_${crypto.randomInt(0, 0xffffff).toString(16).padStart(6, '0')}${Date.now().toString(36)}`;
+}
+
+function maskPostAuthor<T extends { isAnonymous: boolean; anonId: string | null; author: CommunityPostUser }>(
+    post: T
+): T {
+    if (!post.isAnonymous) return post;
+    return {
+        ...post,
+        author: { id: '', fullName: 'Anonymous', username: post.anonId ?? 'anonymous', avatarUrl: null },
+    };
+}
+
+function maskCommentAuthor<T extends { isAnonymous: boolean; anonId: string | null; author: CommunityPostUser }>(
+    comment: T
+): T {
+    if (!comment.isAnonymous) return comment;
+    return {
+        ...comment,
+        author: { id: '', fullName: 'Anonymous', username: comment.anonId ?? 'anonymous', avatarUrl: null },
+    };
+}
+
+/** Build a threaded comment tree (parent → replies), hiding deleted subtrees. */
+function threadCommunityComments(
+    rows: Array<{
+        id: string;
+        parentId: string | null;
+        deletedAt: Date | null;
+        [k: string]: unknown;
+    }>
+): Array<{ [k: string]: unknown; replies: unknown[] }> {
+    const byId = new Map<string, { [k: string]: unknown; replies: unknown[] }>();
+    for (const row of rows) {
+        byId.set(row.id, { ...row, replies: [] });
+    }
+    const roots: Array<{ [k: string]: unknown; replies: unknown[] }> = [];
+    for (const row of rows) {
+        // Deleted roots hide their whole subtree (same D4 rule as job comments).
+        if (row.deletedAt) continue;
+        const node = byId.get(row.id);
+        if (!node) continue;
+        if (row.parentId) {
+            const parent = byId.get(row.parentId);
+            // Orphaned replies (parent deleted/missing) are hidden with the subtree.
+            if (!parent || (parent as { deletedAt?: Date | null }).deletedAt) continue;
+            parent.replies.push(node);
+        } else {
+            roots.push(node);
+        }
+    }
+    return roots;
+}
+
 export async function listCommunityPosts(options: {
     page?: number;
     limit?: number;
@@ -1414,16 +1577,20 @@ export async function listCommunityPosts(options: {
         prisma.communityPost.count({ where }),
     ]);
 
-    const enrichedPosts = posts.map((post) => ({
-        ...post,
-        author: mapCommunityPostUser(post.author),
-        myVote: post.votes[0]?.value ?? null,
-        comments: post.comments.map((comment) => ({
-            ...comment,
-            author: mapCommunityPostUser(comment.author),
-            myVote: comment.votes[0]?.value ?? null,
-        })),
-    }));
+    const enrichedPosts = posts.map((post) =>
+        maskPostAuthor({
+            ...post,
+            author: mapCommunityPostUser(post.author),
+            myVote: post.votes[0]?.value ?? null,
+            comments: post.comments.map((comment) =>
+                maskCommentAuthor({
+                    ...comment,
+                    author: mapCommunityPostUser(comment.author),
+                    myVote: comment.votes[0]?.value ?? null,
+                })
+            ),
+        })
+    );
 
     return {
         posts: enrichedPosts,
@@ -1464,9 +1631,10 @@ export async function getCommunityPost(id: string, userId?: string | null) {
         where: { id },
         include: {
             author: { select: COMMUNITY_POST_AUTHOR_SELECT },
+            room: { select: { id: true, slug: true, name: true } },
             comments: {
-                where: { deletedAt: null },
                 orderBy: { createdAt: 'asc' },
+                take: 300,
                 include: {
                     author: { select: COMMUNITY_POST_COMMENT_AUTHOR_SELECT },
                     votes: {
@@ -1486,16 +1654,23 @@ export async function getCommunityPost(id: string, userId?: string | null) {
         throw new AppError('Community post not found', 404);
     }
 
-    return {
-        ...post,
-        author: mapCommunityPostUser(post.author),
-        myVote: post.votes[0]?.value ?? null,
-        comments: post.comments.map((comment) => ({
+    const flat = post.comments.map((comment) =>
+        maskCommentAuthor({
             ...comment,
             author: mapCommunityPostUser(comment.author),
             myVote: comment.votes[0]?.value ?? null,
-        })),
-    };
+        })
+    );
+    const comments = threadCommunityComments(
+        flat as Array<{ id: string; parentId: string | null; deletedAt: Date | null; [k: string]: unknown }>
+    );
+
+    return maskPostAuthor({
+        ...post,
+        author: mapCommunityPostUser(post.author),
+        myVote: post.votes[0]?.value ?? null,
+        comments,
+    });
 }
 
 export async function createCommunityPost(input: {
@@ -1505,10 +1680,30 @@ export async function createCommunityPost(input: {
     category?: CommunityPostCategory;
     tags?: string[];
     isAnonymous?: boolean;
-    anonId?: string;
     sourceOpportunityId?: string;
     roomId?: string | null;
 }) {
+    // sourceOpportunityId is a loose pointer (no FK): resolve slug-or-id to the
+    // canonical opportunity so posts always point at a real listing. Unknown
+    // ids are rejected; omitted ids stay null (room-only discussion).
+    let canonicalOppId: string | null = null;
+    if (input.sourceOpportunityId?.trim()) {
+        const opp = await resolveOpportunity(input.sourceOpportunityId.trim());
+        canonicalOppId = opp.id;
+    }
+    // Room posts must land in a live room so counters stay truthful.
+    let canonicalRoomId: string | null = null;
+    if (input.roomId?.trim()) {
+        const room = await prisma.room.findUnique({
+            where: { id: input.roomId.trim(), status: 'ACTIVE' },
+            select: { id: true },
+        });
+        if (!room) throw new AppError('Room not found', 404);
+        canonicalRoomId = room.id;
+    }
+    const isAnonymous = input.isAnonymous ?? false;
+    // anonId is minted server-side; clients must never choose it.
+    const anonId = isAnonymous ? mintAnonId() : null;
     const post = await prisma.$transaction(async (tx) => {
         const created = await tx.communityPost.create({
             data: {
@@ -1517,10 +1712,10 @@ export async function createCommunityPost(input: {
                 body: input.body.trim(),
                 category: input.category ?? CommunityPostCategory.DISCUSSION,
                 tags: input.tags ?? [],
-                isAnonymous: input.isAnonymous ?? false,
-                anonId: input.anonId ?? null,
-                sourceOpportunityId: input.sourceOpportunityId ?? null,
-                roomId: input.roomId ?? null,
+                isAnonymous,
+                anonId,
+                sourceOpportunityId: canonicalOppId,
+                roomId: canonicalRoomId,
                 status: CommunityPostStatus.ACTIVE,
             },
             select: {
@@ -1535,9 +1730,9 @@ export async function createCommunityPost(input: {
         });
 
         // Bump the room's post counter when the post lands in a room
-        if (input.roomId) {
+        if (canonicalRoomId) {
             await tx.room.update({
-                where: { id: input.roomId },
+                where: { id: canonicalRoomId },
                 data: { postCount: { increment: 1 } },
             });
         }
@@ -1545,12 +1740,12 @@ export async function createCommunityPost(input: {
         return created;
     });
 
-    return {
+    return maskPostAuthor({
         ...post,
         author: mapCommunityPostUser(post.author),
         myVote: null,
         comments: [],
-    };
+    });
 }
 
 export async function voteCommunityPost(input: {
@@ -1613,7 +1808,6 @@ export async function addCommunityPostComment(input: {
     body: string;
     parentId?: string;
     isAnonymous?: boolean;
-    anonId?: string;
 }) {
     const post = await prisma.communityPost.findUnique({
         where: { id: input.postId, status: CommunityPostStatus.ACTIVE },
@@ -1638,7 +1832,7 @@ export async function addCommunityPostComment(input: {
                 body: input.body.trim(),
                 parentId: parent?.id ?? null,
                 isAnonymous: input.isAnonymous ?? false,
-                anonId: input.anonId ?? null,
+                anonId: input.isAnonymous ? mintAnonId() : null,
             },
             select: {
                 id: true, body: true, isAnonymous: true, anonId: true,
@@ -1667,12 +1861,12 @@ export async function addCommunityPostComment(input: {
         return created;
     });
 
-    return {
+    return maskCommentAuthor({
         ...comment,
         author: mapCommunityPostUser(comment.author),
         myVote: null,
         replies: [],
-    };
+    });
 }
 
 export async function voteCommunityPostComment(input: {
@@ -2089,7 +2283,9 @@ export async function listApplicationUpdates(
     const limit = Math.min(Math.max(options.limit ?? 20, 1), 50);
     const skip = (page - 1) * limit;
 
-    const where = { opportunityId };
+    // Slug-or-id in, canonical id out — lists keyed by either form agree.
+    const opportunity = await resolveOpportunity(opportunityId);
+    const where = { opportunityId: opportunity.id };
 
     const [updates, total] = await Promise.all([
         prisma.applicationUpdate.findMany({
@@ -2117,9 +2313,10 @@ export async function listApplicationUpdates(
 }
 
 export async function getApplicationUpdateSummary(opportunityId: string) {
+    const opportunity = await resolveOpportunity(opportunityId);
     const grouped = await prisma.applicationUpdate.groupBy({
         by: ['status'],
-        where: { opportunityId },
+        where: { opportunityId: opportunity.id },
         _count: { _all: true },
     });
 
@@ -2141,23 +2338,23 @@ export async function createApplicationUpdate(input: {
     description?: string;
     evidenceUrl?: string;
 }) {
-    // Verify opportunity exists
-    const opp = await prisma.opportunity.findFirst({
-        where: { id: input.opportunityId, deletedAt: null },
-        select: { id: true },
-    });
-    if (!opp) throw new AppError('Opportunity not found', 404);
+    // Accept slug-or-id (and /jobs/<slug> URLs) so updates always point at the
+    // correct canonical Opportunity context.
+    const opp = await resolveOpportunity(input.opportunityId);
+    // Evidence is provenance, not a fetch target: validate shape, store only.
+    const evidenceUrl = input.evidenceUrl?.trim() ? validateEvidenceUrl(input.evidenceUrl) : null;
 
     const update = await prisma.applicationUpdate.create({
         data: {
-            opportunityId: input.opportunityId,
+            opportunityId: opp.id,
             authorId: input.authorId,
             status: input.status,
             description: input.description?.trim() || null,
-            evidenceUrl: input.evidenceUrl?.trim() || null,
+            evidenceUrl,
         },
         include: {
             author: { select: COMMUNITY_POST_AUTHOR_SELECT },
+            opportunity: { select: { id: true, slug: true, title: true, company: true } },
         },
     });
 
@@ -2586,4 +2783,222 @@ export async function listRoomPosts(slug: string, options: { page?: number; limi
         limit,
         hasMore: page * limit < total,
     };
+}
+
+// ========================================
+// PHASE 9: room update / archive (tags)
+// ========================================
+// Tags describe the community ("tcs", "2026", "hyderabad") — they are display
+// metadata only and NEVER execute matching. There is no code path that reads
+// Room.tags to auto-attach opportunities. Surfacing is always deliberate:
+// a member SHAREs or a moderator PINs via the functions below.
+
+export async function updateRoom(
+    roomId: string,
+    input: { name?: string; description?: string | null; icon?: string | null; tags?: string[] }
+) {
+    const room = await prisma.room.findUnique({ where: { id: roomId }, select: { id: true } });
+    if (!room) throw new AppError('Room not found', 404);
+    const data: { name?: string; description?: string | null; icon?: string | null; tags?: string[] } = {};
+    if (input.name !== undefined) {
+        const name = input.name.trim();
+        if (name.length < 2 || name.length > 100) throw new AppError('Invalid room name', 400);
+        data.name = name;
+    }
+    if (input.description !== undefined) data.description = input.description?.trim() || null;
+    if (input.icon !== undefined) data.icon = input.icon || null;
+    if (input.tags !== undefined) data.tags = normaliseRoomTags(input.tags);
+    if (Object.keys(data).length === 0) throw new AppError('Nothing to update', 400);
+    const updated = await prisma.room.update({
+        where: { id: roomId },
+        data,
+        include: { createdBy: { select: COMMUNITY_POST_AUTHOR_SELECT } },
+    });
+    return {
+        ...updated,
+        createdBy: updated.createdBy ? mapCommunityPostUser(updated.createdBy) : null,
+    };
+}
+
+export async function archiveRoom(roomId: string) {
+    const room = await prisma.room.findUnique({ where: { id: roomId }, select: { id: true, status: true } });
+    if (!room) throw new AppError('Room not found', 404);
+    if (room.status === 'ARCHIVED') return room;
+    if (room.status === 'DELETED') throw new AppError('Room is deleted', 409);
+    return prisma.room.update({ where: { id: roomId }, data: { status: 'ARCHIVED' } });
+}
+
+export async function restoreRoom(roomId: string) {
+    const room = await prisma.room.findUnique({ where: { id: roomId }, select: { id: true, status: true } });
+    if (!room) throw new AppError('Room not found', 404);
+    if (room.status === 'ACTIVE') return room;
+    if (room.status === 'DELETED') throw new AppError('Room is deleted', 409);
+    return prisma.room.update({ where: { id: roomId }, data: { status: 'ACTIVE' } });
+}
+
+// ========================================
+// PHASE 9: deliberate room↔opportunity sharing
+// ========================================
+// RoomOpportunity rows are created ONLY here — by an explicit member share
+// (SHARED) or moderator pin (PINNED). Tags never create rows. Personal
+// matching is SavedSearch's job; a room is a place people gather.
+
+const ROOM_OPPORTUNITY_SELECT = {
+    reason: true,
+    createdAt: true,
+    opportunity: {
+        select: {
+            id: true, slug: true, title: true, company: true, locations: true,
+            salaryRange: true, status: true, postedAt: true, expiresAt: true,
+        },
+    },
+    addedBy: { select: COMMUNITY_POST_AUTHOR_SELECT },
+} as const;
+
+async function requireRoomMembership(roomId: string, userId: string) {
+    const member = await prisma.roomMember.findUnique({
+        where: { roomId_userId: { roomId, userId } },
+        select: { id: true, role: true },
+    });
+    if (!member) throw new AppError('Join the room before sharing', 403);
+    return member;
+}
+
+async function requireRoomModerator(roomId: string, userId: string) {
+    const member = await prisma.roomMember.findUnique({
+        where: { roomId_userId: { roomId, userId } },
+        select: { id: true, role: true },
+    });
+    if (!member || (member.role !== 'ADMIN' && member.role !== 'MODERATOR')) {
+        throw new AppError('Moderator role required', 403);
+    }
+    return member;
+}
+
+export async function listRoomOpportunities(
+    slug: string,
+    options: { page?: number; limit?: number; reason?: 'PINNED' | 'SHARED' } = {}
+) {
+    const room = await prisma.room.findUnique({ where: { slug, status: 'ACTIVE' }, select: { id: true } });
+    if (!room) throw new AppError('Room not found', 404);
+    const page = Math.max(options.page ?? 1, 1);
+    const limit = Math.min(Math.max(options.limit ?? 20, 1), 50);
+    const skip = (page - 1) * limit;
+    const where = { roomId: room.id, ...(options.reason ? { reason: options.reason as 'PINNED' | 'SHARED' } : {}) };
+    const [rows, total] = await Promise.all([
+        prisma.roomOpportunity.findMany({
+            where,
+            orderBy: [{ reason: 'asc' }, { createdAt: 'desc' }],
+            skip,
+            take: limit,
+            select: ROOM_OPPORTUNITY_SELECT,
+        }),
+        prisma.roomOpportunity.count({ where }),
+    ]);
+    return {
+        opportunities: rows.map((r) => ({
+            reason: r.reason,
+            createdAt: r.createdAt,
+            addedBy: r.addedBy ? mapCommunityPostUser(r.addedBy) : null,
+            opportunity: r.opportunity,
+        })),
+        total,
+        page,
+        limit,
+        hasMore: page * limit < total,
+    };
+}
+
+export async function shareRoomOpportunity(input: { slug: string; opportunityId: string; userId: string }) {
+    const room = await prisma.room.findUnique({ where: { slug: input.slug, status: 'ACTIVE' }, select: { id: true } });
+    if (!room) throw new AppError('Room not found', 404);
+    await requireRoomMembership(room.id, input.userId);
+    // Resolve slug-or-URL to the canonical opportunity so shares always point
+    // at the correct Opportunity context.
+    const opportunity = await resolveOpportunity(input.opportunityId);
+    const existing = await prisma.roomOpportunity.findUnique({
+        where: { roomId_opportunityId: { roomId: room.id, opportunityId: opportunity.id } },
+        select: { reason: true },
+    });
+    if (existing) return { shared: true, deduped: true, reason: existing.reason, opportunityId: opportunity.id };
+    await prisma.$transaction(async (tx) => {
+        await tx.roomOpportunity.create({
+            data: { roomId: room.id, opportunityId: opportunity.id, reason: 'SHARED', addedByUserId: input.userId },
+        });
+        await tx.room.update({ where: { id: room.id }, data: { opportunityCount: { increment: 1 } } });
+    });
+    return { shared: true, deduped: false, reason: 'SHARED' as const, opportunityId: opportunity.id };
+}
+
+export async function pinRoomOpportunity(input: { slug: string; opportunityId: string; userId: string }) {
+    const room = await prisma.room.findUnique({ where: { slug: input.slug, status: 'ACTIVE' }, select: { id: true } });
+    if (!room) throw new AppError('Room not found', 404);
+    await requireRoomModerator(room.id, input.userId);
+    const opportunity = await resolveOpportunity(input.opportunityId);
+    const result = await prisma.$transaction(async (tx) => {
+        const existing = await tx.roomOpportunity.findUnique({
+            where: { roomId_opportunityId: { roomId: room.id, opportunityId: opportunity.id } },
+            select: { reason: true },
+        });
+        if (existing) {
+            if (existing.reason === 'PINNED') return { created: false };
+            await tx.roomOpportunity.update({
+                where: { roomId_opportunityId: { roomId: room.id, opportunityId: opportunity.id } },
+                data: { reason: 'PINNED', addedByUserId: input.userId },
+            });
+            return { created: false, promoted: true };
+        }
+        await tx.roomOpportunity.create({
+            data: { roomId: room.id, opportunityId: opportunity.id, reason: 'PINNED', addedByUserId: input.userId },
+        });
+        await tx.room.update({ where: { id: room.id }, data: { opportunityCount: { increment: 1 } } });
+        return { created: true };
+    });
+    return { pinned: true, opportunityId: opportunity.id, ...result };
+}
+
+export async function removeRoomOpportunity(input: { slug: string; opportunityId: string; userId: string }) {
+    const room = await prisma.room.findUnique({ where: { slug: input.slug, status: 'ACTIVE' }, select: { id: true } });
+    if (!room) throw new AppError('Room not found', 404);
+    const opportunity = await resolveOpportunity(input.opportunityId);
+    const existing = await prisma.roomOpportunity.findUnique({
+        where: { roomId_opportunityId: { roomId: room.id, opportunityId: opportunity.id } },
+        select: { reason: true, addedByUserId: true },
+    });
+    if (!existing) throw new AppError('Opportunity is not in this room', 404);
+    // PINNED rows need a moderator; a member may remove their own SHARED row.
+    if (existing.reason === 'PINNED') {
+        await requireRoomModerator(room.id, input.userId);
+    } else if (existing.addedByUserId !== input.userId) {
+        await requireRoomModerator(room.id, input.userId);
+    }
+    await prisma.$transaction(async (tx) => {
+        await tx.roomOpportunity.delete({
+            where: { roomId_opportunityId: { roomId: room.id, opportunityId: opportunity.id } },
+        });
+        await tx.room.update({ where: { id: room.id }, data: { opportunityCount: { decrement: 1 } } });
+    });
+    return { removed: true, opportunityId: opportunity.id };
+}
+
+// ========================================
+// PHASE 10: application updates — evidence + provenance
+// ========================================
+
+const MAX_EVIDENCE_URL_LENGTH = 2000;
+
+/** Validate an evidence URL: https only, real hostname, length-capped. Stored, never fetched. */
+export function validateEvidenceUrl(raw: string): string {
+    const trimmed = raw.trim();
+    if (!trimmed) throw new AppError('Evidence URL is required', 400);
+    if (trimmed.length > MAX_EVIDENCE_URL_LENGTH) throw new AppError('Evidence URL too long', 400);
+    let url: URL;
+    try {
+        url = new URL(trimmed);
+    } catch {
+        throw new AppError('Evidence URL must be a valid URL', 400);
+    }
+    if (url.protocol !== 'https:') throw new AppError('Evidence URL must use https', 400);
+    if (!url.hostname || !url.hostname.includes('.')) throw new AppError('Evidence URL has an invalid host', 400);
+    return url.toString();
 }

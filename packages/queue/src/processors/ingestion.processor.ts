@@ -1,7 +1,7 @@
-import { OpportunityType as SharedOpportunityType, RawOpportunity } from '@fresherflow/types';
+import { RawOpportunity } from '@fresherflow/types';
 import { generateOpportunitySlug, calculateTrendingScore } from '@fresherflow/utils';
 import { generateOpportunityFingerprint } from '@fresherflow/utils';
-import prisma, { OpportunityType, OpportunityStatus } from '@fresherflow/database';
+import prisma, { EmploymentType, OpportunityStatus } from '@fresherflow/database';
 
 /**
  * Background processor for opportunity ingestion.
@@ -49,10 +49,12 @@ export async function processIngestionJob(job: { data: { rawOpportunityId: strin
         }
 
         // 3. Simple Mock Parsing (In reality, this would hit an LLM or scraper)
+        // The old single `OpportunityType` enum was decomposed into independent
+        // dimensions: internship-ness now lives in `employmentTypes`.
         const parsed = {
             title: (payload.title as string) || 'New Opportunity',
             company: (payload.company as string) || 'Unknown Company',
-            type: payload.type === 'INTERNSHIP' ? SharedOpportunityType.INTERNSHIP : SharedOpportunityType.JOB,
+            employmentTypes: payload.type === 'INTERNSHIP' ? [EmploymentType.INTERNSHIP] : [],
             locations: (payload.locations as string[]) || ['Remote'],
         };
 
@@ -76,23 +78,31 @@ export async function processIngestionJob(job: { data: { rawOpportunityId: strin
         });
 
         // 5. Domain Trust Logic (Auto-Publish High-Trust Sources)
-        const TRUSTED_DOMAINS = [
+        // Hostname check, not substring: `new URL().hostname` with a
+        // dot-anchored suffix match so `evil.com/?x=lever.co` and
+        // `lever.co.evil.com` cannot pass.
+        const TRUSTED_SUFFIXES = [
             'lever.co',
             'greenhouse.io',
             'myworkdayjobs.com',
             'jobvite.com',
             'smartrecruiters.com',
             'ashbyhq.com',
-            'careers.google.com',
-            'amazon.jobs',
-            'meta.com/careers',
-            'microsoft.com',
-            'apple.com/jobs',
-            'netflix.com/jobs',
-            'spotify.com/jobs'
         ];
 
-        const isTrusted = TRUSTED_DOMAINS.some(domain => url.toLowerCase().includes(domain));
+        function isTrustedListingUrl(rawUrl: string): boolean {
+            if (!rawUrl || rawUrl.length > 2000) return false;
+            try {
+                const parsed = new URL(rawUrl);
+                if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+                const host = parsed.hostname.toLowerCase();
+                return TRUSTED_SUFFIXES.some((suffix) => host === suffix || host.endsWith(`.${suffix}`));
+            } catch {
+                return false;
+            }
+        }
+
+        const isTrusted = isTrustedListingUrl(url);
         const status = isTrusted ? OpportunityStatus.PUBLISHED : OpportunityStatus.DRAFT;
 
         // Create Opportunity
@@ -101,7 +111,7 @@ export async function processIngestionJob(job: { data: { rawOpportunityId: strin
                 slug,
                 title: parsed.title,
                 company: parsed.company,
-                type: parsed.type as OpportunityType,
+                employmentTypes: parsed.employmentTypes,
                 locations: parsed.locations,
                 sourceLink: url,
                 applyLink: url,

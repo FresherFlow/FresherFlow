@@ -6,6 +6,7 @@ import { AppError } from '../../middleware/errorHandler';
 import {
     communityReadLimiter,
     commentsWriteLimiter,
+    reportsLimiter,
     listCommunityPosts,
     listTrendingTags,
     getCommunityPost,
@@ -15,6 +16,7 @@ import {
     voteCommunityPostComment,
     deleteCommunityPostComment,
     listMyContributions,
+    createCommunityReport,
 } from '../../infrastructure/services/community.service';
 import { z } from 'zod';
 import { communityPostVoteSchema, communityPostCommentCreateSchema, communityPostCommentVoteSchema } from '../../utils/validation';
@@ -42,6 +44,14 @@ const createCommunityPostSchema = z.object({
     tags: z.array(z.string().min(1).max(60)).max(10).optional().default([]),
     sourceOpportunityId: z.string().optional(),
     roomId: z.string().min(1).max(64).optional(),
+    // Signed-in members may post anonymously; identity is masked in reads but
+    // retained for moderation. anonId is minted server-side.
+    isAnonymous: z.boolean().optional().default(false),
+});
+
+const communityReportSchema = z.object({
+    reason: z.enum(['SPAM', 'INACCURATE', 'EXPIRED', 'OFFENSIVE', 'OTHER']),
+    message: z.string().trim().max(1000).optional(),
 });
 
 // ========================================
@@ -132,8 +142,8 @@ router.post(
     asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
         const userId = requireMember(req, next);
         if (!userId) return;
-        const { title, body, category, tags, sourceOpportunityId, roomId } = req.body as {
-            title: string; body: string; category: CommunityPostCategory; tags: string[]; sourceOpportunityId?: string; roomId?: string;
+        const { title, body, category, tags, sourceOpportunityId, roomId, isAnonymous } = req.body as {
+            title: string; body: string; category: CommunityPostCategory; tags: string[]; sourceOpportunityId?: string; roomId?: string; isAnonymous?: boolean;
         };
         const post = await createCommunityPost({
             authorId: userId,
@@ -143,6 +153,7 @@ router.post(
             tags,
             sourceOpportunityId,
             roomId,
+            isAnonymous: isAnonymous ?? false,
         });
         return res.status(201).json(post);
     })
@@ -177,12 +188,13 @@ router.post(
     asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
         const userId = requireMember(req, next);
         if (!userId) return;
-        const { body, parentId } = req.body as { body: string; parentId?: string };
+        const { body, parentId, isAnonymous } = req.body as { body: string; parentId?: string; isAnonymous?: boolean };
         const comment = await addCommunityPostComment({
             postId: String(req.params.id),
             authorId: userId,
             body,
             parentId,
+            isAnonymous: isAnonymous ?? false,
         });
         return res.status(201).json(comment);
     })
@@ -204,6 +216,38 @@ router.post(
             commentId: String(req.params.commentId),
             userId,
         });
+        return res.json(result);
+    })
+);
+
+// ========================================
+// Report Community Post / Comment (dedupe: one OPEN per reporter+target+reason)
+// ========================================
+
+router.post(
+    '/:id/reports',
+    reportsLimiter,
+    requireAuth,
+    validate(communityReportSchema),
+    asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+        const userId = requireMember(req, next);
+        if (!userId) return;
+        const { reason, message } = req.body as { reason: 'SPAM' | 'INACCURATE' | 'EXPIRED' | 'OFFENSIVE' | 'OTHER'; message?: string };
+        const result = await createCommunityReport({ reporterId: userId, postId: String(req.params.id), reason, message });
+        return res.json(result);
+    })
+);
+
+router.post(
+    '/:id/comments/:commentId/reports',
+    reportsLimiter,
+    requireAuth,
+    validate(communityReportSchema),
+    asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+        const userId = requireMember(req, next);
+        if (!userId) return;
+        const { reason, message } = req.body as { reason: 'SPAM' | 'INACCURATE' | 'EXPIRED' | 'OFFENSIVE' | 'OTHER'; message?: string };
+        const result = await createCommunityReport({ reporterId: userId, communityCommentId: String(req.params.commentId), reason, message });
         return res.json(result);
     })
 );

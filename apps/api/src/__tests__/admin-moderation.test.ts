@@ -71,6 +71,10 @@ const prismaMock = {
         findMany: vi.fn(),
         findUnique: vi.fn(),
         update: vi.fn(),
+        count: vi.fn(),
+    },
+    refreshToken: {
+        updateMany: vi.fn(),
     },
     adminAudit: {
         create: vi.fn(),

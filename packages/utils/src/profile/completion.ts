@@ -31,9 +31,15 @@ export function calculateProfileCompletion(profile: Partial<Profile> | null | un
         };
     }
 
-    // Short-circuit if the percentage is already pre-calculated by the API
+    // Only trust a pre-calculated percentage when it is actually a meaningful
+    // value. `Profile.completionPercentage` is a persisted column defaulting to
+    // 0, so trusting any `typeof === 'number'` made every profile read straight
+    // from the database return 0 and short-circuited the real calculation.
     const profileWithCompletion = profile as ProfileWithCompletion;
-    if (typeof profileWithCompletion.completionPercentage === 'number') {
+    if (
+        typeof profileWithCompletion.completionPercentage === 'number' &&
+        profileWithCompletion.completionPercentage > 0
+    ) {
         const p = profileWithCompletion.completionPercentage;
         return {
             percentage: p,
@@ -48,31 +54,37 @@ export function calculateProfileCompletion(profile: Partial<Profile> | null | un
     const missingCategories = { education: false, preferences: false, readiness: false };
 
     // 1. Education Details (40% total)
+    // What counts depends on the highest level: a 10th passout has no degree
+    // or 12th year to give, so requiring them would cap completion below 100%
+    // no matter what they do.
+    const requiresTwelfth = profile.educationLevel !== 'TENTH';
+    const requiresGrad = ['DIPLOMA', 'DEGREE', 'PG'].includes(profile.educationLevel ?? '');
     // Part 1: Graduation/Degree (25%)
     const hasGraduation =
         profile.educationLevel &&
-        profile.gradCourse &&
-        profile.gradSpecialization &&
-        profile.gradYear;
+        (!requiresGrad ||
+            (profile.gradCourse &&
+                profile.gradSpecialization &&
+                profile.gradYear));
 
     if (hasGraduation) {
         completion += 25;
     } else {
         missingCategories.education = true;
         if (!profile.educationLevel) missingFields.push('Education Level');
-        if (!profile.gradCourse) missingFields.push('UG Course');
-        if (!profile.gradSpecialization) missingFields.push('Specialization');
-        if (!profile.gradYear) missingFields.push('UG Passout Year');
+        if (requiresGrad && !profile.gradCourse) missingFields.push('UG Course');
+        if (requiresGrad && !profile.gradSpecialization) missingFields.push('Specialization');
+        if (requiresGrad && !profile.gradYear) missingFields.push('UG Passout Year');
     }
 
     // Part 2: Secondary Education (15%)
-    const hasSecondary = profile.tenthYear && profile.twelfthYear;
+    const hasSecondary = profile.tenthYear && (!requiresTwelfth || profile.twelfthYear);
     if (hasSecondary) {
         completion += 15;
     } else {
         missingCategories.education = true;
         if (!profile.tenthYear) missingFields.push('10th Passout Year');
-        if (!profile.twelfthYear) missingFields.push('12th Passout Year');
+        if (requiresTwelfth && !profile.twelfthYear) missingFields.push('12th Passout Year');
     }
 
     // 2. Career Preferences (40%)

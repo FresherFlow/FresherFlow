@@ -4,6 +4,7 @@ import { Prisma } from '@fresherflow/database';
 import { OpportunityStatus } from '@fresherflow/types';
 import { searchOpportunities } from '../../../application/opportunity';
 import { requirePermission } from '../../../middleware/auth';
+import { parsePagination } from '../../../utils/pagination';
 import {
     normalizeTypeParam, parseAdminStatusFilter, buildExpiredWhere, buildIdOrSlugWhere,
 } from './_helpers';
@@ -79,14 +80,17 @@ router.get('/', requirePermission('opportunity.review'), async (req: Request, re
             andFilters.push({ OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] });
         }
 
-        const take = typeof limit === 'string' && !Number.isNaN(Number(limit)) ? Number(limit) : undefined;
+        // Standardized offset pagination: one clamped `page`/`limit` contract.
+        // An explicit `offset` still wins when provided (deep-link/exports),
+        // otherwise it derives from the page window.
+        const { page: pageNumber, limit: take, skip: pageSkip } = parsePagination(
+            { page, limit },
+            { defaultLimit: 20, maxLimit: 100 },
+        );
         const explicitOffset = typeof offset === 'string' && !Number.isNaN(Number(offset)) ? Number(offset) : undefined;
-        const pageNumber = typeof page === 'string' && !Number.isNaN(Number(page)) ? Math.max(1, Number(page)) : 1;
         const skip = explicitOffset !== undefined
-            ? explicitOffset
-            : take !== undefined
-                ? (pageNumber - 1) * take
-                : undefined;
+            ? Math.max(0, Math.min(Math.trunc(explicitOffset), 5000))
+            : pageSkip;
         const shouldIncludeCounts = includeCounts === 'true';
         const shouldIncludeWalkInDetails = includeWalkInDetails === 'true';
         const keyword = typeof q === 'string' ? q.trim() : '';
@@ -130,14 +134,16 @@ router.get('/', requirePermission('opportunity.review'), async (req: Request, re
                 total: searchResults.totalHits ?? 0,
                 nextCursor: searchResults.nextCursor,
                 page: pageNumber,
-                pageSize: take || searchResults.hits.length || 1,
-                totalPages: take ? Math.max(1, Math.ceil((searchResults.totalHits ?? 0) / take)) : 1,
+                pageSize: take,
+                totalPages: Math.max(1, Math.ceil((searchResults.totalHits ?? 0) / take)),
             });
         }
 
         if (andFilters.length > 0) where.AND = andFilters;
 
         const sortKey = typeof sort === 'string' ? sort : '';
+        // Allowlisted sort keys: unknown values fall back to newest-first
+        // rather than reaching Prisma/orderBy as an unvalidated string.
         let orderBy: Prisma.OpportunityOrderByWithRelationInput = { postedAt: 'desc' };
         if (sortKey === 'postedAt_asc') orderBy = { postedAt: 'asc' };
         if (sortKey === 'company_asc') orderBy = { company: 'asc' };
@@ -154,8 +160,8 @@ router.get('/', requirePermission('opportunity.review'), async (req: Request, re
 
         const opportunities = await prisma.opportunity.findMany({
             where,
-            ...(take !== undefined ? { take } : {}),
-            ...(skip !== undefined ? { skip } : {}),
+            take,
+            skip,
             include: {
                 ...(shouldIncludeWalkInDetails ? { driveDetails: true } : {}),
                 governmentJobDetails: true,
@@ -165,9 +171,9 @@ router.get('/', requirePermission('opportunity.review'), async (req: Request, re
             orderBy: orderByClause,
         });
 
-        const pageSize = take || total || 1;
-        const currentPage = take ? Math.floor((skip || 0) / take) + 1 : 1;
-        const totalPages = take ? Math.max(1, Math.ceil(total / take)) : 1;
+        const pageSize = take;
+        const currentPage = explicitOffset !== undefined ? Math.floor(skip / take) + 1 : pageNumber;
+        const totalPages = Math.max(1, Math.ceil(total / take));
 
         const responsePayload = { opportunities, total, page: currentPage, pageSize, totalPages };
 

@@ -1,45 +1,35 @@
-import prisma, { Prisma } from '../../infrastructure/database/prisma';
+import prisma from '../../infrastructure/database/prisma';
 import { Opportunity } from '@fresherflow/types';
-import { generateSlug, generateCompanyLogoUrl } from '@fresherflow/utils';
+import { buildOpportunityUpdateData } from '../../infrastructure/services/opportunity.service';
+import { opportunityDetailInclude } from './detail';
 
 /**
- * Use Case: Update Opportunity
+ * Use Case: Update Opportunity.
+ *
+ * Guards (Phase 5):
+ * - soft-deleted rows are not editable; restore first so an edit cannot
+ *   silently resurrect a removed listing in the public feed
+ * - authorship check stays here; org-ownership and admin-override checks
+ *   live in the route layer which has membership context
+ * - slug/counters/deletedAt can never be written through this path — see
+ *   buildOpportunityUpdateData allowlist
  */
 export async function updateOpportunity(id: string, data: Partial<Opportunity>, adminId: string) {
-    const existing = await prisma.opportunity.findUnique({
-        where: { id },
+    const existing = await prisma.opportunity.findFirst({
+        where: { id, deletedAt: null },
     });
 
     if (!existing) throw new Error('Opportunity not found');
     if (existing.postedByUserId !== adminId) throw new Error('Unauthorized');
 
-    const updateData: Prisma.OpportunityUpdateInput = {
-        ...(data as unknown as Prisma.OpportunityUpdateInput),
-        lastVerified: new Date(),
-    };
-
-    // If data.status is provided, ensure it's correctly typed
-    if (data.status !== undefined) {
-        updateData.status = data.status as unknown as Prisma.EnumOpportunityStatusFieldUpdateOperationsInput;
-    }
-
-    if (data.companyLogoUrl !== undefined) {
-        updateData.companyLogoUrl = data.companyLogoUrl || null;
-    } else if (data.companyWebsite !== undefined) {
-        updateData.companyLogoUrl = generateCompanyLogoUrl(data.companyWebsite);
-    }
-
-    if (data.title || data.company) {
-        const newTitle = (data.title || existing.title) as string;
-        const newCompany = (data.company || existing.company) as string;
-        updateData.slug = generateSlug(newTitle, newCompany, existing.id as string);
-    }
+    const updateData = buildOpportunityUpdateData(
+        data as Record<string, unknown>,
+        existing as unknown as { id: string; title: string; company: string }
+    );
 
     return await prisma.opportunity.update({
         where: { id },
         data: updateData,
-        include: {
-            driveDetails: true,
-        },
+        include: { ...opportunityDetailInclude },
     });
 }

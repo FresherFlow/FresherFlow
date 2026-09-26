@@ -16,7 +16,7 @@ router.get('/devices', async (_req: Request, res: Response): Promise<void> => {
         res.json({ count });
     } catch (error) {
         logger.error('[Push] Failed to count devices', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: { message: 'Internal server error' } });
     }
 });
 
@@ -31,7 +31,7 @@ const handleBroadcast = async (req: Request, res: Response): Promise<void> => {
 
         const notificationBody = body || message;
         if (!title || !notificationBody) {
-            res.status(400).json({ error: 'Title and body/message are required' });
+            res.status(400).json({ error: { message: 'Title and body/message are required' } });
             return;
         }
 
@@ -109,7 +109,7 @@ const handleBroadcast = async (req: Request, res: Response): Promise<void> => {
         });
     } catch (error) {
         logger.error('[Push] Broadcast failed', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: { message: 'Internal server error' } });
     }
 };
 

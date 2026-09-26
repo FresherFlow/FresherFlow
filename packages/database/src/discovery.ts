@@ -1,15 +1,8 @@
-import { PrismaClient } from '@prisma/client';
-
-const discoveryClientSingleton = () => {
-    return new PrismaClient();
-};
-
-type DiscoveryClientSingleton = ReturnType<typeof discoveryClientSingleton>;
-
-const globalForDiscovery = globalThis as unknown as {
-    discoveryClient: DiscoveryClientSingleton | undefined;
-};
-
-export const discoveryClient = globalForDiscovery.discoveryClient ?? discoveryClientSingleton();
-
-if (process.env.NODE_ENV !== 'production') globalForDiscovery.discoveryClient = discoveryClient;
+/**
+ * @deprecated Do not create a second PrismaClient pool. The discovery pipeline
+ * used to own its own client; it now re-exports the shared singleton from
+ * `./index.js` so every server surface shares one pool, one adapter, and one
+ * env/config path. Import `prisma` from `@fresherflow/database` (or
+ * `apps/api/src/infrastructure/database/prisma`) instead.
+ */
+export { prisma as discoveryClient, default as discoveryClientDefault } from './index.js';

@@ -7,9 +7,15 @@ export * from './redis.js';
 
 const prismaClientSingleton = () => {
     const shouldLog = process.env.LOG_DATABASE_QUERIES === 'true';
-    const pool = new Pool({ 
+    // Never disable TLS verification by default. Managed Postgres providers
+    // should be configured via `?sslmode=require` in DATABASE_URL; an explicit
+    // opt-out remains available for local/dev proxies via PG_SSL_REJECT_UNAUTHORIZED=0.
+    const pool = new Pool({
         connectionString: process.env.DATABASE_URL,
-        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined
+        ssl:
+            process.env.NODE_ENV === 'production'
+                ? { rejectUnauthorized: process.env.PG_SSL_REJECT_UNAUTHORIZED !== '0' }
+                : undefined,
     });
     const adapter = new PrismaPg(pool);
     const client = new PrismaClient({

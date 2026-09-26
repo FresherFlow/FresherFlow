@@ -1,12 +1,62 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 
-const getAccessSecret = () => {
-    return process.env.JWT_ACCESS_SECRET || 'your-super-secret-access-key-change-this-in-production-min-32-chars';
-};
+// Placeholder dev values. Refusing to run in production with these is the whole
+// point: a missing env var must fail loudly at boot, not silently downgrade
+// every JWT in the deployment to a publicly known key.
+const DEV_ACCESS_SECRET = 'your-super-secret-access-key-change-this-in-production-min-32-chars';
+const DEV_REFRESH_SECRET = 'your-super-secret-refresh-key-change-this-in-production-min-32-chars';
+const DEV_ADMIN_SECRET = 'your-super-secret-admin-key-change-this-in-production-min-32-chars';
 
-const getRefreshSecret = () => {
-    return process.env.JWT_REFRESH_SECRET || 'your-super-secret-refresh-key-change-this-in-production-min-32-chars';
+const isProduction = process.env.NODE_ENV === 'production';
+
+function requireSecret(name: string, devFallback: string): string {
+    const secret = process.env[name];
+
+    if (!secret || secret.trim().length === 0) {
+        if (isProduction) {
+            throw new Error(
+                `[auth] ${name} is required in production. Refusing to start with a ` +
+                'well-known development secret.'
+            );
+        }
+        return devFallback;
+    }
+
+    if (isProduction && secret === devFallback) {
+        throw new Error(
+            `[auth] ${name} is still set to the development placeholder. ` +
+            'Generate a real secret before deploying.'
+        );
+    }
+
+    if (isProduction && secret.length < 32) {
+        throw new Error(`[auth] ${name} must be at least 32 characters.`);
+    }
+
+    return secret;
+}
+
+const getAccessSecret = (): string => requireSecret('JWT_ACCESS_SECRET', DEV_ACCESS_SECRET);
+
+const getRefreshSecret = (): string => requireSecret('JWT_REFRESH_SECRET', DEV_REFRESH_SECRET);
+
+const getAdminSecret = (): string => {
+    const secret =
+        process.env.JWT_ADMIN_SECRET || process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET;
+    if (!secret || secret.trim().length === 0) {
+        if (isProduction) {
+            throw new Error(
+                '[auth] JWT_ADMIN_SECRET (or JWT_ACCESS_SECRET / JWT_SECRET) is required ' +
+                'in production. Refusing to start with a well-known development secret.'
+            );
+        }
+        return DEV_ADMIN_SECRET;
+    }
+    if (isProduction && secret.length < 32) {
+        throw new Error('[auth] JWT_ADMIN_SECRET must be at least 32 characters.');
+    }
+    return secret;
 };
 
 export interface TokenPayload {
@@ -57,11 +107,6 @@ export function verifyRefreshToken(token: string): string | null {
 
 export function hashRefreshToken(token: string): string {
     return crypto.createHash('sha256').update(token).digest('hex');
-}
-
-function getAdminSecret(): string {
-    const secret = process.env.JWT_ADMIN_SECRET || process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || 'your-super-secret-access-key-change-this-in-production-min-32-chars';
-    return secret;
 }
 
 // Admin Tokens

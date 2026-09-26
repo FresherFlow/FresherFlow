@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { runExpiryCycle } from '../cron/expiryCron';
 import { runLinkVerification } from '../infrastructure/services/verificationBot';
 import { runAlertsCycle } from '../infrastructure/services/alerts.service';
+import { runDueSources } from '../application/ingestion/scheduling';
 import { StaticFeedService } from '../infrastructure/services/staticFeed.service';
 import { logger } from '@fresherflow/utils';
 
@@ -72,7 +73,20 @@ router.post('/alerts', async (req, res) => {
 
         logger.info('Starting alerts cycle via cron API');
         const results = await runAlertsCycle();
-        res.json({ success: true, message: 'Alerts cycle complete', results });
+        // Phase 7: re-attempt recent FAILED APP dispatches (idempotent via
+        // dedupeKey). Best-effort — a retry failure never fails the cycle.
+        let retried: { retried: number; delivered: number; alreadyDelivered: number } = {
+            retried: 0,
+            delivered: 0,
+            alreadyDelivered: 0,
+        };
+        try {
+            const { retryFailedDispatches } = await import('../infrastructure/services/alertDispatch.service');
+            retried = await retryFailedDispatches(50);
+        } catch (error) {
+            logger.warn('Failed to retry dispatches', error);
+        }
+        res.json({ success: true, message: 'Alerts cycle complete', results: { ...results, retried } });
     } catch (error) {
         logger.error('Failed to run cron', error);
         res.status(500).json({ success: false, error: 'Internal server error' });
@@ -92,6 +106,25 @@ router.post('/expire', async (req, res) => {
         res.json({ success: true, message: 'Expiry cycle complete', results });
     } catch (error) {
         logger.error('Failed to run cron', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
+router.post('/ingestion', async (req, res) => {
+    try {
+        if (!isCronTaskEnabled('ENABLE_INGESTION_CRON')) {
+            logger.info('Skipping ingestion cycle because ENABLE_INGESTION_CRON is disabled');
+            res.status(202).json({ success: true, skipped: true, reason: 'ENABLE_INGESTION_CRON disabled' });
+            return;
+        }
+
+        const maxItems = Math.min(Math.max(Number(req.body?.maxItems) || 200, 1), 2000);
+        logger.info('Starting ingestion due-sources cycle via cron API');
+        const results = await runDueSources({ maxItems });
+        const succeeded = results.filter((r) => r.summary && r.summary.status !== 'FAILED').length;
+        res.json({ success: true, message: 'Ingestion cycle complete', ran: results.length, succeeded, results });
+    } catch (error) {
+        logger.error('Failed to run ingestion cron', error);
         res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });

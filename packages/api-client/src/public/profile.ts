@@ -15,10 +15,10 @@ export const profileApi = {
         fullName?: string;
         educationLevel: string;
         tenthYear: number;
-        twelfthYear: number;
-        gradCourse: string;
-        gradSpecialization: string;
-        gradYear: number;
+        twelfthYear?: number;
+        gradCourse?: string;
+        gradSpecialization?: string;
+        gradYear?: number;
         collegeId?: string | null;
         collegeName?: string | null;
         collegeState?: string | null;
@@ -42,19 +42,27 @@ export const profileApi = {
             body: JSON.stringify(data)
         }),
 
-    updateReadiness: (data: { availability: string; skills: string[] }) =>
+    updateReadiness: (data: {
+        availability: string;
+        skills: string[];
+        expectedCtc?: number | null;
+        resumeUrl?: string | null;
+        willingToRelocate?: boolean | null;
+    }) =>
         apiClient('/api/profile/readiness', {
             method: 'PUT',
             body: JSON.stringify(data)
         }),
 
+    // Government-eligibility demographics (PUT /api/profile/demographics).
+    // All fields optional: a partial editor only sends what changed.
     updateDemographics: (data: {
-        dob?: string;
-        gender?: string;
-        category?: string;
-        isPwBD?: boolean;
-        isExServicemen?: boolean;
-        homeState?: string;
+        dob?: string | null;
+        gender?: string | null;
+        category?: string | null;
+        isPwBD?: boolean | null;
+        isExServicemen?: boolean | null;
+        homeState?: string | null;
     }) =>
         apiClient('/api/profile/demographics', {
             method: 'PUT',

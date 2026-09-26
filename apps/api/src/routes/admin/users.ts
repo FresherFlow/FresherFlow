@@ -147,10 +147,39 @@ router.post('/:userId/status', requireStaff, requirePermission('user.manage'), a
             data.trustLevel = 'VERIFIED';
         }
 
-        const user = await prisma.user.update({
-            where: { id: userId },
-            data,
-            select: { id: true, status: true, trustLevel: true },
+        // Suspending a user and cutting their live sessions span two tables, so they
+        // are one unit of work: if session revocation failed after the status
+        // write, the account would stay suspended while still holding valid
+        // refresh tokens. Doing both inside one transaction means the operator
+        // either fully succeeds or fully fails.
+        //
+        // The last-active-admin guard lives in the same transaction so two
+        // concurrent requests cannot both pass the check and lock everyone out.
+        const user = await prisma.$transaction(async (tx) => {
+            if (status !== 'ACTIVE' && existing.role === 'ADMIN') {
+                const remainingActiveAdmins = await tx.user.count({
+                    where: { role: 'ADMIN', status: 'ACTIVE', id: { not: userId } }
+                });
+                if (remainingActiveAdmins === 0) {
+                    throw new AppError('Cannot suspend the last active administrator', 409);
+                }
+            }
+
+            const updated = await tx.user.update({
+                where: { id: userId },
+                data,
+                select: { id: true, status: true, trustLevel: true },
+            });
+
+            if (status !== 'ACTIVE') {
+                // A suspended account must not keep live sessions.
+                await tx.refreshToken.updateMany({
+                    where: { userId, revokedAt: null },
+                    data: { revokedAt: new Date() }
+                });
+            }
+
+            return updated;
         });
 
         res.json({

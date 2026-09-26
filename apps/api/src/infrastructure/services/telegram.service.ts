@@ -294,8 +294,8 @@ class TelegramService {
         const frontendOrigin = this.resolveCanonicalShareOrigin();
         const prefix = type === 'GOVERNMENT' ? 'govt' : 'jobs';
         const jobUrl = `${frontendOrigin}/${prefix}/${slug}`;
-        const opportunity = await prisma.opportunity.findUnique({
-            where: { id: opportunityId },
+        const opportunity = await prisma.opportunity.findFirst({
+            where: { id: opportunityId, deletedAt: null },
             select: {
                 allowedPassoutYears: true,
                 allowedDegrees: true,

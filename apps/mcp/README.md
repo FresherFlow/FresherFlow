@@ -22,7 +22,7 @@ FRESHERFLOW_API_URL=http://localhost:5000 pnpm --filter fresherflow-mcp dev
 | `FRESHERFLOW_API_URL` | `http://localhost:5000` | Existing FresherFlow API base URL |
 | `FRESHERFLOW_API_KEY` | — | Optional `x-api-key` if the API requires one |
 | `PUBLIC_SITE_URL` | `https://fresherflow.in` | Used to build `jobUrl` links |
-| `PORT` | `3001` | Listen port |
+| `PORT` | `5002` | Listen port (`MCP_PORT` takes precedence when both are set) |
 | `OPENAI_APPS_CHALLENGE_TOKEN` | — | Domain-verification token; served verbatim at `/.well-known/openai-apps-challenge`, 404 when unset |
 
 Health: `GET /health`. MCP endpoint: `/mcp` (Streamable HTTP: `POST`, `GET`, `DELETE`).

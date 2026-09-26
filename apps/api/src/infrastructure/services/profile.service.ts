@@ -704,6 +704,11 @@ export class ProfileService {
 
     /**
      * Get public candidate profile by username
+     *
+     * Enforces ProfileVisibility and returns an explicit allowlist. Never spread
+     * `user.profile` directly here: the model also carries dob, gender, category
+     * (reservation), isPwBD, isExServicemen and similar PII that must not reach an
+     * anonymous caller, and a private profile must not be readable at all.
      */
     static async getPublicProfileByUsername(rawUsername: string) {
         const username = rawUsername.trim().toLowerCase().replace(/^@/, '');
@@ -724,6 +729,14 @@ export class ProfileService {
             throw new AppError('Candidate not found', 404);
         }
 
+        // A private profile is indistinguishable from a missing one on purpose:
+        // returning 403 would confirm the account exists.
+        if (user.profile.visibility === 'PRIVATE') {
+            throw new AppError('Candidate not found', 404);
+        }
+
+        const p = user.profile;
+
         return {
             user: {
                 id: user.id,
@@ -732,7 +745,43 @@ export class ProfileService {
                 createdAt: user.createdAt
             },
             profile: {
-                ...user.profile,
+                id: p.id,
+                userId: p.userId,
+                educationLevel: p.educationLevel,
+                tenthYear: p.tenthYear,
+                twelfthYear: p.twelfthYear,
+                gradCourse: p.gradCourse,
+                gradSpecialization: p.gradSpecialization,
+                gradYear: p.gradYear,
+                collegeId: p.collegeId,
+                collegeName: p.collegeName,
+                collegeState: p.collegeState,
+                institutionId: p.institutionId,
+                pgCourse: p.pgCourse,
+                pgSpecialization: p.pgSpecialization,
+                pgYear: p.pgYear,
+                interestedIn: p.interestedIn,
+                preferredCities: p.preferredCities,
+                workModes: p.workModes,
+                availability: p.availability,
+                skills: p.skills,
+                homeState: p.homeState,
+                expectedCtc: p.expectedCtc,
+                willingToRelocate: p.willingToRelocate,
+                headline: p.headline,
+                about: p.about,
+                githubUrl: p.githubUrl,
+                linkedinUrl: p.linkedinUrl,
+                portfolioUrl: p.portfolioUrl,
+                avatarUrl: p.avatarUrl,
+                githubPinnedRepos: p.githubPinnedRepos,
+                openToRecruiters: p.openToRecruiters,
+                profilePublic: p.profilePublic,
+                visibility: p.visibility,
+                completionPercentage: p.completionPercentage,
+                profilePublishedAt: p.profilePublishedAt,
+                // Excluded by design: dob, gender, category (reservation),
+                // isPwBD, isExServicemen, resumeUrl.
                 projects: user.projects
             },
             projects: user.projects

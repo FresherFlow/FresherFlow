@@ -27,7 +27,8 @@ router.post(
             if (!idParam) throw new AppError('Opportunity ID is required', 400);
 
             const existing = await prisma.opportunity.findFirst({
-                where: { OR: [{ id: idParam }, { slug: idParam }] },
+                // Exclude soft-deleted rows: only /restore may act on them.
+                where: { deletedAt: null, OR: [{ id: idParam }, { slug: idParam }] },
             });
             if (!existing) throw new AppError('Opportunity not found', 404);
 
@@ -112,7 +113,8 @@ router.delete(
             const { reason } = req.body;
 
             const existing = await prisma.opportunity.findFirst({
-                where: { OR: [{ id: idParam }, { slug: idParam }] },
+                // Exclude soft-deleted rows: only /restore may act on them.
+                where: { deletedAt: null, OR: [{ id: idParam }, { slug: idParam }] },
             });
             if (!existing) throw new AppError('Opportunity not found', 404);
 
@@ -156,7 +158,8 @@ router.delete(
             if (!idParam) throw new AppError('Opportunity ID is required', 400);
 
             const existing = await prisma.opportunity.findFirst({
-                where: { OR: [{ id: idParam }, { slug: idParam }] },
+                // Exclude soft-deleted rows: only /restore may act on them.
+                where: { deletedAt: null, OR: [{ id: idParam }, { slug: idParam }] },
             });
             if (!existing) throw new AppError('Opportunity not found', 404);
 
@@ -291,7 +294,8 @@ router.post(
             if (!idParam) throw new AppError('Opportunity ID is required', 400);
 
             const existing = await prisma.opportunity.findFirst({
-                where: { OR: [{ id: idParam }, { slug: idParam }] },
+                // Exclude soft-deleted rows: only /restore may act on them.
+                where: { deletedAt: null, OR: [{ id: idParam }, { slug: idParam }] },
             });
             if (!existing) throw new AppError('Opportunity not found', 404);
 
@@ -330,7 +334,8 @@ router.post(
             if (!idParam) throw new AppError('Opportunity ID is required', 400);
 
             const existing = await prisma.opportunity.findFirst({
-                where: { OR: [{ id: idParam }, { slug: idParam }] },
+                // Exclude soft-deleted rows: only /restore may act on them.
+                where: { deletedAt: null, OR: [{ id: idParam }, { slug: idParam }] },
             });
             if (!existing) throw new AppError('Opportunity not found', 404);
 

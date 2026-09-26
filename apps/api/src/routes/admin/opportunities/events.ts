@@ -16,7 +16,8 @@ const router = Router({ mergeParams: true });
 async function resolveOpportunity(idParam: string) {
     if (!idParam) throw new AppError('Opportunity ID is required', 400);
     const opp = await prisma.opportunity.findFirst({
-        where: { OR: [{ id: idParam }, { slug: idParam }] },
+        // A soft-deleted listing is not a live target for event management.
+        where: { OR: [{ id: idParam }, { slug: idParam }], deletedAt: null },
         select: { id: true, slug: true, category: true, recruitmentMethod: true, company: true, locations: true, requiredSkills: true, title: true, allowedPassoutYears: true },
     });
     if (!opp) throw new AppError('Opportunity not found', 404);

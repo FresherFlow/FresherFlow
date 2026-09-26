@@ -1,4 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
+import { getAlertMetrics, getIngestionMetrics } from '../infrastructure/observability/metrics';
+import { getRecentSlowQueries, getSlowQueryReport, isSlowQueryTrackingEnabled } from '../infrastructure/observability/slowQuery';
 
 type RouteMetrics = {
     requests: number;
@@ -112,6 +114,33 @@ export function getObservabilityMetrics(): MetricsSnapshot {
             p95LatencyMs: Number(percentile(latencyWindowMs, 95).toFixed(2))
         },
         routes
+    };
+}
+
+/**
+ * Merged snapshot: existing HTTP metrics plus the Phase 19 ingestion/alert/slow-query data.
+ * WHY a separate function: getObservabilityMetrics() is consumed by existing routes, so its
+ * return shape is frozen. This is purely additive.
+ */
+export type ObservabilitySnapshotV2 = MetricsSnapshot & {
+    ingestion: ReturnType<typeof getIngestionMetrics>;
+    alerts: ReturnType<typeof getAlertMetrics>;
+    slowQueries: ReturnType<typeof getSlowQueryReport> & {
+        trackingEnabled: boolean;
+        recent: Array<{ operation: string; durationMs: number }>;
+    };
+};
+
+export function getObservabilitySnapshot(): ObservabilitySnapshotV2 {
+    return {
+        ...getObservabilityMetrics(),
+        ingestion: getIngestionMetrics(),
+        alerts: getAlertMetrics(),
+        slowQueries: {
+            ...getSlowQueryReport(),
+            trackingEnabled: isSlowQueryTrackingEnabled(),
+            recent: getRecentSlowQueries()
+        }
     };
 }
 

@@ -15,7 +15,7 @@ router.get('/', (_req: Request, res: Response) => {
 router.post('/run', async (req: Request, res: Response): Promise<void> => {
   const { ats, slug, company, dryRun, filter } = req.body;
   if (!ats || !slug || !company) {
-    res.status(400).json({ error: 'Missing required fields: ats, slug, company' });
+    res.status(400).json({ error: { message: 'Missing required fields: ats, slug, company' } });
     return;
   }
   try {
@@ -29,7 +29,7 @@ router.post('/run', async (req: Request, res: Response): Promise<void> => {
     const result = await response.json();
     res.status(response.status).json(result);
   } catch {
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: { message: 'Internal server error' } });
   }
 });
 
@@ -46,7 +46,7 @@ router.post('/run-all', async (req: Request, res: Response): Promise<void> => {
     const result = await response.json();
     res.status(response.status).json(result);
   } catch {
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: { message: 'Internal server error' } });
   }
 });
 

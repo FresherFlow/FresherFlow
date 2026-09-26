@@ -568,6 +568,7 @@ export const communityPostVoteSchema = z.object({}).strip();
 export const communityPostCommentCreateSchema = z.object({
     body: z.string().trim().min(1, 'Comment body is required').max(500, 'Comment must be at most 500 characters'),
     parentId: z.string().min(1).max(64).optional(),
+    isAnonymous: z.boolean().optional().default(false),
 });
 
 // Community Post comment helpful-mark schema (toggle — no body needed)

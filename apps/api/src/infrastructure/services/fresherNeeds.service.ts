@@ -3,6 +3,7 @@ import { AppError } from '../../middleware/errorHandler';
 import {
     CommunityPostStatus,
     EmploymentType,
+    NotificationType,
     OpportunityCategory,
     OpportunityStatus,
     RecruitmentMethod,
@@ -281,6 +282,110 @@ export async function deleteSavedSearch(userId: string, searchId: string): Promi
 }
 
 /**
+ * Phase 7 — saved-search execution.
+ *
+ * Runs one owned saved search against live listings using the shared
+ * `buildSavedSearchWhere` matcher input (imported lazily so this service never
+ * hard-depends on the application layer at module load). Institution scoping:
+ * a search with linked institutions only returns opportunities targeting at
+ * least one of the same institutions.
+ */
+export async function executeSavedSearch(
+    userId: string,
+    searchId: string,
+    params: { page: number; limit: number }
+): Promise<{
+    searchId: string;
+    matches: Array<Record<string, unknown>>;
+    total: number;
+    page: number;
+    limit: number;
+    hasMore: boolean;
+}> {
+    const { buildSavedSearchWhere } = await import('../../application/saved-search/matcher');
+
+    const search = await prisma.savedSearch.findFirst({
+        where: { id: searchId, userId },
+        include: { institutions: { select: { institutionId: true } } },
+    });
+    if (!search) throw new AppError('Saved search not found', 404);
+
+    const filters = search.filters as SavedSearchFilters;
+    const where = buildSavedSearchWhere(filters);
+    const searchInstitutionIds = search.institutions.map((r) => r.institutionId);
+
+    const page = Math.max(1, Math.min(params.page, 100));
+    const limit = Math.max(1, Math.min(params.limit, 50));
+
+    if (searchInstitutionIds.length > 0) {
+        const rows = await prisma.opportunity.findMany({
+            where: {
+                ...where,
+                institutions: { some: { institutionId: { in: searchInstitutionIds } } },
+            },
+            orderBy: { postedAt: 'desc' },
+            skip: (page - 1) * limit,
+            take: limit,
+            select: {
+                id: true,
+                slug: true,
+                title: true,
+                company: true,
+                locations: true,
+                salaryRange: true,
+                allowedPassoutYears: true,
+                postedAt: true,
+                expiresAt: true,
+            },
+        });
+        const total = await prisma.opportunity.count({
+            where: {
+                ...where,
+                institutions: { some: { institutionId: { in: searchInstitutionIds } } },
+            },
+        });
+        return {
+            searchId,
+            matches: rows as unknown as Array<Record<string, unknown>>,
+            total,
+            page,
+            limit,
+            hasMore: page * limit < total,
+        };
+    }
+
+    const [total, rows] = await Promise.all([
+        prisma.opportunity.count({ where }),
+        prisma.opportunity.findMany({
+            where,
+            orderBy: { postedAt: 'desc' },
+            skip: (page - 1) * limit,
+            take: limit,
+            select: {
+                id: true,
+                slug: true,
+                title: true,
+                company: true,
+                locations: true,
+                salaryRange: true,
+                allowedPassoutYears: true,
+                postedAt: true,
+                expiresAt: true,
+            },
+        }),
+    ]);
+
+    return {
+        searchId,
+        matches: rows as unknown as Array<Record<string, unknown>>,
+        total,
+        page,
+        limit,
+        hasMore: page * limit < total,
+    };
+}
+
+/**
  * Count published opportunities matching the saved filters posted after `since`.
  * Mirrors the feed route's where-clause for the core filter dimensions.
  */
@@ -433,6 +538,19 @@ export async function respondToReferralRequest(
         throw new AppError('This request is no longer open', 400);
     }
 
+    // Upsert-then-increment double-counts edits: check first so responseCount
+    // counts responders, not edits. New responses notify the request author
+    // (COMMENT_REPLY + kind tag — schema is frozen, no dedicated type).
+    const prior = await prisma.referralResponse.findUnique({
+        where: { requestId_responderId: { requestId, responderId } },
+        select: { id: true },
+    });
+    if (prior) {
+        return prisma.referralResponse.update({
+            where: { id: prior.id },
+            data: { message: input.message, contactHandle: input.contactHandle },
+        });
+    }
     const [response] = await prisma.$transaction([
         prisma.referralResponse.upsert({
             where: { requestId_responderId: { requestId, responderId } },
@@ -446,7 +564,7 @@ export async function respondToReferralRequest(
         prisma.notification.create({
             data: {
                 userId: request.authorId,
-                type: 'COMMENT_REPLY' as never, // Reuse reply type until a dedicated type exists
+                type: NotificationType.COMMENT_REPLY,
                 actorId: responderId,
                 payload: {
                     kind: 'REFERRAL_RESPONSE',
@@ -593,14 +711,27 @@ export async function createSalaryReport(
         notes?: string;
     }
 ) {
+    // opportunityId is optional context: when supplied (id or slug), it must
+    // resolve to a real, visible opportunity so the report points back at the
+    // correct Opportunity. Unknown ids are rejected, not stored.
+    let canonicalOppId: string | undefined;
+    if (input.opportunityId?.trim()) {
+        const raw = input.opportunityId.trim();
+        const opp = await prisma.opportunity.findFirst({
+            where: { OR: [{ id: raw }, { slug: raw }], deletedAt: null },
+            select: { id: true },
+        });
+        if (!opp) throw new AppError('Opportunity not found', 404);
+        canonicalOppId = opp.id;
+    }
     return prisma.salaryReport.create({
         data: {
             authorId,
-            opportunityId: input.opportunityId,
-            company: input.company,
-            role: input.role,
+            opportunityId: canonicalOppId,
+            company: input.company.trim(),
+            role: input.role.trim(),
             batch: input.batch,
-            city: input.city,
+            city: input.city?.trim() || null,
             reportType: input.reportType ?? 'OFFER',
             ctcFixed: input.ctcFixed,
             ctcVariable: input.ctcVariable,
@@ -608,14 +739,17 @@ export async function createSalaryReport(
             inHandMonthly: input.inHandMonthly,
             joinBonus: input.joinBonus,
             bondMonths: input.bondMonths,
-            notes: input.notes,
+            notes: input.notes?.trim() || null,
         },
         include: salaryReportInclude,
     });
 }
 
 export async function markSalaryReportHelpful(userId: string, reportId: string) {
-    const report = await prisma.salaryReport.findUnique({ where: { id: reportId } });
+    const report = await prisma.salaryReport.findUnique({
+        where: { id: reportId },
+        select: { id: true, authorId: true, company: true, role: true, helpfulCount: true, opportunityId: true },
+    });
     if (!report) throw new AppError('Salary report not found', 404);
 
     const existing = await prisma.salaryReportHelpful.findUnique({
@@ -633,6 +767,26 @@ export async function markSalaryReportHelpful(userId: string, reportId: string) 
     await prisma.$transaction([
         prisma.salaryReportHelpful.create({ data: { salaryReportId: reportId, userId } }),
         prisma.salaryReport.update({ where: { id: reportId }, data: { helpfulCount: { increment: 1 } } }),
+        // Notify the author on the first helpful mark (not on un-mark), with
+        // the Opportunity context attached when the report links one.
+        ...(report.authorId !== userId
+            ? [
+                  prisma.notification.create({
+                      data: {
+                          userId: report.authorId,
+                          type: NotificationType.ROOM_HELPFUL,
+                          actorId: userId,
+                          opportunityId: report.opportunityId,
+                          payload: {
+                              kind: 'SALARY_HELPFUL',
+                              salaryReportId: reportId,
+                              company: report.company,
+                              role: report.role,
+                          },
+                      },
+                  }),
+              ]
+            : []),
     ]);
     return { marked: true, helpfulCount: report.helpfulCount + 1 };
 }

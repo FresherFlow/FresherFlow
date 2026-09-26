@@ -1,7 +1,22 @@
+/**
+ * Recruiter <-> candidate interest signals.
+ *
+ * Every route here is scoped to an organization the caller actually belongs to.
+ * That check is the whole point of this file: `CandidateInterest` is created
+ * with both an `organizationId` and a `recruiterId`, so without an explicit
+ * membership check a signed-in user could post an interest under any company
+ * name and have it appear in that company's recruiter inbox. A recruiter is
+ * also scoped to organizations they belong to when listing, so one tenant's
+ * candidate list cannot be read through another tenant's id.
+ */
+
 import { Router, Request, Response, NextFunction } from 'express';
 import { requireAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import prisma from '../infrastructure/database/prisma';
+import { requireOrgMembership } from '../infrastructure/services/orgAccess';
+import { OrgRole } from '@fresherflow/database';
+import type { Prisma } from '@fresherflow/database';
 import { CandidateInterestStatus } from '@fresherflow/types';
 
 const router = Router();
@@ -17,6 +32,26 @@ router.post('/recruiter/interests', requireAuth, async (req: Request, res: Respo
 
         if (!organizationId || !candidateId) {
             return next(new AppError('organizationId and candidateId are required', 400));
+        }
+
+        // The organization id arrives in the body, so it is untrusted until this
+        // resolves. Without it any authenticated user could send mail that looks
+        // like it came from a company they do not work for.
+        await requireOrgMembership(recruiterId, String(organizationId), {
+            minRole: OrgRole.RECRUITER,
+        });
+
+        // A recruiter cannot express interest in their own account.
+        if (String(candidateId) === recruiterId) {
+            return next(new AppError('You cannot send an interest to yourself', 400));
+        }
+
+        const candidate = await prisma.user.findUnique({
+            where: { id: String(candidateId) },
+            select: { id: true },
+        });
+        if (!candidate) {
+            return next(new AppError('Candidate not found', 404));
         }
 
         const interest = await prisma.candidateInterest.create({
@@ -48,8 +83,33 @@ router.get('/recruiter/interests', requireAuth, async (req: Request, res: Respon
         const recruiterId = req.userId!;
         const { organizationId } = req.query;
 
+        // Only approved memberships qualify, so a pending invite cannot be used
+        // to read a company's candidate pipeline.
+        const memberships = await prisma.organizationMembership.findMany({
+            where: { userId: recruiterId, status: 'APPROVED' },
+            select: { organizationId: true },
+        });
+        const orgIds = memberships.map((m) => m.organizationId);
+
+        if (orgIds.length === 0) {
+            return res.json({ success: true, data: [] });
+        }
+
+        // A requested organization outside the caller's own set is refused rather
+        // than silently ignored, so a wrong id is visible to the caller.
+        if (organizationId && !orgIds.includes(String(organizationId))) {
+            return next(new AppError('Not an active member of this organization', 403));
+        }
+
+        // Prisma's inferred `where` for a ternary of two object literals widens
+        // to a union that is not assignable to the generated filter type, so the
+        // filter is built once and typed explicitly instead.
+        const filter: Prisma.CandidateInterestWhereInput = organizationId
+            ? { organizationId: String(organizationId) }
+            : { organizationId: { in: orgIds } };
+
         const interests = await prisma.candidateInterest.findMany({
-            where: organizationId ? { organizationId: organizationId as string } : { recruiterId },
+            where: filter,
             include: {
                 candidate: {
                     select: {

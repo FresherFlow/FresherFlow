@@ -1,12 +1,13 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { AppError } from '../../../middleware/errorHandler';
-import { searchOpportunities } from '../../../application/opportunity';
+import {
+    searchOpportunities,
+    parseOpportunityFilters,
+} from '../../../application/opportunity';
 import prisma from '../../../infrastructure/database/prisma';
 import { filterAndRankOpportunitiesForUser } from '@fresherflow/utils';
 import { Opportunity, Profile } from '@fresherflow/types';
 import {
-    isLikelyBotTraffic, publicFeedLimiter, publicFeedBotLimiter,
-    normalizeSafeQueryString, parseStrictPositiveInt, parseOpportunityTypeFilter, parseSiteMode
+    isLikelyBotTraffic, publicFeedLimiter, publicFeedBotLimiter
 } from './_helpers';
 
 const router: Router = Router();
@@ -18,27 +19,19 @@ function adaptiveSearchLimiter(req: Request, res: Response, next: NextFunction) 
 
 router.get('/search', adaptiveSearchLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { q, type, city, page = '1', limit = '20', siteMode } = req.query;
-        const query = typeof q === 'string' ? q : '';
-        const typeValue = normalizeSafeQueryString(type, 24);
-        const cityValue = normalizeSafeQueryString(city, 80);
-        const effectiveSiteMode = parseSiteMode(siteMode);
-        const p = parseStrictPositiveInt(page) ?? 1;
-        const l = parseStrictPositiveInt(limit) ?? 20;
+        // Phase 6: all 23 filter dimensions are parsed centrally in
+        // `application/opportunity/filters.ts`.
+        //
+        // The old code called `parseOpportunityTypeFilter` and then spread its
+        // Prisma where-input into `SearchOptions`, which is a different shape -
+        // so the filter was silently dropped and `?type=` had no effect. The
+        // parser also clamps page/limit and drops malformed values rather than
+        // throwing, so a stale share link can no longer 400 the endpoint.
+        const filters = parseOpportunityFilters(req.query as Record<string, unknown>);
 
-        if (p < 1 || p > 100) throw new AppError('Invalid page', 400);
-        if (l < 1 || l > 50) throw new AppError('Invalid limit', 400);
-
-        const typeFilter = parseOpportunityTypeFilter(typeValue || undefined);
-        const locations = cityValue ? [cityValue] : undefined;
-        const offset = (p - 1) * l;
-
-        const searchResults = await searchOpportunities(query, {
-            ...(typeFilter ?? {}),
-            limit: l,
-            offset,
-            locations,
-            siteMode: effectiveSiteMode
+        const searchResults = await searchOpportunities(filters.query, {
+            filters,
+            includeTotal: true,
         });
 
         let hits = searchResults.hits;
@@ -83,14 +76,50 @@ router.get('/search', adaptiveSearchLimiter, async (req: Request, res: Response,
             }
         }
 
+        // Personalized re-ranking is a presentation concern, so it happens
+        // after the DB filter rather than inside it. `filterAndRank...` can
+        // drop hits, so `totalHits` is deliberately left as the unranked DB
+        // count rather than a number the client cannot reconcile with the page
+        // it just received.
         res.setHeader('Cache-Control', 'private, no-store');
         return res.json({
             hits,
             totalHits: searchResults.totalHits,
             hasMore: searchResults.hasMore,
-            processingTimeMs: 0,
-            page: p,
-            limit: l,
+            page: filters.page,
+            limit: filters.limit,
+            sort: filters.sort,
+            // Echo the normalized filters so a client can rebuild its UI state
+            // from the response instead of re-parsing the URL it sent.
+            appliedFilters: {
+                category: filters.category,
+                employmentTypes: filters.employmentTypes,
+                recruitmentMethods: filters.recruitmentMethods,
+                workModes: filters.workModes,
+                sectors: filters.sectors,
+                experienceLevels: filters.experienceLevels,
+                degrees: filters.degrees,
+                courses: filters.courses,
+                specializations: filters.specializations,
+                passoutYears: filters.passoutYears,
+                availabilities: filters.availabilities,
+                skills: filters.skills,
+                locations: filters.locations,
+                applicantLocations: filters.applicantLocations,
+                sourceKinds: filters.sourceKinds,
+                trustLevels: filters.trustLevels,
+                tags: filters.tags,
+                salaryMin: filters.salaryMin,
+                salaryMax: filters.salaryMax,
+                experienceMin: filters.experienceMin,
+                experienceMax: filters.experienceMax,
+                passoutYearMin: filters.passoutYearMin,
+                passoutYearMax: filters.passoutYearMax,
+                postedWithinDays: filters.postedWithinDays,
+                deadlineBefore: filters.deadlineBefore,
+                expiresAfter: filters.expiresAfter,
+                siteMode: filters.siteMode,
+            },
         });
 
     } catch (error) {

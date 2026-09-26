@@ -1,4 +1,4 @@
-import { Queue, ConnectionOptions, Job } from 'bullmq';
+import { Queue, ConnectionOptions, Job, UnrecoverableError } from 'bullmq';
 import type { RedisOptions } from 'ioredis';
 import { redis } from '@fresherflow/database';
 import { env } from '@fresherflow/utils';
@@ -10,6 +10,7 @@ import { processTelegramJob } from './processors/telegram.processor';
 import { processSocialJob, postToX, postToLinkedIn } from './processors/social.processor';
 import { processIngestionJob } from './processors/ingestion.processor';
 import { processCacheRevalidateJob } from './processors/revalidate.processor';
+import { logJobFailure } from './observability';
 
 // Reduced queue surfaces to save Redis connections (Redis Connection Fix Plan #5)
 export const QUEUE_NAMES = {
@@ -44,6 +45,33 @@ type MinimalQueue = {
     close: () => Promise<void>;
 };
 
+/**
+ * PHASE 19b — retry policy.
+ *
+ * WHY: previously every queue set `removeOnComplete`/`removeOnFail` but no
+ * `attempts` and no `backoff`, so BullMQ's default of a single attempt meant one
+ * transient SMTP rejection or one socket timeout killed the job permanently and
+ * silently. Five attempts with exponential backoff (5s -> 10s -> 20s -> 40s,
+ * plus BullMQ's automatic jitter) rides out a provider blip or a rolling
+ * restart while still giving up in well under the `removeOnFail: 1000`
+ * retention window's worth of wall clock (~75s worst case), so alerting still
+ * sees the job fail in a reasonable timeframe.
+ *
+ * WHY these values: 5 attempts is enough to cover a 1-2 minute provider
+ * incident without meaningfully increasing load on a genuinely broken job. The
+ * 5s base keeps the first retry inside the 15s HTTP timeouts used by the
+ * processors, so a retry never overlaps the previous socket teardown.
+ * `removeOnComplete: true` and `removeOnFail: 1000` are preserved unchanged so
+ * the existing Redis memory budget and failure-retention behaviour do not
+ * change.
+ */
+export const QUEUE_DEFAULT_JOB_OPTIONS = {
+    removeOnComplete: true,
+    removeOnFail: 1000,
+    attempts: 5,
+    backoff: { type: 'exponential' as const, delay: 5000 },
+};
+
 function createNoopQueue(queueName: string): MinimalQueue {
     return {
         async add() {
@@ -66,10 +94,7 @@ export function getQueue(queueName: QueueName): Queue {
         ? createNoopQueue(queueName)
         : new Queue(queueName, {
             connection,
-            defaultJobOptions: {
-                removeOnComplete: true,
-                removeOnFail: 1000,
-            }
+            defaultJobOptions: QUEUE_DEFAULT_JOB_OPTIONS,
         });
 
     queueCache[queueName] = instance;
@@ -103,6 +128,7 @@ export async function enqueueIngestionPayload(payload: Record<string, unknown>) 
 }
 
 // Export Processors
+export * from './observability';
 export * from './processors/email.processor';
 export * from './processors/cron.processor';
 export * from './processors/push.processor';
@@ -116,7 +142,7 @@ export * from './processors/scraper.processor';
  * CONSOLIDATED WORKER DISPATCHERS
  * One worker per connection surface.
  */
-export const WORKER_DEFINITIONS = [
+export const WORKER_DEFINITIONS_BASE = [
     {
         name: QUEUE_NAMES.notifications,
         handler: async (job: Job) => {
@@ -180,6 +206,33 @@ export const WORKER_DEFINITIONS = [
         },
     },
 ] as const;
+
+/**
+ * PHASE 19b — failure visibility wrapper.
+ *
+ * WHY wrap here rather than in each processor: the processors are owned by other
+ * agents and must not be edited. Wrapping at the single dispatch boundary
+ * guarantees every job, including a new one added later, gets the same redacted
+ * failure log without anyone remembering to add it.
+ */
+export const WORKER_DEFINITIONS = WORKER_DEFINITIONS_BASE.map((definition) => ({
+    name: definition.name,
+    handler: async (job: Job) => {
+        try {
+            return await definition.handler(job);
+        } catch (error) {
+            const descriptor = logJobFailure({ queue: definition.name, job, error });
+            if (descriptor.category === 'permanent') {
+                // A permanent failure will never succeed on retry, so fail fast
+                // instead of burning four more attempts on a known-bad job.
+                // The message is a fixed string: the original error text may
+                // contain PII and must never be copied into a job record.
+                throw new UnrecoverableError(`Permanent failure in queue ${definition.name}`);
+            }
+            throw error;
+        }
+    },
+}));
 
 // Export Producers
 export * from './producers/email.producer';
