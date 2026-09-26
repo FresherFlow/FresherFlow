@@ -151,6 +151,9 @@ export const FEED_VERSION_URL =
         ? `${FEED_CDN_BASE}/feeds/feed-version.json`
         : `${CDN_URL}/meta/feed-version.json`;
 
+/** Feed counts manifest — { opportunities, timestamp }. CDN in cdn/local mode, API (Postgres) in db mode. */
+export const FEED_STATS_URL = `${FEED_CDN_BASE}/meta/stats.json`;
+
 export const SITEMAP_DATA_URL =
     process.env.NEXT_PUBLIC_SITEMAP_DATA_URL ||
     process.env.SITEMAP_DATA_URL ||

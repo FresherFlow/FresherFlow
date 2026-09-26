@@ -60,12 +60,15 @@ export function NavMain({
   pathname,
   searchParams,
   isAuthed,
+  badges,
 }: {
   groups: SpaceNavGroup[]
   pathname: string
   searchParams?: SearchParamsLike
   /** Auth-gated items are filtered out for logged-out visitors. */
   isAuthed: boolean
+  /** Live counts keyed by item href (e.g. { '/jobs': 1284 }). Overrides static badge. */
+  badges?: Record<string, number>
 }) {
   // At most the active group is open — except when nothing on the page
   // matches a row (e.g. `/jobs?type=contract`), in which case the group
@@ -114,6 +117,7 @@ export function NavMain({
                           item={item}
                           pathname={pathname}
                           searchParams={searchParams}
+                          badges={badges}
                         />
                       ))}
                     </SidebarMenu>
@@ -137,6 +141,7 @@ export function NavMain({
                     item={item}
                     pathname={pathname}
                     searchParams={searchParams}
+                    badges={badges}
                   />
                 ))}
               </SidebarMenu>
@@ -152,13 +157,16 @@ function NavMainRow({
   item,
   pathname,
   searchParams,
+  badges,
 }: {
   item: SpaceNavItem
   pathname: string
   searchParams?: SearchParamsLike
+  badges?: Record<string, number>
 }) {
   const ItemIcon = item.icon
   const isActive = isSpaceItemActive(item, pathname, searchParams)
+  const badge = badges?.[item.href] ?? item.badge
 
   return (
     <SidebarMenuItem>
@@ -179,8 +187,8 @@ function NavMainRow({
           <span className="sidebar-expanded-only">{item.title}</span>
         </Link>
       </SidebarMenuButton>
-      {typeof item.badge === "number" && item.badge > 0 && (
-        <SidebarMenuBadge data-nav-badge>{item.badge > 99 ? "99+" : item.badge}</SidebarMenuBadge>
+      {typeof badge === "number" && badge > 0 && (
+        <SidebarMenuBadge data-nav-badge>{badge > 99 ? "99+" : badge}</SidebarMenuBadge>
       )}
     </SidebarMenuItem>
   )

@@ -434,6 +434,36 @@ app.get('/jobs/:id.json', async (req, res) => {
     }
 });
 
+app.get('/companies.json', async (_req, res) => {
+    try {
+        const results = await StaticFeedService.generateCompaniesMetadata();
+        res.json(results);
+    } catch (error) {
+        logger.error('Failed to serve companies metadata', error);
+        res.status(500).json({ error: { message: 'Internal server error' } });
+    }
+});
+
+app.get('/skills.json', async (_req, res) => {
+    try {
+        const results = await StaticFeedService.generateSkillsMetadata();
+        res.json(results);
+    } catch (error) {
+        logger.error('Failed to serve skills metadata', error);
+        res.status(500).json({ error: { message: 'Internal server error' } });
+    }
+});
+
+app.get(['/stats.json', '/meta/stats.json'], async (_req, res) => {
+    try {
+        const results = await StaticFeedService.generateStats();
+        res.json(results);
+    } catch (error) {
+        logger.error('Failed to serve feed stats', error);
+        res.status(500).json({ error: { message: 'Internal server error' } });
+    }
+});
+
 app.get('/companies-directory.min.json', async (req, res) => {
     try {
         const filePath = path.join(process.cwd(), 'public', 'companies-directory.min.json');

@@ -7,6 +7,7 @@ import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 
 import { NavMain } from "@/features/navigation/NavMain"
+import { useNavCounts } from "@/features/navigation/useNavCounts"
 import { NavUser } from "@/features/navigation/NavUser"
 import { SpaceSwitcher } from "@/features/navigation/SpaceSwitcher"
 import {
@@ -140,6 +141,8 @@ function AppSidebarRail() {
   const { pathname, spaceId, setSpaceId, mounted, isAuthed, visiblePersonal, visibleCommunity, user } =
     useSpaceSelection()
   const space = getSpace(spaceId)
+  const navCounts = useNavCounts()
+  const navBadges = navCounts !== null ? { '/jobs': navCounts } : undefined
   const [isScrolled, setIsScrolled] = React.useState(false)
 
   const logoHref = mounted && user ? "/jobs?tab=for-you" : "/"
@@ -170,6 +173,7 @@ function AppSidebarRail() {
           pathname={pathname}
           searchParams={searchParams}
           isAuthed={isAuthed}
+          badges={navBadges}
         />
         {/* Auth-gated group renders only after mount so logged-out visitors
             never see Saved / Tracker / Account flash on reload. */}
@@ -211,6 +215,8 @@ export function MobileNavTree({ onNavigate }: { onNavigate: () => void }) {
   const { pathname, spaceId, setSpaceId, mounted, isAuthed, visiblePersonal, visibleCommunity, user } =
     useSpaceSelection()
   const space = getSpace(spaceId)
+  const navCounts = useNavCounts()
+  const navBadges = navCounts !== null ? { '/jobs': navCounts } : undefined
 
   const logoHref = mounted && user ? "/jobs?tab=for-you" : "/"
 
@@ -243,6 +249,7 @@ export function MobileNavTree({ onNavigate }: { onNavigate: () => void }) {
             pathname={pathname}
             searchParams={searchParams}
             isAuthed={isAuthed}
+            badges={navBadges}
           />
           {mounted && visibleCommunity.length > 0 && (
             <NavMain

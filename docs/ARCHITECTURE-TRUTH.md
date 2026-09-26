@@ -272,6 +272,46 @@ on the publish request itself. Stale-window = time until next refresh +
 
 ---
 
+### Feed source switch (Postgres ↔ CDN read path)
+
+`FEED_SOURCE` selects the web read path
+(`apps/web/src/lib/utils/runtimeConfig.ts`):
+
+| Value | Read path |
+|---|---|
+| `cdn` (default) | Cloudflare CDN — R2 snapshots, signed + version-busted (`?v=&sig=`) |
+| `db` | API, generated live from Postgres (`FEED_CDN_BASE = API_URL`; no signatures, no CDN dependency) |
+| `local` | Local static JSON served by Next (offline / Lighthouse testing) |
+
+Postgres stays the source of truth; R2 objects are derived snapshots. In `db`
+mode the web app reads the same shapes from DB-backed API routes
+(`apps/api/src/index.ts`, generators in `FeedGeneratorService`, delegated by
+`StaticFeedService`):
+
+- `/feeds/bootstrap-feed.min.json` (+ `/bootstrap-feed.min.json`)
+- `/feeds/government-feed.json`
+- `/feeds/feed-index.json`
+- `/feeds/expired-feed.min.json`
+- `/jobs/:id.json` (accepts a uuid or a slug)
+- `/companies.json`, `/skills.json` — the metadata the web filters read
+- `/meta/stats.json` (+ `/stats.json`) — feed counts
+
+The feed-index projection is shared (`FeedGeneratorService.projectFeedIndex`)
+so the CDN snapshot and the db route cannot drift. CDN-only artifacts with no
+web consumer (`education.json`, `cities.json`) are deliberately not DB-backed;
+in `db` mode they 404 and callers use their existing fallbacks.
+
+Env: set `FEED_SOURCE=db` on the web app, and `FEED_SOURCE=db` on the API so the
+static-file-first routes generate from Postgres instead of serving a cached file.
+`DB_FEED_REVALIDATE_SECONDS` (web, default 60) is the db-mode refresh interval;
+cdn mode stays immutable until an explicit `revalidateTag`.
+
+Sidebar job count: the web same-origin route `/api/public/nav-counts` reads
+`FEED_STATS_URL` (`${FEED_CDN_BASE}/meta/stats.json`) and feeds
+`useNavCounts` → `NavMain` badges, so it follows `FEED_SOURCE` too.
+
+---
+
 ## 6. Firebase role (identity plane + behavioral write plane)
 
 No Firestore anywhere (grep for `firestore|getFirestore` returns nothing).

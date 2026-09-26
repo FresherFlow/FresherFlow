@@ -363,6 +363,79 @@ export class FeedGeneratorService {
         });
     }
 
+    /**
+     * companies.json — the company directory the web filters read.
+     * Derived from live opportunities so db mode needs no CDN artifact.
+     * Shape: [{ name, url, logo_url, slug }] (matches CompanyMetadata in web).
+     */
+    public static async generateCompaniesMetadata() {
+        return this.withDbRetry(async () => {
+            const rows = await prisma.opportunity.findMany({
+                where: {
+                    status: OpportunityStatus.PUBLISHED,
+                    deletedAt: null,
+                    OR: [
+                        { expiresAt: null },
+                        { expiresAt: { gt: new Date() } }
+                    ]
+                },
+                select: { company: true, companyWebsite: true, companyLogoUrl: true },
+            });
+
+            const byName = new Map<string, { name: string; url: string | null; logo_url: string | null; slug: string }>();
+            for (const row of rows) {
+                const name = row.company?.trim();
+                if (!name) continue;
+                const key = name.toLowerCase();
+                const existing = byName.get(key);
+                if (existing) {
+                    if (!existing.url && row.companyWebsite) existing.url = row.companyWebsite.trim();
+                    if (!existing.logo_url && row.companyLogoUrl) existing.logo_url = row.companyLogoUrl.trim();
+                } else {
+                    byName.set(key, {
+                        name,
+                        url: row.companyWebsite?.trim() ?? null,
+                        logo_url: row.companyLogoUrl?.trim() ?? null,
+                        slug: this.getCompanySlug(name),
+                    });
+                }
+            }
+
+            return Array.from(byName.values()).sort((a, b) => a.name.localeCompare(b.name));
+        });
+    }
+
+    /**
+     * skills.json — distinct skills across live opportunities (admin uses it).
+     */
+    public static async generateSkillsMetadata() {
+        return this.withDbRetry(async () => {
+            const rows = await prisma.opportunity.findMany({
+                where: {
+                    status: OpportunityStatus.PUBLISHED,
+                    deletedAt: null,
+                    OR: [
+                        { expiresAt: null },
+                        { expiresAt: { gt: new Date() } }
+                    ]
+                },
+                select: { requiredSkills: true },
+            });
+
+            const byKey = new Map<string, string>();
+            for (const row of rows) {
+                for (const raw of row.requiredSkills ?? []) {
+                    const skill = raw?.trim();
+                    if (!skill) continue;
+                    const key = skill.toLowerCase();
+                    if (!byKey.has(key)) byKey.set(key, skill);
+                }
+            }
+
+            return Array.from(byKey.values()).sort((a, b) => a.localeCompare(b));
+        });
+    }
+
     public static async generateCompanyShards() {
         return this.withDbRetry(async () => {
             const opportunities = await prisma.opportunity.findMany({
@@ -593,16 +666,37 @@ export class FeedGeneratorService {
         });
     }
 
+    /**
+     * Feed counts manifest. `opportunities` is the live total (consumed by the
+     * landing stats); the breakdown powers the sidebar nav badges. Each filter
+     * mirrors the matching feed generator so the number equals what that link shows.
+     */
     public static async generateStats() {
         return this.withDbRetry(async () => {
-            const count = await prisma.opportunity.count({
-                where: {
-                    status: OpportunityStatus.PUBLISHED,
-                    deletedAt: null,
-                    AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }],
-                },
+            const isLive: Prisma.OpportunityWhereInput = {
+                status: OpportunityStatus.PUBLISHED,
+                deletedAt: null,
+                OR: [
+                    { expiresAt: null },
+                    { expiresAt: { gt: new Date() } }
+                ]
+            };
+            const withFilter = (extra: Prisma.OpportunityWhereInput): Prisma.OpportunityWhereInput => ({
+                AND: [isLive, extra],
             });
-            return { opportunities: count, timestamp: Date.now() };
+
+            const [opportunities, internships, remote, walkins, government, companyRows] = await Promise.all([
+                prisma.opportunity.count({ where: isLive }),
+                prisma.opportunity.count({ where: withFilter({ type: 'INTERNSHIP' } as Prisma.OpportunityWhereInput) }),
+                prisma.opportunity.count({ where: withFilter({ workMode: 'REMOTE' } as Prisma.OpportunityWhereInput) }),
+                prisma.opportunity.count({ where: withFilter({ OR: [{ recruitmentMethod: RecruitmentMethod.WALK_IN }, { driveDetails: { isNot: null } }] }) }),
+                prisma.opportunity.count({ where: withFilter({ OR: [{ sector: Sector.GOVERNMENT }, { governmentJobDetails: { isNot: null } }] }) }),
+                prisma.opportunity.findMany({ where: isLive, distinct: ['company'], select: { company: true } }),
+            ]);
+
+            const companies = companyRows.filter((row) => row.company && row.company.trim() !== '').length;
+
+            return { opportunities, internships, remote, walkins, government, companies, timestamp: Date.now() };
         });
     }
 

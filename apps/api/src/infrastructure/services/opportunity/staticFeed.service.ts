@@ -87,6 +87,14 @@ export class StaticFeedService {
         return FeedGeneratorService.generateOpportunityDetail(idOrSlug);
     }
 
+    static async generateCompaniesMetadata() {
+        return FeedGeneratorService.generateCompaniesMetadata();
+    }
+
+    static async generateSkillsMetadata() {
+        return FeedGeneratorService.generateSkillsMetadata();
+    }
+
     static async generateCompanyShards() {
         return FeedGeneratorService.generateCompanyShards();
     }

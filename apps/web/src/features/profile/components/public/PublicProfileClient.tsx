@@ -282,7 +282,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
             ? profile.preferredCities.slice(0, 2).join(', ')
             : 'India';
 
-    const locationText = `${rawLocation}${profile.openToRelocate ? ' ΓÇó Open to Relocate' : ''}`;
+    const locationText = `${rawLocation}${profile.openToRelocate ? ' • Open to Relocate' : ''}`;
     const availabilityText = formatAvailability(profile.availability);
 
     const handleShare = async () => {
@@ -728,7 +728,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
                                                         {[profile.gradCourse || profile.educationLevel].filter(Boolean).join(' ')}
                                                     </h3>
                                                     <p className="text-xs md:text-sm font-semibold text-muted-foreground">
-                                                        {[profile.collegeName, profile.collegeState].filter(Boolean).join(' ΓÇó ') || 'Undergraduate Institution'}
+                                                        {[profile.collegeName, profile.collegeState].filter(Boolean).join(' • ') || 'Undergraduate Institution'}
                                                     </p>
                                                     {profile.gradSpecialization && (
                                                         <div className="pt-1">
@@ -957,7 +957,7 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
 {/* STANDALONE ROUTE FOOTER NOTE (No hardcoded <footer> tag per Rule 6) */}
                 <div className="py-6 text-center border-t border-border/40 mt-12 bg-card/30 rounded-xl">
                     <p className="text-xs font-medium text-muted-foreground">
-                        Built with FresherFlow ΓÇó{' '}
+                        Built with FresherFlow •{' '}
                         <Link href="/jobs" className="font-bold text-foreground hover:text-primary transition-colors duration-150 ease-out">
                             Explore Verified Fresher Jobs ΓåÆ
                         </Link>
