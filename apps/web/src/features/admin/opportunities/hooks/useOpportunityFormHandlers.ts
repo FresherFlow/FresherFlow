@@ -55,6 +55,7 @@ export function useOpportunityFormHandlers(form: ReturnType<typeof useOpportunit
             governmentLevel: form.governmentLevel,
             vacancyNature: form.vacancyNature,
             jobCategory: form.jobCategory,
+            govtCategory: form.govtCategory,
             officialWebsiteUrl: form.officialWebsiteUrl,
             officialNotificationUrl: form.officialNotificationUrl,
             advertisementNumber: form.advertisementNumber,

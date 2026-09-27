@@ -290,6 +290,7 @@ export function buildGovernmentJobDetailsCreate(data: AdminOpportunityRequest) {
             ? (details.applicationStatus as GovernmentApplicationStatus)
             : 'UPCOMING' as GovernmentApplicationStatus),
         jobCategory: details.jobCategory || [],
+        govtCategory: compactString(details.govtCategory),
         extraMetadata: (details.extraMetadata && typeof details.extraMetadata === 'object'
             ? {
                 seoTags: details.seoTags,

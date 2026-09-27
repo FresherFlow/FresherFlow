@@ -45,6 +45,30 @@ const ANSI = {
     white: '\x1b[37m'
 };
 
+/**
+ * Dev-mode meta rendering. An Error carries a multi-line message and a stack
+ * that overlaps it, so `JSON.stringify` turned one failure into a single
+ * unreadable wall of text. Print the first meaningful line plus a few frames
+ * instead; the object shape is preserved for anything that is not an error.
+ */
+const formatDevMeta = (value: unknown): string => {
+    if (!value || typeof value !== 'object') return String(value);
+    const rec = value as Record<string, unknown>;
+    if (typeof rec.name === 'string' && typeof rec.message === 'string' && typeof rec.stack === 'string') {
+        const firstMeaningful = String(rec.message)
+            .split('\n')
+            .map((l) => l.trim())
+            .find(Boolean);
+        const frames = String(rec.stack)
+            .split('\n')
+            .slice(1, 4)
+            .map((l) => l.trim())
+            .filter(Boolean);
+        return [`${rec.name}: ${firstMeaningful || '(no message)'}`, ...frames].join('\n    ');
+    }
+    return JSON.stringify(value);
+};
+
 export const createLogger = (serviceName: string): Logger => {
     if (isBrowser) {
         return {
@@ -91,8 +115,8 @@ export const createLogger = (serviceName: string): Logger => {
         else if (level === 'error') levelStr = `${ANSI.red}ERROR${ANSI.reset}`;
         else if (level === 'debug') levelStr = `${ANSI.cyan}DEBUG${ANSI.reset}`;
 
-        const metaStr = cleanMeta.length > 0 
-            ? ` ${ANSI.dim}${cleanMeta.map(m => typeof m === 'object' ? JSON.stringify(m) : String(m)).join(' ')}${ANSI.reset}` 
+        const metaStr = cleanMeta.length > 0
+            ? ` ${ANSI.dim}${cleanMeta.map(formatDevMeta).join(' ')}${ANSI.reset}`
             : '';
 
         const line = `${timeStr} ${svcStr} ${levelStr} ${ANSI.white}${message}${ANSI.reset}${metaStr}`;

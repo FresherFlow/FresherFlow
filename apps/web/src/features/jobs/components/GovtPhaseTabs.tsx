@@ -105,6 +105,13 @@ export const GOVT_CATEGORIES: { label: string; Icon: IconComponent; match: strin
 ];
 
 export function jobMatchesCategory(govtDetails: any, categoryLabel: string): boolean {
+    // Prefer the canonical column when set — it is what the sidebar counts read,
+    // so a badge and this list always agree on categorised rows. Fall back to the
+    // keyword heuristic for rows the column was never set on.
+    const canonical = govtDetails?.govtCategory;
+    if (typeof canonical === 'string' && canonical.length > 0) {
+        return canonical === categoryLabel;
+    }
     const cat = GOVT_CATEGORIES.find(c => c.label === categoryLabel);
     if (!cat) return false;
     const categories: string[] = govtDetails?.jobCategory || [];

@@ -63,6 +63,10 @@ const CATEGORY_CONFIG = {
     REMOTE:     { title: 'Remote Opportunities',       subtitle: 'Fresh roles you can pursue from anywhere',        icon: BriefcaseIcon },
     GOVERNMENT: { title: 'Government Jobs',            subtitle: 'Official notices and public-sector openings',     icon: ShieldCheckIcon },
     HACKATHONS: { title: 'Hackathons',                 subtitle: 'Competitions, challenges, and builder programs',  icon: AcademicCapIcon },
+    DRIVES:     { title: 'Hiring Drives',              subtitle: 'Walk-in and off-campus drives near you',          icon: MapIcon },
+    OFF_CAMPUS: { title: 'Off-Campus Drives',          subtitle: 'Campus and pool drives open to freshers',          icon: UserGroupIcon },
+    FULL_TIME:  { title: 'Full-Time Jobs',             subtitle: 'Permanent entry-level roles across India',         icon: BriefcaseIcon },
+    PART_TIME:  { title: 'Part-Time Jobs',             subtitle: 'Flexible entry-level roles across India',          icon: ClockIcon },
 } satisfies Record<CategoryFeedType, { title: string; subtitle: string; icon: typeof BriefcaseIcon }>;
 
 // Ticker tag styles per applicationStatus

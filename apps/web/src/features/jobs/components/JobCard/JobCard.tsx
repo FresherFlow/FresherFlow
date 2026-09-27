@@ -308,13 +308,19 @@ export default function JobCard({
                             if (onClick) onClick(e as unknown as React.MouseEvent<HTMLAnchorElement>);
                             else router.push(discussionHref);
                         }}
-                        className="inline-flex items-center gap-1 px-2 h-7 text-xs font-semibold rounded-md text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors shrink-0 whitespace-nowrap"
-                        title={`${discussionCount} discussing — Discuss this job`}
-                        aria-label={`Discuss this job (${discussionCount} discussing)`}
+                        className="inline-flex items-center gap-1 px-1 h-7 text-xs font-medium rounded-md text-muted-foreground hover:text-primary transition-colors shrink-0 whitespace-nowrap"
+                        title={discussionCount > 0 ? `${discussionCount} discussing — Discuss this job` : 'Discuss this job'}
+                        aria-label={discussionCount > 0 ? `Discuss this job (${discussionCount} discussing)` : 'Discuss this job'}
                     >
                         <ChatBubbleLeftRightIcon className="w-3.5 h-3.5 shrink-0" aria-hidden />
-                        <span className="hidden sm:inline">{discussionCount} discussing · Discuss</span>
-                        <span className="sm:hidden">{discussionCount} Discuss</span>
+                        {discussionCount > 0 ? (
+                            <>
+                                <span className="hidden sm:inline">{discussionCount} discussing · Discuss</span>
+                                <span className="sm:hidden">{discussionCount} Discuss</span>
+                            </>
+                        ) : (
+                            <span className="hidden sm:inline">Discuss</span>
+                        )}
                     </a>
                     {showApplied && (
                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-success/10 text-success dark:text-success rounded text-xs font-bold uppercase tracking-wide border border-success/20 shrink-0">

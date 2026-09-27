@@ -141,6 +141,7 @@ export function useOpportunityForm(
   const [governmentLevel, setGovernmentLevel] = useState<string>("CENTRAL");
   const [vacancyNature, setVacancyNature] = useState<string>("PERMANENT");
   const [jobCategory, setJobCategory] = useState<string>("");
+  const [govtCategory, setGovtCategory] = useState<string>("");
   const [officialWebsiteUrl, setOfficialWebsiteUrl] = useState("");
   const [officialNotificationUrl, setOfficialNotificationUrl] = useState("");
   const [advertisementNumber, setAdvertisementNumber] = useState("");
@@ -405,6 +406,7 @@ export function useOpportunityForm(
         );
         setVacancyNature(opp.governmentJobDetails.vacancyNature || "PERMANENT");
         setJobCategory((opp.governmentJobDetails.jobCategory || []).join(", "));
+        setGovtCategory(opp.governmentJobDetails.govtCategory || "");
         setOfficialWebsiteUrl(
           opp.governmentJobDetails.officialWebsiteUrl || "",
         );
@@ -1281,6 +1283,7 @@ export function useOpportunityForm(
     setGovernmentLevel("CENTRAL");
     setVacancyNature("PERMANENT");
     setJobCategory("");
+    setGovtCategory("");
     setOfficialWebsiteUrl("");
     setOfficialNotificationUrl("");
     setAdvertisementNumber("");
@@ -1423,8 +1426,10 @@ export function useOpportunityForm(
     setGovernmentLevel,
     vacancyNature,
     setVacancyNature,
-    jobCategory,
-    setJobCategory,
+  jobCategory,
+  setJobCategory,
+  govtCategory,
+  setGovtCategory,
     officialWebsiteUrl,
     setOfficialWebsiteUrl,
     officialNotificationUrl,

@@ -21,6 +21,41 @@ import {
 import { sanitizeSearchQuery } from "@/features/jobs/utils/searchUtils";
 import { FEED_PAGE_SIZE } from "@/lib/utils/feedPageSize";
 
+/**
+ * Multi-value filters are encoded as repeated keys (`?company=A&company=B`) so
+ * a value containing a comma — a company name or job title — survives a round
+ * trip. Older links used one comma-joined value, so a single occurrence is
+ * still split on commas: links shared before this change keep working.
+ */
+const readMultiParam = (
+  sp: URLSearchParams | null | undefined,
+  key: string,
+): string[] | null => {
+  const values = sp?.getAll(key);
+  if (!values || values.length === 0) return null;
+  const parsed =
+    values.length > 1
+      ? values.filter(Boolean)
+      : values[0].split(",").filter(Boolean);
+  return parsed.length > 0 ? parsed : null;
+};
+
+/**
+ * Identity of a location for the URL -> state sync. `?job=` is excluded on
+ * purpose: it marks the open detail pane, not a filter, so opening or closing
+ * a row must not look like a location change (that path rebuilds every filter
+ * array and resets feed scroll + pagination).
+ */
+const urlSignature = (
+  path: string,
+  sp: URLSearchParams | null | undefined,
+): string => {
+  const copy = new URLSearchParams(sp?.toString() ?? "");
+  copy.delete("job");
+  const query = copy.toString();
+  return query ? `${path}?${query}` : path;
+};
+
 export interface UseCategoryPageStateProps {
   type: CategoryFeedType | null;
   initialData?: {
@@ -55,11 +90,27 @@ export function useCategoryPageState({
     urlType ? urlType.toUpperCase() : propType
   ) as CategoryFeedType | null;
   const mode = searchParams?.get("mode");
-  const sourceParam = searchParams?.get("source");
-  const source = sourceParam ? sourceParam.split(",") : [];
+  const source = readMultiParam(searchParams, "source") ?? [];
   const sort = searchParams?.get("sort");
 
   const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
+  // Value the `?job=` param should hold — the pane's URL is written from this,
+  // never read back from a possibly-stale searchParams.
+  const jobParamRef = useRef<string | null>(searchParams?.get("job") ?? null);
+
+  // Removes `?job=` from the current entry, keeping whatever history state it
+  // has, so a closed pane is never advertised as open by the URL.
+  const stripJobParam = () => {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("job")) return;
+    params.delete("job");
+    const query = params.toString();
+    window.history.replaceState(
+      window.history.state ?? null,
+      "",
+      query ? `?${query}` : window.location.pathname,
+    );
+  };
   const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -81,7 +132,13 @@ export function useCategoryPageState({
 
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
-      if (!event?.state || !event.state.modalOpen) {
+      const paneWasOpen = event?.state?.modalOpen === true;
+      const jobInUrl = new URLSearchParams(window.location.search).get("job");
+      jobParamRef.current = paneWasOpen ? jobInUrl : null;
+      if (!paneWasOpen) {
+        // Landing on a non-pane entry means the pane is closed. A leftover
+        // `job` there would re-open a row the user just dismissed, so drop it.
+        if (jobInUrl) stripJobParam();
         setSelectedOpp(null);
       }
     };
@@ -91,13 +148,32 @@ export function useCategoryPageState({
 
 
 
+  // Writes `?job=` from the live selection. Pushing only happens the first time
+  // the pane opens for a URL, so switching rows never stacks history entries.
+  const writeJobParam = (jobKey: string) => {
+    const params = new URLSearchParams(window.location.search);
+    params.set("job", jobKey);
+    const query = params.toString();
+    const url = query ? `?${query}` : window.location.pathname;
+    const alreadyOpen = window.history.state?.modalOpen === true;
+    if (alreadyOpen) {
+      window.history.replaceState({ modalOpen: true }, "", url);
+    } else {
+      window.history.pushState({ modalOpen: true }, "", url);
+    }
+  };
+
   const handleSelectOpportunity = (opp: Opportunity) => {
+    const jobKey = opp.slug || opp.id;
+    jobParamRef.current = jobKey;
     setSelectedOpp(opp);
-    // No URL argument on purpose: Next.js patches history.pushState and
-    // dispatches a router restore for any truthy url, even the current one,
-    // which hands useSearchParams a fresh object. That rebuilds every filter
-    // array and resets the feed scroll + pagination on every row click.
-    window.history.pushState({ modalOpen: true }, "");
+    // The URL now carries `?job=<slug>`, so the list and the open pane share one
+    // addressable link — shareable, bookmarkable, and reproducible on reload.
+    // Next.js still hands useSearchParams a fresh object for a truthy URL, but
+    // `urlSignature` ignores `job`, so no filter array is rebuilt and feed scroll
+    // + pagination survive the click. That is why this used to push a bare
+    // entry with no URL at all.
+    writeJobParam(jobKey);
   };
 
   const handleCloseOpportunityPane = () => {
@@ -113,7 +189,17 @@ export function useCategoryPageState({
     }
     setTimeout(() => {
       setSelectedOpp(null);
-      if (window.history.state?.modalOpen) window.history.back();
+      jobParamRef.current = null;
+      if (window.history.state?.modalOpen) {
+        // The pane pushed an entry when it opened: Back restores the URL without
+        // `job`. If that target entry still carries one (a deep link a later push
+        // went on top of), popstate strips it below.
+        window.history.back();
+      } else {
+        // Deep link that loaded straight into an open pane — there is no pushed
+        // entry to abandon, so drop the param from the current one.
+        stripJobParam();
+      }
     }, 250);
   };
 
@@ -140,21 +226,14 @@ export function useCategoryPageState({
     workMode: searchParams?.getAll("mode").length
       ? searchParams.getAll("mode").map((m) => m.toUpperCase())
       : initialFilters?.workMode || null,
-    skills: searchParams?.get("skills")
-      ? searchParams.get("skills")!.split(",").filter(Boolean)
-      : initialFilters?.skills || [],
-    source: searchParams?.get("source")
-      ? searchParams.get("source")!.split(",").filter(Boolean)
-      : initialFilters?.source || [],
-    company: searchParams?.get("company")
-      ? searchParams.get("company")!.split(",").filter(Boolean)
-      : initialFilters?.company || [],
-    role: searchParams?.get("role")
-      ? searchParams.get("role")!.split(",").filter(Boolean)
-      : initialFilters?.role || [],
-    experience: searchParams?.get("experience")
-      ? searchParams.get("experience")!.split(",").filter(Boolean)
-      : initialFilters?.experience || [],
+    skills: readMultiParam(searchParams, "skills") || initialFilters?.skills || [],
+    source: readMultiParam(searchParams, "source") || initialFilters?.source || [],
+    company: readMultiParam(searchParams, "company") || initialFilters?.company || [],
+    role: readMultiParam(searchParams, "role") || initialFilters?.role || [],
+    experience:
+      readMultiParam(searchParams, "experience") ||
+      initialFilters?.experience ||
+      [],
   });
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
   const [draftLoc, setDraftLoc] = useState<string | null>(null);
@@ -197,7 +276,18 @@ export function useCategoryPageState({
   const appliedUrlSignature = React.useRef<string | null>(null);
   const pathname = usePathname();
   useEffect(() => {
-    const signature = `${pathname}?${searchParams?.toString() ?? ""}`;
+    const sp = searchParams;
+    const signature = urlSignature(pathname, sp);
+
+    // `?job=` mirrors the open pane, so reconcile it from the URL here — before
+    // the signature guard below, which deliberately ignores that param. Back and
+    // forward navigation both arrive through this effect.
+    const urlJobKey = sp?.get("job") ?? null;
+    if (urlJobKey !== jobParamRef.current) {
+      jobParamRef.current = urlJobKey;
+      if (!urlJobKey) setSelectedOpp(null);
+    }
+
     if (isFirstRender.current) {
       isFirstRender.current = false;
       appliedUrlSignature.current = signature;
@@ -211,7 +301,6 @@ export function useCategoryPageState({
     if (appliedUrlSignature.current === signature) return;
     appliedUrlSignature.current = signature;
 
-    const sp = searchParams;
     setSearch(sp?.get("q") || "");
     setGovtCategory((sp?.get("category") as GovtCategoryFilter) || null);
     setFilters({
@@ -228,21 +317,14 @@ export function useCategoryPageState({
       workMode: sp?.getAll("mode").length
         ? sp.getAll("mode").map((m) => m.toUpperCase())
         : initialFilters?.workMode || null,
-      skills: sp?.get("skills")
-        ? sp.get("skills")!.split(",").filter(Boolean)
-        : initialFilters?.skills || [],
-      source: sp?.get("source")
-        ? sp.get("source")!.split(",").filter(Boolean)
-        : initialFilters?.source || [],
-      company: sp?.get("company")
-        ? sp.get("company")!.split(",").filter(Boolean)
-        : initialFilters?.company || [],
-      role: sp?.get("role")
-        ? sp.get("role")!.split(",").filter(Boolean)
-        : initialFilters?.role || [],
-      experience: sp?.get("experience")
-        ? sp.get("experience")!.split(",").filter(Boolean)
-        : initialFilters?.experience || [],
+      skills: readMultiParam(sp, "skills") || initialFilters?.skills || [],
+      source: readMultiParam(sp, "source") || initialFilters?.source || [],
+      company: readMultiParam(sp, "company") || initialFilters?.company || [],
+      role: readMultiParam(sp, "role") || initialFilters?.role || [],
+      experience:
+        readMultiParam(sp, "experience") ||
+        initialFilters?.experience ||
+        [],
     });
   }, [searchParams, pathname]);
 
@@ -362,35 +444,29 @@ export function useCategoryPageState({
       changed = true;
     }
 
-    if (filters.skills && filters.skills.length > 0) {
-      updateParam("skills", filters.skills.join(","));
-    } else {
-      updateParam("skills", null);
-    }
+    // Multi-value filters are written as repeated keys, exactly like `mode`
+    // already is: no escaping ambiguity, and a comma inside a value is just data.
+    const setMulti = (
+      key: string,
+      values: readonly string[] | null | undefined,
+    ) => {
+      const next = (values ?? []).filter(Boolean);
+      const current = params.getAll(key);
+      if (
+        current.length === next.length &&
+        current.every((value, index) => value === next[index])
+      )
+        return;
+      params.delete(key);
+      next.forEach((value) => params.append(key, value));
+      changed = true;
+    };
 
-    if (filters.source && filters.source.length > 0) {
-      updateParam("source", filters.source.join(","));
-    } else {
-      updateParam("source", null);
-    }
-
-    if (filters.company && filters.company.length > 0) {
-      updateParam("company", filters.company.join(","));
-    } else {
-      updateParam("company", null);
-    }
-
-    if (filters.role && filters.role.length > 0) {
-      updateParam("role", filters.role.join(","));
-    } else {
-      updateParam("role", null);
-    }
-
-    if (filters.experience && filters.experience.length > 0) {
-      updateParam("experience", filters.experience.join(","));
-    } else {
-      updateParam("experience", null);
-    }
+    setMulti("skills", filters.skills);
+    setMulti("source", filters.source);
+    setMulti("company", filters.company);
+    setMulti("role", filters.role);
+    setMulti("experience", filters.experience);
 
     // Board pages (canonicalRedirect && initialFilters) encode their filter in
     // the path — e.g. `/jobs/javascript` ~ skills=JavaScript. Final pass strips
@@ -416,10 +492,20 @@ export function useCategoryPageState({
     if (changed) {
       if (replaceTimerRef.current) clearTimeout(replaceTimerRef.current);
       replaceTimerRef.current = setTimeout(() => {
+        // The pane can open or close while this debounce is pending, so take
+        // `job` from the live selection: a filter edit must neither drop it nor
+        // resurrect a closed one. history.state is carried over so an open pane
+        // keeps the marker that Back relies on.
+        const job = jobParamRef.current;
+        if (job) {
+          if (params.get("job") !== job) params.set("job", job);
+        } else if (params.has("job")) {
+          params.delete("job");
+        }
         const newUrl = params.toString()
           ? `?${params.toString()}`
           : window.location.pathname;
-        window.history.replaceState(null, "", newUrl);
+        window.history.replaceState(window.history.state ?? null, "", newUrl);
       }, 300);
     }
 
@@ -686,6 +772,34 @@ export function useCategoryPageState({
     }
   }, [type, filters, search, mounted, searchParams, visibleOpps.length]);
 
+  // Open the row named by `?job=<slug|id>` once the feed has loaded it, so a
+  // shared or bookmarked link reproduces the same list with the same job open.
+  const jobKey = searchParams?.get("job") ?? null;
+  const resolvedJobRef = useRef<{ key: string; found: boolean } | null>(null);
+  useEffect(() => {
+    if (!jobKey || type === "GOVERNMENT" || type === "WALKIN") {
+      // These pages render no detail pane, so a `job` param means nothing here.
+      resolvedJobRef.current = null;
+      return;
+    }
+    if (resolvedJobRef.current?.key === jobKey && resolvedJobRef.current.found)
+      return;
+
+    const matches = (opp: Opportunity) =>
+      opp.slug === jobKey || opp.id === jobKey;
+    const match = visibleOpps.find(matches) ?? opportunities.find(matches);
+    if (!match) {
+      // Only give up once the feed actually has rows: an empty first paint must
+      // not fall back to row #1 and then jump when the real job arrives.
+      if (visibleOpps.length > 0 || opportunities.length > 0) {
+        resolvedJobRef.current = { key: jobKey, found: false };
+      }
+      return;
+    }
+    resolvedJobRef.current = { key: jobKey, found: true };
+    if (selectedOpp?.id !== match.id) setSelectedOpp(match);
+  }, [jobKey, type, visibleOpps, opportunities, selectedOpp]);
+
   // Keep selectedOpp in sync with visibleOpps on desktop without flashing null/skeleton (except Walkins where all pins are visible by default)
   useEffect(() => {
     if (
@@ -693,6 +807,9 @@ export function useCategoryPageState({
       type !== 'GOVERNMENT' &&
       type !== 'WALKIN'
     ) {
+      // A `?job=` link names the row the pane must show — never replace it with
+      // row #1 just because that job sits outside the current filter view.
+      if (jobKey && resolvedJobRef.current?.found) return;
       if (visibleOpps.length === 0) {
         setSelectedOpp(null);
       } else if (
@@ -702,7 +819,7 @@ export function useCategoryPageState({
         setSelectedOpp(visibleOpps[0]);
       }
     }
-  }, [isDesktop, visibleOpps, selectedOpp, type]);
+  }, [isDesktop, visibleOpps, selectedOpp, type, jobKey]);
 
   // Ensure selectedOpp is strictly null on government and walkin pages initially
   useEffect(() => {

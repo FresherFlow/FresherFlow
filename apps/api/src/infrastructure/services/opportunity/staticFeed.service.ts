@@ -286,15 +286,13 @@ export class StaticFeedService {
             await StorageService.uploadToR2('meta/feed-version.json', versionBody, 'application/json');
 
             // 9. Generate & Upload Stats
+            //
+            // Must be the full breakdown (internships / remote / walkins /
+            // government / govtCategories), not just a total: the web sidebar
+            // reads `meta/stats.json` to badge each nav row, and a total-only
+            // payload silently zeroes every filter-specific count.
             if (target === 'all' || target === 'bootstrap') {
-                const uniqueCompanies = new Set(
-                    activeMapped.map(o => (o as { company?: string }).company).filter(Boolean)
-                );
-                const stats = {
-                    opportunities: activeMapped.length,
-                    companies: uniqueCompanies.size,
-                    timestamp: Date.now()
-                };
+                const stats = await FeedGeneratorService.generateStats();
                 const statsBody = JSON.stringify(stats);
                 StorageService.writeLocalFile(this.STATS_PATH, statsBody);
                 await StorageService.uploadToR2('meta/stats.json', statsBody, 'application/json');
@@ -322,6 +320,10 @@ export class StaticFeedService {
                     '/jobs',
                     '/jobs/internships',
                     '/jobs/walkins',
+                    '/jobs/full-time',
+                    '/jobs/part-time',
+                    '/drives',
+                    '/drives/off-campus',
                     '/govt',
                     '/about',
                     '/blog',

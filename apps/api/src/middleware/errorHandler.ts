@@ -11,15 +11,57 @@ interface ExtendedError extends Error {
     name: string;
 }
 
-function isDatabaseUnavailableError(err: ExtendedError): boolean {
+/**
+ * Schema drift reads like a database outage in Prisma's message, so the old
+ * single check told operators to inspect DATABASE_URL when the database was
+ * healthy and a migration was simply unapplied. Keep the two apart: one is a
+ * connectivity problem, the other is a deploy-order problem.
+ */
+const MISSING_SCHEMA_RE = /The (column|table|enum|type) `?([\w."]+)`? does not exist in the current database/;
+
+function isDatabaseConnectionError(err: ExtendedError): boolean {
     const message = err.message || '';
     return (
         err.name === 'PrismaClientInitializationError' ||
         message.includes("Can't reach database server") ||
-        message.includes('Authentication failed against database server') ||
-        message.includes('does not exist in the current database') ||
-        message.includes('Invalid `prisma.')
+        message.includes('Authentication failed against database server')
     );
+}
+
+/** The specific column/table/enum the database is missing, e.g. `column Opportunity.category`. */
+function missingSchemaObject(err: ExtendedError): string | null {
+    const match = (err.message || '').match(MISSING_SCHEMA_RE);
+    return match ? `${match[1]} ${match[2]}` : null;
+}
+
+function isDatabaseUnavailableError(err: ExtendedError): boolean {
+    return isDatabaseConnectionError(err) || missingSchemaObject(err) !== null;
+}
+
+/**
+ * One page load fires the same failing query several times (React strict mode
+ * double-render, then the client retry). Log the first occurrence in full and
+ * collapse the rest, so a single missing column does not produce five
+ * near-identical multi-line blocks in two seconds.
+ */
+const repeatCounts = new Map<string, { count: number; lastAt: number }>();
+const REPEAT_WINDOW_MS = 10_000;
+
+function isRepeatOf(signature: string): number {
+    const now = Date.now();
+    const prev = repeatCounts.get(signature);
+    if (prev && now - prev.lastAt < REPEAT_WINDOW_MS) {
+        prev.count += 1;
+        prev.lastAt = now;
+        return prev.count;
+    }
+    repeatCounts.set(signature, { count: 1, lastAt: now });
+    if (repeatCounts.size > 100) {
+        for (const [key, value] of repeatCounts) {
+            if (now - value.lastAt >= REPEAT_WINDOW_MS) repeatCounts.delete(key);
+        }
+    }
+    return 1;
 }
 
 export function errorHandler(
@@ -40,24 +82,36 @@ export function errorHandler(
 
     const errorMsg = err.message || 'Unknown error';
     const location = `${req.method} ${req.path} [requestId=${requestId}]`;
-    const isPrismaError = databaseUnavailable || errorMsg.includes('Prisma') || errorMsg.includes('does not exist in the current database');
+    const connectionDown = isDatabaseConnectionError(err);
+    const missingObject = missingSchemaObject(err);
+    const isPrismaError = connectionDown || missingObject !== null || errorMsg.includes('Invalid `prisma.');
 
-    if (isPrismaError) {
-        logger.error(chalk.red('Database Error'));
+    // Collapse the repeats that strict mode and client retries produce.
+    const signature = `${err.name}|${missingObject || errorMsg.split('\n')[0]}`;
+    const isFirstOccurrence = isRepeatOf(signature) === 1;
+
+    if (isFirstOccurrence && connectionDown) {
+        logger.error(chalk.red(`Database unreachable [requestId=${requestId}]`));
         logger.error(chalk.gray(`  ${errorMsg.split('\n')[0]}`));
-        if (databaseUnavailable) {
-            logger.error(chalk.yellow('  -> Check DATABASE_URL / DIRECT_DATABASE_URL and database availability'));
-        } else {
-            logger.error(chalk.yellow('  -> Run: npm run db:push to sync database'));
-        }
-    } else if (statusCode === 429) {
+        logger.error(chalk.yellow('  -> Check DATABASE_URL / DIRECT_DATABASE_URL and database availability'));
+    } else if (isFirstOccurrence && missingObject) {
+        // Deploy-order problem, not a crash: the running API is newer than the
+        // database. One line naming the missing object is the whole fix.
+        logger.warn(chalk.yellow(`Database schema out of date: missing ${missingObject} [requestId=${requestId}]`));
+        logger.warn(chalk.gray(`  ${location}`));
+        logger.warn(chalk.gray('  -> Apply pending migrations (pnpm db:migrate); API is newer than the database'));
+    } else if (isFirstOccurrence && isPrismaError) {
+        logger.error(chalk.red(`Prisma Error [requestId=${requestId}]`));
+        logger.error(chalk.gray(`  ${errorMsg.split('\n')[0]}`));
+        logger.error(chalk.gray(`  at ${location}`));
+    } else if (isFirstOccurrence && statusCode === 429) {
         // Rate limit — expected client error, not an application error. Keep logs clean like reference apps (dub/cal)
         logger.warn(chalk.yellow(`RateLimit: ${errorMsg.split('\n')[0]}`));
         logger.warn(chalk.gray(`  at ${location}`));
-    } else if (statusCode === 401 || statusCode === 404) {
+    } else if (isFirstOccurrence && (statusCode === 401 || statusCode === 404)) {
         logger.warn(chalk.yellow(`${statusCode === 401 ? 'Auth' : 'NotFound'}: ${errorMsg.split('\n')[0]}`));
         logger.warn(chalk.gray(`  at ${location}`));
-    } else {
+    } else if (isFirstOccurrence) {
         logger.error(chalk.red(`Error: ${errorMsg.split('\n')[0]}`));
         logger.error(chalk.gray(`  at ${location}`));
     }
@@ -77,8 +131,14 @@ export function errorHandler(
             trimmedMsg.includes('Authentication required')
         );
 
-        if (!isCommonAuthError && !isRateLimited && !isExpectedOtpError) {
-            logger.error(chalk.red(`[DEV] Full error [requestId=${requestId}]:`), err);
+        if (!isCommonAuthError && !isRateLimited && !isExpectedOtpError && isFirstOccurrence) {
+            // Schema and connection failures already printed their cause and fix
+            // above; repeating them as a dump only buries it.
+            if (!missingObject && !connectionDown) {
+                for (const line of describeErrorForLog(err)) {
+                    logger.error(chalk.gray(line));
+                }
+            }
         }
     } else if (process.env.DEBUG) {
         logger.error('Full error details', {
@@ -118,6 +178,40 @@ export function errorHandler(
             requestId
         }
     });
+}
+
+/**
+ * Render an error as a few short lines instead of one JSON blob.
+ *
+ * Prisma puts a multi-line code frame inside `message` and then repeats the same
+ * frames in `stack`, so passing the raw error to the logger stringified one
+ * failure into ~40 lines that said the same thing twice. Keep the call, the
+ * failing location, the cause and the top frames; the untouched error is still
+ * on the request for anything that needs the full stack.
+ */
+function describeErrorForLog(err: ExtendedError): string[] {
+    const lines: string[] = [];
+    const raw = String(err.message || '');
+    const parts = raw.split('\n').map((l) => l.trim()).filter(Boolean);
+
+    const call = parts.find((l) => l.startsWith('Invalid `prisma.'));
+    const location = parts.find((l) => /\.ts:\d+:\d+$/.test(l));
+    // Prisma states the cause after the code frame, so it is the last line.
+    const reason = parts.length > 0 ? parts[parts.length - 1] : '';
+
+    if (call) lines.push(`  call: ${call.replace(/^Invalid `| in$/g, '')}`);
+    if (location) lines.push(`  at: ${location}`);
+    if (reason && reason !== call) lines.push(`  reason: ${reason}`);
+
+    for (const frame of String(err.stack || '').split('\n').slice(1, 4)) {
+        const trimmed = frame.trim();
+        if (trimmed) lines.push(`  ${trimmed}`);
+    }
+
+    if (lines.length === 0) {
+        lines.push(`  ${err.name}: ${raw.split('\n')[0] || 'Unknown error'}`);
+    }
+    return lines;
 }
 
 function sanitizeClientMessage(input: string): string {

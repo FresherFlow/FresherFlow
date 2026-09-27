@@ -84,6 +84,7 @@ export interface AdminOpportunityRequest {
         vacancyNature?: string;
         applicationStatus?: string;
         jobCategory?: string[];
+        govtCategory?: string;
         applicationMode?: string;
         notificationPdfUrl?: string;
         admitCardUrl?: string;

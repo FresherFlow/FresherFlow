@@ -161,6 +161,7 @@ export interface ParsedJob {
         vacancyNature?: string;
         applicationStatus?: string;
         jobCategory?: string[];
+        govtCategory?: string;
         vacancyCount?: number | string;
         vacancyBreakdown?: Array<{
             postName: string;

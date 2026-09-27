@@ -1078,6 +1078,11 @@ model GovernmentJobDetails {
   jobCategory            String[] @default([])
   // Recruiting DOMAIN, not level: BANKING, DEFENCE, JUDICIARY, EDUCATION, RAILWAYS.
   domain                 String?
+  // Canonical sub-category for filtering and counts. Keep values identical to
+  // the GOVT_CATEGORIES labels the UI uses: UPSC, SSC, Banking, Railways,
+  // State PSC, Defence, Teaching, Police, Engineering, Nursing. examName is
+  // free text and must not be used for this.
+  govtCategory           String?
   examName               String?   // e.g. "SSC CGL", "RRB ALP", "UGC NET"
   postName               String?   // e.g. "Assistant Section Officer, Inspector of Income Tax"
   
@@ -1159,6 +1164,7 @@ model GovernmentJobDetails {
 
   @@index([department])
   @@index([organization])
+  @@index([govtCategory])
   @@index([seoTags], type: Gin)
 }
 

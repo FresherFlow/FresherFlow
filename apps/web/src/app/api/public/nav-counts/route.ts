@@ -12,12 +12,15 @@ const CACHE_HEADERS = {
 
 const COUNT_KEYS = ['opportunities', 'internships', 'remote', 'walkins', 'government', 'companies'] as const;
 
-function pickCounts(data: Record<string, unknown>): Record<string, number> {
-    const counts: Record<string, number> = {};
+function pickCounts(data: Record<string, unknown>): Record<string, unknown> {
+    const counts: Record<string, unknown> = {};
     for (const key of COUNT_KEYS) {
         const value = data?.[key];
         counts[key] = Number.isFinite(value) ? Number(value) : 0;
     }
+    const govtCategories = data?.govtCategories;
+    counts.govtCategories =
+        govtCategories && typeof govtCategories === 'object' ? govtCategories : {};
     return counts;
 }
 

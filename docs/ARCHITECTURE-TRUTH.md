@@ -306,9 +306,23 @@ static-file-first routes generate from Postgres instead of serving a cached file
 `DB_FEED_REVALIDATE_SECONDS` (web, default 60) is the db-mode refresh interval;
 cdn mode stays immutable until an explicit `revalidateTag`.
 
-Sidebar job count: the web same-origin route `/api/public/nav-counts` reads
-`FEED_STATS_URL` (`${FEED_CDN_BASE}/meta/stats.json`) and feeds
-`useNavCounts` → `NavMain` badges, so it follows `FEED_SOURCE` too.
+Sidebar job counts: `generateStats()` returns a breakdown (opportunities,
+internships, remote, walkins, government, companies), each filter mirroring the
+matching feed generator. The web same-origin route `/api/public/nav-counts`
+reads `FEED_STATS_URL` (`${FEED_CDN_BASE}/meta/stats.json`) and `useNavCounts`
+maps the counts onto nav hrefs (`NavMain` badges), so it follows `FEED_SOURCE`
+too.
+
+Government sub-category links (`/govt?category=…`) are counted from
+`GovernmentJobDetails.govtCategory` — a real column added in migration
+`20260926120000_add_govt_category`, whose canonical values mirror the UI's
+`GOVT_CATEGORIES` labels (UPSC, SSC, Banking, Railways, State PSC, Defence,
+Teaching, Police, Engineering, Nursing). The migration backfills existing rows
+from the old keyword heuristic (`jobCategory[]` + `recruitingBody`), so counts
+are populated immediately. `examName` remains free text and is never used for
+counts. New rows must set the column (admin govt form / pipeline) to be counted;
+the `/govt` page filter still uses the client-side keyword matcher, so the two
+can disagree on an uncategorised row.
 
 ---
 

@@ -85,8 +85,19 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
         if (minSal != null) andConditions.push({ OR: [{ salaryMin: { gte: minSal } }, { salaryMax: { gte: minSal } }] });
         if (maxSal != null) andConditions.push({ salaryMin: { lte: maxSal } });
 
+        // `?mode=remote` is an alias for `?feedType=remote`: the sidebar's
+        // Remote row links with `mode`, and reading only `feedType` made that
+        // link return the unfiltered feed.
+        const workModeFilter = Array.isArray(req.query.mode)
+            ? req.query.mode.map((m) => String(m).toUpperCase())
+            : typeof req.query.mode === 'string'
+                ? [req.query.mode.toUpperCase()]
+                : [];
+
         // Feed Type Specific Logic (Item 94-99 in plan)
-        if (feedType === 'remote') {
+        if (workModeFilter.includes('REMOTE')) {
+            andConditions.push({ workMode: 'REMOTE' });
+        } else if (feedType === 'remote') {
             andConditions.push({ workMode: 'REMOTE' });
         } else if (feedType === '2026') {
             andConditions.push({ allowedPassoutYears: { has: 2026 } });

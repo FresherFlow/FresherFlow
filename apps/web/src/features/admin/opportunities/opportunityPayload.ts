@@ -38,6 +38,7 @@ export type OpportunityFormValues = {
     governmentLevel: string;
     vacancyNature: string;
     jobCategory: string;
+    govtCategory: string;
     officialWebsiteUrl: string;
     officialNotificationUrl: string;
     advertisementNumber: string;
@@ -278,6 +279,7 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
             governmentLevel: values.governmentLevel || undefined,
             vacancyNature: values.vacancyNature || undefined,
             jobCategory: toCsvList(values.jobCategory),
+            govtCategory: values.govtCategory || undefined,
             examName: values.examName || undefined,
             postName: values.postName || undefined,
             notificationIssuedDate: values.notificationIssuedDate || undefined,

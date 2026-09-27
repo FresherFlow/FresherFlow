@@ -215,6 +215,7 @@ export function buildPublicOpportunitySelect(userId?: string) {
                 advertisementNumber: true,
                 governmentLevel: true,
                 vacancyNature: true,
+                govtCategory: true,
                 applicationMode: true,
                 applicationStatus: true,
                 vacancyCount: true,

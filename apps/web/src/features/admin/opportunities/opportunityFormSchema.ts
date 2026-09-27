@@ -89,6 +89,7 @@ export const opportunityFormSchema = z
         governmentLevel: z.string().default('CENTRAL'),
         vacancyNature: optionalText,
         jobCategory: optionalText,
+        govtCategory: optionalText,
         basicPay: optionalText,
         payLevel: optionalText,
         allowances: optionalText,

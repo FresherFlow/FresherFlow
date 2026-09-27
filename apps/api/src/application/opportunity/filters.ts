@@ -349,7 +349,13 @@ export function parseOpportunityFilters(
         category: toEnumList(shaped.category, CATEGORY_VALUES),
         employmentTypes: toEnumList(shaped.employmentType, EMPLOYMENT_TYPE_VALUES),
         recruitmentMethods: toEnumList(shaped.recruitmentMethod, RECRUITMENT_METHOD_VALUES),
-        workModes: toEnumList(shaped.workMode, WORK_MODE_VALUES),
+        // `mode` is an accepted alias for `workMode`: the sidebar's Remote row
+        // links to /jobs?mode=remote, and reading only `workMode` made that
+        // link silently return the unfiltered set.
+        workModes: toEnumList(
+            shaped.workMode !== undefined ? shaped.workMode : shaped.mode,
+            WORK_MODE_VALUES
+        ),
         sectors: toEnumList(shaped.sector, SECTOR_VALUES),
         experienceLevels: toEnumList(shaped.experienceLevel, EXPERIENCE_LEVEL_VALUES),
         degrees: toEnumList(shaped.degree, DEGREE_VALUES),

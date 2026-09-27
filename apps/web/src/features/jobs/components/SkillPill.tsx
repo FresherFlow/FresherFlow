@@ -87,11 +87,18 @@ export function SkillIcon({ skill, className }: { skill: string; className?: str
  */
 const BARE_VARIANT = 'bg-transparent border-none p-0 h-auto text-inherit shadow-none';
 
+/**
+ * `plain` drops the pill chrome but keeps sizing and truncation, so dense
+ * surfaces (the job card meta row) read as text while filter chips and detail
+ * pages keep their bordered look.
+ */
+const PLAIN_VARIANT = 'bg-transparent border-none shadow-none';
+
 interface SkillPillProps {
   skill: string;
   className?: string;
   size?: 'sm' | 'xs';
-  variant?: 'default' | 'bare';
+  variant?: 'default' | 'bare' | 'plain';
   hideFallbackIcon?: boolean;
 }
 
@@ -110,6 +117,7 @@ export function SkillPill({ skill, className, size = 'sm', variant = 'default', 
           ? 'border-transparent bg-muted/40 text-foreground/80'
           : 'border-border/50 bg-muted/40 text-muted-foreground',
         variant === 'bare' ? BARE_VARIANT : '',
+        variant === 'plain' ? PLAIN_VARIANT : '',
         className
       )}
     >

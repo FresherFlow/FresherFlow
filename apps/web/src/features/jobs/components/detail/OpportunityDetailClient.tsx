@@ -266,7 +266,7 @@ export default function OpportunityDetailClient({
                 <nav className="md:hidden flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground font-medium select-none mb-4">
                     <Link href="/" className="hover:text-primary transition-colors">Home</Link>
                     <span className="text-muted-foreground/40">/</span>
-                    <Link href={isInternshipOpportunity(opp) ? '/jobs/internships' : isWalkinOpportunity(opp) ? '/jobs/walkins' : '/jobs'} className="hover:text-primary transition-colors">
+                    <Link href={isInternshipOpportunity(opp) ? '/jobs/internships' : isWalkinOpportunity(opp) ? '/drives/walk-in' : '/jobs'} className="hover:text-primary transition-colors">
                         {isInternshipOpportunity(opp) ? 'Internships' : isWalkinOpportunity(opp) ? 'Walk-ins' : 'Jobs'}
                     </Link>
                     <span className="text-muted-foreground/40">/</span>

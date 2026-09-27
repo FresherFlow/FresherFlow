@@ -306,6 +306,7 @@ export const opportunitySchema = z.object({
         vacancyNature: z.string().nullable().optional(),
         applicationStatus: z.string().nullable().optional(),
         jobCategory: z.array(z.string()).nullable().optional(),
+        govtCategory: z.string().nullable().optional(),
         applicationMode: z.string().nullable().optional(),
         officialSourceVerified: z.boolean().nullable().optional(),
         sourceLastCheckedAt: z.string().nullable().optional(),

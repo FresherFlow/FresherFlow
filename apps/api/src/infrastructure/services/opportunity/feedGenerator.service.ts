@@ -1,6 +1,6 @@
 import prisma from '../../database/prisma';
 import { Prisma } from '@prisma/client';
-import { OpportunityStatus, RecruitmentMethod, Sector } from '@fresherflow/types';
+import { OpportunityStatus, RecruitmentMethod, Sector, EmploymentType } from '@fresherflow/types';
 import { logger } from '@fresherflow/utils';
 import { StorageService } from '../platform/storage.service';
 
@@ -671,6 +671,11 @@ export class FeedGeneratorService {
      * landing stats); the breakdown powers the sidebar nav badges. Each filter
      * mirrors the matching feed generator so the number equals what that link shows.
      */
+    public static readonly GOVT_CATEGORY_LABELS = [
+        'UPSC', 'SSC', 'Banking', 'Railways', 'State PSC',
+        'Defence', 'Teaching', 'Police', 'Engineering', 'Nursing',
+    ] as const;
+
     public static async generateStats() {
         return this.withDbRetry(async () => {
             const isLive: Prisma.OpportunityWhereInput = {
@@ -687,7 +692,7 @@ export class FeedGeneratorService {
 
             const [opportunities, internships, remote, walkins, government, companyRows] = await Promise.all([
                 prisma.opportunity.count({ where: isLive }),
-                prisma.opportunity.count({ where: withFilter({ type: 'INTERNSHIP' } as Prisma.OpportunityWhereInput) }),
+                prisma.opportunity.count({ where: withFilter({ employmentTypes: { has: EmploymentType.INTERNSHIP } }) }),
                 prisma.opportunity.count({ where: withFilter({ workMode: 'REMOTE' } as Prisma.OpportunityWhereInput) }),
                 prisma.opportunity.count({ where: withFilter({ OR: [{ recruitmentMethod: RecruitmentMethod.WALK_IN }, { driveDetails: { isNot: null } }] }) }),
                 prisma.opportunity.count({ where: withFilter({ OR: [{ sector: Sector.GOVERNMENT }, { governmentJobDetails: { isNot: null } }] }) }),
@@ -696,7 +701,21 @@ export class FeedGeneratorService {
 
             const companies = companyRows.filter((row) => row.company && row.company.trim() !== '').length;
 
-            return { opportunities, internships, remote, walkins, government, companies, timestamp: Date.now() };
+            // Government sub-categories. Labels are identical to the
+            // GOVT_CATEGORIES labels the sidebar links use, so the count and the
+            // link it decorates can never disagree on naming.
+            const govtCategoryCounts = Object.fromEntries(
+                await Promise.all(
+                    FeedGeneratorService.GOVT_CATEGORY_LABELS.map(async (label) => [
+                        label,
+                        await prisma.opportunity.count({
+                            where: withFilter({ governmentJobDetails: { govtCategory: label } }),
+                        }),
+                    ] as const)
+                )
+            );
+
+            return { opportunities, internships, remote, walkins, government, companies, govtCategories: govtCategoryCounts, timestamp: Date.now() };
         });
     }
 

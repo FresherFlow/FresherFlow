@@ -63,6 +63,10 @@ function shouldLogClientError(error: unknown): boolean {
     if (error instanceof OfflineError || error instanceof UnauthorizedError) return false;
     if (err.code === 'TIMEOUT' || err.code === 'ECONNREFUSED') return false;
     if (err.statusCode === 401 || err.statusCode === 403 || err.statusCode === 429) return false;
+    // 503 is our own "database unavailable / schema pending" envelope, not a
+    // client bug. console.error here makes the dev overlay print a stack and a
+    // source frame for what is a background poll failing.
+    if (err.statusCode === 502 || err.statusCode === 503 || err.statusCode === 504) return false;
     if (typeof err.message === 'string') {
         if (err.message === 'Refresh failed') return false;
         if (err.message.includes('Server is temporarily unavailable')) return false;
@@ -604,10 +608,17 @@ export async function apiClient<T = unknown>(
         }
 
         if (shouldLogClientError(error)) {
-            const errForLog = error as { statusCode?: number; message?: string };
+            const errForLog = error as { statusCode?: number; code?: string; message?: string };
             console.error(`API request failed: ${method} ${endpoint} (${errForLog.statusCode ?? 'network'}) - ${toCleanMessage(errForLog.message || 'Request failed')}`);
         } else {
-            logClientWarning('API request handled:', error);
+            // One line, no error object: passing the error to the console makes
+            // the dev overlay append a stack and source frame.
+            const handled = error as { statusCode?: number; code?: string; message?: string };
+            if (handled.statusCode || handled.code) {
+                logClientWarning(`API unavailable: ${method} ${endpoint} (${handled.statusCode ?? handled.code})`);
+            } else {
+                logClientWarning('API request handled:', error);
+            }
         }
 
         const err = error as { statusCode?: number; code?: string; message?: string };

@@ -7,6 +7,7 @@ import { Card } from '@/ui/Card';
 import { Checkbox } from '@/ui/Checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/ui/Collapsible';
 import type { OpportunityFormApi } from '@/features/admin/opportunities/useOpportunityForm';
+import { GOVT_CATEGORIES } from '@/features/jobs/components/GovtPhaseTabs';
 
 const hasText = (...values: (string | undefined)[]) =>
     values.some((value) => (value ?? '').trim().length > 0);
@@ -161,6 +162,15 @@ export function GovernmentJobSection({ form }: { form: OpportunityFormApi }) {
                                     ]}
                                 />
                                 <Field label="Job Categories" value={props.jobCategory} onChange={props.setJobCategory} placeholder="e.g. Graduate, SSC, Group B (comma separated)" />
+                                <SelectField
+                                    label="Government Category"
+                                    value={props.govtCategory}
+                                    onChange={props.setGovtCategory}
+                                    options={[
+                                        { value: '', label: 'Uncategorised' },
+                                        ...GOVT_CATEGORIES.map(({ label }) => ({ value: label, label })),
+                                    ]}
+                                />
                                 <Field label="Advertisement Number" value={props.advertisementNumber} onChange={props.setAdvertisementNumber} placeholder="e.g. SSC/2026/01" />
                                 <div className="flex items-center gap-2 pt-6">
                                     <Checkbox
