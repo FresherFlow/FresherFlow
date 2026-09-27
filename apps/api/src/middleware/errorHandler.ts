@@ -99,7 +99,7 @@ export function errorHandler(
         // database. One line naming the missing object is the whole fix.
         logger.warn(chalk.yellow(`Database schema out of date: missing ${missingObject} [requestId=${requestId}]`));
         logger.warn(chalk.gray(`  ${location}`));
-        logger.warn(chalk.gray('  -> Apply pending migrations (pnpm db:migrate); API is newer than the database'));
+        logger.warn(chalk.gray('  -> Apply pending migrations (pnpm db:push); API is newer than the database'));
     } else if (isFirstOccurrence && isPrismaError) {
         logger.error(chalk.red(`Prisma Error [requestId=${requestId}]`));
         logger.error(chalk.gray(`  ${errorMsg.split('\n')[0]}`));
