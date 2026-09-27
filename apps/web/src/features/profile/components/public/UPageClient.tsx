@@ -238,7 +238,7 @@ export function UPageClient() {
                             </div>
                             <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-center space-y-2">
                                 <p className="text-sm font-bold">Hiring Krish?</p>
-                                <p className="text-xs text-muted-foreground">1-click intro — no middlemen</p>
+                                <p className="text-xs text-muted-foreground">Public profile · send an intro</p>
                                 <span className="inline-flex px-4 py-2 rounded-full bg-primary text-primary-foreground text-xs font-bold">Request intro</span>
                             </div>
                         </div>
@@ -278,7 +278,7 @@ export function UPageClient() {
                     <div className="space-y-3">
                         {[
                             { q: "Is it really free?", a: "Yes — 100% free for students & freshers." },
-                            { q: "Who can see it?", a: `Anyone with your fresherflow.in/u/username link. Turn recruiter intro requests on or off anytime. The page stays live for ${PROFILE_PAGE_ACTIVE_DAYS} days at a time — reactivate it to keep the link working.` },
+                            { q: "Who can see it?", a: `Anyone with your fresherflow.in/u/username link. Your resume and contact links are always visible on it. Turn recruiter visibility on or off anytime. The page stays live for ${PROFILE_PAGE_ACTIVE_DAYS} days at a time — reactivate it to keep the link working.` },
                             { q: "Can I edit after?", a: "Yes — edit from /profile, live instantly." },
                             { q: "What do recruiters see?", a: "Skills, projects with live/GitHub, education, availability and one-click Request intro." },
                         ].map((item) => (

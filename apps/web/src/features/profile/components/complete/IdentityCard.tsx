@@ -37,7 +37,7 @@ export function IdentityCard({
     return (
         <ProfileSectionCard
             title="Your name"
-            description="Recruiters see this on your profile and on every intro request."
+                description="Recruiters see this on your public profile."
             bare={bare}
         >
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

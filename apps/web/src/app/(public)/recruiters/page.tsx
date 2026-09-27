@@ -132,7 +132,7 @@ export default function RecruiterBrowsePage() {
             <header className="space-y-2">
                 <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Browse fresher profiles</h1>
                 <p className="text-sm text-muted-foreground">
-                    Filter by skill, batch, degree. Request an intro — the candidate gets your details directly.
+                    Filter by skill, batch, degree. Every profile here is public — resume and links are open. Request an intro to flag your interest.
                 </p>
             </header>
 

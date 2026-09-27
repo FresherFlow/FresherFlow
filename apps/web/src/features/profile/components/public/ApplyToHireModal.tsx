@@ -75,8 +75,8 @@ export default function ApplyToHireModal({
                         <DialogHeader>
                             <DialogTitle>Hiring {candidateName}?</DialogTitle>
                             <DialogDescription>
-                                Send a short intro request. {candidateName} gets your contact details
-                                directly — no middlemen.
+                                This profile is public — resume and contact links are already open. Send a
+                                short intro to start a conversation.
                             </DialogDescription>
                         </DialogHeader>
 
