@@ -48,7 +48,6 @@ import {
     InterviewResult,
     InterviewDifficulty,
     ApplicationStatus,
-    RoomOpportunityReason,
     ReferralRequestStatus,
     SalaryReportType
 } from './enums.js';
@@ -340,6 +339,7 @@ export interface GovernmentJobDetails {
     applicationStatus?: GovernmentApplicationStatus;
     governmentLevel?: GovernmentLevel;
     jobCategory?: string[];
+    govtCategory?: string | null;  // canonical sub-category: UPSC, SSC, Banking, Railways, State PSC, Defence, Teaching, Police, Engineering, Nursing
     examName?: string;        // e.g. "SSC CGL", "RRB ALP"
     postName?: string;        // e.g. "Assistant Section Officer"
     
