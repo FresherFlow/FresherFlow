@@ -96,7 +96,7 @@ export function isFullTimeOpportunity(opp: Opportunity): boolean {
     return (
         opp.category === OpportunityCategory.EMPLOYMENT &&
         !isInternshipOpportunity(opp) &&
-        !isWalkinOpportunity(opp) &&
+        !isDriveOpportunity(opp) &&
         !isGovernmentOpportunity(opp) &&
         (opp.employmentTypes || []).length === 0
     );
@@ -167,10 +167,14 @@ export function matchesFeedType(opp: Opportunity, type: CategoryFeedType | strin
         case 'REMOTE':
             return isRemoteOpportunity(opp);
         case 'JOB':
+            // isDriveOpportunity covers walk-in AND off-campus in one check.
+            // Testing only isWalkinOpportunity here let ON_CAMPUS/POOL_CAMPUS
+            // drives without driveDetails appear in the Jobs, Drives and
+            // Off-Campus feeds at the same time.
             return (
                 opp.category === OpportunityCategory.EMPLOYMENT &&
                 !isInternshipOpportunity(opp) &&
-                !isWalkinOpportunity(opp) &&
+                !isDriveOpportunity(opp) &&
                 !isGovernmentOpportunity(opp) &&
                 !isRemoteOpportunity(opp)
             );
