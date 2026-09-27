@@ -136,10 +136,12 @@ function getAdminGroups(pathname: string, feedbackBadge: number): {
 }
 
 /**
- * Brand block mirroring the app sidebar: full wordmark when expanded, centered
- * logo tile in collapsed (icon) mode.
+ * Brand block mirroring the app sidebar: wordmark when expanded, centered
+ * logo tile in collapsed (icon) mode. The wordmark is just "admin" — the
+ * operator always knows which surface they are on from the URL, and the
+ * previous "FresherFlow Admin Portal" wrapped to two lines in a 12rem rail.
  */
-function AdminBrand({ href, title }: { href: string; title: string }) {
+function AdminBrand({ href }: { href: string }) {
     return (
         <SidebarMenu>
             <SidebarMenuItem>
@@ -151,8 +153,7 @@ function AdminBrand({ href, title }: { href: string; title: string }) {
                     <Link href={href} aria-label="FresherFlow admin home">
                         <span className="sidebar-expanded-only flex min-w-0 items-center gap-2">
                             <LogoImage width={28} height={28} className="h-7 w-7 shrink-0" />
-                            <span className="truncate text-base font-semibold">FresherFlow</span>
-                            <span className="truncate text-xs text-muted-foreground">{title}</span>
+                            <span className="truncate text-base font-semibold">admin</span>
                         </span>
                         <span className="sidebar-collapsed-only flex items-center justify-center">
                             <LogoImage
@@ -203,7 +204,7 @@ function AdminSidebarRail({ feedbackAlertCount = 0 }: { feedbackAlertCount?: num
                 )}
             >
                 {/* Brand is resolved inside the suspended nav so it updates with route, but we render a stable fallback */}
-                <React.Suspense fallback={<AdminBrand href="/admin/dashboard" title="Admin Portal" />}>
+                <React.Suspense fallback={<AdminBrand href="/admin/dashboard" />}>
                     <AdminSidebarBrandResolver feedbackAlertCount={feedbackAlertCount} />
                 </React.Suspense>
                 {/* blur fade so scrolled items feel going under header */}
@@ -237,8 +238,8 @@ function AdminSidebarRail({ feedbackAlertCount = 0 }: { feedbackAlertCount?: num
 }
 
 function AdminSidebarBrandResolver({ feedbackAlertCount = 0 }: { feedbackAlertCount?: number }) {
-    const { homeHref, headerTitle } = AdminSidebarNav({ feedbackAlertCount });
-    return <AdminBrand href={homeHref} title={headerTitle} />;
+    const { homeHref } = AdminSidebarNav({ feedbackAlertCount });
+    return <AdminBrand href={homeHref} />;
 }
 
 function AdminSidebarNavContent({ feedbackAlertCount = 0 }: { feedbackAlertCount?: number }) {
@@ -259,7 +260,7 @@ export function AdminMobileNavTree({ onNavigate }: { onNavigate: () => void }) {
         setHostname(window.location.hostname);
     }, []);
 
-    const { groups, headerTitle, homeHref } = getAdminGroups(pathname, 0);
+    const { groups, homeHref } = getAdminGroups(pathname, 0);
 
     return (
         <div className="flex h-full w-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground">
@@ -274,7 +275,7 @@ export function AdminMobileNavTree({ onNavigate }: { onNavigate: () => void }) {
                 </button>
             </div>
             <div className="flex-1 overflow-y-auto px-2 py-3">
-                <AdminBrand href={homeHref} title={headerTitle} />
+                <AdminBrand href={homeHref} />
                 {/* Every nav row is a link, so any click in here is a navigation and
                     should close the Sheet. */}
                 <div className="mt-2" onClickCapture={onNavigate}>

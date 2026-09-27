@@ -196,6 +196,30 @@ export const AdminOpportunitiesTable = ({
   const toolbar = useCallback(
     (ctx: DataGridActionsContext<AdminOpportunityRow>) => (
       <div className="flex items-center gap-2 flex-wrap justify-end">
+        {showTypeFilter && onTypeChange && (
+          <Select
+            value={typeFilter || ALL}
+            onValueChange={(v) => onTypeChange(v === ALL ? "" : v)}
+          >
+            <SelectTrigger
+              className="w-auto min-w-28 cursor-pointer"
+              aria-label="Filter by type"
+            >
+              <SelectValue placeholder="All types" />
+            </SelectTrigger>
+            <SelectContent>
+              {typeOptions.map((option) => (
+                <SelectItem
+                  key={option.value || ALL}
+                  value={option.value || ALL}
+                >
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
         <Select value={atsFilter} onValueChange={onAtsFilterChange}>
           <SelectTrigger
             className="w-auto min-w-30 cursor-pointer"
@@ -281,6 +305,10 @@ export const AdminOpportunitiesTable = ({
       </div>
     ),
     [
+      showTypeFilter,
+      typeFilter,
+      typeOptions,
+      onTypeChange,
       atsFilter,
       atsOptions,
       onAtsFilterChange,
@@ -295,32 +323,6 @@ export const AdminOpportunitiesTable = ({
 
   return (
     <div className="flex flex-col flex-1 min-h-0 gap-2">
-      {showTypeFilter && onTypeChange && (
-        <div className="flex items-center gap-2 flex-wrap">
-          <Select
-            value={typeFilter || "ALL"}
-            onValueChange={(v) => onTypeChange(v === "ALL" ? "" : v)}
-          >
-            <SelectTrigger
-              className="w-auto min-w-28 cursor-pointer"
-              aria-label="Filter by type"
-            >
-              <SelectValue placeholder="All types" />
-            </SelectTrigger>
-            <SelectContent>
-              {typeOptions.map((option) => (
-                <SelectItem
-                  key={option.value || "ALL"}
-                  value={option.value || "ALL"}
-                >
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
       <DataGrid<AdminOpportunityRow>
         data={filteredRows}
         columns={columns}

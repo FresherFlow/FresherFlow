@@ -85,7 +85,7 @@
   --color-sidebar-primary-foreground: var(--color-paper);
   --color-sidebar-accent: oklch(96.1% 0.004 248);
   --color-sidebar-accent-foreground: oklch(20.6% 0.039 266);
-  --color-sidebar-border: oklch(80.4% 0.023 255);
+  --color-sidebar-border: oklch(80.4% 0.008 255);
   --color-sidebar-ring: oklch(20.6% 0.039 266); /* Same as foreground */
 
   /* ── Brand / third-party colors ──────────────────────────────── */
@@ -122,7 +122,11 @@
      and text-on-navy/orange/red use instead of #ffffff. Every other light
      token (background, borders, muted, chips, hovers) is untouched.
   */
-  --color-paper: oklch(95.2% 0.018 250);
+  /* Paper is the app's own off-white, not a tint. It had drifted to chroma
+     0.018 / hue 250, which tinted the sidebar blue. It now matches
+     --color-background exactly, so the sidebar reads as the same neutral the
+     rest of the surface already uses. */
+  --color-paper: oklch(93.6% 0.003 248);
 
   /* ── Typography ──────────────────────────────────────────────── */
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
@@ -227,13 +231,13 @@
     --color-dropdown-hover: oklch(24% 0.007 220);
     --color-dropdown-hover-text: oklch(97.7% 0.003 229);
 
-    --color-sidebar: oklch(17.1% 0.004 220);
+    --color-sidebar: oklch(17.1% 0 0);
     --color-sidebar-foreground: oklch(97.7% 0.003 229);
     --color-sidebar-primary: oklch(97.7% 0.003 229);
     --color-sidebar-primary-foreground: oklch(10.3% 0.007 196);
-    --color-sidebar-accent: oklch(24% 0.007 220);
+    --color-sidebar-accent: oklch(24% 0 0);
     --color-sidebar-accent-foreground: oklch(97.7% 0.003 229);
-    --color-sidebar-border: oklch(26.2% 0.008 220);
+    --color-sidebar-border: oklch(26.2% 0 0);
     --color-sidebar-ring: oklch(97.7% 0.003 229);
 
     --logo-image: url("/logo-white-optimized.png?v=3");
