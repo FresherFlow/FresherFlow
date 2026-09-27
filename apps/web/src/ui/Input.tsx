@@ -34,6 +34,8 @@ const inputVariants = {
     searchGlow:
         "text-xs shadow-xs focus:bg-background focus:ring-2 focus:ring-ring/30 transition-shadow duration-150 ease-out",
     form: "placeholder:tracking-normal focus:border-primary/60 duration-200",
+    /** One-time-passcode entry: centred, wide digit tracking. */
+    otp: "text-center tracking-[0.4em] placeholder:tracking-normal focus:border-primary/60 duration-200",
     mono: "placeholder:tracking-normal focus:border-primary/60 duration-200 font-mono font-bold",
     inline:
         "border-transparent bg-transparent hover:bg-input/30 focus-visible:bg-background",

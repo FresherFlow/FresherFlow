@@ -1,133 +1,120 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { adminAuthApi } from '@/lib/api/client';
-import { setAdminAccessToken } from '@/lib/api/client';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { LogoImage } from '@/features/shell/LogoImage';
+import { BriefcaseIcon, ChatBubbleLeftRightIcon, FlagIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 import toast from 'react-hot-toast';
+
+import { adminAuthApi, setAdminAccessToken } from '@/lib/api/client';
 import { getErrorMessage } from '@/lib/utils/error';
-import { Button } from '@/ui/Button';
-import {
-    ShieldCheckIcon,
-    FingerPrintIcon
-} from '@heroicons/react/24/outline';
+import { Card, CardContent } from '@/ui/Card';
+import { PasskeySignIn } from './_components/PasskeySignIn';
+import { TotpSignIn } from './_components/TotpSignIn';
+import { TotpEnrolment } from './_components/TotpEnrolment';
+import { FirstRunSetup } from './_components/FirstRunSetup';
 
-import { useRouter } from 'next/navigation';
+const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || '').toLowerCase();
+const adminEmailConfigured = ADMIN_EMAIL.length > 0;
 
+/**
+ * Admin sign-in.
+ *
+ * Passkey and authenticator code are both first-class: the authenticator is a
+ * required second factor, so hiding it behind an "Other Options" toggle made a
+ * mandatory method look like a fallback. Registering the very first passkey
+ * needs a backend bootstrap secret and is genuinely one-time, so it now lives in
+ * its own collapsed first-run panel.
+ *
+ * Moderators do not sign in here at all — they use the normal FresherFlow login
+ * and are admitted to /moderation by permission, so that path is a link out.
+ */
 export default function AdminLoginPage() {
     const router = useRouter();
-    const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || '').toLowerCase();
-    const adminEmailConfigured = ADMIN_EMAIL.length > 0;
+
     const [email, setEmail] = useState('');
-    const [bootstrapSecret, setBootstrapSecret] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [showOtherOptions, setShowOtherOptions] = useState(false);
     const [totpCode, setTotpCode] = useState('');
-    // TOTP enrolment state: shown when login/totp 401s with "not enabled".
-    // generate/verify run behind requireAdmin, so a passkey session must exist first.
+    const [isLoading, setIsLoading] = useState(false);
+
+    // TOTP enrolment state. Shown when sign-in 401s with "not enabled";
+    // generate/verify sit behind requireAdmin, so a passkey session must exist.
     const [needsEnrolment, setNeedsEnrolment] = useState(false);
     const [enrolQr, setEnrolQr] = useState('');
     const [enrolSecret, setEnrolSecret] = useState('');
     const [enrolCode, setEnrolCode] = useState('');
     const [enrolLoading, setEnrolLoading] = useState(false);
     const [enrolNoSession, setEnrolNoSession] = useState(false);
-    const loginCodeRef = useRef<HTMLInputElement | null>(null);
 
-    function setAdminSessionHint() {
+    const loginCodeRef = useRef<HTMLInputElement | null>(null);
+    const [method, setMethod] = useState<'passkey' | 'totp'>('passkey');
+
+    const setAdminSessionHint = useCallback(() => {
         const secure = window.location.protocol === 'https:' ? '; Secure' : '';
         document.cookie = `ff_admin_logged_in=true; path=/; max-age=${90 * 24 * 60 * 60}; SameSite=Lax${secure}`;
-    }
+    }, []);
 
-    // Check if user has passkeys on mount
+    const enterAdmin = useCallback(
+        (accessToken?: string) => {
+            // The API types the token as optional; without one there is no
+            // session to enter, and the old code passed undefined straight into
+            // setAdminAccessToken and redirected anyway.
+            if (!accessToken) {
+                toast.error('Sign-in did not return a session token. Please try again.');
+                return;
+            }
+            setAdminAccessToken(accessToken);
+            setAdminSessionHint();
+            toast.success('Access granted');
+            setTimeout(() => router.push('/admin/dashboard'), 400);
+        },
+        [router, setAdminSessionHint]
+    );
+
     useEffect(() => {
         if (!adminEmailConfigured) return;
-        const checkPasskeys = async () => {
-            try {
-                await adminAuthApi.getLoginOptions(ADMIN_EMAIL);
-                // We just call this to check connectivity/existence, result not explicitly used here anymore
-            } catch {
-                // Ignore error, will handle in actions
-            }
-        };
-        checkPasskeys();
-    }, [ADMIN_EMAIL, adminEmailConfigured]);
+        // Probes connectivity so a broken passkey setup surfaces as a failed
+        // action rather than a silent no-op on first click.
+        void adminAuthApi
+            .getLoginOptions(ADMIN_EMAIL)
+            .catch(() => undefined);
+    }, []);
 
-    const handleRegisterNewPasskey = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!email) {
-            toast.error('Enter admin email to register device');
-            return;
-        }
-        if (adminEmailConfigured && email.toLowerCase() !== ADMIN_EMAIL) {
-            toast.error('Unauthorized email');
-            return;
-        }
-
-        setIsLoading(true);
-        try {
-            const options = await adminAuthApi.getRegistrationOptions(email.toLowerCase(), bootstrapSecret);
-            const regResp = await startRegistration({ optionsJSON: options as unknown as Parameters<typeof startRegistration>[0]['optionsJSON'] });
-            const verification = await adminAuthApi.verifyRegistration(email.toLowerCase(), regResp);
-
-            if (verification.verified) {
-                toast.success('Passkey registered! Now use Quick Login to enter.');
-                setShowOtherOptions(false);
-            }
-        } catch (err: unknown) {
-            const error = err as { statusCode?: number; status?: number; message?: string };
-            const status = error?.statusCode || error?.status;
-            const message = status === 503 || status === 504
-                ? 'Infrastructure is currently unavailable. Please check the database status.'
-                : getErrorMessage(error, 'Registration failed.');
-            toast.error(message);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleQuickLogin = async () => {
+    const handleQuickLogin = useCallback(async () => {
         setIsLoading(true);
         try {
             const effectiveEmail = adminEmailConfigured ? ADMIN_EMAIL : email.toLowerCase();
             if (!effectiveEmail) {
-                toast.error('Enter admin email to continue');
-                setShowOtherOptions(true);
-                setIsLoading(false);
+                toast.error('Enter your admin email to continue');
                 return;
             }
             const options = await adminAuthApi.getLoginOptions(effectiveEmail);
 
             if ('registrationRequired' in options && options.registrationRequired) {
-                toast.error('No passkey found. Please use Other Options to create one.');
-                setShowOtherOptions(true);
-                setIsLoading(false);
+                toast.error('No passkey on this device. Use the first-time setup below to add one.');
                 return;
             }
 
-            const asseResp = await startAuthentication({ optionsJSON: options as unknown as Parameters<typeof startAuthentication>[0]['optionsJSON'] });
+            const asseResp = await startAuthentication({
+                optionsJSON: options as unknown as Parameters<typeof startAuthentication>[0]['optionsJSON'],
+            });
             const verification = await adminAuthApi.verifyLogin(effectiveEmail, asseResp);
-
-            if (verification.verified) {
-                setAdminAccessToken(verification.accessToken);
-                setAdminSessionHint();
-                toast.success('Access Granted');
-                setTimeout(() => {
-                    router.push('/admin/dashboard');
-                }, 500);
-            }
+            if (verification.verified) enterAdmin(verification.accessToken);
         } catch (err: unknown) {
             const error = err as { statusCode?: number; status?: number; message?: string };
             const status = error?.statusCode || error?.status;
-            const message = status === 503 || status === 504
-                ? 'Authentication service or database is unavailable. Please try again later.'
-                : getErrorMessage(error, 'Verification failed.');
-            toast.error(message);
+            toast.error(
+                status === 503 || status === 504
+                    ? 'Authentication service or database is unavailable. Please try again later.'
+                    : getErrorMessage(error, 'Verification failed.')
+            );
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [email, enterAdmin]);
 
-    const startEnrolment = async () => {
+    const startEnrolment = useCallback(async () => {
         setEnrolLoading(true);
         setEnrolNoSession(false);
         try {
@@ -139,8 +126,8 @@ export default function AdminLoginPage() {
             const error = err as { statusCode?: number; status?: number };
             const status = error?.statusCode ?? error?.status;
             if (status === 401) {
-                // No admin session yet (totp/generate is behind requireAdmin).
-                // Passkey Quick Access mints one — guide there instead of a dead retry.
+                // totp/generate is behind requireAdmin; Quick Access mints the
+                // session, so point there rather than offering a dead retry.
                 setNeedsEnrolment(true);
                 setEnrolNoSession(true);
                 toast.error('Sign in with your passkey first, then enable the authenticator.');
@@ -150,285 +137,261 @@ export default function AdminLoginPage() {
         } finally {
             setEnrolLoading(false);
         }
-    };
+    }, []);
 
-    const handleEnrolVerify = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!/^\d{6}$/.test(enrolCode)) {
-            toast.error('Enter the 6-digit code from your authenticator app');
-            return;
-        }
-        setEnrolLoading(true);
-        try {
-            await adminAuthApi.verifyTotp(enrolCode);
-            setNeedsEnrolment(false);
-            setEnrolQr('');
-            setEnrolSecret('');
-            setEnrolCode('');
-            setEnrolNoSession(false);
-            toast.success('TOTP enabled, sign in');
-            loginCodeRef.current?.focus();
-        } catch (err: unknown) {
-            toast.error(getErrorMessage(err, 'Invalid verification code.'));
-        } finally {
-            setEnrolLoading(false);
-        }
-    };
-
-    const handleTotpLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const effectiveEmail = adminEmailConfigured ? ADMIN_EMAIL : email.toLowerCase();
-        if (!effectiveEmail) {
-            toast.error('Enter admin email to continue');
-            return;
-        }
-        if (adminEmailConfigured && effectiveEmail !== ADMIN_EMAIL) {
-            toast.error('Unauthorized email');
-            return;
-        }
-        if (!/^\d{6}$/.test(totpCode)) {
-            toast.error('Enter a valid 6-digit authenticator code');
-            return;
-        }
-
-        setIsLoading(true);
-        try {
-            const verification = await adminAuthApi.verifyLoginTotp(effectiveEmail, totpCode);
-            if (verification.verified) {
-                setAdminAccessToken(verification.accessToken);
-                setAdminSessionHint();
-                toast.success('Access Granted');
-                setTimeout(() => {
-                    router.push('/admin/dashboard');
-                }, 500);
-            }
-        } catch (err: unknown) {
-            const error = err as { statusCode?: number; status?: number; message?: string };
-            const status = error?.statusCode || error?.status;
-            // Not-enrolled is 401 'TOTP login is not enabled for this admin'; a wrong
-            // code is 400 'Invalid authenticator code'. Only the former routes to enrolment.
-            const message = getErrorMessage(error, '').toLowerCase();
-            if (status === 401 && message.includes('not enabled')) {
-                toast.error('Authenticator is required for admin sign-in — enable it below, then sign in.');
-                void startEnrolment();
+    const handleEnrolVerify = useCallback(
+        async (event: React.FormEvent) => {
+            event.preventDefault();
+            if (!/^\d{6}$/.test(enrolCode)) {
+                toast.error('Enter the 6-digit code from your authenticator app');
                 return;
             }
-            const displayMessage = status === 503 || status === 504
-                ? 'Database connection failed. Admin services are temporarily offline.'
-                : getErrorMessage(error, 'TOTP verification failed.');
-            toast.error(displayMessage);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+            setEnrolLoading(true);
+            try {
+                await adminAuthApi.verifyTotp(enrolCode);
+                setNeedsEnrolment(false);
+                setEnrolQr('');
+                setEnrolSecret('');
+                setEnrolCode('');
+                setEnrolNoSession(false);
+                toast.success('Authenticator enabled — sign in with your code');
+                loginCodeRef.current?.focus();
+            } catch (err: unknown) {
+                toast.error(getErrorMessage(err, 'Invalid verification code.'));
+            } finally {
+                setEnrolLoading(false);
+            }
+        },
+        [enrolCode]
+    );
+
+    const handleTotpLogin = useCallback(
+        async (event: React.FormEvent) => {
+            event.preventDefault();
+            const effectiveEmail = adminEmailConfigured ? ADMIN_EMAIL : email.toLowerCase();
+            if (!effectiveEmail) {
+                toast.error('Enter your admin email to continue');
+                return;
+            }
+            if (adminEmailConfigured && effectiveEmail !== ADMIN_EMAIL) {
+                toast.error('Unauthorized email');
+                return;
+            }
+            if (!/^\d{6}$/.test(totpCode)) {
+                toast.error('Enter a valid 6-digit authenticator code');
+                return;
+            }
+
+            setIsLoading(true);
+            try {
+                const verification = await adminAuthApi.verifyLoginTotp(effectiveEmail, totpCode);
+                if (verification.verified) enterAdmin(verification.accessToken);
+            } catch (err: unknown) {
+                const error = err as { statusCode?: number; status?: number; message?: string };
+                const status = error?.statusCode || error?.status;
+                // Not-enrolled is 401 'TOTP login is not enabled for this admin';
+                // a wrong code is 400 'Invalid authenticator code'. Only the
+                // former routes to enrolment.
+                const message = getErrorMessage(error, '').toLowerCase();
+                if (status === 401 && message.includes('not enabled')) {
+                    toast.error('Authenticator is required for admin sign-in — enable it first.');
+                    void startEnrolment();
+                    return;
+                }
+                toast.error(
+                    status === 503 || status === 504
+                        ? 'Database connection failed. Admin services are temporarily offline.'
+                        : getErrorMessage(error, 'Code verification failed.')
+                );
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        [email, enterAdmin, startEnrolment, totpCode]
+    );
+
+    const handleRegisterNewPasskey = useCallback(
+        async (event: React.FormEvent, bootstrapSecret: string) => {
+            event.preventDefault();
+            if (!email && !adminEmailConfigured) {
+                toast.error('Enter your admin email to register this device');
+                return;
+            }
+            const effectiveEmail = adminEmailConfigured ? ADMIN_EMAIL : email.toLowerCase();
+            if (adminEmailConfigured && effectiveEmail !== ADMIN_EMAIL) {
+                toast.error('Unauthorized email');
+                return;
+            }
+
+            setIsLoading(true);
+            try {
+                const options = await adminAuthApi.getRegistrationOptions(
+                    effectiveEmail,
+                    bootstrapSecret
+                );
+                const regResp = await startRegistration({
+                    optionsJSON: options as unknown as Parameters<typeof startRegistration>[0]['optionsJSON'],
+                });
+                const verification = await adminAuthApi.verifyRegistration(effectiveEmail, regResp);
+                if (verification.verified) {
+                    toast.success('Passkey registered — you can sign in with it now');
+                }
+            } catch (err: unknown) {
+                const error = err as { statusCode?: number; status?: number; message?: string };
+                const status = error?.statusCode || error?.status;
+                toast.error(
+                    status === 503 || status === 504
+                        ? 'Infrastructure is currently unavailable. Please check the database status.'
+                        : getErrorMessage(error, 'Registration failed.')
+                );
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        [email]
+    );
 
     return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-4">
-            <div className="max-w-md w-full space-y-8 bg-card border border-border p-8 relative">
-                {/* Visual Accent */}
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/20 via-primary to-primary/20 opacity-50" />
-
-                <div className="text-center space-y-2">
-                    <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20">
-                        <ShieldCheckIcon className="w-10 h-10 text-primary" />
+        <div className="relative grid h-dvh w-full overflow-hidden bg-background text-foreground lg:grid-cols-2">
+            {/* Left: sign-in column — internal scroll only if the forms
+                outgrow short viewports; the page itself never scrolls. */}
+            <div className="flex min-h-0 flex-col items-center justify-center overflow-y-auto px-4 py-6 lg:p-8">
+            {/* Layout follows shadcn-admin's sign-in-2: form column plus a
+                brand visual panel (right). The old version was a lone centred
+                card; methods below are unchanged components. */}
+            <div className="w-full max-w-sm space-y-6">
+                <div className="flex flex-col items-center gap-3 text-center">
+                    <div
+                        aria-hidden
+                        className="flex size-12 items-center justify-center rounded-xl border border-primary/20 bg-primary/10"
+                    >
+                        <ShieldCheckIcon className="size-6 text-primary" />
                     </div>
-                    <h1 className="text-2xl font-bold tracking-tight capitalize text-foreground">Admin Portal</h1>
-                    <p className="text-xs text-muted-foreground capitalize font-bold tracking-widest opacity-60">Passkey or Authenticator</p>
-                    {!adminEmailConfigured && (
-                        <p className="text-xs text-muted-foreground capitalize tracking-widest opacity-50">
-                            Admin email not configured in client env
+                    <div className="space-y-1">
+                        <h1 className="text-xl font-medium tracking-tight text-foreground">
+                            Admin sign-in
+                        </h1>
+                        <p className="text-sm text-muted-foreground">
+                            Use a passkey or an authenticator code.
                         </p>
-                    )}
+                    </div>
                 </div>
 
-                <div className="space-y-4">
-                    {/* Primary Login Card */}
-                    <button
-                        onClick={handleQuickLogin}
-                        disabled={isLoading}
-                        className="w-full group relative flex flex-col items-center justify-center p-8 bg-primary text-primary-foreground border border-primary/20 transition-all disabled:opacity-50"
-                    >
-                        <div className="absolute inset-0 bg-gradient-to-br from-paper/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <FingerPrintIcon className="w-12 h-12 mb-3" />
-                        <span className="text-base font-bold capitalize tracking-widest">
-                            {isLoading ? 'Verifying...' : 'Quick Access'}
-                        </span>
-                        <span className="text-xs opacity-70 mt-1 font-bold">Touch ID / Face ID / USB key</span>
-                    </button>
-
-                    {/* Secondary/Initial Creation */}
-                    {showOtherOptions && (
-                        <form onSubmit={handleRegisterNewPasskey} className="p-6 bg-muted/30 border border-border space-y-4">
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-bold capitalize tracking-widest text-muted-foreground ml-1">
-                                    Register New Device
-                                </label>
-                                <input
-                                    type="email"
-                                    placeholder="admin@yourdomain.com"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-background border border-border px-4 py-3 text-sm focus:outline-none focus:border-primary transition-all"
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-bold capitalize tracking-widest text-muted-foreground ml-1">
-                                    Bootstrap Secret (If Required)
-                                </label>
-                                <input
-                                    type="password"
-                                    placeholder="Enter backend bootstrap secret"
-                                    value={bootstrapSecret}
-                                    onChange={(e) => setBootstrapSecret(e.target.value)}
-                                    className="w-full bg-background border border-border px-4 py-3 text-sm focus:outline-none focus:border-primary transition-all"
-                                />
-                            </div>
-                            <Button
-                                type="submit"
-                                disabled={isLoading}
-                                size="sm"
-                                className="w-full"
-                            >
-                                Create Passkey
-                            </Button>
-                        </form>
-                    )}
-
-                    <form onSubmit={handleTotpLogin} className="p-6 bg-muted/30 border border-border space-y-4">
-                        {!adminEmailConfigured && (
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-bold capitalize tracking-widest text-muted-foreground ml-1">
-                                    Admin Email
-                                </label>
-                                <input
-                                    type="email"
-                                    placeholder="admin@yourdomain.com"
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-background border border-border px-4 py-3 text-sm focus:outline-none focus:border-primary transition-all"
-                                />
-                            </div>
-                        )}
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-bold capitalize tracking-widest text-muted-foreground ml-1">
-                                Authenticator Code
-                            </label>
-                            <input
-                                ref={loginCodeRef}
-                                type="text"
-                                inputMode="numeric"
-                                autoComplete="one-time-code"
-                                maxLength={6}
-                                placeholder="123456"
-                                value={totpCode}
-                                onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                className="w-full bg-background border border-border px-4 py-3 text-sm focus:outline-none focus:border-primary transition-all tracking-widest"
-                            />
+                {needsEnrolment ? (
+                    <TotpEnrolment
+                        qrCode={enrolQr}
+                        secret={enrolSecret}
+                        code={enrolCode}
+                        onCodeChange={setEnrolCode}
+                        onVerify={handleEnrolVerify}
+                        onRetry={startEnrolment}
+                        onCancel={() => {
+                            setNeedsEnrolment(false);
+                            setEnrolQr('');
+                            setEnrolSecret('');
+                            setEnrolCode('');
+                            setEnrolNoSession(false);
+                        }}
+                        isLoading={enrolLoading}
+                        needsPasskeyFirst={enrolNoSession}
+                    />
+                ) : (
+                    <div className="overflow-hidden rounded-xl border border-border bg-card">
+                        <div className="grid grid-cols-2 gap-1 border-b border-border/60 bg-muted/40 p-1" role="tablist" aria-label="Sign-in method">
+                            {(
+                                [
+                                    { key: 'passkey', label: 'Passkey' },
+                                    { key: 'totp', label: 'Authenticator' },
+                                ] as const
+                            ).map((tab) => (
+                                <button
+                                    key={tab.key}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={method === tab.key}
+                                    onClick={() => setMethod(tab.key)}
+                                    className={
+                                        method === tab.key
+                                            ? 'rounded-lg bg-card px-3 py-2 text-sm font-semibold text-foreground shadow-sm'
+                                            : 'rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground'
+                                    }
+                                >
+                                    {tab.label}
+                                </button>
+                            ))}
                         </div>
-                        <Button
-                            type="submit"
-                            disabled={isLoading || totpCode.length !== 6}
-                            size="sm"
-                            className="w-full"
-                        >
-                            Login with Authenticator
-                        </Button>
-                        <p className="text-xs text-muted-foreground capitalize tracking-wider">
-                            Required second factor — an authenticator code is needed to complete admin sign-in.
-                        </p>
-                        {needsEnrolment && (
-                            <div className="p-4 bg-background border border-primary/30 space-y-4">
-                                <p className="text-xs font-bold text-foreground capitalize tracking-widest">
-                                    Enable your authenticator
-                                </p>
-                                <p className="text-xs text-muted-foreground leading-relaxed">
-                                    An authenticator is required as a second factor for admin sign-in — a passkey
-                                    alone is not enough.
-                                </p>
-                                {enrolNoSession || !enrolQr ? (
-                                    <div className="space-y-3">
-                                        <p className="text-xs text-muted-foreground leading-relaxed">
-                                            Use Quick Access above to sign in with your passkey first, then come back
-                                            here to finish setup.
-                                        </p>
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            className="w-full"
-                                            disabled={enrolLoading}
-                                            onClick={() => void startEnrolment()}
-                                        >
-                                            {enrolLoading ? 'Starting setup...' : 'Retry setup'}
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <form onSubmit={handleEnrolVerify} className="space-y-3">
-                                        <div className="flex flex-col items-center justify-center p-4 border border-border bg-paper">
-                                            {enrolQr && (
-                                                <img
-                                                    src={enrolQr}
-                                                    alt="Authenticator setup QR code"
-                                                    width={192}
-                                                    height={192}
-                                                    className="mb-3"
-                                                />
-                                            )}
-                                            <p className="text-xs text-center text-muted-foreground break-all max-w-50">
-                                                Secret: <span className="font-mono select-all">{enrolSecret}</span>
-                                            </p>
-                                        </div>
-                                        <input
-                                            type="text"
-                                            inputMode="numeric"
-                                            autoComplete="one-time-code"
-                                            maxLength={6}
-                                            placeholder="123456"
-                                            value={enrolCode}
-                                            onChange={(e) => setEnrolCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                            className="w-full bg-background border border-border px-4 py-3 text-sm text-center focus:outline-none focus:border-primary transition-all tracking-widest"
-                                        />
-                                        <Button
-                                            type="submit"
-                                            size="sm"
-                                            className="w-full"
-                                            disabled={enrolLoading || enrolCode.length !== 6}
-                                        >
-                                            {enrolLoading ? 'Verifying...' : 'Verify and enable'}
-                                        </Button>
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setNeedsEnrolment(false);
-                                                setEnrolQr('');
-                                                setEnrolSecret('');
-                                                setEnrolCode('');
-                                                setEnrolNoSession(false);
-                                            }}
-                                            className="w-full py-1 text-xs font-bold text-muted-foreground hover:text-foreground capitalize tracking-widest transition-colors"
-                                        >
-                                            Cancel
-                                        </button>
-                                    </form>
-                                )}
-                            </div>
-                        )}
-                    </form>
+                        <div className="p-5" role="tabpanel">
+                            {method === 'passkey' ? (
+                                <PasskeySignIn onSignIn={handleQuickLogin} isLoading={isLoading} />
+                            ) : (
+                                <TotpSignIn
+                                    code={totpCode}
+                                    onCodeChange={setTotpCode}
+                                    onSubmit={handleTotpLogin}
+                                    isLoading={isLoading}
+                                    inputRef={loginCodeRef}
+                                    showEmailField={!adminEmailConfigured}
+                                    email={email}
+                                    onEmailChange={setEmail}
+                                />
+                            )}
+                        </div>
+                    </div>
+                )}
 
-                    <button
-                        onClick={() => setShowOtherOptions(!showOtherOptions)}
-                        className="w-full py-2 text-xs font-bold text-muted-foreground hover:text-foreground capitalize tracking-widest transition-colors flex items-center justify-center gap-2"
+                <FirstRunSetup
+                    onSubmit={handleRegisterNewPasskey}
+                    isLoading={isLoading}
+                    email={email}
+                    onEmailChange={setEmail}
+                    showEmailField={!adminEmailConfigured}
+                />
+
+                {/* Moderators authenticate with their normal FresherFlow account;
+                    the admin shell then picks up their review permissions. */}
+                <p className="text-center text-sm text-muted-foreground">
+                    Moderator?{' '}
+                    <Link
+                        href="/login?redirect=/admin/dashboard"
+                        className="font-medium text-foreground underline-offset-4 hover:underline"
                     >
-                        <div className="h-px flex-1 bg-border/50" />
-                        <span>{showOtherOptions ? 'Hide Options' : 'Other Options'}</span>
-                        <div className="h-px flex-1 bg-border/50" />
-                    </button>
-                </div>
+                        Sign in with your FresherFlow account
+                    </Link>
+                </p>
+            </div>
+            </div>
 
-                <div className="pt-4 text-center">
-                    <p className="text-xs text-muted-foreground capitalize tracking-wider font-bold opacity-40 leading-relaxed">
-                        Authorized Personnel Only<br />
-                        Access attempts are monitored and logged.
-                    </p>
+            {/* Right: brand visual panel (desktop only) */}
+            <div className="relative hidden overflow-hidden bg-logo-bg max-lg:hidden lg:block" aria-hidden>
+                <div className="flex h-full flex-col justify-between p-10 text-paper">
+                    <div className="flex items-center gap-3">
+                        <LogoImage width={32} height={32} className="h-8 w-8 object-contain" />
+                        <span className="text-lg font-semibold tracking-wide">FresherFlow</span>
+                    </div>
+                    <div className="space-y-6">
+                        <div className="space-y-3">
+                            <p className="text-3xl font-bold tracking-tight">Run the queues.</p>
+                            <p className="max-w-sm text-sm text-paper/70">
+                                Review listings, triage reports, moderate the community —
+                                every action audit-logged.
+                            </p>
+                        </div>
+                        <ul className="space-y-3 text-sm">
+                            <li className="flex items-center gap-3">
+                                <BriefcaseIcon className="h-5 w-5 shrink-0 opacity-80" />
+                                Listings review and publishing
+                            </li>
+                            <li className="flex items-center gap-3">
+                                <FlagIcon className="h-5 w-5 shrink-0 opacity-80" />
+                                Reports triage
+                            </li>
+                            <li className="flex items-center gap-3">
+                                <ChatBubbleLeftRightIcon className="h-5 w-5 shrink-0 opacity-80" />
+                                Community moderation
+                            </li>
+                        </ul>
+                    </div>
+                    <p className="text-xs text-paper/50">Authorized personnel only. Access attempts are monitored.</p>
                 </div>
             </div>
         </div>

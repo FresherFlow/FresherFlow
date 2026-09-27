@@ -171,7 +171,7 @@ export const PERSONAL_GROUP: SpaceNavGroup = {
             href: REGISTRY.account.href,
             icon:    CircleUser,
             requiresAuth: true,
-            items: pick(ACCOUNT_NAV_ITEMS, 'profile', 'alerts', 'referrals', 'feedback', 'settings'),
+            items: pick(ACCOUNT_NAV_ITEMS, 'profile', 'alerts', 'referrals', 'feedback', 'settings', 'appearance'),
         },
     ],
 };

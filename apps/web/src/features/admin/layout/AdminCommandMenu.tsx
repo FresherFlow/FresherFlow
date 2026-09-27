@@ -16,16 +16,20 @@ import {
 import { useAdmin } from '@/lib/auth/AdminContext';
 import {
     discoveryNavItems,
-    mainNavItems,
+    overviewCommandItems,
     settingsNavItems,
-} from '@/features/admin/layout/AdminSidebar';
+} from '@/features/admin/layout/admin-sidebar-data';
 import { useAdminPalette } from './AdminPaletteProvider';
 
 export function AdminCommandMenu() {
     const palette = useAdminPalette();
     const router = useRouter();
     const { setTheme } = useTheme();
-    const { logout } = useAdmin();
+    const { logout, admin, moderator } = useAdmin();
+    // Moderators search only rows their keys unlock; admins see everything.
+    // Rows without a permission are admin-only and drop out for moderators.
+    const visible = <T extends { permission?: string }>(items: T[]): T[] =>
+        !admin && moderator ? items.filter((item) => item.permission != null && moderator.permissions.includes(item.permission)) : items;
 
     const runNav = React.useCallback(
         (href: string) => {
@@ -37,13 +41,20 @@ export function AdminCommandMenu() {
 
     if (!palette) return null;
 
+    const overview = visible(overviewCommandItems);
+    const manage = visible(settingsNavItems);
+    const discovery = visible(
+        discoveryNavItems.filter((item) => item.href !== '/admin/dashboard'),
+    );
+
     return (
         <CommandDialog open={palette.open} onOpenChange={palette.setOpen}>
             <CommandInput placeholder="Type a command or search..." />
             <CommandList>
                 <CommandEmpty>No results found.</CommandEmpty>
+                {overview.length > 0 && (
                 <CommandGroup heading="Overview">
-                    {mainNavItems.map((item) => {
+                    {overview.map((item) => {
                         const Icon = item.icon;
                         return (
                             <CommandItem
@@ -57,8 +68,10 @@ export function AdminCommandMenu() {
                         );
                     })}
                 </CommandGroup>
+                )}
+                {manage.length > 0 && (
                 <CommandGroup heading="Manage">
-                    {settingsNavItems.map((item) => {
+                    {manage.map((item) => {
                         const Icon = item.icon;
                         return (
                             <CommandItem
@@ -72,21 +85,24 @@ export function AdminCommandMenu() {
                         );
                     })}
                 </CommandGroup>
+                )}
+                {discovery.length > 0 && (
                 <CommandGroup heading="Discovery">
-                    {discoveryNavItems.map((item) => {
-                        const Icon = item.icon;
-                        return (
-                            <CommandItem
-                                key={`${item.label}-${item.href}`}
-                                value={`${item.label} ${item.href}`}
-                                onSelect={() => runNav(item.href)}
-                            >
-                                <Icon className="h-4 w-4" />
-                                <span>{item.label}</span>
-                            </CommandItem>
-                        );
-                    })}
+                    {discovery.map((item) => {
+                            const Icon = item.icon;
+                            return (
+                                <CommandItem
+                                    key={`${item.label}-${item.href}`}
+                                    value={`${item.label} ${item.href}`}
+                                    onSelect={() => runNav(item.href)}
+                                >
+                                    <Icon className="h-4 w-4" />
+                                    <span>{item.label}</span>
+                                </CommandItem>
+                            );
+                        })}
                 </CommandGroup>
+                )}
                 <CommandSeparator />
                 <CommandGroup heading="Theme">
                     <CommandItem value="Light theme" onSelect={() => { palette.closePalette(); setTheme('light'); }}>

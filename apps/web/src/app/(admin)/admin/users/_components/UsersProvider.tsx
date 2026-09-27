@@ -26,6 +26,10 @@ interface UsersDialogsState {
     setSuspendTarget: (target: UsersSuspendTarget | null) => void;
     reactivateTarget: UsersSuspendTarget | null;
     setReactivateTarget: (target: UsersSuspendTarget | null) => void;
+    bulkSuspendTargets: UsersSuspendTarget[] | null;
+    setBulkSuspendTargets: (targets: UsersSuspendTarget[] | null) => void;
+    bulkReactivateTargets: UsersSuspendTarget[] | null;
+    setBulkReactivateTargets: (targets: UsersSuspendTarget[] | null) => void;
     openGrant: () => void;
 }
 
@@ -39,6 +43,8 @@ export function UsersProvider({ children }: { children: ReactNode }) {
     const [revokeTarget, setRevokeTarget] = useState<ModeratorListEntry | null>(null);
     const [suspendTarget, setSuspendTarget] = useState<UsersSuspendTarget | null>(null);
     const [reactivateTarget, setReactivateTarget] = useState<UsersSuspendTarget | null>(null);
+    const [bulkSuspendTargets, setBulkSuspendTargets] = useState<UsersSuspendTarget[] | null>(null);
+    const [bulkReactivateTargets, setBulkReactivateTargets] = useState<UsersSuspendTarget[] | null>(null);
 
     const openGrant = useCallback(() => {
         setGrantQuery('');
@@ -63,6 +69,10 @@ export function UsersProvider({ children }: { children: ReactNode }) {
             setSuspendTarget,
             reactivateTarget,
             setReactivateTarget,
+            bulkSuspendTargets,
+            setBulkSuspendTargets,
+            bulkReactivateTargets,
+            setBulkReactivateTargets,
             openGrant,
         }),
         [
@@ -73,6 +83,8 @@ export function UsersProvider({ children }: { children: ReactNode }) {
             revokeTarget,
             suspendTarget,
             reactivateTarget,
+            bulkSuspendTargets,
+            bulkReactivateTargets,
             openGrant,
         ],
     );

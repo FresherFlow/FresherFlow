@@ -18,16 +18,19 @@ import { displayName } from './userDisplay';
 
 type UsersDialogsProps = Pick<
     ReturnType<typeof useModerators>,
-    'actingId' | 'grantCandidates' | 'grant' | 'revoke' | 'suspend' | 'reactivate'
+    'actingId' | 'bulkPending' | 'grantCandidates' | 'grant' | 'revoke' | 'suspend' | 'reactivate' | 'suspendMany' | 'reactivateMany'
 >;
 
 export default function UsersDialogs({
     actingId,
+    bulkPending,
     grantCandidates,
     grant,
     revoke,
     suspend,
     reactivate,
+    suspendMany,
+    reactivateMany,
 }: UsersDialogsProps) {
     const {
         grantOpen,
@@ -44,6 +47,10 @@ export default function UsersDialogs({
         setSuspendTarget,
         reactivateTarget,
         setReactivateTarget,
+        bulkSuspendTargets,
+        setBulkSuspendTargets,
+        bulkReactivateTargets,
+        setBulkReactivateTargets,
     } = useUsersDialogs();
 
     const candidates = grantCandidates(grantQuery);
@@ -210,6 +217,89 @@ export default function UsersDialogs({
                     const target = reactivateTarget;
                     setReactivateTarget(null);
                     if (target) void reactivate(target.id);
+                }}
+            />
+
+            {/* Bulk suspend: one confirm, one reason shared across the audit rows. */}
+            <AlertDialog
+                show={(bulkSuspendTargets?.length ?? 0) > 0}
+                title={
+                    bulkSuspendTargets && bulkSuspendTargets.length > 0
+                        ? `Suspend ${bulkSuspendTargets.length} user${bulkSuspendTargets.length === 1 ? '' : 's'}?`
+                        : 'Suspend users?'
+                }
+                message={
+                    bulkSuspendTargets && bulkSuspendTargets.length > 0
+                        ? `${bulkSuspendTargets
+                              .slice(0, 5)
+                              .map((t) => t.name)
+                              .join(', ')}${
+                              bulkSuspendTargets.length > 5
+                                  ? ` and ${bulkSuspendTargets.length - 5} more`
+                                  : ''
+                          } lose protected access until reactivated.`
+                        : ''
+                }
+                type="danger"
+                confirmText={
+                    bulkPending
+                        ? 'Working…'
+                        : bulkSuspendTargets && bulkSuspendTargets.length > 0
+                          ? `Suspend ${bulkSuspendTargets.length}`
+                          : 'Suspend'
+                }
+                requireReason
+                reasonPlaceholder="e.g. Spam wave in community reports…"
+                onCancel={() => {
+                    if (!bulkPending) setBulkSuspendTargets(null);
+                }}
+                onConfirm={(reason) => {
+                    const targets = bulkSuspendTargets;
+                    if (!targets || targets.length === 0 || bulkPending) return;
+                    setBulkSuspendTargets(null);
+                    void suspendMany(
+                        targets.map((t) => t.id),
+                        reason?.trim() || 'Suspended by admin (bulk)',
+                    );
+                }}
+            />
+
+            {/* Bulk reactivate: one confirm, no reason needed. */}
+            <AlertDialog
+                show={(bulkReactivateTargets?.length ?? 0) > 0}
+                title={
+                    bulkReactivateTargets && bulkReactivateTargets.length > 0
+                        ? `Reactivate ${bulkReactivateTargets.length} user${bulkReactivateTargets.length === 1 ? '' : 's'}?`
+                        : 'Reactivate users?'
+                }
+                message={
+                    bulkReactivateTargets && bulkReactivateTargets.length > 0
+                        ? `${bulkReactivateTargets
+                              .slice(0, 5)
+                              .map((t) => t.name)
+                              .join(', ')}${
+                              bulkReactivateTargets.length > 5
+                                  ? ` and ${bulkReactivateTargets.length - 5} more`
+                                  : ''
+                          } regain protected access immediately.`
+                        : ''
+                }
+                type="warning"
+                confirmText={
+                    bulkPending
+                        ? 'Working…'
+                        : bulkReactivateTargets && bulkReactivateTargets.length > 0
+                          ? `Reactivate ${bulkReactivateTargets.length}`
+                          : 'Reactivate'
+                }
+                onCancel={() => {
+                    if (!bulkPending) setBulkReactivateTargets(null);
+                }}
+                onConfirm={() => {
+                    const targets = bulkReactivateTargets;
+                    if (!targets || targets.length === 0 || bulkPending) return;
+                    setBulkReactivateTargets(null);
+                    void reactivateMany(targets.map((t) => t.id));
                 }}
             />
         </>

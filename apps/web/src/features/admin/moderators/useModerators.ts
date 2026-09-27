@@ -14,13 +14,38 @@ import {
     type ModeratorListEntry,
 } from './moderationContract';
 
+type ModeratorsSnapshot = {
+    moderators: ModeratorListEntry[];
+    users: DirectoryUser[];
+    audit: ModeratorAuditRecord[];
+};
+
+/** Last good payload, shared across mounts (see useModerators). */
+let moderatorsSnapshot: ModeratorsSnapshot | null = null;
+/** When the snapshot was written — revisits within the TTL skip the
+    background refetch entirely, so nothing swaps or flashes. */
+let moderatorsSnapshotAt = 0;
+const MODERATORS_SNAPSHOT_TTL_MS = 60_000;
+
+/** True when a fresh-enough snapshot exists (no fetch needed on mount). */
+export function hasFreshModeratorsSnapshot(): boolean {
+    return moderatorsSnapshot !== null && Date.now() - moderatorsSnapshotAt < MODERATORS_SNAPSHOT_TTL_MS;
+}
+
 export function useModerators(isAuthenticated: boolean) {
-    const [moderators, setModerators] = useState<ModeratorListEntry[]>([]);
-    const [users, setUsers] = useState<DirectoryUser[]>([]);
-    const [audit, setAudit] = useState<ModeratorAuditRecord[]>([]);
-    const [loading, setLoading] = useState(true);
+    // Stale-while-revalidate across mounts: client-side navigation remounts
+    // the page, and refetching from empty flashes a full loading screen on
+    // every visit (the "refresh" operators see). The module snapshot keeps
+    // the last good payload so revisits render instantly and refresh quietly.
+    const [moderators, setModerators] = useState<ModeratorListEntry[]>(
+        () => moderatorsSnapshot?.moderators ?? [],
+    );
+    const [users, setUsers] = useState<DirectoryUser[]>(() => moderatorsSnapshot?.users ?? []);
+    const [audit, setAudit] = useState<ModeratorAuditRecord[]>(() => moderatorsSnapshot?.audit ?? []);
+    const [loading, setLoading] = useState(() => moderatorsSnapshot === null);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [actingId, setActingId] = useState<string | null>(null);
+    const [bulkPending, setBulkPending] = useState(false);
 
     const refresh = useCallback(async () => {
         setLoadError(null);
@@ -28,26 +53,36 @@ export function useModerators(isAuthenticated: boolean) {
             const [mods, directory] = await Promise.all([listModerators(), listDirectoryUsers()]);
             setModerators(mods);
             setUsers(directory);
+            moderatorsSnapshot = { ...(moderatorsSnapshot ?? { audit: [] }), moderators: mods, users: directory };
+            moderatorsSnapshotAt = Date.now();
         } catch (err) {
-            // Graceful empty state when the API slice lands later.
-            setModerators([]);
-            setUsers([]);
+            // Keep stale rows on failure — wiping to empty would blank the
+            // page on every transient error. The subtle error banner (not a
+            // full screen) surfaces the retry.
             setLoadError(getErrorMessage(err, 'Could not load moderators. Please retry.'));
         }
     }, []);
 
     const refreshAudit = useCallback(async () => {
         try {
-            setAudit(await auditLog({ limit: 50 }));
+            const entries = await auditLog({ limit: 50 });
+            setAudit(entries);
+            moderatorsSnapshot = { ...(moderatorsSnapshot ?? { moderators: [], users: [] }), audit: entries };
         } catch {
-            setAudit([]);
+            // Keep stale audit rows; see above.
         }
     }, []);
 
     useEffect(() => {
         if (!isAuthenticated) return;
         let cancelled = false;
-        setLoading(true);
+        // Fresh snapshot: render it, skip the fetch — zero flash, zero swap.
+        if (hasFreshModeratorsSnapshot()) {
+            setLoading(false);
+            return;
+        }
+        // Background refresh when a snapshot exists — no full-screen loader.
+        if (moderatorsSnapshot === null) setLoading(true);
         void (async () => {
             await refresh();
             await refreshAudit();
@@ -96,6 +131,40 @@ export function useModerators(isAuthenticated: boolean) {
         }
     }
 
+    async function runBulk(
+        userIds: string[],
+        reason: string | undefined,
+        action: 'suspend' | 'reactivate',
+        fn: (id: string, reason: string) => Promise<void>,
+    ) {
+        if (userIds.length === 0) return;
+        const verb = action === 'suspend' ? 'Suspending' : 'Reactivating';
+        const past = action === 'suspend' ? 'Suspended' : 'Reactivated';
+        setBulkPending(true);
+        const tid = toast.loading(`${verb} ${userIds.length} user${userIds.length === 1 ? '' : 's'}…`);
+        let ok = 0;
+        let firstError: string | null = null;
+        for (const id of userIds) {
+            try {
+                // Sequential per-user writes — one audit row each.
+                await fn(id, reason ?? `${past} by admin (bulk)`);
+                ok++;
+            } catch (err) {
+                if (!firstError) firstError = getErrorMessage(err, `${verb} failed`);
+            }
+        }
+        await refresh();
+        await refreshAudit();
+        setBulkPending(false);
+        if (ok === userIds.length) {
+            toast.success(`${past} ${ok} user${ok === 1 ? '' : 's'}`, { id: tid });
+        } else if (ok > 0) {
+            toast.error(`${past} ${ok} of ${userIds.length}. First error: ${firstError}`, { id: tid });
+        } else {
+            toast.error(firstError ?? `${verb} failed`, { id: tid });
+        }
+    }
+
     return {
         moderators,
         users,
@@ -103,6 +172,7 @@ export function useModerators(isAuthenticated: boolean) {
         loading,
         loadError,
         actingId,
+        bulkPending,
         moderatorIds,
         grantCandidates,
         refresh,
@@ -114,5 +184,9 @@ export function useModerators(isAuthenticated: boolean) {
             runActing(userId, 'User suspended', () => suspendUser(userId, reason).then(() => undefined)),
         reactivate: (userId: string) =>
             runActing(userId, 'User reactivated', () => reactivateUser(userId).then(() => undefined)),
+        suspendMany: (userIds: string[], reason: string) =>
+            runBulk(userIds, reason, 'suspend', (id, r) => suspendUser(id, r).then(() => undefined)),
+        reactivateMany: (userIds: string[]) =>
+            runBulk(userIds, undefined, 'reactivate', (id) => reactivateUser(id).then(() => undefined)),
     };
 }

@@ -32,6 +32,8 @@ export type AdminNavSubItem = {
     icon?: AdminNavIcon;
     badge?: AdminNavBadge;
     exact?: boolean;
+    /** Permission key gating this row for moderator sessions (see moderatorAccess). */
+    permission?: string;
 };
 
 export type AdminNavLinkData = {
@@ -42,6 +44,8 @@ export type AdminNavLinkData = {
     exact?: boolean;
     /** Legacy affordance: MobileNavMenu renders a trailing chevron for these. */
     hasSubmenu?: boolean;
+    /** Permission key gating this row for moderator sessions (see moderatorAccess). */
+    permission?: string;
     items?: never;
 };
 
@@ -80,13 +84,13 @@ export const adminDiscoverySubItems: AdminNavSubItem[] = [
  */
 export const adminOverviewItems: AdminNavItemData[] = [
     { title: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
-    { title: 'Listings', href: '/admin/opportunities', icon: Briefcase, exact: true },
+    { title: 'Listings', href: '/admin/opportunities', icon: Briefcase, exact: true, permission: 'opportunity.review' },
     { title: 'Profile Pages', href: '/admin/profile-pages', icon: Users },
-    { title: 'Submissions', href: '/admin/community-submissions', icon: ListTodo },
-    { title: 'Reports', href: '/admin/reports', icon: Flag },
+    { title: 'Submissions', href: '/admin/community-submissions', icon: ListTodo, permission: 'community.moderate' },
+    { title: 'Reports', href: '/admin/reports', icon: Flag, permission: 'report.resolve' },
     { title: 'Users & moderators', href: '/admin/users', icon: Users },
     { title: 'Audit log', href: '/admin/audit', icon: BadgeCheck },
-    { title: 'New listing', href: '/admin/opportunities/create', icon: CirclePlus },
+    { title: 'New listing', href: '/admin/opportunities/create', icon: CirclePlus, permission: 'opportunity.create' },
     { title: 'Discovery Engine', icon: ShieldCheck, items: adminDiscoverySubItems },
 ];
 
@@ -116,26 +120,38 @@ export const adminDiscoveryItems: AdminNavLinkData[] = [
 export function getAdminSidebarGroups(
     _pathname: string,
     feedbackBadge: number,
+    moderatorPermissions?: string[] | null,
 ): {
     groups: AdminNavGroupData[];
     headerTitle: string;
     homeHref: string;
 } {
+    const visible = (permission?: string): boolean =>
+        moderatorPermissions == null || (permission != null && moderatorPermissions.includes(permission));
+    const filterItems = <T extends { permission?: string; items?: AdminNavSubItem[] }>(items: T[]): T[] =>
+        items.flatMap((item) => {
+            if (item.items) {
+                const subs = item.items.filter((sub) => visible(sub.permission));
+                if (subs.length === 0) return [];
+                return [{ ...item, items: subs }];
+            }
+            return visible(item.permission) ? [item] : [];
+        });
     // One rail everywhere: Discovery lives in a collapsible submenu rather than
     // a separate sidebar mode, so the groups no longer depend on the route.
     return {
         groups: [
-            { title: 'Overview', items: adminOverviewItems },
+            { title: 'Overview', items: filterItems(adminOverviewItems) },
             {
                 title: 'Manage',
-                items: adminManageItems.map((item) =>
+                items: filterItems(adminManageItems).map((item) =>
                     item.title === 'Feedback' && feedbackBadge > 0
                         ? { ...item, badge: feedbackBadge }
                         : item,
                 ),
             },
-        ],
-        headerTitle: 'Admin Portal',
+        ].filter((group) => group.items.length > 0),
+        headerTitle: moderatorPermissions == null ? 'Admin Portal' : 'Moderation',
         homeHref: '/admin/dashboard',
     };
 }
@@ -151,12 +167,14 @@ export type AdminLegacyNavItem = {
     icon: AdminNavIcon;
     exact?: boolean;
     hasSubmenu?: boolean;
+    permission?: string;
 };
 
 function toLegacyItem(item: AdminNavLinkData): AdminLegacyNavItem {
     const legacy: AdminLegacyNavItem = { href: item.href, label: item.title, icon: item.icon };
     if (item.exact) legacy.exact = true;
     if (item.hasSubmenu) legacy.hasSubmenu = true;
+    if (item.permission) legacy.permission = item.permission;
     return legacy;
 }
 
@@ -175,6 +193,7 @@ function flattenLegacy(items: AdminNavItemData[]): AdminLegacyNavItem[] {
                     icon: sub.icon ?? ShieldCheck,
                 };
                 if (sub.exact) legacy.exact = true;
+                if (sub.permission) legacy.permission = sub.permission;
                 return legacy;
             });
         }
@@ -185,6 +204,19 @@ function flattenLegacy(items: AdminNavItemData[]): AdminLegacyNavItem[] {
 export const mainNavItems: AdminLegacyNavItem[] = flattenLegacy(adminOverviewItems);
 export const settingsNavItems: AdminLegacyNavItem[] = adminManageItems.map(toLegacyItem);
 export const discoveryNavItems: AdminLegacyNavItem[] = adminDiscoveryItems.map(toLegacyItem);
+
+/**
+ * Top-level Overview rows for the command palette: collapsible parents stay
+ * as ONE row (Discovery Engine → `/admin/discovery`) instead of being
+ * flattened into their children. `flattenLegacy` above fans the children out
+ * for the mobile drawer — using it in the palette too listed every Discovery
+ * view twice (once under Overview, once under Discovery).
+ */
+export const overviewCommandItems: AdminLegacyNavItem[] = adminOverviewItems.map((item) =>
+    item.items
+        ? { href: '/admin/discovery', label: item.title, icon: item.icon, hasSubmenu: true }
+        : toLegacyItem(item),
+);
 
 /**
  * Adapter for the mobile drawer, which still renders through `NavMain`

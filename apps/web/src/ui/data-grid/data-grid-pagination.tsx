@@ -64,7 +64,9 @@ export function DataGridPagination({
 
   return (
     <div className="flex w-full flex-row items-center justify-between gap-2 px-3 py-2.5">
-      <div className="flex items-center gap-4">
+      {/* Stacks below `sm`: side-by-side these two halves need ~380px, which
+          is wider than a phone. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
         <div className="hidden items-center gap-2 sm:flex">
           <p className="whitespace-nowrap text-xs text-muted-foreground">
             Rows per page
@@ -93,7 +95,7 @@ export function DataGridPagination({
         )}
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2 sm:justify-end">
         <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
           {totalRows > 0 ? (
             <>
@@ -107,7 +109,10 @@ export function DataGridPagination({
             "No results"
           )}
         </span>
-        <div className="flex items-center gap-0.5">
+        {/* Numbered buttons need ~380px. Below `sm` they overflow a phone and
+            push the row numbers off-screen entirely, so hide them and let the
+            prev/next arrows plus the "Page X of Y" indicator carry navigation. */}
+        <div className="hidden items-center gap-0.5 sm:flex">
           <Button
             variant="ghost"
             className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
@@ -143,6 +148,32 @@ export function DataGridPagination({
               </Button>
             )
           )}
+          <Button
+            variant="ghost"
+            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+            onClick={nextPage}
+            disabled={!canNextPage}
+            aria-label="Go to next page"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Mobile fallback: prev/next arrows stay reachable, with the count
+            between them so the current position is still obvious. */}
+        <div className="flex items-center gap-1 sm:hidden">
+          <Button
+            variant="ghost"
+            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+            onClick={previousPage}
+            disabled={!canPreviousPage}
+            aria-label="Go to previous page"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="px-1 text-xs font-medium tabular-nums text-foreground">
+            {pageIndex + 1} / {pageCount || 1}
+          </span>
           <Button
             variant="ghost"
             className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"

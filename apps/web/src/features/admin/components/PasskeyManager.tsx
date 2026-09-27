@@ -150,7 +150,6 @@ export default function PasskeyManager() {
                                     </div>
                                     <div>
                                         <p className="font-medium text-sm">{key.name}</p>
-                                        <p className="text-xs text-muted-foreground">ID: {key.id.slice(0, 8)}...</p>
                                     </div>
                                 </div>
                                 <Button

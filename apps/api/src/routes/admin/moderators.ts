@@ -1,13 +1,46 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import prisma from '../../infrastructure/database/prisma';
-import { requireAdmin, requirePermission } from '../../middleware/auth';
+import { requireAdmin, requirePermission, requireStaff, getUserPermissions } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
 import { adminRateLimit } from '../../middleware/adminRateLimit';
 import { withAdminAudit } from '../../middleware/adminAudit';
 import { AppError } from '../../middleware/errorHandler';
 
 const router = Router();
+
+/**
+ * GET /api/admin/moderators/me
+ * Who is calling: works for admin sessions and moderator user sessions
+ * (requireStaff, not requireAdmin). Returns the effective permission keys
+ * plus an explicit moderator flag so clients can tell a bare-grant
+ * moderator (grant row, zero permission rows yet) apart from a plain user —
+ * the keys-only endpoint cannot make that distinction, and clients would
+ * show a false 401. Every queue route re-checks server-side; this payload
+ * is advisory for nav gating.
+ */
+router.get('/me', requireStaff, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.userId ?? req.adminId ?? null;
+        if (!userId) {
+            return next(new AppError('Authentication required', 401));
+        }
+        const [grant, permissions] = await Promise.all([
+            req.adminId
+                ? null
+                : prisma.userAccessRole.findFirst({ where: { userId }, select: { userId: true } }),
+            getUserPermissions(userId),
+        ]);
+        res.setHeader('Cache-Control', 'private, no-store');
+        return res.json({
+            userId,
+            isModerator: req.adminId != null || grant != null,
+            permissions,
+        });
+    } catch (error) {
+        next(error);
+    }
+});
 
 // Granting/revoking the Moderator role is admin-only: moderators hold no
 // moderator.manage permission (see seedRbac), so they get 403 here while

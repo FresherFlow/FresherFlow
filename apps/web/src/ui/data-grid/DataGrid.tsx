@@ -42,6 +42,7 @@ import { Table as UITable, TableBody, TableCell, TableRow } from "@/ui/Table"
 import { cn } from "@/ui/cn"
 import { Button } from "@/ui/Button"
 import { FilterSelect } from "./FilterSelect"
+import { DataGridColumnVisibility } from "./DataGridToolbar"
 import { DataGridHeader } from "./data-grid-header"
 import { DataGridPagination } from "./data-grid-pagination"
 import { DataGridBulkBar } from "./DataGridBulkBar"
@@ -78,6 +79,12 @@ export interface DataGridActionsContext<TData extends RowData> {
   selectedRows: TData[]
   selectedCount: number
   clearSelection: () => void
+  /**
+   * The underlying table instance. Exposed so callers can render the shared
+   * `DataGridColumnVisibility` control — without a handle there is no channel
+   * to reach column visibility from the `actions` render prop.
+   */
+  table: Table<StockFeatures, TData>
 }
 
 /**
@@ -119,6 +126,13 @@ export interface DataGridProps<TData extends RowData> {
   statusValue?: string
   onStatusChange?: (value: string) => void
   statusOptions?: StatusFilterOption[]
+  /**
+   * Second facet filter, for tables that need more than status (e.g. role).
+   * Rendered next to the status select; the caller applies the filtering.
+   */
+  roleValue?: string
+  onRoleChange?: (value: string) => void
+  roleOptions?: StatusFilterOption[]
   onClear?: () => void
   actions?: (ctx: DataGridActionsContext<TData>) => React.ReactNode
   onSelectedRowsChange?: (rows: TData[]) => void
@@ -131,6 +145,11 @@ export interface DataGridProps<TData extends RowData> {
   bulkActions?: (ctx: DataGridActionsContext<TData>) => React.ReactNode
   /** Entity name for the bulk bar count, e.g. "listing". Defaults to "row". */
   bulkBarEntityName?: string
+  /**
+   * Show the "Columns" visibility toggle (shadcn-admin `DataTableViewOptions`
+   * pattern). Columns hide via `enableHiding: false` opt-out in column defs.
+   */
+  showViewOptions?: boolean
   /**
    * Controlled sorting. Pass both when the sort belongs to the caller — e.g. it
    * maps to a server `sort` query param or a toolbar dropdown. Without them the
@@ -167,12 +186,16 @@ export function DataGrid<TData extends RowData>({
   statusValue,
   onStatusChange,
   statusOptions,
+  roleValue,
+  onRoleChange,
+  roleOptions,
   onClear,
   actions,
   onSelectedRowsChange,
   className,
   bulkActions,
   bulkBarEntityName = "row",
+  showViewOptions = false,
   sorting: controlledSorting,
   onSortingChange: controlledOnSortingChange,
   serverPagination,
@@ -180,6 +203,9 @@ export function DataGrid<TData extends RowData>({
   onSearchChange,
 }: DataGridProps<TData>) {
   const [localSorting, setLocalSorting] = React.useState<GridSortingState>([])
+  // Owned here so the shared DataGridColumnVisibility control (which mutates
+  // visibility through the table) actually persists across data changes.
+  const [columnVisibility, setColumnVisibility] = React.useState<Record<string, boolean>>({})
   const [localGlobalFilter, setLocalGlobalFilter] = React.useState("")
   // A caller whose rows come from a server-side query must own the search, or
   // the built-in box only filters the page already loaded. Controlled mode still
@@ -244,7 +270,9 @@ export function DataGrid<TData extends RowData>({
       columnFilters,
       rowSelection,
       pagination,
+      columnVisibility,
     },
+    onColumnVisibilityChange: setColumnVisibility,
     onSortingChange: setSorting,
     onGlobalFilterChange: setGlobalFilter,
     onColumnFiltersChange: setColumnFilters,
@@ -303,6 +331,11 @@ export function DataGrid<TData extends RowData>({
       statusValue &&
         statusOptions &&
         statusValue !== statusOptions[0]?.value
+    ) ||
+    Boolean(
+      roleValue &&
+        roleOptions &&
+        roleValue !== roleOptions[0]?.value
     )
 
   React.useEffect(() => {
@@ -362,6 +395,16 @@ export function DataGrid<TData extends RowData>({
               className="w-auto min-w-32"
             />
           )}
+          {roleOptions && onRoleChange && (
+            <FilterSelect
+              value={roleValue ?? roleOptions[0]?.value ?? ""}
+              onChange={onRoleChange}
+              options={roleOptions}
+              ariaLabel="Filter by role"
+              placeholder="All roles"
+              className="w-auto min-w-32"
+            />
+          )}
           {hasActiveFilters && (
             <Button
               type="button"
@@ -370,11 +413,13 @@ export function DataGrid<TData extends RowData>({
               Clear
             </Button>
           )}
+          {showViewOptions && <DataGridColumnVisibility table={table} />}
           {actions &&
             actions({
               selectedRows,
               selectedCount: selectedRows.length,
               clearSelection: () => setRowSelection({}),
+              table,
             })}
         </div>
       </CardHeader>
@@ -445,6 +490,7 @@ export function DataGrid<TData extends RowData>({
             selectedRows,
             selectedCount: selectedRows.length,
             clearSelection: () => setRowSelection({}),
+            table,
           })}
         </DataGridBulkBar>
       )}

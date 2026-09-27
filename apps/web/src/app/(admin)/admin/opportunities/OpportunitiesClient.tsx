@@ -56,7 +56,6 @@ function OpportunitiesListPage() {
         setSelectedIds,
         bulkActionPending,
         bulkActionLabel,
-        lastBulkResult,
         confirmModal, setConfirmModal,
         handleExpire,
         handleStatusUpdate,
@@ -103,13 +102,7 @@ function OpportunitiesListPage() {
                 exportUrl={exportUrl}
             />
 
-            {lastBulkResult && (
-                <div className="shrink-0 rounded-lg border border-border bg-card/70 px-3 py-2 text-xs text-muted-foreground">
-                    Last bulk {lastBulkResult.action.toLowerCase()}: {lastBulkResult.updatedCount} updated ({new Date(lastBulkResult.at).toLocaleTimeString()}).
-                </div>
-            )}
-
-            {/* Single responsive grid — sticky identity columns + horizontal
+            {/* Unified grid — sticky identity columns + horizontal
                 scroll on mobile, search, sorting, selection, bulk bar,
                 pagination, loading and empty states. */}
             <AdminOpportunitiesTable

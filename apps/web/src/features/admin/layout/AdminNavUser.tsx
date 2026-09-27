@@ -28,11 +28,13 @@ import {
  */
 export function AdminNavUser() {
     const { isMobile } = useSidebar();
-    const { admin, logout } = useAdmin();
+    const { admin, moderator, logout } = useAdmin();
 
-    const email = admin?.email ?? '';
-    const name = admin?.fullName?.trim() || (email ? email.split('@')[0] : 'Admin');
-    const initial = (email ? email.charAt(0) : 'A').toUpperCase();
+    const email = admin?.email ?? moderator?.email ?? '';
+    const name =
+        admin?.fullName?.trim() || moderator?.name || (email ? email.split('@')[0] : 'Admin');
+    const initial = (name ? name.charAt(0) : 'A').toUpperCase();
+    const isStaffAdmin = admin != null;
 
     return (
         <SidebarMenu>
@@ -71,20 +73,26 @@ export function AdminNavUser() {
                             </div>
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
-                        <DropdownMenuGroup>
-                            <DropdownMenuItem asChild>
-                                <Link href="/admin/dashboard">
-                                    <LayoutDashboard className="size-4 shrink-0" />
-                                    Dashboard
-                                </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                                <Link href="/admin/settings">
-                                    <Settings className="size-4 shrink-0" />
-                                    Settings
-                                </Link>
-                            </DropdownMenuItem>
-                        </DropdownMenuGroup>
+                        {isStaffAdmin ? (
+                            <DropdownMenuGroup>
+                                <DropdownMenuItem asChild>
+                                    <Link href="/admin/dashboard">
+                                        <LayoutDashboard className="size-4 shrink-0" />
+                                        Dashboard
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                    <Link href="/admin/settings">
+                                        <Settings className="size-4 shrink-0" />
+                                        Settings
+                                    </Link>
+                                </DropdownMenuItem>
+                            </DropdownMenuGroup>
+                        ) : (
+                            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                                Moderator queues
+                            </DropdownMenuLabel>
+                        )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                             onClick={() => {
@@ -93,7 +101,7 @@ export function AdminNavUser() {
                             className="text-destructive focus:bg-destructive/10 focus:text-destructive"
                         >
                             <LogOut className="size-4 shrink-0" />
-                            Sign out
+                            {isStaffAdmin ? 'Sign out' : 'Exit to app'}
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>

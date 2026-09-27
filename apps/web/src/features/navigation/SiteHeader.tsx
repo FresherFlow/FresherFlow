@@ -10,17 +10,13 @@ import { useOfflineActionQueue } from '@/hooks/useOfflineActionQueue';
 import { SidebarTrigger } from '@/ui/sidebar';
 import { Separator } from '@/ui/separator';
 import { formatSegment, getAdminTitle, isFeedHeaderRoute } from './headerContent';
-import { SIDEBAR_W_VAR } from './sidebarState';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/ui/Breadcrumb';
 
 /**
- * Merged site header for sidebar routes (Sidebar 07 `site-header` pattern):
- * SidebarTrigger + header portal target / breadcrumb fallback + the
- * TopUtilityBar cluster (theme, alerts, user menu). Positioning contract
- * is unchanged: fixed, `left: var(--sidebar-w)`, desktop only. This is the
- * single desktop header for sidebar routes — public routes use DesktopNav,
- * mobile uses MobileTopNav, admin uses TopHeaderBar. One header per
- * breakpoint, one offset token, flat (no new boxes).
+ * Merged site header for sidebar routes (shadcn-admin `Header` pattern:
+ * sticky in-flow at the top of the content column, so it aligns in every
+ * sidebar variant with zero offset math). Desktop only; mobile uses
+ * MobileTopNav and clears it with top padding.
  */
 function SiteHeaderContent() {
     const pathname = usePathname() || '';
@@ -49,8 +45,7 @@ function SiteHeaderContent() {
 
     return (
         <div
-            className="hidden lg:flex fixed top-0 right-0 h-14 items-center gap-2 border-b border-border/40 bg-background/95 backdrop-blur-sm z-50 pr-6 pl-4 transition-all duration-300 ease-out motion-reduce:transition-none"
-            style={{ left: SIDEBAR_W_VAR }}
+            className="hidden h-14 w-full shrink-0 sticky top-0 items-center gap-2 border-b border-border/40 bg-background/95 backdrop-blur-sm z-40 pr-6 pl-4 lg:flex"
         >
             <SidebarTrigger className="-ml-1 h-7 w-7 shrink-0 [&_svg]:size-4!" />
             <Separator orientation="vertical" className="mr-2 h-4" />
@@ -156,7 +151,7 @@ function SiteHeaderContent() {
 
 export function SiteHeader() {
     return (
-        <Suspense fallback={<div className="hidden lg:block fixed top-0 right-0 h-14 z-40 transition-all duration-300 ease-out motion-reduce:transition-none" style={{ left: SIDEBAR_W_VAR }} />}>
+        <Suspense fallback={<div className="hidden h-14 w-full shrink-0 lg:block" aria-hidden />}>
             <SiteHeaderContent />
         </Suspense>
     );

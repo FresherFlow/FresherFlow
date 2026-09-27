@@ -18,7 +18,14 @@ interface AuditEntry {
 
 const ACTION_FILTERS = ['CREATE', 'UPDATE', 'DELETE', 'EXPIRE', 'BULK_ACTION', 'EXPORT', 'REJECT', 'SPAM'];
 
-// TODO(spec): moderator grants audit as CREATE and revocations as DELETE until the
+/**
+ * Last good audit payload, shared across mounts (stale-while-revalidate):
+ * client-side navigation remounts the page, and refetching from empty
+ * flashes a full loading screen on every visit. Revisits render instantly.
+ */
+let auditSnapshot: AuditEntry[] | null = null;
+let auditSnapshotAt = 0;
+const AUDIT_SNAPSHOT_TTL_MS = 60_000;// TODO(spec): moderator grants audit as CREATE and revocations as DELETE until the
 // parallel API slice extends the audit ACTIONS enum (e.g. MODERATOR_GRANT,
 // MODERATOR_REVOKE, USER_SUSPEND, USER_REACTIVATE). Keep this list in sync with
 // `apps/api/src/routes/admin/audit.ts` ACTIONS; unsupported values surface the
@@ -27,14 +34,16 @@ const MODERATOR_ACTION_HINT = 'Grants audit as CREATE, revocations as DELETE, st
 
 export default function AuditLogClient() {
     const { isAuthenticated } = useFirebaseAdmin();
-    const [entries, setEntries] = useState<AuditEntry[]>([]);
+    const [entries, setEntries] = useState<AuditEntry[]>(() => auditSnapshot ?? []);
     const [action, setAction] = useState('');
     const [actorId, setActorId] = useState('');
     const [targetId, setTargetId] = useState('');
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(() => auditSnapshot === null);
     const [error, setError] = useState<string | null>(null);
 
     const fetchAudit = useCallback(async () => {
+        // Safe to mark loading even with rows on screen: the full-screen
+        // loader below only renders when there are zero rows.
         setLoading(true);
         setError(null);
         try {
@@ -44,8 +53,16 @@ export default function AuditLogClient() {
                 targetId: targetId.trim() || undefined,
                 limit: 100,
             })) as { entries: AuditEntry[] };
-            setEntries(res.entries || []);
+            const next = res.entries || [];
+            setEntries(next);
+            // Cache only the unfiltered view — filtered views must not poison
+            // revisits with a subset.
+            if (!actorId.trim() && !action && !targetId.trim()) {
+                auditSnapshot = next;
+                auditSnapshotAt = Date.now();
+            }
         } catch (err) {
+            // Keep stale rows on failure; the inline error below surfaces retry.
             setError(getErrorMessage(err, 'Could not load the audit log. Please retry.'));
         } finally {
             setLoading(false);
@@ -54,15 +71,25 @@ export default function AuditLogClient() {
 
     useEffect(() => {
         if (!isAuthenticated) return;
+        // Fresh unfiltered snapshot: render it, skip the fetch entirely.
+        // Filtered views always fetch (they are never cached).
+        if (!action && !actorId.trim() && !targetId.trim() && auditSnapshot !== null && Date.now() - auditSnapshotAt < AUDIT_SNAPSHOT_TTL_MS) {
+            setLoading(false);
+            return;
+        }
         void fetchAudit();
     }, [isAuthenticated, fetchAudit]);
 
-    if (loading) {
+    if (loading && entries.length === 0) {
         return <LoadingScreen message="Loading audit log..." />;
     }
 
     return (
-        <div className="space-y-6 pb-12 text-foreground">
+        // `flex-1 min-h-0 overflow-y-auto` is required: the admin shell clips its
+        // content column, so a page without its own scroll container cannot be
+        // scrolled and the bottom rows are unreachable. Matches the other admin
+        // pages (dashboard, feedback, resources, rooms, settings).
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-6 p-4 pt-16 md:p-8 md:pt-8 pb-28 md:pb-8 text-foreground">
             <header className="border-b border-border pb-5">
                 <h1 className="text-2xl font-semibold tracking-tight">Audit log</h1>
                 <p className="mt-1 text-sm text-muted-foreground">
@@ -70,6 +97,12 @@ export default function AuditLogClient() {
                     action. {MODERATOR_ACTION_HINT}
                 </p>
                 <div className="mt-3 flex flex-wrap items-center gap-2">
+                    {loading && entries.length > 0 ? (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <span aria-hidden className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                            Updating…
+                        </span>
+                    ) : null}
                     <select
                         aria-label="Filter by action"
                         value={action}

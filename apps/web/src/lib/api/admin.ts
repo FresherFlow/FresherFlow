@@ -16,6 +16,14 @@ export const adminApi = {
     getModerators: () =>
         apiClient<{ moderators: Array<{ id: string; fullName: string | null; username: string | null; email: string | null; role: string; status: 'ACTIVE' | 'SUSPENDED' | 'DEACTIVATED'; trustLevel: string; assignedAt: string; assignedBy: string | null }> }>('/api/admin/moderators'),
 
+    // Staff identity: works for admin sessions AND moderator user sessions.
+    // The web admin shell uses this (not the keys-only endpoint) so
+    // bare-grant moderators are still recognized as moderators.
+    getModeratorMe: () =>
+        apiClient<{ userId: string; isModerator: boolean; permissions: string[] }>(
+            '/api/admin/moderators/me',
+        ),
+
     grantModerator: (userId: string, reason?: string) =>
         apiClient(`/api/admin/moderators/${encodeURIComponent(userId)}`, {
             method: 'POST',

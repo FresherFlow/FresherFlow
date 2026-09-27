@@ -92,8 +92,14 @@ export function errorHandler(
     const location = `${req.method} ${req.path} [requestId=${requestId}]`;
     const isPrismaError = connectionDown || missingObject !== null || errorMsg.includes('Invalid `prisma.');
 
+    // Prisma prefixes its message with a newline and a code frame, so
+    // `split('\n')[0]` is an empty string and the headline rendered as a bare
+    // "Prisma Error [requestId=…] — " with nothing after the dash. Take the first
+    // line that actually has content.
+    const headline = errorMsg.split('\n').map((l) => l.trim()).find(Boolean) || 'Unknown error';
+
     // Collapse the repeats that strict mode and client retries produce.
-    const signature = `${err.name}|${missingObject || errorMsg.split('\n')[0]}`;
+    const signature = `${err.name}|${missingObject || headline}`;
     const isFirstOccurrence = isRepeatOf(signature) === 1;
 
     // One logger call per failure. Each branch used to fire two or three
@@ -102,7 +108,7 @@ export function errorHandler(
     if (isFirstOccurrence) {
         if (connectionDown) {
             logger.error(chalk.red(
-                `Database unreachable [requestId=${requestId}] — ${errorMsg.split('\n')[0]}\n` +
+                `Database unreachable [requestId=${requestId}] — ${headline}\n` +
                 '  -> Check DATABASE_URL / DIRECT_DATABASE_URL and database availability'
             ));
         } else if (missingObject) {
@@ -114,14 +120,19 @@ export function errorHandler(
                 '  -> Apply pending migrations; API is newer than the database'
             ));
         } else if (isPrismaError) {
-            logger.error(chalk.red(`Prisma Error [requestId=${requestId}] — ${errorMsg.split('\n')[0]}\n  at ${location}`));
+            // Print the cause, not just the headline. `describeErrorForLog` reduces the
+            // multi-line Prisma message to call / reason / at, so this single line is
+            // the whole story and the dev block below no longer needs to repeat it.
+            logger.error(chalk.red(
+                `Prisma Error [requestId=${requestId}] — ${describeErrorForLog(err)}\n  at ${location}`
+            ));
         } else if (statusCode === 429) {
             // Rate limit — expected client error, not an application error.
-            logger.warn(chalk.yellow(`RateLimit: ${errorMsg.split('\n')[0]} [requestId=${requestId}]`));
+            logger.warn(chalk.yellow(`RateLimit: ${headline} [requestId=${requestId}]`));
         } else if (statusCode === 401 || statusCode === 404) {
-            logger.warn(chalk.yellow(`${statusCode === 401 ? 'Auth' : 'NotFound'}: ${errorMsg.split('\n')[0]} [${location}]`));
+            logger.warn(chalk.yellow(`${statusCode === 401 ? 'Auth' : 'NotFound'}: ${headline} [${location}]`));
         } else {
-            logger.error(chalk.red(`Error: ${errorMsg.split('\n')[0]} [requestId=${requestId}]\n  at ${location}`));
+            logger.error(chalk.red(`Error: ${headline} [requestId=${requestId}]\n  at ${location}`));
         }
     }
 
@@ -141,9 +152,10 @@ export function errorHandler(
         );
 
         if (!isCommonAuthError && !isRateLimited && !isExpectedOtpError && isFirstOccurrence) {
-            // Schema and connection failures already printed their cause and fix
-            // above; repeating them as a dump only buries it.
-            if (!missingObject && !connectionDown) {
+            // Schema, connection and Prisma-query failures already printed their cause
+            // and fix above; repeating them here is what printed a second banner box
+            // under the same requestId for one failure.
+            if (!missingObject && !connectionDown && !isPrismaError) {
                 logger.error(chalk.gray(describeErrorForLog(err)));
             }
         }

@@ -64,8 +64,20 @@ function toDisplayItem(notification: CommunityNotification): NotificationItem {
     };
 }
 
-function groupByDay(items: NotificationItem[]): { label: string; items: NotificationItem[] }[] {
-    const now = new Date();
+function timeAgo(receivedAt: number): string {
+    const diffMs = Date.now() - receivedAt;
+    if (diffMs < 0) return 'just now';
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(receivedAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
+function groupByDay(items: NotificationItem[]): { label: string; items: NotificationItem[] }[] {    const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const yesterday = today - 86400000;
 
@@ -85,6 +97,7 @@ function NotificationsPageContent() {
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
+    const [filter, setFilter] = useState<'all' | 'unread'>('all');
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -126,7 +139,8 @@ function NotificationsPageContent() {
     };
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
-    const groups = groupByDay(notifications);
+    const visibleNotifications = filter === 'unread' ? notifications.filter(n => !n.isRead) : notifications;
+    const groups = groupByDay(visibleNotifications);
 
     if (loading) {
         return (
@@ -181,6 +195,26 @@ function NotificationsPageContent() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <div className="flex items-center rounded-lg border border-border bg-card p-0.5 text-xs font-semibold" role="tablist" aria-label="Filter notifications">
+                        {(['all', 'unread'] as const).map((key) => (
+                            <button
+                                key={key}
+                                type="button"
+                                role="tab"
+                                aria-selected={filter === key}
+                                onClick={() => setFilter(key)}
+                                className={cn(
+                                    'rounded-md px-2.5 py-1 capitalize transition-colors cursor-pointer',
+                                    filter === key
+                                        ? 'bg-muted text-foreground'
+                                        : 'text-muted-foreground hover:text-foreground'
+                                )}
+                            >
+                                {key}
+                                {key === 'unread' && unreadCount > 0 ? ` (${unreadCount})` : ''}
+                            </button>
+                        ))}
+                    </div>
                     {unreadCount > 0 && (
                         <button
                             onClick={() => void markAllRead()}
@@ -195,23 +229,42 @@ function NotificationsPageContent() {
                 </div>
             </div>
 
-            {notifications.length === 0 ? (
+            {visibleNotifications.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center space-y-4">
                     <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto text-muted-foreground/50">
                         <BriefcaseIcon className="w-6 h-6" />
                     </div>
+                    {filter === 'unread' && notifications.length > 0 ? (
+                        <div className="space-y-2">
+                            <h2 className="text-base font-bold text-foreground">All caught up</h2>
+                            <p className="text-muted-foreground text-xs leading-relaxed max-w-xs mx-auto">
+                                Nothing unread. Switch to All to browse earlier notifications.
+                            </p>
+                        </div>
+                    ) : (
                     <div className="space-y-2">
                         <h2 className="text-base font-bold text-foreground">No notifications yet</h2>
                         <p className="text-muted-foreground text-xs leading-relaxed max-w-xs mx-auto">
                             We&apos;ll let you know when someone replies to your discussion, or a job you follow changes.
                         </p>
                     </div>
+                    )}
+                    {filter === 'unread' && notifications.length > 0 ? (
+                        <button
+                            type="button"
+                            onClick={() => setFilter('all')}
+                            className="inline-flex h-9 items-center justify-center px-6 bg-muted text-foreground font-bold text-xs rounded-lg hover:bg-muted/80 transition-all"
+                        >
+                            Show all
+                        </button>
+                    ) : (
                     <Link
                         href="/jobs"
                         className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold capitalize tracking-widest text-xs rounded-lg hover:bg-primary/90 transition-all shadow"
                     >
                         Browse jobs
                     </Link>
+                    )}
                 </div>
             ) : (
                 <div className="space-y-6">
@@ -250,8 +303,11 @@ function NotificationsPageContent() {
                                                 <p className="text-xs text-muted-foreground">{notif.opportunityTitle}</p>
                                             )}
                                         </div>
-                                        <p className="text-xs text-muted-foreground shrink-0 mt-0.5">
-                                            {new Date(notif.receivedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                        <p
+                                            className="text-xs text-muted-foreground shrink-0 mt-0.5 tabular-nums"
+                                            title={new Date(notif.receivedAt).toLocaleString('en-IN')}
+                                        >
+                                            {timeAgo(notif.receivedAt)}
                                         </p>
                                     </div>
                                 ))}

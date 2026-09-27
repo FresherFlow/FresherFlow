@@ -24,6 +24,7 @@ import {
     UserPlus,
     CirclePlus,
     Settings,
+    Palette,
     User,
     Building,
     Users,
@@ -100,6 +101,7 @@ export const REGISTRY = {
     following: { name: 'Following', href: '/companies?tab=following', icon: Building, requiresAuth: true },
     referrals: { name: 'Referrals', href: '/account?tab=referral', icon:    UserPlus, requiresAuth: true },
     settings: { name: 'Settings', href: '/account?tab=settings', icon:    Settings, requiresAuth: true },
+    appearance: { name: 'Appearance', href: '/account?tab=appearance', icon:    Palette, requiresAuth: true },
     alerts: { name: 'Alerts', href: '/jobs?tab=alerts', icon: Bell, requiresAuth: true },
     notifications: { name: 'Notifications', href: '/jobs?tab=notifications', icon: Bell, requiresAuth: true },
     feedback: { name: 'Feedback', href: '/account?tab=feedback', icon: MessageSquareText, requiresAuth: true },
@@ -127,6 +129,7 @@ export const DEFAULT_NAV_ITEMS: NavItem[] = [
     nav('tracker'),
     nav('contribute'),
     nav('settings'),
+    nav('appearance'),
 ];
 
 /** Jobs space nav items */
@@ -188,6 +191,7 @@ export const ACCOUNT_NAV_ITEMS: NavItem[] = [
     nav('referrals'),
     nav('contribute'),
     nav('settings'),
+    nav('appearance'),
     nav('feedback'),
 ];
 

@@ -12,6 +12,7 @@ import { usePublicPageActivation } from '@/features/profile/hooks/usePublicPageA
 import {
     UserIcon,
     Cog6ToothIcon,
+    PaintBrushIcon,
     UserPlusIcon,
     ChatBubbleLeftRightIcon,
     ChevronRightIcon,
@@ -34,6 +35,13 @@ const SECTIONS = [
         description: 'Credentials, active sessions and danger zone.',
         href: '/account?tab=settings',
         Icon: Cog6ToothIcon,
+    },
+    {
+        key: 'appearance',
+        title: 'Appearance',
+        description: 'Sidebar style: inset, floating or standard.',
+        href: '/account?tab=appearance',
+        Icon: PaintBrushIcon,
     },
     {
         key: 'referral',

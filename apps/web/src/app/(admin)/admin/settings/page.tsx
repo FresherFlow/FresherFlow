@@ -1,15 +1,20 @@
 import type { Metadata } from 'next';
-import TwoFactorSetup from "@/features/admin/components/TwoFactorSetup";
-import PasskeyManager from "@/features/admin/components/PasskeyManager";
-import { Badge } from "@/ui/Badge";
+import TwoFactorSetup from '@/features/admin/components/TwoFactorSetup';
+import PasskeyManager from '@/features/admin/components/PasskeyManager';
+import AppearanceSettings from '@/features/admin/components/AppearanceSettings';
 
 export const metadata: Metadata = { title: { absolute: 'Settings | FresherFlow Admin' } };
 
-
-
+/**
+ * Admin → Settings.
+ *
+ * Each panel already renders its own heading, description and bordered card, so
+ * this page adds no wrapper of its own — an outer card only produced a box
+ * inside a box.
+ */
 export default function AdminSettingsPage() {
     return (
-        <div className="p-4 md:p-8 pt-16 md:pt-8 space-y-6 flex-1 min-h-0 overflow-y-auto pb-28 md:pb-8">
+        <div className="flex-1 min-h-0 space-y-8 overflow-y-auto p-4 pb-28 pt-16 text-foreground md:p-8 md:pb-8 md:pt-8">
             <div className="flex flex-col gap-1">
                 <h1 className="text-2xl font-semibold tracking-tight text-foreground">Admin settings</h1>
                 <p className="text-muted-foreground">
@@ -17,41 +22,12 @@ export default function AdminSettingsPage() {
                 </p>
             </div>
 
-            <div className="grid gap-8 md:grid-cols-2">
-                {/* Left Column: Two-Factor Setup */}
-                <div className="space-y-4">
-                    <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                            <h2 className="text-xl font-bold tracking-tight">Two-factor authentication</h2>
-                            <Badge variant="outline">TOTP</Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground leading-normal max-w-md">
-                            Secure your admin account using dynamic time-based one-time passcodes from apps like Google Authenticator or Authy.
-                        </p>
-                    </div>
-                    <TwoFactorSetup />
-                </div>
-
-                {/* Right Column: Passkey Manager */}
-                <div className="space-y-4">
-                    <div className="space-y-1.5">
-                        <div className="flex items-center gap-2">
-                            <h2 className="text-xl font-bold tracking-tight">Passkeys</h2>
-                            <Badge variant="outline">FIDO2</Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground leading-normal max-w-md">
-                            Log in securely using biometric authentication (Face ID, Touch ID, Windows Hello) or physical security keys.
-                        </p>
-                    </div>
-                    <PasskeyManager />
-                </div>
+            <div className="grid items-start gap-6 md:grid-cols-2">
+                <TwoFactorSetup />
+                <PasskeyManager />
             </div>
+
+            <AppearanceSettings />
         </div>
     );
 }
-
-
-
-
-
-

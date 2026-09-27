@@ -186,6 +186,57 @@ export function persistSpaceId(id: string) {
     }
 }
 
+/* ────────────────────────────────────────────────────────────────────────
+   Sidebar variant (sidebar / floating / inset) — the user-shell counterpart
+   of the admin's `admin_layout_variant` cookie. Stored per browser like the
+   other sidebar prefs; the Appearance picker writes it, the rail reads it.
+   ────────────────────────────────────────────────────────────────────── */
+
+export type SidebarVariant = 'sidebar' | 'floating' | 'inset';
+
+const VARIANT_STORAGE_KEY = 'ff:sidebarVariant';
+const variantListeners = new Set<() => void>();
+
+export function readSidebarVariant(): SidebarVariant {
+    try {
+        const v = localStorage.getItem(VARIANT_STORAGE_KEY);
+        if (v === 'sidebar' || v === 'floating' || v === 'inset') return v;
+    } catch {
+        // Storage unavailable — default variant applies.
+    }
+    return 'sidebar';
+}
+
+export function persistSidebarVariant(next: SidebarVariant) {
+    try {
+        localStorage.setItem(VARIANT_STORAGE_KEY, next);
+    } catch {
+        // Storage unavailable — variant still applies this session via listeners.
+    }
+    variantListeners.forEach((listener) => listener());
+}
+
+export function subscribeSidebarVariant(listener: () => void): () => void {
+    variantListeners.add(listener);
+    return () => {
+        variantListeners.delete(listener);
+    };
+}
+
+/**
+ * Variant for the user rail. Reads storage on mount (not in the state
+ * initializer) so SSR HTML equals the first client paint — same hydration
+ * contract as `useSpaceSelection`'s `mounted` gate.
+ */
+export function useSidebarVariant(): [SidebarVariant, (next: SidebarVariant) => void] {
+    const [variant, setVariant] = React.useState<SidebarVariant>('sidebar');
+    React.useEffect(() => {
+        setVariant(readSidebarVariant());
+        return subscribeSidebarVariant(() => setVariant(readSidebarVariant()));
+    }, []);
+    return [variant, persistSidebarVariant];
+}
+
 let repeatGuardInstalled = false;
 
 /**

@@ -19,7 +19,7 @@ export function AdminSearchTrigger({ className = '' }: { className?: string }) {
                 // accent (`--color-accent: oklch(97.7%)`), so hovering filled the
                 // box solid white with black text. Muted hover matches the rest
                 // of the admin controls.
-                'group relative flex h-8 w-full flex-1 items-center justify-start gap-2 rounded-md border border-border bg-muted/25 px-2 text-sm font-normal text-muted-foreground shadow-none transition-colors hover:bg-muted/60 hover:text-foreground sm:w-40 md:flex-none lg:w-52 xl:w-64',
+                'group relative flex h-8 w-40 flex-none items-center justify-start gap-2 rounded-md border border-border bg-muted/25 px-2 text-sm font-normal text-muted-foreground shadow-none transition-colors hover:bg-muted/60 hover:text-foreground lg:w-52 xl:w-64',
                 className,
             )}
         >

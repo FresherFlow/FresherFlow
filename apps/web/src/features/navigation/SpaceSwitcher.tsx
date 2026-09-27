@@ -51,7 +51,7 @@ export function SpaceSwitcher({
               size="lg"
               className="nav-switcher-btn data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-logo-bg text-foreground">
+              <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-logo-bg text-paper">
                 <ActiveIcon className="size-4 shrink-0" aria-hidden />
               </div>
               <div className="grid flex-1 text-start text-sm leading-tight">

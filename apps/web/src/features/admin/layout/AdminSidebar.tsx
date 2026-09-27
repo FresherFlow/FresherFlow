@@ -7,7 +7,9 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { LogoImage } from '@/features/shell/LogoImage';
+import { useAdmin } from '@/lib/auth/AdminContext';
 import { useAdminLayout } from '@/features/admin/layout/AdminLayoutProvider';
+import { navPermissions } from '@/features/admin/moderatorAccess';
 import { AdminNavGroup } from '@/features/admin/layout/AdminNavGroup';
 import { AdminNavUser } from '@/features/admin/layout/AdminNavUser';
 import {
@@ -35,6 +37,7 @@ import {
 export {
     discoveryNavItems,
     mainNavItems,
+    overviewCommandItems,
     settingsNavItems,
 } from '@/features/admin/layout/admin-sidebar-data';
 
@@ -51,16 +54,7 @@ function AdminBrand({ href }: { href: string }) {
             <SidebarMenuItem>
                 <SidebarMenuButton asChild size="lg">
                     <Link href={href} aria-label="FresherFlow admin home">
-                        <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-logo-bg">
-                            {/* Reference tile uses a size-4 glyph: TeamSwitcher's
-                                `<activeTeam.logo className='size-4' />`. The 20px
-                                logo made the tile read heavier than the rail icons. */}
-                            <LogoImage
-                                width={16}
-                                height={16}
-                                className="size-4 shrink-0 object-contain"
-                            />
-                        </div>
+                        <LogoImage width={28} height={28} className="h-7 w-7 shrink-0 object-contain" />
                         <div className="grid flex-1 text-start text-sm leading-tight">
                             <span className="truncate font-semibold">admin</span>
                             <span className="truncate text-xs">FresherFlow</span>
@@ -74,13 +68,18 @@ function AdminBrand({ href }: { href: string }) {
 
 function useAdminSidebarRoute(feedbackAlertCount: number) {
     const pathname = usePathname() || '';
+    const { admin, moderator } = useAdmin();
 
     const effectiveFeedbackAlertCount =
         pathname.startsWith('/feedback') || pathname.startsWith('/admin/feedback')
             ? 0
             : feedbackAlertCount;
 
-    return getAdminSidebarGroups(pathname, effectiveFeedbackAlertCount);
+    return getAdminSidebarGroups(
+        pathname,
+        effectiveFeedbackAlertCount,
+        navPermissions(admin, moderator),
+    );
 }
 
 function AdminSidebarRail({ feedbackAlertCount = 0 }: { feedbackAlertCount?: number }) {
@@ -149,13 +148,14 @@ function AdminSidebarNavContent({ feedbackAlertCount = 0 }: { feedbackAlertCount
 export function AdminMobileNavTree({ onNavigate }: { onNavigate: () => void }) {
     const pathname = usePathname() || '';
     const searchParams = useSearchParams();
+    const { admin, moderator } = useAdmin();
 
     const [hostname, setHostname] = useState<string>('');
     useEffect(() => {
         setHostname(window.location.hostname);
     }, []);
 
-    const { groups, homeHref } = getAdminSidebarGroups(pathname, 0);
+    const { groups, homeHref } = getAdminSidebarGroups(pathname, 0, navPermissions(admin, moderator));
 
     return (
         <div className="flex h-full w-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground">

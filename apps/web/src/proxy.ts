@@ -130,10 +130,15 @@ export default function middleware(req: NextRequest) {
     const authResult = !isPublicPath(pathname) ? handleAuth(req) : null;
     if (authResult) return authResult;
 
-    // 2b. Server-side admin gate: /admin/* (except /admin/login) requires admin auth
+    // 2b. Server-side admin gate: /admin/* (except /admin/login) requires admin auth.
+    // Moderators arrive on a plain user session (`accessToken` cookie): let
+    // them through — the API (`requireStaff`/`requirePermission`) and
+    // `AdminContext` do the real authorization (401/403 UI), the proxy is
+    // only a coarse gate.
     if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')) {
         const adminLoggedIn = req.cookies.has('adminAccessToken') || req.cookies.has('ff_admin_logged_in');
-        if (!adminLoggedIn) {
+        const userLoggedIn = req.cookies.has('accessToken');
+        if (!adminLoggedIn && !userLoggedIn) {
             return NextResponse.redirect(new URL('/admin/login', req.nextUrl.origin), 308);
         }
     }

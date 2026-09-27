@@ -174,7 +174,10 @@ router.get('/browse', publicReadLimiter, async (req: Request, res: Response, nex
             visibility: { in: [ProfileVisibility.PUBLIC, ProfileVisibility.UNLISTED] },
             // Stale activations drop out of the directory too.
             profilePublishedAt: { gt: profilePageActiveSince() },
-            user: { status: 'ACTIVE', deletedAt: null },
+            // No `deletedAt` here: User has no soft-delete column, so filtering on it
+            // made this whole query throw "Unknown field `deletedAt`" and 500 the
+            // /recruiters directory. Suspended accounts are excluded via status.
+            user: { status: 'ACTIVE' },
         };
         if (batch) whereClause.gradYear = parseInt(String(batch), 10) || undefined;
         if (degree) whereClause.gradCourse = String(degree);

@@ -65,12 +65,14 @@ export default function UsersModerators({
                                         <span className="text-muted-foreground"> @{moderator.username}</span>
                                     ) : null}
                                 </p>
-                                <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                {/* A div, not a p: Badge renders a <div>, which is
+                                    invalid inside a <p> and triggers a hydration error. */}
+                                <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                                     <Badge variant={statusBadgeVariant(moderator.status)}>
                                         {moderator.status}
                                     </Badge>
                                     <span>since {formatAssignedAt(moderator.assignedAt)}</span>
-                                </p>
+                                </div>
                             </div>
                             <div className="flex items-center gap-2">
                                 {moderator.status === 'ACTIVE' ? (

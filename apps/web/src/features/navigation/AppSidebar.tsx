@@ -23,10 +23,10 @@ import {
   useSidebar,
 } from "@/ui/sidebar"
 import { useAuth } from "@/lib/auth/AuthContext"
-import { SiteHeader } from "@/features/navigation/SiteHeader"
 import { LogoImage } from "@/features/shell/LogoImage"
 import { cn } from "@/ui/cn"
 import { persistSpaceId, readSpaceId } from "@/features/navigation/sidebarState"
+import { useAppLayout } from "@/features/navigation/AppLayoutProvider"
 import {
   SPACES,
   getSpaceForPathname,
@@ -108,13 +108,7 @@ function SidebarBrand({ href, className }: { href: string; className?: string })
       <SidebarMenuItem>
         <SidebarMenuButton asChild size="lg">
           <Link href={href} aria-label="FresherFlow home" suppressHydrationWarning>
-            <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-logo-bg">
-              <LogoImage
-                width={16}
-                height={16}
-                className="size-4 shrink-0 object-contain"
-              />
-            </div>
+            <LogoImage width={28} height={28} className="h-7 w-7 shrink-0 object-contain" />
             <div className="grid flex-1 text-start text-sm leading-tight">
               <span className="truncate font-semibold">FresherFlow</span>
             </div>
@@ -129,6 +123,7 @@ function AppSidebarRail() {
   const router = useRouter()
   const { spaceId, setSpaceId, mounted, isAuthed, user } = useSpaceSelection()
   const navBadges = useNavCounts() ?? undefined
+  const { variant, collapsible } = useAppLayout()
   const [isScrolled, setIsScrolled] = React.useState(false)
 
   const groups = getSidebarGroups({ spaceId, isAuthed, mounted, badges: navBadges })
@@ -142,10 +137,10 @@ function AppSidebarRail() {
   }
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible={collapsible} variant={variant}>
       <SidebarHeader
         className={cn(
-          "sticky top-0 z-10 gap-1.5 bg-background p-2 relative",
+          "sticky top-0 z-10 gap-1.5 bg-background p-2 pb-1 relative",
           "border-b border-transparent transition-colors",
           isScrolled && "border-border"
         )}
@@ -160,7 +155,7 @@ function AppSidebarRail() {
           <NavGroup key={group.title} group={group} />
         ))}
       </SidebarContent>
-      <SidebarFooter className="border-t border-sidebar-border">
+      <SidebarFooter className="border-t border-sidebar-border px-2 pb-1 pt-1">
         <NavUser />
       </SidebarFooter>
       <SidebarRail />
@@ -224,9 +219,10 @@ export function MobileNavTree({ onNavigate }: { onNavigate: () => void }) {
  * Desktop rail for user-facing routes.
  *
  * The `SidebarProvider` lives in NavigationWrapper, not here: the mobile drawer
- * trigger lives in MobileTopNav, so both need the same provider. Collapse state
- * is the existing `ff:sidebarCollapsed` / `sidebar_state` store, and layout
- * width stays `12rem ↔ 3rem` via `--sidebar-w`.
+ * trigger lives in MobileTopNav, so both need the same provider. Collapse
+ * open state is the existing `ff:sidebarCollapsed` / `sidebar_state` store;
+ * variant + collapse mode come from `AppLayoutProvider` (same level as the
+ * `SidebarProvider`), and layout width stays `12rem ↔ 3rem` via `--sidebar-w`.
  *
  * The rail is wrapped in `hidden lg:block` to match the `lg:pl-[var(--sidebar-w)]`
  * content offset in NavigationWrapper — without it the rail renders from `md`
@@ -234,13 +230,10 @@ export function MobileNavTree({ onNavigate }: { onNavigate: () => void }) {
  */
 export function AppSidebar() {
   return (
-    <>
-      <div className="hidden lg:block">
-        <React.Suspense fallback={null}>
-          <AppSidebarRail />
-        </React.Suspense>
-      </div>
-      <SiteHeader />
-    </>
+    <div className="hidden lg:block">
+      <React.Suspense fallback={null}>
+        <AppSidebarRail />
+      </React.Suspense>
+    </div>
   )
 }

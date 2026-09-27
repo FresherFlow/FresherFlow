@@ -2,6 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import AccountTab from '@/features/settings/tabs/AccountTab';
+import AppearanceTab from '@/features/settings/tabs/AppearanceTab';
 import ProfileEditor from '@/features/profile/components/editor/ProfileEditor';
 import FeedbackTab from '@/features/settings/tabs/FeedbackTab';
 import ReferralTab from '@/features/settings/tabs/ReferralTab';
@@ -10,6 +11,7 @@ import AccountOverview from '@/features/settings/AccountOverview';
 const SETTINGS_TABS = [
     { key: 'profile', label: 'Profile', href: '/account?tab=profile' },
     { key: 'settings', label: 'Settings', href: '/account?tab=settings' },
+    { key: 'appearance', label: 'Appearance', href: '/account?tab=appearance' },
     { key: 'referral', label: 'Referrals', href: '/account?tab=referral' },
     { key: 'feedback', label: 'Feedback', href: '/account?tab=feedback' },
 ] as const;
@@ -19,6 +21,7 @@ type SettingsTabKey = (typeof SETTINGS_TABS)[number]['key'];
 const TAB_COMPONENTS: Record<SettingsTabKey, React.ComponentType> = {
     profile: ProfileEditor,
     settings: AccountTab,
+    appearance: AppearanceTab,
     referral: ReferralTab,
     feedback: FeedbackTab,
 };
