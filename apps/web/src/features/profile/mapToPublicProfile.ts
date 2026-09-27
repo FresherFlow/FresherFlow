@@ -76,7 +76,7 @@ export function toPublicProfile(
         resumeUrl: profile?.resumeUrl ?? null,
         willingToRelocate: profile?.willingToRelocate ?? null,
         // Recruiters are opted out only when explicitly set to false, matching the page.
-        openToRecruiters: profile?.openToRecruiters ?? true,
+            openToRecruiters: profile?.openToRecruiters ?? false,
         lastActivatedAt: toIsoString(options.lastActivatedAt),
         completionPercentage: options.completionPercentage,
         projects: toPublicProjects(profile?.projects),
