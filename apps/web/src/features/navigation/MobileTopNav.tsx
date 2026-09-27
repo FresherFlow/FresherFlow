@@ -7,6 +7,8 @@ import { useContext, useEffect, useState, Suspense } from 'react';
 import { AuthContext } from '@/lib/auth/AuthContext';
 import { cn } from "@/ui/cn";
 import Bars3Icon from '@heroicons/react/24/outline/Bars3Icon';
+import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
+import { useAdminPalette } from '@/features/admin/layout/AdminPaletteProvider';
 import { AlertsDropdown } from '@/features/notifications/components/AlertsDropdown';
 import { Sheet, SheetContent, SheetTitle } from '@/ui/Sheet';
 import { useTheme } from '@/lib/providers/ThemeContext';
@@ -29,6 +31,21 @@ function getMobileTitle(pathname: string): string {
     if (pathname === '/alerts' || pathname === '/account/alerts') return 'Alerts';
     if (pathname === '/feedback') return 'Feedback';
     return 'FresherFlow';
+}
+
+function AdminMobileSearchButton() {
+    const palette = useAdminPalette();
+    if (!palette) return null;
+    return (
+        <button
+            type="button"
+            onClick={palette.openPalette}
+            aria-label="Search admin"
+            className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all duration-150 ease-out active:scale-95"
+        >
+            <MagnifyingGlassIcon className="w-5 h-5" />
+        </button>
+    );
 }
 
 export function MobileTopNav() {
@@ -85,6 +102,7 @@ export function MobileTopNav() {
 
                     {/* Right Actions */}
                     <div className="flex items-center gap-1 shrink-0">
+                        {(pathname || '').startsWith('/admin') && <AdminMobileSearchButton />}
                         {isCandidatePortfolioRoute ? (
                             <div className="flex items-center gap-2">
                                 {resolvedUser ? (

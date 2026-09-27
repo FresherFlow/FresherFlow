@@ -65,12 +65,15 @@ const publicProfileSelect = {
     visibility: true,
     profilePublishedAt: true,
     completionPercentage: true,
+    // avatarUrl is a Profile column, not a User one. Selecting it under `user`
+    // made every public profile read fail with "Unknown field `avatarUrl` for
+    // select statement on model `User`", because this query's root IS the profile.
+    avatarUrl: true,
     user: {
         select: {
             id: true,
             fullName: true,
             username: true,
-            avatarUrl: true,
             createdAt: true,
             projects: {
                 orderBy: { order: 'asc' as const },
@@ -107,11 +110,11 @@ type PublicProfileRow = {
     visibility: ProfileVisibility;
     profilePublishedAt: Date | null;
     completionPercentage: number;
+    avatarUrl: string | null;
     user: {
         id: string;
         fullName: string | null;
         username: string | null;
-        avatarUrl: string | null;
         createdAt: Date;
         projects: Array<{
             id: string;
@@ -130,7 +133,7 @@ function toPublicProfile(row: PublicProfileRow) {
         userId: row.userId,
         fullName: row.user.fullName,
         username: row.user.username,
-        avatarUrl: row.user.avatarUrl,
+        avatarUrl: row.avatarUrl,
         memberSince: row.user.createdAt,
         headline: row.headline,
         about: row.about,

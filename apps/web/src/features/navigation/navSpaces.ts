@@ -1,6 +1,6 @@
-import { BriefcaseIcon, BuildingLibraryIcon, MapIcon } from '@heroicons/react/24/outline';
+import { Briefcase, Landmark, Map, CircleUser } from 'lucide-react';
 import type { NavIcon, NavItem, NavItemId } from './navRegistry';
-import { ACCOUNT_NAV_ITEMS, DEFAULT_NAV_ITEMS, DRIVES_NAV_ITEMS, GOVT_NAV_ITEMS, JOBS_NAV_ITEMS, REGISTRY } from './navRegistry';
+import { ACCOUNT_NAV_ITEMS, COMMUNITY_NAV_ITEMS, DEFAULT_NAV_ITEMS, DRIVES_NAV_ITEMS, GOVT_NAV_ITEMS, JOBS_NAV_ITEMS, REGISTRY } from './navRegistry';
 
 /* ────────────────────────────────────────────────────────────────────────────
    Space model (Jobs / Government).
@@ -21,14 +21,18 @@ export interface SpaceNavItem {
     badge?: number;
     hasSubmenu?: boolean;
     requiresAuth?: boolean;
+    /**
+     * Nested routes. When present the row is a collapsible parent — the
+     * shadcn-admin `NavCollapsible` shape, same as the admin rail's Discovery
+     * Engine: the row opens a `SidebarMenuSub` instead of navigating, and
+     * `href` is kept only for active matching.
+     */
+    items?: SpaceNavItem[];
 }
 
 export interface SpaceNavGroup {
     label: string;
     items: SpaceNavItem[];
-    /** When true, group renders as shadcn Collapsible like Platform/Playground. Jobs and Govt stay separate spaces via SpaceSwitcher — this only collapses within a space. */
-    collapsible?: boolean;
-    defaultOpen?: boolean;
 }
 
 export interface Space {
@@ -72,17 +76,22 @@ export const SPACES: Space[] = [
         id: 'jobs',
         name: 'Jobs',
         subtitle: 'Private sector',
-        icon: BriefcaseIcon,
+        icon:    Briefcase,
         groups: [
             {
                 label: 'Browse',
                 items: [
-                    ...pick(JOBS_NAV_ITEMS, 'dashboard', 'jobs', 'internships', 'fullTime', 'partTime', 'remote', 'jobBoards'),
+                    ...pick(JOBS_NAV_ITEMS, 'dashboard'),
+                    // The six job-type rows collapse under one `Jobs` parent, so
+                    // the rail reads as destinations, not as a facet list.
+                    {
+                        title: 'Jobs',
+                        href: REGISTRY.jobs.href,
+                        icon: REGISTRY.jobs.icon,
+                        items: pick(JOBS_NAV_ITEMS, 'jobs', 'internships', 'fullTime', 'partTime', 'remote', 'jobBoards'),
+                    },
                     ...pick(DEFAULT_NAV_ITEMS, 'saved', 'tracker'),
-                    { title: REGISTRY.alerts.name, href: REGISTRY.alerts.href, icon: REGISTRY.alerts.icon, requiresAuth: REGISTRY.alerts.requiresAuth },
-                    { title: REGISTRY.notifications.name, href: REGISTRY.notifications.href, icon: REGISTRY.notifications.icon, requiresAuth: REGISTRY.notifications.requiresAuth },
                 ],
-                collapsible: true,
             },
             {
                 label: 'Discover',
@@ -90,7 +99,6 @@ export const SPACES: Space[] = [
                     ...pick(JOBS_NAV_ITEMS, 'companies', 'resources', 'contribute'),
                     ...pick(ACCOUNT_NAV_ITEMS, 'following'),
                 ],
-                collapsible: true,
             },
         ],
     },
@@ -98,17 +106,15 @@ export const SPACES: Space[] = [
         id: 'drives',
         name: 'Drives',
         subtitle: 'Campus & walk-in',
-        icon: MapIcon,
+        icon:    Map,
         groups: [
             {
                 label: 'Browse',
                 items: pick(DRIVES_NAV_ITEMS, 'drives', 'offCampus', 'walkins'),
-                collapsible: true,
             },
             {
                 label: 'Discover',
                 items: pick(JOBS_NAV_ITEMS, 'companies', 'resources', 'contribute'),
-                collapsible: true,
             },
         ],
     },
@@ -116,24 +122,32 @@ export const SPACES: Space[] = [
         id: 'govt',
         name: 'Government',
         subtitle: 'Sarkari exams',
-        icon: BuildingLibraryIcon,
+        icon:    Landmark,
         groups: [
             {
-                label: 'Categories',
-                items: pick(
-                    GOVT_NAV_ITEMS,
-                    'govtAll',
-                    'govtUpsc',
-                    'govtSsc',
-                    'govtBanking',
-                    'govtRailways',
-                    'govtPsu',
-                    'govtDefence',
-                    'govtTeaching',
-                    'govtPolice',
-                    'govtEngineering'
-                ),
-                collapsible: true,
+                // Renamed from `Categories`: `Categories` is now the parent row,
+                // so the group label would have repeated it.
+                label: 'Government',
+                items: [
+                    ...pick(GOVT_NAV_ITEMS, 'govtAll'),
+                    {
+                        title: 'Categories',
+                        href: REGISTRY.govt.href,
+                        icon: REGISTRY.govt.icon,
+                        items: pick(
+                            GOVT_NAV_ITEMS,
+                            'govtUpsc',
+                            'govtSsc',
+                            'govtBanking',
+                            'govtRailways',
+                            'govtPsu',
+                            'govtDefence',
+                            'govtTeaching',
+                            'govtPolice',
+                            'govtEngineering'
+                        ),
+                    },
+                ],
             },
             {
                 label: 'More',
@@ -152,20 +166,19 @@ export const SPACES: Space[] = [
 export const PERSONAL_GROUP: SpaceNavGroup = {
     label: 'Personal',
     items: [
-        ...pick(ACCOUNT_NAV_ITEMS, 'account', 'profile', 'referrals', 'feedback', 'settings'),
+        {
+            title: REGISTRY.account.name,
+            href: REGISTRY.account.href,
+            icon:    CircleUser,
+            requiresAuth: true,
+            items: pick(ACCOUNT_NAV_ITEMS, 'profile', 'alerts', 'referrals', 'feedback', 'settings'),
+        },
     ],
-    collapsible: true,
 };
 
 export const COMMUNITY_GROUP: SpaceNavGroup = {
     label: 'Community',
-    items: [
-        { title: 'Discussions', href: '/community?tab=discussions', icon: REGISTRY.community.icon },
-        { title: 'Salary & Offers', href: '/community?tab=salary', icon: REGISTRY.community.icon },
-        { title: 'Rooms', href: '/community?tab=rooms', icon: REGISTRY.community.icon },
-        { title: 'Saved Searches', href: '/community?tab=saved-searches', icon: REGISTRY.community.icon },
-    ],
-    collapsible: true,
+    items: pick(COMMUNITY_NAV_ITEMS, 'notifications', 'discussions', 'salary', 'rooms', 'savedSearches'),
 };
 
 export function getSpace(id: SpaceId): Space {

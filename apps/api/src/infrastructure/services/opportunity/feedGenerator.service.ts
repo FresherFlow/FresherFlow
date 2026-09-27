@@ -75,6 +75,10 @@ export class FeedGeneratorService {
             slug: true,
             category: true,
             recruitmentMethod: true,
+            // Needed by every government predicate. Without it the CDN snapshot
+            // had no way to tell a govt listing from a private one, so
+            // sitemap-govt.xml and the /govt/ URL prefix could not be built.
+            sector: true,
             status: true,
 
             // Display

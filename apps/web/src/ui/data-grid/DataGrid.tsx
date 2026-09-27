@@ -44,6 +44,8 @@ import { Button } from "@/ui/Button"
 import { FilterSelect } from "./FilterSelect"
 import { DataGridHeader } from "./data-grid-header"
 import { DataGridPagination } from "./data-grid-pagination"
+import { DataGridBulkBar } from "./DataGridBulkBar"
+import { stickyCellClass } from "./sticky"
 import { EmptyState } from "@/ui/EmptyState"
 import "./types"
 
@@ -90,6 +92,13 @@ export interface DataGridServerPagination {
   /** Total pages known to the server. */
   pageCount: number
   onPageChange: (pageIndex: number) => void
+  /** Page size the caller requested. Shown in the rows-per-page control. */
+  defaultPageSize?: number
+  /** Currently selected page size, when the caller owns the selection. */
+  pageSize?: number
+  /** Fires when the user picks a different page size. */
+  onPageSizeChange?: (pageSize: number) => void
+  pageSizeOptions?: number[]
 }
 
 export interface DataGridProps<TData extends RowData> {
@@ -115,6 +124,14 @@ export interface DataGridProps<TData extends RowData> {
   onSelectedRowsChange?: (rows: TData[]) => void
   className?: string
   /**
+   * Floating bulk-actions bar (visible only while rows are selected).
+   * Prefer this over inline header `actions` for selection-dependent buttons
+   * on admin queues: inline bulk buttons overflow the header on mobile.
+   */
+  bulkActions?: (ctx: DataGridActionsContext<TData>) => React.ReactNode
+  /** Entity name for the bulk bar count, e.g. "listing". Defaults to "row". */
+  bulkBarEntityName?: string
+  /**
    * Controlled sorting. Pass both when the sort belongs to the caller — e.g. it
    * maps to a server `sort` query param or a toolbar dropdown. Without them the
    * grid sorts locally, which is the default.
@@ -123,6 +140,13 @@ export interface DataGridProps<TData extends RowData> {
   onSortingChange?: (updater: React.SetStateAction<GridSortingState>) => void
   /** Server-side paging; omit to page locally. */
   serverPagination?: DataGridServerPagination
+  /**
+   * Controlled search text. Supply both when the rows come from a server-side
+   * query — without them the search box only filters the rows already loaded,
+   * so searching the full corpus silently fails.
+   */
+  searchValue?: string
+  onSearchChange?: (value: string) => void
 }
 
 export function DataGrid<TData extends RowData>({
@@ -147,12 +171,28 @@ export function DataGrid<TData extends RowData>({
   actions,
   onSelectedRowsChange,
   className,
+  bulkActions,
+  bulkBarEntityName = "row",
   sorting: controlledSorting,
   onSortingChange: controlledOnSortingChange,
   serverPagination,
+  searchValue,
+  onSearchChange,
 }: DataGridProps<TData>) {
   const [localSorting, setLocalSorting] = React.useState<GridSortingState>([])
-  const [globalFilter, setGlobalFilter] = React.useState("")
+  const [localGlobalFilter, setLocalGlobalFilter] = React.useState("")
+  // A caller whose rows come from a server-side query must own the search, or
+  // the built-in box only filters the page already loaded. Controlled mode still
+  // runs the local filter too, so the grid stays responsive between fetches.
+  const globalFilter = searchValue ?? localGlobalFilter
+  const setGlobalFilter = React.useCallback(
+    (updater: React.SetStateAction<string>) => {
+      const next = typeof updater === "function" ? updater(searchValue ?? localGlobalFilter) : updater
+      setLocalGlobalFilter(next)
+      onSearchChange?.(next)
+    },
+    [searchValue, localGlobalFilter, onSearchChange]
+  )
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
   const [localPagination, setLocalPagination] = React.useState<GridPaginationState>({
@@ -164,7 +204,15 @@ export function DataGrid<TData extends RowData>({
   const sorting = controlledSorting ?? localSorting
   const setSorting = controlledOnSortingChange ?? setLocalSorting
   const pagination: GridPaginationState = serverPagination
-    ? { pageIndex: serverPagination.pageIndex, pageSize: data.length || defaultPageSize }
+    // Use the page size the caller asked for. Deriving it from `data.length`
+    // made "rows per page" show whatever the last response happened to return
+    // (20 on a full page, 3 on the last one) and silently ignored the
+    // selector, because changing it could not change the server query.
+    ? {
+        pageIndex: serverPagination.pageIndex,
+        pageSize:
+          serverPagination.defaultPageSize ?? serverPagination.pageSize ?? defaultPageSize,
+      }
     : localPagination
   const setPagination = (
     updater: React.SetStateAction<GridPaginationState>
@@ -266,13 +314,16 @@ export function DataGrid<TData extends RowData>({
   }, [table.getRowModel().rows.length, pagination.pageIndex, isServerPaginated])
 
   return (
+    <>
     <Card
       className={cn(
         "flex flex-col min-h-0 flex-1 overflow-hidden border-border/60 bg-card shadow-xs backdrop-blur-none",
         className
       )}
     >
-      <CardHeader className="flex-row items-center justify-between gap-3 px-4 py-3 sm:px-5">
+      {/* Stacks on mobile so search takes the full row and filters wrap
+          below it; single row from `sm` up. */}
+      <CardHeader className="flex-col items-stretch gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
         <div className="flex min-w-0 items-center gap-2">
           {typeof title === "string" ? (
             <CardTitle className="text-sm font-semibold text-foreground">
@@ -289,16 +340,16 @@ export function DataGrid<TData extends RowData>({
           </Badge>
         </div>
 
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <div className="relative">
+        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <div className="relative min-w-0 flex-1 sm:flex-none">
             <Input
               value={globalFilter}
               onChange={(e) => {
-                setGlobalFilter(e.target.value)
-                setPagination((prev) => ({ ...prev, pageIndex: 0 }))
+                setGlobalFilter(e.target.value);
+                setPagination((prev) => ({ ...prev, pageIndex: 0 }));
               }}
               placeholder={searchPlaceholder}
-              className="h-9 w-56 pr-8 text-xs"
+              className="h-9 w-full text-xs sm:w-56 pr-8"
             />
           </div>
           {statusOptions && onStatusChange && (
@@ -361,7 +412,13 @@ export function DataGrid<TData extends RowData>({
           setPageIndex={(index) => setPagination((prev) => ({ ...prev, pageIndex: index }))}
           setPageSize={
             isServerPaginated
-              ? () => {}
+              ? // Was a no-op, so the rows-per-page control did nothing at all
+                // on a server-paginated grid. Forward to the caller, which owns
+                // the query, and jump back to the first page.
+                (size) => {
+                  serverPagination!.onPageSizeChange?.(size)
+                  serverPagination!.onPageChange(0)
+                }
               : (size) => setPagination((prev) => ({ ...prev, pageSize: size, pageIndex: 0 }))
           }
           previousPage={() =>
@@ -370,10 +427,28 @@ export function DataGrid<TData extends RowData>({
           nextPage={() =>
             setPagination((prev) => ({ ...prev, pageIndex: prev.pageIndex + 1 }))
           }
-          pageSizeOptions={pageSizeOptions}
+          pageSizeOptions={
+            isServerPaginated
+              ? (serverPagination!.pageSizeOptions ?? pageSizeOptions)
+              : pageSizeOptions
+          }
         />
       </CardFooter>
     </Card>
+      {bulkActions && (
+        <DataGridBulkBar
+          selectedCount={selectedRows.length}
+          entityName={bulkBarEntityName}
+          onClear={() => setRowSelection({})}
+        >
+          {bulkActions({
+            selectedRows,
+            selectedCount: selectedRows.length,
+            clearSelection: () => setRowSelection({}),
+          })}
+        </DataGridBulkBar>
+      )}
+    </>
   )
 }
 
@@ -408,7 +483,10 @@ function DataGridBody<TData extends RowData>({
 
   return (
     <div className="h-full w-full overflow-auto">
-      <UITable>
+      {/* min-width keeps the table scrolling horizontally on narrow screens
+          instead of squeezing columns; sticky columns (see ./sticky) pin the
+          identity columns while the rest slides underneath. */}
+      <UITable className="min-w-[720px]">
         <DataGridHeader table={table} enableSelection={enableSelection} />
         <TableBody className="divide-y divide-border/40 text-xs">
           {rows.map((row) => (
@@ -426,6 +504,8 @@ function DataGridBody<TData extends RowData>({
                   }
                   className={cn(
                     "py-2.5 px-4",
+                    cell.column.columnDef.meta?.sticky === "left" &&
+                      stickyCellClass(cell.column.columnDef.meta?.stickyOffsetClass),
                     cell.column.columnDef.meta?.cellClassName
                   )}
                 >

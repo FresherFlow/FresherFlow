@@ -49,19 +49,16 @@ export function SpaceSwitcher({
             <SidebarMenuButton
               suppressHydrationWarning
               size="lg"
-              className="nav-switcher-btn h-auto rounded-lg border border-border bg-card px-3 py-1.5 hover:bg-muted hover:text-foreground active:bg-muted data-[state=open]:bg-muted data-[state=open]:text-foreground group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:bg-transparent"
+              className="nav-switcher-btn data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <div className="sidebar-expanded-only flex aspect-square size-7 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-foreground">
-                <ActiveIcon className="size-3.5 shrink-0" aria-hidden />
+              <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-logo-bg text-foreground">
+                <ActiveIcon className="size-4 shrink-0" aria-hidden />
               </div>
-              <div className="sidebar-expanded-only grid flex-1 text-left leading-tight">
-                <span className="truncate text-sm font-medium">{activeSpace.name}</span>
-                <span className="truncate text-xs text-foreground/60">{activeSpace.subtitle}</span>
+              <div className="grid flex-1 text-start text-sm leading-tight">
+                <span className="truncate font-semibold">{activeSpace.name}</span>
+                <span className="truncate text-xs">{activeSpace.subtitle}</span>
               </div>
-              <ChevronsUpDown className="sidebar-expanded-only ml-auto size-3.5 shrink-0 text-foreground/50" />
-              <span className="sidebar-collapsed-only flex items-center justify-center text-foreground">
-                <ActiveIcon className="size-[22px] shrink-0" aria-hidden />
-              </span>
+              <ChevronsUpDown className="ms-auto size-4 shrink-0" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -83,8 +80,8 @@ export function SpaceSwitcher({
                   onClick={() => onChange(space.id)}
                   className="gap-2 p-2"
                 >
-                  <div className="flex size-6 items-center justify-center rounded-md border">
-                    <Icon className="size-3.5 shrink-0" aria-hidden />
+                  <div className="flex size-6 items-center justify-center rounded-sm border">
+                    <Icon className="size-4 shrink-0" aria-hidden />
                   </div>
                   <div className="grid flex-1 text-left leading-tight">
                     <span className="text-sm font-medium">{space.name}</span>

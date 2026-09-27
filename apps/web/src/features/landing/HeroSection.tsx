@@ -15,11 +15,15 @@ import { ArrowRightIcon } from '@heroicons/react/24/outline';
 interface HeroSectionProps {
     newToday: number;
     refreshedAt: Date | null;
-    /** Deep link to a live discussion (first latest job), falls back to /jobs. */
+    /**
+     * Where "Ask / Discuss" goes. Defaults to the discussions board rather than
+     * /jobs, because /jobs is already the "Browse the board" target — a
+     * fallback there silently makes two CTAs identical.
+     */
     discussHref?: string;
 }
 
-export function HeroSection({ newToday, refreshedAt, discussHref = '/jobs' }: HeroSectionProps) {
+export function HeroSection({ newToday, refreshedAt, discussHref = '/community?tab=discussions' }: HeroSectionProps) {
     const mins = refreshedAt ? Math.max(0, Math.floor((Date.now() - refreshedAt.getTime()) / 60000)) : null;
     const age =
         mins === null

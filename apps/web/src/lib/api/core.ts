@@ -24,6 +24,27 @@ const USER_ACCESS_TOKEN_KEY = 'ff_user_access_token_v1';
 const USER_REFRESH_TOKEN_KEY = 'ff_user_refresh_token_v1';
 const ADMIN_ACCESS_TOKEN_KEY = 'ff_admin_access_token_v1';
 
+/**
+ * Repeat suppressor for client warnings. One page load fires the same request
+ * twice under React strict mode, which produced two identical console lines for
+ * a single failure.
+ */
+const clientWarnSeen = new Map<string, number>();
+const CLIENT_WARN_WINDOW_MS = 4000;
+
+function shouldLogClientWarningOnce(key: string): boolean {
+    const now = Date.now();
+    const last = clientWarnSeen.get(key);
+    if (last !== undefined && now - last < CLIENT_WARN_WINDOW_MS) return false;
+    clientWarnSeen.set(key, now);
+    if (clientWarnSeen.size > 100) {
+        for (const [k, v] of clientWarnSeen) {
+            if (now - v >= CLIENT_WARN_WINDOW_MS) clientWarnSeen.delete(k);
+        }
+    }
+    return true;
+}
+
 function logClientWarning(message: string, error?: unknown) {
     if (process.env.NODE_ENV === 'development') {
         const err = error as { statusCode?: number; message?: string } | undefined;
@@ -36,7 +57,13 @@ function logClientWarning(message: string, error?: unknown) {
         if (error instanceof Error && error.message.includes('status 500')) {
             return;
         }
-        console.warn(`[Client] ${message} ${toCleanMessage(err?.message || 'Request handled')}`);
+        const status = err?.statusCode;
+        if (!shouldLogClientWarningOnce(`${message}|${status ?? ''}`)) return;
+        // Only append the server's message when there is one. The old fallback
+        // appended the literal "Request handled" to every warning that carried
+        // no error, which read as a second, meaningless message.
+        const detail = err?.message ? ` — ${toCleanMessage(err.message)}` : '';
+        console.warn(`[Client] ${message}${detail}`);
     }
 }
 
@@ -388,6 +415,11 @@ export async function apiClient<T = unknown>(
 
                 // Only retry on transient 5xx — never retry 429 (rate limit) like reference dub (returns 429 immediately)
                 if (response.status < 500) return response;
+                // 503 is our DB_UNAVAILABLE / schema-pending envelope: the server
+                // is reachable but cannot serve. Retrying it three times with
+                // backoff just multiplied one failure into three server-side
+                // errors. 502/504 stay retryable — those are genuinely transient.
+                if (response.status === 503 || response.status === 501) return response;
 
                 const err = new Error(`Request failed with status ${response.status}`) as Error & { statusCode?: number };
                 err.statusCode = response.status;
@@ -566,7 +598,10 @@ export async function apiClient<T = unknown>(
             }
 
             if (shouldLogClientError({ statusCode: response.status, message: errorMessage })) {
-                console.error(`API request failed: ${method} ${endpoint} (${response.status}) - ${toCleanMessage(errorMessage)}`);
+                // console.warn, not console.error: the Next dev overlay appends a
+                // stack and source frame to every console.error, turning a
+                // one-line message into a nine-line block.
+                console.warn(`[Client] API request failed: ${method} ${endpoint} (${response.status}) - ${toCleanMessage(errorMessage)}`);
             }
 
             const httpError = new Error(toCleanMessage(errorMessage)) as Error & {
@@ -609,16 +644,23 @@ export async function apiClient<T = unknown>(
 
         if (shouldLogClientError(error)) {
             const errForLog = error as { statusCode?: number; code?: string; message?: string };
-            console.error(`API request failed: ${method} ${endpoint} (${errForLog.statusCode ?? 'network'}) - ${toCleanMessage(errForLog.message || 'Request failed')}`);
+            console.warn(`[Client] API request failed: ${method} ${endpoint} (${errForLog.statusCode ?? 'network'}) - ${toCleanMessage(errForLog.message || 'Request failed')}`);
         } else {
             // One line, no error object: passing the error to the console makes
             // the dev overlay append a stack and source frame.
-            const handled = error as { statusCode?: number; code?: string; message?: string };
-            if (handled.statusCode || handled.code) {
-                logClientWarning(`API unavailable: ${method} ${endpoint} (${handled.statusCode ?? handled.code})`);
+        const err = error as { statusCode?: number; code?: string; message?: string };
+        // Our own 5xx envelope is always surfaced by the caller as a toast, and
+        // toastError prints the single console line. Logging here too printed
+        // every server error twice.
+        const isServerEnvelope = Boolean(err.statusCode && err.statusCode >= 500);
+        if (!isServerEnvelope) {
+            if (err.statusCode || err.code) {
+                // Pass the error so the line carries the server's own reason.
+                logClientWarning(`API unavailable: ${method} ${endpoint}`, error);
             } else {
                 logClientWarning('API request handled:', error);
             }
+        }
         }
 
         const err = error as { statusCode?: number; code?: string; message?: string };

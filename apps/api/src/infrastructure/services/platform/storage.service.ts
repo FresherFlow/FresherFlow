@@ -72,7 +72,11 @@ export class StorageService {
                 })
             );
         } catch (error) {
+            // Rethrow so a failed upload fails the feed regeneration that
+            // triggered it. Swallowing here meant refresh() "succeeded" while
+            // the CDN kept serving the previous version.
             logger.error(`[StorageService] Failed to upload ${key} to R2`, error);
+            throw error;
         }
     }
 

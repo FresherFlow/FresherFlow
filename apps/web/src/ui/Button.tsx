@@ -24,7 +24,11 @@ const buttonVariants = cva(
                 outline: "border border-border bg-background text-foreground shadow-sm [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted",
                 secondary: "bg-secondary text-secondary-foreground shadow-sm [@media(hover:hover)_and_(pointer:fine)]:hover:bg-secondary/80",
                 ghost: "[@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted [@media(hover:hover)_and_(pointer:fine)]:hover:text-foreground",
-                admin: "border border-input bg-muted/50 text-foreground shadow-sm [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent [@media(hover:hover)_and_(pointer:fine)]:hover:text-accent-foreground",
+                // Hover uses `muted`, not `accent`: in the dark theme
+                // `--color-accent` is near-white (oklch 97.7%), so `hover:bg-accent`
+                // filled the button solid white. Light mode is unchanged — accent
+                // and muted are the same value there.
+                admin: "border border-input bg-muted/50 text-foreground shadow-sm [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted [@media(hover:hover)_and_(pointer:fine)]:hover:text-foreground",
                 link: "text-primary underline-offset-4 [@media(hover:hover)_and_(pointer:fine)]:hover:underline",
             },
             size: {

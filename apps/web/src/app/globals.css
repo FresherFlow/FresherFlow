@@ -25,8 +25,8 @@
   --color-secondary: oklch(96.1% 0.003 248); /* Light gray */
   --color-secondary-foreground: oklch(20.6% 0.039 266); /* Navy */
 
-  --color-accent: oklch(20.6% 0.039 266); /* Navy (same as primary) */
-  --color-accent-foreground: oklch(100% 0 90); /* White */
+  --color-accent: oklch(88.9% 0.004 248); /* Subtle hover bg (same as muted) — never navy */
+  --color-accent-foreground: oklch(20.6% 0.039 266); /* Navy text on accent */
 
   --color-background: oklch(
     93.6% 0.003 248
@@ -83,7 +83,7 @@
   --color-sidebar-foreground: oklch(20.6% 0.039 266);
   --color-sidebar-primary: oklch(20.6% 0.039 266);
   --color-sidebar-primary-foreground: var(--color-paper);
-  --color-sidebar-accent: oklch(96.1% 0.004 248);
+  --color-sidebar-accent: var(--color-muted); /* Selected/hover row — darker than sidebar bg */
   --color-sidebar-accent-foreground: oklch(20.6% 0.039 266);
   --color-sidebar-border: oklch(80.4% 0.008 255);
   --color-sidebar-ring: oklch(20.6% 0.039 266); /* Same as foreground */
@@ -1182,3 +1182,39 @@ html.ff-smooth {
 
 /* Legacy shadcn dark sidebar block deleted: --color-sidebar-* already carry
    dark oklch values in .dark above, and --sidebar-* are aliases of them. */
+
+/* Sidebar submenu expand/collapse — port of shadcn-admin's `.CollapsibleContent`
+   (src/styles/index.css). Radix exposes the measured panel height, so the
+   submenu slides open/closed instead of snapping. Selected by `data-slot`
+   (stamped by ui/Collapsible.tsx) so no call site carries a styling class. */
+[data-slot='collapsible-content'] {
+  overflow: hidden;
+}
+[data-slot='collapsible-content'][data-state='open'] {
+  animation: ff-collapsible-slide-down 300ms ease-out;
+}
+[data-slot='collapsible-content'][data-state='closed'] {
+  animation: ff-collapsible-slide-up 300ms ease-out;
+}
+@keyframes ff-collapsible-slide-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+  }
+}
+@keyframes ff-collapsible-slide-up {
+  from {
+    height: var(--radix-collapsible-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-slot='collapsible-content'][data-state='open'],
+  [data-slot='collapsible-content'][data-state='closed'] {
+    animation: none;
+  }
+}

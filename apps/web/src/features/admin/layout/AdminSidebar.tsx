@@ -4,164 +4,67 @@
 import * as React from 'react';
 import { X } from 'lucide-react';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useState, type ComponentType } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { LogoImage } from '@/features/shell/LogoImage';
+import { useAdminLayout } from '@/features/admin/layout/AdminLayoutProvider';
+import { AdminNavGroup } from '@/features/admin/layout/AdminNavGroup';
+import { AdminNavUser } from '@/features/admin/layout/AdminNavUser';
+import {
+    getAdminSidebarGroups,
+    toSpaceNavGroups,
+} from '@/features/admin/layout/admin-sidebar-data';
 import { NavMain } from '@/features/navigation/NavMain';
-import type { SpaceNavGroup } from '@/features/navigation/navConfig';
 import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
 import { cn } from '@/ui/cn';
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
+    Sidebar,
+    SidebarContent,
+    SidebarFooter,
+    SidebarHeader,
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
+    SidebarRail,
 } from '@/ui/sidebar';
-import {
-    Squares2X2Icon,
-    BriefcaseIcon,
-    ChatBubbleBottomCenterTextIcon,
-    ShieldCheckIcon,
-    Cog8ToothIcon,
-    ShareIcon,
-    BookOpenIcon,
-    BellAlertIcon,
-    PlusCircleIcon,
-    QueueListIcon,
-    UserGroupIcon,
-    CheckCircleIcon,
-    BuildingOfficeIcon,
-    CpuChipIcon,
-    ChartBarIcon,
-    MagnifyingGlassIcon,
-    GlobeAltIcon,
-    ChevronLeftIcon,
-    FlagIcon,
-} from '@heroicons/react/24/outline';
-
-/** Kept for MobileNavMenu: it maps `item.label`. Do not rename fields. */
-export const mainNavItems = [
-    { href: '/admin/dashboard', label: 'Dashboard', icon: Squares2X2Icon },
-    { href: '/admin/opportunities', label: 'Listings', icon: BriefcaseIcon, exact: true },
-    { href: '/admin/profile-pages', label: 'Profile Pages', icon: UserGroupIcon },
-    { href: '/admin/community-submissions', label: 'Submissions', icon: QueueListIcon },
-    { href: '/admin/reports', label: 'Reports', icon: FlagIcon },
-    { href: '/admin/users', label: 'Users & moderators', icon: UserGroupIcon },
-    { href: '/admin/audit', label: 'Audit log', icon: CheckCircleIcon },
-    { href: '/admin/opportunities/create', label: 'New listing', icon: PlusCircleIcon },
-    { href: '/admin/discovery', label: 'Discovery Engine', icon: ShieldCheckIcon, hasSubmenu: true },
-];
-
-export const settingsNavItems = [
-    { href: '/admin/resources', label: 'Resources', icon: BookOpenIcon },
-    { href: '/admin/rooms', label: 'Rooms', icon: BuildingOfficeIcon },
-    { href: '/admin/captions', label: 'Captions', icon: ShareIcon },
-    { href: '/admin/push', label: 'Push Alerts', icon: BellAlertIcon },
-    { href: '/admin/feedback', label: 'Feedback', icon: ChatBubbleBottomCenterTextIcon },
-    { href: '/admin/settings', label: 'Settings', icon: Cog8ToothIcon },
-];
-
-const discoveryNavItems = [
-    { href: '/admin/dashboard', label: 'Back to Admin', icon: ChevronLeftIcon },
-    { href: '/admin/discovery?tab=dashboard', label: 'Dashboard', icon: ChartBarIcon },
-    { href: '/admin/discovery?tab=runs', label: 'Discovery Runs', icon: QueueListIcon },
-    { href: '/admin/discovery?tab=discovered', label: 'Discovered Jobs', icon: MagnifyingGlassIcon },
-    { href: '/admin/discovery?tab=processed', label: 'Processed Jobs', icon: CheckCircleIcon },
-    { href: '/admin/discovery?tab=companies', label: 'Target Companies', icon: BuildingOfficeIcon },
-    { href: '/admin/discovery?tab=adapters', label: 'ATS Adapters', icon: CpuChipIcon },
-    { href: '/admin/discovery?tab=boards', label: 'Job Boards', icon: GlobeAltIcon },
-];
-
-type AdminNavSourceItem = {
-    href: string;
-    label: string;
-    icon: ComponentType<{ className?: string; strokeWidth?: number }>;
-    exact?: boolean;
-};
-
-function toGroupItems(
-    items: AdminNavSourceItem[],
-    feedbackBadge: number,
-): SpaceNavGroup['items'] {
-    return items.map((item) => ({
-        title: item.label,
-        href: item.href,
-        icon: item.icon,
-        exact: item.exact,
-        ...(item.label === 'Feedback' && feedbackBadge > 0 ? { badge: feedbackBadge } : {}),
-    }));
-}
-
-function getAdminGroups(pathname: string, feedbackBadge: number): {
-    groups: SpaceNavGroup[];
-    headerTitle: string;
-    homeHref: string;
-} {
-    if (pathname.startsWith('/admin/discovery')) {
-        return {
-            groups: [
-                {
-                    label: 'Discovery',
-                    items: toGroupItems(discoveryNavItems, 0),
-                    collapsible: true,
-                    defaultOpen: true,
-                },
-            ],
-            headerTitle: 'Discovery Engine',
-            homeHref: '/admin/dashboard',
-        };
-    }
-    return {
-        groups: [
-            {
-                label: 'Overview',
-                items: toGroupItems(mainNavItems, 0),
-                collapsible: true,
-                defaultOpen: true,
-            },
-            {
-                label: 'Manage',
-                items: toGroupItems(settingsNavItems, feedbackBadge),
-                collapsible: true,
-                defaultOpen: true,
-            },
-        ],
-        headerTitle: 'Admin Portal',
-        homeHref: '/admin/dashboard',
-    };
-}
 
 /**
- * Brand block mirroring the app sidebar: wordmark when expanded, centered
- * logo tile in collapsed (icon) mode. The wordmark is just "admin" — the
- * operator always knows which surface they are on from the URL, and the
- * previous "FresherFlow Admin Portal" wrapped to two lines in a 12rem rail.
+ * Kept for MobileNavMenu (it maps `item.label`) and AdminCommandMenu.
+ * Canonical nav data lives in `./admin-sidebar-data` — do not add items here.
+ */
+export {
+    discoveryNavItems,
+    mainNavItems,
+    settingsNavItems,
+} from '@/features/admin/layout/admin-sidebar-data';
+
+/**
+ * Brand block following shadcn-admin's header pattern exactly (TeamSwitcher
+ * structure): a size-8 logo tile plus two-line wordmark inside a size-lg
+ * menu button. No custom expanded/collapsed spans — the primitive's
+ * overflow + size rules own the collapse animation, so opening/closing
+ * matches the reference instead of snapping via display toggles.
  */
 function AdminBrand({ href }: { href: string }) {
     return (
         <SidebarMenu>
             <SidebarMenuItem>
-                <SidebarMenuButton
-                    asChild
-                    size="lg"
-                    className="h-9 justify-start px-2 hover:bg-transparent hover:text-sidebar-foreground active:bg-transparent group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
-                >
+                <SidebarMenuButton asChild size="lg">
                     <Link href={href} aria-label="FresherFlow admin home">
-                        <span className="sidebar-expanded-only flex min-w-0 items-center gap-2">
-                            <LogoImage width={28} height={28} className="h-7 w-7 shrink-0" />
-                            <span className="truncate text-base font-semibold">admin</span>
-                        </span>
-                        <span className="sidebar-collapsed-only flex items-center justify-center">
+                        <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-logo-bg">
+                            {/* Reference tile uses a size-4 glyph: TeamSwitcher's
+                                `<activeTeam.logo className='size-4' />`. The 20px
+                                logo made the tile read heavier than the rail icons. */}
                             <LogoImage
-                                width={24}
-                                height={24}
-                                className="h-6 w-6 shrink-0 object-contain"
+                                width={16}
+                                height={16}
+                                className="size-4 shrink-0 object-contain"
                             />
-                        </span>
+                        </div>
+                        <div className="grid flex-1 text-start text-sm leading-tight">
+                            <span className="truncate font-semibold">admin</span>
+                            <span className="truncate text-xs">FresherFlow</span>
+                        </div>
                     </Link>
                 </SidebarMenuButton>
             </SidebarMenuItem>
@@ -169,33 +72,26 @@ function AdminBrand({ href }: { href: string }) {
     );
 }
 
-function AdminSidebarNav({ feedbackAlertCount = 0 }: { feedbackAlertCount?: number }) {
+function useAdminSidebarRoute(feedbackAlertCount: number) {
     const pathname = usePathname() || '';
-    const searchParams = useSearchParams();
 
     const effectiveFeedbackAlertCount =
         pathname.startsWith('/feedback') || pathname.startsWith('/admin/feedback')
             ? 0
             : feedbackAlertCount;
 
-    const { groups, headerTitle, homeHref } = getAdminGroups(pathname, effectiveFeedbackAlertCount);
-
-    return { groups, headerTitle, homeHref, pathname, searchParams } as const;
+    return getAdminSidebarGroups(pathname, effectiveFeedbackAlertCount);
 }
 
 function AdminSidebarRail({ feedbackAlertCount = 0 }: { feedbackAlertCount?: number }) {
     const [isScrolled, setIsScrolled] = React.useState(false);
-
-    const [hostname, setHostname] = useState<string>('');
-    useEffect(() => {
-        setHostname(window.location.hostname);
-    }, []);
+    const { collapsible, variant } = useAdminLayout();
 
     // Keep shell always mounted — only the nav list suspends. This prevents
     // the entire rail from disappearing (blink) when useSearchParams suspends
     // on navigation (common with Next's opt-in Suspense bailout).
     return (
-        <Sidebar collapsible="icon">
+        <Sidebar collapsible={collapsible} variant={variant}>
             <SidebarHeader
                 className={cn(
                     'sticky top-0 z-10 gap-1.5 bg-sidebar/95 p-2 backdrop-blur-sm supports-[backdrop-filter]:bg-sidebar/80 relative',
@@ -222,15 +118,7 @@ function AdminSidebarRail({ feedbackAlertCount = 0 }: { feedbackAlertCount?: num
                 </React.Suspense>
             </SidebarContent>
             <SidebarFooter>
-                <div className="flex items-center justify-between gap-2 p-2 group-data-[collapsible=icon]:justify-center">
-                    <span
-                        className="sidebar-expanded-only truncate text-xs text-muted-foreground"
-                        title={hostname}
-                    >
-                        {hostname || 'admin'}
-                    </span>
-                    <ThemeSwitcher />
-                </div>
+                <AdminNavUser />
             </SidebarFooter>
             <SidebarRail />
         </Sidebar>
@@ -238,18 +126,25 @@ function AdminSidebarRail({ feedbackAlertCount = 0 }: { feedbackAlertCount?: num
 }
 
 function AdminSidebarBrandResolver({ feedbackAlertCount = 0 }: { feedbackAlertCount?: number }) {
-    const { homeHref } = AdminSidebarNav({ feedbackAlertCount });
+    const { homeHref } = useAdminSidebarRoute(feedbackAlertCount);
     return <AdminBrand href={homeHref} />;
 }
 
 function AdminSidebarNavContent({ feedbackAlertCount = 0 }: { feedbackAlertCount?: number }) {
-    const { groups, pathname, searchParams } = AdminSidebarNav({ feedbackAlertCount });
-    return <NavMain groups={groups} pathname={pathname} searchParams={searchParams} isAuthed />;
+    const { groups } = useAdminSidebarRoute(feedbackAlertCount);
+    return (
+        <>
+            {groups.map((group) => (
+                <AdminNavGroup key={group.title} group={group} />
+            ))}
+        </>
+    );
 }
 
 /**
  * Nav tree for the mobile drawer (rendered by MobileTopNav inside a Sheet on
- * `/admin` routes). Same groups as the rail, without a nested provider.
+ * `/admin` routes). Same groups as the rail, rendered through `NavMain`
+ * because the drawer lives outside the desktop `SidebarProvider`.
  */
 export function AdminMobileNavTree({ onNavigate }: { onNavigate: () => void }) {
     const pathname = usePathname() || '';
@@ -260,7 +155,7 @@ export function AdminMobileNavTree({ onNavigate }: { onNavigate: () => void }) {
         setHostname(window.location.hostname);
     }, []);
 
-    const { groups, homeHref } = getAdminGroups(pathname, 0);
+    const { groups, homeHref } = getAdminSidebarGroups(pathname, 0);
 
     return (
         <div className="flex h-full w-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground">
@@ -279,7 +174,7 @@ export function AdminMobileNavTree({ onNavigate }: { onNavigate: () => void }) {
                 {/* Every nav row is a link, so any click in here is a navigation and
                     should close the Sheet. */}
                 <div className="mt-2" onClickCapture={onNavigate}>
-                    <NavMain groups={groups} pathname={pathname} searchParams={searchParams} isAuthed />
+                    <NavMain groups={toSpaceNavGroups(groups)} pathname={pathname} searchParams={searchParams} isAuthed />
                 </div>
             </div>
             <div className="shrink-0 border-t border-sidebar-border p-2">

@@ -24,9 +24,10 @@ import {
 } from "@/ui/DropdownMenu";
 import CompanyLogo from "@/features/companies/components/CompanyLogo";
 import { DataGridColumn } from "@/ui/data-grid/DataGrid";
+import { STICKY_AFTER_SELECT } from "@/ui/data-grid/sticky";
 import { selectionColumn } from "@/features/admin/discovery/selectionColumn";
 import { AdminOpportunityRow, getStatusLabel } from "./listUtils";
-import { OpportunityStatusCell } from "./statuses";
+import { MetaPill, OpportunityStatusCell } from "./statuses";
 import { isGovernmentOpportunity, kindFromOpportunity, type OpportunityKind } from "./formUtils";
 
 /** Operator-facing type label; `GOVERNMENT` is a sector, not a card type. */
@@ -160,6 +161,9 @@ export function useOpportunityColumns(
         accessorFn: (row) => `${row.title} ${row.company}`,
         header: "Opportunity",
         enableSorting: true,
+        // Pinned on mobile next to the select checkbox so operators keep
+        // row identity while scrolling (see ui/data-grid/sticky).
+        meta: { sticky: "left", stickyOffsetClass: STICKY_AFTER_SELECT },
         cell: ({ row }) => {
           const opp = row.original;
           return (
@@ -185,14 +189,20 @@ export function useOpportunityColumns(
                   <span className="text-xs text-muted-foreground truncate max-w-40">
                     {opp.company}
                   </span>
-                  <span className="text-xs uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted border border-border text-muted-foreground">
-                    {getOpportunityKindLabel(opp)}
-                  </span>
                 </div>
               </div>
             </div>
           );
         },
+      },
+      {
+        id: "type",
+        accessorFn: (row) => getOpportunityKindLabel(row),
+        header: "Type",
+        enableSorting: true,
+        cell: ({ row }) => (
+          <MetaPill>{getOpportunityKindLabel(row.original)}</MetaPill>
+        ),
       },
       {
         id: "location",

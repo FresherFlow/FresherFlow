@@ -12,6 +12,7 @@ import {
 import { Button } from "@/ui/Button"
 import { TableHead, TableHeader, TableRow } from "@/ui/Table"
 import { cn } from "@/ui/cn"
+import { stickyHeaderCellClass } from "./sticky"
 
 interface DataGridHeaderProps<TData extends RowData> {
   table: Table<StockFeatures, TData>
@@ -73,7 +74,10 @@ function HeaderTh<TData extends RowData>({
     return (
       <TableHead
         key={header.id}
-        className="py-2.5 pl-4 pr-0 w-10 normal-case tracking-normal"
+        className={cn(
+          "py-2.5 pl-4 pr-0 w-10 normal-case tracking-normal",
+          meta?.sticky === "left" && stickyHeaderCellClass(meta?.stickyOffsetClass)
+        )}
         style={{ width: 40 }}
       >
         <SelectionHeader table={table} />
@@ -92,6 +96,7 @@ function HeaderTh<TData extends RowData>({
       }
       className={cn(
         "relative py-2.5 px-4 font-medium normal-case tracking-normal group/header",
+        meta?.sticky === "left" && stickyHeaderCellClass(meta?.stickyOffsetClass),
         meta?.headerClassName
       )}
     >

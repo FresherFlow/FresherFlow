@@ -3,10 +3,7 @@ import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 import BuildingLibraryIcon from '@heroicons/react/24/outline/BuildingLibraryIcon';
-import GlobeAltIcon from '@heroicons/react/24/outline/GlobeAltIcon';
 import UserCircleIcon from '@heroicons/react/24/outline/UserCircleIcon';
-import MapIcon from '@heroicons/react/24/outline/MapIcon';
-import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import type { ComponentProps } from 'react';
 
 export type NavRoute = {
@@ -136,24 +133,6 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             icon: AcademicCapIcon,
         },
         {
-            href: '/drives',
-            label: 'Drives',
-            mobileTitle: 'Drives',
-            mobileLabel: 'Drives',
-            showInDesktop: true,
-            showInMobileTabs: false,
-            icon: MapIcon,
-        },
-        {
-            href: '/drives/off-campus',
-            label: 'Off-Campus',
-            mobileTitle: 'Off-Campus Drives',
-            mobileLabel: 'Off-Campus',
-            showInDesktop: true,
-            showInMobileTabs: false,
-            icon: MapPinIcon,
-        },
-        {
             href: '/drives/walk-in',
             label: 'Walk-ins',
             mobileTitle: 'Walk-in Drives',
@@ -188,15 +167,6 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             showInDesktop: true,
             showInMobileTabs: false,
             icon: BuildingLibraryIcon,
-        },
-        {
-            href: '/resources?tab=platforms',
-            label: 'Platforms',
-            mobileTitle: 'Internship Platforms',
-            mobileLabel: 'Platforms',
-            showInDesktop: true,
-            showInMobileTabs: false,
-            icon: GlobeAltIcon,
         },
         {
             href: '/account',

@@ -2,12 +2,13 @@
 
 import React, { useCallback, useMemo } from "react";
 import { SortingState } from "@tanstack/react-table";
+import { ArrowPathIcon } from "@heroicons/react/24/outline";
+import { Archive, CircleCheck, Clock, Trash2 } from "lucide-react";
 import {
-  ArrowPathIcon,
-  ArchiveBoxIcon,
-  ClockIcon,
-  TrashIcon,
-} from "@heroicons/react/24/outline";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/ui/Tooltip";
 import { DataGrid, DataGridActionsContext } from "@/ui/data-grid/DataGrid";
 import {
   Select,
@@ -30,6 +31,53 @@ import {
 
 const ALL = "ALL";
 
+/** Rows-per-page choices, server-owned: both footers read the same list. */
+const PAGE_SIZE_OPTIONS = [20, 50, 100];
+
+/**
+ * Icon-only bulk action, exactly the shadcn-admin `DataTableBulkActions`
+ * pattern: a `size-8` icon button with no visible label, plus a tooltip and an
+ * `sr-only` name so the action stays discoverable and screen-reader safe. The
+ * selected count already lives in the bar's badge.
+ */
+function BulkIconAction({
+  icon: Icon,
+  label,
+  variant = "outline",
+  disabled,
+  onClick,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  variant?: "outline" | "destructive";
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  const description = `${label} selected listings`;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant={variant}
+          size="icon"
+          className="size-8"
+          disabled={disabled}
+          onClick={onClick}
+          aria-label={description}
+          title={description}
+        >
+          <Icon className="size-4" />
+          <span className="sr-only">{description}</span>
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>
+        <p>{description}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 export interface AdminOpportunitiesTableProps {
   opportunities: AdminOpportunityRow[];
   isLoading: boolean;
@@ -39,10 +87,16 @@ export interface AdminOpportunitiesTableProps {
   pageSize: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  /** Rows-per-page is server-owned, so changing it must re-query. */
+  onPageSizeChange?: (pageSize: number) => void;
 
   /** Server sort, expressed as the existing `sort` URL param. */
   sort: string;
   onSortChange: (value: string) => void;
+  sortOptions?: { value: string; label: string }[];
+  /** Drives the server query, since this grid is server-paginated. */
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
 
   statusFilter: string;
   onStatusChange: (value: string) => void;
@@ -61,6 +115,11 @@ export interface AdminOpportunitiesTableProps {
   onClearFilters: () => void;
 
   enableSelection?: boolean;
+  /**
+   * Canonical selection, owned by the caller (the admin actions hook) because
+   * bulk actions run off it. The grid reports TanStack's own selection back
+   * through `onSelectedRowsChange`.
+   */
   onSelectedRowsChange?: (rows: AdminOpportunityRow[]) => void;
 
   onPreview: (id: string) => void;
@@ -103,8 +162,12 @@ export const AdminOpportunitiesTable = ({
   pageSize,
   totalPages,
   onPageChange,
+  onPageSizeChange,
   sort,
   onSortChange,
+  sortOptions = [],
+  searchValue,
+  onSearchChange,
   statusFilter,
   onStatusChange,
   statusOptions,
@@ -220,6 +283,22 @@ export const AdminOpportunitiesTable = ({
           </Select>
         )}
 
+        <Select value={sort} onValueChange={onSortChange}>
+          <SelectTrigger
+            className="w-auto min-w-28 cursor-pointer"
+            aria-label="Sort listings"
+          >
+            <SelectValue placeholder="Newest" />
+          </SelectTrigger>
+          <SelectContent>
+            {sortOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
         <Select value={atsFilter} onValueChange={onAtsFilterChange}>
           <SelectTrigger
             className="w-auto min-w-30 cursor-pointer"
@@ -249,59 +328,6 @@ export const AdminOpportunitiesTable = ({
           <span className="hidden sm:inline">Refresh</span>
         </Button>
 
-        {enableSelection && ctx.selectedCount > 0 && (
-          <>
-            {bulkActionPending && (
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                {bulkActionLabel || "working"}...
-              </span>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onBulkAction?.("PUBLISH")}
-              disabled={bulkActionPending}
-            >
-
-              Publish ({ctx.selectedCount})
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onBulkAction?.("EXPIRE")}
-              disabled={bulkActionPending}
-            >
-              <ClockIcon className="w-3.5 h-3.5 sm:mr-1.5" />
-              <span className="hidden sm:inline">
-                Expire ({ctx.selectedCount})
-              </span>
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onBulkAction?.("ARCHIVE")}
-              disabled={bulkActionPending}
-            >
-              <ArchiveBoxIcon className="w-3.5 h-3.5 sm:mr-1.5" />
-              <span className="hidden sm:inline">
-                Archive ({ctx.selectedCount})
-              </span>
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => onBulkAction?.("DELETE")}
-              disabled={bulkActionPending}
-            >
-              <TrashIcon className="w-3.5 h-3.5 sm:mr-1.5" />
-              <span className="hidden sm:inline">
-                Delete ({ctx.selectedCount})
-              </span>
-            </Button>
-          </>
-
-        )}
       </div>
     ),
     [
@@ -314,63 +340,123 @@ export const AdminOpportunitiesTable = ({
       onAtsFilterChange,
       onRefresh,
       isLoading,
-      enableSelection,
-      bulkActionPending,
-      bulkActionLabel,
-      onBulkAction,
     ],
+  );
+
+  /**
+   * Selection-dependent buttons. These render in the floating bulk bar (see
+   * `bulkActions` on DataGrid) instead of the header, so they stay reachable
+   * on mobile without overflowing the toolbar. Labels stay visible — the bar
+   * scrolls horizontally when the viewport is narrow.
+   */
+  const bulkToolbar = useCallback(
+    (_ctx: DataGridActionsContext<AdminOpportunityRow>) => (
+      <>
+        {bulkActionPending && (
+          <span className="text-xs text-muted-foreground flex items-center gap-1 whitespace-nowrap">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+            {bulkActionLabel || "working"}...
+          </span>
+        )}
+        <BulkIconAction
+          icon={CircleCheck}
+          label="Publish"
+          disabled={bulkActionPending}
+          onClick={() => onBulkAction?.("PUBLISH")}
+        />
+        <BulkIconAction
+          icon={Clock}
+          label="Expire"
+          disabled={bulkActionPending}
+          onClick={() => onBulkAction?.("EXPIRE")}
+        />
+        <BulkIconAction
+          icon={Archive}
+          label="Archive"
+          disabled={bulkActionPending}
+          onClick={() => onBulkAction?.("ARCHIVE")}
+        />
+        <BulkIconAction
+          icon={Trash2}
+          label="Delete"
+          variant="destructive"
+          disabled={bulkActionPending}
+          onClick={() => onBulkAction?.("DELETE")}
+        />
+      </>
+    ),
+    [bulkActionPending, bulkActionLabel, onBulkAction],
+  );
+
+  const emptyState = (
+    <EmptyState
+      title="No listings found"
+      description={
+        emptyMessage ?? "Try clearing the filters, or create a new listing."
+      }
+      icon="search"
+      size="md"
+      variant="ghost"
+      action={
+        <Button type="button" size="sm" variant="outline" onClick={onClearFilters}>
+          Clear filters
+        </Button>
+      }
+    />
   );
 
   return (
     <div className="flex flex-col flex-1 min-h-0 gap-2">
-      <DataGrid<AdminOpportunityRow>
-        data={filteredRows}
-        columns={columns}
-        getRowId={(row) => row.id}
-        enableSelection={enableSelection}
-        title={title}
-        description={description}
-        count={totalCount || filteredRows.length}
-        countLabel={totalCount === 1 ? "listing" : "listings"}
-        isLoading={isLoading}
-        searchPlaceholder={searchPlaceholder}
-        noResults={
-          <EmptyState
-            title="No listings found"
-            description={
-              emptyMessage ?? "Try clearing the filters, or create a new listing."
-            }
-            icon="search"
-            size="md"
-            variant="ghost"
-            action={
-              <Button type="button" size="sm" variant="outline" onClick={onClearFilters}>
-                Clear filters
-              </Button>
-            }
-          />
-        }
-        statusValue={statusFilter || ALL}
-        onStatusChange={(value) => onStatusChange(value === ALL ? "" : value)}
-        statusOptions={[{ value: ALL, label: "All status" }, ...statusOptions]}
-        onClear={onClearFilters}
-        actions={toolbar}
-        onSelectedRowsChange={
-          enableSelection ? onSelectedRowsChange : undefined
-        }
-        className="min-h-0 flex-1"
-        /* Server-paginated source: the grid shows every row it was
-         * given and the footer is driven by the server page count. */
-        defaultPageSize={pageSize}
-        pageSizeOptions={[pageSize]}
-        sorting={sorting}
-        onSortingChange={handleSortingChange}
-        serverPagination={{
-          pageIndex: page - 1,
-          pageCount: Math.max(totalPages, 1),
-          onPageChange,
-        }}
-      />
+      {/* search, faceting, selection and sorting all live in the grid */}
+      {/* flex-col is load-bearing: the Card below sizes with flex-1, which
+          only engages inside a flex parent. As a plain block div the Card
+          grew to full content height, pushing the footer off-screen with
+          nowhere to scroll. */}
+      <div className="flex min-h-0 flex-1 flex-col">
+        <DataGrid<AdminOpportunityRow>
+          data={filteredRows}
+          columns={columns}
+          getRowId={(row) => row.id}
+          enableSelection={enableSelection}
+          title={title}
+          description={description}
+          count={totalCount || filteredRows.length}
+          countLabel={totalCount === 1 ? "listing" : "listings"}
+          isLoading={isLoading}
+          searchPlaceholder={searchPlaceholder}
+          noResults={emptyState}
+          statusValue={statusFilter || ALL}
+          onStatusChange={(value) => onStatusChange(value === ALL ? "" : value)}
+          statusOptions={[{ value: ALL, label: "All status" }, ...statusOptions]}
+          onClear={onClearFilters}
+          actions={toolbar}
+          bulkActions={enableSelection ? bulkToolbar : undefined}
+          bulkBarEntityName="listing"
+          onSelectedRowsChange={
+            enableSelection ? onSelectedRowsChange : undefined
+          }
+          className="min-h-0 flex-1"
+          /* Server-paginated source: the grid shows every row it was
+           * given and the footer is driven by the server page count. */
+          defaultPageSize={pageSize}
+          sorting={sorting}
+          onSortingChange={handleSortingChange}
+          searchValue={searchValue}
+          onSearchChange={onSearchChange}
+          serverPagination={{
+            pageIndex: page - 1,
+            pageCount: Math.max(totalPages, 1),
+            // DataGrid speaks zero-based, this component's page prop is one-based.
+            // Passing `onPageChange` straight through meant clicking page 2 sent
+            // pageIndex 1, which set the page to 1 and the grid never moved.
+            onPageChange: (pageIndex) => onPageChange(pageIndex + 1),
+            defaultPageSize: pageSize,
+            pageSize,
+            onPageSizeChange,
+            pageSizeOptions: PAGE_SIZE_OPTIONS,
+          }}
+        />
+      </div>
     </div>
   );
 };

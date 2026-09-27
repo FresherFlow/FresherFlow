@@ -14,6 +14,20 @@ declare module "@tanstack/react-table" {
     headerClassName?: string
     /** Per-column skeleton placeholder rendered while `isLoading` is true. */
     skeleton?: React.ReactNode
+    /**
+     * Pin this column to the left edge on small screens so the table scrolls
+     * horizontally instead of squeezing. Pair with `stickyOffsetClass` when
+     * the column is not the first one (e.g. a select checkbox column sits
+     * before it). The grid applies `max-md:sticky` + an opaque background
+     * automatically — this flag only marks intent.
+     */
+    sticky?: 'left'
+    /**
+     * Tailwind `left-*` offset for a sticky column that follows another
+     * sticky column, e.g. `left-10` after the 40px select column. Ignored
+     * unless `sticky` is set.
+     */
+    stickyOffsetClass?: string
   }
 }
 

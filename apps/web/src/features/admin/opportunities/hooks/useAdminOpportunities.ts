@@ -2,14 +2,17 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { adminApi } from '@/lib/api/admin';
 import type { Opportunity } from '@fresherflow/types';
-import toast from 'react-hot-toast';
-import { getErrorMessage } from '@/lib/utils/error';
+import { getErrorMessage, toastError } from '@/lib/utils/error';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
     typeParamToEnum,
     enumToTypeParam,
     buildExportUrl
 } from '@/features/admin/opportunities/listUtils';
+import {
+    ADMIN_OPPORTUNITY_DEFAULT_SORT,
+    parseAdminOpportunitySearchParams
+} from '@/features/admin/opportunities/hooks/adminOpportunitySearchParams';
 
 interface Filters {
     typeFilter: string;
@@ -32,7 +35,7 @@ export function useAdminOpportunities(pageSize: number = 20) {
         linkHealthFilter: '',
         activeOnly: false,
         search: '',
-        sort: 'postedAt_desc',
+        sort: ADMIN_OPPORTUNITY_DEFAULT_SORT,
     });
 
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -67,7 +70,9 @@ export function useAdminOpportunities(pageSize: number = 20) {
             setHasLoadedOnce(true);
         } catch (err: unknown) {
             const errorMsg = getErrorMessage(err, 'Failed to load opportunities');
-            toast.error(errorMsg);
+            // Shared helper, not a bare toast.error: it dedupes on the message so
+            // the strict-mode double fetch and the retry do not stack two toasts.
+            toastError(err, 'Failed to load opportunities');
             if (errorMsg.includes('403') || errorMsg.includes('Unauthorized')) {
                 router.push('/admin/login');
             }
@@ -83,29 +88,21 @@ export function useAdminOpportunities(pageSize: number = 20) {
             isInternalUrlSyncRef.current = false;
             return;
         }
-        const typeParam = searchParams.get('type');
-        const statusParam = searchParams.get('status');
-        const linkHealthParam = searchParams.get('linkHealth');
-        const activeOnlyParam = searchParams.get('activeOnly');
-        const qParam = searchParams.get('q');
-        const sortParam = searchParams.get('sort');
-        const pageParam = parseInt(searchParams.get('page') || '1', 10);
-
-        const nextLinkHealth = (linkHealthParam === 'HEALTHY' || linkHealthParam === 'RETRYING' || linkHealthParam === 'BROKEN') ? linkHealthParam : '';
+        const parsed = parseAdminOpportunitySearchParams(searchParams);
 
         setFilters(prev => {
             const next: Filters = {
-                typeFilter: typeParam ? typeParamToEnum(typeParam) : '',
-                statusFilter: statusParam ? statusParam.toUpperCase() : '',
-                linkHealthFilter: nextLinkHealth,
-                activeOnly: activeOnlyParam === 'true',
-                search: qParam ?? '',
-                sort: sortParam || 'postedAt_desc',
+                typeFilter: parsed.type ? typeParamToEnum(parsed.type) : '',
+                statusFilter: parsed.status,
+                linkHealthFilter: parsed.linkHealth,
+                activeOnly: parsed.activeOnly,
+                search: parsed.q,
+                sort: parsed.sort,
             };
             if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
             return next;
         });
-        setPage(pageParam);
+        setPage(parsed.page);
     }, [searchParamsKey, searchParams]);
 
     // Sync filters + page back to URL

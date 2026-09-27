@@ -3,6 +3,9 @@
 import { Suspense, Fragment } from 'react';
 import { usePathname } from 'next/navigation';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/ui/Breadcrumb';
+import { AdminSearchTrigger } from '@/features/admin/layout/AdminSearchTrigger';
+import { SidebarTrigger } from '@/ui/sidebar';
+import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
 import { formatSegment, getAdminTitle, isFeedHeaderRoute } from './headerContent';
 import { SIDEBAR_W_VAR } from './sidebarState';
 
@@ -10,7 +13,8 @@ import { SIDEBAR_W_VAR } from './sidebarState';
  * Admin desktop header. Single desktop header for admin routes — sidebar
  * routes use SiteHeader, public routes use DesktopNav, mobile uses
  * MobileTopNav. Same offset contract: fixed, `left: var(--sidebar-w)`,
- * flat (no new boxes).
+ * flat (no new boxes). Shadcn-style single row: trigger + title + ml-auto
+ * right cluster. Admin pages render their own in-flow bars below this.
  */
 function TopHeaderBarContent() {
     const pathname = usePathname() || '';
@@ -26,14 +30,11 @@ function TopHeaderBarContent() {
     const isFeedRoute = !isAdminRoute && isFeedHeaderRoute(segments);
     return (
         <div 
-            className="hidden lg:flex fixed top-0 right-0 h-14 items-center border-b border-border/40 bg-background/95 backdrop-blur-sm z-40 pr-6 px-5 transition-all duration-300 ease-out motion-reduce:transition-none"
+            className="hidden lg:flex fixed top-0 right-0 h-14 items-center border-b border-border/40 bg-background/95 backdrop-blur-sm z-40 pr-6 px-5 transition-[left] duration-200 ease-linear motion-reduce:transition-none"
             style={{ left: SIDEBAR_W_VAR }}
         >
-            {/* The portal target. Hidden when empty. Serves as a peer. */}
-            <div id="top-header-portal-target" className="peer empty:hidden flex items-center gap-6 w-full relative" />
-            
-            {/* Fallback for pages that do not inject into this portal */}
-            <div className="hidden peer-empty:flex items-center gap-6 w-full" id="top-header-fallback">
+            {/* Single row: feed breadcrumb / admin row / generic breadcrumb. */}
+            <div className="flex items-center gap-6 w-full">
                 {isFeedRoute ? (
                     <>
                         <div className="flex items-center text-sm font-medium text-muted-foreground whitespace-nowrap">
@@ -47,7 +48,14 @@ function TopHeaderBarContent() {
                         </div>
                     </>
                 ) : isAdminRoute ? (
-                    <div className="text-lg font-semibold text-foreground truncate">{adminTitle}</div>
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <SidebarTrigger className="size-7 shrink-0 rounded-lg text-muted-foreground hover:bg-muted/80 hover:text-foreground" />
+                        <div className="min-w-0 flex-1 truncate text-lg font-semibold text-foreground">{adminTitle}</div>
+                        <div className="ml-auto flex shrink-0 items-center gap-1">
+                            <AdminSearchTrigger />
+                            <ThemeSwitcher />
+                        </div>
+                    </div>
                 ) : (
                     <Breadcrumb>
                         <BreadcrumbList>
@@ -81,7 +89,7 @@ function TopHeaderBarContent() {
 
 export function TopHeaderBar() {
     return (
-        <Suspense fallback={<div className="hidden lg:block fixed top-0 right-0 h-14 z-40 transition-all duration-300 ease-out motion-reduce:transition-none" style={{ left: SIDEBAR_W_VAR }} />}>
+        <Suspense fallback={<div className="hidden lg:block fixed top-0 right-0 h-14 z-40 transition-[left] duration-200 ease-linear motion-reduce:transition-none" style={{ left: SIDEBAR_W_VAR }} />}>
             <TopHeaderBarContent />
         </Suspense>
     );

@@ -1,7 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { ChevronDownIcon, RocketLaunchIcon, ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/ui/DropdownMenu';
 import { Button } from '@/ui/Button';
@@ -55,13 +53,7 @@ export function DiscoveryHeader({
  hoursOld,
  setHoursOld,
 }: DiscoveryHeaderProps) {
- const { theme } = useTheme();
-
- const [headerTarget, setHeaderTarget] = useState<Element | null>(null);
-
- useEffect(() => {
- setHeaderTarget(document.getElementById('top-header-portal-target'));
- }, []);
+  const { theme } = useTheme();
 
   const mobileContent = isStandalone ? (
     <div className="border-b border-border/70 px-4 py-2 sm:px-6 flex items-center justify-between gap-3 text-xs bg-background shrink-0 min-h-12">
@@ -74,8 +66,8 @@ export function DiscoveryHeader({
     </div>
   ) : null;
 
- const desktopHeaderContent = (
- <div className="hidden md:flex h-14 items-center justify-between gap-4 w-full animate-in fade-in duration-150">
+  const desktopHeaderContent = (
+  <div className="flex h-14 items-center justify-between gap-4 w-full animate-in fade-in duration-150">
  <div className="flex items-center gap-3 min-w-0">
  <span className="text-lg font-semibold text-foreground shrink-0">{title}</span>
 
@@ -172,13 +164,16 @@ export function DiscoveryHeader({
  </div>
  );
 
- return (
- <>
- <div className="md:hidden">
- {mobileContent}
- </div>
- {headerTarget && createPortal(desktopHeaderContent, headerTarget)}
- </>
- );
+  return (
+  <>
+  <div className="md:hidden">
+  {mobileContent}
+  </div>
+  {/* In-flow desktop bar at the top of the page content (same buttons, same order). */}
+  <div className="hidden md:block shrink-0 px-2 pt-3 sm:px-6">
+  {desktopHeaderContent}
+  </div>
+  </>
+  );
 }
 

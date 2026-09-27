@@ -27,7 +27,17 @@ import {
 } from "@/ui/sidebar"
 import { useAuth } from "@/lib/auth/AuthContext"
 import { useTheme } from "@/lib/providers/ThemeContext"
-import { ChevronsUpDown, Moon, Sun } from "lucide-react"
+import {
+  BadgeCheck,
+  Bell,
+  ChevronsUpDown,
+  LogOut,
+  MessageSquare,
+  Moon,
+  Sun,
+  UserCircle,
+  Users,
+} from "lucide-react"
 
 /**
  * Sidebar user footer (adapted from shadcn sidebar-07 NavUser).
@@ -63,7 +73,7 @@ export function NavUser() {
           <SidebarMenuButton asChild tooltip="Log in">
             <Link href="/login">
               <LogIn />
-              <span className="nav-collapse-hide">Log in</span>
+              <span className="sidebar-expanded-only">Log in</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
@@ -82,17 +92,17 @@ export function NavUser() {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="hover:bg-muted data-[state=open]:bg-muted dark:text-foreground/70"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-lg">
                 <AvatarImage src={avatarSrc} alt={displayName} />
                 <AvatarFallback className="rounded-lg">{initial}</AvatarFallback>
               </Avatar>
-              <div className="nav-collapse-hide grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{displayName}</span>
-                <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+              <div className="grid flex-1 text-start text-sm leading-tight">
+                <span className="truncate font-semibold">{displayName}</span>
+                <span className="truncate text-xs">{user.email}</span>
               </div>
-              <ChevronsUpDown className="nav-collapse-hide ml-auto size-4" />
+              <ChevronsUpDown className="ms-auto size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -100,57 +110,68 @@ export function NavUser() {
             side={isMobile ? "bottom" : "right"}
             align="end"
             sideOffset={4}
-          >
-            <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={avatarSrc} alt={displayName} />
-                  <AvatarFallback className="rounded-lg">{initial}</AvatarFallback>
-                </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">{displayName}</span>
-                  <span className="truncate text-xs">{user.email}</span>
+          >              <DropdownMenuLabel className="p-0 font-normal">
+                <div className="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
+                  <Avatar className="h-8 w-8 rounded-lg">
+                    <AvatarImage src={avatarSrc} alt={displayName} />
+                    <AvatarFallback className="rounded-lg">{initial}</AvatarFallback>
+                  </Avatar>
+                  <div className="grid flex-1 text-start text-sm leading-tight">
+                    <span className="truncate font-semibold">{displayName}</span>
+                    <span className="truncate text-xs">{user.email}</span>
+                  </div>
                 </div>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem asChild>
-                <Link href="/account?tab=settings">
-                  <span>Account & security</span>
-                </Link>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuGroup>
+                <DropdownMenuItem asChild>
+                  <Link href="/account?tab=settings">
+                    <BadgeCheck className="size-4 shrink-0" />
+                    Account & security
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/account?tab=profile">
+                    <UserCircle className="size-4 shrink-0" />
+                    Profile
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/account?tab=referral">
+                    <Users className="size-4 shrink-0" />
+                    Referrals
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/account?tab=feedback">
+                    <MessageSquare className="size-4 shrink-0" />
+                    Feedback
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/jobs?tab=alerts">
+                    <Bell className="size-4 shrink-0" />
+                    Job Alerts
+                  </Link>
+                </DropdownMenuItem>
+              </DropdownMenuGroup>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => toggleTheme()}>
+                {theme === "dark" ? (
+                  <Sun className="size-4 shrink-0" />
+                ) : (
+                  <Moon className="size-4 shrink-0" />
+                )}
+                <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/account?tab=profile">
-                  <span>Profile</span>
-                </Link>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => logout("/login")}
+                className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+              >
+                <LogOut className="size-4 shrink-0" />
+                Sign out
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/account?tab=referral">
-                  <span>Referrals</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/account?tab=feedback">
-                  <span>Feedback</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/jobs?tab=alerts">
-                  <span>Job Alerts</span>
-                </Link>
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => toggleTheme()}>
-              {theme === "dark" ? <Sun /> : <Moon />}
-              <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => logout("/login")}>
-              <LogIn />
-              Log out
-            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

@@ -32,8 +32,12 @@ export function selectionColumn<T = unknown>(): any {
     ),
     enableSorting: false,
     enableResizing: false,
+    enableHiding: false,
     size: 40,
     minSize: 40,
     maxSize: 40,
+    // Pinned on mobile so row selection stays reachable while the grid
+    // scrolls horizontally (see ui/data-grid/sticky).
+    meta: { sticky: "left" },
   }
 }

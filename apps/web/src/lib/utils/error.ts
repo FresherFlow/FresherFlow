@@ -58,6 +58,40 @@ export function toCleanMessage(input: string): string {
 }
 
 /**
+ * Repeat suppressor for the dev console line. Retries and strict-mode double
+ * invokes printed the identical line two or three times per failure.
+ */
+const errorLineSeen = new Map<string, number>();
+const ERROR_LINE_WINDOW_MS = 4000;
+
+function shouldLogErrorOnce(key: string): boolean {
+    const now = Date.now();
+    const last = errorLineSeen.get(key);
+    if (last !== undefined && now - last < ERROR_LINE_WINDOW_MS) return false;
+    errorLineSeen.set(key, now);
+    if (errorLineSeen.size > 100) {
+        for (const [k, v] of errorLineSeen) {
+            if (now - v >= ERROR_LINE_WINDOW_MS) errorLineSeen.delete(k);
+        }
+    }
+    return true;
+}
+
+/**
+ * Stable id per message so a burst of identical failures collapses into one
+ * toast instead of stacking. A single global id was worse than useless: two
+ * unrelated errors replaced each other, while a bare `toast.error()` from a
+ * hook produced no id at all and did not dedupe with this helper.
+ */
+function toastIdFor(message: string): string {
+    let hash = 0;
+    for (let i = 0; i < message.length; i++) {
+        hash = (hash * 31 + message.charCodeAt(i)) | 0;
+    }
+    return `error-${Math.abs(hash)}`;
+}
+
+/**
  * Standardized error toast notification
  */
 export function toastError(error: unknown, fallbackMessage?: string, options?: Record<string, unknown>) {
@@ -65,18 +99,30 @@ export function toastError(error: unknown, fallbackMessage?: string, options?: R
     const finalMessage = message || fallbackMessage || 'Something went wrong. Please check your connection.';
 
     toast.error(finalMessage, {
-        id: 'global-error-toast', // Prevent multiple identical toasts
-        ...options
+        ...options,
+        // Derived last so a caller cannot accidentally opt out of dedupe.
+        id: toastIdFor(finalMessage),
     });
 
-    // Single concise dev line only — never the full object/stack.
+    // Dev console output. Two rules:
+    // 1. A 5xx is our own envelope (DB unavailable, schema pending). The toast
+    //    already says it and the cause is a deployment state, not a code bug —
+    //    logging it just repeated the same line on every poll.
+    // 2. `console.error` is intercepted by the Next dev overlay, which appends
+    //    a stack and a source code frame to the message. A one-line log became
+    //    a nine-line block, so nothing here uses console.error.
     if (process.env.NODE_ENV !== 'production') {
         const err = error as { statusCode?: number; message?: string };
+        const status = err?.statusCode ?? 0;
+        if (status >= 500) return;
+
         const clean = toCleanMessage(err?.message || finalMessage);
-        const isRateLimited = err?.statusCode === 429 || clean.includes('Too many');
-        const isExpectedOtp = err?.statusCode === 401 || clean.includes('Invalid verification code') || clean.includes('No OTP found') || clean.includes('OTP expired');
+        const isRateLimited = status === 429 || clean.includes('Too many');
+        const isExpectedOtp = status === 401 || clean.includes('Invalid verification code') || clean.includes('No OTP found') || clean.includes('OTP expired');
+        if (!shouldLogErrorOnce(toastIdFor(clean))) return;
+
         if (isRateLimited) console.warn(`[RateLimit] ${clean}`);
         else if (isExpectedOtp) console.warn(`[Auth OTP] ${clean}`);
-        else console.error(`[Error] ${clean}`);
+        else console.warn(`[Error] ${clean}`);
     }
 }

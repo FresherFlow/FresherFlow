@@ -199,7 +199,11 @@ export async function runExpiryCycle() {
 
         // Trigger bootstrap feed refresh if anything expired
         if (summary.totalExpired > 0) {
-            void StaticFeedService.refresh();
+            // refresh() rethrows on failure, so this needs its own handler —
+            // an unhandled rejection would take the cron process down.
+            StaticFeedService.refresh().catch((error: unknown) => {
+                logger.error('Feed refresh after expiry failed', error);
+            });
         }
 
         return summary;

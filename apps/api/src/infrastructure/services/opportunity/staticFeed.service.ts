@@ -1,11 +1,37 @@
 import path from 'path';
 import prisma from '../../database/prisma';
-import { OpportunityStatus } from '@fresherflow/types';
+import { OpportunityStatus, RecruitmentMethod, Sector } from '@fresherflow/types';
 import { INDIAN_CITIES } from '@fresherflow/constants';
 import { logger } from '@fresherflow/utils';
 import { getPublicSiteUrl } from '../../../utils/runtimeConfig';
 import { StorageService } from '../platform/storage.service';
 import { FeedGeneratorService } from './feedGenerator.service';
+
+/**
+ * `opp.type` no longer exists — the taxonomy split it into independent
+ * dimensions, and it is not in getFeedSelectFields(). Every predicate that
+ * tested `opp.type === '…'` therefore evaluated to false forever, which left
+ * sitemap-walkins.xml empty and sent every government job to a /jobs/ URL.
+ * These mirror the DB-mode generators (feedGenerator.service.ts) so the CDN
+ * snapshot and the API cannot disagree about what counts as what.
+ */
+type FeedRow = {
+    type?: string;
+    sector?: string;
+    recruitmentMethod?: string;
+    driveDetails?: unknown;
+    governmentJobDetails?: unknown;
+};
+
+const isWalkinRow = (opp: unknown): boolean => {
+    const row = (opp ?? {}) as FeedRow;
+    return row.recruitmentMethod === RecruitmentMethod.WALK_IN || Boolean(row.driveDetails);
+};
+
+const isGovernmentRow = (opp: unknown): boolean => {
+    const row = (opp ?? {}) as FeedRow;
+    return row.sector === Sector.GOVERNMENT || Boolean(row.governmentJobDetails);
+};
 
 /**
  * Service to generate "Distributed Static Data Shards" for discovery.
@@ -216,7 +242,7 @@ export class StaticFeedService {
 
             // 5. Generate & Upload Government Feed
             if (target === 'all' || target === 'govt') {
-                const governmentMapped = activeMapped.filter(opp => opp.type === 'GOVERNMENT' || Boolean(opp.governmentJobDetails));
+                const governmentMapped = activeMapped.filter(isGovernmentRow);
                 const government = {
                     opportunities: governmentMapped,
                     timestamp: Date.now(),
@@ -230,7 +256,7 @@ export class StaticFeedService {
 
             // 5b. Generate & Upload Walk-ins Feed (including Hyderabad Tech Cluster Map Feed)
             if (target === 'all' || target === 'walkin' || target === 'bootstrap') {
-                const walkinMapped = activeMapped.filter(opp => opp.type === 'WALKIN' || Boolean(opp.driveDetails));
+                const walkinMapped = activeMapped.filter(isWalkinRow);
                 const walkins = {
                     opportunities: walkinMapped,
                     timestamp: Date.now(),
@@ -466,7 +492,7 @@ export class StaticFeedService {
                     const slugOrId = (opp.slug || opp.id) as string;
                     const rawDate = (opp.updatedAt || opp.postedAt) as string | Date | undefined;
                     const dateStr = rawDate ? new Date(rawDate).toISOString().split('T')[0] : staticDate;
-                    const prefix = opp.type === 'GOVERNMENT' ? 'govt' : 'jobs';
+                    const prefix = isGovernmentRow(opp) ? 'govt' : 'jobs';
                     jobsXml += `  <url><loc>${baseUrl}/${prefix}/${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>weekly</changefreq></url>\n`;
                 });
                 jobsXml += '</urlset>';
@@ -510,7 +536,7 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${baseUrl}/jobs/${b}-batch<
                 let walkinsXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 walkinsXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
                 walkinsXml += `  <url><loc>${baseUrl}/jobs/walkins</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`;
-                const walkinOpps = activeMapped.filter(opp => opp.type === 'WALKIN');
+                const walkinOpps = activeMapped.filter(isWalkinRow);
                 walkinOpps.forEach(opp => {
                     const slugOrId = (opp.slug || opp.id) as string;
                     const rawDate = (opp.updatedAt || opp.postedAt) as string | Date | undefined;
@@ -523,7 +549,7 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${baseUrl}/jobs/${b}-batch<
                 let govtXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 govtXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
                 govtXml += `  <url><loc>${baseUrl}/govt</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`;
-                const govtOpps = sitemapOpps.filter(opp => opp.type === 'GOVERNMENT' || Boolean(opp.governmentJobDetails));
+                const govtOpps = sitemapOpps.filter(isGovernmentRow);
                 govtOpps.forEach(opp => {
                     const slugOrId = (opp.slug || opp.id) as string;
                     const rawDate = (opp.updatedAt || opp.postedAt) as string | Date | undefined;
@@ -788,7 +814,12 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${baseUrl}/jobs/${b}-batch<
                 usernamesCount: usernamesLength
             });
         } catch (error) {
+            // Rethrow: callers (the admin regenerate endpoint in particular)
+            // need to know the regeneration failed. Swallowing here made
+            // /regenerate-feeds report success on a total R2 outage, and the
+            // admin UI showed "successfully regenerated" either way.
             logger.error('Failed to regenerate static shards', error);
+            throw error;
         }
     }
 

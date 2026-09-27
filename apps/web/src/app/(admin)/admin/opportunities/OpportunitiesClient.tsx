@@ -31,7 +31,9 @@ export default function AdminOpportunitiesPage() {
 function OpportunitiesListPage() {
     const { isAuthenticated } = useAdmin();
     const router = useRouter();
-    const pageSize = 20;
+    // Owned here, not hardcoded: the grid's rows-per-page control has to be able
+    // to change the server query, otherwise it renders but does nothing.
+    const [pageSize, setPageSize] = useState(20);
     const [previewOppId, setPreviewOppId] = useState<string | null>(null);
     const [atsFilter, setAtsFilter] = useState<string>(ALL);
 
@@ -51,7 +53,7 @@ function OpportunitiesListPage() {
     } = useAdminOpportunities(pageSize);
 
     const {
-        selectedIds, setSelectedIds,
+        setSelectedIds,
         bulkActionPending,
         bulkActionLabel,
         lastBulkResult,
@@ -75,9 +77,9 @@ function OpportunitiesListPage() {
     }, [isAuthenticated, loadOpportunities, router]);
 
     /**
-     * Selection is owned by the actions hook (`selectedIds` drives bulk actions
-     * and the toolbar count), so the grid feeds its TanStack row selection back
-     * into it rather than duplicating the state.
+     * Selection is owned by the actions hook (drives bulk actions), so the
+     * grid feeds its TanStack row selection back into it rather than
+     * duplicating the state.
      */
     const handleSelectedRowsChange = useCallback(
         (rows: AdminOpportunityRow[]) => setSelectedIds(rows.map((row) => row.id)),
@@ -96,13 +98,9 @@ function OpportunitiesListPage() {
     const effectiveTotalPages = totalPages || Math.ceil(totalCount / pageSize) || 1;
 
     return (
-        <div className="h-full overflow-hidden p-4 md:p-8 flex-1 flex flex-col gap-3">
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-4 md:p-8">
             <AdminOpportunitiesHeader
-                isLoading={isLoading}
-                onRefresh={loadOpportunities}
                 exportUrl={exportUrl}
-                search={search}
-                setSearch={setSearch}
             />
 
             {lastBulkResult && (
@@ -111,8 +109,9 @@ function OpportunitiesListPage() {
                 </div>
             )}
 
-            {/* Unified grid — desktop table + mobile rows, search, sorting,
-                selection, pagination, loading and empty states. */}
+            {/* Single responsive grid — sticky identity columns + horizontal
+                scroll on mobile, search, sorting, selection, bulk bar,
+                pagination, loading and empty states. */}
             <AdminOpportunitiesTable
                 opportunities={opportunities}
                 isLoading={isLoading && !hasLoadedOnce}
@@ -121,8 +120,12 @@ function OpportunitiesListPage() {
                 pageSize={pageSize}
                 totalPages={effectiveTotalPages}
                 onPageChange={setPage}
+                onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
                 sort={sort}
                 onSortChange={setSort}
+                sortOptions={OPPORTUNITY_SORT_OPTIONS}
+                searchValue={search}
+                onSearchChange={setSearch}
                 statusFilter={statusFilter}
                 onStatusChange={(value) => { setStatusFilter(value); setPage(1); }}
                 statusOptions={OPPORTUNITY_STATUS_OPTIONS}

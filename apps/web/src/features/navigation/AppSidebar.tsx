@@ -4,9 +4,10 @@
 import * as React from "react"
 import { X } from "lucide-react"
 import Link from "next/link"
-import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 
-import { NavMain } from "@/features/navigation/NavMain"
+import { NavGroup } from "@/features/navigation/NavGroup"
+import { getSidebarGroups } from "@/features/navigation/sidebar-data"
 import { useNavCounts } from "@/features/navigation/useNavCounts"
 import { NavUser } from "@/features/navigation/NavUser"
 import { SpaceSwitcher } from "@/features/navigation/SpaceSwitcher"
@@ -15,6 +16,9 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
   SidebarRail,
   useSidebar,
 } from "@/ui/sidebar"
@@ -24,10 +28,7 @@ import { LogoImage } from "@/features/shell/LogoImage"
 import { cn } from "@/ui/cn"
 import { persistSpaceId, readSpaceId } from "@/features/navigation/sidebarState"
 import {
-  COMMUNITY_GROUP,
-  PERSONAL_GROUP,
   SPACES,
-  getSpace,
   getSpaceForPathname,
   type SpaceId,
 } from "@/features/navigation/navConfig"
@@ -86,63 +87,51 @@ function useSpaceSelection() {
     setMounted(true)
   }, [])
 
-  // Before mount `isAuthed` is optimistically true, so `visibleSecondary` still
-  // contains auth-gated items — callers gate on `mounted` so logged-out
-  // visitors never see them flash in during hydration.
+  // Before mount `isAuthed` is optimistically true, so auth-gated items are
+  // still present — callers gate secondary groups on `mounted` (via
+  // `getSidebarGroups`) so logged-out visitors never see them flash in.
   const isAuthed = mounted ? Boolean(user) : true
-  const visiblePersonal = PERSONAL_GROUP.items.filter(
-    (item) => !(item.requiresAuth && !isAuthed)
-  )
-  const visibleCommunity = COMMUNITY_GROUP.items.filter(
-    (item) => !(item.requiresAuth && !isAuthed)
-  )
 
-  return { pathname, spaceId, setSpaceId, mounted, isAuthed, visiblePersonal, visibleCommunity, user }
+  return { pathname, spaceId, setSpaceId, mounted, isAuthed, user }
 }
 
 /**
- * Brand block at the top of the sidebar, restoring the past layout where the
- * logo sits above the Jobs / Govt switcher. A plain link like open-seo's
- * brand — deliberately not a `SidebarMenuButton`, whose menu chrome
- * (`focus-visible:ring-1`, truncation pressure, tight tracking) made the
- * wordmark render ringed and cramped instead of instantly readable.
- * In collapsed (icon) mode only the logo tile shows.
+ * Brand block following shadcn-admin's header pattern exactly (TeamSwitcher
+ * structure): a size-8 logo tile plus two-line wordmark inside a size-lg
+ * menu button. No custom expanded/collapsed spans — the primitive's
+ * overflow + size rules own the collapse animation, so opening/closing
+ * matches the reference instead of snapping via display toggles.
  */
 function SidebarBrand({ href, className }: { href: string; className?: string }) {
   return (
-    <div
-      className={cn(
-        "sidebar-brand flex h-9 items-center px-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0",
-        className
-      )}
-    >
-      <Link
-        href={href}
-        aria-label="FresherFlow home"
-        suppressHydrationWarning
-        className="min-w-0 flex-1 truncate text-base font-semibold text-sidebar-foreground outline-none hover:text-sidebar-foreground focus:outline-none focus-visible:outline-none"
-      >
-        <span className="sidebar-expanded-only">FresherFlow</span>
-        <span className="sidebar-collapsed-only flex items-center justify-center">
-          <LogoImage
-            width={24}
-            height={24}
-            className="h-6 w-6 shrink-0 object-contain"
-          />
-        </span>
-      </Link>
-    </div>
+    <SidebarMenu className={className}>
+      <SidebarMenuItem>
+        <SidebarMenuButton asChild size="lg">
+          <Link href={href} aria-label="FresherFlow home" suppressHydrationWarning>
+            <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-logo-bg">
+              <LogoImage
+                width={16}
+                height={16}
+                className="size-4 shrink-0 object-contain"
+              />
+            </div>
+            <div className="grid flex-1 text-start text-sm leading-tight">
+              <span className="truncate font-semibold">FresherFlow</span>
+            </div>
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
   )
 }
 
 function AppSidebarRail() {
-  const searchParams = useSearchParams()
   const router = useRouter()
-  const { pathname, spaceId, setSpaceId, mounted, isAuthed, visiblePersonal, visibleCommunity, user } =
-    useSpaceSelection()
-  const space = getSpace(spaceId)
+  const { spaceId, setSpaceId, mounted, isAuthed, user } = useSpaceSelection()
   const navBadges = useNavCounts() ?? undefined
   const [isScrolled, setIsScrolled] = React.useState(false)
+
+  const groups = getSidebarGroups({ spaceId, isAuthed, mounted, badges: navBadges })
 
   const logoHref = mounted && user ? "/jobs?tab=for-you" : "/"
 
@@ -167,31 +156,9 @@ function AppSidebarRail() {
       <SidebarContent
         onScroll={(e) => setIsScrolled(e.currentTarget.scrollTop > 2)}
       >
-        <NavMain
-          groups={space.groups}
-          pathname={pathname}
-          searchParams={searchParams}
-          isAuthed={isAuthed}
-          badges={navBadges}
-        />
-        {/* Auth-gated group renders only after mount so logged-out visitors
-            never see Saved / Tracker / Account flash on reload. */}
-        {mounted && visibleCommunity.length > 0 && (
-          <NavMain
-            groups={[{ ...COMMUNITY_GROUP, items: visibleCommunity }]}
-            pathname={pathname}
-            searchParams={searchParams}
-            isAuthed={isAuthed}
-          />
-        )}
-        {mounted && visiblePersonal.length > 0 && (
-          <NavMain
-            groups={[{ ...PERSONAL_GROUP, items: visiblePersonal }]}
-            pathname={pathname}
-            searchParams={searchParams}
-            isAuthed={isAuthed}
-          />
-        )}
+        {groups.map((group) => (
+          <NavGroup key={group.title} group={group} />
+        ))}
       </SidebarContent>
       <SidebarFooter className="border-t border-sidebar-border">
         <NavUser />
@@ -209,12 +176,11 @@ function AppSidebarRail() {
  * and must not create one.
  */
 export function MobileNavTree({ onNavigate }: { onNavigate: () => void }) {
-  const searchParams = useSearchParams()
   const router = useRouter()
-  const { pathname, spaceId, setSpaceId, mounted, isAuthed, visiblePersonal, visibleCommunity, user } =
-    useSpaceSelection()
-  const space = getSpace(spaceId)
+  const { spaceId, setSpaceId, mounted, isAuthed, user } = useSpaceSelection()
   const navBadges = useNavCounts() ?? undefined
+
+  const groups = getSidebarGroups({ spaceId, isAuthed, mounted, badges: navBadges })
 
   const logoHref = mounted && user ? "/jobs?tab=for-you" : "/"
 
@@ -242,29 +208,9 @@ export function MobileNavTree({ onNavigate }: { onNavigate: () => void }) {
         {/* Every nav row is a link, so any click in here is a navigation and
             should close the Sheet. */}
         <div className="mt-2" onClickCapture={onNavigate}>
-          <NavMain
-            groups={space.groups}
-            pathname={pathname}
-            searchParams={searchParams}
-            isAuthed={isAuthed}
-            badges={navBadges}
-          />
-          {mounted && visibleCommunity.length > 0 && (
-            <NavMain
-              groups={[{ ...COMMUNITY_GROUP, items: visibleCommunity }]}
-              pathname={pathname}
-              searchParams={searchParams}
-              isAuthed={isAuthed}
-            />
-          )}
-          {mounted && visiblePersonal.length > 0 && (
-            <NavMain
-              groups={[{ ...PERSONAL_GROUP, items: visiblePersonal }]}
-              pathname={pathname}
-              searchParams={searchParams}
-              isAuthed={isAuthed}
-            />
-          )}
+          {groups.map((group) => (
+            <NavGroup key={group.title} group={group} />
+          ))}
         </div>
       </div>
       <div className="shrink-0 border-t border-border p-2">

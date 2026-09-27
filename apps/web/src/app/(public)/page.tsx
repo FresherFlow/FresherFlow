@@ -99,9 +99,13 @@ export default async function LandingPage() {
 
     const refreshedAt = feed?.generatedAt ? new Date(feed.generatedAt) : null;
 
-    // V1 §G: hero Ask/Discuss CTA deep-links to the first latest job's
-    // discussion; falls back to the board when the feed is empty.
-    const discussHref = latest[0] ? `/jobs/${latest[0].slug}#discussion` : '/jobs';
+    // The hero cannot know which job a visitor cares about. It used to
+    // deep-link to `latest[0]#discussion`, which dropped everyone into an
+    // unrelated stranger's thread on whichever job happened to be first, and
+    // fell back to /jobs on an empty feed — the same target as "Browse the
+    // board". Ask/Discuss now goes to the discussions board, which is the real
+    // entry point for a question with no job attached yet.
+    const discussHref = '/community?tab=discussions';
 
     return (
         <>
