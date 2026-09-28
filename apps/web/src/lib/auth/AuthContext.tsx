@@ -515,14 +515,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(response.profile as Profile);
         setClientSessionHints();
         setLastAuthMethod('otp');
-        
+        if (typeof window !== 'undefined') {
+            (window as Window & { __isLoggingOut?: boolean }).__isLoggingOut = false;
+        }
+
+        // Firebase custom-token sign-in is best-effort: the session state above
+        // is already refreshed, so a Firebase hang/failure must never block login.
         let isSkipped = false;
         if (response.firebaseCustomToken) {
-            const { signInWithCustomToken } = await import('firebase/auth');
-            const { auth } = await import('@/lib/api/firebase');
-            const userCred = await signInWithCustomToken(auth, response.firebaseCustomToken);
-            const onboarding = await readFirebaseOnboarding(userCred.user.uid);
-            isSkipped = !!onboarding?.skipUsernameSetup;
+            try {
+                const [{ signInWithCustomToken }, { auth }] = await Promise.all([
+                    import('firebase/auth'),
+                    import('@/lib/api/firebase'),
+                ]);
+                const signIn = signInWithCustomToken(auth, response.firebaseCustomToken);
+                const timeout = new Promise<never>((_, reject) =>
+                    setTimeout(() => reject(new Error('firebase sign-in timed out')), 6000)
+                );
+                const userCred = await Promise.race([signIn, timeout]);
+                const onboarding = await readFirebaseOnboarding(userCred.user.uid);
+                isSkipped = !!onboarding?.skipUsernameSetup;
+            } catch (err) {
+                console.warn('[Auth] Firebase sign-in after OTP verify failed (continuing):', err);
+            }
         }
         setSkipUsernameSetup(isSkipped);
         writeCachedSession(response.user, response.profile as Profile, isSkipped);

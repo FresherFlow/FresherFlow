@@ -1757,6 +1757,19 @@ export interface RoomDetailResult {
     activeThisWeekUserIds: string[];
 }
 
+export interface RoomMembersResult {
+    members: Array<{
+        user: CommunityPostUser;
+        role: string;
+        joinedAt: string;
+        activeThisWeek?: boolean;
+    }>;
+    total: number;
+    page: number;
+    limit: number;
+    hasMore: boolean;
+}
+
 // ============================================================================
 // FRESHER NEEDS: Saved searches, referral board, offer transparency
 // ============================================================================

@@ -85,6 +85,9 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
     }, [source, refCode]);
 
     const navigatedRef = useRef(false);
+    // Single-use OTPs: guard re-submits (auto-submit racing Verify/Enter) with
+    // a ref — state-based isProcessing is stale within the same tick.
+    const verifyInFlightRef = useRef(false);
 
     const checkUsername = useCallback(async (val: string) => {
         if (val.length < 3) { setIsAvailable(null); setIsChecking(false); return; }
@@ -212,16 +215,22 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
     const submitOtpCode = useCallback(async (code: string) => {
         // OTPs are single-use: ignore re-submits (auto-submit on 6th digit
         // racing the Verify button/Enter) once a verify is in flight.
-        if (code.length !== 6 || isProcessing) return;
+        if (code.length !== 6 || verifyInFlightRef.current) return;
+        verifyInFlightRef.current = true;
         setIsProcessing(true);
         try {
             const authedUser = await verifyOtp(email.trim().toLowerCase(), code, trackingSource || source, refCode);
             navigateAfterLogin(authedUser);
         } catch (err: unknown) {
-            setIsProcessing(false);
             toastError(err, 'Invalid or expired code.');
+        } finally {
+            // On success the page navigates away; resetting here only matters
+            // when we stay (username-claim step) or verify failed — either way
+            // the OTP form must never stick in a spinner.
+            verifyInFlightRef.current = false;
+            setIsProcessing(false);
         }
-    }, [email, verifyOtp, trackingSource, source, refCode, navigateAfterLogin, isProcessing]);
+    }, [email, verifyOtp, trackingSource, source, refCode, navigateAfterLogin]);
 
     const handleVerifyOtp = (e: React.FormEvent) => {
         e.preventDefault();

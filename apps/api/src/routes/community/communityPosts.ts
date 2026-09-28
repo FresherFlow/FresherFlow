@@ -74,7 +74,8 @@ router.get(
             page, limit, category, tag, tags, search,
             userId: req.isAnonymous ? null : req.userId,
         });
-        res.setHeader('Cache-Control', 'public, max-age=30');
+        // Personalized (per-user myVote on posts/comments): no-store when signed in.
+        res.setHeader('Cache-Control', req.isAnonymous || !req.userId ? 'public, max-age=30' : 'no-store');
         return res.json(result);
     })
 );
@@ -122,7 +123,8 @@ router.get(
     asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
         try {
             const post = await getCommunityPost(String(req.params.id), req.isAnonymous ? null : req.userId);
-            res.setHeader('Cache-Control', 'public, max-age=30');
+            // Personalized (per-user myVote on post/comments): no-store when signed in.
+            res.setHeader('Cache-Control', req.isAnonymous || !req.userId ? 'public, max-age=30' : 'no-store');
             return res.json(post);
         } catch (err) {
             next(err);

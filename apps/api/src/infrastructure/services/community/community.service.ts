@@ -2558,6 +2558,7 @@ export async function listRooms(options: {
         where.OR = [
             { name: { contains: term, mode: 'insensitive' } },
             { description: { contains: term, mode: 'insensitive' } },
+            { tags: { has: term.toLowerCase() } },
         ];
     }
 
@@ -2713,6 +2714,67 @@ export async function getRoom(slug: string, userId?: string | null) {
     };
 }
 
+export async function listRoomMembers(
+    roomId: string,
+    options: { page?: number; limit?: number } = {}
+) {
+    const room = await prisma.room.findUnique({ where: { id: roomId, status: 'ACTIVE' }, select: { id: true } });
+    if (!room) throw new AppError('Room not found', 404);
+
+    const page = Math.max(options.page ?? 1, 1);
+    const limit = Math.min(Math.max(options.limit ?? 20, 1), 50);
+    const skip = (page - 1) * limit;
+
+    const where = { roomId: room.id };
+    const [rows, total] = await Promise.all([
+        prisma.roomMember.findMany({
+            where,
+            orderBy: { joinedAt: 'desc' },
+            skip,
+            take: limit,
+            include: {
+                user: { select: COMMUNITY_POST_AUTHOR_SELECT },
+            },
+        }),
+        prisma.roomMember.count({ where }),
+    ]);
+
+    // "Active this week" — members who posted or commented in the last 7 days
+    // (same computation as getRoom, scoped to the returned page).
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const memberIds = rows.map((m) => m.userId);
+    const activeThisWeekUserIds = new Set<string>();
+    if (memberIds.length > 0) {
+        const [activePosters, activeCommenters] = await Promise.all([
+            prisma.communityPost.findMany({
+                where: { roomId: room.id, authorId: { in: memberIds }, createdAt: { gte: sevenDaysAgo }, status: 'ACTIVE' },
+                select: { authorId: true },
+                distinct: ['authorId'],
+            }),
+            prisma.communityPostComment.findMany({
+                where: { authorId: { in: memberIds }, createdAt: { gte: sevenDaysAgo }, deletedAt: null, post: { roomId: room.id } },
+                select: { authorId: true },
+                distinct: ['authorId'],
+            }),
+        ]);
+        for (const row of activePosters) activeThisWeekUserIds.add(row.authorId);
+        for (const row of activeCommenters) activeThisWeekUserIds.add(row.authorId);
+    }
+
+    return {
+        members: rows.map((m) => ({
+            user: mapCommunityPostUser(m.user),
+            role: m.role,
+            joinedAt: m.joinedAt.toISOString(),
+            activeThisWeek: activeThisWeekUserIds.has(m.userId),
+        })),
+        total,
+        page,
+        limit,
+        hasMore: page * limit < total,
+    };
+}
+
 /**
  * Normalise room tags to lowercase, `#`-stripped, de-duplicated, non-empty strings.
  * A room is described by free-form community tags, so we only enforce shape here —
@@ -2793,15 +2855,27 @@ export async function joinRoom(input: { slug: string; userId: string }) {
     });
     if (existing) return { joined: true, message: 'Already a member' };
 
-    await prisma.$transaction(async (tx) => {
-        await tx.roomMember.create({
-            data: { roomId: room.id, userId: input.userId },
+    // The find above runs outside the transaction, so rapid repeat joins can
+    // race past it. The @@unique([roomId, userId]) constraint is the real
+    // dedupe: a lost race surfaces as P2002, which is the same idempotent
+    // "already a member" outcome, not a server error. memberCount is only
+    // incremented on an actual insert, so it stays correct.
+    try {
+        await prisma.$transaction(async (tx) => {
+            await tx.roomMember.create({
+                data: { roomId: room.id, userId: input.userId },
+            });
+            await tx.room.update({
+                where: { id: room.id },
+                data: { memberCount: { increment: 1 } },
+            });
         });
-        await tx.room.update({
-            where: { id: room.id },
-            data: { memberCount: { increment: 1 } },
-        });
-    });
+    } catch (error) {
+        if (typeof error === 'object' && error !== null && (error as { code?: string }).code === 'P2002') {
+            return { joined: true, message: 'Already a member' };
+        }
+        throw error;
+    }
 
     return { joined: true };
 }
@@ -2820,13 +2894,24 @@ export async function leaveRoom(input: { slug: string; userId: string }) {
     if (!existing) return { left: true, message: 'Not a member' };
     if (existing.role === 'ADMIN') throw new AppError('Admins cannot leave their own room', 400);
 
-    await prisma.$transaction(async (tx) => {
-        await tx.roomMember.delete({ where: { id: existing.id } });
-        await tx.room.update({
-            where: { id: room.id },
-            data: { memberCount: { decrement: 1 } },
+    // Mirror of joinRoom: the find above is outside the transaction, so rapid
+    // repeat leaves can race. A lost race surfaces as P2025 on the delete,
+    // which is the same idempotent "not a member" outcome. The counter guard
+    // (memberCount > 0) keeps a drifted counter from going negative.
+    try {
+        await prisma.$transaction(async (tx) => {
+            await tx.roomMember.delete({ where: { id: existing.id } });
+            await tx.room.updateMany({
+                where: { id: room.id, memberCount: { gt: 0 } },
+                data: { memberCount: { decrement: 1 } },
+            });
         });
-    });
+    } catch (error) {
+        if (typeof error === 'object' && error !== null && (error as { code?: string }).code === 'P2025') {
+            return { left: true, message: 'Not a member' };
+        }
+        throw error;
+    }
 
     return { left: true };
 }
@@ -2849,6 +2934,22 @@ export async function listRoomPosts(slug: string, options: { page?: number; limi
             take: limit,
             include: {
                 author: { select: COMMUNITY_POST_AUTHOR_SELECT },
+                // Same thread preview as the main feed (first 10, oldest
+                // first): room posts render in the shared PostCard, so they
+                // must carry the same shape — a thread that expands to nothing
+                // is a dead end.
+                comments: {
+                    where: { deletedAt: null },
+                    orderBy: { createdAt: 'asc' },
+                    take: 10,
+                    include: {
+                        author: { select: COMMUNITY_POST_COMMENT_AUTHOR_SELECT },
+                        votes: {
+                            where: { userId: options.userId ?? undefined },
+                            select: { value: true },
+                        },
+                    },
+                },
                 votes: {
                     where: { userId: options.userId ?? undefined },
                     select: { value: true },
@@ -2859,11 +2960,20 @@ export async function listRoomPosts(slug: string, options: { page?: number; limi
     ]);
 
     return {
-        posts: posts.map((post) => ({
-            ...post,
-            author: mapCommunityPostUser(post.author),
-            myVote: post.votes[0]?.value ?? null,
-        })),
+        posts: posts.map((post) =>
+            maskPostAuthor({
+                ...post,
+                author: mapCommunityPostUser(post.author),
+                myVote: post.votes[0]?.value ?? null,
+                comments: post.comments.map((comment) =>
+                    maskCommentAuthor({
+                        ...comment,
+                        author: mapCommunityPostUser(comment.author),
+                        myVote: comment.votes[0]?.value ?? null,
+                    })
+                ),
+            })
+        ),
         total,
         page,
         limit,

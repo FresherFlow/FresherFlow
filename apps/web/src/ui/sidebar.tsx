@@ -120,7 +120,14 @@ const SidebarProvider = React.forwardRef<
 
     // We add a state so that we can do data-state="expanded" or "collapsed".
     // This makes it easier to style the sidebar with Tailwind classes.
-    const state = open ? "expanded" : "collapsed"
+    //
+    // `isMobile` forces "expanded" because `open` tracks the *desktop* rail
+    // and is persisted in a cookie. Without this, anyone who collapsed the
+    // desktop sidebar got an icon-only mobile drawer: the drawer rendered the
+    // collapsed-rail branch, and `SidebarMenuButton` clamps rows to
+    // `!size-8` with a truncated label, so titles vanished. The drawer is a
+    // full-width overlay - it has no rail mode of its own.
+    const state = open || isMobile ? "expanded" : "collapsed"
 
     const contextValue = React.useMemo<SidebarContextProps>(
       () => ({

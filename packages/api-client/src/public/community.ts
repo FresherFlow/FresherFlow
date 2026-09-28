@@ -30,6 +30,7 @@ import type {
     Room,
     RoomListResult,
     RoomDetailResult,
+    RoomMembersResult,
 } from '@fresherflow/types';
 
 export const communityApi = {
@@ -323,6 +324,14 @@ export const communityApi = {
         return apiClient<CommunityFeedResult>(`/api/rooms/${encodeURIComponent(slug)}/posts${suffix ? `?${suffix}` : ''}`);
     },
 
+    listRoomMembers: (slug: string, params?: { page?: number; limit?: number }) => {
+        const query = new URLSearchParams();
+        if (params?.page) query.set('page', String(params.page));
+        if (params?.limit) query.set('limit', String(params.limit));
+        const suffix = query.toString();
+        return apiClient<RoomMembersResult>(`/api/rooms/${encodeURIComponent(slug)}/members${suffix ? `?${suffix}` : ''}`);
+    },
+
     listRoomOpportunities: (slug: string, params?: { page?: number; limit?: number; reason?: 'PINNED' | 'SHARED' }) => {
         const query = new URLSearchParams();
         if (params?.page) query.set('page', String(params.page));
@@ -357,5 +366,15 @@ export const communityApi = {
         apiClient<{ deduped: boolean; message?: string }>(`/api/rooms/${encodeURIComponent(slug)}/opportunities`, {
             method: 'POST',
             body: JSON.stringify({ opportunityId }),
+        }),
+
+    pinRoomOpportunity: (slug: string, opportunityId: string) =>
+        apiClient<{ pinned: boolean; opportunityId: string }>(`/api/rooms/${encodeURIComponent(slug)}/opportunities/${encodeURIComponent(opportunityId)}/pin`, {
+            method: 'POST',
+        }),
+
+    removeRoomOpportunity: (slug: string, opportunityId: string) =>
+        apiClient<{ removed: boolean }>(`/api/rooms/${encodeURIComponent(slug)}/opportunities/${encodeURIComponent(opportunityId)}`, {
+            method: 'DELETE',
         }),
 };

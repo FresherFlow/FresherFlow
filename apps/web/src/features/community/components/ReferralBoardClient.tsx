@@ -7,6 +7,8 @@ import type { ReferralRequestItem } from '@fresherflow/api-client';
 import { ReferralRequestStatus } from '@fresherflow/types';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { cn } from '@repo/ui/utils/cn';
+import { EmptyState } from '@/ui/EmptyState';
+import { ErrorMessage } from '@/ui/ErrorMessage';
 
 const STATUS_STYLES: Record<string, string> = {
     OPEN: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
@@ -29,6 +31,9 @@ export function ReferralBoardClient() {
     const { user } = useAuth();
     const router = useRouter();
     const [requests, setRequests] = useState<ReferralRequestItem[]>([]);
+    const [total, setTotal] = useState(0);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [showForm, setShowForm] = useState(false);
@@ -41,12 +46,18 @@ export function ReferralBoardClient() {
     const [replyHandle, setReplyHandle] = useState('');
 
     const load = useCallback(() => {
+        setLoading(true);
+        setError(false);
         fresherNeedsApi
-            .listReferralRequests({ limit: 30 })
-            .then((res) => setRequests(res.requests))
+            .listReferralRequests({ page, limit: 30 })
+            .then((res) => {
+                setRequests(res.requests);
+                setTotal(res.total);
+                setHasMore(res.hasMore);
+            })
             .catch(() => setError(true))
             .finally(() => setLoading(false));
-    }, []);
+    }, [page]);
 
     useEffect(() => {
         load();
@@ -66,7 +77,11 @@ export function ReferralBoardClient() {
             setRole('');
             setNote('');
             setShowForm(false);
-            load();
+            if (page === 1) {
+                load();
+            } else {
+                setPage(1);
+            }
         } catch (e) {
             const err = e as { status?: number };
             if (err.status === 401) {
@@ -180,13 +195,22 @@ export function ReferralBoardClient() {
                 )}
             </div>
 
-            {error && <p className="text-sm text-destructive">Something went wrong. Try refreshing.</p>}
+            {error && (
+                <ErrorMessage
+                    message="Something went wrong. Try refreshing."
+                    onRetry={() => load()}
+                    variant="subtle"
+                />
+            )}
 
             {!error && requests.length === 0 && (
-                <div className="p-8 text-center">
-                    <p className="text-sm font-medium text-foreground">No referral requests yet</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Be the first to ask — the community helps fast.</p>
-                </div>
+                <EmptyState
+                    icon="inbox"
+                    size="md"
+                    variant="ghost"
+                    title="No referral requests yet"
+                    description="Be the first to ask — the community helps fast."
+                />
             )}
 
             {/* Request cards */}
@@ -306,6 +330,31 @@ export function ReferralBoardClient() {
                     </article>
                 ))}
             </div>
+
+            {/* ── Pagination ── */}
+            {(page > 1 || hasMore) && (
+                <div className="flex items-center justify-between pt-2">
+                    <button
+                        type="button"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page <= 1}
+                        className="rounded-lg px-4 py-2.5 min-h-11 text-xs font-semibold text-muted-foreground hover:bg-muted/60 disabled:opacity-40"
+                    >
+                        ← Previous
+                    </button>
+                    <span className="text-xs text-muted-foreground">
+                        Page {page} · {total} requests
+                    </span>
+                    <button
+                        type="button"
+                        onClick={() => setPage((p) => p + 1)}
+                        disabled={!hasMore}
+                        className="rounded-lg px-4 py-2.5 min-h-11 text-xs font-semibold text-muted-foreground hover:bg-muted/60 disabled:opacity-40"
+                    >
+                        Next →
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

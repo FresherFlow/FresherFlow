@@ -12,6 +12,7 @@ import {
     joinRoom,
     leaveRoom,
     listRoomPosts,
+    listRoomMembers,
     updateRoom,
     archiveRoom,
     restoreRoom,
@@ -77,7 +78,11 @@ router.get(
             page, limit, type, search, sort,
             userId: req.isAnonymous ? null : req.userId,
         });
-        res.setHeader('Cache-Control', 'public, max-age=60');
+        // Personalized (isMember/memberRole) when signed in: must not be
+        // served from a shared/browser cache keyed without identity.
+        // req.isAnonymous is undefined for pure anonymous requests, so treat
+        // "no authenticated user" (!req.userId) as anonymous too.
+        res.setHeader('Cache-Control', req.isAnonymous || !req.userId ? 'public, max-age=60' : 'no-store');
         return res.json(result);
     })
 );
@@ -92,7 +97,8 @@ router.get(
     optionalAuth,
     asyncHandler(async (req: Request, res: Response) => {
         const result = await getRoom(String(req.params.slug), req.isAnonymous ? null : req.userId);
-        res.setHeader('Cache-Control', 'public, max-age=30');
+        // Personalized (isMember/memberRole, per-user myVote): no-store when signed in.
+        res.setHeader('Cache-Control', req.isAnonymous || !req.userId ? 'public, max-age=30' : 'no-store');
         return res.json(result);
     })
 );
@@ -294,6 +300,21 @@ router.get(
             page, limit,
             userId: req.isAnonymous ? null : req.userId,
         });
+        // Personalized (per-user myVote on posts/comments): no-store when signed in.
+        res.setHeader('Cache-Control', req.isAnonymous || !req.userId ? 'public, max-age=30' : 'no-store');
+        return res.json(result);
+    })
+);
+
+router.get(
+    '/:slug/members',
+    communityReadLimiter,
+    optionalAuth,
+    asyncHandler(async (req: Request, res: Response) => {
+        const page = Number(req.query.page) || 1;
+        const limit = Math.min(Number(req.query.limit) || 20, 50);
+        const fetched = await getRoom(String(req.params.slug), req.isAnonymous ? null : req.userId);
+        const result = await listRoomMembers(fetched.room.id, { page, limit });
         res.setHeader('Cache-Control', 'public, max-age=30');
         return res.json(result);
     })

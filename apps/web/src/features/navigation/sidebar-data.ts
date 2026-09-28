@@ -1,5 +1,6 @@
 import {
     COMMUNITY_GROUP,
+    COMMUNITY_NAV_ENABLED,
     PERSONAL_GROUP,
     SPACES,
     type SpaceId,
@@ -130,8 +131,12 @@ export function getSidebarGroups({
     }
 
     if (mounted) {
-        const community = toGroup(COMMUNITY_GROUP, isAuthed, badges);
-        if (community) groups.push(community);
+        // Community is withheld from every rail while it is reworked — see
+        // COMMUNITY_NAV_ENABLED. Routes still resolve; only the links are gone.
+        if (COMMUNITY_NAV_ENABLED) {
+            const community = toGroup(COMMUNITY_GROUP, isAuthed, badges);
+            if (community) groups.push(community);
+        }
         const personal = toGroup(PERSONAL_GROUP, isAuthed, badges);
         if (personal) groups.push(personal);
     }

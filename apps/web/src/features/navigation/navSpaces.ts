@@ -99,6 +99,11 @@ export const SPACES: Space[] = [
                         items: pick(JOBS_NAV_ITEMS, 'jobs', 'internships', 'fullTime', 'partTime', 'remote', 'jobBoards'),
                     },
                     ...pick(DEFAULT_NAV_ITEMS, 'saved', 'tracker'),
+                    // Both of these are `/jobs?tab=` routes. They lived in the
+                    // Community group, so a rail showed two Jobs tabs under a
+                    // heading that had nothing to do with Jobs. They belong with
+                    // `saved` and `tracker`, which are the other jobs-scoped rows.
+                    ...pick(COMMUNITY_NAV_ITEMS, 'notifications', 'savedSearches'),
                 ],
             },
             {
@@ -187,9 +192,29 @@ export const PERSONAL_GROUP: SpaceNavGroup = {
     ],
 };
 
+/**
+ * Community navigation is paused while the rooms/community model is reworked.
+ *
+ * `Discussions` and `Rooms` both render `CommunityPost` - one unscoped, one
+ * scoped by `roomId` - with no stated boundary between them, and a room post
+ * cannot be replied-to-notified because `Notification` has no `postId`. Rather
+ * than advertise a half-working surface, the whole Community group is withheld
+ * from every rail. Routes are untouched: `/community`, `/community/rooms` and
+ * every `?tab=` value still resolve, so links and bookmarks keep working.
+ *
+ * Flip this to `true` to put the group back.
+ */
+export const COMMUNITY_NAV_ENABLED = false;
+
 export const COMMUNITY_GROUP: SpaceNavGroup = {
     label: 'Community',
-    items: pick(COMMUNITY_NAV_ITEMS, 'notifications', 'discussions', 'salary', 'rooms', 'savedSearches'),
+    /* `discussions` (/community?tab=discussions) is hidden from the rail: it is
+       the same `CommunityPost` feed that Rooms renders scoped by `roomId`, so
+       two sidebar rows led to the same content with no stated boundary between
+       them. The tab still resolves on /community, it is just not advertised.
+       `notifications` and `savedSearches` are /jobs routes and moved to the
+       Jobs space (see the Browse group above). */
+    items: pick(COMMUNITY_NAV_ITEMS, 'salary', 'rooms'),
 };
 
 export function getSpace(id: SpaceId): Space {

@@ -4,18 +4,12 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { communityApi } from '@fresherflow/api-client';
 import type { Room, RoomListResult } from '@fresherflow/types';
+import { Button } from '@/ui/Button';
+import { Input } from '@/ui/Input';
+import { Badge } from '@/ui/Badge';
 import { EmptyState } from '@/ui/EmptyState';
+import { ErrorMessage } from '@/ui/ErrorMessage';
 import { Skeleton } from '@/ui/Skeleton';
-import { cn } from '@repo/ui/utils/cn';
-
-const ROOM_TYPES = [
-    { value: '', label: 'All' },
-    { value: 'BATCH', label: 'Batch' },
-    { value: 'SKILL', label: 'Skill' },
-    { value: 'LOCATION', label: 'Location' },
-    { value: 'COMPANY', label: 'Company' },
-    { value: 'TOPIC', label: 'Topic' },
-];
 
 export function RoomsDirectory() {
     const [data, setData] = useState<RoomListResult>({
@@ -23,7 +17,6 @@ export function RoomsDirectory() {
     });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
-    const [type, setType] = useState('');
     const [search, setSearch] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const [sort, setSort] = useState<'popular' | 'newest'>('popular');
@@ -39,7 +32,7 @@ export function RoomsDirectory() {
         setError(false);
         try {
             const result = await communityApi.listRooms({
-                page, limit: 20, type: type || undefined,
+                page, limit: 20,
                 search: debouncedSearch || undefined, sort,
             });
             setData(result);
@@ -48,91 +41,89 @@ export function RoomsDirectory() {
         } finally {
             setLoading(false);
         }
-    }, [page, type, debouncedSearch, sort]);
+    }, [page, debouncedSearch, sort]);
 
     useEffect(() => { void load(); }, [load]);
 
-    const handleTypeChange = (value: string) => { setType(value); setPage(1); };
     const handleSortChange = (value: 'popular' | 'newest') => { setSort(value); setPage(1); };
 
     return (
-        <div className="space-y-6">
-            {/* Search */}
-            <div className="relative">
-                <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <input
+        <div className="space-y-4">
+            {/* One toolbar: search left, sort right. This used to be
+                three stacked rows (search, chips, sort) which read as a wall of
+                chrome before any room was visible. */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <Input
+                    type="search"
+                    variant="form"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Search rooms..."
-                    className="w-full rounded-xl border border-border bg-card py-2.5 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    placeholder="Search rooms"
+                    aria-label="Search rooms"
+                    className="sm:w-72"
                 />
-            </div>
 
-            {/* Type filter + Sort */}
-            <div className="flex items-center justify-between gap-3">
-                <div className="flex flex-wrap gap-1.5">
-                    {ROOM_TYPES.map((t) => (
-                        <button
-                            key={t.value}
-                            type="button"
-                            onClick={() => handleTypeChange(t.value)}
-                            className={cn(
-                                'rounded-full px-3 py-1 text-xs font-semibold transition-colors',
-                                type === t.value
-                                    ? 'bg-primary text-primary-foreground'
-                                    : 'bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground'
-                            )}
-                        >
-                            {t.label}
-                        </button>
-                    ))}
-                </div>
-                <div className="flex gap-1 shrink-0">
-                    <button
+                <div role="group" aria-label="Sort rooms" className="flex shrink-0 items-center gap-1.5">
+                    <Button
                         type="button"
+                        size="sm"
+                        variant={sort === 'popular' ? 'default' : 'outline'}
+                        aria-pressed={sort === 'popular'}
                         onClick={() => handleSortChange('popular')}
-                        className={cn(
-                            'rounded-lg px-2 py-1 text-xs font-bold transition-colors',
-                            sort === 'popular' ? 'bg-muted text-foreground' : 'text-muted-foreground'
-                        )}
                     >
                         Popular
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="button"
+                        size="sm"
+                        variant={sort === 'newest' ? 'default' : 'outline'}
+                        aria-pressed={sort === 'newest'}
                         onClick={() => handleSortChange('newest')}
-                        className={cn(
-                            'rounded-lg px-2 py-1 text-xs font-bold transition-colors',
-                            sort === 'newest' ? 'bg-muted text-foreground' : 'text-muted-foreground'
-                        )}
                     >
                         New
-                    </button>
+                    </Button>
                 </div>
             </div>
 
             {/* Room list */}
             {loading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" aria-hidden="true">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-hidden="true">
                     {[1, 2, 3, 4].map((index) => <RoomCardSkeleton key={index} />)}
                 </div>
             ) : error ? (
-                <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-xs text-muted-foreground">
-                    Could not load rooms.{' '}
-                    <button type="button" onClick={() => void load()} className="font-semibold text-primary hover:underline">Retry</button>
-                </div>
+                <ErrorMessage
+                    title="Could not load rooms"
+                    message="The rooms directory did not load."
+                    onRetry={() => void load()}
+                    variant="card"
+                />
             ) : data.rooms.length === 0 ? (
                 <EmptyState
-                    icon={debouncedSearch || type ? 'search' : 'inbox'}
+                    icon={debouncedSearch ? 'search' : 'inbox'}
                     size="md"
-                    title={debouncedSearch || type ? 'No rooms match your filters' : 'No rooms yet'}
-                    description=""
+                    title={debouncedSearch ? 'No rooms match your search' : 'No rooms yet'}
+                    description={debouncedSearch ? 'Try a different search term.' : 'Rooms appear here once they are created.'}
                     variant="ghost"
+                    action={
+                        debouncedSearch ? (
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                    setSearch('');
+                                    setPage(1);
+                                }}
+                            >
+                                Clear filters
+                            </Button>
+                        ) : undefined
+                    }
                 />
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                /* `lg:grid-cols-3 xl:grid-cols-4` to match the reference apps
+                   grid: a room card is short (name, description, 3 counts), so two
+                   columns left a 1900px screen mostly empty. */
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     {data.rooms.map((room) => (
                         <RoomCard key={room.id} room={room} />
                     ))}
@@ -141,24 +132,28 @@ export function RoomsDirectory() {
 
             {/* Pagination */}
             {(page > 1 || data.hasMore) && (
-                <div className="flex items-center justify-between pt-2">
-                    <button
+                <div className="flex items-center justify-between gap-2 pt-1">
+                    <Button
                         type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={page <= 1}
-                        className="rounded-lg px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted/60 disabled:opacity-40"
                     >
-                        ← Previous
-                    </button>
-                    <span className="text-xs text-muted-foreground">Page {page}</span>
-                    <button
+                        Previous
+                    </Button>
+                    <span className="text-sm text-muted-foreground tabular-nums">
+                        Page {page} · {data.total.toLocaleString()} rooms
+                    </span>
+                    <Button
                         type="button"
+                        variant="outline"
+                        size="sm"
                         onClick={() => setPage((p) => p + 1)}
                         disabled={!data.hasMore}
-                        className="rounded-lg px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted/60 disabled:opacity-40"
                     >
-                        Next →
-                    </button>
+                        Next
+                    </Button>
                 </div>
             )}
         </div>
@@ -197,34 +192,37 @@ function RoomCard({ room }: { room: Room }) {
     return (
         <Link
             href={`/community/rooms/${room.slug}`}
-            className="block rounded-2xl border border-border bg-card p-4 space-y-2 transition-all hover:shadow-md hover:border-primary/20 active-press-soft"
+            className="block rounded-2xl border border-border bg-card p-4 space-y-2 transition-colors hover:border-primary/30 [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-md"
         >
             <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-bold text-foreground truncate">{room.name}</h3>
+                    <h3 className="truncate text-base font-semibold text-foreground">{room.name}</h3>
                     {room.tags && room.tags.length > 0 && (
-                        <span className="text-xs text-muted-foreground">{room.tags.map((t) => `#${t}`).join(' ')}</span>
+                        <span className="text-sm text-muted-foreground">
+                            {room.tags.map((t) => `#${t}`).join(' ')}
+                        </span>
                     )}
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
                     {room.lastActiveThisWeek && (
-                        <span className="flex items-center gap-1 rounded-full bg-signal-live/10 px-2 py-0.5 text-xs font-bold text-signal-live uppercase tracking-wider">
-                            <span className="h-1.5 w-1.5 rounded-full bg-signal-live" />
+                        <Badge variant="success" size="sm">
                             Active
-                        </span>
+                        </Badge>
                     )}
                     {room.isMember && (
-                        <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">Joined</span>
+                        <Badge variant="secondary" size="sm">
+                            Joined
+                        </Badge>
                     )}
                 </div>
             </div>
             {room.description && (
-                <p className="text-xs text-muted-foreground line-clamp-2">{room.description}</p>
+                <p className="line-clamp-2 text-sm text-muted-foreground">{room.description}</p>
             )}
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span>{room.memberCount.toLocaleString()} members</span>
-                <span>{room.postCount} posts</span>
-                <span>{room.opportunityCount} jobs</span>
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span className="tabular-nums">{room.memberCount.toLocaleString()} members</span>
+                <span className="tabular-nums">{room.postCount} posts</span>
+                <span className="tabular-nums">{room.opportunityCount} jobs</span>
             </div>
         </Link>
     );

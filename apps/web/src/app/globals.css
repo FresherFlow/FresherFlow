@@ -495,35 +495,46 @@ html[data-logged-in="false"] .auth-user-only {
    went out with `NavMain.tsx` and were deliberately NOT reinstated as dead
    CSS. */
 
-html[data-sidebar='collapsed'] [data-sidebar='group-label'] {
-  display: none;
-}
-html[data-sidebar='collapsed'] [data-sidebar='menu-button'] {
-  width: 2rem !important;
-  height: 2rem !important;
-  padding: 0.5rem !important;
-}
-html[data-sidebar='collapsed'] [data-sidebar='menu-button'] > svg {
-  width: 1rem !important;
-  height: 1rem !important;
-}
-/* The header row is a `size="lg"` button, and stock shadcn collapses that size
-   to `!p-0` — NOT the base `!p-2`. The generic 0.5rem above therefore pushed
-   the 32px logo tile 8px right inside the 32px button and clipped it, so the
-   header appeared shifted right on reload and snapped left after hydration.
-   Mirror the primitive: `size="lg"` rows get zero padding pre-hydration. */
-html[data-sidebar='collapsed'] [data-sidebar='header'] [data-sidebar='menu-button'] {
-  padding: 0 !important;
-}
-/* Collapsed box chrome: the white switcher box and the full user card must not
-   render squeezed into the narrow rail. Unlayered CSS beats layered utilities
-   deterministically. */
-html[data-sidebar='collapsed'] .nav-switcher-btn {
-  background-color: transparent;
-  border-width: 0;
-}
-html[data-sidebar='collapsed'] [data-sidebar='footer'] [data-sidebar='menu-button'] {
-  padding: 0 !important;
+/* Scoped to `lg` and up: the collapsed rail is `hidden lg:block`, so below
+   `lg` there is no collapsed rail to mirror and these rules must not apply.
+   This is not cosmetic. `html[data-sidebar]` is written to <html> by
+   `sidebarState.ts`, and <body> is a descendant of <html> — so the portalled
+   mobile drawer (a child of <body>) was matching every rule below. A user with
+   a collapsed desktop rail therefore got `display:none` group labels and 2rem
+   icon-only menu buttons in the drawer: the nav rendered as a bare icon rail at
+   any width, on both the admin and user drawers. The drawer has its own
+   full-width layout and must never inherit the rail's collapsed chrome. */
+@media (min-width: 64rem) {
+  html[data-sidebar='collapsed'] [data-sidebar='group-label'] {
+    display: none;
+  }
+  html[data-sidebar='collapsed'] [data-sidebar='menu-button'] {
+    width: 2rem !important;
+    height: 2rem !important;
+    padding: 0.5rem !important;
+  }
+  html[data-sidebar='collapsed'] [data-sidebar='menu-button'] > svg {
+    width: 1rem !important;
+    height: 1rem !important;
+  }
+  /* The header row is a `size="lg"` button, and stock shadcn collapses that size
+     to `!p-0` — NOT the base `!p-2`. The generic 0.5rem above therefore pushed
+     the 32px logo tile 8px right inside the 32px button and clipped it, so the
+     header appeared shifted right on reload and snapped left after hydration.
+     Mirror the primitive: `size="lg"` rows get zero padding pre-hydration. */
+  html[data-sidebar='collapsed'] [data-sidebar='header'] [data-sidebar='menu-button'] {
+    padding: 0 !important;
+  }
+  /* Collapsed box chrome: the white switcher box and the full user card must not
+     render squeezed into the narrow rail. Unlayered CSS beats layered utilities
+     deterministically. */
+  html[data-sidebar='collapsed'] .nav-switcher-btn {
+    background-color: transparent;
+    border-width: 0;
+  }
+  html[data-sidebar='collapsed'] [data-sidebar='footer'] [data-sidebar='menu-button'] {
+    padding: 0 !important;
+  }
 }
 
 /* Hidden Scrollbar - Scroll functionality preserved */

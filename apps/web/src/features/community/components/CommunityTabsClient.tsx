@@ -1,12 +1,11 @@
 'use client';
 
-import { ComponentType } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { ComponentType, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { TabBar } from '@/ui/TabBar';
 import { CommunityFeedClient } from '@/features/community/components/CommunityFeedClient';
 import { ReferralBoardClient } from '@/features/community/components/ReferralBoardClient';
 import { SalaryReportsClient } from '@/features/community/components/SalaryReportsClient';
-import { SavedSearchesClient } from '@/features/community/components/SavedSearchesClient';
 import { RoomsDirectory } from '@/features/rooms/RoomsDirectory';
 
 const COMMUNITY_TABS = [
@@ -14,7 +13,6 @@ const COMMUNITY_TABS = [
     { key: 'referrals', label: 'Referrals', href: '/community?tab=referrals' },
     { key: 'salary', label: 'Salary & Offers', href: '/community?tab=salary' },
     { key: 'rooms', label: 'Rooms', href: '/community?tab=rooms' },
-    { key: 'saved-searches', label: 'Saved Searches', href: '/community?tab=saved-searches' },
 ] as const;
 
 type CommunityTabKey = (typeof COMMUNITY_TABS)[number]['key'];
@@ -24,7 +22,6 @@ const TAB_COMPONENTS: Record<CommunityTabKey, ComponentType> = {
     referrals: ReferralBoardClient,
     salary: SalaryReportsClient,
     rooms: RoomsDirectory,
-    'saved-searches': SavedSearchesClient,
 };
 
 function resolveTab(tab: string | null): CommunityTabKey {
@@ -32,12 +29,22 @@ function resolveTab(tab: string | null): CommunityTabKey {
 }
 
 /**
- * /community is one page: discussions, referral board, salary reports, rooms
- * and saved searches are ?tab= views on one shared pill TabBar.
+ * /community is one page: discussions, referral board, salary reports and
+ * rooms are ?tab= views on one shared pill TabBar. Saved searches moved to
+ * /jobs?tab=searches — a legacy ?tab=saved-searches is redirected there.
  */
 export default function CommunityTabsClient() {
+    const router = useRouter();
     const searchParams = useSearchParams();
-    const active = resolveTab(searchParams.get('tab'));
+    const rawTab = searchParams.get('tab');
+
+    useEffect(() => {
+        if (rawTab === 'saved-searches') {
+            router.replace('/jobs?tab=searches');
+        }
+    }, [rawTab, router]);
+
+    const active = resolveTab(rawTab);
     const TabContent = TAB_COMPONENTS[active];
 
     return (

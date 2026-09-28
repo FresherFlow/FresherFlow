@@ -6,6 +6,8 @@ import { fresherNeedsApi } from '@fresherflow/api-client';
 import type { SalaryReportItem, SalaryReportListResult } from '@fresherflow/api-client';
 import { cn } from '@repo/ui/utils/cn';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { EmptyState } from '@/ui/EmptyState';
+import { ErrorMessage } from '@/ui/ErrorMessage';
 
 function formatLpa(thousands: number | null | undefined): string {
     if (thousands == null) return '—';
@@ -77,18 +79,21 @@ export function SalaryReportsClient() {
     const { user } = useAuth();
     const router = useRouter();
     const [data, setData] = useState<SalaryReportListResult | null>(null);
+    const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [showForm, setShowForm] = useState(false);
     const [helpfulIds, setHelpfulIds] = useState<Set<string>>(new Set());
 
     const load = useCallback(() => {
+        setLoading(true);
+        setError(false);
         fresherNeedsApi
-            .listSalaryReports({ limit: 30 })
+            .listSalaryReports({ page, limit: 30 })
             .then(setData)
             .catch(() => setError(true))
             .finally(() => setLoading(false));
-    }, []);
+    }, [page]);
 
     useEffect(() => {
         load();
@@ -162,15 +167,24 @@ export function SalaryReportsClient() {
                 {showForm ? 'Cancel' : '+ Share your offer / salary'}
             </button>
 
-            {showForm && <SalaryForm onDone={() => setShowForm(false)} onCreated={load} />}
+            {showForm && <SalaryForm onDone={() => setShowForm(false)} onCreated={() => { if (page === 1) { load(); } else { setPage(1); } }} />}
 
-            {error && <p className="text-sm text-destructive">Something went wrong. Try refreshing.</p>}
+            {error && (
+                <ErrorMessage
+                    message="Something went wrong. Try refreshing."
+                    onRetry={() => load()}
+                    variant="subtle"
+                />
+            )}
 
             {!error && data && data.reports.length === 0 && (
-                <div className="p-8 text-center">
-                    <p className="text-sm font-medium text-foreground">No salary reports yet</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Got an offer? Share the real numbers — in-hand, bond, all of it.</p>
-                </div>
+                <EmptyState
+                    icon="inbox"
+                    size="md"
+                    variant="ghost"
+                    title="No salary reports yet"
+                    description="Got an offer? Share the real numbers — in-hand, bond, all of it."
+                />
             )}
 
             <div className="space-y-3">
@@ -223,6 +237,31 @@ export function SalaryReportsClient() {
                     </article>
                 ))}
             </div>
+
+            {/* ── Pagination ── */}
+            {(page > 1 || (data?.hasMore ?? false)) && (
+                <div className="flex items-center justify-between pt-2">
+                    <button
+                        type="button"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={page <= 1}
+                        className="rounded-lg px-4 py-2.5 min-h-11 text-xs font-semibold text-muted-foreground hover:bg-muted/60 disabled:opacity-40"
+                    >
+                        ← Previous
+                    </button>
+                    <span className="text-xs text-muted-foreground">
+                        Page {page} · {data?.total ?? 0} reports
+                    </span>
+                    <button
+                        type="button"
+                        onClick={() => setPage((p) => p + 1)}
+                        disabled={!(data?.hasMore ?? false)}
+                        className="rounded-lg px-4 py-2.5 min-h-11 text-xs font-semibold text-muted-foreground hover:bg-muted/60 disabled:opacity-40"
+                    >
+                        Next →
+                    </button>
+                </div>
+            )}
         </div>
     );
 }

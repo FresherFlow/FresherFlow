@@ -110,7 +110,7 @@ export const REGISTRY = {
     discussions: { name: 'Discussions', href: '/community?tab=discussions', icon: MessageSquareText },
     salary: { name: 'Salary & Offers', href: '/community?tab=salary', icon:    Banknote },
     rooms: { name: 'Rooms', href: '/community?tab=rooms', icon:    Users },
-    savedSearches: { name: 'Saved Searches', href: '/community?tab=saved-searches', icon:    Bookmark },
+    savedSearches: { name: 'Saved Searches', href: '/jobs?tab=searches', icon:    Bookmark },
 } satisfies Record<string, NavItemDef>;
 
 export type NavItemId = keyof typeof REGISTRY;

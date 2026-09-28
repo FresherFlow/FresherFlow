@@ -18,6 +18,7 @@ import ForYouTab from '@/features/jobs/tabs/ForYouTab';
 import SavedTab from '@/features/jobs/tabs/SavedTab';
 import AppliedTab from '@/features/jobs/tabs/AppliedTab';
 import AlertsTab from '@/features/jobs/tabs/AlertsTab';
+import SearchesTab from '@/features/jobs/tabs/SearchesTab';
 import FollowingTab from '@/features/companies/components/FollowingTab';
 import NotificationsTab from '@/features/jobs/tabs/NotificationsTab';
 import type { CompanyFollowSummary } from '@/features/companies/types';
@@ -29,6 +30,7 @@ const USER_TABS = [
     { key: 'saved', label: 'Saved', href: '/jobs?tab=saved' },
     { key: 'applied', label: 'Applied', href: '/jobs?tab=applied' },
     { key: 'alerts', label: 'Alerts', href: '/jobs?tab=alerts' },
+    { key: 'searches', label: 'Searches', href: '/jobs?tab=searches' },
     { key: 'following', label: 'Following', href: '/jobs?tab=following' },
     { key: 'notifications', label: 'Notifications', href: '/jobs?tab=notifications' },
 ] as const;
@@ -42,6 +44,7 @@ const TAB_COMPONENTS: Record<Exclude<UserTabKey, 'following'>, React.ComponentTy
     saved: SavedTab,
     applied: AppliedTab,
     alerts: AlertsTab,
+    searches: SearchesTab,
     notifications: NotificationsTab,
 };
 

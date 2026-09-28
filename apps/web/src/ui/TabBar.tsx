@@ -31,7 +31,7 @@ export function TabBar({ items, activeKey, onSelect, className }: TabBarProps) {
                 {items.map((item) => {
                     const isActive = item.key === activeKey;
                     const classes = cn(
-                        'px-3 py-1.5 text-xs font-bold capitalize tracking-widest rounded-lg transition-all whitespace-nowrap',
+                        'px-3 py-1.5 text-xs font-bold tracking-widest rounded-lg transition-all whitespace-nowrap',
                         isActive
                             ? 'bg-card shadow-sm text-foreground'
                             : 'text-muted-foreground hover:text-foreground'
