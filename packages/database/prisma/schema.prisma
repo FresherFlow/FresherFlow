@@ -1197,6 +1197,7 @@ model UserAction {
   opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
 
   @@unique([userId, opportunityId])
+  @@index([opportunityId, actionType])
 }
 
 // ── The community funnel ─────────────────────────────────────────────────────
@@ -1359,6 +1360,7 @@ model AlertDelivery {
   opportunity Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
 
   @@index([userId, kind])
+  @@index([userId, channel, sentAt])
   @@index([sentAt])
   @@index([readAt])
 }
@@ -2120,6 +2122,7 @@ model CommunityPost {
   @@index([authorId])
   @@index([sourceOpportunityId])
   @@index([roomId])
+  @@index([tags], type: Gin)
 }
 
 model CommunityPostComment {

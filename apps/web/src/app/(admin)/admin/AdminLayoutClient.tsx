@@ -5,7 +5,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type CSSProperties } from 'react';
 import { ErrorState, ErrorStateButton } from '@/features/shell/ErrorState';
 import { canAccessAdminRoute, getModeratorLanding } from '@/features/admin/moderatorAccess';
-import AdminBottomNav from '@/features/navigation/AdminBottomNav';
 import { AdminCommandMenu } from '@/features/admin/layout/AdminCommandMenu';
 import { AdminLayoutProvider, useAdminLayout } from '@/features/admin/layout/AdminLayoutProvider';
 import { AdminPaletteProvider } from '@/features/admin/layout/AdminPaletteProvider';
@@ -68,7 +67,12 @@ function AdminShell({ children }: { children: React.ReactNode }) {
                             {children}
                         </div>
                     </div>
-                    <AdminBottomNav />
+                    {/* No mobile bottom nav on admin. It duplicated the
+                        sidebar's own destinations and cost a 64px fixed bar on
+                        every phone screen; the shell's MobileTopNav (menu) plus
+                        the sidebar drawer cover navigation. With it gone, admin
+                        pages no longer need `pb-20`/`pb-24`/`pb-28` bottom
+                        clearance either. */}
                 </div>
             </SidebarInset>
         </div>
@@ -105,6 +109,7 @@ export default function AdminLayoutClient({ children }: { children: React.ReactN
                     code="401"
                     title="Admin sign-in required."
                     message="This area needs an admin session. Sign in to continue."
+                    className="h-full min-h-0"
                 >
                     <ErrorStateButton href="/admin/login">Go to admin login</ErrorStateButton>
                 </ErrorState>

@@ -17,6 +17,7 @@ import {
   SidebarMenuItem,
 } from "@/ui/sidebar"
 import type { Space, SpaceId } from "@/features/navigation/navConfig"
+import { LogoImage } from "@/features/shell/LogoImage"
 
 /**
  * (name + subtitle + `ChevronsUpDown` switch affordance) with the panel
@@ -28,10 +29,19 @@ export function SpaceSwitcher({
   spaces,
   activeId,
   onChange,
+  logo = false,
 }: {
   spaces: Space[]
   activeId: SpaceId
   onChange: (id: SpaceId) => void
+  /**
+   * Render the FresherFlow logo as the leading tile instead of the active
+   * space icon. Lets this single row BE the header: the reference
+   * `TeamSwitcher` is one button holding a tile, a name and a chevron, so
+   * adding a separate brand row above it made a collapsed rail stack two
+   * tiles (logo, then the space icon) at two different offsets.
+   */
+  logo?: boolean
 }) {
   const activeSpace = spaces.find((space) => space.id === activeId) ?? spaces[0]
 
@@ -49,11 +59,15 @@ export function SpaceSwitcher({
             <SidebarMenuButton
               suppressHydrationWarning
               size="lg"
-              className="nav-switcher-btn data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-logo-bg text-paper">
-                <ActiveIcon className="size-4 shrink-0" aria-hidden />
-              </div>
+              {logo ? (
+                <LogoImage width={24} height={24} className="size-6 shrink-0 object-contain" />
+              ) : (
+                <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-logo-bg text-paper">
+                  <ActiveIcon className="size-4 shrink-0" aria-hidden />
+                </div>
+              )}
               <div className="grid flex-1 text-start text-sm leading-tight">
                 <span className="truncate font-semibold">{activeSpace.name}</span>
                 <span className="truncate text-xs">{activeSpace.subtitle}</span>

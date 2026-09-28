@@ -73,7 +73,7 @@ export function NavUser() {
           <SidebarMenuButton asChild tooltip="Log in">
             <Link href="/login">
               <LogIn />
-              <span className="sidebar-expanded-only">Log in</span>
+              <span>Log in</span>
             </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>

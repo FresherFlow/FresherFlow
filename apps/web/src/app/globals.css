@@ -158,6 +158,14 @@
     @apply focus-visible:outline-none focus-visible:ring-0 border-border outline-ring/50;
   }
 
+  /* Override Radix scroll locking for sticky headers (shadcn-admin parity):
+     opening the drawer Sheet locks body scroll + compensates scrollbar width,
+     which freezes fixed/sticky chrome and visibly hangs open/close. Keep the
+     page live behind the modal instead. */
+  body[data-scroll-locked] {
+    overflow: unset !important;
+  }
+
   :root {
     color-scheme: light dark;
     --radius: 10px;
@@ -466,60 +474,56 @@ html[data-logged-in="true"] .auth-guest-only {
 html[data-logged-in="false"] .auth-user-only {
   display: none !important;
 }
-html[data-sidebar="collapsed"] .sidebar-expanded-only {
-  display: none !important;
+
+/* Pre-hydration collapsed rail.
+   SSR HTML has no `data-collapsible`: the server cannot read the sidebar cookie
+   without forcing dynamic rendering, which public SEO routes must not do. The
+   primitive's collapse rules are all `group-data-[collapsible=icon]:…`, so
+   before hydration the rail would paint at the collapsed WIDTH (HeadInjections
+   already sets `--sidebar-w: 3rem` from the same cookie) while every
+   `expanded-only` label, badge and wordmark was still laid out and visible —
+   which is exactly the clipped `Brow…` / `Disco…` / `Comm…` group labels seen
+   on reload.
+
+   `HeadInjections` writes `html[data-sidebar]` before first paint, so keying
+   these off the same attribute gives a correct first frame. Every value below
+   MIRRORS a primitive rule exactly, so nothing changes once the primitive's
+   own `data-collapsible` lands — that is the whole point of this layer.
+
+   Only selectors the primitive actually emits are listed. The old
+   `.sidebar-expanded-only` / `.nav-collapse-hide` / `[data-nav-badge]` rules
+   went out with `NavMain.tsx` and were deliberately NOT reinstated as dead
+   CSS. */
+
+html[data-sidebar='collapsed'] [data-sidebar='group-label'] {
+  display: none;
 }
-html[data-sidebar="expanded"] .sidebar-collapsed-only {
-  display: none !important;
-}
-/* Pre-paint collapse: center brand/logo and team icon when collapsed so the
-   first paint matches the hydrated collapsed layout (no jump from left to center). */
-html[data-sidebar="collapsed"] .sidebar-brand {
-  justify-content: center !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
-html[data-sidebar="collapsed"] .sidebar-team-icon {
-  margin-left: auto !important;
-  margin-right: auto !important;
-}
-/* Pre-hydration collapsed rail: SSR HTML has no data-collapsible (the
-   server cannot read the cookie without forcing dynamic rendering, which
-   public SEO routes must not do), so icon sizing must also key off
-   html[data-sidebar], which HeadInjections sets before paint. Mirrors the
-   primitive's icon rules with equal values, so post-hydration nothing
-   changes. Shadcn files untouched — this is our override layer. */
-html[data-sidebar="collapsed"] [data-sidebar="menu-button"] {
+html[data-sidebar='collapsed'] [data-sidebar='menu-button'] {
   width: 2rem !important;
   height: 2rem !important;
   padding: 0.5rem !important;
 }
-html[data-sidebar="collapsed"] [data-sidebar="menu-button"] > svg {
+html[data-sidebar='collapsed'] [data-sidebar='menu-button'] > svg {
   width: 1rem !important;
   height: 1rem !important;
 }
-html[data-sidebar="collapsed"] [data-sidebar="group-label"] {
-  display: none;
+/* The header row is a `size="lg"` button, and stock shadcn collapses that size
+   to `!p-0` — NOT the base `!p-2`. The generic 0.5rem above therefore pushed
+   the 32px logo tile 8px right inside the 32px button and clipped it, so the
+   header appeared shifted right on reload and snapped left after hydration.
+   Mirror the primitive: `size="lg"` rows get zero padding pre-hydration. */
+html[data-sidebar='collapsed'] [data-sidebar='header'] [data-sidebar='menu-button'] {
+  padding: 0 !important;
 }
-html[data-sidebar="collapsed"] [data-nav-active-bar],
-html[data-sidebar="collapsed"] [data-nav-badge] {
-  display: none;
-}
-/* Collapsed box chrome + footer text must also key off html[data-sidebar]:
-   pre-hydration (and slow dev reloads) have no data-collapsible yet, so the
-   white switcher box and the full user card would render squeezed into the
-   narrow rail. Unlayered CSS beats layered utilities deterministically. */
-html[data-sidebar="collapsed"] .nav-switcher-btn {
+/* Collapsed box chrome: the white switcher box and the full user card must not
+   render squeezed into the narrow rail. Unlayered CSS beats layered utilities
+   deterministically. */
+html[data-sidebar='collapsed'] .nav-switcher-btn {
   background-color: transparent;
   border-width: 0;
 }
-html[data-sidebar="collapsed"]
-  [data-sidebar="footer"]
-  [data-sidebar="menu-button"] {
+html[data-sidebar='collapsed'] [data-sidebar='footer'] [data-sidebar='menu-button'] {
   padding: 0 !important;
-}
-html[data-sidebar="collapsed"] .nav-collapse-hide {
-  display: none !important;
 }
 
 /* Hidden Scrollbar - Scroll functionality preserved */
@@ -540,6 +544,24 @@ html {
   100% {
     transform: translateX(-50%);
   }
+}
+
+/* Mobile navigation drawer: motion cut.
+   Diagnostic first, deliberately blunt. The panel and its scrim are given no
+   animation and no transition, so the drawer appears and disappears in a
+   single frame. If the drawer still stutters with zero motion, the jank is in
+   the content mount or the scroll lock — not in the animation — and cutting
+   the animation bought us the answer for free.
+
+   Unlayered, so it deterministically beats the layered Tailwind utilities that
+   put animate-in/animate-out on the Sheet.
+
+   Revert by deleting this block; restore the smooth slide by also removing
+   `data-nav-drawer` from the SheetContent in MobileTopNav. */
+[data-nav-drawer],
+body:has([data-nav-drawer]) > [data-radix-dialog-overlay] {
+  animation: none !important;
+  transition: none !important;
 }
 
 /* ── Landing identity (HydraDB-structure study, docs/research/) ──────────
@@ -587,6 +609,22 @@ html.ff-smooth {
 @media (prefers-reduced-motion: reduce) {
   .ff-marquee-track {
     animation: none;
+  }
+  /* Overlay motion (Dialog/AlertDialog/Sheet/Popover) is decorative travel
+     only — it carries no information, so reduced motion drops it entirely
+     rather than substituting a slide that can still trigger vestibular
+     symptoms. The state change itself is instant and remains perceivable. */
+  [data-slot='dialog-overlay'],
+  [data-radix-dialog-overlay],
+  [data-slot='dialog-content'],
+  [data-radix-dialog-content],
+  [data-slot='sheet-overlay'],
+  [data-slot='sheet-content'],
+  [data-slot='popover-content'],
+  [data-slot='dropdown-menu-content'],
+  [data-slot='select-content'] {
+    animation: none !important;
+    transition: none !important;
   }
 }
 

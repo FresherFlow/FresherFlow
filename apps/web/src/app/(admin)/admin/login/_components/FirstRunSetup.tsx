@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { ChevronDownIcon } from '@heroicons/react/24/outline';
-import { cn } from '@/ui/cn';
 import { Button } from '@/ui/Button';
 import { Field } from '@/ui/Field';
 import { Input } from '@/ui/Input';
@@ -34,14 +33,16 @@ export function FirstRunSetup({
 
     if (!open) {
         return (
-            <button
+            <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => setOpen(true)}
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                className="w-full"
             >
                 First time here? Set up your admin passkey
-                <ChevronDownIcon className="size-3.5" />
-            </button>
+                <ChevronDownIcon className="size-4" />
+            </Button>
         );
     }
 
@@ -51,8 +52,8 @@ export function FirstRunSetup({
             className="space-y-4 rounded-xl border border-dashed border-border p-4"
         >
             <div className="space-y-1">
-                <h3 className="text-sm font-semibold text-foreground">Set up your admin passkey</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="text-base font-semibold text-foreground">Set up your admin passkey</h3>
+                <p className="text-base text-muted-foreground">
                     One-time setup. Enter the backend bootstrap secret to register this device as your
                     passkey. Once registered, sign in from the panel above.
                 </p>

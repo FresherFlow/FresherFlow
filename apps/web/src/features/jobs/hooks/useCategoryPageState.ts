@@ -540,6 +540,10 @@ export function useCategoryPageState({
     profileIncomplete,
     toggleSave,
     reload,
+    submitLiveSearch,
+    clearLiveSearch,
+    isLiveSearching,
+    isLiveResults,
   } = useOpportunitiesFeed({
     type,
     mode,
@@ -873,6 +877,7 @@ export function useCategoryPageState({
 
   const clearAll = () => {
     setSearch("");
+    clearLiveSearch();
     setDriveDate("all");
     setFilters({
       location: null,
@@ -912,9 +917,12 @@ export function useCategoryPageState({
 
     search,
     setSearch,
+    submitLiveSearch,
+    clearLiveSearch,
+    isLiveSearching,
+    isLiveResults,
     filters,
     setFilters,
-
     govtPhase,
     setGovtPhase,
     govtCategory,

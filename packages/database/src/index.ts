@@ -5,6 +5,11 @@ import { PrismaPg } from '@prisma/adapter-pg';
 export * from '@prisma/client';
 export * from './redis.js';
 
+const parsePoolInt = (value: string | undefined, fallback: number): number => {
+    const parsed = Number.parseInt(value ?? '', 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
 const prismaClientSingleton = () => {
     const shouldLog = process.env.LOG_DATABASE_QUERIES === 'true';
     // Never disable TLS verification by default. Managed Postgres providers
@@ -12,6 +17,12 @@ const prismaClientSingleton = () => {
     // opt-out remains available for local/dev proxies via PG_SSL_REJECT_UNAUTHORIZED=0.
     const pool = new Pool({
         connectionString: process.env.DATABASE_URL,
+        // Explicit, env-overridable pool sizing with safe defaults.
+        max: parsePoolInt(process.env.PGPOOL_MAX, 10),
+        min: parsePoolInt(process.env.PGPOOL_MIN, 2),
+        idleTimeoutMillis: parsePoolInt(process.env.PGPOOL_IDLE_TIMEOUT_MS, 30000),
+        connectionTimeoutMillis: parsePoolInt(process.env.PGPOOL_CONNECTION_TIMEOUT_MS, 5000),
+        statement_timeout: parsePoolInt(process.env.PG_STATEMENT_TIMEOUT_MS, 15000),
         ssl:
             process.env.NODE_ENV === 'production'
                 ? { rejectUnauthorized: process.env.PG_SSL_REJECT_UNAUTHORIZED !== '0' }

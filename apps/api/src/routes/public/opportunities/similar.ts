@@ -1,11 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../../../infrastructure/database/prisma';
 import { AppError } from '../../../middleware/errorHandler';
-import { buildGuestOpportunitySelect } from './_helpers';
+import { buildGuestOpportunitySelect, publicDetailLimiter } from './_helpers';
 
 const router: Router = Router();
 
-router.get('/:id/similar', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id/similar', publicDetailLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
 

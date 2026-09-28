@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { OpportunityStatus } from '@fresherflow/types';
 import prisma from '../../../infrastructure/database/prisma';
 import { AppError } from '../../../middleware/errorHandler';
+import { createRateLimiter } from '../../../middleware/rateLimit';
 import { updateOpportunityEngagement } from '../../../application/opportunity/engagement';
 import {
     isSupportedDetailId
@@ -9,11 +10,20 @@ import {
 
 const router: Router = Router();
 
+// Every Apply click costs an engagement write plus an analytics event, and the
+// endpoint is unauthenticated, so it needs its own cap on top of the global one.
+const clickLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 60,
+    message: 'Too many click events. Please slow down.',
+    keyPrefix: 'opportunity_click',
+});
+
 /**
  * POST /api/opportunities/:id/click
  * Track an outbound click (e.g. "Apply" button) for an opportunity.
  */
-router.post('/:id/click', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/click', clickLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const id = String(req.params.id || '');
         if (!id || !isSupportedDetailId(id)) throw new AppError('Opportunity id is invalid', 400);

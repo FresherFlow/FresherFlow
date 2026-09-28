@@ -158,6 +158,16 @@ export const SubmitOpportunityInput = z.object({
         .describe('City or location, e.g. "Hyderabad"'),
     employmentType: z.string().trim().max(80).optional()
         .describe('e.g. "Full-time", "Internship"'),
+    category: z.enum(['job', 'internship', 'walkin', 'government']).optional()
+        .describe('Posting kind. Use "walkin" for dated drives (add dates/venueAddress), "government" for public-sector jobs. Defaults to "job".'),
+    dates: z.array(z.string().trim().max(40)).max(10).optional()
+        .describe('Walk-in drive dates, e.g. ["2026-10-04"]. Only used with category "walkin".'),
+    dateRange: z.string().trim().max(120).optional()
+        .describe('Walk-in date range text, e.g. "4th - 5th Oct". Only used with category "walkin".'),
+    timeRange: z.string().trim().max(120).optional()
+        .describe('Walk-in reporting time, e.g. "10am - 2pm". Only used with category "walkin".'),
+    venueAddress: z.string().trim().max(500).optional()
+        .describe('Walk-in venue address. Only used with category "walkin".'),
     salary: z.string().trim().max(60).optional()
         .describe('Salary display, e.g. "₹5–7 LPA"'),
     description: z.string().trim().max(5000).optional()

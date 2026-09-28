@@ -4,11 +4,21 @@ import { OpportunityStatus, Profile, Opportunity } from '@fresherflow/types';
 
 import { requireAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
+import { createRateLimiter } from '../middleware/rateLimit';
 import { validate } from '../middleware/validate';
 import { alertPreferencesSchema, pushSubscriptionSchema } from '../utils/validation';
 import { checkEligibility } from '@fresherflow/utils';
 
 const router: Router = express.Router();
+
+// Authenticated alert reads are frequent (bell badge polls); keep the cap
+// lenient like communityReadLimiter (120/min), IP-keyed like its neighbors.
+const alertsReadLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 120,
+    message: 'Too many requests. Please try again in a minute.',
+    keyPrefix: 'alerts_read',
+});
 const UNREAD_COUNT_CACHE_TTL_MS = 30 * 1000;
 const unreadCountCache = new Map<string, { count: number; expiresAt: number }>();
 
@@ -97,24 +107,35 @@ async function countVisibleUnreadAlerts(userId: string, profile: Profile | null)
 }
 
 
-router.get('/preferences', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/preferences', alertsReadLimiter, requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = req.userId;
         if (!userId) return next(new AppError('Unauthorized', 401));
 
-        const preference = await prisma.alertPreference.upsert({
+        // Pure read: never write on GET. When the row is missing, return the
+        // Prisma-model defaults in-memory; the row is created on PUT only.
+        const preference = await prisma.alertPreference.findUnique({
             where: { userId },
-            update: {},
-            create: { userId },
         });
 
-        res.json({ preference });
+        res.json({
+            preference: preference ?? {
+                userId,
+                enabled: true,
+                emailEnabled: true,
+                dailyDigest: true,
+                closingSoon: true,
+                minRelevanceScore: 45,
+                preferredHour: 8,
+                timezone: 'Asia/Kolkata',
+            },
+        });
     } catch (error) {
         next(error);
     }
 });
 
-router.get('/feed', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/feed', alertsReadLimiter, requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = req.userId;
         if (!userId) return next(new AppError('Unauthorized', 401));
@@ -241,7 +262,7 @@ router.get('/feed', requireAuth, async (req: Request, res: Response, next: NextF
     }
 });
 
-router.get('/:id/digest-items', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id/digest-items', alertsReadLimiter, requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = req.userId;
         const alertId = String(req.params.id || '');
@@ -354,7 +375,7 @@ router.get('/:id/digest-items', requireAuth, async (req: Request, res: Response,
     }
 });
 
-router.get('/unread-count', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/unread-count', alertsReadLimiter, requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = req.userId;
         if (!userId) return next(new AppError('Unauthorized', 401));
@@ -382,7 +403,7 @@ router.get('/unread-count', requireAuth, async (req: Request, res: Response, nex
  * Phase 7 dispatch transparency: the caller's own AlertDispatchLog rows
  * (INITIATED / SENT / SKIPPED / FAILED with reasons), newest first.
  */
-router.get('/dispatch-log', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/dispatch-log', alertsReadLimiter, requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = req.userId;
         if (!userId) return next(new AppError('Unauthorized', 401));

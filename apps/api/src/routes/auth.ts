@@ -71,6 +71,15 @@ const logoutLimiter = createRateLimiter({
     keyPrefix: 'rate:auth:logout'
 });
 
+// Advisory permission read for client-side gating; cheap but user-triggered,
+// so cap it leniently like other authenticated reads.
+const permissionsLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 120,
+    message: 'Too many requests. Please try again in a minute.',
+    keyPrefix: 'rate:auth:permissions'
+});
+
 const router: Router = express.Router();
 
 const COOKIE_DOMAIN = getCookieDomain();
@@ -455,7 +464,7 @@ router.post('/logout/all', logoutLimiter, requireAuth, async (req: Request, res:
 // Returns the caller's AccessRole grants for client-side gating of the
 // moderator area. requireAuth already rejects anonymous/suspended callers;
 // the payload is advisory — every moderation route re-checks server-side.
-router.get('/permissions', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/permissions', permissionsLimiter, requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const rows = await prisma.$queryRaw<{ key: string; role: string }[]>`
             SELECT DISTINCT p."key" AS "key", r."name" AS "role"

@@ -176,7 +176,9 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         profileIncomplete,
         toggleSave,
         reload,
-        opportunities
+        opportunities,
+        submitLiveSearch,
+        clearLiveSearch,
     } = useOpportunitiesFeed({
         type: selectedType,
         selectedLoc: filters.location,
@@ -390,8 +392,12 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                     </Breadcrumb>
                 </div>
 
-                {/* Search box */}
-                <div className={cn("relative group w-full lg:w-96", selectedOpp && "hidden lg:block")}>
+                {/* Search box — keystrokes filter the local CDN index; Enter fans out live */}
+                <form
+                    onSubmit={(e) => { e.preventDefault(); submitLiveSearch(); }}
+                    className={cn("relative group w-full lg:w-96", selectedOpp && "hidden lg:block")}
+                    role="search"
+                >
                     <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                     <Input
                         type="text"
@@ -403,14 +409,15 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                     />
                     {search && (
                         <button
-                            onClick={() => setSearch('')}
+                            type="button"
+                            onClick={() => { setSearch(''); clearLiveSearch(); }}
                             aria-label="Clear search"
                             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-full p-0.5"
                         >
                             <XMarkIcon className="w-4 h-4" />
                         </button>
                     )}
-                </div>
+                </form>
 
                 {/* Count (left) + Filters (right) — one row */}
                 <div className={cn("flex items-center gap-3 flex-wrap pb-2", selectedOpp && "hidden lg:flex")}>
@@ -519,6 +526,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                                     onSelectOpportunity={(opp) => handleSelectOpportunity(opp as Opportunity)}
                                     onClearFilters={() => {
                                         setSearch('');
+                                        clearLiveSearch();
                                         updateType(null);
                                         setFilters({ location: null, sector: null, qualification: null, course: null, year: null, closingSoon: false, saved: false, workMode: null, skills: [], source: [], company: [], experience: [] });
                                     }}

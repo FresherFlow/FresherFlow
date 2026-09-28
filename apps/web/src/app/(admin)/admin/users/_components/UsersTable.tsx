@@ -5,6 +5,7 @@ import type { DirectoryUser } from '@/features/admin/moderators/moderationContra
 import { Badge } from '@/ui/Badge';
 import { Button } from '@/ui/Button';
 import { DataGrid, type DataGridColumn } from '@/ui/data-grid/DataGrid';
+import { STICKY_AFTER_SELECT } from '@/ui/data-grid/sticky';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -49,6 +50,12 @@ const ROLE_OPTIONS = [
  * The first column pins on mobile (via `meta.sticky`) while the rest scroll
  * horizontally, which is the pattern the rest of the admin uses — see
  * `ui/data-grid/sticky`.
+ *
+ * `variant="bare"` picks the shadcn-admin `users-table.tsx` shape: toolbar
+ * outside the table, then ONE `rounded-md border` div, then pagination pinned
+ * with `mt-auto`. The page hands down a bounded height, so the grid owns the
+ * scroll and its own footer stays reachable — and no `Card` renders, so there
+ * is no box inside a box.
  */
 export default function UsersTable({
     users,
@@ -145,7 +152,10 @@ export default function UsersTable({
                 </>
             )}
             bulkBarEntityName="user"
-            className="min-h-0 flex-1"
+            /* The bare root already carries `flex min-h-0 flex-1 flex-col`, so
+                the grid fills the bounded wrapper the page passes down without a
+                redundant className. */
+            variant="bare"
         />
     );
 }
@@ -169,14 +179,20 @@ function buildColumns({
             accessorFn: (row) => row.fullName || row.email || row.username || row.id,
             cell: ({ row }) => {
                 const user = row.original;
+                const name = user.fullName;
                 return (
                     <div className="flex min-w-0 items-center gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-xs font-bold uppercase text-primary">
-                            {(user.fullName || user.email || user.username || 'U')[0]}
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/20 bg-primary/10 text-sm font-bold uppercase text-primary">
+                            {(name || user.email || user.username || 'U')[0]}
                         </div>
-                        <div className="min-w-0">
-                            <div className="truncate font-semibold tracking-tight text-foreground">
-                                {user.fullName || (
+                        {/* Bounded on mobile so a long name or email truncates
+                            instead of stretching the row: this column is the
+                            pinned one, and an unbounded `white-space: nowrap`
+                            child widened the whole table until the other
+                            columns fell off the screen. Full width from `sm`. */}
+                        <div className="min-w-0 max-w-40 sm:max-w-56">
+                            <div className="truncate font-semibold tracking-tight text-foreground" title={name ?? undefined}>
+                                {name || (
                                     <span className="italic text-muted-foreground">No Name</span>
                                 )}
                                 {moderatorIds.has(user.id) ? (
@@ -185,7 +201,7 @@ function buildColumns({
                                     </Badge>
                                 ) : null}
                             </div>
-                            <div className="truncate text-xs text-muted-foreground">
+                            <div className="truncate text-sm text-muted-foreground" title={user.email ?? undefined}>
                                 {user.email || 'No email provided'}
                             </div>
                         </div>
@@ -193,7 +209,9 @@ function buildColumns({
                 );
             },
             // Pinned so identity stays readable while the other columns scroll.
-            meta: { sticky: 'left', stickyOffsetClass: 'max-md:left-10' },
+            // The offset is the 40px select-all column, shared from ./sticky so
+            // the two cannot drift apart.
+            meta: { sticky: 'left', stickyOffsetClass: STICKY_AFTER_SELECT },
         },
         {
             id: 'username',
@@ -201,7 +219,12 @@ function buildColumns({
             accessorFn: (row) => row.username || '',
             cell: ({ row }) =>
                 row.original.username ? (
-                    <span className="font-mono text-sm font-medium">@{row.original.username}</span>
+                    <span
+                        className="block max-w-40 truncate font-mono text-sm font-medium sm:max-w-56"
+                        title={`@${row.original.username}`}
+                    >
+                        @{row.original.username}
+                    </span>
                 ) : (
                     <span className="italic text-muted-foreground">None</span>
                 ),

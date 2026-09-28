@@ -52,6 +52,12 @@ export function AdminNavGroup({ group }: { group: AdminNavGroupData }) {
     const { state, isMobile } = useSidebar();
     const pathname = usePathname() || '';
     const searchParams = useSearchParams();
+    // Same mount gate as the user-side NavGroup: the collapsed-rail dropdown
+    // branch depends on persisted open-state + window width, both unavailable
+    // during SSR. Rendering it before mount hydrates mismatched.
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const collapsedRail = mounted && state === 'collapsed' && !isMobile;
 
     return (
         <SidebarGroup>
@@ -69,7 +75,7 @@ export function AdminNavGroup({ group }: { group: AdminNavGroupData }) {
                         );
                     }
 
-                    if (state === 'collapsed' && !isMobile) {
+                    if (collapsedRail) {
                         return (
                             <AdminSidebarCollapsedDropdown
                                 key={`${item.title}-group`}
@@ -218,7 +224,7 @@ function AdminSidebarCollapsedDropdown({
     const isActive = item.items.some((sub) => isSpaceItemActive(sub, pathname, searchParams));
     return (
         <SidebarMenuItem>
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                     <SidebarMenuButton tooltip={item.title} isActive={isActive}>
                         <ItemIcon />

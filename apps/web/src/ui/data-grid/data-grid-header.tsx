@@ -24,7 +24,16 @@ export function DataGridHeader<TData extends RowData>({
   enableSelection,
 }: DataGridHeaderProps<TData>) {
   return (
-    <TableHeader className="sticky top-0 z-10 bg-muted/60 border-border/40 shadow-xs">
+    /* Reference (`users-table.tsx:126-151`): plain, opaque `TableHead`s.
+     *
+     * This row sticks inside the grid's own scroller, so its background has to
+     * be fully opaque — rows sliding underneath were visible through the old
+     * `bg-muted/60`, which read as glassmorphism, and `shadow-xs` added a
+     * gradient-like edge on top of it. `bg-background` matches the reference
+     * exactly: no alpha, no blur, no shadow, and the same tone as the cells
+     * below it. `TableHeader`'s own `bg-muted/40` default loses to this in
+     * `cn`. */
+    <TableHeader className="sticky top-0 z-10 bg-background">
       {table.getHeaderGroups().map((headerGroup) => (
         <TableRow key={headerGroup.id}>
           {headerGroup.headers.map((header) => {
@@ -59,7 +68,7 @@ function HeaderTh<TData extends RowData>({
       <TableHead
         key={header.id}
         colSpan={header.colSpan}
-        className="py-2.5 px-4 normal-case tracking-normal"
+        className="py-2.5 px-3 normal-case tracking-normal sm:px-4"
       />
     )
   }
@@ -75,7 +84,7 @@ function HeaderTh<TData extends RowData>({
       <TableHead
         key={header.id}
         className={cn(
-          "py-2.5 pl-4 pr-0 w-10 normal-case tracking-normal",
+          "py-2.5 pl-3 pr-0 w-10 normal-case tracking-normal",
           meta?.sticky === "left" && stickyHeaderCellClass(meta?.stickyOffsetClass)
         )}
         style={{ width: 40 }}
@@ -94,8 +103,12 @@ function HeaderTh<TData extends RowData>({
           ? { width: column.getSize() }
           : undefined
       }
+      /* No vertical padding on the sortable head: the `size="sm"` control below
+         is 40px tall and `TableHead` already reserves `h-10`, so padding on top
+         of it pushed the header row to 60px. The non-sortable and select heads
+         keep `py-2.5` because their content is smaller. */
       className={cn(
-        "relative py-2.5 px-4 font-medium normal-case tracking-normal group/header",
+        "relative px-3 font-medium normal-case tracking-normal group/header sm:px-4",
         meta?.sticky === "left" && stickyHeaderCellClass(meta?.stickyOffsetClass),
         meta?.headerClassName
       )}
@@ -105,7 +118,10 @@ function HeaderTh<TData extends RowData>({
           variant="ghost"
           size="sm"
           className={cn(
-            "-ml-2 h-7 px-2 text-xs font-medium text-muted-foreground hover:bg-transparent hover:text-foreground",
+            /* Type and height come from the `sm` size itself (40px / 14px). The
+               old `h-7 … text-xs` override made the header labels 12px, which
+               is where "the admin text feels small" came from. */
+            "-ml-2 px-2 font-medium text-muted-foreground hover:bg-transparent hover:text-foreground",
             sorted && "data-[state=sorted]:bg-muted/60 text-foreground"
           )}
           onClick={() => column.toggleSorting(sorted === "asc")}
@@ -122,7 +138,7 @@ function HeaderTh<TData extends RowData>({
           )}
         </Button>
       ) : (
-        <span className="text-xs font-medium text-muted-foreground">
+        <span className="text-sm font-medium text-muted-foreground">
           {meta?.headerTitle ??
             flexRender(header.column.columnDef.header, header.getContext())}
         </span>

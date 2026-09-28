@@ -25,6 +25,7 @@ import {
     CirclePlus,
     Settings,
     Palette,
+    Heart,
     User,
     Building,
     Users,
@@ -94,6 +95,7 @@ export const REGISTRY = {
     govtTeaching: { name: 'Teaching', href: '/govt?category=Teaching', icon:    GraduationCap },
     govtPolice: { name: 'Police', href: '/govt?category=Police', icon:    ShieldAlert },
     govtEngineering: { name: 'Engineering', href: '/govt?category=Engineering', icon:    Wrench },
+    govtNursing: { name: 'Nursing', href: '/govt?category=Nursing', icon:    Heart },
     saved: { name: 'Saved', href: '/jobs?tab=saved', icon:    Bookmark, requiresAuth: true },
     tracker: { name: 'Tracker', href: '/jobs?tab=applied', icon:    ChartBar, requiresAuth: true },
     account: { name: 'Account', href: '/account', icon:    CircleUser, hasSubmenu: true, requiresAuth: true },
@@ -158,6 +160,7 @@ export const GOVT_NAV_ITEMS: NavItem[] = [
     nav('govtTeaching'),
     nav('govtPolice'),
     nav('govtEngineering'),
+    nav('govtNursing'),
     nav('jobsPrivate'),
     nav('contribute', { name: 'Post a Job' }),
 ];

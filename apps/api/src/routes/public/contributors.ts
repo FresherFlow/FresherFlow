@@ -1,8 +1,18 @@
 import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import { prisma } from '@fresherflow/database';
 import { getContributorProfile } from '../../infrastructure/services/community/community.service';
+import { createRateLimiter } from '../../middleware/rateLimit';
 
 const router = Router();
+
+// The leaderboard and contributor profiles aggregate across several tables and
+// are public, so they get their own read cap on top of the global limiter.
+const publicContributorReadLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 60,
+    message: 'Too many contributor requests. Please slow down.',
+    keyPrefix: 'public-contributor-read',
+});
 
 const asyncHandler =
     (handler: (req: Request, res: Response, next: NextFunction) => Promise<unknown>): RequestHandler =>
@@ -16,6 +26,7 @@ const asyncHandler =
  */
 router.get(
     '/leaderboard',
+    publicContributorReadLimiter,
     asyncHandler(async (_req: Request, res: Response) => {
         const limit = Math.min(parseInt(_req.query.limit as string) || 20, 50);
 
@@ -109,6 +120,7 @@ router.get(
  */
 router.get(
     '/:userId/opportunities',
+    publicContributorReadLimiter,
     asyncHandler(async (req: Request, res: Response) => {
         const userId = String(req.params.userId);
         const page = parseInt(req.query.page as string) || 1;

@@ -127,12 +127,24 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
         // Default remains the backward-compatible flat `opportunities` list.
         const groupByValue = normalizeSafeQueryString(groupBy, 16);
         if (groupByValue === 'company') {
-            const groupedRows = await prisma.opportunity.findMany({
-                where: whereClause,
-                select: buildGroupedOpportunitySelect(),
-                orderBy: { postedAt: 'desc' },
-                distinct: ['id'],
-            });
+            // Bounded pagination: default 20 / max 50. The flat branch above
+            // already validated `p` (1..MAX_FEED_PAGE) and `l` (1..MAX_FEED_LIMIT),
+            // so clamp `l` down to the grouped cap here; when the caller passes
+            // no explicit limit, fall back to 20 instead of the flat default.
+            const groupedLimit = req.query.limit === undefined ? 20 : Math.min(l, 50);
+            const groupedSkip = (p - 1) * groupedLimit;
+
+            const [groupedTotal, groupedRows] = await Promise.all([
+                prisma.opportunity.count({ where: whereClause }),
+                prisma.opportunity.findMany({
+                    where: whereClause,
+                    select: buildGroupedOpportunitySelect(),
+                    orderBy: { postedAt: 'desc' },
+                    distinct: ['id'],
+                    take: groupedLimit,
+                    skip: groupedSkip,
+                }),
+            ]);
 
             const groupedOpportunities = groupedRows.map((row) =>
                 toGroupedOpportunity(row as unknown as Parameters<typeof toGroupedOpportunity>[0])
@@ -147,11 +159,14 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
                 res.setHeader('Vary', 'Cookie, Authorization');
             }
 
-            const response: CompanyGroupedResponse = {
+            const response: CompanyGroupedResponse & { page: number; limit: number; hasMore: boolean } = {
                 companies,
-                totalOpportunities: groupedOpportunities.length,
+                totalOpportunities: groupedTotal,
                 totalCompanies: companies.length,
                 timestamp: Date.now(),
+                page: p,
+                limit: groupedLimit,
+                hasMore: groupedSkip + groupedRows.length < groupedTotal,
             };
             return res.json(response);
         }

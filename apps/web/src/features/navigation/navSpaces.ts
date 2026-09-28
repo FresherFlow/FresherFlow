@@ -40,6 +40,13 @@ export interface Space {
     name: string;
     subtitle: string;
     icon: NavIcon;
+    /**
+     * Where switching into this space lands. The space switcher must follow
+     * the switch, and each space owns its own entry route — hardcoding
+     * `/jobs` for "everything else" left Drives switching while still on
+     * `/jobs`.
+     */
+    homeHref: string;
     groups: SpaceNavGroup[];
 }
 
@@ -77,6 +84,7 @@ export const SPACES: Space[] = [
         name: 'Jobs',
         subtitle: 'Private sector',
         icon:    Briefcase,
+        homeHref: REGISTRY.dashboard.href,
         groups: [
             {
                 label: 'Browse',
@@ -107,6 +115,7 @@ export const SPACES: Space[] = [
         name: 'Drives',
         subtitle: 'Campus & walk-in',
         icon:    Map,
+        homeHref: REGISTRY.drives.href,
         groups: [
             {
                 label: 'Browse',
@@ -123,6 +132,7 @@ export const SPACES: Space[] = [
         name: 'Government',
         subtitle: 'Sarkari exams',
         icon:    Landmark,
+        homeHref: REGISTRY.govt.href,
         groups: [
             {
                 // Renamed from `Categories`: `Categories` is now the parent row,
@@ -144,7 +154,8 @@ export const SPACES: Space[] = [
                             'govtDefence',
                             'govtTeaching',
                             'govtPolice',
-                            'govtEngineering'
+                            'govtEngineering',
+                            'govtNursing'
                         ),
                     },
                 ],

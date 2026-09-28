@@ -27,13 +27,29 @@ router.post(
                 companyName: string;
                 jobUrl: string;
                 location?: string;
+                employmentType?: string;
                 employmentTypes?: string;
+                category?: 'job' | 'internship' | 'walkin' | 'government';
+                dates?: string[];
+                dateRange?: string | null;
+                timeRange?: string | null;
+                venueAddress?: string | null;
                 salary?: string;
                 description?: string;
                 eligibility?: string;
                 sourceUrl?: string;
                 contactEmail?: string;
             };
+
+            // Walk-ins are a recruitment method (dated drive), government is a
+            // sector — both ride on category EMPLOYMENT with dimensions set.
+            const category =
+                body.category === 'walkin'
+                    ? 'WALKIN'
+                    : body.category === 'government'
+                      ? 'JOB'
+                      : (body.category ?? 'job').toUpperCase();
+            const employmentTypes = body.employmentTypes ?? body.employmentType ?? null;
 
             const result = await submitJob({
                 userId: null,
@@ -42,9 +58,14 @@ router.post(
                 title: body.title,
                 company: body.companyName,
                 description: body.description ?? null,
-                category: 'EMPLOYMENT',
+                category,
                 locations: body.location ? [body.location] : [],
-                employmentTypes: body.employmentTypes ?? null,
+                employmentTypes,
+                sector: body.category === 'government' ? 'GOVERNMENT' : undefined,
+                dates: body.dates,
+                dateRange: body.dateRange ?? null,
+                timeRange: body.timeRange ?? null,
+                venueAddress: body.venueAddress ?? null,
                 salaryRange: body.salary ?? null,
                 requiredSkills: [],
                 allowedPassoutYears: [],

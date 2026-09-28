@@ -16,6 +16,15 @@ const clickLimiter = createRateLimiter({
     keyPrefix: 'rate:referral:click',
 });
 
+// Unauthenticated code validation; cap it like other public reads (60/min,
+// matching publicReadLimiter) on top of the global limiter.
+const validateLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 60,
+    message: 'Too many requests. Please slow down.',
+    keyPrefix: 'rate:referral:validate',
+});
+
 // ─── Badge milestones ─────────────────────────────────────────────────────────
 
 const BADGE_MILESTONES: Array<{ count: number; badge: string }> = [
@@ -50,7 +59,7 @@ async function awardBadges(userId: string, signupCount: number) {
 }
 
 // GET /api/public/referrals/:code — validate code
-router.get('/:code', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:code', validateLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { code } = req.params as { code: string };
         if (code === 'me') return next(); // let /me fall through to auth handler

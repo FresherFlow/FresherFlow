@@ -6,6 +6,8 @@ import {
     listComments,
     postComment,
     deleteComment,
+    commentsWriteLimiter,
+    communityReadLimiter,
     type CommunityCommentNode,
 } from '../../../infrastructure/services/community/community.service';
 
@@ -41,7 +43,7 @@ function toLegacy(node: CommunityCommentNode): LegacyComment {
  * @route   GET /api/opportunities/:id/comments
  * @desc    Fetch comments for an opportunity (public, flat legacy envelope)
  */
-router.get('/:id/comments', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id/comments', communityReadLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const opportunity = await resolveOpportunity(String(req.params.id));
         const result = await listComments(opportunity.id, { userId: req.userId });
@@ -60,7 +62,7 @@ router.get('/:id/comments', async (req: Request, res: Response, next: NextFuncti
  * @route   POST /api/opportunities/:id/comments
  * @desc    Post a comment on an opportunity (protected)
  */
-router.post('/:id/comments', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/comments', requireAuth, commentsWriteLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = req.userId;
         if (!userId || req.isAnonymous) {
@@ -96,6 +98,7 @@ router.post('/:id/comments', requireAuth, async (req: Request, res: Response, ne
 router.delete(
     '/:id/comments/:commentId',
     requireAuth,
+    commentsWriteLimiter,
     async (req: Request, res: Response, next: NextFunction) => {
         try {
             const userId = req.userId;

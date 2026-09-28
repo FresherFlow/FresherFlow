@@ -6,10 +6,12 @@ import { Button } from '@/ui/Button';
 
 /**
  * Centered, non-scrolling error shell (shadcn-admin error-feature pattern:
- * giant code, message, action row). `h-dvh overflow-hidden` — error pages
- * must never scroll; the old marketing-style 404 grew past the viewport.
- * Pass `className="h-full"` when nesting inside an already-constrained
- * shell column (e.g. the admin layout).
+ * giant code, message, action row). The PAGE never scrolls: the shell fills
+ * its parent (`flex-1`) instead of claiming viewport units, so stacked
+ * ancestors (mobile top bar padding, bottom tabs) can't push it into
+ * overflow. Only the inner column may micro-scroll on short screens.
+ * Pass `className="h-full min-h-0"` when nesting inside an already-tall
+ * column — same fill, explicit height.
  */
 export function ErrorState({
     code,
@@ -25,14 +27,16 @@ export function ErrorState({
     className?: string;
 }) {
     return (
-        <div className={cn('h-dvh w-full overflow-hidden', className)}>
-            <div className="mx-auto flex h-full w-full max-w-2xl flex-col items-center justify-center gap-2 px-4 text-center">
+        <div className={cn('flex min-h-0 w-full flex-1 flex-col overflow-hidden', className)}>
+            <div className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto">
+            <div className="m-auto flex w-full max-w-2xl flex-col items-center gap-2 px-4 py-6 text-center">
                 <h1 className="text-[7rem] font-bold leading-none tracking-tight">{code}</h1>
                 <p className="font-medium">{title}</p>
                 {message ? (
                     <p className="text-center text-sm text-muted-foreground">{message}</p>
                 ) : null}
                 {children ? <div className="mt-6 flex flex-wrap items-center justify-center gap-3">{children}</div> : null}
+            </div>
             </div>
         </div>
     );

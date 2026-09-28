@@ -107,7 +107,19 @@ export function useOpportunitiesFeed({
     const fullFeedRef = useRef<Opportunity[] | null>(null);
     const debouncedSearch = useDebounce(search, 500);
     const normalizedSearch = sanitizeSearchQuery(debouncedSearch);
-    const shouldUseBackendSearch = normalizedSearch.length >= 2;
+    // Live fan-out (POST /api/search, 60s scraper timeout) is NEVER driven by
+    // debounced keystrokes. Keystrokes filter the already-hydrated in-memory
+    // CDN index client-side via opportunityMatchesSearch in filteredOpps below
+    // (zero network). The fan-out fires only via submitLiveSearch() (explicit
+    // form submit / Enter) or when no local scope is loaded (no-scope fallback).
+    const [liveResults, setLiveResults] = useState<Opportunity[] | null>(null);
+    const [isLiveSearching, setIsLiveSearching] = useState(false);
+    const [liveSearchError, setLiveSearchError] = useState<string | null>(null);
+    const liveRequestIdRef = useRef(0);
+    // Query the live overlay (or live error) corresponds to. Non-null means a
+    // live search is active for that query; keystrokes that diverge from it
+    // revert to local-first filtering.
+    const liveQueryRef = useRef<string | null>(null);
     const cacheScope = useMemo(() => {
         return `type:${(type || 'all').toLowerCase()}`;
     }, [type]);
@@ -163,27 +175,6 @@ export function useOpportunitiesFeed({
                     return;
                 }
                 throw new Error('Saved jobs are disabled on web');
-            } else if (shouldUseBackendSearch) {
-                // Live concurrent fan-out search across all scrapers
-                const locationHint = selectedLoc || undefined;
-                const result = await liveSearch({
-                    searchTerm: normalizedSearch,
-                    location: locationHint,
-                    resultsWanted: 100,
-                });
-
-                if (lastRequestTimestamp.current !== timestamp) return;
-
-                const convertedJobs = (result.jobs || []).map((j: LiveSearchJob) => liveJobToOpportunity(j) as unknown as Opportunity);
-                setOpportunities(convertedJobs);
-                setTotalCount(result.count || convertedJobs.length);
-                setPage(1);
-                setHasMore(false);
-                setError(null);
-                setProfileIncomplete(null);
-                setUsingCachedFeed(false);
-                setIsLoading(false);
-                return;
             } else {
                 throw new Error('Opportunity API list is disabled on web');
             }
@@ -197,7 +188,7 @@ export function useOpportunitiesFeed({
                 });
             } else {
                 const cached = readFeedCache(cacheScope);
-                if (cached && !showOnlySaved && !shouldUseBackendSearch && pageNum === 1) {
+                if (cached && !showOnlySaved && pageNum === 1) {
                     setOpportunities(cached.opportunities);
                     setTotalCount(cached.count || cached.opportunities.length);
                     setUsingCachedFeed(true);
@@ -214,19 +205,91 @@ export function useOpportunitiesFeed({
                 setIsLoading(false);
             }
         }
-    }, [user, authLoading, showOnlySaved, cacheScope, shouldUseBackendSearch, initialData, normalizedSearch, selectedLoc]);
+    }, [user, authLoading, showOnlySaved, cacheScope, initialData]);
+
+    // Explicit live fan-out runner. Race-guarded by request id so a slow
+    // fan-out never clobbers results for a newer query.
+    const runLiveSearch = useCallback(async (query: string, requestId: number) => {
+        const locationHint = selectedLoc || undefined;
+        setIsLiveSearching(true);
+        setLiveSearchError(null);
+        try {
+            // Live concurrent fan-out search across all scrapers
+            const result = await liveSearch({
+                searchTerm: query,
+                location: locationHint,
+                resultsWanted: 100,
+            });
+
+            if (liveRequestIdRef.current !== requestId) return;
+
+            const convertedJobs = (result.jobs || []).map((j: LiveSearchJob) => liveJobToOpportunity(j) as unknown as Opportunity);
+            setLiveResults(convertedJobs);
+        } catch (err: unknown) {
+            if (liveRequestIdRef.current !== requestId) return;
+            const { getErrorMessage } = await import('@/lib/utils/error');
+            setLiveSearchError(getErrorMessage(err));
+            setLiveResults(null);
+        } finally {
+            if (liveRequestIdRef.current === requestId) {
+                setIsLiveSearching(false);
+            }
+        }
+    }, [selectedLoc]);
+
+    // Explicit submit only (form submit / Enter key). Uses the current input
+    // so it feels instant; debounced keystrokes keep filtering locally.
+    const submitLiveSearch = useCallback(() => {
+        const query = sanitizeSearchQuery(search);
+        if (query.length < 2) return;
+        liveRequestIdRef.current += 1;
+        liveQueryRef.current = query;
+        void runLiveSearch(query, liveRequestIdRef.current);
+    }, [search, runLiveSearch]);
+
+    const clearLiveSearch = useCallback(() => {
+        liveRequestIdRef.current += 1;
+        liveQueryRef.current = null;
+        setLiveResults(null);
+        setLiveSearchError(null);
+        setIsLiveSearching(false);
+    }, []);
+
+    // Keystrokes after an explicit submit revert to local-first filtering:
+    // once the debounced query diverges from the live query, drop the overlay.
+    useEffect(() => {
+        if (liveResults !== null && !isLiveSearching && normalizedSearch !== liveQueryRef.current) {
+            setLiveResults(null);
+            setLiveSearchError(null);
+            liveQueryRef.current = null;
+        }
+    }, [normalizedSearch, liveResults, isLiveSearching]);
+
+    // No-scope fallback: the only auto fan-out. Fires when the local index has
+    // nothing loaded for this scope (no SSR slice, no hydrated feed) — once per
+    // query. With a loaded scope, debounced queries stay purely local.
+    const hasLocalScope = opportunities.length > 0 || fullFeedRef.current !== null;
+    const hasInitialDataForScope = !!initialData;
+    useEffect(() => {
+        if (normalizedSearch.length < 2 || liveResults !== null || isLiveSearching) return;
+        if (hasLocalScope || hasInitialDataForScope) return;
+        if (liveQueryRef.current === normalizedSearch) return;
+        liveRequestIdRef.current += 1;
+        liveQueryRef.current = normalizedSearch;
+        void runLiveSearch(normalizedSearch, liveRequestIdRef.current);
+    }, [normalizedSearch, liveResults, isLiveSearching, hasLocalScope, hasInitialDataForScope, runLiveSearch]);
 
     const hasOpportunities = !!initialData?.opportunities?.length;
     const hasInitialData = !!initialData;
     useEffect(() => {
         if (!authLoading) {
-            if (hasOpportunities && !shouldUseBackendSearch) {
+            if (hasOpportunities) {
                 loadOpportunities(1, false);
             } else {
                 loadOpportunities();
             }
         }
-    }, [loadOpportunities, authLoading, user, showOnlySaved, hasOpportunities, shouldUseBackendSearch, hasInitialData]);
+    }, [loadOpportunities, authLoading, user, showOnlySaved, hasOpportunities, hasInitialData]);
 
     // Route components serialize only the first page of the feed into the HTML
     // (view-source stays light), so when the server-trimmed list is smaller
@@ -270,7 +333,11 @@ export function useOpportunitiesFeed({
     }, [cacheScope, initialData, needsHydration, type]);
 
     const filteredOpps = useMemo(() => {
-        const modeFiltered = opportunities;
+        // Live overlay active (explicit submit / no-scope fallback): rank the
+        // fan-out results. The query was already applied server-side, so the
+        // local token predicate is bypassed — all other filters still apply.
+        const isLiveOverlay = liveResults !== null;
+        const modeFiltered = isLiveOverlay ? liveResults : opportunities;
 
         const filtered = modeFiltered.filter(opp => {
             if (showOnlySaved && !savedJobsMap[opp.id]) {
@@ -347,7 +414,7 @@ export function useOpportunitiesFeed({
                 }
             }
 
-            const matchesSearch = opportunityMatchesSearch(opp, debouncedSearch);
+            const matchesSearch = isLiveOverlay || opportunityMatchesSearch(opp, debouncedSearch);
 
             const matchesLoc = !selectedLoc || (opp.locations || []).some((loc) => {
                 const l = loc.toLowerCase().trim();
@@ -537,7 +604,7 @@ export function useOpportunitiesFeed({
             // Universal deterministic secondary tie-breaker
             return a.id.localeCompare(b.id);
         });
-    }, [opportunities, selectedLoc, selectedYear, closingSoon, sector, qualification, course, skills, company, profile, normalizedSearch, type, mode, source, sort, showOnlySaved, savedJobsMap, isMounted]);
+    }, [opportunities, liveResults, selectedLoc, selectedYear, closingSoon, sector, qualification, course, skills, company, profile, normalizedSearch, type, mode, source, sort, showOnlySaved, savedJobsMap, isMounted]);
 
     const toggleSave = async (opportunityId: string) => {
         if (!user) {
@@ -552,20 +619,39 @@ export function useOpportunitiesFeed({
         }
     };
 
+    // Retry preserves the active source: a live overlay/error re-fans out,
+    // otherwise the local index reloads.
+    const reload = useCallback(() => {
+        if (liveQueryRef.current && (liveResults !== null || liveSearchError)) {
+            const query = liveQueryRef.current;
+            liveRequestIdRef.current += 1;
+            void runLiveSearch(query, liveRequestIdRef.current);
+            return;
+        }
+        void loadOpportunities(1, false);
+    }, [loadOpportunities, liveResults, liveSearchError, runLiveSearch]);
+
     return {
         opportunities,
         filteredOpps,
         totalCount,
         page,
         hasMore,
-        isLoading,
-        error,
+        isLoading: isLoading || isLiveSearching,
+        error: error ?? liveSearchError,
         usingCachedFeed,
         cachedAt,
         profileIncomplete,
         toggleSave,
         setOpportunities,
-        reload: () => loadOpportunities(1, false),
+        reload,
         loadMore: () => hasMore && !isLoading && loadOpportunities(page + 1, true),
+        // Explicit live fan-out controls. Keystrokes never call these —
+        // wire submitLiveSearch to form submit / Enter key only.
+        submitLiveSearch,
+        clearLiveSearch,
+        isLiveSearching,
+        liveSearchError,
+        isLiveResults: liveResults !== null,
     };
 }

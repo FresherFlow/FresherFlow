@@ -12,7 +12,7 @@ import {
     SignalIcon,
 } from '@heroicons/react/24/outline';
 import { database } from '@/lib/api/firebase';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, get, query, limitToLast } from 'firebase/database';
 import { useFirebaseAdmin } from '@/features/admin/hooks/useFirebaseAdmin';
 import { adminApi } from '@/lib/api/admin';
 import { CDN_URL } from '@/lib/utils/runtimeConfig';
@@ -32,6 +32,19 @@ interface DashboardState {
     totalApplies: number;
     totalComments: number;
 }
+
+// Bounded RTDB windows (admin download-burn fix). No behavior change except the
+// data window: previously three whole-tree onValue listeners re-downloaded
+// /stats/global + /stats + /comments on every write underneath them.
+// - OVERVIEW_STATS_CHILD_LIMIT = 200 most-recent /stats children (one-shot;
+//   key-ordered limitToLast bounds per-opportunity stat nodes; no orderByChild
+//   index exists for aggregate ordering, so the totals below reflect the recent
+//   window, not a lifetime-exact sum once the tree exceeds the window).
+// - OVERVIEW_COMMENTS_JOB_LIMIT = 30 most-recent /comments job buckets (one-shot
+//   count; /comments is keyed by jobId so the query bounds job buckets, and the
+//   count reflects that recent window).
+const OVERVIEW_STATS_CHILD_LIMIT = 200;
+const OVERVIEW_COMMENTS_JOB_LIMIT = 30;
 
 export function OverviewTab() {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -160,8 +173,16 @@ export function OverviewTab() {
         fetchCdnData();
     }, []);
 
-    // ─── Real-Time Firebase Subscriptions ──────────────────────────────────────────
-    // 1. Subscribe to User Accounts
+    // ─── Bounded Firebase reads (whole-tree onValue replaced) ─────────────────────
+    // Listens now: exactly ONE live listener (/stats/global scalar below). The
+    // /stats aggregates and /comments count are one-shot get() reads: they change
+    // on batch writes/regen and user activity, and a point-in-time value on mount
+    // is sufficient for an overview — keeping onValue on them would re-download
+    // whole subtrees on every write.
+    // 1. KEPT live listener (the only one in this file): /stats/global scalar leaf.
+    // Justification: this single small node drives the "Live telemetry" badge and
+    // the user count; subscribing to one scalar costs one tiny payload per fire
+    // instead of whole subtrees, so realtime here is cheap and intentional.
     useEffect(() => {
         if (!isAuthenticated) return;
 
@@ -177,12 +198,14 @@ export function OverviewTab() {
         return () => unsubscribeUsers();
     }, [isAuthenticated]);
 
-    // 2. Subscribe to Opportunity View & Apply Stats
+    // 2. One-shot bounded read of opportunity view & apply stats (no listener).
     useEffect(() => {
         if (!isAuthenticated) return;
 
-        const statsRef = ref(database, '/stats');
-        const unsubscribeStats = onValue(statsRef, (snapshot) => {
+        let cancelled = false;
+        const statsBounded = query(ref(database, '/stats'), limitToLast(OVERVIEW_STATS_CHILD_LIMIT));
+        void get(statsBounded).then((snapshot) => {
+            if (cancelled) return;
             const data = snapshot.val();
             let viewsCount = 0;
             let appliesCount = 0;
@@ -197,19 +220,22 @@ export function OverviewTab() {
                 totalViews: viewsCount,
                 totalApplies: appliesCount,
             }));
-        }, (err) => {
+        }).catch((err) => {
+            if (cancelled) return;
             console.error(`[Firebase Stats Fetch Fail] ${getErrorMessage(err)}`);
         });
 
-        return () => unsubscribeStats();
+        return () => { cancelled = true; };
     }, [isAuthenticated]);
 
-    // 3. Subscribe to Total Comments Count
+    // 3. One-shot bounded read of total comments count (no listener).
     useEffect(() => {
         if (!isAuthenticated) return;
 
-        const commentsRef = ref(database, '/comments');
-        const unsubscribeComments = onValue(commentsRef, (snapshot) => {
+        let cancelled = false;
+        const commentsBounded = query(ref(database, '/comments'), limitToLast(OVERVIEW_COMMENTS_JOB_LIMIT));
+        void get(commentsBounded).then((snapshot) => {
+            if (cancelled) return;
             const data = snapshot.val();
             let commentsCount = 0;
             if (data) {
@@ -220,11 +246,12 @@ export function OverviewTab() {
                 });
             }
             setDashboard((prev) => ({ ...prev, totalComments: commentsCount }));
-        }, (err) => {
+        }).catch((err) => {
+            if (cancelled) return;
             console.error(`[Firebase Comments Fetch Fail] ${getErrorMessage(err)}`);
         });
 
-        return () => unsubscribeComments();
+        return () => { cancelled = true; };
     }, [isAuthenticated]);
 
     const cards = [
@@ -264,10 +291,14 @@ export function OverviewTab() {
 
     return (
         <div className="space-y-6 text-foreground w-full font-sans antialiased relative z-0">
-            {/* Header */}
+            {/* Header. The `h1` that used to sit in the mobile row is gone: it
+                was `md:hidden`, so it only ever rendered on a phone — where
+                `MobileTopNav` already prints the route name ("Admin Overview")
+                and `/admin/dashboard` printed its own heading above it. Three
+                titles stacked on one phone screen. `TopHeaderBar` takes over at
+                `lg+`. The telemetry pill is all this row holds now. */}
             <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-5 md:border-none md:pb-0">
-                <div className="flex items-center gap-3 md:hidden">
-                    <h1 className="text-2xl font-semibold tracking-tight text-foreground">Admin overview</h1>
+                <div className="flex items-center md:hidden">
                     <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground font-medium px-2.5 py-1 rounded-full bg-success/10 border border-success/20">
                         <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                         Live telemetry connected
@@ -317,8 +348,15 @@ export function OverviewTab() {
              * icon, and a CardContent of `text-2xl font-bold` value over a
              * `text-xs text-muted-foreground` caption. Cards link to their
              * workspace, which the reference's static cards do not.
+             *
+             * The reference's single column below `sm` is what made these boxes
+             * one-per-row on a phone, so the base column count is 2 (a 2x2
+             * block) and the gap opens up at `sm`; `lg:grid-cols-4` is the
+             * reference's own step up. The value drops to `text-xl` below `sm`
+             * so a 7-digit counter still fits a ~45%-wide card, and `break-words`
+             * keeps a long one inside its card instead of over the neighbour.
              */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                 {cards.map((card) => {
                     const Icon = card.icon;
                     return (
@@ -330,10 +368,10 @@ export function OverviewTab() {
                             <Card className="h-full transition-colors hover:border-border">
                                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                                     <CardTitle className="text-sm font-medium">{card.label}</CardTitle>
-                                    <Icon className="h-4 w-4 text-muted-foreground" />
+                                    <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="text-2xl font-bold">
+                                    <div className="break-words text-xl font-bold sm:text-2xl">
                                         {card.value.toLocaleString()}
                                     </div>
                                     <p className="text-xs text-muted-foreground">{card.description}</p>
@@ -388,7 +426,12 @@ export function OverviewTab() {
                             <h3 className="text-sm font-semibold tracking-tight">Cache & Revalidation</h3>
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-3 pt-2">
+                        {/* `grid-cols-1` below `sm`: each of these buttons carries a
+                            title, a subtitle and an icon, and the `Button` primitive
+                            is `whitespace-nowrap`. At `grid-cols-2` a ~300px phone
+                            gave each button ~135px, so the nowrap subtitle overflowed
+                            its box and painted over the neighbouring button. */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
                             <Button
                                 variant="admin"
                                 size="sm"

@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { prisma, OpportunityStatus as DbOpportunityStatus, EducationLevel as DbEducationLevel, WorkMode as DbWorkMode, SalaryPeriod as DbSalaryPeriod } from '@fresherflow/database';
 import { OpportunityStatus } from '@fresherflow/types';
-import { normaliseEmploymentTypes as parseEmploymentTypes } from '../../../infrastructure/services/community/community.service';
+import { normaliseEmploymentTypes as parseEmploymentTypes, submitLimiter } from '../../../infrastructure/services/community/community.service';
 import { slugify } from '@fresherflow/utils';
 import { tryResolveUserIdFromCookie } from './_helpers';
 import { opportunitySubmitSchema } from '../../../utils/validation';
@@ -20,7 +20,7 @@ const router = Router();
  * POST /api/opportunities/submit
  * Public endpoint to submit a parsed opportunity for moderation.
  */
-router.post('/submit', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/submit', submitLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         // 1. API Key Auth check
         const apiKey = req.headers['x-api-key'];

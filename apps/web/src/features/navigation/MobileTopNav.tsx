@@ -17,6 +17,7 @@ import { MobileNavTree } from '@/features/navigation/AppSidebar';
 import { AdminMobileNavTree } from '@/features/admin/layout/AdminSidebar';
 
 import { getNavRoutes, isSidebarPage } from './routeConfig';
+import { getAdminTitle } from './headerContent';
 
 function getMobileTitle(pathname: string): string {
     const navRoutes = getNavRoutes();
@@ -66,6 +67,10 @@ export function MobileTopNav() {
     useEffect(() => { setIsMounted(true); }, []);
 
     const mobileTitle = getMobileTitle(pathname);
+    const isAdminRoute = (pathname || '').startsWith('/admin');
+    const adminPage = isAdminRoute
+        ? getAdminTitle((pathname || '').split('/').filter(Boolean))
+        : '';
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 8);
@@ -96,7 +101,7 @@ export function MobileTopNav() {
                     >
                         <LogoImage width={24} height={24} className="w-6 h-6 object-contain shrink-0" />
                         <span className="text-base font-semibold tracking-wide text-foreground/95 truncate leading-none">
-                            {mobileTitle}
+                            {isAdminRoute && adminPage ? adminPage : mobileTitle}
                         </span>
                     </Link>
 
@@ -155,16 +160,19 @@ export function MobileTopNav() {
                     </div>
                 </div>
             </header>
- 
-            {/* Mobile drawer. Renders the admin tree on `/admin` routes (against
-                AdminLayoutClient's SidebarProvider) and the app tree elsewhere
-                (against NavigationWrapper's provider) instead of nesting another
-                one, so this trigger actually opens the drawer. */}
+
+            {/* Mobile drawer. Owns its OWN local `menuOpen` state (the trigger
+                above sets it directly) instead of the sidebar provider's
+                `openMobile`. The rail is wrapped in `hidden lg:block`, so
+                `display:none` does not unmount it and the primitive's own
+                mobile Sheet still portals to <body> — binding both to one
+                shared state opened two overlays per tap, and their exit
+                animations raced the body scroll lock, which is the hang. */}
             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-                <SheetContent side="left" nav className="lg:hidden">
+                <SheetContent side="left" nav className="lg:hidden" data-nav-drawer="">
                     <SheetTitle className="sr-only">Menu</SheetTitle>
                     <Suspense fallback={null}>
-                        {(pathname || '').startsWith('/admin') ? (
+                        {isAdminRoute ? (
                             <AdminMobileNavTree onNavigate={() => setMenuOpen(false)} />
                         ) : (
                             <MobileNavTree onNavigate={() => setMenuOpen(false)} />

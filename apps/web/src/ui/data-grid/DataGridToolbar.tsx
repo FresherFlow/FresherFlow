@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/ui/Popover"
 import { cn } from "@/ui/cn"
 
 const TOOLBAR_TRIGGER_STYLES =
-  "h-9 px-3 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
+  "h-9 px-3 rounded-lg border text-sm font-medium flex items-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-primary cursor-pointer"
 
 /** Search input matching the grid toolbar kit. Controlled by the consumer. */
 export function DataGridSearch({
@@ -38,7 +38,7 @@ export function DataGridSearch({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="w-full h-9 pl-9 pr-8 rounded-lg border border-border/80 bg-card text-xs font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:bg-muted/60 focus-visible:text-foreground"
+        className="w-full h-9 pl-9 pr-8 rounded-lg border border-border/80 bg-card text-sm font-medium text-foreground placeholder:text-muted-foreground focus:outline-none focus-visible:bg-muted/60 focus-visible:text-foreground"
       />
       {value && (
         <button
@@ -108,7 +108,7 @@ export function DataGridFacetFilter({
       <PopoverContent align="start" className="w-56 p-2">
         <div className="max-h-64 overflow-y-auto">
           {options.length === 0 && (
-            <p className="px-2 py-3 text-xs text-muted-foreground text-center">
+            <p className="px-2 py-3 text-sm text-muted-foreground text-center">
               No options available
             </p>
           )}
@@ -125,7 +125,7 @@ export function DataGridFacetFilter({
                       : [...selected, option.value]
                   )
                 }
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-foreground hover:bg-muted/60 transition-colors cursor-pointer text-left"
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-foreground hover:bg-muted/60 transition-colors cursor-pointer text-left"
               >
                 <span
                   className={cn(
@@ -139,7 +139,7 @@ export function DataGridFacetFilter({
                 </span>
                 <span className="truncate flex-1">{option.label}</span>
                 {typeof option.count === "number" && (
-                  <span className="text-xs font-semibold text-muted-foreground tabular-nums">
+                  <span className="text-sm font-semibold text-muted-foreground tabular-nums">
                     {option.count}
                   </span>
                 )}
@@ -151,7 +151,7 @@ export function DataGridFacetFilter({
           <button
             type="button"
             onClick={() => onChange([])}
-            className="w-full mt-1 px-2 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 flex items-center gap-1.5 justify-center transition-colors cursor-pointer"
+            className="w-full mt-1 px-2 py-1.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 flex items-center gap-1.5 justify-center transition-colors cursor-pointer"
           >
             <XMarkIcon className="w-3.5 h-3.5" />
             Clear filter
@@ -206,7 +206,7 @@ export function DataGridColumnVisibility<TData extends RowData>({
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-52 p-2">
-        <p className="px-2 py-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground/70">
+        <p className="px-2 py-1.5 text-sm font-bold uppercase tracking-wider text-muted-foreground/70">
           Toggle columns
         </p>
         <div className="max-h-64 overflow-y-auto">
@@ -222,7 +222,7 @@ export function DataGridColumnVisibility<TData extends RowData>({
                 key={column.id}
                 type="button"
                 onClick={() => column.toggleVisibility(!isVisible)}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs text-foreground hover:bg-muted/60 transition-colors cursor-pointer text-left"
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm text-foreground hover:bg-muted/60 transition-colors cursor-pointer text-left"
               >
                 <span
                   className={cn(
@@ -245,7 +245,7 @@ export function DataGridColumnVisibility<TData extends RowData>({
             onClick={() =>
               hideableColumns.forEach((column) => column.toggleVisibility(true))
             }
-            className="w-full mt-1 px-2 py-1.5 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 flex items-center gap-1.5 justify-center transition-colors cursor-pointer"
+            className="w-full mt-1 px-2 py-1.5 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 flex items-center gap-1.5 justify-center transition-colors cursor-pointer"
           >
             <ArrowPathIcon className="w-3.5 h-3.5" />
             Show all

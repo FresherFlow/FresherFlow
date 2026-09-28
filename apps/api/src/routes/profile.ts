@@ -18,8 +18,25 @@ const publishLimiter = createRateLimiter({
     keyPrefix: 'profile-publish',
 });
 
+// Reads stay lenient (120/min, like communityReadLimiter); profile writes are
+// stricter (60/min, like applicationWriteLimiter). Limiter sits before auth,
+// matching the publishLimiter pattern above.
+const profileReadLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 120,
+    message: 'Too many requests. Please try again in a minute.',
+    keyPrefix: 'profile-read',
+});
+
+const profileWriteLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 60,
+    message: 'Too many profile updates. Please slow down.',
+    keyPrefix: 'profile-write',
+});
+
 // GET /api/profile
-router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', profileReadLimiter, requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const profile = await ProfileService.getProfile(req.userId as string);
         res.json({ profile });
@@ -29,7 +46,7 @@ router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunct
 });
 
 // PUT /api/profile - Comprehensive update
-router.put('/', requireAuth, validate(profileUpdateSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.put('/', profileWriteLimiter, requireAuth, validate(profileUpdateSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { profile, newCompletion } = await ProfileService.updateProfile(req.userId as string, req.body);
         res.json({
@@ -42,7 +59,7 @@ router.put('/', requireAuth, validate(profileUpdateSchema), async (req: Request,
 });
 
 // PATCH /api/profile/visibility
-router.patch('/visibility', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.patch('/visibility', profileWriteLimiter, requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { visibility } = req.body;
         const allowed = ['PUBLIC', 'UNLISTED', 'PRIVATE'];
@@ -73,7 +90,7 @@ router.post('/publish', publishLimiter, requireVerifiedAuth, async (req: Request
 
 
 // PUT /api/profile/education
-router.put('/education', requireAuth, validate(educationSchema.extend({ fullName: z.string().min(1, 'Full name is required').optional() })), async (req: Request, res: Response, next: NextFunction) => {
+router.put('/education', profileWriteLimiter, requireAuth, validate(educationSchema.extend({ fullName: z.string().min(1, 'Full name is required').optional() })), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { profile, newCompletion } = await ProfileService.updateEducation(req.userId as string, req.body);
         res.json({
@@ -86,7 +103,7 @@ router.put('/education', requireAuth, validate(educationSchema.extend({ fullName
 });
 
 // PUT /api/profile/preferences
-router.put('/preferences', requireAuth, validate(preferencesSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.put('/preferences', profileWriteLimiter, requireAuth, validate(preferencesSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { profile, newCompletion } = await ProfileService.updatePreferences(req.userId as string, req.body);
         res.json({
@@ -99,7 +116,7 @@ router.put('/preferences', requireAuth, validate(preferencesSchema), async (req:
 });
 
 // PUT /api/profile/readiness
-router.put('/readiness', requireAuth, validate(readinessSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.put('/readiness', profileWriteLimiter, requireAuth, validate(readinessSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { profile, newCompletion } = await ProfileService.updateReadiness(req.userId as string, req.body);
         res.json({
@@ -112,7 +129,7 @@ router.put('/readiness', requireAuth, validate(readinessSchema), async (req: Req
 });
 
 // PUT /api/profile/demographics
-router.put('/demographics', requireAuth, validate(demographicsSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.put('/demographics', profileWriteLimiter, requireAuth, validate(demographicsSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { profile, newCompletion } = await ProfileService.updateDemographics(req.userId as string, req.body);
         res.json({
@@ -125,7 +142,7 @@ router.put('/demographics', requireAuth, validate(demographicsSchema), async (re
 });
 
 // GET /api/profile/completion
-router.get('/completion', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/completion', profileReadLimiter, requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const completion = await ProfileService.getCompletion(req.userId as string);
         res.json(completion);
@@ -135,7 +152,7 @@ router.get('/completion', requireAuth, async (req: Request, res: Response, next:
 });
 
 // POST /api/profile/push-token
-router.post('/push-token', requireAuth, validate(z.object({
+router.post('/push-token', profileWriteLimiter, requireAuth, validate(z.object({
     token: z.string().min(1).max(500),
     platform: z.enum(['expo', 'fcm', 'apns', 'native']).optional(),
 })), async (req: Request, res: Response, next: NextFunction) => {
@@ -153,7 +170,7 @@ router.post('/push-token', requireAuth, validate(z.object({
 });
 
 // GET /api/profile/shares
-router.get('/shares', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/shares', profileReadLimiter, requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const page = parseInt(req.query.page as string) || 1;
         const limit = 20;
@@ -165,7 +182,7 @@ router.get('/shares', requireAuth, async (req: Request, res: Response, next: Nex
 });
 
 // POST /api/profile/shares
-router.post('/shares', requireAuth, validate(contributionSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/shares', profileWriteLimiter, requireAuth, validate(contributionSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const share = await ProfileService.createShare(req.userId as string, req.body);
         res.status(201).json({
@@ -179,7 +196,7 @@ router.post('/shares', requireAuth, validate(contributionSchema), async (req: Re
 });
 
 // GET /api/profile/username/check
-router.get('/username/check', optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/username/check', profileReadLimiter, optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const username = (req.query.username as string)?.toLowerCase();
         const available = await ProfileService.checkUsername(username);
@@ -193,7 +210,7 @@ router.get('/username/check', optionalAuth, async (req: Request, res: Response, 
 });
 
 // POST /api/profile/username/claim
-router.post('/username/claim', requireVerifiedAuth, validate(z.object({ username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/) })), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/username/claim', profileWriteLimiter, requireVerifiedAuth, validate(z.object({ username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/) })), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { username } = req.body;
         const cooldownDays = Number(process.env.USERNAME_COOLDOWN_DAYS || 30);
@@ -209,7 +226,7 @@ router.post('/username/claim', requireVerifiedAuth, validate(z.object({ username
 });
 
 // GET /api/profile/public/:username
-router.get('/public/:username', optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/public/:username', profileReadLimiter, optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const username = req.params.username as string;
         const result = await ProfileService.getPublicProfileByUsername(username);

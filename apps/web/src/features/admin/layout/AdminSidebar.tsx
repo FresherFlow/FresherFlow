@@ -2,9 +2,7 @@
 /* eslint-disable shadcn/no-arbitrary-values, shadcn/no-unknown-classes, shadcn/no-restyle, shadcn/require-static-classes, shadcn/no-raw-colors */
 
 import * as React from 'react';
-import { X } from 'lucide-react';
-import { usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { LogoImage } from '@/features/shell/LogoImage';
 import { useAdmin } from '@/lib/auth/AdminContext';
@@ -14,11 +12,7 @@ import { AdminNavGroup } from '@/features/admin/layout/AdminNavGroup';
 import { AdminNavUser } from '@/features/admin/layout/AdminNavUser';
 import {
     getAdminSidebarGroups,
-    toSpaceNavGroups,
 } from '@/features/admin/layout/admin-sidebar-data';
-import { NavMain } from '@/features/navigation/NavMain';
-import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
-import { cn } from '@/ui/cn';
 import {
     Sidebar,
     SidebarContent,
@@ -83,7 +77,6 @@ function useAdminSidebarRoute(feedbackAlertCount: number) {
 }
 
 function AdminSidebarRail({ feedbackAlertCount = 0 }: { feedbackAlertCount?: number }) {
-    const [isScrolled, setIsScrolled] = React.useState(false);
     const { collapsible, variant } = useAdminLayout();
 
     // Keep shell always mounted — only the nav list suspends. This prevents
@@ -91,27 +84,12 @@ function AdminSidebarRail({ feedbackAlertCount = 0 }: { feedbackAlertCount?: num
     // on navigation (common with Next's opt-in Suspense bailout).
     return (
         <Sidebar collapsible={collapsible} variant={variant}>
-            <SidebarHeader
-                className={cn(
-                    'sticky top-0 z-10 gap-1.5 bg-sidebar/95 p-2 backdrop-blur-sm supports-[backdrop-filter]:bg-sidebar/80 relative',
-                    'border-b border-transparent transition-colors',
-                    isScrolled && 'border-sidebar-border shadow-[0_4px_12px_-4px_rgb(0_0_0/0.12)]'
-                )}
-            >
-                {/* Brand is resolved inside the suspended nav so it updates with route, but we render a stable fallback */}
+            <SidebarHeader>
                 <React.Suspense fallback={<AdminBrand href="/admin/dashboard" />}>
                     <AdminSidebarBrandResolver feedbackAlertCount={feedbackAlertCount} />
                 </React.Suspense>
-                {/* blur fade so scrolled items feel going under header */}
-                <div
-                    aria-hidden
-                    className={cn(
-                        'pointer-events-none absolute inset-x-0 -bottom-3 h-3 bg-gradient-to-b from-sidebar to-transparent opacity-0 transition-opacity',
-                        isScrolled && 'opacity-100'
-                    )}
-                />
             </SidebarHeader>
-            <SidebarContent onScroll={(e) => setIsScrolled(e.currentTarget.scrollTop > 2)}>
+            <SidebarContent>
                 <React.Suspense fallback={<div className="p-2 opacity-0" aria-hidden />}>
                     <AdminSidebarNavContent feedbackAlertCount={feedbackAlertCount} />
                 </React.Suspense>
@@ -142,48 +120,36 @@ function AdminSidebarNavContent({ feedbackAlertCount = 0 }: { feedbackAlertCount
 
 /**
  * Nav tree for the mobile drawer (rendered by MobileTopNav inside a Sheet on
- * `/admin` routes). Same groups as the rail, rendered through `NavMain`
- * because the drawer lives outside the desktop `SidebarProvider`.
+ * `/admin` routes). Same groups through the same `AdminNavGroup` as the rail
+ * (shadcn pattern: one nav tree, rail + drawer) — never a parallel menu, so
+ * collapse state can never leak into the drawer via global CSS.
  */
 export function AdminMobileNavTree({ onNavigate }: { onNavigate: () => void }) {
     const pathname = usePathname() || '';
-    const searchParams = useSearchParams();
     const { admin, moderator } = useAdmin();
-
-    const [hostname, setHostname] = useState<string>('');
-    useEffect(() => {
-        setHostname(window.location.hostname);
-    }, []);
 
     const { groups, homeHref } = getAdminSidebarGroups(pathname, 0, navPermissions(admin, moderator));
 
     return (
         <div className="flex h-full w-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground">
-            <div className="flex h-14 shrink-0 items-center justify-end border-b border-sidebar-border px-4">
-                <button
-                    type="button"
-                    onClick={onNavigate}
-                    aria-label="Close menu"
-                    className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                >
-                    <X className="h-5 w-5" />
-                </button>
-            </div>
             <div className="flex-1 overflow-y-auto px-2 py-3">
                 <AdminBrand href={homeHref} />
-                {/* Every nav row is a link, so any click in here is a navigation and
-                    should close the Sheet. */}
-                <div className="mt-2" onClickCapture={onNavigate}>
-                    <NavMain groups={toSpaceNavGroups(groups)} pathname={pathname} searchParams={searchParams} isAuthed />
+                {/* Close on link clicks only: collapsible parents (Jobs,
+                    Discovery Engine) expand in place via chevron and must NOT
+                    dismiss the drawer — the old blanket capture closed it. */}
+                <div
+                    className="mt-2"
+                    onClickCapture={(event) => {
+                        if ((event.target as HTMLElement).closest('a')) onNavigate();
+                    }}
+                >
+                    {groups.map((group) => (
+                        <AdminNavGroup key={group.title} group={group} />
+                    ))}
                 </div>
             </div>
             <div className="shrink-0 border-t border-sidebar-border p-2">
-                <div className="flex items-center justify-between gap-2 p-2">
-                    <span className="truncate text-xs text-muted-foreground" title={hostname}>
-                        {hostname || 'admin'}
-                    </span>
-                    <ThemeSwitcher />
-                </div>
+                <AdminNavUser />
             </div>
         </div>
     );

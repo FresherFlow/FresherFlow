@@ -3,14 +3,24 @@ import fs from 'fs';
 import path from 'path';
 import prisma from '../../infrastructure/database/prisma';
 import { logger } from '@fresherflow/utils';
+import { createRateLimiter } from '../../middleware/rateLimit';
 
 const router = Router();
+
+// Served from a file when present, but the fallback runs three counts in the
+// database, so the endpoint keeps its own cap.
+const publicStatsLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 60,
+    message: 'Too many requests. Please slow down.',
+    keyPrefix: 'public-stats',
+});
 
 /**
  * GET /api/public/stats
  * Returns global community statistics (anonymized)
  */
-router.get('/', async (_req: Request, res: Response, next: NextFunction) => {
+router.get('/', publicStatsLimiter, async (_req: Request, res: Response, next: NextFunction) => {
     try {
         const statsPath = path.join(process.cwd(), 'public', 'stats.json');
         res.setHeader('Cache-Control', 'public, max-age=3600');

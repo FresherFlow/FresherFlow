@@ -24,8 +24,8 @@ export function PasskeySignIn({
                 <FingerPrintIcon className="size-7" />
             </div>
             <div className="space-y-1">
-                <h2 className="text-base font-semibold text-foreground">Use a passkey</h2>
-                <p className="text-sm text-muted-foreground">
+                <h2 className="text-lg font-semibold text-foreground">Use a passkey</h2>
+                <p className="text-base text-muted-foreground">
                     Sign in with Face ID, Touch ID, Windows Hello, or a security key.
                 </p>
             </div>

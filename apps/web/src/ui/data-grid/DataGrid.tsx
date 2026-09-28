@@ -146,6 +146,20 @@ export interface DataGridProps<TData extends RowData> {
   /** Entity name for the bulk bar count, e.g. "listing". Defaults to "row". */
   bulkBarEntityName?: string
   /**
+   * Extra space the grid keeps at the bottom on small screens while the
+   * floating bulk bar is on screen, so the bar cannot cover the last rows or
+   * the pagination. Reference value (`users-table.tsx`:
+   * `max-sm:has-[div[role="toolbar"]]:mb-16`).
+   *
+   * The bar is `fixed` at `bottom-20` (80px, above the admin bottom nav), so
+   * how much room it needs depends on how far the page's own shell already
+   * lifts the grid off the bottom of the viewport. A page that reserves
+   * `pb-20` for a fixed bottom nav needs the default; a page with no bottom nav
+   * sits low enough that the bar already clears the footer and wants
+   * `max-sm:mb-0`.
+   */
+  bulkBarClearanceClass?: string
+  /**
    * Show the "Columns" visibility toggle (shadcn-admin `DataTableViewOptions`
    * pattern). Columns hide via `enableHiding: false` opt-out in column defs.
    */
@@ -166,6 +180,29 @@ export interface DataGridProps<TData extends RowData> {
    */
   searchValue?: string
   onSearchChange?: (value: string) => void
+  /**
+   * Surface treatment.
+   *
+   * - `card` (default) — the whole grid lives in one `Card`: header, body and
+   *   footer. Right for a standalone grid that IS the page's main object.
+   * - `bare` — the shadcn-admin shape (`users-table.tsx`): toolbar outside the
+   *   table, then a single `overflow-hidden rounded-md border` div holding the
+   *   bare table, then pagination pinned with `mt-auto`. No `Card`, no padding
+   *   wrapper, so a page that already puts the grid inside its own framed
+   *   region does not end up with a box inside a box.
+   */
+  variant?: "card" | "bare"
+  /**
+   * Show the count `Badge` in the toolbar. Default `true`. Set `false` when the
+   * page header already states the count, or the same number prints twice.
+   */
+  showCount?: boolean
+  /**
+   * Show the `title` label in the toolbar. Default `true`. Set `false` when the
+   * page chrome already names the route, or the word prints three times on one
+   * screen (page header, top bar and grid toolbar).
+   */
+  showTitle?: boolean
 }
 
 export function DataGrid<TData extends RowData>({
@@ -195,12 +232,16 @@ export function DataGrid<TData extends RowData>({
   className,
   bulkActions,
   bulkBarEntityName = "row",
+  bulkBarClearanceClass = "max-sm:mb-16",
   showViewOptions = false,
   sorting: controlledSorting,
   onSortingChange: controlledOnSortingChange,
   serverPagination,
   searchValue,
   onSearchChange,
+  variant = "card",
+  showCount = true,
+  showTitle = true,
 }: DataGridProps<TData>) {
   const [localSorting, setLocalSorting] = React.useState<GridSortingState>([])
   // Owned here so the shared DataGridColumnVisibility control (which mutates
@@ -346,35 +387,60 @@ export function DataGrid<TData extends RowData>({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [table.getRowModel().rows.length, pagination.pageIndex, isServerPaginated])
 
-  return (
+  /* Toolbar: one left column holding title, count and description, and one right
+     column holding search/filters/actions.
+
+     The description lives INSIDE the left column, stacked under the title. As a
+     third child of the toolbar's `sm:flex-row` it competed with the title and
+     the controls for horizontal space and got squeezed into a narrow wrapped
+     column at the far right.
+
+     The control column is ONE horizontally-scrollable row on small screens
+     (shadcn-admin's toolbar idea, same as the opportunities grid): `flex-wrap`
+     stacked the filter selects two-per-row, so a ~300px screen spent ~150px of
+     vertical space on chrome before the first row of data. It wraps again from
+     `sm` up, where there is room for it. The search keeps a `min-w-40` floor so
+     it never collapses to nothing inside the nowrap row. */
+  const descriptionNode = description ? (
+    <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
+  ) : null
+
+  const toolbar = (
     <>
-    <Card
-      className={cn(
-        "flex flex-col min-h-0 flex-1 overflow-hidden border-border/60 bg-card shadow-xs backdrop-blur-none",
-        className
-      )}
-    >
-      {/* Stacks on mobile so search takes the full row and filters wrap
-          below it; single row from `sm` up. */}
-      <CardHeader className="flex-col items-stretch gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
+      <div className="flex min-w-0 flex-col gap-1">
         <div className="flex min-w-0 items-center gap-2">
-          {typeof title === "string" ? (
-            <CardTitle className="text-sm font-semibold text-foreground">
-              {title}
-            </CardTitle>
-          ) : (
-            title
-          )}
+          {showTitle &&
+            (typeof title === "string" ? (
+              <CardTitle className="text-base font-semibold text-foreground">
+                {title}
+              </CardTitle>
+            ) : (
+              title
+            ))}
           <Badge
             variant="secondary"
-            className="rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums"
+            className="rounded-full px-2 py-0.5 text-sm font-semibold tabular-nums"
           >
             {displayCount}
+            {/* Was declared but never rendered, so pages passed a countLabel and
+                it silently vanished. */}
+            {countLabel ? ` ${countLabel}` : ""}
           </Badge>
         </div>
+        {descriptionNode}
+      </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-          <div className="relative min-w-0 flex-1 sm:flex-none">
+      {/* No `flex-1` here on purpose: inside the toolbar's mobile `flex-col`
+          wrapper `flex-1` means `flex-basis: 0` on the MAIN (vertical) axis,
+          and because `overflow-x-auto` also makes this a scroll container its
+          automatic minimum height is 0 — the whole control row collapsed. It
+          is `items-stretch`, so it already spans the full width on mobile. */}
+      <div className="flex min-w-0 flex-nowrap items-center gap-2 overflow-x-auto sm:flex-wrap sm:justify-end sm:overflow-x-visible">
+          <div className="relative min-w-40 flex-1 sm:min-w-0 sm:flex-none">
+            {/* Height stays the call-site `h-9` the controls beside it use
+                (FilterSelect's trigger is also h-9): `Input` has no size
+                contract, so there is no 40px variant to switch to. Type is the
+                primitive's own `text-sm` — 12px here was unreadable. */}
             <Input
               value={globalFilter}
               onChange={(e) => {
@@ -382,7 +448,7 @@ export function DataGrid<TData extends RowData>({
                 setPagination((prev) => ({ ...prev, pageIndex: 0 }));
               }}
               placeholder={searchPlaceholder}
-              className="h-9 w-full text-xs sm:w-56 pr-8"
+              className="h-9 w-full pr-8 sm:w-56"
             />
           </div>
           {statusOptions && onStatusChange && (
@@ -421,26 +487,25 @@ export function DataGrid<TData extends RowData>({
               clearSelection: () => setRowSelection({}),
               table,
             })}
-        </div>
-      </CardHeader>
+      </div>
+    </>
+  )
 
-      <CardContent className="min-h-0 flex-1 p-0">
-        {isLoading ? (
-          <DataGridSkeleton
-            columnCount={table.getVisibleFlatColumns().length || columns.length}
-            rowCount={loadingRowCount}
-          />
-        ) : (
-          <DataGridBody<TData>
-            table={table}
-            enableSelection={enableSelection}
-            noResults={noResults}
-          />
-        )}
-      </CardContent>
+  const body = isLoading ? (
+    <DataGridSkeleton
+      columnCount={table.getVisibleFlatColumns().length || columns.length}
+      rowCount={loadingRowCount}
+    />
+  ) : (
+    <DataGridBody<TData>
+      table={table}
+      enableSelection={enableSelection}
+      noResults={noResults}
+    />
+  )
 
-      <CardFooter className="border-t border-border/40 px-2 py-1">
-        <DataGridPagination
+  const footer = (
+    <DataGridPagination
           pageIndex={pagination.pageIndex}
           pageSize={pagination.pageSize}
           pageCount={isServerPaginated ? serverPagination!.pageCount : table.getPageCount()}
@@ -476,10 +541,84 @@ export function DataGrid<TData extends RowData>({
             isServerPaginated
               ? (serverPagination!.pageSizeOptions ?? pageSizeOptions)
               : pageSizeOptions
-          }
-        />
-      </CardFooter>
-    </Card>
+    }
+    />
+  )
+
+  const bulkBar =
+    bulkActions && (
+        <DataGridBulkBar
+          selectedCount={selectedRows.length}
+          entityName={bulkBarEntityName}
+          onClear={() => setRowSelection({})}
+        >
+          {bulkActions({
+            selectedRows,
+            selectedCount: selectedRows.length,
+            clearSelection: () => setRowSelection({}),
+            table,
+          })}
+        </DataGridBulkBar>
+      )
+
+  /* The bulk bar is `fixed`, so on small screens it floats OVER the bottom of
+     the grid — the pagination and the last row sat underneath it and could not
+     be read or tapped. Reserve room for it the way the reference does
+     (`users-table.tsx`: `max-sm:has-[div[role="toolbar"]]:mb-16`). Driven by
+     selection state rather than a `:has()` selector so it works for both
+     variants, where the bar is a sibling of the framed grid in `card` and a
+     sibling of the fragment root in `bare`. */
+  const mobileBulkBarClearance =
+    bulkActions && selectedRows.length > 0 ? bulkBarClearanceClass : undefined
+
+  if (variant === "bare") {
+    /* shadcn-admin `users-table.tsx`: toolbar, then ONE bordered div around the
+       bare table, then pagination pinned to the bottom. No Card, so a page
+       that already frames the grid does not render a box inside a box. */
+    return (
+      <>
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col gap-4",
+            mobileBulkBarClearance,
+            className
+          )}
+        >
+          <div className="flex flex-col items-stretch gap-1.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+            {toolbar}
+          </div>
+          {/* `bg-card` so the rows and the opaque `bg-card` on sticky cells
+              (`./sticky`) are the same tone. Without it the pinned column read
+              as a white panel floating on the grey page background. */}
+          <div className="min-h-0 flex-1 overflow-hidden rounded-md border border-border/70 bg-card">
+            {body}
+          </div>
+          <div className="mt-auto">{footer}</div>
+        </div>
+        {bulkBar}
+      </>
+    )
+  }
+
+  return (
+    <>
+      <Card
+        className={cn(
+          "flex flex-col min-h-0 flex-1 overflow-hidden border-border/60 bg-card shadow-xs backdrop-blur-none",
+          mobileBulkBarClearance,
+          className
+        )}
+      >
+        <CardHeader className="flex-col items-stretch gap-1.5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-5">
+          {toolbar}
+        </CardHeader>
+
+        <CardContent className="min-h-0 flex-1 p-0">{body}</CardContent>
+
+        <CardFooter className="border-t border-border/40 px-2 py-1">
+          {footer}
+        </CardFooter>
+      </Card>
       {bulkActions && (
         <DataGridBulkBar
           selectedCount={selectedRows.length}
@@ -534,7 +673,11 @@ function DataGridBody<TData extends RowData>({
           identity columns while the rest slides underneath. */}
       <UITable className="min-w-[720px]">
         <DataGridHeader table={table} enableSelection={enableSelection} />
-        <TableBody className="divide-y divide-border/40 text-xs">
+        {/* No `text-xs` here on purpose: `Table` already carries the design
+            system's 14px body type, and this override used to pull every cell
+            in every admin grid down to 12px. Cell-level classes still win for
+            the few cells that want to be quieter. */}
+        <TableBody className="divide-y divide-border/40">
           {rows.map((row) => (
             <TableRow
               key={row.id}
@@ -549,7 +692,14 @@ function DataGridBody<TData extends RowData>({
                       : undefined
                   }
                   className={cn(
-                    "py-2.5 px-4",
+                    /* The select column is fixed at 40px by its column def
+                       (`selectionColumn`) and its header cell. `px-4` here made
+                       the BODY cell 48px wide, so the column grew past 40px and
+                       the identity column's `max-md:left-10` offset pinned it
+                       8px under the checkbox. Same 40px budget as the header. */
+                    cell.column.id === "select"
+                      ? "py-2.5 pl-3 pr-0"
+                      : "py-2.5 px-3 sm:px-4",
                     cell.column.columnDef.meta?.sticky === "left" &&
                       stickyCellClass(cell.column.columnDef.meta?.stickyOffsetClass),
                     cell.column.columnDef.meta?.cellClassName

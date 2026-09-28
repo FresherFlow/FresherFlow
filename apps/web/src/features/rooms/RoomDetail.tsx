@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { LinkIcon, CheckIcon } from '@heroicons/react/24/outline';
 import { communityApi } from '@fresherflow/api-client';
 import type { Room, CommunityPost, CommunityFeedResult, CommunityPostUser } from '@fresherflow/types';
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -48,6 +49,19 @@ export function RoomDetail({ slug }: { slug: string }) {
     const [error, setError] = useState(false);
     const [tab, setTab] = useState<'posts' | 'jobs' | 'members'>('posts');
     const [joining, setJoining] = useState(false);
+    const [inviteCopied, setInviteCopied] = useState(false);
+
+    const handleInvite = useCallback(async () => {
+        if (typeof window === 'undefined') return;
+        try {
+            await navigator.clipboard.writeText(`${window.location.origin}/community/rooms/${slug}`);
+            setInviteCopied(true);
+            window.setTimeout(() => setInviteCopied(false), 2000);
+        } catch {
+            // Clipboard unavailable (permissions) — selection fallback omitted
+            // deliberately; the URL bar carries the same link.
+        }
+    }, [slug]);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -65,6 +79,20 @@ export function RoomDetail({ slug }: { slug: string }) {
 
     useEffect(() => { void load(); }, [load]);
 
+    // Silent refresh: same fetch without the skeleton flash. Used after
+    // join/leave/share so header counts, membership and forms never go stale
+    // (a stale isMember is what produced "Join the room before sharing"
+    // right after leaving).
+    const refreshQuiet = useCallback(async () => {
+        try {
+            const result = await communityApi.getRoom(slug);
+            setRoom(result.room);
+            setMembers(result.members || []);
+        } catch {
+            // Keep stale UI on transient failure; next navigation reloads.
+        }
+    }, [slug]);
+
     const handleJoinLeave = async () => {
         if (!room || !user) return;
         setJoining(true);
@@ -76,9 +104,8 @@ export function RoomDetail({ slug }: { slug: string }) {
                 await communityApi.joinRoom(room.slug);
                 setRoom({ ...room, isMember: true, memberCount: room.memberCount + 1 });
             }
-            const result = await communityApi.getRoom(slug);
-            setRoom(result.room);
-            setMembers(result.members || []);
+            // Quiet: no skeleton flash on every toggle.
+            await refreshQuiet();
         } finally {
             setJoining(false);
         }
@@ -89,7 +116,7 @@ export function RoomDetail({ slug }: { slug: string }) {
         return (
             <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center text-xs text-muted-foreground">
                 Room not found.{' '}
-                <Link href="/rooms" className="font-semibold text-primary hover:underline">Browse rooms</Link>
+                <Link href="/community?tab=rooms" className="font-semibold text-primary hover:underline">Browse rooms</Link>
             </div>
         );
     }
@@ -97,16 +124,23 @@ export function RoomDetail({ slug }: { slug: string }) {
     return (
         <div className="space-y-6">
             {/* Back */}
-            <Link href="/rooms" className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors">
+            <Link href="/community?tab=rooms" className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground transition-colors">
                 ← Rooms
             </Link>
 
             {/* Room header */}
             <div className="rounded-2xl border border-border bg-card p-6 space-y-3">
                 <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-3">
-                        <div>
-                            <h1 className="text-xl font-bold text-foreground">{room.name}</h1>
+                    <div className="flex items-center gap-3 min-w-0">
+                        {room.icon ? (
+                            <img src={room.icon} alt="" className="h-11 w-11 shrink-0 rounded-xl object-cover" />
+                        ) : (
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-lg font-bold text-primary">
+                                {(room.name || 'R')[0].toUpperCase()}
+                            </div>
+                        )}
+                        <div className="min-w-0">
+                            <h1 className="truncate text-xl font-bold text-foreground">{room.name}</h1>
                             {room.tags && room.tags.length > 0 && (
                                 <span className="text-xs text-muted-foreground">{room.tags.map((t) => `#${t}`).join(' ')}</span>
                             )}
@@ -138,16 +172,53 @@ export function RoomDetail({ slug }: { slug: string }) {
 )}
                 </div>
                 {room.description && <p className="text-sm text-muted-foreground">{room.description}</p>}
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                    <span>{room.memberCount.toLocaleString()} members</span>
-                    <span>{room.postCount} posts</span>
-                    <span>{room.opportunityCount} jobs</span>
-                    {room.lastActiveThisWeek && (
-                        <span className="flex items-center gap-1 rounded-full bg-signal-live/10 px-2 py-0.5 text-xs font-bold text-signal-live uppercase tracking-wider">
-                            <span className="h-1.5 w-1.5 rounded-full bg-signal-live" />
-                            Active this week
-                        </span>
-                    )}
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span>{room.memberCount.toLocaleString()} members</span>
+                        <span>{room.postCount} posts</span>
+                        <span>{room.opportunityCount} jobs</span>
+                        {room.lastActiveThisWeek && (
+                            <span className="flex items-center gap-1 rounded-full bg-signal-live/10 px-2 py-0.5 text-xs font-bold text-signal-live uppercase tracking-wider">
+                                <span className="h-1.5 w-1.5 rounded-full bg-signal-live" />
+                                Active this week
+                            </span>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                        {members.length > 0 ? (
+                            <div className="flex items-center" aria-label={`${room.memberCount} members`}>
+                                {members.slice(0, 5).map((m) => (
+                                    <span key={m.user.id} title={m.user.fullName || m.user.username || 'Member'} className="-ml-2 first:ml-0 rounded-full border-2 border-card">
+                                        {m.user.avatarUrl ? (
+                                            <img src={m.user.avatarUrl} alt="" className="h-6 w-6 rounded-full object-cover" />
+                                        ) : (
+                                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground">
+                                                {(m.user.username || m.user.fullName || '?')[0].toUpperCase()}
+                                            </span>
+                                        )}
+                                    </span>
+                                ))}
+                                {room.memberCount > members.length ? (
+                                    <span className="ml-1 text-xs font-semibold text-muted-foreground">
+                                        +{(room.memberCount - members.length).toLocaleString()}
+                                    </span>
+                                ) : null}
+                            </div>
+                        ) : null}
+                        <button
+                            type="button"
+                            onClick={() => void handleInvite()}
+                            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                            aria-label="Copy invite link"
+                        >
+                            {inviteCopied ? (
+                                <CheckIcon className="h-3.5 w-3.5 text-signal-live" />
+                            ) : (
+                                <LinkIcon className="h-3.5 w-3.5" />
+                            )}
+                            {inviteCopied ? 'Copied' : 'Invite'}
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -172,7 +243,9 @@ export function RoomDetail({ slug }: { slug: string }) {
 
             {/* Tab content */}
             {tab === 'posts' && <RoomPosts slug={room.slug} />}
-            {tab === 'jobs' && <RoomJobs slug={room.slug} />}
+            {tab === 'jobs' && (
+                <RoomJobs slug={room.slug} isMember={!!room.isMember} onMemberChange={refreshQuiet} />
+            )}
             {tab === 'members' && <RoomMembers members={members} />}
         </div>
     );
@@ -240,8 +313,16 @@ function RoomPosts({ slug }: { slug: string }) {
                 icon="inbox"
                 size="md"
                 title="No posts in this room yet"
-                description=""
+                description="Start the first discussion for this batch."
                 variant="ghost"
+                action={
+                    <Link
+                        href="/community?tab=discussions"
+                        className="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-5 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90"
+                    >
+                        Start a discussion
+                    </Link>
+                }
             />
         );
     }
@@ -255,27 +336,54 @@ function RoomPosts({ slug }: { slug: string }) {
 
 // ─── Room Jobs ───────────────────────────────────────────────────────────────
 
-function RoomJobs({ slug }: { slug: string }) {
+// ─── Room Jobs (deliberately shared opportunities, not posts) ───────────────
+// RoomOpportunity rows are created ONLY by member share / moderator pin
+// (server phase 9). Tags never surface jobs here.
+
+interface RoomJobRow {
+    reason: 'PINNED' | 'SHARED';
+    createdAt: string;
+    opportunity: {
+        id: string;
+        slug: string;
+        title: string;
+        company: string;
+        locations: string[];
+        salaryRange: string | null;
+        status: string;
+    };
+    addedBy: { id: string; fullName: string | null; username: string | null } | null;
+}
+
+function RoomJobs({ slug, isMember, onMemberChange }: { slug: string; isMember: boolean; onMemberChange: () => void }) {
     const [loading, setLoading] = useState(true);
-    const [jobs, setJobs] = useState<Array<{ id: string; title: string; company: string; type: string; location?: string; salary?: string | null; applied?: boolean }>>([]);
+    const [jobs, setJobs] = useState<RoomJobRow[]>([]);
     const [error, setError] = useState(false);
+    const [shareUrl, setShareUrl] = useState('');
+    const [sharing, setSharing] = useState(false);
+    const [shareError, setShareError] = useState<string | null>(null);
+    const [shareSubmitUrl, setShareSubmitUrl] = useState<string | null>(null);
+
+    const load = useCallback(async () => {
+        setLoading(true);
+        setError(false);
+        try {
+            const result = await communityApi.listRoomOpportunities(slug, { page: 1, limit: 50 });
+            setJobs(result.opportunities ?? []);
+        } catch {
+            setError(true);
+        } finally {
+            setLoading(false);
+        }
+    }, [slug]);
 
     useEffect(() => {
         let cancelled = false;
         setLoading(true);
-        communityApi.listRoomPosts(slug, { page: 1, limit: 50 })
+        communityApi
+            .listRoomOpportunities(slug, { page: 1, limit: 50 })
             .then((result) => {
-                if (!cancelled) {
-                    setJobs(result.posts.map((p) => ({
-                        id: p.id,
-                        title: p.title,
-                        company: p.author?.fullName || p.author?.username || 'Room',
-                        type: p.category,
-                        location: (p.tags?.[0]) || undefined,
-                        salary: null,
-                        applied: false,
-                    })));
-                }
+                if (!cancelled) setJobs(result.opportunities ?? []);
             })
             .catch(() => {
                 if (!cancelled) setError(true);
@@ -283,8 +391,77 @@ function RoomJobs({ slug }: { slug: string }) {
             .finally(() => {
                 if (!cancelled) setLoading(false);
             });
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+        };
     }, [slug]);
+
+    const handleShare = async () => {
+        const raw = shareUrl.trim();
+        if (!raw || sharing) return;
+        // Accept a full job URL or a bare slug/id — the server resolves it.
+        // Guard the obvious non-job paste (e.g. the room URL itself) locally
+        // with a specific message instead of a generic server 404.
+        const lowered = raw.toLowerCase();
+        if (
+            lowered.includes('/community/rooms/') ||
+            lowered.includes('/rooms/') ||
+            lowered.includes('/community?') ||
+            lowered.includes('/community/')
+        ) {
+            setShareError('That looks like a room or community link, not a job — open any job and paste its link.');
+            return;
+        }
+        const slugOrId = raw.split('?')[0].split('#')[0].split('/').filter(Boolean).pop();
+        if (!slugOrId) {
+            setShareError('Paste a job link or slug.');
+            return;
+        }
+        setSharing(true);
+        setShareError(null);
+        setShareSubmitUrl(null);
+        try {
+            await communityApi.shareRoomOpportunity(slug, slugOrId);
+            setShareUrl('');
+            // Refresh counts + membership quietly; a 403 here means the
+            // membership went stale mid-session, so re-sync instead of
+            // leaving the form up with a raw error.
+            await load();
+            onMemberChange();
+        } catch (e) {
+            const status = (e as { status?: number })?.status;
+            if (status === 403) {
+                setShareError('Only members can share — join the room first.');
+                onMemberChange();
+            } else if (status === 404) {
+                // External posting (e.g. a Workday/ATS link): it can never
+                // resolve to a local listing. Offer the contribute flow
+                // instead of a dead end — but only for foreign hosts. A
+                // FresherFlow URL missing locally is a data gap, not a
+                // submission case (submitting it would duplicate).
+                let foreign = false;
+                try {
+                    const host = new URL(raw.startsWith('http') ? raw : `https://${raw}`).hostname.toLowerCase();
+                    foreign =
+                        !host.includes('fresherflow') &&
+                        host !== 'localhost' &&
+                        host !== '127.0.0.1';
+                } catch {
+                    foreign = false;
+                }
+                if (foreign) {
+                    setShareError('This posting is not in our listings yet.');
+                    setShareSubmitUrl(raw);
+                } else {
+                    setShareError('Job not found in our listings. Open it on FresherFlow and try again.');
+                }
+            } else {
+                setShareError(e instanceof Error ? e.message : 'Could not share this job.');
+            }
+        } finally {
+            setSharing(false);
+        }
+    };
 
     if (loading) {
         return (
@@ -297,20 +474,87 @@ function RoomJobs({ slug }: { slug: string }) {
 
     return (
         <div className="space-y-3">
+            {isMember ? (
+                <div className="rounded-xl border border-border bg-card p-3">
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={shareUrl}
+                            onChange={(e) => {
+                                setShareUrl(e.target.value);
+                                setShareSubmitUrl(null);
+                            }}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') void handleShare();
+                            }}
+                            placeholder="Paste a job link to share it here…"
+                            aria-label="Job link to share"
+                            className="h-9 min-w-0 flex-1 rounded-lg border border-border bg-background px-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => void handleShare()}
+                            disabled={sharing || !shareUrl.trim()}
+                            className="inline-flex h-9 shrink-0 items-center rounded-lg bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                        >
+                            {sharing ? 'Sharing…' : 'Share'}
+                        </button>
+                    </div>
+                    {shareError ? <p className="mt-2 text-xs text-destructive">{shareError}</p> : null}
+                    {shareSubmitUrl ? (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <Link
+                                href="/contribute"
+                                className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-colors hover:bg-primary/90"
+                            >
+                                Submit it for review
+                            </Link>
+                            <span className="text-xs text-muted-foreground">
+                                It can be shared here once approved.
+                            </span>
+                        </div>
+                    ) : null}
+                </div>
+            ) : null}
             {jobs.length === 0 && (
                 <EmptyState
                     icon="inbox"
                     size="md"
                     title="No job listings in this room yet"
-                    description=""
+                    description={isMember ? 'Share the first opening — batchmates see it here.' : 'Join the room to share openings with the batch.'}
                     variant="ghost"
                 />
             )}
-            {jobs.map((job) => (
-                <div key={job.id} className="rounded-xl border border-border bg-card p-4 space-y-2">
-                    <p className="text-sm font-semibold text-foreground">{job.title}</p>
-                    <p className="text-xs text-muted-foreground">{job.company} · {job.type}</p>
-                </div>
+            {jobs.map(({ opportunity: job, reason, addedBy }) => (
+                <Link
+                    key={`${job.id}-${reason}`}
+                    href={`/jobs/${job.slug}`}
+                    className="block rounded-xl border border-border bg-card p-4 space-y-2 transition-colors hover:border-primary/30"
+                >
+                    <div className="flex items-center gap-2">
+                        <p className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground">{job.title}</p>
+                        <span
+                            className={cn(
+                                'shrink-0 rounded-full px-2 py-0.5 text-xs font-bold uppercase tracking-wider',
+                                reason === 'PINNED'
+                                    ? 'bg-primary/10 text-primary'
+                                    : 'bg-muted text-muted-foreground'
+                            )}
+                        >
+                            {reason === 'PINNED' ? 'Pinned' : 'Shared'}
+                        </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                        {job.company}
+                        {job.locations?.length ? ` · ${job.locations.join(', ')}` : ''}
+                        {job.salaryRange ? ` · ${job.salaryRange}` : ''}
+                    </p>
+                    {addedBy ? (
+                        <p className="text-xs text-muted-foreground">
+                            Shared by {addedBy.fullName || addedBy.username || 'a member'}
+                        </p>
+                    ) : null}
+                </Link>
             ))}
         </div>
     );

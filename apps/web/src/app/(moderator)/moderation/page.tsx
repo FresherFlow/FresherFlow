@@ -8,6 +8,7 @@ export const metadata: Metadata = {
 
 const QUEUES = [
     { href: '/moderation/submissions', title: 'Job submissions', text: 'Community-shared jobs awaiting review. Approve to publish or reject with a reason the contributor sees.' },
+    { href: '/admin/opportunities', title: 'Listings review', text: 'Full listings queue — review, publish, expire and archive. Needs the opportunity.review permission; lives in the admin shell.' },
     { href: '/moderation/interviews', title: 'Interview experiences', text: 'Interview write-ups go live immediately. Triage newest-first; remove or spam-flag what is inappropriate.' },
     { href: '/moderation/updates', title: 'Hiring updates', text: 'Hiring updates are live on arrival. Removal is permanent — only remove clear violations.' },
     { href: '/moderation/resources', title: 'Resources', text: 'Resource collections awaiting review. Approve to publish or remove to reject.' },

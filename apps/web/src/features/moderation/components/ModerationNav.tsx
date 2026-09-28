@@ -6,6 +6,7 @@ import { cn } from '@/ui/cn';
 
 const QUEUES = [
     { href: '/moderation/submissions', label: 'Job submissions' },
+    { href: '/admin/opportunities', label: 'Listings' },
     { href: '/moderation/interviews', label: 'Interviews' },
     { href: '/moderation/updates', label: 'Hiring updates' },
     { href: '/moderation/resources', label: 'Resources' },

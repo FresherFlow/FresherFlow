@@ -44,8 +44,8 @@ export function TotpSignIn({
                     <KeyIcon className="size-7" />
                 </div>
                 <div className="space-y-1">
-                    <h2 className="text-base font-semibold text-foreground">Use an authenticator code</h2>
-                    <p className="text-sm text-muted-foreground">
+                    <h2 className="text-lg font-semibold text-foreground">Use an authenticator code</h2>
+                    <p className="text-base text-muted-foreground">
                         Enter the 6-digit code from your authenticator app.
                     </p>
                 </div>

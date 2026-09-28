@@ -6,27 +6,36 @@ import {
     PlusCircleIcon,
     ArrowDownTrayIcon,
     ExclamationCircleIcon,
+    ArrowPathIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '@/ui/Button';
+import { cn } from '@/ui/cn';
 
 interface AdminOpportunitiesHeaderProps {
     exportUrl: string;
     /** Tab counts, mirroring the discovery header's live meta line. Optional. */
     counts?: { drafts?: number; published?: number } | null;
+    /** Reload the listings query. Lives here as a page action, not in the grid. */
+    onRefresh?: () => void;
+    isRefreshing?: boolean;
 }
 
 /**
  * Page header for the listings workspace.
  *
- * Renders inline at the top of the page content (desktop bar on md+,
- * stacked bar below) — exactly like `DiscoveryHeader`. Search is
- * not rendered here: the `DataGrid` below owns the single search input, and
- * refresh lives in that grid's toolbar, so the header only carries the
- * create / review / export actions.
+ * Carries page-level ACTIONS only: export, refresh, review queue, create.
+ *
+ * It deliberately renders no title. `TopHeaderBar` (desktop) and
+ * `MobileTopNav` (mobile) both already print the route name, so this component
+ * adding its own "Listings" made the word appear twice on every screen. Search
+ * lives in the `DataGrid` below, which owns the single search input, and
+ * refresh moved here from that grid's toolbar so the table row is filters only.
  */
 export const AdminOpportunitiesHeader = ({
     exportUrl,
     counts,
+    onRefresh,
+    isRefreshing,
 }: AdminOpportunitiesHeaderProps) => {
     const router = useRouter();
 
@@ -41,6 +50,17 @@ export const AdminOpportunitiesHeader = ({
             >
                 <ArrowDownTrayIcon className="w-4 h-4" />
             </Button>
+            {onRefresh && (
+                <Button
+                    variant="admin"
+                    size="sm"
+                    onClick={onRefresh}
+                    title="Refresh listings"
+                    aria-label="Refresh listings"
+                >
+                    <ArrowPathIcon className={cn('w-4 h-4', isRefreshing && 'animate-spin')} />
+                </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => router.push('/admin/opportunities?status=DRAFT')} title="Review draft queue">
                 <ExclamationCircleIcon className="w-4 h-4" />
                 <span className="hidden xl:inline ml-1.5">Review queue</span>
@@ -56,22 +76,12 @@ export const AdminOpportunitiesHeader = ({
         </div>
     );
 
-    const desktopHeaderContent = (
-        <div className="hidden md:flex items-center gap-4 w-full animate-in fade-in duration-150">
-            <span className="text-lg font-semibold text-foreground shrink-0">Listings</span>
-            <div className="ml-auto">{actionButtons}</div>
-        </div>
-    );
-
+    /* Actions only on both breakpoints. `TopHeaderBar` renders the route title
+       on desktop and `MobileTopNav` renders it on mobile, so this component
+       adding its own "Listings" printed the word twice on every screen. */
     return (
-        <>
-            {/* Mobile: in-page bar (the shell header is rebuilt for mobile) */}
-            <div className="md:hidden flex flex-col gap-3 pb-3">
-                <h1 className="text-xl font-semibold tracking-tight">Listings</h1>
-                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">{actionButtons}</div>
-            </div>
-
-            {desktopHeaderContent}
-        </>
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar md:overflow-visible">
+            {actionButtons}
+        </div>
     );
 };

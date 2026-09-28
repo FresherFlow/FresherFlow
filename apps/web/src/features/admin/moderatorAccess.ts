@@ -1,21 +1,20 @@
 import type { ModeratorSession } from '@/lib/auth/AdminContext';
+import { MODERATION_PERMISSIONS } from '@/features/moderation/moderationAuth';
 
 /**
  * Permissions to filter navigation with: `null` means full admin nav,
  * an array means moderator nav showing only rows whose `permission` is
- * included. Moderators with a bare grant (no keys) see an empty rail —
- * the route guard below turns that into a 403 with an exit, not a guess.
+ * included.
  *
- * Admin sessions pass everything. Moderator sessions (user accounts holding
- * access-role grants) see only the queues their permission keys unlock —
- * mirroring the API gates (`requirePermission`) so the nav never offers a
- * page whose endpoints would 403:
+ * Split of duties with the dedicated `/moderation` area (own layout, gate,
+ * nav, hub): community queues live THERE. Inside `/admin`, moderators keep
+ * only Listings review, which has no `/moderation` home — mirroring the API
+ * gates (`requirePermission`) so the nav never offers a page whose
+ * endpoints would 403:
  *
  * - Listings review/export        → `opportunity.review`
  * - New listing                   → `opportunity.create`
- * - Community submissions         → `community.moderate`
- * - Reports                       → `report.resolve`
- * - Everything else               → admin only
+ * - Everything else in /admin     → admin only
  *
  * Route matching is longest-prefix-first so
  * `/admin/opportunities/create` (create) wins over `/admin/opportunities`
@@ -38,8 +37,6 @@ const ROUTE_REQUIREMENTS: Array<{ prefix: string; requirement: AdminRouteRequire
     { prefix: '/admin/opportunities/create', requirement: { kind: 'staff', permission: 'opportunity.create' } },
     { prefix: '/admin/opportunities/edit', requirement: { kind: 'staff', permission: 'opportunity.edit' } },
     { prefix: '/admin/opportunities', requirement: { kind: 'staff', permission: 'opportunity.review' } },
-    { prefix: '/admin/community-submissions', requirement: { kind: 'staff', permission: 'community.moderate' } },
-    { prefix: '/admin/reports', requirement: { kind: 'staff', permission: 'report.resolve' } },
     { prefix: '/admin', requirement: { kind: 'admin' } },
 ];
 
@@ -62,16 +59,15 @@ export function canAccessAdminRoute(
     return access.permissions.includes(requirement.permission);
 }
 
-const MODERATOR_LANDING_ORDER: Array<{ permission: string; href: string }> = [
-    { permission: 'community.moderate', href: '/admin/community-submissions' },
-    { permission: 'report.resolve', href: '/admin/reports' },
-    { permission: 'opportunity.review', href: '/admin/opportunities' },
-];
-
 /**
- * First queue the moderator may open, or '' when their grant carries none
- * of the queue permissions (revoked or bare grant → 403 page, not a guess).
+ * Moderator landing: the dedicated `/moderation` hub whenever the grant
+ * carries any queue permission (same set its gate checks). Otherwise ''
+ * (revoked or bare grant → 403 page, not a guess). Listings-only holders
+ * still land in the hub — it links every queue including Listings review.
  */
 export function getModeratorLanding(permissions: string[]): string {
-    return MODERATOR_LANDING_ORDER.find(({ permission }) => permissions.includes(permission))?.href ?? '';
+    const hasQueue = (MODERATION_PERMISSIONS as readonly string[]).some((key) =>
+        permissions.includes(key),
+    );
+    return hasQueue ? '/moderation' : '';
 }

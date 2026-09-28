@@ -45,13 +45,27 @@ export function MobileBottomTabs() {
         ? getSpace(spaceId).groups.flatMap((group) => group.items)
         : DEFAULT_NAV_ITEMS;
 
-    // Limited to 5 so the bar cannot overflow.
-    const mobileTabs = spaceItems.slice(0, 5).map((item) => ({
-        href: item.href,
-        label: 'title' in item ? item.title : item.name,
-        icon: item.icon,
-        exact: item.exact,
-    }));
+    // Only leaf destinations become tabs. A collapsible parent is a disclosure
+    // control with no href of its own — its `href` exists only for active
+    // matching — and it shared `/govt` with its first child, so flattening
+    // the parents produced two tabs keyed `/govt` (duplicate-key crash).
+    // The href guard also covers one href appearing in two different groups.
+    const seen = new Set<string>();
+    const mobileTabs = spaceItems
+        .flatMap((item) => ('items' in item && item.items ? item.items : [item]))
+        .filter((item) => {
+            if (seen.has(item.href)) return false;
+            seen.add(item.href);
+            return true;
+        })
+        // Limited to 5 so the bar cannot overflow.
+        .slice(0, 5)
+        .map((item) => ({
+            href: item.href,
+            label: 'title' in item ? item.title : item.name,
+            icon: item.icon,
+            exact: item.exact,
+        }));
 
     useEffect(() => { setIsMounted(true); }, []);
 

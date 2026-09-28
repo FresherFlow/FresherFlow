@@ -22,7 +22,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 import { database } from '@/lib/api/firebase';
-import { ref, onValue, remove } from 'firebase/database';
+import { ref, onValue, get, query, limitToLast, remove } from 'firebase/database';
 import { useFirebaseAdmin } from '@/features/admin/hooks/useFirebaseAdmin';
 
 
@@ -74,6 +74,21 @@ interface LiveCommentItem {
 }
 
 type TabType = 'opportunity-reports' | 'app-feedback' | 'live-comments';
+
+// Bounded RTDB windows (admin download-burn fix). No behavior change except the
+// data window: previously two whole-tree onValue listeners re-downloaded /users
+// and /comments on every write underneath them, per open tab.
+// - FEEDBACK_USER_SCAN_LIMIT = 200 most-recent /users keys (one-shot scan for
+//   reports + app feedback; the full /users tree grows with the user base, and no
+//   orderByChild index exists for nested feedback timestamps, so key-ordered
+//   limitToLast bounds the scan instead of the whole tree).
+// - FEEDBACK_COMMENTS_JOB_LIMIT = 30 most-recent /comments job buckets (live),
+//   sliced client-side to FEEDBACK_COMMENTS_DISPLAY_LIMIT = 100 newest comments.
+//   /comments is keyed by jobId so the query bounds job buckets, not individual
+//   comments; the newest-first slice enforces the per-comment bound.
+const FEEDBACK_USER_SCAN_LIMIT = 200;
+const FEEDBACK_COMMENTS_JOB_LIMIT = 30;
+const FEEDBACK_COMMENTS_DISPLAY_LIMIT = 100;
 
 export default function FeedbackPage() {
     const { isAuthenticated: isSessionAuth } = useAdmin();
@@ -173,13 +188,20 @@ export default function FeedbackPage() {
         void loadListingsCatalog();
     }, [isSessionAuth, router, loadListingsCatalog]);
 
-    // ─── Real-Time Firebase Subscriptions ──────────────────────────────────────────
+    // ─── Bounded Firebase reads (whole-tree onValue replaced) ────────────────────
+    // Listens now: exactly ONE live listener (bounded /comments query below).
+    // The /users scan is a one-shot get(): the moderation queue is audit-style and
+    // point-in-time on mount is sufficient — keeping onValue on /users would
+    // re-download the entire user tree on every profile/feedback write.
     useEffect(() => {
         if (!isSessionAuth || !isFbAuth) return;
 
-        // 1. Subscribe to Users tree to aggregate reports and app feedbacks
-        const usersRef = ref(database, '/users');
-        const unsubscribeUsers = onValue(usersRef, (snapshot) => {
+        let cancelled = false;
+
+        // 1. One-shot bounded scan of /users for reports + app feedback (no listener).
+        const usersBounded = query(ref(database, '/users'), limitToLast(FEEDBACK_USER_SCAN_LIMIT));
+        void get(usersBounded).then((snapshot) => {
+            if (cancelled) return;
             const data = snapshot.val();
             const reports: FirebaseOpportunityReport[] = [];
             const feedbackList: FirebaseAppFeedback[] = [];
@@ -233,15 +255,19 @@ export default function FeedbackPage() {
             setOppReports(reports);
             setAppFeedback(feedbackList);
             setIsLoading(false);
-        }, (err) => {
+        }).catch((err) => {
+            if (cancelled) return;
             console.error(`[Firebase Users Fetch Fail] ${getErrorMessage(err)}`);
             toast.error('Failed to load community feedback');
             setIsLoading(false);
         });
 
-        // 2. Subscribe to Comments tree
-        const commentsRef = ref(database, '/comments');
-        const unsubscribeComments = onValue(commentsRef, (snapshot) => {
+        // 2. KEPT live listener (the only one in this file): bounded /comments query.
+        // Justification: live-comments moderation must surface newly posted comments
+        // without a manual reload, so realtime is warranted here — but scoped to the
+        // N most-recent job buckets so each fire downloads recent activity only.
+        const commentsBounded = query(ref(database, '/comments'), limitToLast(FEEDBACK_COMMENTS_JOB_LIMIT));
+        const unsubscribeComments = onValue(commentsBounded, (snapshot) => {
             const data = snapshot.val();
             const commentsList: LiveCommentItem[] = [];
 
@@ -265,15 +291,15 @@ export default function FeedbackPage() {
                 });
             }
 
-            // Sort chronologically (newest first)
+            // Sort chronologically (newest first), enforce bounded display window
             commentsList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-            setLiveComments(commentsList);
+            setLiveComments(commentsList.slice(0, FEEDBACK_COMMENTS_DISPLAY_LIMIT));
         }, (err) => {
             console.error(`[Firebase Comments Fetch Fail] ${getErrorMessage(err)}`);
         });
 
         return () => {
-            unsubscribeUsers();
+            cancelled = true;
             unsubscribeComments();
         };
     }, [isSessionAuth, isFbAuth]);
@@ -349,8 +375,13 @@ export default function FeedbackPage() {
         opportunity: opportunityLookup[comment.jobId] || { title: 'Listing ID: ' + comment.jobId, company: 'Unsynced Company' },
     }));
 
+    /* No `pt-*`: the shell's content band already reserves the fixed
+       MobileTopNav (`AdminLayoutClient.tsx:62` — `pt-14` below `md`,
+       `md:pt-18` up to `lg`). This page's own `pt-16` stacked on that and
+       opened a ~80px empty band on mobile. Bottom padding clears the
+       fixed AdminBottomNav; `md:pb-8` takes over from `md`. */
     return (
-        <div className="p-4 md:p-8 pt-16 md:pt-8 space-y-6 flex-1 min-h-0 overflow-y-auto text-foreground pb-28 md:pb-8">
+        <div className="p-4 md:p-8 space-y-6 flex-1 min-h-0 overflow-y-auto text-foreground p-4 md:p-8">
             {/* Header */}
             <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-5">
                 <div>

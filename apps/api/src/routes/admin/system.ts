@@ -11,6 +11,9 @@ import { StaticFeedService } from '../../infrastructure/services/opportunity/sta
 import { redis } from '@fresherflow/database';
 import { enqueueCacheRevalidation } from '@fresherflow/queue';
 import { logger } from '@fresherflow/utils';
+import { z } from 'zod';
+import { validate } from '../../middleware/validate';
+import { adminRateLimit } from '../../middleware/adminRateLimit';
 
 const router = Router();
 
@@ -40,13 +43,47 @@ const PUBLIC_WEB_CACHE_TAGS = [
 // revalidatePath() — and only from publicOpportunityCache.service.ts.
 //
 // Rule: feed revalidation = tags only. Slug revalidation = revalidatePath (one-off per job).
+// Must cover every tag the web readers cache under (see cdnFeed.ts): the
+// feed-index tag powers /jobs list pages, so omitting it left the pre-regen
+// index served from Next's data cache after every regeneration.
 const FEED_REVALIDATE_TAGS = [
     'feed-version',
     'homepage-feed',
+    'feed-index',
     'government-feed',
     'expired-feed',
     'companies-metadata',
+    'category-shards',
+    'company-shards',
+    'skills-metadata',
+    'education-metadata',
+    'sitemap-data',
 ] as const;
+
+// Targets handled by StaticFeedService.refresh(). Anything else silently
+// regenerates nothing (every feed block is `target === 'all' || ...`) while
+// still bumping feed-version and reporting success — so reject unknowns.
+const regenerateFeedsSchema = z.object({
+    target: z
+        .enum(['all', 'bootstrap', 'govt', 'walkin', 'expired', 'sitemap', 'jobs', 'companies', 'resources'])
+        .optional()
+        .default('all'),
+});
+
+/**
+ * Parse a configured web base URL before fetching it. Rejects non-http(s)
+ * origins so a malformed PUBLIC_WEB_URL entry can never turn the
+ * revalidation fan-out into a server-side request forgery vector.
+ */
+function parseRevalidateBaseUrl(raw: string): string | null {
+    try {
+        const parsed = new URL(raw.trim());
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+        return parsed.origin;
+    } catch {
+        return null;
+    }
+}
 
 function parseMetricsWindow(raw: unknown, defaultWindow: MetricsWindow = '30d'): MetricsWindow {
     const val = String(raw || '').toLowerCase();
@@ -112,10 +149,9 @@ router.post('/alerts/run', requireAdmin, async (_req: Request, res: Response, ne
  * Manually trigger static CDN feeds regeneration.
  * After regenerating R2 files, busts the Next.js feed tag cache (tags only, no paths).
  */
-router.post('/regenerate-feeds', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/regenerate-feeds', requireAdmin, adminRateLimit, validate(regenerateFeedsSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { target } = req.body;
-        const targetStr = typeof target === 'string' ? target : 'all';
+        const { target: targetStr } = req.body as { target: string };
         await StaticFeedService.refresh(targetStr);
 
         // Bust Next.js feed caches via tags only (stale-while-revalidate, zero ISR writes).
@@ -126,8 +162,13 @@ router.post('/regenerate-feeds', requireAdmin, async (req: Request, res: Respons
             const urls = webUrl.split(',').map(u => u.trim()).filter(Boolean);
             await Promise.all(
                 urls.map(async (url) => {
+                    const base = parseRevalidateBaseUrl(url);
+                    if (!base) {
+                        logger.error(`[Regenerate Feeds Revalidate] Skipping invalid PUBLIC_WEB_URL entry: ${url}`);
+                        return;
+                    }
                     try {
-                        const response = await fetch(`${url}/api/revalidate`, {
+                        const response = await fetch(`${base}/api/revalidate`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ secret, tags: FEED_REVALIDATE_TAGS }),
@@ -182,9 +223,15 @@ router.post('/revalidate-web', requireAdmin, async (req: Request, res: Response,
 
         await Promise.all(
             urls.map(async (url) => {
+                const base = parseRevalidateBaseUrl(url);
+                if (!base) {
+                    logger.error(`[Revalidate] Skipping invalid PUBLIC_WEB_URL entry: ${url}`);
+                    hasError = true;
+                    return;
+                }
                 try {
                     // Tags only — no paths. See ⚠️ ISR WRITE SAFETY note at the top of this file.
-                    const response = await fetch(`${url}/api/revalidate`, {
+                    const response = await fetch(`${base}/api/revalidate`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ secret, tags: FEED_REVALIDATE_TAGS }),

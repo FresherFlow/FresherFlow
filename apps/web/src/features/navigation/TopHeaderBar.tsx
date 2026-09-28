@@ -30,7 +30,7 @@ function TopHeaderBarContent() {
     const isFeedRoute = !isAdminRoute && isFeedHeaderRoute(segments);
     return (
         <div
-            className="hidden h-14 w-full shrink-0 sticky top-0 items-center border-b border-border/40 bg-background/95 backdrop-blur-sm z-40 pr-6 px-5 lg:flex"
+            className="hidden h-14 w-full shrink-0 sticky top-0 items-center border-b border-border/40 bg-background/95 backdrop-blur-sm z-40 pr-4 px-4 sm:pr-6 sm:px-5 lg:flex"
         >
             {/* Single row: feed breadcrumb / admin row / generic breadcrumb. */}
             <div className="flex items-center gap-6 w-full">
@@ -52,8 +52,10 @@ function TopHeaderBarContent() {
                         <div aria-hidden className="h-6 w-px shrink-0 bg-border" />
                         <div className="min-w-0 flex-1 truncate text-lg font-semibold text-foreground">{adminTitle}</div>
                         <div className="ml-auto flex shrink-0 items-center gap-1.5">
-                            <AdminSearchTrigger />
-                            <div aria-hidden className="h-6 w-px shrink-0 bg-border" />
+                            <div className="hidden sm:block">
+                                <AdminSearchTrigger />
+                            </div>
+                            <div aria-hidden className="hidden h-6 w-px shrink-0 bg-border sm:block" />
                             <ThemeSwitcher />
                             <AdminProfileMenu />
                         </div>
@@ -91,7 +93,7 @@ function TopHeaderBarContent() {
 
 export function TopHeaderBar() {
     return (
-        <Suspense fallback={<div className="hidden h-14 w-full shrink-0 lg:block" aria-hidden />}>
+        <Suspense fallback={<div className="h-14 w-full shrink-0" aria-hidden />}>
             <TopHeaderBarContent />
         </Suspense>
     );

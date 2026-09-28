@@ -68,14 +68,17 @@ export function DataGridPagination({
           is wider than a phone. */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
         <div className="hidden items-center gap-2 sm:flex">
-          <p className="whitespace-nowrap text-xs text-muted-foreground">
+          <p className="whitespace-nowrap text-sm text-muted-foreground">
             Rows per page
           </p>
           <Select
             value={`${pageSize}`}
             onValueChange={(value) => setPageSize(Number(value))}
           >
-            <SelectTrigger className="h-8 w-[70px] text-xs" aria-label="Rows per page">
+            {/* `h-9` is `SelectTrigger`'s own height: it is the smallest the
+                primitive can render 14px type in (`py-2` + a 20px line box),
+                so the whole footer row is 36px instead of mixing heights. */}
+            <SelectTrigger className="w-20 text-sm" aria-label="Rows per page">
               <SelectValue placeholder={`${pageSize}`} />
             </SelectTrigger>
             <SelectContent side="top">
@@ -88,7 +91,7 @@ export function DataGridPagination({
           </Select>
         </div>
         {selectedRows > 0 && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-sm text-muted-foreground">
             <span className="font-medium text-foreground">{selectedRows}</span>{" "}
             selected
           </span>
@@ -96,7 +99,7 @@ export function DataGridPagination({
       </div>
 
       <div className="flex items-center justify-between gap-2 sm:justify-end">
-        <span className="whitespace-nowrap text-xs tabular-nums text-muted-foreground">
+        <span className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">
           {totalRows > 0 ? (
             <>
               <span className="font-medium text-foreground">{startRow}</span>
@@ -115,7 +118,7 @@ export function DataGridPagination({
         <div className="hidden items-center gap-0.5 sm:flex">
           <Button
             variant="ghost"
-            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+            className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground"
             onClick={previousPage}
             disabled={!canPreviousPage}
             aria-label="Go to previous page"
@@ -126,7 +129,7 @@ export function DataGridPagination({
             page === "ellipsis" ? (
               <span
                 key={`ellipsis-${index}`}
-                className="flex h-8 min-w-8 items-center justify-center text-xs text-muted-foreground"
+                className="flex h-9 min-w-9 items-center justify-center text-sm text-muted-foreground"
               >
                 …
               </span>
@@ -138,7 +141,7 @@ export function DataGridPagination({
                 aria-label={`Go to page ${page + 1}`}
                 aria-current={page === pageIndex ? "page" : undefined}
                 className={cn(
-                  "h-8 min-w-8 px-1 text-xs tabular-nums",
+                  "h-9 min-w-9 px-1.5 text-sm tabular-nums",
                   page === pageIndex
                     ? "bg-muted font-semibold text-foreground hover:bg-muted"
                     : "text-muted-foreground hover:text-foreground"
@@ -150,7 +153,7 @@ export function DataGridPagination({
           )}
           <Button
             variant="ghost"
-            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+            className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground"
             onClick={nextPage}
             disabled={!canNextPage}
             aria-label="Go to next page"
@@ -164,19 +167,19 @@ export function DataGridPagination({
         <div className="flex items-center gap-1 sm:hidden">
           <Button
             variant="ghost"
-            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+            className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground"
             onClick={previousPage}
             disabled={!canPreviousPage}
             aria-label="Go to previous page"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="px-1 text-xs font-medium tabular-nums text-foreground">
+          <span className="px-1 text-sm font-medium tabular-nums text-foreground">
             {pageIndex + 1} / {pageCount || 1}
           </span>
           <Button
             variant="ghost"
-            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground"
+            className="h-9 w-9 p-0 text-muted-foreground hover:text-foreground"
             onClick={nextPage}
             disabled={!canNextPage}
             aria-label="Go to next page"

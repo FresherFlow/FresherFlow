@@ -372,6 +372,56 @@ describe('signals', () => {
         expect(res.body.mySignals).toEqual([]);
     });
 
+    it('raises a deduped OPEN moderation report for a complaint signal', async () => {
+        const res = await request(app).post('/api/jobs/opp-1/signals').set(AUTH).send({ signalType: 'CLOSED' });
+        expect(res.status).toBe(200);
+        expect(prismaMock.report.findFirst).toHaveBeenCalledWith(
+            expect.objectContaining({
+                where: expect.objectContaining({ opportunityId: 'opp-1', reason: 'EXPIRED', status: 'OPEN' }),
+            })
+        );
+        expect(prismaMock.report.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: expect.objectContaining({
+                    reporterId: 'user-1',
+                    opportunityId: 'opp-1',
+                    reason: 'EXPIRED',
+                    status: 'OPEN',
+                }),
+            })
+        );
+    });
+
+    it('maps an INCORRECT signal to an INACCURATE report', async () => {
+        const res = await request(app).post('/api/jobs/opp-1/signals').set(AUTH).send({ signalType: 'INCORRECT' });
+        expect(res.status).toBe(200);
+        expect(prismaMock.report.create).toHaveBeenCalledWith(
+            expect.objectContaining({ data: expect.objectContaining({ reason: 'INACCURATE' }) })
+        );
+    });
+
+    it('reuses an existing OPEN report instead of filing a second one', async () => {
+        prismaMock.report.findFirst.mockResolvedValue({ id: 'r1' });
+        const res = await request(app).post('/api/jobs/opp-1/signals').set(AUTH).send({ signalType: 'CLOSED' });
+        expect(res.status).toBe(200);
+        expect(prismaMock.report.create).not.toHaveBeenCalled();
+    });
+
+    it('does not report a personal-history signal', async () => {
+        const res = await request(app).post('/api/jobs/opp-1/signals').set(AUTH).send({ signalType: 'APPLIED' });
+        expect(res.status).toBe(200);
+        expect(prismaMock.report.findFirst).not.toHaveBeenCalled();
+        expect(prismaMock.report.create).not.toHaveBeenCalled();
+    });
+
+    it('does not report when the member removes the signal', async () => {
+        prismaMock.jobSignal.findUnique.mockResolvedValue({ id: 'sig-1' });
+        const res = await request(app).post('/api/jobs/opp-1/signals').set(AUTH).send({ signalType: 'CLOSED' });
+        expect(res.status).toBe(200);
+        expect(prismaMock.jobSignal.delete).toHaveBeenCalledWith({ where: { id: 'sig-1' } });
+        expect(prismaMock.report.create).not.toHaveBeenCalled();
+    });
+
     it('rejects an invalid signal type with 400 and rate-limits the flood with 429', async () => {
         const statuses: number[] = [];
         for (let i = 0; i < 31; i += 1) {

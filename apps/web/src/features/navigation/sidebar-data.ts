@@ -38,7 +38,6 @@ export type SidebarNavLinkData = {
 export type SidebarNavCollapsibleData = {
     title: string;
     icon: SidebarNavIcon;
-    badge?: number;
     href?: never;
     items: SidebarNavSubItem[];
 };
@@ -78,10 +77,13 @@ function toSubItem(item: SpaceNavItem, badges?: BuilderOptions['badges']): Sideb
 
 function toItem(item: SpaceNavItem, badges?: BuilderOptions['badges']): SidebarNavItemData | null {
     if (item.items) {
+        // No badge on a collapsible parent. A parent is a disclosure control
+        // with no href of its own, and its href is only carried for active
+        // matching — resolving a live count against it duplicated the child
+        // count on the parent row (e.g. "Jobs 519" above "All Jobs 519").
         return {
             title: item.title,
             icon: item.icon,
-            badge: resolveBadge(item, badges),
             items: item.items.map((sub) => toSubItem(sub, badges)),
         };
     }

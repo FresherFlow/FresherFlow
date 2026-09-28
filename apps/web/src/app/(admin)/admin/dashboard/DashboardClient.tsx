@@ -31,15 +31,21 @@ function DashboardHubContent() {
         router.push(`/admin/dashboard?tab=${tabId}`);
     };
 
+    /* No page-level `pt-*`: the shell's content band already reserves the
+       fixed MobileTopNav (`AdminLayoutClient.tsx:62` — `pt-14` below `md`,
+       `md:pt-18` up to `lg`, `lg:pt-0`). This page's own `pt-16` stacked on
+       that and opened a ~80px empty band on mobile. Bottom padding clears
+       the fixed AdminBottomNav; `md:pb-8` takes over from `md`. */
     return (
-        <div className="p-4 md:p-6 lg:p-8 pt-16 md:pt-6 lg:pt-8 space-y-4 flex-1 min-h-0 overflow-y-auto pb-28 md:pb-8 text-foreground w-full font-sans antialiased relative z-0">
-            {/* No Download button here: the reference's is an unwired
-                placeholder, and ours exported the *listings* CSV from the
-                dashboard, which is not a dashboard action. Export lives on
-                the listings header where the data is. */}
-            <div className="mb-2 flex items-center justify-between space-y-2">
-                <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-            </div>
+        <div className="p-4 md:p-6 lg:p-8 space-y-4 flex-1 min-h-0 overflow-y-auto p-4 md:p-8 text-foreground w-full font-sans antialiased relative z-0">
+            {/* No page-level `h1`, and no Download button. `TopHeaderBar`
+                (desktop) and `MobileTopNav` (mobile) both already print the
+                route name, so this block's own "Dashboard" made it appear
+                twice; the reference's Download is an unwired placeholder, and
+                ours exported the *listings* CSV from the dashboard, which is
+                not a dashboard action. Export lives on the listings header
+                where the data is. The whole row went with the h1 — it had no
+                description and no actions left to hold. */}
             <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
                 <div className="w-full overflow-x-auto pb-2">
                     <TabsList>

@@ -116,8 +116,7 @@ function parseStructuredSalary(opportunity: Opportunity): ParsedSalary | null {
 // React cache() memoizes this per-request. generateMetadata and the page component
 // both call this function — without cache(), both calls parse the entire bootstrap
 // feed JSON separately. With cache(), the second call is free.
-export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<ExtendedOpportunity | null> => {
-    try {
+export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<ExtendedOpportunity | null> => {    try {
         // 1. Try direct individual static JSON on CDN edge first (ultra-fast, ~2.5KB payload)
         const directJob = await fetchOpportunityDetail(slugOrId, true);
         if (directJob) {
@@ -169,6 +168,20 @@ export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<E
         //     if (expiredOpportunity) return expiredOpportunity as ExtendedOpportunity;
         // }
         // return null;
+    } catch {
+        return null;
+    }
+});
+
+// Metadata-only resolver: shard-only (single ~2.5KB detail JSON via
+// fetchOpportunityDetail). Deliberately skips the taxonomy registry build and
+// the bootstrap/government/expired fallback feeds — those stay on the
+// page-component path, which shares them per-request through React.cache.
+// Keeps generateMetadata cheap and cacheable on this high-cardinality route.
+export const fetchOpportunityForMetadata = cache(async (slugOrId: string): Promise<ExtendedOpportunity | null> => {
+    try {
+        const directJob = await fetchOpportunityDetail(slugOrId, true);
+        return (directJob as ExtendedOpportunity) ?? null;
     } catch {
         return null;
     }

@@ -20,7 +20,6 @@ import {
     ChevronLeft,
     Flag,
 } from 'lucide-react';
-import type { SpaceNavGroup } from '@/features/navigation/navConfig';
 
 export type AdminNavIcon = ComponentType<{ className?: string; strokeWidth?: number }>;
 
@@ -86,8 +85,8 @@ export const adminOverviewItems: AdminNavItemData[] = [
     { title: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
     { title: 'Listings', href: '/admin/opportunities', icon: Briefcase, exact: true, permission: 'opportunity.review' },
     { title: 'Profile Pages', href: '/admin/profile-pages', icon: Users },
-    { title: 'Submissions', href: '/admin/community-submissions', icon: ListTodo, permission: 'community.moderate' },
-    { title: 'Reports', href: '/admin/reports', icon: Flag, permission: 'report.resolve' },
+    { title: 'Submissions', href: '/admin/community-submissions', icon: ListTodo },
+    { title: 'Reports', href: '/admin/reports', icon: Flag },
     { title: 'Users & moderators', href: '/admin/users', icon: Users },
     { title: 'Audit log', href: '/admin/audit', icon: BadgeCheck },
     { title: 'New listing', href: '/admin/opportunities/create', icon: CirclePlus, permission: 'opportunity.create' },
@@ -217,36 +216,3 @@ export const overviewCommandItems: AdminLegacyNavItem[] = adminOverviewItems.map
         ? { href: '/admin/discovery', label: item.title, icon: item.icon, hasSubmenu: true }
         : toLegacyItem(item),
 );
-
-/**
- * Adapter for the mobile drawer, which still renders through `NavMain`
- * (it lives outside the desktop `SidebarProvider`, so it cannot use the
- * sidebar-state-aware `AdminNavGroup`). The drawer lists links only, so a
- * collapsible parent is flattened into its children rather than dropped —
- * otherwise the mobile drawer would lose every Discovery route.
- */
-export function toSpaceNavGroups(groups: AdminNavGroupData[]): SpaceNavGroup[] {
-    return groups.map((group) => ({
-        label: group.title,
-        items: group.items.flatMap((item) => {
-            if (item.items) {
-                return item.items.map((sub) => ({
-                    title: sub.title,
-                    href: sub.href,
-                    icon: sub.icon ?? ShieldCheck,
-                    exact: sub.exact,
-                    badge: typeof sub.badge === 'number' ? sub.badge : undefined,
-                }));
-            }
-            return [
-                {
-                    title: item.title,
-                    href: item.href,
-                    icon: item.icon,
-                    exact: item.exact,
-                    badge: typeof item.badge === 'number' ? item.badge : undefined,
-                },
-            ];
-        }),
-    }));
-}

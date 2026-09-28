@@ -68,7 +68,10 @@ export class StorageService {
                     Key: key,
                     Body: body,
                     ContentType: contentType,
-                    CacheControl: key === 'feed-version.json' ? 'no-cache, no-store, must-revalidate' : undefined,
+                    // The version manifest is uploaded as 'meta/feed-version.json'
+                    // (see StaticFeedService.refresh): it must never be edge-cached,
+                    // otherwise ?v=-busted readers stay pinned to the previous feed.
+                    CacheControl: key === 'meta/feed-version.json' ? 'no-cache, no-store, must-revalidate' : undefined,
                 })
             );
         } catch (error) {

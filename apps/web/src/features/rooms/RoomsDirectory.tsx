@@ -196,7 +196,7 @@ function RoomCardSkeleton() {
 function RoomCard({ room }: { room: Room }) {
     return (
         <Link
-            href={`/rooms/${room.slug}`}
+            href={`/community/rooms/${room.slug}`}
             className="block rounded-2xl border border-border bg-card p-4 space-y-2 transition-all hover:shadow-md hover:border-primary/20 active-press-soft"
         >
             <div className="flex items-center gap-3">

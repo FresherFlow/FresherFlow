@@ -543,7 +543,17 @@ export const mcpSubmitOpportunitySchema = z.object({
     jobUrl: z.string().trim().url('jobUrl must be a valid https URL').max(2000)
         .refine((u) => u.startsWith('https://'), 'jobUrl must use https'),
     location: z.string().trim().max(120).optional(),
+    // Tool schema sends `employmentType` (singular); accept both spellings so
+    // the value is never silently dropped (zod strips unknown keys).
+    employmentType: z.string().trim().max(80).optional(),
     employmentTypes: z.string().trim().max(80).optional(),
+    // Posting kind: job (default), internship, walkin (dated drive with
+    // venue/dates), government (public-sector job).
+    category: z.enum(['job', 'internship', 'walkin', 'government']).optional(),
+    dates: z.array(z.string().trim().max(40)).max(10).optional(),
+    dateRange: z.string().trim().max(120).optional(),
+    timeRange: z.string().trim().max(120).optional(),
+    venueAddress: z.string().trim().max(500).optional(),
     salary: z.string().trim().max(60).optional(),
     description: z.string().trim().max(5000).optional(),
     eligibility: z.string().trim().max(2000).optional(),

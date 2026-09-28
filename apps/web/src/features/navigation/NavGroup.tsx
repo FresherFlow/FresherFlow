@@ -53,6 +53,13 @@ export function NavGroup({ group }: { group: SidebarNavGroupData }) {
     const { state, isMobile } = useSidebar();
     const pathname = usePathname() || '';
     const searchParams = useSearchParams();
+    // Defer the collapsed-rail dropdown branch until after mount: server and
+    // first client paint must agree (persisted open-state/cookies and window
+    // width are unavailable during SSR), otherwise collapsible parents
+    // hydrate as dropdowns and React throws a mismatch.
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+    const collapsedRail = mounted && state === 'collapsed' && !isMobile;
 
     return (
         <SidebarGroup>
@@ -70,7 +77,7 @@ export function NavGroup({ group }: { group: SidebarNavGroupData }) {
                         );
                     }
 
-                    if (state === 'collapsed' && !isMobile) {
+                    if (collapsedRail) {
                         return (
                             <SidebarCollapsedDropdown
                                 key={`${item.title}-group`}
@@ -154,10 +161,15 @@ function SidebarMenuCollapsible({
         <Collapsible asChild open={open} onOpenChange={setOpen} className="group/collapsible">
             <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
-                    <SidebarMenuButton tooltip={item.title} isActive={hasActiveChild}>
+                    {/*
+                        No `isActive` here, matching the reference
+                        `SidebarMenuCollapsible`: the parent is a disclosure
+                        control, not a destination, so only the child row is
+                        marked active. `hasActiveChild` still drives auto-open.
+                    */}
+                    <SidebarMenuButton tooltip={item.title}>
                         <ItemIcon />
                         <span>{item.title}</span>
-                        {hasBadge(item.badge) && <NavBadge>{formatBadge(item.badge)}</NavBadge>}
                         <ChevronRight className="ms-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                     </SidebarMenuButton>
                 </CollapsibleTrigger>
@@ -216,14 +228,11 @@ function SidebarCollapsedDropdown({
                     <SidebarMenuButton tooltip={item.title} isActive={isActive}>
                         <ItemIcon />
                         <span>{item.title}</span>
-                        {hasBadge(item.badge) && <NavBadge>{formatBadge(item.badge)}</NavBadge>}
                         <ChevronRight className="ms-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                     </SidebarMenuButton>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent side="right" align="start" sideOffset={4}>
-                    <DropdownMenuLabel>
-                        {item.title} {hasBadge(item.badge) ? `(${formatBadge(item.badge)})` : ''}
-                    </DropdownMenuLabel>
+                    <DropdownMenuLabel>{item.title}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
                     {item.items.map((sub) => {
                         const SubIcon = sub.icon;

@@ -2,15 +2,25 @@ import prisma from '../infrastructure/database/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
 import { AppFeedbackType } from '@prisma/client';
 import { requireAuth } from '../middleware/auth';
+import { createRateLimiter } from '../middleware/rateLimit';
 import { validate } from '../middleware/validate';
 import { appFeedbackSchema } from '../utils/validation';
 import TelegramService from '../infrastructure/services/alerts/telegram.service';
 
 const router: Router = express.Router();
 
+// Feedback creates a row plus a Telegram ping; cap it strictly like the
+// community report/submit limiters (10/hour). Limiter sits before auth.
+const appFeedbackLimiter = createRateLimiter({
+    windowMs: 60 * 60 * 1000,
+    max: 10,
+    message: 'Too many feedback submissions. Please try again later.',
+    keyPrefix: 'app_feedback',
+});
+
 
 // POST /api/feedback - Submit product feedback
-router.post('/', requireAuth, validate(appFeedbackSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', appFeedbackLimiter, requireAuth, validate(appFeedbackSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { type, rating, message, pageUrl } = req.body as {
             type: AppFeedbackType;

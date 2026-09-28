@@ -37,8 +37,8 @@ export function TotpEnrolment({
     return (
         <div className="space-y-4 rounded-xl border border-primary/30 bg-primary/5 p-4">
             <div className="space-y-1">
-                <h3 className="text-sm font-semibold text-foreground">Enable your authenticator</h3>
-                <p className="text-sm text-muted-foreground">
+                <h3 className="text-base font-semibold text-foreground">Enable your authenticator</h3>
+                <p className="text-base text-muted-foreground">
                     An authenticator is required as a second factor for admin sign-in. Scan the code,
                     then enter the six digits it shows.
                 </p>
@@ -46,7 +46,7 @@ export function TotpEnrolment({
 
             {needsPasskeyFirst || !qrCode ? (
                 <div className="space-y-3">
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-base text-muted-foreground">
                         Sign in with your passkey first — that creates the admin session this setup
                         needs — then return here to finish.
                     </p>
@@ -77,7 +77,7 @@ export function TotpEnrolment({
                         <div className="flex items-center gap-2">
                             <code
                                 id="totp-secret"
-                                className="flex-1 select-all break-all rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs"
+                                className="flex-1 select-all break-all rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm"
                             >
                                 {secret}
                             </code>

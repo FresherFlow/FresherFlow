@@ -2,14 +2,24 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { UrlParser } from '@fresherflow/parser';
 import { normalizeOpportunityUrl } from '@fresherflow/utils';
 import { logger } from '@fresherflow/utils';
+import { createRateLimiter } from '../../../middleware/rateLimit';
 
 const router = Router();
+
+// Unauthenticated and it writes ingestion rows from an attacker-supplied URL,
+// so the cap is tighter than the read limiters.
+const ingestLinkLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 20,
+    message: 'Too many link ingests. Please slow down.',
+    keyPrefix: 'opportunity_ingest',
+});
 
 /**
  * POST /api/opportunities/ingest
  * Public endpoint to "Magic Share" an opportunity by URL.
  */
-router.post('/ingest', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/ingest', ingestLinkLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { url } = req.body;
         if (!url || typeof url !== 'string') {

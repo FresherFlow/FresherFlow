@@ -25,6 +25,8 @@ import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
 import UserGroupIcon from '@heroicons/react/24/outline/UserGroupIcon';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
+import PlusIcon from '@heroicons/react/24/outline/PlusIcon';
+import ArrowRightIcon from '@heroicons/react/24/outline/ArrowRightIcon';
 import HomeIcon from '@heroicons/react/24/outline/HomeIcon';
 import BuildingOfficeIcon from '@heroicons/react/24/outline/BuildingOfficeIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
@@ -44,7 +46,6 @@ import { JobsFilterBar } from '@/features/jobs/components/JobsFilterBar';
 import { WalkinMapPane } from '@/features/jobs/components/WalkinMapPane';
 import {
     GovtPhaseTabs,
-    GovtCategoryFilter as GovtCategoryFilterComponent,
 } from '@/features/jobs/components/GovtPhaseTabs';
 import { type CategoryPageState } from '@/features/jobs/hooks/useCategoryPageState';
 import { formatJobFeedTitle } from '@/features/jobs/utils/formatJobFeedTitle';
@@ -140,8 +141,8 @@ function LiveTicker({ items }: { items: { label: string; href: string; tag: stri
 export function CategoryPageView({
     type, user, opportunities, filteredOpps, visibleOpps, isLoading, error, profileIncomplete, mounted, isDesktop,
     selectedOpp, handleSelectOpportunity, handleCloseOpportunityPane,
-    search, setSearch, filters, setFilters,
-    govtPhase, setGovtPhase, govtCategory, setGovtCategory, phaseCounts, categoryCounts,
+    search, setSearch, submitLiveSearch, clearLiveSearch, filters, setFilters,
+    govtPhase, setGovtPhase, govtCategory, setGovtCategory, phaseCounts,
     isMobileFilterOpen, setIsMobileFilterOpen, draftLoc, setDraftLoc, draftYear, setDraftYear,
     draftClosingSoon, setDraftClosingSoon, draftShowOnlySaved, setDraftShowOnlySaved,
     draftSector, setDraftSector, draftQualification, setDraftQualification, draftCourse, setDraftCourse,
@@ -351,10 +352,28 @@ export function CategoryPageView({
                     </BreadcrumbList>
                 </Breadcrumb>
             </div>
-            
-            <div className="absolute left-1/2 -translate-x-1/2 max-w-lg w-full pointer-events-auto">
-                <LiveTicker items={tickerItems} />
-            </div>
+
+            <div className="relative group w-full max-w-xl mx-auto flex-1 lg:ml-6">
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                        type="text"
+                        placeholder="Search exams, posts, departments..."
+                        value={search}
+                        onChange={e => setSearch(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') submitLiveSearch(); }}
+                        variant="search"
+                        className="pl-9 h-9 w-full"
+                    />
+                    {search && (
+                        <button
+                            onClick={() => { setSearch(''); clearLiveSearch(); }}
+                            aria-label="Clear search"
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full bg-card border border-border text-muted-foreground p-0.5"
+                        >
+                            <XMarkIcon className="w-3 h-3" />
+                        </button>
+                    )}
+                </div>
         </>
     ) : (
         <>
@@ -379,12 +398,13 @@ export function CategoryPageView({
                         placeholder="Search roles, companies, skills..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
+                        onKeyDown={e => { if (e.key === 'Enter') submitLiveSearch(); }}
                         variant="search"
                         className="pl-9 h-9 w-full"
                     />
                     {search && (
                         <button
-                            onClick={() => setSearch('')}
+                            onClick={() => { setSearch(''); clearLiveSearch(); }}
                             aria-label="Clear search"
                             className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full bg-card border border-border text-muted-foreground p-0.5"
                         >
@@ -446,26 +466,30 @@ export function CategoryPageView({
         <div id="feed-scroll-container" ref={feedRef} className="w-full max-w-7xl mx-auto flex flex-col" style={{ height: 'calc(100dvh - 3.5rem)' }}>
             {portalTarget && headerPortalContent ? createPortal(headerPortalContent, portalTarget) : null}
 
-            {/* Sticky header */}
-            <div ref={headerRef} className="shrink-0 bg-background/95 border-b border-border/50 px-3 md:px-6 pt-2.5 pb-0 space-y-2">
+            {/* Sticky header — transparent so it can never mismatch the page:
+                only blur + hairline remain, scrolled cards frost beneath */}
+            <div ref={headerRef} className="shrink-0 border-b border-border/50 bg-transparent px-3 backdrop-blur-md md:px-6 pt-2.5 pb-0 space-y-2">
 
             {type === 'GOVERNMENT' ? (
-                /* Govt Compact Top Row: Search + Count on left, Filters on right */
+                /* Govt Compact Top Row: Title/Count left, Filters right.
+                   Search lives in the header on desktop (portaled above) —
+                   the inline box below is mobile-only, like other feeds. */
                 <div className="flex items-center justify-between gap-3 pb-1">
-                    {/* Left: Compact Search Bar + Title/Count */}
+                    {/* Left: Compact Search Bar (mobile only) + Title/Count */}
                     <div className="flex items-center gap-3.5 flex-1 min-w-0">
-                        <div className="relative group max-w-md w-full">
+                        <div className="relative group max-w-md w-full lg:hidden">
                             <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                             <Input
                                 type="text"
                                 placeholder="Search exams, posts, departments..."
                                 value={search}
                                 onChange={e => setSearch(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') submitLiveSearch(); }}
                                 variant="searchGlow"
                                 className="pl-9 h-9 w-full"
                             />
                             {search && (
-                                <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-full p-0.5 hover:bg-muted">
+                                <button onClick={() => { setSearch(''); clearLiveSearch(); }} aria-label="Clear search" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-full p-0.5 hover:bg-muted">
                                     <XMarkIcon className="w-3.5 h-3.5" />
                                 </button>
                             )}
@@ -503,12 +527,13 @@ export function CategoryPageView({
                             placeholder="Search roles, companies, skills..."
                             value={search}
                             onChange={e => setSearch(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') submitLiveSearch(); }}
                             variant="search"
                             className="pl-9 h-9 w-full"
                         />
                         {search && (
                             <button
-                                onClick={() => setSearch('')}
+                                onClick={() => { setSearch(''); clearLiveSearch(); }}
                                 aria-label="Clear search"
                                 className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center rounded-full bg-card border border-border text-muted-foreground p-0.5"
                             >
@@ -580,27 +605,36 @@ export function CategoryPageView({
                 </>
             )}
 
-            {/* Govt tabs — shown below title row */}
+            {/* Govt tabs — phases only. Categories live in the sidebar
+                (same URL-driven state); the ticker sits under the title row
+                now that search owns the header. */}
             {type === 'GOVERNMENT' && (
                 <div className="space-y-1.5 pb-1">
+                    {tickerItems.length > 0 ? (
+                        <div className="max-w-xl">
+                            <LiveTicker items={tickerItems} />
+                        </div>
+                    ) : null}
                     <GovtPhaseTabs
                         active={govtPhase}
                         onChange={phase => { setGovtPhase(phase); setGovtCategory(null); }}
                         counts={phaseCounts}
                     />
-                    <GovtCategoryFilterComponent
-                        active={govtCategory}
-                        onChange={setGovtCategory}
-                        counts={categoryCounts}
-                    />
                 </div>
             )}
 
             {/* Active Chips */}
-            {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0) || (filters.source && filters.source.length > 0) || (filters.company && filters.company.length > 0) || (filters.experience && filters.experience.length > 0)) ? (
+            {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0) || (filters.source && filters.source.length > 0) || (filters.company && filters.company.length > 0) || (filters.experience && filters.experience.length > 0) || (type === 'GOVERNMENT' && govtCategory)) ? (
                 <div className="flex flex-wrap items-center gap-1.5 pb-2">
+                    {type === 'GOVERNMENT' && govtCategory ? (
+                        <button onClick={() => setGovtCategory(null)} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                            <AcademicCapIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span>{govtCategory}</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
+                        </button>
+                    ) : null}
                     {search && (
-                        <button onClick={() => setSearch('')} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                        <button onClick={() => { setSearch(''); clearLiveSearch(); }} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
                             <MagnifyingGlassIcon className="w-3.5 h-3.5 shrink-0" />
                             <span>{search}</span>
                             <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
@@ -819,13 +853,8 @@ export function CategoryPageView({
                         variant="ghost"
                     />
 
-                    <p className="mt-4 pt-3 border-t border-border/30 text-center text-sm text-muted-foreground">
-                        Know of an opening that&apos;s missing?{" "}
-                        <a href="/contribute" className="font-semibold text-primary hover:underline">
-                            Submit it →
-                        </a>
-                    </p>
-                    
+                    <SubmitOpeningInvite className="mt-5" />
+
                     {type !== 'GOVERNMENT' && (
                         <RelatedSearches 
                             opportunities={opportunities} 
@@ -1089,6 +1118,56 @@ priority={index < 4}
                 )}
 
             </div>{/* end scrollable content */}
+        </div>
+    );
+}
+
+/**
+ * Empty-state contribution invite.
+ *
+ * The feed above is a list of openings, so a missing one is best shown as an
+ * unfilled slot: a dashed rule with a dashed plus tile standing in for the row
+ * that should be there. Deliberately not a card — the rule is the structure
+ * and the tile is the only thing that moves, so the affordance reads as "add a
+ * row" rather than "here is another module". The tile fills on hover and the
+ * arrow nudges, so the row acknowledges the pointer without any animation on
+ * a control people click once.
+ *
+ * The copy names the review step because /contribute is moderated: promising
+ * an instant listing would be a lie the empty state is the worst place to tell.
+ */
+function SubmitOpeningInvite({ className }: { className?: string }) {
+    return (
+        <div className={cn('group/submit mx-auto w-full max-w-xl', className)}>
+            <div aria-hidden="true" className="border-t border-dashed border-border" />
+
+            <div className="flex flex-col gap-3 pt-4 sm:flex-row sm:items-center sm:gap-4">
+                <span
+                    aria-hidden="true"
+                    className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-dashed border-primary/40 bg-primary/5 text-primary transition-colors duration-150 ease-out group-hover/submit:border-solid group-hover/submit:bg-primary group-hover/submit:text-primary-foreground motion-reduce:transition-none"
+                >
+                    <PlusIcon className="size-4" />
+                </span>
+
+                <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-foreground">
+                        Know of an opening we&apos;re missing?
+                    </p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                        Share a job or a drive. Every submission is reviewed before it goes live.
+                    </p>
+                </div>
+
+                <Button asChild variant="default" size="chip" className="shrink-0">
+                    <Link href="/contribute">
+                        Submit one
+                        <ArrowRightIcon
+                            aria-hidden="true"
+                            className="h-4 w-4 shrink-0 transition-transform duration-150 ease-out group-hover/submit:translate-x-0.5 motion-reduce:transform-none"
+                        />
+                    </Link>
+                </Button>
+            </div>
         </div>
     );
 }

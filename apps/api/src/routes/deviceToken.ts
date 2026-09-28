@@ -2,8 +2,18 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
 import prisma from '../infrastructure/database/prisma';
 import { requireAuth } from '../middleware/auth';
+import { createRateLimiter } from '../middleware/rateLimit';
 
 const router = Router();
+
+// Token register/remove rides on login/logout; cap it like other session
+// writes (60/min). Limiter sits before auth.
+const deviceTokenLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 60,
+    message: 'Too many device token requests. Please slow down.',
+    keyPrefix: 'device-token',
+});
 
 const validation = [
     body('token').isString().notEmpty().withMessage('FCM token is required'),
@@ -15,7 +25,7 @@ const validation = [
  * Registers or updates a device's FCM push token for the authenticated user.
  * Called after login and whenever the FCM token refreshes.
  */
-router.post('/', requireAuth, validation, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.post('/', deviceTokenLimiter, requireAuth, validation, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
@@ -53,7 +63,7 @@ router.post('/', requireAuth, validation, async (req: Request, res: Response, ne
  * DELETE /api/device-token
  * Removes a device token on logout so the device stops receiving pushes.
  */
-router.delete('/', requireAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+router.delete('/', deviceTokenLimiter, requireAuth, async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
         const { token } = req.body as { token: string };
         if (!token) {

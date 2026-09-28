@@ -1,11 +1,21 @@
 import { Router } from 'express';
 import { prisma } from '@fresherflow/database';
 import { logger } from '@fresherflow/utils';
+import { createRateLimiter } from '../../middleware/rateLimit';
 
 const router = Router();
 
+// Public read path for the government board; the query is unbounded on the
+// client side, so it needs a cap above the global limiter.
+const publicGovtReadLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 60,
+    message: 'Too many requests. Please slow down.',
+    keyPrefix: 'public-govt-read',
+});
+
 // GET all government jobs (publicly visible)
-router.get('/', async (req, res, next) => {
+router.get('/', publicGovtReadLimiter, async (req, res, next) => {
     try {
         const jobs = await prisma.governmentJobDetails.findMany({
             where: {
@@ -30,9 +40,11 @@ router.get('/', async (req, res, next) => {
 });
 
 // GET single government job by jobId
-router.get('/:jobId', async (req, res, next) => {
+router.get('/:jobId', publicGovtReadLimiter, async (req, res, next) => {
     try {
-        const { jobId } = req.params;
+        // Express widens route params to `string | string[]` once extra
+        // middleware is on the handler chain, so coerce before the lookup.
+        const jobId = String(req.params.jobId ?? '');
         const job = await prisma.governmentJobDetails.findUnique({
             where: { opportunityId: jobId },
             include: {

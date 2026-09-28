@@ -352,7 +352,7 @@ export default function AdminLoginPage() {
                 <p className="text-center text-sm text-muted-foreground">
                     Moderator?{' '}
                     <Link
-                        href="/login?redirect=/admin/dashboard"
+                        href="/login?redirect=/moderation"
                         className="font-medium text-foreground underline-offset-4 hover:underline"
                     >
                         Sign in with your FresherFlow account

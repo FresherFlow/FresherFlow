@@ -1,9 +1,23 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+    ArrowUturnLeftIcon,
+    CheckIcon,
+    EyeIcon,
+    EyeSlashIcon,
+    TrashIcon,
+    XMarkIcon,
+} from '@heroicons/react/24/outline';
+import type { Opportunity } from '@fresherflow/types';
 import { apiClient } from '@/lib/api/client';
-import { cn } from "@/ui/cn";
+import { adminApi } from '@/lib/api/admin';
+import { Badge } from '@/ui/Badge';
+import { Button } from '@/ui/Button';
+import { Card, CardContent } from '@/ui/Card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/ui/Dialog';
 import { EmptyState } from '@/ui/EmptyState';
+import { ErrorMessage } from '@/ui/ErrorMessage';
 import { Input } from '@/ui/Input';
 import { Skeleton } from '@/ui/Skeleton';
 
@@ -98,6 +112,12 @@ function submitterLabel(submission: CommunitySubmission): string {
     return user.username ? `@${user.username}` : (user.fullName ?? user.email ?? 'Unknown');
 }
 
+function sourceBadgeLabel(submittedVia?: string): 'MCP' | 'Guest' | null {
+    if (submittedVia === 'mcp') return 'MCP';
+    if (submittedVia === 'community_guest') return 'Guest';
+    return null;
+}
+
 function formatWhen(iso: string): string {
     try {
         return new Date(iso).toLocaleString('en-IN', {
@@ -111,6 +131,18 @@ function formatWhen(iso: string): string {
     }
 }
 
+/**
+ * Noun for the currently selected queue, used in the inline confirmation copy.
+ */
+function queueNoun(kind: QueueKind): string {
+    if (kind === 'interview') return 'interview experience';
+    if (kind === 'hiring-post') return 'hiring post';
+    return 'update';
+}
+
+/** Short purpose line for the page. */
+const PAGE_DESCRIPTION = 'Shares from the contribute flow. Nothing goes live until it is approved here.';
+
 export default function AdminCommunitySubmissionsPage({ initialQueue = 'jobs' }: { initialQueue?: QueueKind } = {}) {
     const [status, setStatus] = useState<ReviewStatus>('PENDING_REVIEW');
     const [submissions, setSubmissions] = useState<CommunitySubmission[]>([]);
@@ -118,6 +150,10 @@ export default function AdminCommunitySubmissionsPage({ initialQueue = 'jobs' }:
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [busyId, setBusyId] = useState<string | null>(null);
+    /* Reason + confirm/cancel stay inline under the row they apply to, exactly
+       as before: the destructive step is unchanged in substance, only in
+       primitives. `AlertDialog` was evaluated and rejected — see the note on
+       the inline panel below. */
     const [rejectingId, setRejectingId] = useState<string | null>(null);
     const [rejectReason, setRejectReason] = useState('');
     const [queueKind, setQueueKind] = useState<QueueKind>(initialQueue);
@@ -125,6 +161,18 @@ export default function AdminCommunitySubmissionsPage({ initialQueue = 'jobs' }:
     const [modItems, setModItems] = useState<ModerationItem[]>([]);
     const [modTotal, setModTotal] = useState(0);
     const [modLoading, setModLoading] = useState(false);
+    const [search, setSearch] = useState('');
+    const [previewSubmission, setPreviewSubmission] = useState<CommunitySubmission | null>(null);
+
+    const visibleSubmissions = useMemo(() => {
+        const query = search.trim().toLowerCase();
+        if (!query) return submissions;
+        return submissions.filter((submission) =>
+            submission.title.toLowerCase().includes(query) ||
+            (submission.company ?? '').toLowerCase().includes(query) ||
+            submission.sourceUrl.toLowerCase().includes(query)
+        );
+    }, [submissions, search]);
 
     const load = useCallback(async (nextStatus: ReviewStatus) => {
         setLoading(true);
@@ -221,132 +269,202 @@ export default function AdminCommunitySubmissionsPage({ initialQueue = 'jobs' }:
         [load, status]
     );
 
+    /** Retry whichever loader the visible queue uses. */
+    const retry = useCallback(() => {
+        if (queueKind === 'jobs') {
+            void load(status);
+        } else {
+            void loadMod(queueKind, modStatus);
+        }
+    }, [load, loadMod, queueKind, status, modStatus]);
+
+    /** A background refetch with rows already on screen, so the operator knows
+     *  the list is live without the rows disappearing under them. */
+    const refreshing =
+        queueKind === 'jobs' ? loading && submissions.length > 0 : modLoading && modItems.length > 0;
+
     return (
-        <div className="mx-auto w-full max-w-5xl flex-1 space-y-6 overflow-y-auto p-4 md:p-8">
-            <div className="flex items-start justify-between gap-4">
+        // `flex-1 min-h-0 overflow-y-auto` is load-bearing: the admin shell
+        // clips its content column, so a page without its own scroll container
+        // cannot be scrolled and the bottom of the queue is unreachable.
+        // `min-h-0` is what lets this flex child shrink far enough for
+        // `overflow-y-auto` to engage at all — with only `flex-1` the child
+        // never shrinks, its own scroller stays inert, and the shell's
+        // `overflow-hidden` silently cuts the last rows.
+        //
+        // No page-level top padding: AdminLayoutClient already reserves the
+        // mobile top offset with `pt-14 md:pt-18 lg:pt-0` on the content column.
+        // `pb-20` clears the fixed AdminBottomNav, which does render on this
+        // path and is `md:hidden`, so `md:p-8` — which includes the bottom edge —
+        // takes over from there. No `mx-auto max-w-*` either: the shell already
+        // constrains the column to `max-w-7xl`.
+        //
+        // The `h1` is `sr-only` below `lg`: `MobileTopNav` prints the route name
+        // on a phone and `TopHeaderBar` prints it at `lg+`, so this heading made
+        // the page name appear twice on mobile. It stays in the document so the
+        // page still has a heading for screen readers. The description is body
+        // copy, so it is `text-base` — the same step already taken on
+        // /admin/users and /admin/audit.
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-6 p-4 text-foreground md:p-8">
+            <div className="flex shrink-0 flex-wrap items-end justify-between gap-2">
                 <div>
-                    <h1 className="text-2xl font-bold tracking-tight text-foreground">Community submissions</h1>
-                    <p className="mt-1 text-muted-foreground">
-                        Shares from the contribute flow. Nothing goes live until it is approved here.
-                    </p>
+                    <h1 className="sr-only lg:not-sr-only text-2xl font-semibold tracking-tight text-foreground">
+                        Community submissions
+                    </h1>
+                    <p className="mt-1 text-base text-muted-foreground">{PAGE_DESCRIPTION}</p>
                 </div>
-                {pendingCount > 0 ? (
-                    <span className="shrink-0 rounded-full bg-muted px-3 py-1 text-xs font-bold uppercase tracking-widest text-foreground">
-                        {pendingCount} pending
-                    </span>
-                ) : null}
+                <div className="flex flex-wrap items-center gap-2">
+                    {pendingCount > 0 ? (
+                        <Badge variant="warning" size="sm" aria-live="polite">
+                            {pendingCount} pending
+                        </Badge>
+                    ) : null}
+                    {refreshing ? (
+                        <Badge variant="muted" size="sm" aria-live="polite">
+                            Updating…
+                        </Badge>
+                    ) : null}
+                </div>
             </div>
 
-            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Review queues">
+            {/* `role="group"` + `aria-pressed`, not `role="tab"`: these chips
+                switch the filter and have no tabpanel to control, so claiming
+                the tab role was announcing a relationship that did not exist. */}
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Review queues">
                 {QUEUE_TABS.map((tab) => (
-                    <button
+                    <Button
                         key={tab.value}
                         type="button"
-                        role="tab"
-                        aria-selected={queueKind === tab.value}
+                        size="sm"
+                        variant={queueKind === tab.value ? 'default' : 'outline'}
+                        aria-pressed={queueKind === tab.value}
                         onClick={() => setQueueKind(tab.value)}
-                        className={cn(
-                            'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors',
-                            queueKind === tab.value
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground'
-                        )}
                     >
                         {tab.label}
-                    </button>
+                    </Button>
                 ))}
             </div>
 
             {queueKind === 'jobs' ? (
-            <div className="flex flex-wrap gap-2">
-                {FILTERS.map((filter) => (
-                    <button
-                        key={filter.value}
-                        type="button"
-                        onClick={() => setStatus(filter.value)}
-                        className={cn(
-                            'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors',
-                            status === filter.value
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground'
-                        )}
-                    >
-                        {filter.label}
-                    </button>
-                ))}
-            </div>
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Filter submissions by review status">
+                    {FILTERS.map((filter) => (
+                        <Button
+                            key={filter.value}
+                            type="button"
+                            size="sm"
+                            variant={status === filter.value ? 'default' : 'outline'}
+                            aria-pressed={status === filter.value}
+                            onClick={() => setStatus(filter.value)}
+                        >
+                            {filter.label}
+                        </Button>
+                    ))}
+                </div>
             ) : (
-            <div className="flex flex-wrap items-center gap-2">
-                {MOD_STATUSES.map((filter) => (
-                    <button
-                        key={filter.value}
-                        type="button"
-                        onClick={() => setModStatus(filter.value)}
-                        className={cn(
-                            'rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors',
-                            modStatus === filter.value
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-muted/40 text-muted-foreground hover:bg-muted/70 hover:text-foreground'
-                        )}
-                    >
-                        {filter.label}
-                    </button>
-                ))}
-                {modTotal > 0 ? (
-                    <span className="text-xs text-muted-foreground">{modTotal} total</span>
-                ) : null}
-            </div>
+                <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter items by status">
+                    {MOD_STATUSES.map((filter) => (
+                        <Button
+                            key={filter.value}
+                            type="button"
+                            size="sm"
+                            variant={modStatus === filter.value ? 'default' : 'outline'}
+                            aria-pressed={modStatus === filter.value}
+                            onClick={() => setModStatus(filter.value)}
+                        >
+                            {filter.label}
+                        </Button>
+                    ))}
+                    {modTotal > 0 ? (
+                        <Badge variant="secondary" size="sm">
+                            {modTotal} in this view
+                        </Badge>
+                    ) : null}
+                </div>
             )}
 
             {error ? (
-                <div className="rounded-xl border border-dashed border-border bg-card p-6 text-center text-xs text-destructive">
-                    {error}{' '}
-                    <button
-                        type="button"
-                        onClick={() => void load(status)}
-                        className="font-semibold text-primary hover:underline"
-                    >
-                        Retry
-                    </button>
-                </div>
+                <ErrorMessage
+                    className="shrink-0"
+                    message={error}
+                    onRetry={retry}
+                    variant="subtle"
+                />
             ) : null}
 
             {queueKind === 'jobs' ? (
-            loading ? (
-                <div className="space-y-2" aria-hidden="true">
-                    <Skeleton className="h-3 w-full" />
-                    <Skeleton className="h-3 w-4/5" />
-                    <Skeleton className="h-3 w-3/5" />
-                </div>
-            ) : submissions.length === 0 ? (
-                <EmptyState
-                    title="Nothing here"
-                    description={status === 'PENDING_REVIEW' ? 'The review queue is clear.' : 'No submissions in this view yet.'}
-                    icon="inbox"
-                    size="md"
-                    variant="ghost"
-                />
-            ) : (
-                <div className="space-y-2">
-                    {submissions.map((submission) => (
-                        <SubmissionRow
-                            key={submission.id}
-                            submission={submission}
-                            busy={busyId === submission.id}
-                            rejecting={rejectingId === submission.id}
-                            rejectReason={rejectReason}
-                            onStartReject={() => {
-                                setRejectingId(submission.id);
-                                setRejectReason('');
-                            }}
-                            onCancelReject={() => setRejectingId(null)}
-                            onRejectReasonChange={setRejectReason}
-                            onApprove={() => void decide(submission, 'approve')}
-                            onReject={() => void decide(submission, 'reject', rejectReason.trim() || undefined)}
+                loading ? (
+                    <div className="space-y-2" aria-hidden="true">
+                        <Skeleton className="h-3 w-full" />
+                        <Skeleton className="h-3 w-4/5" />
+                        <Skeleton className="h-3 w-3/5" />
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        <Input
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search title, company or URL…"
+                            variant="search"
+                            aria-label="Search submissions"
+                            className="h-9 w-full sm:w-72"
                         />
-                    ))}
-                </div>
-            )
+                        {visibleSubmissions.length === 0 ? (
+                            search.trim() !== '' ? (
+                                <EmptyState
+                                    title="No matching submissions"
+                                    description="Nothing here matches your search."
+                                    icon="search"
+                                    size="md"
+                                    variant="ghost"
+                                    action={
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => setSearch('')}
+                                        >
+                                            Clear search
+                                        </Button>
+                                    }
+                                />
+                            ) : (
+                                <EmptyState
+                                    title="Nothing here"
+                                    description={
+                                        status === 'PENDING_REVIEW'
+                                            ? 'The review queue is clear.'
+                                            : 'No submissions in this view yet.'
+                                    }
+                                    icon="inbox"
+                                    size="md"
+                                    variant="ghost"
+                                />
+                            )
+                        ) : (
+                            <ul className="space-y-3">
+                                {visibleSubmissions.map((submission) => (
+                                    <li key={submission.id}>
+                                        <SubmissionRow
+                                            submission={submission}
+                                            busy={busyId === submission.id}
+                                            rejecting={rejectingId === submission.id}
+                                            rejectReason={rejectReason}
+                                            onStartReject={() => {
+                                                setRejectingId(submission.id);
+                                                setRejectReason('');
+                                            }}
+                                            onCancelReject={() => setRejectingId(null)}
+                                            onRejectReasonChange={setRejectReason}
+                                            onApprove={() => void decide(submission, 'approve')}
+                                            onReject={() => void decide(submission, 'reject', rejectReason.trim() || undefined)}
+                                            onPreview={() => setPreviewSubmission(submission)}
+                                        />
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                )
             ) : modLoading ? (
                 <div className="space-y-2" aria-hidden="true">
                     <Skeleton className="h-3 w-full" />
@@ -362,32 +480,49 @@ export default function AdminCommunitySubmissionsPage({ initialQueue = 'jobs' }:
                     variant="ghost"
                 />
             ) : (
-                <div className="space-y-2">
+                <ul className="space-y-3">
                     {modItems.map((item) => (
-                        <ModerationRow
-                            key={item.id}
-                            item={item}
-                            kind={queueKind}
-                            busy={busyId === item.id}
-                            rejecting={rejectingId === item.id}
-                            rejectReason={rejectReason}
-                            onStartReject={() => {
-                                setRejectingId(item.id);
-                                setRejectReason('');
-                            }}
-                            onCancelReject={() => setRejectingId(null)}
-                            onRejectReasonChange={setRejectReason}
-                            onRemove={() => void decideMod(item, 'remove', rejectReason.trim() || undefined)}
-                            onRestore={() => void decideMod(item, 'restore')}
-                            onDelete={() => void decideMod(item, 'delete')}
-                        />
+                        <li key={item.id}>
+                            <ModerationRow
+                                item={item}
+                                kind={queueKind}
+                                busy={busyId === item.id}
+                                rejecting={rejectingId === item.id}
+                                rejectReason={rejectReason}
+                                onStartReject={() => {
+                                    setRejectingId(item.id);
+                                    setRejectReason('');
+                                }}
+                                onCancelReject={() => setRejectingId(null)}
+                                onRejectReasonChange={setRejectReason}
+                                onRemove={() => void decideMod(item, 'remove', rejectReason.trim() || undefined)}
+                                onRestore={() => void decideMod(item, 'restore')}
+                                onDelete={() => void decideMod(item, 'delete')}
+                            />
+                        </li>
                     ))}
-                </div>
+                </ul>
             )}
+
+            <SubmissionPreviewModal
+                submission={previewSubmission}
+                onClose={() => setPreviewSubmission(null)}
+            />
         </div>
     );
 }
 
+/**
+ * One already-published community item. The action set depends on the queue and
+ * the current status; every destructive action expands the same optional-reason
+ * confirmation under the row.
+ *
+ * The reason step stayed inline rather than moving into `AlertDialog`: the
+ * primitive only forwards a reason to `onConfirm` when `requireReason` is set,
+ * and `requireReason` also disables the confirm button until text is typed
+ * (`ui/AlertDialog.tsx`). Adopting it would make the reason mandatory and block
+ * a reasonless reject/removal the API still accepts, i.e. a behaviour change.
+ */
 function ModerationRow({
     item,
     kind,
@@ -425,98 +560,110 @@ function ModerationRow({
             : ((item.description ?? item.body ?? '').slice(0, 220) || null);
 
     return (
-        <div className="space-y-3 rounded-xl border border-border bg-card p-4">
-            <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 space-y-1">
-                    <h3 className="truncate text-sm font-bold text-foreground">{heading}</h3>
-                    <p className="truncate text-xs text-muted-foreground">
-                        {modAuthorLabel(item)} · {formatWhen(item.createdAt)}
-                        {item.opportunity ? ` · ${item.opportunity.title}` : null}
-                    </p>
-                    {preview ? (
-                        <p className="line-clamp-2 text-xs text-muted-foreground">{preview}</p>
-                    ) : null}
-                </div>
+        <Card>
+            <CardContent className="space-y-3 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-1">
+                        <h3 className="truncate text-sm font-semibold text-foreground">{heading}</h3>
+                        <p className="truncate text-xs text-muted-foreground">
+                            {modAuthorLabel(item)} · {formatWhen(item.createdAt)}
+                            {item.opportunity ? ` · ${item.opportunity.title}` : null}
+                        </p>
+                        {preview ? (
+                            <p className="line-clamp-2 text-xs text-muted-foreground">{preview}</p>
+                        ) : null}
+                    </div>
 
-                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                    {item.opportunity ? (
-                        <a
-                            href={`/jobs/${item.opportunity.slug}`}
-                            className="text-xs font-semibold text-primary hover:underline"
-                        >
-                            View
-                        </a>
-                    ) : null}
-                    {isLive && kind !== 'update' ? (
-                        <button
-                            type="button"
-                            onClick={onStartReject}
-                            disabled={busy}
-                            className="inline-flex h-8 items-center rounded-lg px-3 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-destructive disabled:opacity-50"
-                        >
-                            Remove
-                        </button>
-                    ) : null}
-                    {isRemoved ? (
-                        <button
-                            type="button"
-                            onClick={onRestore}
-                            disabled={busy}
-                            className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50"
-                        >
-                            {busy ? 'Working…' : 'Restore'}
-                        </button>
-                    ) : null}
-                    {kind === 'update' && isLive ? (
-                        <button
-                            type="button"
-                            onClick={onStartReject}
-                            disabled={busy}
-                            className="inline-flex h-8 items-center rounded-lg px-3 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-destructive disabled:opacity-50"
-                        >
-                            Delete
-                        </button>
-                    ) : null}
-                </div>
-            </div>
-
-            {rejecting ? (
-                <div className="space-y-2 border-t border-border pt-3">
-                    <label htmlFor={`mod-${item.id}`} className="block text-xs font-semibold text-foreground">
-                        {kind === 'update'
-                            ? 'This permanently deletes the update. Reason (logged in audit)'
-                            : 'Reason (logged in audit)'}
-                    </label>
-                    <input
-                        id={`mod-${item.id}`}
-                        value={rejectReason}
-                        onChange={(e) => onRejectReasonChange(e.target.value)}
-                        placeholder="e.g. Spam, abusive, or off-topic"
-                        className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
-                    />
-                    <div className="flex gap-2">
-                        <button
-                            type="button"
-                            onClick={kind === 'update' ? onDelete : onRemove}
-                            disabled={busy}
-                            className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50"
-                        >
-                            {kind === 'update' ? 'Confirm delete' : 'Confirm remove'}
-                        </button>
-                        <button
-                            type="button"
-                            onClick={onCancelReject}
-                            disabled={busy}
-                            className="inline-flex h-8 items-center rounded-lg px-3 text-xs font-semibold text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                        >
-                            Cancel
-                        </button>
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                        {item.opportunity ? (
+                            <Button asChild variant="ghost" size="sm">
+                                <a href={`/jobs/${item.opportunity.slug}`}>View</a>
+                            </Button>
+                        ) : null}
+                        {isLive && kind !== 'update' ? (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                disabled={busy}
+                                onClick={onStartReject}
+                            >
+                                <EyeSlashIcon className="h-3.5 w-3.5 sm:mr-1.5" />
+                                Remove
+                            </Button>
+                        ) : null}
+                        {isRemoved ? (
+                            <Button
+                                type="button"
+                                variant="default"
+                                size="sm"
+                                disabled={busy}
+                                onClick={onRestore}
+                            >
+                                <ArrowUturnLeftIcon className="h-3.5 w-3.5 sm:mr-1.5" />
+                                {busy ? 'Working…' : 'Restore'}
+                            </Button>
+                        ) : null}
+                        {kind === 'update' && isLive ? (
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                disabled={busy}
+                                onClick={onStartReject}
+                            >
+                                <TrashIcon className="h-3.5 w-3.5 sm:mr-1.5" />
+                                Delete
+                            </Button>
+                        ) : null}
                     </div>
                 </div>
-            ) : null}
-        </div>
+
+                {rejecting ? (
+                    <div className="space-y-2 border-t border-border pt-3">
+                        <label htmlFor={`mod-${item.id}`} className="block text-xs font-semibold text-foreground">
+                            {kind === 'update'
+                                ? 'This permanently deletes the update. Reason (logged in audit)'
+                                : `This hides the ${queueNoun(kind)} from the community. Reason (logged in audit)`}
+                        </label>
+                        <Input
+                            id={`mod-${item.id}`}
+                            value={rejectReason}
+                            onChange={(e) => onRejectReasonChange(e.target.value)}
+                            placeholder="e.g. Spam, abusive, or off-topic"
+                            aria-label="Moderation reason"
+                            disabled={busy}
+                        />
+                        <div className="flex flex-wrap gap-2">
+                            <Button
+                                type="button"
+                                variant={kind === 'update' ? 'destructive' : 'default'}
+                                size="sm"
+                                disabled={busy}
+                                onClick={kind === 'update' ? onDelete : onRemove}
+                            >
+                                {kind === 'update' ? 'Confirm delete' : 'Confirm remove'}
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                disabled={busy}
+                                onClick={onCancelReject}
+                            >
+                                Cancel
+                            </Button>
+                        </div>
+                    </div>
+                ) : null}
+            </CardContent>
+        </Card>
     );
 }
+/**
+ * One community submission. Approve commits immediately; Reject expands the
+ * same optional-reason confirmation the moderation rows use.
+ */
 function SubmissionRow({
     submission,
     busy,
@@ -527,6 +674,7 @@ function SubmissionRow({
     onRejectReasonChange,
     onApprove,
     onReject,
+    onPreview,
 }: {
     submission: CommunitySubmission;
     busy: boolean;
@@ -537,110 +685,312 @@ function SubmissionRow({
     onRejectReasonChange: (value: string) => void;
     onApprove: () => void;
     onReject: () => void;
+    onPreview: () => void;
 }) {
     const isPending = submission.status === 'PENDING_REVIEW';
     const rejectionReason = submission.extractedData?.rejectionReason;
+    const sourceBadge = sourceBadgeLabel(submission.extractedData?.submittedVia);
 
     return (
-        <div className="space-y-3 rounded-xl border border-border bg-card p-4">
-            <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="truncate text-sm font-bold text-foreground">{submission.title}</h3>
-                        {submission.company ? (
-                            <span className="text-xs text-muted-foreground">· {submission.company}</span>
-                        ) : null}
-                        {submission.extractedData?.withDetails ? (
-                            <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                                Details added
-                            </span>
-                        ) : null}
-                    </div>
-                    <p className="truncate text-xs text-muted-foreground">
-                        {submitterLabel(submission)} · {formatWhen(submission.createdAt)}
-                    </p>
-                    <a
-                        href={submission.sourceUrl}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                        className="block truncate text-xs text-primary hover:underline"
-                    >
-                        {submission.sourceUrl}
-                    </a>
-                    {submission.description ? (
-                        <p className="line-clamp-2 text-xs text-muted-foreground">{submission.description}</p>
-                    ) : null}
-                    {submission.status === 'REJECTED' && rejectionReason ? (
-                        <p className="rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive">
-                            Reason: {rejectionReason}
+        <Card>
+            <CardContent className="space-y-3 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="truncate text-sm font-semibold text-foreground">{submission.title}</h3>
+                            {submission.company ? (
+                                <span className="text-xs text-muted-foreground">· {submission.company}</span>
+                            ) : null}
+                            {submission.extractedData?.withDetails ? (
+                                <Badge variant="muted" size="sm">
+                                    Details added
+                                </Badge>
+                            ) : null}
+                            {sourceBadge ? (
+                                <Badge variant="muted" size="sm">
+                                    {sourceBadge}
+                                </Badge>
+                            ) : null}
+                        </div>
+                        <p className="truncate text-xs text-muted-foreground">
+                            {submitterLabel(submission)} · {formatWhen(submission.createdAt)}
                         </p>
-                    ) : null}
-                </div>
-
-                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                    {submission.opportunity && submission.status === 'PUBLISHED' ? (
                         <a
-                            href={`/jobs/${submission.opportunity.slug}`}
-                            className="text-xs font-semibold text-primary hover:underline"
+                            href={submission.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            className="block truncate text-xs text-primary hover:underline"
                         >
-                            View
+                            {submission.sourceUrl}
                         </a>
-                    ) : null}
-                    {isPending ? (
-                        <>
-                            <button
-                                type="button"
-                                onClick={onApprove}
-                                disabled={busy}
-                                className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50"
-                            >
-                                {busy ? 'Working…' : 'Approve'}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={onStartReject}
-                                disabled={busy}
-                                className="inline-flex h-8 items-center rounded-lg px-3 text-xs font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-destructive disabled:opacity-50"
-                            >
-                                Reject
-                            </button>
-                        </>
-                    ) : null}
-                </div>
-            </div>
+                        {submission.description ? (
+                            <p className="line-clamp-2 text-xs text-muted-foreground">{submission.description}</p>
+                        ) : null}
+                        {submission.status === 'REJECTED' && rejectionReason ? (
+                            <p className="rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive">
+                                Reason: {rejectionReason}
+                            </p>
+                        ) : null}
+                    </div>
 
-            {rejecting ? (
-                <div className="space-y-2 border-t border-border pt-3">
-                    <label htmlFor={`reject-${submission.id}`} className="block text-xs font-semibold text-foreground">
-                        Reason (shown to the contributor)
-                    </label>
-                    <input
-                        id={`reject-${submission.id}`}
-                        value={rejectReason}
-                        onChange={(e) => onRejectReasonChange(e.target.value)}
-                        placeholder="e.g. Link is dead or the role is not entry-level"
-                        className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
-                    />
-                    <div className="flex gap-2">
-                        <button
+                    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                        <Button
                             type="button"
-                            onClick={onReject}
+                            variant="ghost"
+                            size="sm"
                             disabled={busy}
-                            className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50"
+                            onClick={onPreview}
                         >
-                            Confirm reject
-                        </button>
-                        <button
-                            type="button"
-                            onClick={onCancelReject}
-                            disabled={busy}
-                            className="inline-flex h-8 items-center rounded-lg px-3 text-xs font-semibold text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                        >
-                            Cancel
-                        </button>
+                            <EyeIcon className="h-3.5 w-3.5 sm:mr-1.5" />
+                            Preview
+                        </Button>
+                        {submission.opportunity && submission.status === 'PUBLISHED' ? (
+                            <Button asChild variant="ghost" size="sm">
+                                <a href={`/jobs/${submission.opportunity.slug}`}>View</a>
+                            </Button>
+                        ) : null}
+                        {isPending ? (
+                            <>
+                                <Button
+                                    type="button"
+                                    variant="default"
+                                    size="sm"
+                                    disabled={busy}
+                                    onClick={onApprove}
+                                >
+                                    <CheckIcon className="h-3.5 w-3.5 sm:mr-1.5" />
+                                    {busy ? 'Working…' : 'Approve'}
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={busy}
+                                    onClick={onStartReject}
+                                >
+                                    <XMarkIcon className="h-3.5 w-3.5 sm:mr-1.5" />
+                                    Reject
+                                </Button>
+                            </>
+                        ) : null}
                     </div>
                 </div>
-            ) : null}
-        </div>
+
+                {rejecting ? (
+                    <div className="space-y-2 border-t border-border pt-3">
+                        <label htmlFor={`reject-${submission.id}`} className="block text-xs font-semibold text-foreground">
+                            Reason (shown to the contributor)
+                        </label>
+                        <Input
+                            id={`reject-${submission.id}`}
+                            value={rejectReason}
+                            onChange={(e) => onRejectReasonChange(e.target.value)}
+                            placeholder="e.g. Link is dead or the role is not entry-level"
+                            aria-label="Rejection reason"
+                            disabled={busy}
+                        />
+                        <div className="flex flex-wrap gap-2">
+                            <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                disabled={busy}
+                                onClick={onReject}
+                            >
+                                Confirm reject
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                disabled={busy}
+                                onClick={onCancelReject}
+                            >
+                                Cancel
+                            </Button>
+                        </div>
+                    </div>
+                ) : null}
+            </CardContent>
+        </Card>
+    );
+}
+
+function SubmissionPreviewModal({
+    submission,
+    onClose,
+}: {
+    submission: CommunitySubmission | null;
+    onClose: () => void;
+}) {
+    const [opp, setOpp] = useState<Opportunity | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [fetchError, setFetchError] = useState<string | null>(null);
+
+    const opportunityId = submission?.opportunityId ?? null;
+
+    useEffect(() => {
+        if (!submission || !opportunityId) {
+            setOpp(null);
+            setFetchError(null);
+            setIsLoading(false);
+            return;
+        }
+        let cancelled = false;
+        const fetchDetails = async () => {
+            setIsLoading(true);
+            setFetchError(null);
+            try {
+                // Same data access as AdminOpportunityPreviewModal (admin opportunity detail endpoint).
+                const response = await adminApi.getOpportunity(opportunityId) as { opportunity: Opportunity };
+                if (cancelled) return;
+                if (response?.opportunity) {
+                    setOpp(response.opportunity);
+                } else {
+                    throw new Error('Opportunity data not found');
+                }
+            } catch (err: unknown) {
+                if (cancelled) return;
+                setOpp(null);
+                setFetchError(err instanceof Error ? err.message : 'Failed to load opportunity preview.');
+            } finally {
+                if (!cancelled) setIsLoading(false);
+            }
+        };
+        void fetchDetails();
+        return () => {
+            cancelled = true;
+        };
+    }, [submission, opportunityId]);
+
+    const sourceBadge = submission ? sourceBadgeLabel(submission.extractedData?.submittedVia) : null;
+    const salaryText = opp
+        ? (opp.stipend ||
+            opp.salaryRange ||
+            (opp.salaryMin != null || opp.salaryMax != null
+                ? [opp.salaryMin ?? '', opp.salaryMax ?? ''].filter((v) => v !== '').join(' – ')
+                : null) ||
+            'Not specified')
+        : null;
+    const employmentText = opp
+        ? [...(opp.employmentTypes ?? []), ...(opp.workMode ? [opp.workMode] : [])].join(', ') || 'Not specified'
+        : null;
+    const walkIn = opp?.walkInDetails ?? null;
+
+    return (
+        <Dialog open={submission !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
+            {/* `max-h-4/5` is the token equivalent of the old `max-h-[85vh]`:
+                the dialog stays inside the viewport and scrolls internally. */}
+            <DialogContent className="max-h-4/5 max-w-2xl overflow-y-auto">
+                {submission ? (
+                    <div className="space-y-4">
+                        <DialogHeader>
+                            <DialogTitle>{submission.title}</DialogTitle>
+                            <div className="flex flex-wrap items-center gap-2 pt-1">
+                                {submission.company ? (
+                                    <span className="text-xs font-semibold text-foreground">{submission.company}</span>
+                                ) : null}
+                                {sourceBadge ? (
+                                    <Badge variant="muted" size="sm">
+                                        {sourceBadge}
+                                    </Badge>
+                                ) : null}
+                                <span className="text-xs text-muted-foreground">{submitterLabel(submission)}</span>
+                            </div>
+                        </DialogHeader>
+
+                        {isLoading ? (
+                            <div className="space-y-2" aria-hidden="true">
+                                <Skeleton className="h-3 w-3/4" />
+                                <Skeleton className="h-3 w-1/2" />
+                                <Skeleton className="h-3 w-2/3" />
+                            </div>
+                        ) : opp ? (
+                            <div className="space-y-4">
+                                {opp.description ? (
+                                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{opp.description}</p>
+                                ) : submission.description ? (
+                                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{submission.description}</p>
+                                ) : null}
+                                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                    <div className="rounded-xl border border-border bg-card p-3">
+                                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Locations</p>
+                                        <p className="mt-1 text-xs font-semibold text-foreground">
+                                            {(opp.locations ?? []).length > 0 ? (opp.locations ?? []).join(', ') : 'Not specified'}
+                                        </p>
+                                    </div>
+                                    <div className="rounded-xl border border-border bg-card p-3">
+                                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Salary</p>
+                                        <p className="mt-1 text-xs font-semibold text-foreground">{salaryText}</p>
+                                    </div>
+                                    <div className="rounded-xl border border-border bg-card p-3">
+                                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Employment</p>
+                                        <p className="mt-1 text-xs font-semibold text-foreground">{employmentText}</p>
+                                    </div>
+                                    <div className="rounded-xl border border-border bg-card p-3">
+                                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Eligibility</p>
+                                        <p className="mt-1 text-xs font-semibold text-foreground">
+                                            {[
+                                                (opp.allowedDegrees ?? []).length > 0 ? `Degrees: ${(opp.allowedDegrees ?? []).join(', ')}` : null,
+                                                (opp.allowedPassoutYears ?? []).length > 0 ? `Batch: ${[...(opp.allowedPassoutYears ?? [])].sort().join(', ')}` : null,
+                                                (opp.requiredSkills ?? []).length > 0 ? `Skills: ${(opp.requiredSkills ?? []).join(', ')}` : null,
+                                            ].filter(Boolean).join(' · ') || 'Not specified'}
+                                        </p>
+                                    </div>
+                                </div>
+                                {walkIn ? (
+                                    <div className="rounded-xl border border-border bg-card p-3">
+                                        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Walk-in</p>
+                                        <p className="mt-1 text-xs font-semibold text-foreground">
+                                            {[
+                                                (walkIn.dates ?? []).length > 0 ? (walkIn.dates ?? []).join(', ') : walkIn.dateRange ?? null,
+                                                walkIn.timeRange ?? null,
+                                            ].filter(Boolean).join(' · ') || 'Dates to be confirmed'}
+                                        </p>
+                                        {walkIn.venueAddress ? (
+                                            <p className="mt-1 text-xs text-muted-foreground">{walkIn.venueAddress}</p>
+                                        ) : null}
+                                    </div>
+                                ) : null}
+                                <a
+                                    href={opp.sourceLink ?? submission.sourceUrl}
+                                    target="_blank"
+                                    rel="noreferrer noopener"
+                                    className="block truncate text-xs text-primary hover:underline"
+                                >
+                                    {opp.sourceLink ?? submission.sourceUrl}
+                                </a>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {fetchError ? (
+                                    <p className="rounded-lg bg-muted px-2 py-1 text-xs text-muted-foreground">
+                                        Full draft unavailable ({fetchError}); showing submitted fields.
+                                    </p>
+                                ) : (
+                                    <p className="rounded-lg bg-muted px-2 py-1 text-xs text-muted-foreground">
+                                        Full draft unavailable for this submission; showing submitted fields.
+                                    </p>
+                                )}
+                                {submission.company ? (
+                                    <p className="text-xs font-semibold text-foreground">{submission.company}</p>
+                                ) : null}
+                                {submission.description ? (
+                                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{submission.description}</p>
+                                ) : null}
+                                <a
+                                    href={submission.sourceUrl}
+                                    target="_blank"
+                                    rel="noreferrer noopener"
+                                    className="block truncate text-xs text-primary hover:underline"
+                                >
+                                    {submission.sourceUrl}
+                                </a>
+                            </div>
+                        )}
+                    </div>
+                ) : null}
+            </DialogContent>
+        </Dialog>
     );
 }

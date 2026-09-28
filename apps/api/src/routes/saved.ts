@@ -87,42 +87,59 @@ router.post('/:id', requireAuth, async (req: Request, res: Response, next: NextF
 
 /**
  * GET /api/saved
- * Retrieve all saved opportunities for the authenticated user.
+ * Retrieve saved opportunities for the authenticated user (paginated).
+ * Backward compatible: `opportunities` keeps its shape; pagination fields
+ * (`page`, `limit`, `total`, `totalPages`, `hasMore`) are additive.
+ * No web/mobile caller passes page params today (web `savedApi.list()` takes
+ * no args; mobile has no savedApi usage), so the default first page preserves
+ * existing behavior while bounding the query.
  */
 router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = req.userId!;
-        const saved = await prisma.savedOpportunity.findMany({
-            // A bookmark created before a listing was soft-deleted must not keep
-            // its full record readable through this endpoint. This filter has to
-            // live in the top-level `where`: Prisma ignores `where` nested inside
-            // `include`, which would silently leak soft-deleted opportunities.
-            where: {
-                userId,
-                opportunity: { deletedAt: null }
-            },
-            include: {
-                opportunity: {
-                    include: {
-                        driveDetails: true,
-                        user: {
-                            select: { fullName: true }
-                        },
-                        actions: {
-                            where: { userId }
+        const rawPage = parseInt(String(req.query.page ?? '1'), 10);
+        const rawLimit = parseInt(String(req.query.limit ?? '20'), 10);
+        const page = Number.isFinite(rawPage) ? Math.min(Math.max(rawPage, 1), 1000) : 1;
+        const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 50) : 20;
+        const skip = (page - 1) * limit;
+        const where = {
+            userId,
+            opportunity: { deletedAt: null }
+        };
+        const [total, saved] = await Promise.all([
+            prisma.savedOpportunity.count({ where }),
+            prisma.savedOpportunity.findMany({
+                // A bookmark created before a listing was soft-deleted must not keep
+                // its full record readable through this endpoint. This filter has to
+                // live in the top-level `where`: Prisma ignores `where` nested inside
+                // `include`, which would silently leak soft-deleted opportunities.
+                where,
+                include: {
+                    opportunity: {
+                        include: {
+                            driveDetails: true,
+                            user: {
+                                select: { fullName: true }
+                            },
+                            actions: {
+                                where: { userId }
+                            }
                         }
                     }
-                }
-            },
-            orderBy: { createdAt: 'desc' }
-        });
+                },
+                orderBy: { createdAt: 'desc' },
+                take: limit,
+                skip,
+            }),
+        ]);
 
         const opportunities = saved.map((s) => ({
             ...(s.opportunity as NonNullable<typeof s.opportunity>),
             isSaved: true
         }));
 
-        res.json({ opportunities });
+        const totalPages = Math.max(1, Math.ceil(total / limit));
+        res.json({ opportunities, page, limit, total, totalPages, hasMore: page < totalPages });
     } catch (error) {
         next(error);
     }

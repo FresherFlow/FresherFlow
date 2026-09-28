@@ -7,9 +7,26 @@ import { userActionSchema } from '../utils/validation';
 import { AppError } from '../middleware/errorHandler';
 import { checkEligibility } from '@fresherflow/utils';
 import { logger } from '@fresherflow/utils';
+import { createRateLimiter } from '../middleware/rateLimit';
 
 
 const router: Router = express.Router();
+
+// Reads stay lenient (120/min, like communityReadLimiter); the signal write
+// is stricter (30/min, like signalsLimiter). IP-keyed, limiter before auth.
+const actionsReadLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 120,
+    message: 'Too many requests. Please try again in a minute.',
+    keyPrefix: 'actions_read',
+});
+
+const actionsWriteLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 30,
+    message: 'Too many action updates. Please slow down.',
+    keyPrefix: 'actions_write',
+});
 
 /**
  * Phase 8 boundary — UserAction is the LIGHTWEIGHT SIGNAL only.
@@ -26,7 +43,7 @@ const router: Router = express.Router();
 
 
 // POST /api/opportunities/:id/action
-router.post('/:id/action', requireAuth, validate(userActionSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/:id/action', actionsWriteLimiter, requireAuth, validate(userActionSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id: opportunityId } = req.params as { id: string };
         const { actionType } = req.body;
@@ -131,7 +148,7 @@ router.post('/:id/action', requireAuth, validate(userActionSchema), async (req: 
 });
 
 // GET /api/actions - User's own actions only
-router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', actionsReadLimiter, requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const actions = await prisma.userAction.findMany({
             where: { userId: req.userId },
@@ -152,7 +169,7 @@ router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunct
 });
 
 // GET /api/actions/summary - Aggregated counts only
-router.get('/summary', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/summary', actionsReadLimiter, requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const [applied, planned, interviewed, selected, oa, rejected] = await Promise.all([
             prisma.userAction.count({
@@ -197,7 +214,7 @@ router.get('/summary', requireAuth, async (req: Request, res: Response, next: Ne
 });
 
 // DELETE /api/actions/:id - Remove action recording
-router.delete('/:id', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.delete('/:id', actionsWriteLimiter, requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const opportunityId = req.params.id as string;
 

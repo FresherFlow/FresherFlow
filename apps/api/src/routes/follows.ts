@@ -2,9 +2,26 @@ import { Router } from 'express';
 import { FollowType, prisma } from '@fresherflow/database';
 import { requireAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
+import { createRateLimiter } from '../middleware/rateLimit';
 import { z } from 'zod';
 
 const router = Router();
+
+// Reads stay lenient (120/min, like communityReadLimiter); follow writes are
+// stricter (30/min, like signalsLimiter). Limiter sits before auth.
+const followsReadLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 120,
+  message: 'Too many requests. Please try again in a minute.',
+  keyPrefix: 'follows_read',
+});
+
+const followsWriteLimiter = createRateLimiter({
+  windowMs: 60 * 1000,
+  max: 30,
+  message: 'Too many follow updates. Please slow down.',
+  keyPrefix: 'follows_write',
+});
 
 const FollowSchema = z.object({
   type: z.enum(['TAG', 'COMPANY', 'CONTRIBUTOR']),
@@ -12,7 +29,7 @@ const FollowSchema = z.object({
 });
 
 // GET /api/follows
-router.get('/', requireAuth, async (req, res, next) => {
+router.get('/', followsReadLimiter, requireAuth, async (req, res, next) => {
   try {
     if (!req.userId) {
       return next(new AppError('Authentication required', 401));
@@ -33,7 +50,7 @@ router.get('/', requireAuth, async (req, res, next) => {
 });
 
 // POST /api/follows
-router.post('/', requireAuth, async (req, res, next) => {
+router.post('/', followsWriteLimiter, requireAuth, async (req, res, next) => {
   try {
     const { type, value } = FollowSchema.parse(req.body);
     const userId = req.userId;
@@ -69,7 +86,7 @@ router.post('/', requireAuth, async (req, res, next) => {
 });
 
 // DELETE /api/follows
-router.delete('/', requireAuth, async (req, res, next) => {
+router.delete('/', followsWriteLimiter, requireAuth, async (req, res, next) => {
   try {
     const { type, value } = FollowSchema.parse(req.body);
     const userId = req.userId;

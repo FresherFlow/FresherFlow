@@ -2,16 +2,26 @@ import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../../../infrastructure/database/prisma';
 import { areOpportunityUrlsEquivalent, getOpportunityUrlAliases, normalizeOpportunityUrl } from '@fresherflow/utils';
 import { requireAuth } from '../../../middleware/auth';
+import { createRateLimiter } from '../../../middleware/rateLimit';
 import { updateOpportunityEngagement } from '../../../application/opportunity/engagement';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
 
 const router = Router();
 
+// A share can create an ingestion source, a raw row and a draft listing, so it
+// is capped well below the read limit.
+const shareLimiter = createRateLimiter({
+    windowMs: 60 * 60 * 1000,
+    max: 20,
+    message: 'Too many shares. Please try again later.',
+    keyPrefix: 'opportunity_share',
+});
+
 /**
  * POST /api/opportunities/share
  * Lightweight endpoint to share a link for background processing.
  */
-router.post('/share', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/share', requireAuth, shareLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { url, title: bodyTitle, company: bodyCompany } = req.body;
         const userId = req.userId as string;

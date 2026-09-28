@@ -322,4 +322,40 @@ export const communityApi = {
         const suffix = query.toString();
         return apiClient<CommunityFeedResult>(`/api/rooms/${encodeURIComponent(slug)}/posts${suffix ? `?${suffix}` : ''}`);
     },
+
+    listRoomOpportunities: (slug: string, params?: { page?: number; limit?: number; reason?: 'PINNED' | 'SHARED' }) => {
+        const query = new URLSearchParams();
+        if (params?.page) query.set('page', String(params.page));
+        if (params?.limit) query.set('limit', String(params.limit));
+        if (params?.reason) query.set('reason', params.reason);
+        const suffix = query.toString();
+        return apiClient<{
+            opportunities: Array<{
+                reason: 'PINNED' | 'SHARED';
+                createdAt: string;
+                opportunity: {
+                    id: string;
+                    slug: string;
+                    title: string;
+                    company: string;
+                    locations: string[];
+                    salaryRange: string | null;
+                    status: string;
+                    postedAt: string;
+                    expiresAt: string | null;
+                };
+                addedBy: { id: string; fullName: string | null; username: string | null } | null;
+            }>;
+            total: number;
+            page: number;
+            limit: number;
+            hasMore: boolean;
+        }>(`/api/rooms/${encodeURIComponent(slug)}/opportunities${suffix ? `?${suffix}` : ''}`);
+    },
+
+    shareRoomOpportunity: (slug: string, opportunityId: string) =>
+        apiClient<{ deduped: boolean; message?: string }>(`/api/rooms/${encodeURIComponent(slug)}/opportunities`, {
+            method: 'POST',
+            body: JSON.stringify({ opportunityId }),
+        }),
 };

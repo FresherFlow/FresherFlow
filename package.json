@@ -23,6 +23,7 @@
     "dev:worker": "pnpm --filter ./apps/worker dev",
     "dev:web": "pnpm --dir apps/web dev",
     "dev:web:filter": "pnpm --filter ./apps/web dev",
+    "dev:mcp": "pnpm --filter fresherflow-mcp dev",
     "dev:admin-mobile": "pnpm --filter ./apps/admin-mobile start",
     "dev:mobile": "pnpm --filter ./apps/mobile start",
     "build:ingestion": "pnpm --filter ./apps/ingestion build",

@@ -22,6 +22,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/ui/DropdownMenu";
+import { Badge } from "@/ui/Badge";
 import CompanyLogo from "@/features/companies/components/CompanyLogo";
 import { DataGridColumn } from "@/ui/data-grid/DataGrid";
 import { STICKY_AFTER_SELECT } from "@/ui/data-grid/sticky";
@@ -162,12 +163,17 @@ export function useOpportunityColumns(
         header: "Opportunity",
         enableSorting: true,
         // Pinned on mobile next to the select checkbox so operators keep
-        // row identity while scrolling (see ui/data-grid/sticky).
-        meta: { sticky: "left", stickyOffsetClass: STICKY_AFTER_SELECT },
+        // row identity while scrolling (see ui/data-grid/sticky). The offset
+        // only applies when a select column is actually rendered — without one
+        // it would leave a 40px hole at the left edge.
+        meta: {
+          sticky: "left",
+          stickyOffsetClass: enableSelection ? STICKY_AFTER_SELECT : undefined,
+        },
         cell: ({ row }) => {
           const opp = row.original;
           return (
-            <div className="flex items-center gap-3 min-w-0">
+            <div className="flex min-w-0 max-w-44 items-center gap-3 sm:max-w-72">
               <CompanyLogo
                 companyName={opp.company}
                 companyWebsite={opp.companyWebsite}
@@ -176,17 +182,23 @@ export function useOpportunityColumns(
                 isGovernment={isGovernmentOpportunity(opp)}
                 className="w-8 h-8 shrink-0"
               />
+              {/* Title and company are capped narrower on mobile: this is the
+                  pinned column, and at the desktop cap it filled the whole
+                  phone viewport, so the columns beside it never appeared. */}
               <div className="min-w-0">
                 <button
                   type="button"
                   onClick={() => actions.onPreview(opp.id)}
-                  className="font-semibold text-foreground hover:text-primary hover:underline text-left leading-snug truncate max-w-60 block cursor-pointer"
+                  className="block max-w-36 truncate text-left font-semibold leading-snug text-foreground hover:text-primary hover:underline sm:max-w-60"
                   title={opp.title}
                 >
                   {opp.title}
                 </button>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-xs text-muted-foreground truncate max-w-40">
+                <div className="mt-0.5 flex items-center gap-1.5">
+                  <span
+                    className="max-w-32 truncate text-sm text-muted-foreground sm:max-w-40"
+                    title={opp.company}
+                  >
                     {opp.company}
                   </span>
                 </div>
@@ -212,9 +224,9 @@ export function useOpportunityColumns(
         cell: ({ row }) => {
           const locations = row.original.locations || [];
           return (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <div className="flex max-w-44 items-center gap-1 text-sm text-muted-foreground sm:max-w-56">
               <MapPinIcon className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate max-w-40">
+              <span className="truncate">
                 {locations.length ? locations.join(", ") : "Not specified"}
               </span>
             </div>
@@ -260,11 +272,14 @@ export function useOpportunityColumns(
             row.original.applyLink || row.original.sourceLink,
           );
           if (!ats)
-            return <span className="text-muted-foreground text-xs">-</span>;
+            return <span className="text-muted-foreground">-</span>;
+          /* `Badge` instead of the hand-rolled chip this used to be, so the
+             source label picks up the primitive's own padding, type and
+             border rather than a second set of local classes. */
           return (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-muted border border-border text-xs font-medium text-muted-foreground tracking-wide">
+            <Badge variant="muted" size="sm">
               {ats}
-            </span>
+            </Badge>
           );
         },
       },

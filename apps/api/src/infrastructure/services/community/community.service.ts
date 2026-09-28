@@ -13,6 +13,7 @@ import {
     JobSignalType,
     NotificationType,
     ReportReason,
+    ReportStatus,
     type OpportunityCategory,
     type RecruitmentMethod,
     EmploymentType,
@@ -618,6 +619,52 @@ export async function getSignals(slugOrId: string, viewer: CommunityViewer = {})
     return buildSignalState(opportunity.id, viewer.userId);
 }
 
+/**
+ * Signals that mean "this listing is wrong", not "this happened to me".
+ *
+ * APPLIED/INTERVIEWED/OFFER/HELPFUL are the member's own history. CLOSED and
+ * INCORRECT are complaints about the listing, and a complaint that only lands in
+ * a counter is a complaint no moderator ever reads — so they raise a report.
+ */
+const SIGNAL_MODERATION_REASON: Partial<Record<JobSignalType, ReportReason>> = {
+    [JobSignalType.INCORRECT]: ReportReason.INACCURATE,
+    [JobSignalType.CLOSED]: ReportReason.EXPIRED,
+};
+
+/**
+ * Raise (or reuse) the OPEN moderation report behind a complaint signal.
+ *
+ * Deduped per opportunity + reason while a report is still OPEN: ten members
+ * flagging one dead listing is a single queue item, not ten. A report a
+ * moderator already resolved or dismissed does not block a later flag, because
+ * the job may legitimately have gone stale again.
+ */
+async function raiseSignalModerationReport(input: {
+    opportunityId: string;
+    reporterId: string;
+    signalType: JobSignalType;
+}) {
+    const reason = SIGNAL_MODERATION_REASON[input.signalType];
+    if (!reason) return;
+
+    const existing = await prisma.report.findFirst({
+        where: { opportunityId: input.opportunityId, reason, status: ReportStatus.OPEN },
+        select: { id: true },
+    });
+    if (existing) return;
+
+    await prisma.report.create({
+        data: {
+            reporterId: input.reporterId,
+            opportunityId: input.opportunityId,
+            reason,
+            message: `Auto-raised: a member flagged this listing as ${input.signalType}.`,
+            status: ReportStatus.OPEN,
+        },
+        select: { id: true },
+    });
+}
+
 export async function toggleSignal(input: { slugOrId: string; userId: string; signalType: JobSignalType }) {
     const opportunity = await resolveOpportunity(input.slugOrId);
 
@@ -642,6 +689,22 @@ export async function toggleSignal(input: { slugOrId: string; userId: string; si
                 signalType: input.signalType,
             },
         });
+
+        // The toggle the member asked for is already committed; a moderation
+        // write that fails must not turn their action into an error.
+        try {
+            await raiseSignalModerationReport({
+                opportunityId: opportunity.id,
+                reporterId: input.userId,
+                signalType: input.signalType,
+            });
+        } catch (error) {
+            logger.error('[community] Failed to auto-raise a report for a complaint signal', {
+                opportunityId: opportunity.id,
+                signalType: input.signalType,
+                error,
+            });
+        }
     }
 
     return buildSignalState(opportunity.id, input.userId);
@@ -730,6 +793,8 @@ export interface SubmitJobInput {
     contact?: string | null;
     submitterName?: string | null;
     submittedVia?: string | null;
+    /** Sector for government-style postings (e.g. 'GOVERNMENT'). Unset otherwise. */
+    sector?: string | null;
     /** When false, the opportunity is created as DRAFT and the submission as
      *  PENDING_REVIEW (anonymous MCP / guest submissions). Default true. */
     published?: boolean;
@@ -752,22 +817,39 @@ export async function resolveSubmitAttributionUserId(userId?: string | null): Pr
         cachedCommunityUserId = bot.id;
         return bot.id;
     }
-    const admin = await prisma.user.findFirst({ where: { role: 'ADMIN' }, select: { id: true } });
-    if (admin) {
-        cachedCommunityUserId = admin.id;
-        return admin.id;
+    // Anonymous submissions belong to the Community identity, never to a
+    // real admin account: showing "admin" as the submitter is wrong and
+    // misleading. Admin is the last resort (creation failure), not the default.
+    try {
+        const created = await prisma.user.create({
+            data: {
+                email: 'community@fresherflow.app',
+                username: 'fresherflow_community',
+                fullName: 'FresherFlow Community',
+                role: 'USER',
+            },
+            select: { id: true },
+        });
+        cachedCommunityUserId = created.id;
+        return created.id;
+    } catch {
+        const admin = await prisma.user.findFirst({ where: { role: 'ADMIN' }, select: { id: true } });
+        if (admin) {
+            cachedCommunityUserId = admin.id;
+            return admin.id;
+        }
+        const created = await prisma.user.create({
+            data: {
+                email: 'community@fresherflow.app',
+                username: 'fresherflow_community',
+                fullName: 'FresherFlow Community',
+                role: 'USER',
+            },
+            select: { id: true },
+        });
+        cachedCommunityUserId = created.id;
+        return created.id;
     }
-    const created = await prisma.user.create({
-        data: {
-            email: 'community@fresherflow.app',
-            username: 'fresherflow_community',
-            fullName: 'FresherFlow Community',
-            role: 'USER',
-        },
-        select: { id: true },
-    });
-    cachedCommunityUserId = created.id;
-    return created.id;
 }
 
 export async function submitJob(input: SubmitJobInput) {
@@ -955,6 +1037,10 @@ export async function submitJob(input: SubmitJobInput) {
                 postedByUserId: attributionUserId,
                 publishedAt: publish ? new Date() : null,
                 expiresAt,
+                // Community-submitted rows are human finds, never scrapes.
+                // (DB default is SCRAPED, which mislabels them.)
+                sourceKind: 'USER_SUBMITTED',
+                ...(input.sector === 'GOVERNMENT' ? { sector: 'GOVERNMENT' as const } : {}),
                 // Community detail fields (all optional, progressive disclosure)
                 companyWebsite,
                 companyLogoUrl,

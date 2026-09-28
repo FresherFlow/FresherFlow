@@ -1,8 +1,18 @@
 import { Router } from 'express';
 import prisma from '../../../infrastructure/database/prisma';
 import { z } from 'zod';
+import { createRateLimiter } from '../../../middleware/rateLimit';
 
 const router = Router();
+
+// Mobile polls this on resume, so the cap is generous — but it is still a
+// per-call database query on a public route.
+const syncReadLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 60,
+    message: 'Too many sync requests. Please slow down.',
+    keyPrefix: 'opportunity_sync',
+});
 
 const syncQuerySchema = z.object({
   since: z.string().optional(), // ISO String
@@ -13,7 +23,7 @@ const syncQuerySchema = z.object({
  * @desc    Lightweight endpoint to fetch only the status of opportunities changed since a timestamp.
  * @access  Public
  */
-router.get('/', async (req, res, next) => {
+router.get('/', syncReadLimiter, async (req, res, next) => {
   try {
     const { since } = syncQuerySchema.parse(req.query);
 

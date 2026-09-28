@@ -2,13 +2,23 @@ import express, { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../../infrastructure/database/prisma';
 import { OpportunityStatus } from '@fresherflow/types';
 import { Prisma } from '@prisma/client';
+import { createRateLimiter } from '../../middleware/rateLimit';
 
 const router: Router = express.Router();
 const DEFAULT_LIMIT = 1000;
 const MAX_LIMIT = 2000;
 const EXPIRED_GRACE_DAYS = 45;
 
-router.get('/opportunities', async (req: Request, res: Response, next: NextFunction) => {
+// A crawler fetches this once per page, so 30/min never touches a real bot while
+// still bounding someone paging 2000 rows a request as a data-mining loop.
+const sitemapLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 30,
+    message: 'Too many sitemap requests. Please slow down.',
+    keyPrefix: 'public-sitemap',
+});
+
+router.get('/opportunities', sitemapLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const limitRaw = Number(req.query.limit || DEFAULT_LIMIT);
         const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(Math.floor(limitRaw), 1), MAX_LIMIT) : DEFAULT_LIMIT;

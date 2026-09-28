@@ -26,6 +26,11 @@ const STATUSES: DispatchStatus[] = ['INITIATED', 'SENT', 'FAILED', 'SKIPPED'];
  * Compact notifications summary for the dashboard hub. Reuses the same
  * `adminApi.getAlertDispatchLogs` call shape as the full Alerts health page,
  * but renders only totals-by-status plus links out — no log table duplication.
+ *
+ * The four status boxes use the same base column count as the Overview tab's
+ * telemetry cards (`grid-cols-2`, stepping to `lg:grid-cols-4`): a single
+ * column below `sm` made these one-per-row on a phone, and the boxes are small
+ * enough to pair up without truncating the status names.
  */
 export function NotificationsSummary() {
     const [loading, setLoading] = useState(true);
@@ -73,7 +78,7 @@ export function NotificationsSummary() {
             </CardHeader>
             <CardContent>
                 {loading ? (
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         {STATUSES.map((status) => (
                             <div key={status} className="rounded-lg border border-border p-3">
                                 <div className="text-xs text-muted-foreground">{status}</div>
@@ -89,7 +94,7 @@ export function NotificationsSummary() {
                         </Button>
                     </div>
                 ) : (
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                         {STATUSES.map((status) => (
                             <div key={status} className="rounded-lg border border-border bg-card p-3">
                                 <div className="text-xs text-muted-foreground">{status}</div>

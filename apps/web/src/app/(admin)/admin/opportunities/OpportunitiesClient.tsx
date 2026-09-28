@@ -100,6 +100,8 @@ function OpportunitiesListPage() {
         <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden p-4 md:p-8">
             <AdminOpportunitiesHeader
                 exportUrl={exportUrl}
+                onRefresh={loadOpportunities}
+                isRefreshing={isLoading}
             />
 
             {/* Unified grid — sticky identity columns + horizontal

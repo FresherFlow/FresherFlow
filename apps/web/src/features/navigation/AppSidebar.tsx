@@ -2,8 +2,6 @@
 /* eslint-disable shadcn/no-arbitrary-values, shadcn/no-unknown-classes, shadcn/no-restyle, shadcn/require-static-classes, shadcn/no-raw-colors */
 
 import * as React from "react"
-import { X } from "lucide-react"
-import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 
 import { NavGroup } from "@/features/navigation/NavGroup"
@@ -16,19 +14,16 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
   SidebarRail,
   useSidebar,
 } from "@/ui/sidebar"
 import { useAuth } from "@/lib/auth/AuthContext"
-import { LogoImage } from "@/features/shell/LogoImage"
 import { cn } from "@/ui/cn"
 import { persistSpaceId, readSpaceId } from "@/features/navigation/sidebarState"
 import { useAppLayout } from "@/features/navigation/AppLayoutProvider"
 import {
   SPACES,
+  getSpace,
   getSpaceForPathname,
   type SpaceId,
 } from "@/features/navigation/navConfig"
@@ -95,58 +90,51 @@ function useSpaceSelection() {
   return { pathname, spaceId, setSpaceId, mounted, isAuthed, user }
 }
 
-/**
- * Brand block following shadcn-admin's header pattern exactly (TeamSwitcher
- * structure): a size-8 logo tile plus two-line wordmark inside a size-lg
- * menu button. No custom expanded/collapsed spans — the primitive's
- * overflow + size rules own the collapse animation, so opening/closing
- * matches the reference instead of snapping via display toggles.
- */
-function SidebarBrand({ href, className }: { href: string; className?: string }) {
-  return (
-    <SidebarMenu className={className}>
-      <SidebarMenuItem>
-        <SidebarMenuButton asChild size="lg">
-          <Link href={href} aria-label="FresherFlow home" suppressHydrationWarning>
-            <LogoImage width={28} height={28} className="h-7 w-7 shrink-0 object-contain" />
-            <div className="grid flex-1 text-start text-sm leading-tight">
-              <span className="truncate font-semibold">FresherFlow</span>
-            </div>
-          </Link>
-        </SidebarMenuButton>
-      </SidebarMenuItem>
-    </SidebarMenu>
-  )
-}
-
 function AppSidebarRail() {
   const router = useRouter()
-  const { spaceId, setSpaceId, mounted, isAuthed, user } = useSpaceSelection()
+  const { spaceId, setSpaceId, mounted, isAuthed } = useSpaceSelection()
   const navBadges = useNavCounts() ?? undefined
   const { variant, collapsible } = useAppLayout()
   const [isScrolled, setIsScrolled] = React.useState(false)
 
   const groups = getSidebarGroups({ spaceId, isAuthed, mounted, badges: navBadges })
 
-  const logoHref = mounted && user ? "/jobs?tab=for-you" : "/"
-
-  // Switching space is a navigation: the page must follow the switcher.
+  // Switching space is a navigation: the page must follow the switcher, and
+  // each space navigates to its own `homeHref`.
   const handleSpaceChange = (id: SpaceId) => {
     setSpaceId(id)
-    router.push(id === "govt" ? "/govt" : "/jobs")
+    router.push(getSpace(id).homeHref)
   }
 
   return (
     <Sidebar collapsible={collapsible} variant={variant}>
+      {/*
+        One header row. The header used to render `SidebarBrand` AND
+        `SpaceSwitcher`; collapsed, both became 32px tiles and stacked, so the
+        logo and the switcher appeared at two positions instead of one. The
+        switcher now carries the logo, matching `AdminSidebar` and the
+        reference `TeamSwitcher` (one button: tile, name, chevron).
+      */}
       <SidebarHeader
         className={cn(
-          "sticky top-0 z-10 gap-1.5 bg-background p-2 pb-1 relative",
+          "sticky top-0 z-10 gap-1.5 bg-sidebar/95 p-2 backdrop-blur-sm supports-[backdrop-filter]:bg-sidebar/80 relative",
           "border-b border-transparent transition-colors",
-          isScrolled && "border-border"
+          isScrolled && "border-sidebar-border"
         )}
       >
-        <SidebarBrand href={logoHref} />
-        <SpaceSwitcher spaces={SPACES} activeId={spaceId} onChange={handleSpaceChange} />
+        {/* One header row, the reference `TeamSwitcher` shape and the same as
+            `AdminSidebar`: a single button holding a logo tile, the active
+            space name and a chevron. The header used to render `SidebarBrand`
+            AND `SpaceSwitcher` as two rows, so a collapsed rail stacked two
+            tiles (white logo, then black space icon) at two offsets — the
+            "logo and switcher in different positions" bug. Passing `logo`
+            folds the brand into the switcher, so there is one row and one tile. */}
+        <SpaceSwitcher
+          spaces={SPACES}
+          activeId={spaceId}
+          onChange={handleSpaceChange}
+          logo
+        />
       </SidebarHeader>
       <SidebarContent
         onScroll={(e) => setIsScrolled(e.currentTarget.scrollTop > 2)}
@@ -172,43 +160,41 @@ function AppSidebarRail() {
  */
 export function MobileNavTree({ onNavigate }: { onNavigate: () => void }) {
   const router = useRouter()
-  const { spaceId, setSpaceId, mounted, isAuthed, user } = useSpaceSelection()
+  const { spaceId, setSpaceId, mounted, isAuthed } = useSpaceSelection()
   const navBadges = useNavCounts() ?? undefined
 
   const groups = getSidebarGroups({ spaceId, isAuthed, mounted, badges: navBadges })
 
-  const logoHref = mounted && user ? "/jobs?tab=for-you" : "/"
-
   const handleSpaceChange = (id: SpaceId) => {
     setSpaceId(id)
     onNavigate()
-    router.push(id === "govt" ? "/govt" : "/jobs")
+    router.push(getSpace(id).homeHref)
   }
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-background text-sidebar-foreground">
-      <div className="flex h-14 shrink-0 items-center justify-end border-b border-border px-4">
-        <button
-          type="button"
-          onClick={onNavigate}
-          aria-label="Close menu"
-          className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
+    <div className="flex h-full w-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground">
       <div className="flex-1 overflow-y-auto px-2 py-3">
-        <SidebarBrand href={logoHref} className="mb-1" />
-        <SpaceSwitcher spaces={SPACES} activeId={spaceId} onChange={handleSpaceChange} />
-        {/* Every nav row is a link, so any click in here is a navigation and
-            should close the Sheet. */}
-        <div className="mt-2" onClickCapture={onNavigate}>
+        {/* Same single-row header as the rail: the switcher carries the logo. */}
+        <SpaceSwitcher
+          spaces={SPACES}
+          activeId={spaceId}
+          onChange={handleSpaceChange}
+          logo
+        />
+        {/* Close on link clicks only: collapsible parents expand in place
+            via chevron and must NOT dismiss the drawer. */}
+        <div
+          className="mt-2"
+          onClickCapture={(event) => {
+            if ((event.target as HTMLElement).closest('a')) onNavigate()
+          }}
+        >
           {groups.map((group) => (
             <NavGroup key={group.title} group={group} />
           ))}
         </div>
       </div>
-      <div className="shrink-0 border-t border-border p-2">
+      <div className="shrink-0 border-t border-sidebar-border p-2">
         <NavUser />
       </div>
     </div>

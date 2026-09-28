@@ -258,7 +258,13 @@ export const AdminOpportunitiesTable = ({
 
   const toolbar = useCallback(
     (ctx: DataGridActionsContext<AdminOpportunityRow>) => (
-      <div className="flex items-center gap-2 flex-wrap justify-end">
+      /* Mobile: ONE horizontally-scrollable row. `flex-wrap` stacked the filter
+         selects two-per-row, so a ~300px screen spent ~150px of vertical space
+         on chrome before the first row of data. `flex-nowrap` keeps them on one
+         swipeable line (the grid's own toolbar control row is the scroller now,
+         so this no longer needs one of its own), switching to wrap from `sm` up
+         where there is room for it. */
+      <div className="flex flex-nowrap items-center gap-2 sm:flex-wrap sm:justify-end">
         {showTypeFilter && onTypeChange && (
           <Select
             value={typeFilter || ALL}
@@ -315,19 +321,6 @@ export const AdminOpportunitiesTable = ({
             ))}
           </SelectContent>
         </Select>
-
-        <Button
-          variant="admin"
-          size="sm"
-          onClick={onRefresh}
-          title="Refresh data"
-        >
-          <ArrowPathIcon
-            className={cn("w-3.5 h-3.5 sm:mr-1.5", isLoading && "animate-spin")}
-          />
-          <span className="hidden sm:inline">Refresh</span>
-        </Button>
-
       </div>
     ),
     [
@@ -338,8 +331,6 @@ export const AdminOpportunitiesTable = ({
       atsFilter,
       atsOptions,
       onAtsFilterChange,
-      onRefresh,
-      isLoading,
     ],
   );
 
@@ -353,7 +344,7 @@ export const AdminOpportunitiesTable = ({
     (_ctx: DataGridActionsContext<AdminOpportunityRow>) => (
       <>
         {bulkActionPending && (
-          <span className="text-xs text-muted-foreground flex items-center gap-1 whitespace-nowrap">
+          <span className="flex items-center gap-1 whitespace-nowrap text-sm text-muted-foreground">
             <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
             {bulkActionLabel || "working"}...
           </span>
@@ -422,16 +413,27 @@ export const AdminOpportunitiesTable = ({
           description={description}
           count={totalCount || filteredRows.length}
           countLabel={totalCount === 1 ? "listing" : "listings"}
+          /* The page chrome (TopHeaderBar / MobileTopNav) already states the
+             route, so the grid's own title repeated it. Hiding it leaves the
+             badge reading "87 listings" instead of "Listings 87 Listings" — the
+             word was appearing three times on one screen. */
+          showTitle={false}
           isLoading={isLoading}
           searchPlaceholder={searchPlaceholder}
           noResults={emptyState}
           statusValue={statusFilter || ALL}
           onStatusChange={(value) => onStatusChange(value === ALL ? "" : value)}
-          statusOptions={[{ value: ALL, label: "All status" }, ...statusOptions]}
+          statusOptions={[{ value: ALL, label: "All statuses" }, ...statusOptions]}
           onClear={onClearFilters}
           actions={toolbar}
           bulkActions={enableSelection ? bulkToolbar : undefined}
           bulkBarEntityName="listing"
+          /* The bar docks at `bottom-20` to clear the admin bottom nav, and
+             `AdminBottomNav` returns null on `/admin/opportunities`, so this
+             page has no `pb-20`: the grid already ends below the bar and needs
+             none of the default `max-sm:mb-16` clearance (adding it would push
+             the pagination up *into* the bar instead). */
+          bulkBarClearanceClass="max-sm:mb-0"
           onSelectedRowsChange={
             enableSelection ? onSelectedRowsChange : undefined
           }

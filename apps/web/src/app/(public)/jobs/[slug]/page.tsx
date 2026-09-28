@@ -8,6 +8,7 @@ import { OpportunityDetailSkeleton, FeedPageSkeleton } from '@/features/jobs/com
 import { getOpportunityPath } from '@/features/jobs/domain/opportunityPath';
 import {
     fetchOpportunityForPage,
+    fetchOpportunityForMetadata,
     generateOpportunityMetadata,
     generateOpportunityJsonLd,
     generateOpportunityBreadcrumbsJsonLd,
@@ -22,14 +23,11 @@ import {
     buildTaxonomyRegistry,
     resolveTaxonomySlug,
     resolveLegacyBoardSlug,
-    boardCanonicalSlug,
     matchTaxonomy,
     assertRegistryJobSlugCollision,
     TaxonomyRegistry,
 } from '@/features/jobs/domain/taxonomy';
 import { TopicBoardPage } from '@/features/jobs/components/TopicBoardPage';
-import { truncateTitleByPixels, truncateDescription } from '@/lib/seo/seoMetrics';
-import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
 
 
@@ -146,7 +144,11 @@ export async function generateStaticParams() {
     }
 }
 
-// Generate dynamic SEO metadata
+// Generate dynamic SEO metadata.
+// Cost guard: resolves shard-only (single ~2.5KB detail JSON). Skips the
+// taxonomy registry build (full feed index) and the bootstrap/government/
+// expired fallback feeds — those stay on the page-component path below.
+// Stays cacheable under `revalidate = false`; no `no-store` on this public path.
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug: slugOrId } = await params;
     if (isInvalidSlug(slugOrId)) {
@@ -154,36 +156,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         notFound();
     }
 
-    // Taxonomy boards resolve BEFORE job detail — one /jobs namespace.
-    // Canonical board URLs carry the `-jobs` suffix (combos excepted).
-    const registry = await loadTaxonomyRegistry();
-    const resolved = registry ? resolveTaxonomySlug(registry, slugOrId) : null;
-    if (resolved) {
-        const rawTitle = boardTitle(resolved);
-        const title = truncateTitleByPixels(rawTitle);
-        const description = truncateDescription(boardDescription(resolved));
-        const base = SITE_URL.replace(/\/+$/, '');
-        return {
-            title,
-            description,
-            alternates: { canonical: `${base}/jobs/${boardCanonicalSlug(resolved)}` },
-            openGraph: {
-                title,
-                description,
-                type: 'website',
-                images: [{ url: '/main.png', width: 1200, height: 630, alt: title }],
-            },
-            twitter: {
-                card: 'summary_large_image',
-                title,
-                description,
-                images: ['/main.png'],
-            },
-        };
-    }
-
     try {
-        const opportunity = await fetchOpportunityForPage(slugOrId);
+        const opportunity = await fetchOpportunityForMetadata(slugOrId);
         if (!opportunity) throw new Error('Opportunity not found');
         return await generateOpportunityMetadata(opportunity);
     } catch {

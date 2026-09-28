@@ -23,6 +23,40 @@ export class UnauthorizedError extends Error {
 const USER_ACCESS_TOKEN_KEY = 'ff_user_access_token_v1';
 const USER_REFRESH_TOKEN_KEY = 'ff_user_refresh_token_v1';
 const ADMIN_ACCESS_TOKEN_KEY = 'ff_admin_access_token_v1';
+// Key the shared packages/api-client reads for its Bearer header.
+const PACKAGE_AUTH_TOKEN_KEY = 'ff_auth_token_v1';
+
+/**
+ * Wire the shared packages/api-client to localStorage-backed storage once.
+ * Without this its global client is constructed storageless and the token
+ * interceptor never fires — every authenticated package call (room join,
+ * votes, comments) goes out tokenless and 401s for signed-in web users.
+ * The mirror key is written by setUserTokens (plus one-time self-heal).
+ */
+if (typeof window !== 'undefined') {
+    void import('@fresherflow/api-client').then(({ configureClient }) => {
+        try {
+            configureClient(undefined, {
+                getItem: async (key: string) => {
+                    try {
+                        return window.localStorage.getItem(key);
+                    } catch {
+                        return null;
+                    }
+                },
+                setItem: async (key: string, value: string) => {
+                    try {
+                        window.localStorage.setItem(key, value);
+                    } catch {
+                        // Ignore storage errors
+                    }
+                },
+            });
+        } catch {
+            // Package client stays on its defaults; web wrapper calls unaffected.
+        }
+    });
+}
 
 /**
  * Repeat suppressor for client warnings. One page load fires the same request
@@ -145,6 +179,11 @@ function clearStorage(key: string) {
 export function setUserTokens(accessToken?: string | null, refreshToken?: string | null) {
     if (accessToken) {
         writeStorage(USER_ACCESS_TOKEN_KEY, accessToken);
+        // Mirror into the shared api-client key: the packages/api-client
+        // ApiClient attaches Bearer ONLY from `ff_auth_token_v1`, so without
+        // this every authenticated package call (room join, votes, comments)
+        // goes out tokenless and 401s for signed-in web users.
+        writeStorage(PACKAGE_AUTH_TOKEN_KEY, accessToken);
     }
     if (refreshToken) {
         writeStorage(USER_REFRESH_TOKEN_KEY, refreshToken);
@@ -152,7 +191,13 @@ export function setUserTokens(accessToken?: string | null, refreshToken?: string
 }
 
 export function getUserAccessToken() {
-    return readStorage(USER_ACCESS_TOKEN_KEY);
+    const token = readStorage(USER_ACCESS_TOKEN_KEY);
+    // One-time self-heal for sessions stored before the package-key mirror
+    // existed: copy once so package-client calls authenticate too.
+    if (token && !readStorage(PACKAGE_AUTH_TOKEN_KEY)) {
+        writeStorage(PACKAGE_AUTH_TOKEN_KEY, token);
+    }
+    return token;
 }
 
 export function getUserRefreshToken() {
@@ -162,6 +207,7 @@ export function getUserRefreshToken() {
 export function clearUserTokens() {
     clearStorage(USER_ACCESS_TOKEN_KEY);
     clearStorage(USER_REFRESH_TOKEN_KEY);
+    clearStorage(PACKAGE_AUTH_TOKEN_KEY);
 }
 
 export function setAdminAccessToken(token?: string | null) {

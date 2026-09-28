@@ -330,6 +330,11 @@ export async function submitOpportunity(input: SubmitOpportunityInput): Promise<
 	};
 	if (input.location) body.location = input.location;
 	if (input.employmentType) body.employmentType = input.employmentType;
+	if (input.category) body.category = input.category;
+	if (input.dates) body.dates = input.dates;
+	if (input.dateRange) body.dateRange = input.dateRange;
+	if (input.timeRange) body.timeRange = input.timeRange;
+	if (input.venueAddress) body.venueAddress = input.venueAddress;
 	if (input.salary) body.salary = input.salary;
 	if (input.description) body.description = input.description;
 	if (input.eligibility) body.eligibility = input.eligibility;
