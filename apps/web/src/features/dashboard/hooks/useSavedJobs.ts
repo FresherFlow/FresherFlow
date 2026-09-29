@@ -88,48 +88,78 @@ function getServerSnapshot() {
   return emptyMap;
 }
 
+/**
+ * One Realtime Database subscription per tab, not one per component.
+ *
+ * `sharedSavedJobsMap` is module-level, so every consumer renders the same map;
+ * giving each its own `onValue` listener meant a mounted feed held a listener per
+ * card — two per row, because the List view renders both card variants — and
+ * re-merged and re-rendered all of them on every payload. Ref-counted, so the
+ * subscription still lives exactly as long as the last consumer of it.
+ */
+let remoteSubscribers = 0;
+let remoteUserId: string | undefined;
+let remoteUnsubscribe: (() => void) | null = null;
+
+function startRemoteSync(userId: string) {
+  remoteUnsubscribe?.();
+  remoteUserId = userId;
+
+  remoteUnsubscribe = onValue(
+    ref(database, `/users/${userId}/savedJobs`),
+    (snapshot) => {
+      const rawVal = snapshot.val();
+      const remoteVal: Record<string, boolean> = {};
+      if (Array.isArray(rawVal)) {
+        rawVal.forEach((id) => {
+          if (typeof id === 'string' && id) {
+            remoteVal[id] = true;
+          }
+        });
+      } else if (rawVal && typeof rawVal === 'object') {
+        Object.entries(rawVal as Record<string, boolean>).forEach(([key, val]) => {
+          if (val) {
+            remoteVal[key] = true;
+          }
+        });
+      }
+
+      const currentLocal = getLocalSaved();
+      const merged = { ...currentLocal, ...sharedSavedJobsMap, ...remoteVal };
+      setSharedSavedJobsMap(merged);
+    },
+    (error) => {
+      if (process.env.NODE_ENV === 'development' && !error?.message?.includes('permission_denied')) {
+        console.warn('[useSavedJobs] Subscription failed:', error);
+      }
+    }
+  );
+}
+
+function stopRemoteSync() {
+  remoteUnsubscribe?.();
+  remoteUnsubscribe = null;
+  remoteUserId = undefined;
+}
+
+function acquireRemoteSync(userId: string) {
+  remoteSubscribers += 1;
+  if (remoteUserId !== userId) startRemoteSync(userId);
+}
+
+function releaseRemoteSync() {
+  remoteSubscribers = Math.max(0, remoteSubscribers - 1);
+  if (remoteSubscribers === 0) stopRemoteSync();
+}
+
 export function useSavedJobs(userId?: string) {
   const savedJobsMap = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  // Firebase Realtime DB subscription for background sync
+  // Firebase Realtime DB subscription for background sync, shared per tab.
   useEffect(() => {
     if (!userId) return;
-
-    const savedRef = ref(database, `/users/${userId}/savedJobs`);
-
-    const unsubscribe = onValue(
-      savedRef,
-      (snapshot) => {
-        const rawVal = snapshot.val();
-        const remoteVal: Record<string, boolean> = {};
-        if (Array.isArray(rawVal)) {
-          rawVal.forEach((id) => {
-            if (typeof id === 'string' && id) {
-              remoteVal[id] = true;
-            }
-          });
-        } else if (rawVal && typeof rawVal === 'object') {
-          Object.entries(rawVal as Record<string, boolean>).forEach(([key, val]) => {
-            if (val) {
-              remoteVal[key] = true;
-            }
-          });
-        }
-
-        const currentLocal = getLocalSaved();
-        const merged = { ...currentLocal, ...sharedSavedJobsMap, ...remoteVal };
-        setSharedSavedJobsMap(merged);
-      },
-      (error) => {
-        if (process.env.NODE_ENV === 'development' && !error?.message?.includes('permission_denied')) {
-          console.warn('[useSavedJobs] Subscription failed:', error);
-        }
-      }
-    );
-
-    return () => {
-      unsubscribe();
-    };
+    acquireRemoteSync(userId);
+    return () => releaseRemoteSync();
   }, [userId]);
 
   const toggleSavedJob = async (opportunityId: string) => {

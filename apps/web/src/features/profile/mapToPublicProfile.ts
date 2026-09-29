@@ -48,7 +48,8 @@ export function toPublicProfile(
     profile: Profile | null,
     user: User | null,
     options: {
-        /** Last activation stamp. Only pass this while the page is inside its live window. */
+        /** Last boost stamp. Only pass this while the boost window is open, so the page does
+         *  not claim "active this week" on a profile nobody is promoting. */
         lastActivatedAt?: Date | string | null;
         completionPercentage?: number;
     } = {},
@@ -89,9 +90,10 @@ export function toPublicProfile(
  * page and the editor preview both reach the component through the same shape and
  * cannot drift.
  *
- * Fields the flat API does not carry yet (social links, PG/10th/12th years, target
- * roles) map to `null`/omitted rather than being invented — the page already
- * treats every one of them as optional.
+ * Fields the flat API deliberately does not carry map to `null`/omitted rather than
+ * being invented — the page already treats every one of them as optional: social
+ * links, PG/10th/12th years, target roles, work modes, CTC and the resume URL. Those
+ * are private by decision, not pending work, so do not "restore" them here.
  */
 export function toPublicProfileData(profile: PublicProfile): PublicProfileData {
     return {
@@ -116,6 +118,7 @@ export function toPublicProfileData(profile: PublicProfile): PublicProfileData {
             linkedinUrl: null,
             portfolioUrl: null,
             avatarUrl: profile.avatarUrl,
+            // Owner-preview only. The live payload never carries a resume URL.
             resumeUrl: profile.resumeUrl,
             availability: profile.availability,
             preferredCities: profile.preferredCities,

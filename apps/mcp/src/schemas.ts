@@ -178,6 +178,8 @@ export const SubmitOpportunityInput = z.object({
         .describe('Original source URL if different from jobUrl'),
     contactEmail: z.string().trim().email('contactEmail must be valid').max(200).optional()
         .describe('Optional contact email for follow-up'),
+    submitKey: z.string().trim().min(1).max(200).optional()
+        .describe('Optional operator bulk key. Without it (or the server key) this submission counts against the 10/hour anonymous tier. Never ask the user for this; only use it if they paste it themselves.'),
 }).superRefine((data, ctx) => {
     if (!data.jobUrl.startsWith('https://')) {
         ctx.addIssue({ code: 'custom', path: ['jobUrl'], message: 'jobUrl must use https' });

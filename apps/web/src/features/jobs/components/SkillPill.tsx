@@ -107,15 +107,28 @@ export function SkillPill({ skill, className, size = 'sm', variant = 'default', 
 
   const hasIcon = Boolean(iconName);
   const showIcon = hasIcon || !hideFallbackIcon;
+  const isBox = variant === 'default';
 
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-md border font-medium whitespace-nowrap min-w-0 max-w-full overflow-hidden',
-        size === 'xs' ? 'h-5 px-1.5 text-xs' : 'h-[26px] px-2.5 text-sm',
-        hasIcon
-          ? 'border-transparent bg-muted/40 text-foreground/80'
-          : 'border-border/50 bg-muted/40 text-muted-foreground',
+        'inline-flex items-center gap-1.5 whitespace-nowrap min-w-0 max-w-full overflow-hidden',
+        /* `default` is the box-chip treatment: sharp corners on the card surface,
+           matching the Key Facts row on the job detail rail. It used to be
+           `rounded-md` on `bg-muted/40` at `h-[26px] text-sm`, a softer and
+           denser pill than everything around it. Changing it here rather than
+           at call sites keeps skills identical in job cards, directories,
+           resources, profiles and admin.
+
+           `bare` and `plain` deliberately strip that chrome for filter chips,
+           dropdown rows and dense card meta rows, so they keep their original
+           metrics - restyling them would resize surfaces nobody asked about. */
+        isBox
+          ? 'rounded-xs border border-border bg-card px-2.5 py-1.5 text-xs font-semibold'
+          : 'rounded-md border font-medium',
+        !isBox && (size === 'xs' ? 'h-5 px-1.5 text-xs' : 'h-[26px] px-2.5 text-sm'),
+        isBox && (hasIcon ? 'text-foreground' : 'text-muted-foreground'),
+        !isBox && (hasIcon ? 'border-transparent bg-muted/40 text-foreground/80' : 'border-border/50 bg-muted/40 text-muted-foreground'),
         variant === 'bare' ? BARE_VARIANT : '',
         variant === 'plain' ? PLAIN_VARIANT : '',
         className

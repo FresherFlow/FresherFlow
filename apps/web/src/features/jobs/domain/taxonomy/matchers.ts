@@ -47,13 +47,13 @@ export function matchTaxonomy(opp: Opportunity, resolved: ResolvedTaxonomy): boo
         case 'city': return matchCity(opp, resolved.slug);
         case 'skill': return matchSkill(opp, resolved.slug);
         case 'year': return matchYear(opp, resolved.year);
-        case 'combo': return matchRole(opp, resolved.combo.roleSlug) && matchCity(opp, resolved.combo.citySlug);
     }
 }
 
 /** Initial listing filters for a resolved board (drives the CategoryPage engine). */
 export function boardFilters(resolved: ResolvedTaxonomy): Partial<Record<string, unknown>> {
     switch (resolved.kind) {
+        case 'role': return { role: [resolved.label] };
         case 'city':
             // `/jobs/remote` is a work-mode board, not a location chip — avoids a
             // duplicate "Remote" chip when combined with `?mode=remote` (same filter).
@@ -61,7 +61,6 @@ export function boardFilters(resolved: ResolvedTaxonomy): Partial<Record<string,
             return { location: resolved.label };
         case 'year': return { year: resolved.year };
         case 'skill': return { skills: [resolved.label] };
-        case 'combo': return { role: [resolved.combo.roleLabel], location: resolved.combo.cityLabel };
         default: return {};
     }
 }

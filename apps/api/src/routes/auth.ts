@@ -460,6 +460,136 @@ router.post('/logout/all', logoutLimiter, requireAuth, async (req: Request, res:
     }
 });
 
+// DELETE /api/auth/account
+// Real account deletion with a hard safety rule: the user ROW IS KEPT and
+// scrubbed (never hard-deleted), because hard deletion would cascade into
+// shared content (community threads, others' referral responses, moderation
+// history, audit trail) or violate FKs on curated rows (posted listings).
+// What happens:
+//  1. Private leaf rows owned solely by the user are purged in one
+//     transaction (profile, saved, searches, alert prefs, follows, inbox,
+//     feedback given, applications, tokens, grants, telemetry).
+//  2. The user row is scrubbed (email/username/firebase_uid/referral code
+//     nulled, name replaced, status DEACTIVATED) — requireAuth rejects
+//     non-ACTIVE accounts, so every token dies with the row.
+//  3. All refresh tokens revoked; auth cookies cleared (same as logout).
+//  4. Firebase identity deleted + RTDB user nodes removed (best-effort:
+//     missing creds in local dev must never fail PG deletion).
+// Shared rows (posts, referrals+responses, salary, reports, intros, org
+// memberships, audit, events, contributions, listings) survive de-attributed.
+router.delete('/account', logoutLimiter, requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.userId as string;
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, firebase_uid: true },
+        });
+        if (!user) throw new AppError('Account not found', 404);
+
+        await prisma.$transaction([
+            prisma.profile.deleteMany({ where: { userId } }),
+            prisma.savedSearch.deleteMany({ where: { userId } }),
+            prisma.alertPreference.deleteMany({ where: { userId } }),
+            prisma.userFollow.deleteMany({ where: { userId } }),
+            prisma.notification.deleteMany({ where: { userId } }),
+            prisma.appFeedback.deleteMany({ where: { userId } }),
+            prisma.opportunityApplication.deleteMany({ where: { userId } }),
+            prisma.savedOpportunity.deleteMany({ where: { userId } }),
+            prisma.pushSubscription.deleteMany({ where: { userId } }),
+            prisma.deviceToken.deleteMany({ where: { userId } }),
+            prisma.userAccessRole.deleteMany({ where: { userId } }),
+            prisma.authenticator.deleteMany({ where: { userId } }),
+            prisma.listingFeedback.deleteMany({ where: { userId } }),
+            prisma.userAction.deleteMany({ where: { userId } }),
+            prisma.referralBadgeGrant.deleteMany({ where: { userId } }),
+            prisma.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } }),
+            prisma.user.update({
+                where: { id: userId },
+                data: {
+                    email: null,
+                    username: null,
+                    firebase_uid: null,
+                    fullName: 'Deleted User',
+                    referralCode: null,
+                    anon_id: null,
+                    lastLogin: null,
+                    status: 'DEACTIVATED',
+                },
+            }),
+        ]);
+
+        // Firebase purge is best-effort: PG deletion above is the source of
+        // truth and must not fail because local creds are missing.
+        try {
+            if (user.firebase_uid) {
+                await getFirebaseAuth().deleteUser(user.firebase_uid);
+            }
+        } catch (e) {
+            logger.warn(`account delete: Firebase user delete skipped/failed: ${(e as Error)?.message ?? e}`);
+        }
+        try {
+            const { getFirebaseApp } = await import('../lib/firebase');
+            const { getDatabase } = await import('firebase-admin/database');
+            const db = getDatabase(getFirebaseApp());
+            const removals: Promise<unknown>[] = [
+                db.ref(`/users/${userId}/savedJobs`).remove(),
+                db.ref(`/users/${userId}/tracker`).remove(),
+                db.ref(`/users/${userId}/alertPreferences`).remove(),
+            ];
+            if (user.firebase_uid && user.firebase_uid !== userId) {
+                removals.push(db.ref(`/users/${user.firebase_uid}/onboarding`).remove());
+            }
+            await Promise.all(removals);
+        } catch (e) {
+            logger.warn(`account delete: RTDB purge skipped/failed: ${(e as Error)?.message ?? e}`);
+        }
+
+        clearAuthCookieVariants(res);
+
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
+        return res.json({ deleted: true });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// POST /api/auth/logout/others
+// Revokes every live refresh token for the caller EXCEPT the one presented in
+// this request's cookie (the current session stays alive). The revoked userId
+// always comes from the verified session via requireAuth, never the body.
+// Returns { revokedCount } so the client can report honestly.
+router.post('/logout/others', logoutLimiter, requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const refreshToken = req.cookies?.refreshToken;
+        if (!refreshToken || typeof refreshToken !== 'string') {
+            return next(new AppError('No refresh token provided', 400));
+        }
+
+        let currentHash: string;
+        try {
+            currentHash = hashRefreshToken(refreshToken);
+        } catch {
+            return next(new AppError('Invalid refresh token', 400));
+        }
+
+        const result = await prisma.refreshToken.updateMany({
+            where: {
+                userId: req.userId as string,
+                revokedAt: null,
+                NOT: { tokenHash: currentHash }
+            },
+            data: { revokedAt: new Date() }
+        });
+
+        res.json({ revokedCount: result.count });
+    } catch (error) {
+        next(error);
+    }
+});
+
 // GET /api/auth/permissions
 // Returns the caller's AccessRole grants for client-side gating of the
 // moderator area. requireAuth already rejects anonymous/suspended callers;

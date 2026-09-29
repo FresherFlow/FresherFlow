@@ -1,20 +1,35 @@
-'use client';
+﻿'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/ui/Button';
 import { SkillPill } from '@/features/jobs/components/SkillPill';
 import { FRESHER_EXPERIENCE_VALUE } from '@/features/jobs/components/JobFilterBar';
 import { cn } from '@repo/ui/utils/cn';
+import type { WalkinDrivePeriod } from '@/features/jobs/utils/walkinMapUtils';
+import {
+    getTypeOptions,
+    getFeedKind,
+    isGovtFeed,
+    supportsDimension,
+} from '@/features/jobs/utils/feedKinds';
 import { Drawer, DrawerContent } from '@/ui/drawer';
 
 // Removed hardcoded locations
 
-const TYPE_OPTIONS = [
-    { label: 'All', value: '' },
-    { label: 'Jobs', value: 'JOB' },
-    { label: 'Internships', value: 'INTERNSHIP' },
-    { label: 'Walk-ins', value: 'WALKIN' },
+const DRIVE_DATE_OPTIONS: Array<{ value: WalkinDrivePeriod; label: string }> = [
+    { value: 'all', label: 'Any date' },
+    { value: 'today', label: 'Today' },
+    { value: 'thisWeek', label: 'This week' },
+    { value: 'next30Days', label: 'Next 30 days' },
+];
+
+const DRIVE_RADIUS_OPTIONS: Array<{ value: number | null; label: string }> = [
+    { value: null, label: 'Any distance' },
+    { value: 5, label: 'Within 5 km' },
+    { value: 10, label: 'Within 10 km' },
+    { value: 25, label: 'Within 25 km' },
+    { value: 50, label: 'Within 50 km' },
 ];
 
 const GOVT_SECTORS = ['Defense', 'Railways', 'Banking', 'Teaching', 'Police', 'SSC / UPSC', 'PSU'];
@@ -23,7 +38,7 @@ const CORP_COURSES = ['B.Tech/B.E.', 'M.C.A.', 'MBA', 'B.Sc/B.Com/B.A', 'Diploma
 
 // Removed hardcoded years and skills
 
-type OpenSection = 'type' | 'experience' | 'location' | 'year' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | 'source' | 'company' | null;
+type OpenSection = 'type' | 'experience' | 'location' | 'year' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | 'source' | 'company' | 'driveDate' | 'driveRadius' | null;
 
 interface MobileFilterDrawerProps {
     isOpen: boolean;
@@ -56,6 +71,11 @@ interface MobileFilterDrawerProps {
     setDraftExperience?: (val: string[]) => void;
     isLoggedIn: boolean;
     pageType?: string;
+    draftDriveDate?: WalkinDrivePeriod;
+    setDraftDriveDate?: (v: WalkinDrivePeriod) => void;
+    draftDriveRadiusKm?: number | null;
+    setDraftDriveRadiusKm?: (v: number | null) => void;
+    hasUserLocation?: boolean;
     aggregates?: {
         locations: Record<string, number>;
         skills: Record<string, number>;
@@ -65,6 +85,8 @@ interface MobileFilterDrawerProps {
     };
     onApply: () => void;
     onClear: () => void;
+    /** Live match count for the current drafts (same pipeline as Apply). */
+    draftMatchCount?: number | null;
 }
 
 function Section({
@@ -148,11 +170,25 @@ export function MobileFilterDrawer({
     draftExperience,
     setDraftExperience,
     pageType,
+    draftDriveDate,
+    setDraftDriveDate,
+    draftDriveRadiusKm,
+    setDraftDriveRadiusKm,
+    hasUserLocation,
     aggregates,
     onApply,
     onClear,
+    draftMatchCount = null,
 }: MobileFilterDrawerProps) {
     const [openSection, setOpenSection] = useState<OpenSection>(setDraftType ? 'type' : 'location');
+  // Per-feed type options, shared with the desktop bars so the three feeds
+  // cannot drift. The government feed does not offer "Walk-ins", which
+  // filtered it to nothing.
+  const feedKind = getFeedKind(pageType);
+  const TYPE_OPTIONS = useMemo(
+    () => getTypeOptions(feedKind).map((o) => ({ ...o, value: o.value ?? '' })),
+    [feedKind]
+  );
     const [locSearch, setLocSearch] = useState('');
     const [companySearch, setCompanySearch] = useState('');
 
@@ -312,7 +348,7 @@ export function MobileFilterDrawer({
                         </div>
                     </Section>
 
-                    {pageType === 'GOVERNMENT' && (
+                    {isGovtFeed(feedKind) && (
                         <>
                             <Section
                                 title="Sector"
@@ -354,8 +390,51 @@ export function MobileFilterDrawer({
                         </>
                     )}
 
-                    {pageType !== 'GOVERNMENT' && (
+                    {!isGovtFeed(feedKind) && (
                         <>
+                            {/* Walk-in dates and distance. A drive is a physical
+                                errand, so "when" and "how far" decide whether it
+                                is worth the trip. These were missing here
+                                entirely, so the desktop-only date and distance
+                                filters could never be reached on a phone. */}
+                            {supportsDimension(feedKind, 'driveDate') && setDraftDriveDate && (
+                                <Section
+                                    title="When"
+                                    isOpen={openSection === 'driveDate'}
+                                    onToggle={() => setOpenSection(openSection === 'driveDate' ? null : 'driveDate')}
+                                >
+                                    <div className="flex flex-wrap gap-2">
+                                        {DRIVE_DATE_OPTIONS.map(opt => (
+                                            <Pill
+                                                key={String(opt.value)}
+                                                active={draftDriveDate === opt.value}
+                                                onClick={() => setDraftDriveDate(opt.value)}
+                                            >
+                                                {opt.label}
+                                            </Pill>
+                                        ))}
+                                    </div>
+                                </Section>
+                            )}
+                            {supportsDimension(feedKind, 'driveRadius') && hasUserLocation && setDraftDriveRadiusKm && (
+                                <Section
+                                    title="Distance"
+                                    isOpen={openSection === 'driveRadius'}
+                                    onToggle={() => setOpenSection(openSection === 'driveRadius' ? null : 'driveRadius')}
+                                >
+                                    <div className="flex flex-wrap gap-2">
+                                        {DRIVE_RADIUS_OPTIONS.map(opt => (
+                                            <Pill
+                                                key={String(opt.value)}
+                                                active={draftDriveRadiusKm === opt.value}
+                                                onClick={() => setDraftDriveRadiusKm(opt.value)}
+                                            >
+                                                {opt.label}
+                                            </Pill>
+                                        ))}
+                                    </div>
+                                </Section>
+                            )}
                             <Section
                                 title="Course"
                                 isOpen={openSection === 'course'}
@@ -514,7 +593,9 @@ export function MobileFilterDrawer({
                             Clear
                         </button>
                         <Button onClick={onApply} size="sm">
-                            Apply filters
+                            {draftMatchCount == null
+                                ? 'Apply filters'
+                                : `Show ${draftMatchCount.toLocaleString('en-IN')} job${draftMatchCount === 1 ? '' : 's'}`}
                         </Button>
                     </div>
                 </div>

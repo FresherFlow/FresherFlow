@@ -1,15 +1,15 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { LogoImage } from '@/features/shell/LogoImage';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { useContext, useEffect, useState, Suspense } from 'react';
 import { AuthContext } from '@/lib/auth/AuthContext';
 import { cn } from "@/ui/cn";
 import Bars3Icon from '@heroicons/react/24/outline/Bars3Icon';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import { useAdminPalette } from '@/features/admin/layout/AdminPaletteProvider';
-import { AlertsDropdown } from '@/features/notifications/components/AlertsDropdown';
+import { NotificationsDropdown } from '@/features/notifications/components/NotificationsDropdown';
 import { Sheet, SheetContent, SheetTitle } from '@/ui/Sheet';
 import { useTheme } from '@/lib/providers/ThemeContext';
 import { Moon, Sun } from 'lucide-react';
@@ -34,6 +34,17 @@ function getMobileTitle(pathname: string): string {
     return 'FresherFlow';
 }
 
+/** /jobs tab labels, mirroring the desktop trail (JobsPageClient USER_TABS). */
+const JOBS_TAB_TITLES: Record<string, string> = {
+    'for-you': 'For You',
+    saved: 'Saved',
+    applied: 'Applied',
+    alerts: 'Alerts',
+    following: 'Following',
+    notifications: 'Notifications',
+    searches: 'Searches',
+};
+
 function AdminMobileSearchButton() {
     const palette = useAdminPalette();
     if (!palette) return null;
@@ -51,6 +62,7 @@ function AdminMobileSearchButton() {
 
 export function MobileTopNav() {
     const pathname = usePathname();
+    const searchParams = useSearchParams();
     const isAuthRoute = pathname === '/login' || pathname === '/register' || pathname === '/choose-username';
     const isCandidatePortfolioRoute = pathname.startsWith('/u/');
     // Sidebar pages keep the notification bell in the mobile header; public
@@ -67,6 +79,11 @@ export function MobileTopNav() {
     useEffect(() => { setIsMounted(true); }, []);
 
     const mobileTitle = getMobileTitle(pathname);
+    // /jobs is one page with ?tab= workspaces: the header must name the tab
+    // (Applied, Saved, â€¦), not the section. The in-page breadcrumb trail is
+    // desktop-only, so this is the mobile user's only page label.
+    const jobsTab = pathname === '/jobs' ? searchParams?.get('tab') : null;
+    const headerTitle = (jobsTab && JOBS_TAB_TITLES[jobsTab]) || mobileTitle;
     const isAdminRoute = (pathname || '').startsWith('/admin');
     const adminPage = isAdminRoute
         ? getAdminTitle((pathname || '').split('/').filter(Boolean))
@@ -101,7 +118,7 @@ export function MobileTopNav() {
                     >
                         <LogoImage width={24} height={24} className="w-6 h-6 object-contain shrink-0" />
                         <span className="text-base font-semibold tracking-wide text-foreground/95 truncate leading-none">
-                            {isAdminRoute && adminPage ? adminPage : mobileTitle}
+                            {isAdminRoute && adminPage ? adminPage : headerTitle}
                         </span>
                     </Link>
 
@@ -129,7 +146,7 @@ export function MobileTopNav() {
                         ) : (
                             <>
                                 {resolvedUser && !isAuthRoute && isSidebarRoute && (
-                                    <AlertsDropdown />
+                                    <NotificationsDropdown />
                                 )}
                                 {!isAuthRoute && (
                                     <button onClick={() => setMenuOpen(true)} className="h-9 w-9 inline-flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all duration-150 ease-out active:scale-95" aria-label="Open menu">
@@ -165,7 +182,7 @@ export function MobileTopNav() {
                 above sets it directly) instead of the sidebar provider's
                 `openMobile`. The rail is wrapped in `hidden lg:block`, so
                 `display:none` does not unmount it and the primitive's own
-                mobile Sheet still portals to <body> — binding both to one
+                mobile Sheet still portals to <body> â€” binding both to one
                 shared state opened two overlays per tap, and their exit
                 animations raced the body scroll lock, which is the hang. */}
             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>

@@ -255,7 +255,15 @@ export interface Opportunity {
         fullName: string | null;
     };
 
-    // Walk-in Details (only if type === WALKIN)
+    // Drive details for campus / off-campus / walk-in recruitment
+    // (`recruitmentMethod` drives *why*; these carry *when and where*).
+    //
+    // The feed and the Prisma relation both call this `driveDetails`. The older
+    // `walkInDetails` below is still emitted by some DTO mappers, so consumers
+    // must read through a normaliser rather than trusting either key.
+    driveDetails?: DriveDetails;
+    // @deprecated Legacy spelling. Prefer `driveDetails`, read via the
+    // walk-in normaliser so either payload shape resolves.
     walkInDetails?: WalkInDetails;
     governmentJobDetails?: GovernmentJobDetails;
     applicationDetails?: ApplicationDetails | null;
@@ -1126,8 +1134,8 @@ export interface Institution {
 }
 
 export interface DriveDetails {
-    id: string;
-    opportunityId: string;
+    id?: string;
+    opportunityId?: string;
     dates: string[];
     dateRange?: string | null;
     timeRange?: string | null;
@@ -1136,11 +1144,17 @@ export interface DriveDetails {
     latitude?: number | null;
     longitude?: number | null;
     clusterName?: string | null;
+    /** Legacy key for `clusterName`, kept so older payloads still read. */
+    techCluster?: string | null;
     city?: string | null;
     reportingTime: string;
     requiredDocuments: string[];
     contactPerson?: string | null;
     contactPhone?: string | null;
+    expiryDate?: string | null;
+    landmark?: string | null;
+    transitInfo?: string | null;
+    selectionProcess?: string | null;
 }
 
 export interface EventDetails {
@@ -1558,7 +1572,7 @@ export interface CommunityNotification {
     actor?: CommunityCommentUser | null;
     opportunity?: { id: string; slug: string; title: string } | null;
     commentId?: string | null;
-    payload?: { excerpt?: string } | null;
+    payload?: { excerpt?: string; submissionPublished?: boolean } | null;
     readAt: string | null;
     createdAt: string;
 }
@@ -1784,6 +1798,16 @@ export interface SavedSearchFilters {
     maxSalary?: number;
     batch?: number;
     closingSoon?: boolean;
+    /** Search text — title/company/skill tokens, mirrored by the matcher. */
+    q?: string;
+    /** Work modes the searcher will accept (e.g. ["REMOTE", "HYBRID"]). */
+    workModes?: string[];
+    /** Skill tokens; any overlap with the listing matches, like the feed. */
+    skills?: string[];
+    /** Role/title tokens; substring match, like the feed. */
+    roles?: string[];
+    /** Experience bands from the feed's fixed set ("Fresher", "0-1 years", …). */
+    experience?: string[];
 }
 export interface SavedSearch {
     id: string;

@@ -5,8 +5,8 @@ import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
 import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
-import { getGoogleCalendarUrl } from '@/features/jobs/utils/walkinMapUtils';
-import { formatNextWalkinLabel } from '@/features/jobs/utils/walkinEventUtils';
+import { getGoogleCalendarUrl, getDriveDetails } from '@/features/jobs/utils/walkinMapUtils';
+import { formatNextWalkinLabel, getNextWalkinDate } from '@/features/jobs/utils/walkinEventUtils';
 import { cn } from '@repo/ui/utils/cn';
 
 /**
@@ -48,10 +48,15 @@ export function WalkinDateChip({ opp, className }: { opp: Opportunity; className
 
 /** Compact event fact row: next date + time + venue, one line each. */
 export function WalkinEventFacts({ opp, className }: { opp: Opportunity; className?: string }) {
-    const d = opp.walkInDetails;
+    const d = getDriveDetails(opp);
     if (!d) return null;
 
-    const dateLabel = d.dateRange || (d.dates?.length ? new Date(d.dates[0]).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : null);
+    const nextDate = getNextWalkinDate(opp);
+    const dateLabel =
+        d.dateRange ||
+        (nextDate
+            ? nextDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
+            : null);
 
     return (
         <div className={cn('flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground', className)}>
@@ -79,7 +84,7 @@ export function WalkinEventFacts({ opp, className }: { opp: Opportunity; classNa
 
 /** Calendar + Directions action row. Hidden when there is nothing to link. */
 export function WalkinEventActions({ opp, compact = false, className }: { opp: Opportunity; compact?: boolean; className?: string }) {
-    const d = opp.walkInDetails;
+    const d = getDriveDetails(opp);
     if (!d) return null;
 
     const hasCoords = d.latitude !== undefined && d.longitude !== undefined;

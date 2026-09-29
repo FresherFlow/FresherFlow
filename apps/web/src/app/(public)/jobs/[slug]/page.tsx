@@ -22,8 +22,8 @@ import { getFeedBadgeLabel, isInternshipOpportunity, isWalkinOpportunity } from 
 import {
     buildTaxonomyRegistry,
     resolveTaxonomySlug,
-    resolveLegacyBoardSlug,
     matchTaxonomy,
+    boardCanonicalSlug,
     assertRegistryJobSlugCollision,
     TaxonomyRegistry,
 } from '@/features/jobs/domain/taxonomy';
@@ -87,7 +87,6 @@ function boardTitle(resolved: NonNullable<ReturnType<typeof resolveTaxonomySlug>
         case 'city': return `Jobs in ${resolved.label} for Freshers`;
         case 'skill': return `${resolved.label} Jobs for Freshers`;
         case 'year': return `Jobs for ${resolved.year} Passouts`;
-        case 'combo': return `${resolved.combo.roleLabel} Jobs in ${resolved.combo.cityLabel} for Freshers`;
     }
 }
 
@@ -101,8 +100,6 @@ function boardDescription(resolved: NonNullable<ReturnType<typeof resolveTaxonom
             return `Find verified fresher jobs and internships requiring ${resolved.label}, including entry-level opportunities with direct official apply links.`;
         case 'year':
             return `Find verified jobs, internships and walk-in drives hiring ${resolved.year} batch passouts. Direct official application links.`;
-        case 'combo':
-            return `Browse verified fresher ${resolved.combo.roleLabel} opportunities in ${resolved.combo.cityLabel}, with direct official application links.`;
     }
 }
 
@@ -145,15 +142,34 @@ export async function generateStaticParams() {
 }
 
 // Generate dynamic SEO metadata.
-// Cost guard: resolves shard-only (single ~2.5KB detail JSON). Skips the
-// taxonomy registry build (full feed index) and the bootstrap/government/
-// expired fallback feeds — those stay on the page-component path below.
-// Stays cacheable under `revalidate = false`; no `no-store` on this public path.
+// Board-first: a `-jobs`/`-batch` slug that resolves in the registry is
+// provably not a job (build-time collision assertion), so boards get board
+// metadata here — never the "Opportunity Not Found" fallback below. The
+// registry build shares the page component's feed fetch through React cache().
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug: slugOrId } = await params;
     if (isInvalidSlug(slugOrId)) {
         logRouteResult('/[slug] (crawler)', '404');
         notFound();
+    }
+
+    try {
+        const registry = await loadTaxonomyRegistry();
+        const resolved = registry ? resolveTaxonomySlug(registry, slugOrId) : null;
+        if (resolved) {
+            const feed = await fetchFeedIndex(false, undefined, true);
+            const liveCount = (feed?.opportunities || []).filter((opp) => matchTaxonomy(opp, resolved)).length;
+            return {
+                title: boardTitle(resolved),
+                description: boardDescription(resolved),
+                alternates: { canonical: `/jobs/${boardCanonicalSlug(resolved)}` },
+                // An empty board renders for users (never a 404) but must not
+                // be indexed as a thin page.
+                ...(liveCount === 0 ? { robots: { index: false, follow: true } } : null),
+            };
+        }
+    } catch {
+        // Registry failure falls through to the job path below.
     }
 
     try {
@@ -176,28 +192,19 @@ export default async function OpportunityDetailPage({ params }: Props) {
     }
 
     // ── Taxonomy board branch (doc 22 §22.3) — registry hit renders the board ──
-    // Legacy unsuffixed board URLs 308 to the canonical `-jobs` form.
     const registry = await loadTaxonomyRegistry();
     const resolved = registry ? resolveTaxonomySlug(registry, slugOrId) : null;
-    if (!resolved && registry) {
-        const legacyCanonical = resolveLegacyBoardSlug(registry, slugOrId);
-        if (legacyCanonical) {
-            logRouteResult('/[slug] (board legacy)', '308');
-            permanentRedirect(`/jobs/${legacyCanonical}`);
-        }
-    }
     if (resolved) {
         // Board pages render card data only — lightweight index suffices.
         const feed = await fetchFeedIndex(false, undefined, true);
         const allJobs = feed?.opportunities || [];
         const boardJobs = allJobs.filter(opp => matchTaxonomy(opp, resolved));
 
-        // Inventory-gated: zero live matches = real 404, never a thin page.
-        if (boardJobs.length === 0) {
-            logRouteResult('/[slug] (board)', '404');
-            notFound();
-        }
-
+        // Boards never 404: a resolving board slug is provably not a job
+        // (build-time collision assertion), so zero live matches is an empty
+        // filter — not a missing page. Empty boards render with an empty
+        // state and noindex metadata (see generateMetadata); only unknown
+        // slugs fall through to the job branch and its 404 below.
         logRouteResult('/[slug] (board)', '200');
         return (
             <Suspense fallback={<FeedPageSkeleton />}>

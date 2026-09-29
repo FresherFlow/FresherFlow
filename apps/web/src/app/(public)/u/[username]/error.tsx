@@ -7,29 +7,40 @@ export default function ProfilePageError({
     error: Error & { digest?: string };
     reset: () => void;
 }) {
+    // The digest is the only thing that ties this render to a server log line, so it is
+    // surfaced instead of swallowed; the message itself stays generic for the visitor.
+    if (error.digest) {
+        console.error('[profile-page] render failed', error.digest);
+    }
+
     return (
-        <main className="mx-auto w-full max-w-3xl px-4 py-8 md:py-12">
-            <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center space-y-3">
-                <h2 className="text-sm font-bold text-foreground">Could not load this profile</h2>
-                <p className="text-xs text-muted-foreground">
+        <div className="flex min-h-[60vh] w-full items-center justify-center bg-background px-6 py-16 text-foreground">
+            <div className="w-full max-w-md space-y-4 rounded-xs border border-border bg-card p-8">
+                <p className="font-record text-micro uppercase tracking-[0.14em] text-muted-foreground">
+                    Something broke
+                </p>
+                <h2 className="font-display text-xl font-bold tracking-tight text-foreground">
+                    Could not load this profile
+                </h2>
+                <p className="text-sm leading-relaxed text-muted-foreground">
                     There was a connection error. The page may be back in a moment.
                 </p>
-                <div className="flex items-center justify-center gap-3">
+                <div className="flex flex-wrap items-center gap-2 pt-1">
                     <button
                         type="button"
                         onClick={() => reset()}
-                        className="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-all hover:bg-primary/90"
+                        className="inline-flex h-9 items-center justify-center rounded-xs bg-primary px-4 text-xs font-semibold text-primary-foreground transition-transform duration-150 ease-out hover:-translate-y-px active:scale-[0.98]"
                     >
-                        Retry
+                        Try again
                     </button>
                     <a
                         href="/jobs"
-                        className="inline-flex h-9 items-center justify-center rounded-lg border border-border px-4 text-xs font-semibold text-muted-foreground hover:bg-muted/40"
+                        className="inline-flex h-9 items-center justify-center rounded-xs border border-border bg-card px-3.5 text-xs font-semibold text-foreground transition-colors duration-150 ease-out hover:border-primary/40 hover:bg-muted/40"
                     >
-                        Back to jobs
+                        Browse fresher jobs
                     </a>
                 </div>
             </div>
-        </main>
+        </div>
     );
 }

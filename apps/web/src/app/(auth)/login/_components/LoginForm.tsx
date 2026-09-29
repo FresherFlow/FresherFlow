@@ -297,8 +297,17 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
                 } catch {
                     // navigate anyway — the next page loads fresh state
                 }
-                // username done → onboarding (big left/right, covers all profile) — implemented at /onboarding
-                window.location.replace('/onboarding');
+                // username done -> onboarding (big left/right, covers all profile) — implemented at /onboarding
+                // Carry the deep link across. A user who came from "Save this
+                // job" reached here through signup, and a bare '/onboarding'
+                // dropped them on the For You feed with the job - and the
+                // pending save - gone. `redirectParam` is already validated by
+                // `isSafeInternalRedirect` above.
+                window.location.replace(
+                    redirectParam
+                        ? `/onboarding?redirect=${encodeURIComponent(redirectParam)}`
+                        : '/onboarding'
+                );
             } else setUsernameError(res.message || 'Failed to claim');
         } catch (err: any) { setUsernameError(err.message || 'Failed to claim'); }
         finally { setIsClaiming(false); }

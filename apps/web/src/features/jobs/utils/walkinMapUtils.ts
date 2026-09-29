@@ -19,6 +19,11 @@ export type CategoryFeedType = 'JOB' | 'INTERNSHIP' | 'WALKIN' | 'GOVERNMENT' | 
  * normalized here so readers can use either name.
  */
 export interface DriveDetailsLike {
+    /**
+     * `DateTime[]` serialised to JSON, so these arrive as ISO strings. Some
+     * legacy mappers have also written pre-formatted labels, hence the
+     * defensive read at `firstDriveDate` rather than a bare `new Date(x)`.
+     */
     dates?: unknown;
     dateRange?: string | null;
     timeRange?: string | null;
@@ -196,19 +201,78 @@ export function getFeedBadgeLabel(opp: Opportunity): string {
     return 'JOB';
 }
 
-// Standard known coordinates for Hyderabad tech clusters and IT corridors
-export const CLUSTER_COORDS: Record<string, [number, number]> = {
-    'HITEC City': [17.4474, 78.3762],
-    'Madhapur': [17.4485, 78.3776],
-    'Gachibowli': [17.4144, 78.3498],
-    'Begumpet': [17.4447, 78.4721],
-    'Uppal': [17.4022, 78.5595],
-    'Ameerpet': [17.4375, 78.4482],
-    'Kondapur': [17.4699, 78.3578],
-    'Raidurg': [17.4225, 78.3758],
+// Neighbourhood-level coordinates. Kept because drives are frequently stored
+// with a cluster label ("Kondapur") rather than coordinates. Localities come
+// first for the city they belong to, so they are stored per city.
+const CLUSTER_COORDS_BY_CITY: Record<string, Record<string, [number, number]>> = {
+    hyderabad: {
+        'HITEC City': [17.4474, 78.3762],
+        Madhapur: [17.4485, 78.3776],
+        Gachibowli: [17.4144, 78.3498],
+        Begumpet: [17.4447, 78.4721],
+        Uppal: [17.4022, 78.5595],
+        Ameerpet: [17.4375, 78.4482],
+        Kondapur: [17.4699, 78.3578],
+        Raidurg: [17.4225, 78.3758],
+    },
+    bengaluru: {
+        Whitefield: [12.9698, 77.75],
+        'Electronic City': [12.8452, 77.6602],
+        Marathahalli: [12.9531, 77.7012],
+        Hebbal: [13.0358, 77.597],
+        'HSR Layout': [12.9116, 77.6474],
+    },
+    pune: {
+        Hinjewadi: [18.5913, 73.7389],
+        Kharadi: [18.5515, 73.9475],
+        'Viman Nagar': [18.5679, 73.9143],
+        Wakad: [18.5975, 73.7625],
+    },
+    chennai: {
+        'OMR': [12.8008, 80.2268],
+        'Guindy': [13.0067, 80.2206],
+        'Sholinganallur': [12.901, 80.227],
+    },
+    mumbai: {
+        Powai: [19.1176, 72.906],
+        Andheri: [19.1136, 72.8697],
+        Thane: [19.2183, 72.9781],
+    },
+    delhi: {
+        Noida: [28.5355, 77.391],
+        Gurugram: [28.4595, 77.0266],
+        'Dwarka': [28.5921, 77.046],
+    },
+    kolkata: {
+        SaltLake: [22.5807, 88.4209],
+        'Rajarhat': [22.7554, 88.4864],
+    },
 };
 
-export const HYDERABAD_DEFAULT_CENTER: [number, number] = [17.4350, 78.4000];
+/** Flattened view retained for callers that only need "is this a known locality". */
+export const CLUSTER_COORDS: Record<string, [number, number]> = Object.values(
+    CLUSTER_COORDS_BY_CITY,
+).reduce<Record<string, [number, number]>>((acc, city) => ({ ...acc, ...city }), {});
+
+/**
+ * Initial map viewport. Falls back to the city the drives are actually in, so a
+ * Pune-only view does not open on Hyderabad.
+ */
+export function getMapFallbackCenter(
+    opportunities: Opportunity[],
+): [number, number] {
+    for (const opp of opportunities) {
+        const d = getDriveDetails(opp);
+        const text = [
+            d?.city || '',
+            d?.venueAddress || '',
+            ...(opp.locations || []),
+        ].join(' ');
+        const hit = findCityCoords(text);
+        if (hit) return hit;
+    }
+    return INDIA_FALLBACK_CENTER;
+}
 
 /**
  * Haversine formula: calculate great-circle distance between two lat/lng points.
@@ -259,16 +323,110 @@ export function getOpportunityDistanceKm(
 }
 
 /**
+ * Recognised city centres for drives that stored no coordinates.
+ *
+ * The previous list held only Hyderabad neighbourhoods, so every drive in
+ * every other city was pinned into Gachibowli and the map opened on Hyderabad
+ * regardless of where the data actually was. Keyed by city so a drive in Pune
+ * falls back to Pune, and an unknown city falls back to India rather than to
+ * Hyderabad.
+ */
+export const CITY_FALLBACK_COORDS: Record<string, [number, number]> = {
+    hyderabad: [17.385, 78.4867],
+    secunderabad: [17.4399, 78.4983],
+    bengaluru: [12.9716, 77.5946],
+    bangalore: [12.9716, 77.5946],
+    mumbai: [19.076, 72.8777],
+    pune: [18.5204, 73.8567],
+    delhi: [28.6139, 77.209],
+    'new delhi': [28.6139, 77.209],
+    'noida': [28.5355, 77.391],
+    gurugram: [28.4595, 77.0266],
+    gurgaon: [28.4595, 77.0266],
+    faridabad: [28.4089, 77.3178],
+    chennai: [13.0827, 80.2707],
+    kolkata: [22.5726, 88.3639],
+    ahmedabad: [23.0225, 72.5714],
+    surat: [21.1702, 72.8311],
+    jaipur: [26.9124, 75.7873],
+    lucknow: [26.8467, 80.9462],
+    nagpur: [21.1458, 79.0882],
+    indore: [22.7196, 75.8577],
+    bhopal: [23.2599, 77.4126],
+    patna: [25.5941, 85.1376],
+    kochi: [9.9312, 76.2673],
+    coimbatore: [11.0168, 76.9558],
+    madurai: [9.9252, 78.1198],
+    visakhapatnam: [17.6868, 83.2185],
+    mysuru: [12.2958, 76.6394],
+    mysore: [12.2958, 76.6394],
+    chandigarh: [30.7333, 76.7794],
+    ludhiana: [30.901, 75.8573],
+    bhubaneswar: [20.2961, 85.8245],
+    guwahati: [26.1445, 91.7362],
+    trivandrum: [8.5241, 76.9366],
+    goa: [15.2993, 74.124],
+    chandigarh_punjab: [30.7333, 76.7794],
+};
+
+export const INDIA_FALLBACK_CENTER: [number, number] = [22.5937, 78.9629];
+
+function findCityCoords(text: string): [number, number] | null {
+    const lower = text.toLowerCase();
+    for (const [city, coords] of Object.entries(CITY_FALLBACK_COORDS)) {
+        if (lower.includes(city)) return coords;
+    }
+    return null;
+}
+
+/**
  * Extract the dominant city name from a list of opportunities.
  * Counts location mentions across all opps and returns the most common one.
  * Falls back to 'India' if no locations are found.
  */
 export function getDominantCity(opportunities: Opportunity[]): string {
+    // Work modes and regions are not cities, so they must not win the count.
+    // This list deliberately contains no city names: it previously held 'delhi',
+    // which is a real city, so a Delhi-only view reported "India" and then fell
+    // back to Hyderabad coordinates.
+    const exclude = new Set([
+        'india',
+        'remote',
+        'pan-india',
+        'worldwide',
+        'hybrid',
+        'wfh',
+        'work from home',
+        'onsite',
+        'on-site',
+        'in office',
+        // States and union territories.
+        'telangana',
+        'karnataka',
+        'maharashtra',
+        'tamil nadu',
+        'uttar pradesh',
+        'gujarat',
+        'west bengal',
+        'punjab',
+        'haryana',
+        'kerala',
+        'odisha',
+        'rajasthan',
+        'madhya pradesh',
+        'andhra pradesh',
+    ]);
+
     const cityCounts = new Map<string, number>();
-    // Common non-city strings to exclude
-    const exclude = new Set(['india', 'remote', 'pan-india', 'worldwide', 'hybrid', 'wfh', 'work from home', 'onsite', 'on-site', 'telangana', 'karnataka', 'maharashtra', 'tamil nadu', 'delhi', 'ncr']);
 
     for (const opp of opportunities) {
+        // `DriveDetails.city` is a dedicated, indexed column for exactly this,
+        // so it outranks free-text `locations` which carry states and modes.
+        const driveCity = getDriveDetails(opp)?.city?.trim();
+        if (driveCity && driveCity.length >= 2 && !exclude.has(driveCity.toLowerCase())) {
+            cityCounts.set(driveCity, (cityCounts.get(driveCity) || 0) + 1);
+        }
+
         for (const loc of opp.locations || []) {
             const city = loc.trim();
             if (!city || city.length < 2) continue;
@@ -299,20 +457,33 @@ function getBaseCoords(opp: Opportunity): [number, number] {
     if (d?.latitude && d?.longitude && !isNaN(d.latitude) && !isNaN(d.longitude)) {
         return [d.latitude, d.longitude];
     }
-    if (d?.techCluster) {
+    if (d?.techCluster || d?.clusterName) {
+        const label = (d.techCluster || d.clusterName || '').toLowerCase();
+        // Hyderabad neighbourhood table, still useful for drives that did land
+        // there. Other cities fall through to the city table below.
         for (const [key, coords] of Object.entries(CLUSTER_COORDS)) {
-            if (d.techCluster.toLowerCase().includes(key.toLowerCase())) {
+            if (label.includes(key.toLowerCase())) {
                 return coords;
             }
         }
     }
-    const locStr = (opp.locations || []).join(' ').toLowerCase();
+
+    const locStr = [
+        d?.city || '',
+        d?.venueAddress || '',
+        d?.landmark || '',
+        ...(opp.locations || []),
+    ].join(' ').toLowerCase();
+
+    const cityCoords = findCityCoords(locStr);
+    if (cityCoords) return cityCoords;
+
     for (const [key, coords] of Object.entries(CLUSTER_COORDS)) {
         if (locStr.includes(key.toLowerCase())) {
             return coords;
         }
     }
-    return HYDERABAD_DEFAULT_CENTER;
+    return INDIA_FALLBACK_CENTER;
 }
 
 /**
@@ -367,13 +538,46 @@ export function formatShortCompany(company?: string): string {
 }
 
 /**
+ * Fallback document checklist for a drive that stored none.
+ *
+ * `DriveDetails.requiredDocuments` is a required column, but the public submit
+ * and community submit paths write `[]`, so a drive created that way had a
+ * heading promising a checklist above an empty list. This is the honest
+ * default: what walk-in recruiters actually ask for.
+ *
+ * It lives here, not in a component, because two surfaces render it (the venue
+ * card and the calendar export) and they had drifted apart — one said "2 Hard
+ * Copies" and the other "3 hard copies" for the same drive.
+ */
+export const DEFAULT_REQUIRED_DOCUMENTS: string[] = [
+    'Updated Resume (2 hard copies)',
+    'Govt. Photo ID Proof (Aadhaar / PAN)',
+    'Original Marksheets & Provisional Degree',
+    '2 Passport Size Photos',
+];
+
+/**
+ * The checklist a reader should pack for this drive: the drive's own list when
+ * it has one, otherwise the shared default.
+ */
+export function getDriveRequiredDocuments(
+    details: DriveDetailsLike | null | undefined
+): string[] {
+    const stored = details?.requiredDocuments;
+    if (Array.isArray(stored) && stored.length > 0) {
+        return stored.map((d) => String(d).trim()).filter(Boolean);
+    }
+    return DEFAULT_REQUIRED_DOCUMENTS;
+}
+
+/**
  * 1-Tap Google Calendar event generator with pre-filled document checklist & directions
  */
 export function getGoogleCalendarUrl(opp: Opportunity): string {
     const details = getDriveDetails(opp);
     const title = encodeURIComponent(`Walk-in Interview: ${opp.company} - ${opp.normalizedRole || opp.title}`);
     const location = encodeURIComponent(details?.venueAddress || (opp.locations || []).join(', '));
-    
+
     const descLines = [
         `Role: ${opp.normalizedRole || opp.title}`,
         `Company: ${opp.company}`,
@@ -383,10 +587,9 @@ export function getGoogleCalendarUrl(opp: Opportunity): string {
         details?.contactPerson ? `Contact: ${details.contactPerson}` : '',
         '',
         'Mandatory Documents:',
-        '• 3 hard copies of Updated Resume',
-        '• Govt ID Proof (Aadhaar / PAN card)',
-        '• 10th, 12th & Degree Marksheets / Provisional Certificate',
-        '• 2 Passport size photographs',
+        // The drive's own list, so the calendar a reader exports matches what
+        // the venue card told them to pack.
+        ...getDriveRequiredDocuments(details).map((doc) => `• ${doc}`),
         '',
         `Directions: ${details?.venueLink || `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(details?.venueAddress || '')}`}`,
         '',
@@ -477,7 +680,7 @@ export function getWhatsAppShareUrl(opp: Opportunity): string {
     return `https://api.whatsapp.com/send?text=${text}`;
 }
 
-export type WalkinDrivePeriod = 'all' | 'today' | 'thisWeek';
+export type WalkinDrivePeriod = 'all' | 'today' | 'thisWeek' | 'next30Days';
 
 /**
  * Average walking speed in km/h. Indian urban walking avg ~4.5 km/h.
@@ -662,27 +865,35 @@ export function isWalkinInPeriod(
 ): boolean {
     if (period === 'all') return true;
     const d = getDriveDetails(opp);
-    if (!d?.dateRange) return true; // No date info — include by default
-
-    const parsed = parseWalkinDateRange(d.dateRange);
-    if (!parsed) return true; // Can't parse — include by default
+    // Use the stored `dates` array when present, not only the free-text
+    // `dateRange`. `dateRange` is often missing or unparseable while `dates`
+    // holds real values, and treating that as "no date, so include" made every
+    // date filter return the full list.
+    const stored = Array.isArray(d?.dates) ? d.dates : [];
+    const storedTimes = stored
+        .map((v) => new Date(String(v)).getTime())
+        .filter((t) => !Number.isNaN(t));
 
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dayMs = 24 * 60 * 60 * 1000;
 
-    if (period === 'today') {
-        const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000);
-        // Drive overlaps with today if it starts on or before today and ends on or after today
-        return parsed.start < todayEnd && parsed.end >= todayStart;
+    const windowEndMs =
+        period === 'today'
+            ? todayStart.getTime() + dayMs
+            : period === 'thisWeek'
+              ? todayStart.getTime() + 7 * dayMs
+              : todayStart.getTime() + 30 * dayMs;
+
+    if (storedTimes.length > 0) {
+        return storedTimes.some((t) => t >= todayStart.getTime() && t < windowEndMs);
     }
 
-    if (period === 'thisWeek') {
-        // This week = next 7 days from today
-        const weekEnd = new Date(todayStart.getTime() + 7 * 24 * 60 * 60 * 1000);
-        return parsed.start < weekEnd && parsed.end >= todayStart;
-    }
+    if (!d?.dateRange) return true; // Genuinely undated — include by default
+    const parsed = parseWalkinDateRange(d.dateRange);
+    if (!parsed) return true; // Unparseable range — include rather than hide
 
-    return true;
+    return parsed.start.getTime() < windowEndMs && parsed.end.getTime() >= todayStart.getTime();
 }
 
 export interface TransitInfo {
@@ -766,13 +977,13 @@ export function getTransitDirectionsUrl(opp: Opportunity): string {
         // Google Maps: origin (station) → destination (venue), travelmode=walking
         const city = (opp.locations || [])[0] || '';
         const origin = encodeURIComponent(`${transit.station}${city ? ', ' + city : ''}`);
-        return `https://www.google.com/maps/dir/${origin}/${destEncoded}/@17.4,78.4,14z/data=!3m1!4b1!4m2!4m1!3e2`;
+        return `https://www.google.com/maps/dir/${origin}/${destEncoded}/${viewportFor(details)}/data=!3m1!4b1!4m2!4m1!3e2`;
     }
 
     if (transit?.station) {
         const city = (opp.locations || [])[0] || '';
         const origin = encodeURIComponent(`${transit.station}${city ? ', ' + city : ''}`);
-        return `https://www.google.com/maps/dir/${origin}/${destEncoded}/@17.4,78.4,14z/data=!3m1!4b1!4m2!4m1!3e3`;
+        return `https://www.google.com/maps/dir/${origin}/${destEncoded}/${viewportFor(details)}/data=!3m1!4b1!4m2!4m1!3e3`;
     }
 
     // Fallback: driving directions from user to venue
@@ -796,7 +1007,7 @@ export function getWalkingFromStationUrl(opp: Opportunity): string | null {
     const city = (opp.locations || [])[0] || '';
     const origin = encodeURIComponent(`${transit.station}${city ? ', ' + city : ''}`);
     const destEncoded = encodeURIComponent(dest);
-    return `https://www.google.com/maps/dir/${origin}/${destEncoded}/@17.4,78.4,15z/data=!3m1!4b1!4m2!4m1!3e2`;
+    return `https://www.google.com/maps/dir/${origin}/${destEncoded}/${viewportFor(details)}/data=!3m1!4b1!4m2!4m1!3e2`;
 }
 
 /**
@@ -817,4 +1028,63 @@ export function getMapTileConfig(isDark: boolean) {
         updateWhenIdle: false, // Loads tiles during smooth motion
         updateWhenZooming: true,
     };
+}
+
+/**
+ * Google Maps path viewport segment (`@lat,lng,zoom`) for a drive URL.
+ *
+ * This used to be the literal `@17.4,78.4,14z`, which is Hyderabad's centre.
+ * Destination is what actually navigates, so the link still worked, but the
+ * map opened framed on Hyderabad for every drive in every other city. Framing
+ * on the venue fixes it without needing a per-city lookup table.
+ */
+function viewportFor(
+    details: DriveDetailsLike | null | undefined,
+    zoom = 14,
+): string {
+    const lat = details?.latitude;
+    const lng = details?.longitude;
+    if (typeof lat !== 'number' || typeof lng !== 'number') return `@17.4,78.4,${zoom}z`;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return `@17.4,78.4,${zoom}z`;
+    if (lat === 0 && lng === 0) return `@17.4,78.4,${zoom}z`;
+    return `@${lat.toFixed(5)},${lng.toFixed(5)},${zoom}z`;
+}
+
+/**
+ * Keyless embeddable map for a drive venue, on OpenStreetMap.
+ *
+ * Google's keyless `maps.google.com/maps?...&output=embed` iframe was retired
+ * in 2018 and now answers "API key required", which is what the walk-in detail
+ * card was showing on every venue. The Google Maps Embed API needs a billing
+ * account, and OSM's `export/embed.html` needs nothing: no key, no quota, no
+ * account, and it works in every city rather than only where we happen to have
+ * coordinates tuned.
+ *
+ * OSM has no keyless geocoder, so a venue address alone cannot be embedded. In
+ * that case this returns null and the caller offers a directions link instead
+ * of rendering a map that cannot resolve the address.
+ *
+ * @param spanDegrees Width of the visible box around the marker. 0.004 is
+ * roughly a 400 m box, which reads as "here is the pin" at card height.
+ */
+export function getOsmEmbedUrl(
+    details: DriveDetailsLike | null | undefined,
+    spanDegrees = 0.004,
+): string | null {
+    const lat = details?.latitude;
+    const lng = details?.longitude;
+    if (typeof lat !== 'number' || typeof lng !== 'number') return null;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    // A pin at (0, 0) is the classic "missing coordinate" artefact, not a venue
+    // in the Gulf of Guinea.
+    if (lat === 0 && lng === 0) return null;
+
+    const half = spanDegrees / 2;
+    // OSM's bbox is minlon,minlat,maxlon,maxlat - longitude first.
+    const bbox = [lng - half, lat - half, lng + half, lat + half]
+        .map((n) => n.toFixed(5))
+        .join(',');
+    const marker = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+
+    return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${marker}`;
 }

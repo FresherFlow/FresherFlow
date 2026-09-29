@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import toast from 'react-hot-toast';
 import { apiClient } from '@/lib/api/core';
 import {
     EMPTY_INTRO_FORM,
@@ -46,13 +47,15 @@ export function useIntroRequest({
     }, []);
 
     const submit = useCallback(async () => {
+        // Toast rather than window.alert: the dialog stays visible and the message sits
+        // next to the field it refers to instead of blocking the whole tab.
         const problem = validateIntroRequest(form, isRecruiter);
         if (problem) {
-            window.alert(problem);
+            toast.error(problem);
             return;
         }
         if (!username) {
-            window.alert('This profile cannot receive requests right now.');
+            toast.error('This profile cannot receive requests right now.');
             return;
         }
 
@@ -73,7 +76,7 @@ export function useIntroRequest({
         } catch {
             // Stay editable so the recruiter can retry without retyping.
             setState('idle');
-            window.alert('Could not send the request. Please try again.');
+            toast.error('Could not send the request. Please try again.');
         }
     }, [candidateId, form, isRecruiter, username]);
 

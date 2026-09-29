@@ -1,48 +1,55 @@
 import { prisma, redis } from '@fresherflow/database';
 import {
     logger,
-    PROFILE_PAGE_ACTIVE_DAYS,
-    profilePageActiveSince,
-    profilePageExpiresAt,
+    PROFILE_BOOST_DAYS,
+    profileBoostEndsAt,
+    profileBoostSince,
 } from '@fresherflow/utils';
 import { EmailService } from '../infrastructure/services/alerts/email.service';
 import { getPublicSiteUrl } from '../utils/runtimeConfig';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-/** One reminder per activation window — the key carries the activation timestamp,
- *  so reactivating makes the owner eligible for a fresh reminder next cycle. */
-const REMINDER_KEY_PREFIX = 'profile-page-reminder:';
+/** One reminder per boost window — the key carries the publication timestamp, so
+ *  re-boosting makes the owner eligible for a fresh reminder next cycle. */
+const REMINDER_KEY_PREFIX = 'profile-boost-reminder:';
 const REMINDER_KEY_TTL_SECONDS = 3 * 24 * 60 * 60;
 
-/** Only nudge once the page is inside its last day. */
+/** Only nudge once the boost is inside its last day. */
 const REMINDER_WINDOW_DAYS = 1;
 
-export interface ProfilePageReminderResult {
+export interface ProfileBoostReminderResult {
     candidates: number;
     sent: number;
     skipped: number;
 }
 
 /**
- * Email owners whose public page lapses within the reminder window.
+ * Email owners whose boost lapses within the reminder window.
  *
- * Idempotent without a schema column: the Redis key is scoped to the specific
- * activation, taken with NX, and expires well after the window closes. If Redis is
- * unavailable we skip rather than risk emailing the same person every run — the
- * in-app dashboard nudge still covers them.
+ * Scope note: this is about *promotion*, not reachability. The page stays online and keeps
+ * its URL when the boost lapses, so a mail that claims the page is about to go dark is
+ * simply false — the reminder sells the directory placement and a one-tap renewal.
+ *
+ * Idempotent without a schema column: the Redis key is scoped to the specific publication,
+ * taken with NX, and expires well after the window closes. If Redis is unavailable we skip
+ * rather than risk emailing the same person every run — the in-app dashboard nudge still
+ * covers them.
  */
-export async function runProfilePageExpiryReminders(
+export async function runProfileBoostReminders(
     now: Date = new Date()
-): Promise<ProfilePageReminderResult> {
-    const activatedBefore = new Date(
-        now.getTime() - (PROFILE_PAGE_ACTIVE_DAYS - REMINDER_WINDOW_DAYS) * MS_PER_DAY
+): Promise<ProfileBoostReminderResult> {
+    const publishedBefore = new Date(
+        now.getTime() - (PROFILE_BOOST_DAYS - REMINDER_WINDOW_DAYS) * MS_PER_DAY
     );
 
     const profiles = await prisma.profile.findMany({
         where: {
-            // Activated (PROFILE_PAGE_ACTIVE_DAYS - 1)..ACTIVE_DAYS days ago — still live, about to lapse.
-            profilePublishedAt: { gt: profilePageActiveSince(now), lte: activatedBefore },
+            // Boosted (PROFILE_BOOST_DAYS - 1)..PROFILE_BOOST_DAYS days ago — still promoted,
+            // about to lapse. `openToRecruiters` is required because a boost the owner never
+            // opted into anything for is not worth an email.
+            profilePublishedAt: { gt: profileBoostSince(now), lte: publishedBefore },
+            openToRecruiters: true,
             user: { status: 'ACTIVE', email: { not: null } },
         },
         select: {
@@ -57,22 +64,22 @@ export async function runProfilePageExpiryReminders(
     let skipped = 0;
 
     for (const profile of profiles) {
-        const activatedAt = profile.profilePublishedAt;
+        const boostedAt = profile.profilePublishedAt;
         const { email, fullName, username } = profile.user;
-        if (!activatedAt || !email || !username) {
+        if (!boostedAt || !email || !username) {
             skipped += 1;
             continue;
         }
 
         try {
-            const claimKey = `${REMINDER_KEY_PREFIX}${profile.userId}:${activatedAt.getTime()}`;
+            const claimKey = `${REMINDER_KEY_PREFIX}${profile.userId}:${boostedAt.getTime()}`;
             const claimed = await redis.set(claimKey, '1', 'EX', REMINDER_KEY_TTL_SECONDS, 'NX');
             if (claimed !== 'OK') {
                 skipped += 1;
                 continue;
             }
         } catch (error) {
-            logger.warn('[ProfilePageReminder] Skipping — Redis unavailable for idempotency lock', {
+            logger.warn('[ProfileBoostReminder] Skipping — Redis unavailable for idempotency lock', {
                 userId: profile.userId,
                 error,
             });
@@ -82,19 +89,20 @@ export async function runProfilePageExpiryReminders(
 
         const daysLeft = Math.max(
             1,
-            Math.ceil((profilePageExpiresAt(activatedAt).getTime() - now.getTime()) / MS_PER_DAY)
+            Math.ceil((profileBoostEndsAt(boostedAt).getTime() - now.getTime()) / MS_PER_DAY)
         );
 
-        await EmailService.sendProfilePageExpiryReminder(email, fullName, {
+        await EmailService.sendProfileBoostReminder(email, fullName, {
             username,
             pageUrl: `${getPublicSiteUrl()}/u/${username}`,
+            boostUrl: `${getPublicSiteUrl()}/account?tab=profile`,
             daysLeft,
         });
         sent += 1;
     }
 
     if (profiles.length > 0) {
-        logger.info('[ProfilePageReminder] Cycle complete', { candidates: profiles.length, sent, skipped });
+        logger.info('[ProfileBoostReminder] Cycle complete', { candidates: profiles.length, sent, skipped });
     }
 
     return { candidates: profiles.length, sent, skipped };

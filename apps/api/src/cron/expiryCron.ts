@@ -4,7 +4,7 @@ import { logger } from '@fresherflow/utils';
 import TelegramService from '../infrastructure/services/alerts/telegram.service';
 import { StaticFeedService } from '../infrastructure/services/opportunity/staticFeed.service';
 import { expireJobNotifyEngagedUsers } from '../infrastructure/services/community/community.service';
-import { runProfilePageExpiryReminders } from './profilePageReminder';
+import { runProfileBoostReminders } from './profilePageReminder';
 
 function formatDateKeyInTimezone(date: Date, timezone: string): string {
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -118,8 +118,30 @@ export async function runExpiryCycle() {
             // stale-warning count must not report removed listings as actionable.
             // expiredAt: null keeps the cycle idempotent across reruns.
             where: { id: { in: walkInIdsToExpire }, status: OpportunityStatus.PUBLISHED, deletedAt: null, expiredAt: null },
-            data: { expiredAt: nowUTC }
+            // Clear `nextDriveAt` with the expiry. The search filter hides
+            // expired rows on its own, but leaving a stale future date on an
+            // expired row means a later re-publish would surface a drive whose
+            // dates have all passed.
+            data: { expiredAt: nowUTC, nextDriveAt: null }
         });
+
+        // Walk-ins that still have a live date keep `nextDriveAt` in step with
+        // their dates. A multi-day drive's earliest future date moves forward
+        // every day, and this is the only place that happens for existing rows.
+        await prisma.$executeRaw`
+            UPDATE "Opportunity" o
+            SET "nextDriveAt" = d."next_drive_at"
+            FROM (
+                SELECT "opportunityId", MIN(dte) AS "next_drive_at"
+                FROM "DriveDetails", unnest("dates") AS dte
+                WHERE dte > ${nowUTC}
+                GROUP BY "opportunityId"
+            ) d
+            WHERE o."id" = d."opportunityId"
+              AND o."recruitmentMethod" = 'WALK_IN'
+              AND o."expiredAt" IS NULL
+              AND (o."nextDriveAt" IS DISTINCT FROM d."next_drive_at")
+        `;
 
         // 3. STALE WARNINGS
         const staleListingDays = Number(process.env.STALE_LISTING_DAYS || 30);
@@ -166,14 +188,15 @@ export async function runExpiryCycle() {
             where: { expiresAt: { lt: refreshTokenPruneThreshold } }
         });
 
-        // 5. PUBLIC PAGE ACTIVATION REMINDERS
-        // A public page lapses when its activation window closes, so warn owners inside
-        // the last day. Isolated: a failure here must never break job expiry.
+        // 5. PUBLIC PAGE BOOST REMINDERS
+        // A public page never goes offline; its boost (recruiter-directory presence) does
+        // lapse, so warn owners inside the last day. Isolated: a failure here must never
+        // break job expiry.
         let profilePageReminders = { candidates: 0, sent: 0, skipped: 0 };
         try {
-            profilePageReminders = await runProfilePageExpiryReminders(nowUTC);
+            profilePageReminders = await runProfileBoostReminders(nowUTC);
         } catch (error) {
-            logger.error('Profile page reminder cycle failed', error);
+            logger.error('Profile boost reminder cycle failed', error);
         }
 
         const endTime = new Date();

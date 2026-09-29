@@ -1,6 +1,7 @@
 import prisma from '../../infrastructure/database/prisma';
 import { determineTrustLevel, calculateNewTrustScore } from '@fresherflow/utils';
 import { OpportunityStatus } from '@fresherflow/types';
+import { NotificationType } from '@fresherflow/database';
 
 /**
  * Rejects an opportunity and penalizes the contributor.
@@ -115,6 +116,50 @@ export async function approveSubmission(opportunityId: string, adminId: string) 
       where: { opportunityId, status: { in: ['PENDING_REVIEW', 'REJECTED'] } },
       data: { status: 'PUBLISHED' },
     });
+
+    // 4. Tell the submitters their job is live. One notification per real
+    // user: guest rows are attributed to the shared community account (never
+    // notified), and re-approvals skip users who already have an unread one.
+    // Rides JOB_UPDATED with a payload flag — a new enum value would need a
+    // DB migration, and the web tab keys off the flag first (see
+    // NotificationsTab toDisplayItem).
+    const submissions = await tx.jobSubmission.findMany({
+      where: { opportunityId },
+      select: { submittedById: true },
+    });
+    const submitterIds = [...new Set(
+      submissions.map((s) => s.submittedById).filter((id): id is string => !!id),
+    )];
+    if (submitterIds.length > 0) {
+      const bot = await tx.user.findFirst({
+        where: { OR: [{ email: 'community@fresherflow.app' }, { username: 'fresherflow_community' }] },
+        select: { id: true },
+      });
+      const realIds = bot ? submitterIds.filter((id) => id !== bot.id) : submitterIds;
+      if (realIds.length > 0) {
+        const alreadyNotified = await tx.notification.findMany({
+          where: {
+            opportunityId,
+            userId: { in: realIds },
+            readAt: null,
+            payload: { path: ['submissionPublished'], equals: true },
+          },
+          select: { userId: true },
+        });
+        const notifiedSet = new Set(alreadyNotified.map((n) => n.userId));
+        const freshIds = realIds.filter((id) => !notifiedSet.has(id));
+        if (freshIds.length > 0) {
+          await tx.notification.createMany({
+            data: freshIds.map((userId) => ({
+              userId,
+              type: NotificationType.JOB_UPDATED,
+              opportunityId,
+              payload: { submissionPublished: true },
+            })),
+          });
+        }
+      }
+    }
 
     const isRealAdmin = adminId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(adminId);
     if (isRealAdmin) {

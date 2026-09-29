@@ -61,4 +61,37 @@ router.post('/', appFeedbackLimiter, requireAuth, validate(appFeedbackSchema), a
     }
 });
 
+// GET /api/feedback/mine - List the caller's own feedback, newest first (max 50).
+// NOTE: AppFeedback has no status column, so every row reports PENDING here;
+// the client renders REVIEWED/RESOLVED only if a status source exists later.
+router.get('/mine', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const rows = await prisma.appFeedback.findMany({
+            where: { userId: req.userId! },
+            orderBy: { createdAt: 'desc' },
+            take: 50,
+            select: {
+                id: true,
+                type: true,
+                message: true,
+                rating: true,
+                createdAt: true
+            }
+        });
+
+        res.json({
+            feedback: rows.map((row) => ({
+                id: row.id,
+                type: row.type,
+                message: row.message,
+                rating: row.rating,
+                status: 'PENDING' as const,
+                createdAt: row.createdAt
+            }))
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
 export default router;

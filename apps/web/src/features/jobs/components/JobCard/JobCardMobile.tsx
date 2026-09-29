@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@repo/ui/utils/cn';
 import React, { useMemo } from 'react';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
-import PaperAirplaneIcon from '@heroicons/react/24/outline/PaperAirplaneIcon';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import BookmarkSolidIcon from '@heroicons/react/24/solid/BookmarkIcon';
 import CheckIcon from '@heroicons/react/24/solid/CheckIcon';
@@ -13,7 +12,7 @@ import toast from 'react-hot-toast';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useFirebaseSaved } from '@/features/dashboard/hooks/useSavedJobs';
-import { useFirebaseTracker } from '@/features/dashboard/hooks/useFirebaseTracker';
+import { useTrackerWriter } from '@/features/dashboard/hooks/useFirebaseTracker';
 import { saveOpportunityToCache } from '@/lib/cache/opportunitiesFeedCache';
 import { ActionType } from '@fresherflow/types';
 import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
@@ -21,16 +20,10 @@ import { isCampusDriveOpportunity } from '@/features/jobs/domain/driveTimeline';
 import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
 import { promptLoginToast } from '@/lib/utils/toastUtils';
 import { JobCardBadges } from './JobCardBadges';
-import { buildMetaItems } from './JobCardMetaConfig';
-import ChatBubbleLeftRightIcon from '@heroicons/react/24/outline/ChatBubbleLeftRightIcon';
-import { useCommentCount } from '@/features/jobs/hooks/useCommentCounts';
+import { ArrowUpRight } from 'lucide-react';
 import { getDriveDetails, isGovernmentOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import {
-    getAccentBorderClass,
-    getJobTypeLabel,
     getPostedLabel,
-    getVisibleSkills,
-    isFreshlyPosted,
     isJobExpired,
     reorderSkillsBySearch,
 } from './jobCardUtils';
@@ -64,7 +57,9 @@ export function JobCardMobile({
     const router = useRouter();
     const { user } = useAuth();
     const { savedJobsMap, toggleSavedJob } = useFirebaseSaved(user?.id);
-    const { writeTrackerItem } = useFirebaseTracker(user?.id);
+    // Writer-only: this card records the apply action but never reads the
+    // tracker map, so it must not hold a per-instance RTDB subscription.
+    const { writeTrackerItem } = useTrackerWriter(user?.id);
 
     const isDrive = isCampusDriveOpportunity(job);
     const isGovernment = isGovernmentOpportunity(job);
@@ -84,28 +79,18 @@ export function JobCardMobile({
         () => reorderSkillsBySearch(allSkills, searchQuery || ''),
         [allSkills, searchQuery]
     );
-    const { visible: visibleSkills } = getVisibleSkills(orderedSkills, 88);
-    const displaySkills = visibleSkills.slice(0, 6);
-    const skillOverflow = Math.max(0, orderedSkills.length - displaySkills.length);
-
     const locationInfo = isDrive
         ? { shortLabel: 'PAN India', fullLabel: 'PAN India' }
         : parseOpportunityLocation(job.locations);
 
-    const metaItems = buildMetaItems(job, { isGovernment, isDrive, isWalkin });
-    const typeLabel = getJobTypeLabel(job, isDrive, isGovernment);
-    const accentClass = getAccentBorderClass(job, isDrive, isGovernment, isWalkin);
+    // Mobile data diet: title 1 line, company 1 line, 2 skills + overflow,
+    // actions. No meta strip (mode duplicates the location row; education,
+    // source and salary live on the detail page), no wrapping skill gallery.
+    // The desktop list fits one measured row; mobile wraps, so uncapped
+    // lists become full-screen cards — the whole card is 5 short rows.
+    const mobileSkills = orderedSkills.slice(0, 2);
+    const mobileOverflow = Math.max(0, orderedSkills.length - mobileSkills.length);
     const postedLabel = getPostedLabel(job);
-    const commentCount = useCommentCount(job.slug || job.id);
-    // V1 job-card requirement: the Discuss CTA must SSR even before counts
-    // hydrate client-side, so fall back to the zero-state (0 discussing).
-    const discussionCount = commentCount ?? 0;
-    const discussionHref = `${getOpportunityPathFromItem(job)}#discussion`;
-    const handleDiscussClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-        e.stopPropagation();
-        if (onClick) onClick(e as unknown as React.MouseEvent<HTMLAnchorElement>);
-        else router.push(discussionHref);
-    };
 
     const driveDetails = getDriveDetails(job);
     const walkinDestination =
@@ -160,15 +145,14 @@ export function JobCardMobile({
     return (
         <div
             className={cn(
-                'group relative bg-card text-card-foreground border border-l-4 rounded-xl p-2.5 flex flex-col gap-2 transition-all duration-150 ease-out cursor-pointer',
-                accentClass,
-                'border-border/60 dark:border-border/40 hover:border-border dark:hover:border-border/70',
+                'group relative bg-card text-card-foreground border rounded-lg p-2.5 flex flex-col gap-2 transition-colors duration-150 ease-out cursor-pointer',
+                'border-border hover:border-primary/30',
                 isJobExpired(job) && 'opacity-60',
                 className
             )}
             onClick={handleCardClick}
         >
-            <div className="flex items-start gap-2.5">
+            <div className="flex items-start gap-2">
                 <CompanyLogo
                     companyName={job.company}
                     companyWebsite={job.companyWebsite}
@@ -176,40 +160,27 @@ export function JobCardMobile({
                     applyLink={job.applyLink}
                     priority={priority}
                     isGovernment={isGovernment}
-                    className="!w-9 !h-9 shrink-0"
+                    className="!w-10 !h-10 shrink-0"
                 />
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground leading-none mb-0.5">
-                        <span className="uppercase tracking-wide">{typeLabel}</span>
-                        {postedLabel && (
+                    <h2 className="text-sm font-semibold text-foreground leading-snug line-clamp-2">
+                        {job.normalizedRole || job.title}
+                    </h2>
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                        {job.company}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                        {locationInfo.shortLabel} · {postedLabel}
+                        {showApplied ? (
                             <>
-                                <span className="text-muted-foreground/40">•</span>
-                                <span>{postedLabel}</span>
-                            </>
-                        )}
-                        {showApplied && (
-                            <>
-                                <span className="text-muted-foreground/40">•</span>
+                                {' · '}
                                 <span className="inline-flex items-center gap-0.5 text-success dark:text-success">
                                     <CheckIcon className="w-3 h-3" aria-hidden />
                                     Applied
                                 </span>
                             </>
-                        )}
-                    </div>
-                    <h2 className="text-sm font-semibold text-foreground leading-snug line-clamp-2">
-                        {job.normalizedRole || job.title}
-                    </h2>
-                    <div className="flex min-w-0 items-center gap-1.5 mt-0.5 text-sm text-muted-foreground">
-                        <span className="font-semibold text-foreground/80 truncate min-w-0 max-w-36">
-                            {job.company}
-                        </span>
-                        <span className="text-muted-foreground/40 shrink-0">•</span>
-                        <span className="inline-flex min-w-0 flex-1 items-center gap-1">
-                            <MapPinIcon className="w-3.5 h-3.5 shrink-0" aria-hidden />
-                            <span className="truncate">{locationInfo.shortLabel}</span>
-                        </span>
-                    </div>
+                        ) : null}
+                    </p>
                 </div>
                 <button
                     type="button"
@@ -225,96 +196,49 @@ export function JobCardMobile({
                 </button>
             </div>
 
-            {metaItems.length > 0 || displaySkills.length > 0 || skillOverflow > 0 ? (
-                <div className="flex min-w-0 items-center gap-1.5 relative z-20 pointer-events-auto">
-                    <div className="min-w-0 flex-1">
-                        <JobCardBadges metaItems={metaItems} skills={displaySkills} overflow={skillOverflow} compact />
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                        <a
-                            href={discussionHref}
-                            onClick={handleDiscussClick}
-                            className="inline-flex items-center gap-1 px-1.5 h-6 text-xs font-semibold rounded-md text-muted-foreground hover:text-primary transition-colors shrink-0"
-                            title={`${discussionCount} discussing — Discuss this job`}
-                            aria-label={`Discuss this job (${discussionCount} discussing)`}
-                        >
-                            <ChatBubbleLeftRightIcon className="w-3 h-3" aria-hidden />
-                            {discussionCount} discussing · Discuss
-                        </a>
-                        {isWalkin ? (
-                            <>
-                                {directionsUrl && (
-                                    <a
-                                        href={directionsUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        onClick={(e) => e.stopPropagation()}
-                                        className="inline-flex items-center justify-center gap-1 px-2.5 h-6 text-xs font-semibold rounded-md bg-warning/15 text-warning dark:text-warning border border-warning/40 hover:bg-warning/25 transition-colors"
-                                    >
-                                        <MapPinIcon className="w-3 h-3" aria-hidden />
-                                        Directions
-                                    </a>
-                                )}
-                                <button
-                                    type="button"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (onClick) onClick(e as unknown as React.MouseEvent<HTMLAnchorElement>);
-                                        else router.push(getOpportunityPathFromItem(job));
-                                    }}
-                                    className="inline-flex items-center justify-center px-2.5 h-6 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-xs"
+            <div className="flex min-w-0 items-center gap-1.5 relative z-20 pointer-events-auto">
+                <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto no-scrollbar">
+                    <JobCardBadges metaItems={[]} skills={mobileSkills} overflow={mobileOverflow} compact />
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                    {isWalkin ? (
+                        <>
+                            {directionsUrl && (
+                                <a
+                                    href={directionsUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="inline-flex items-center justify-center gap-1 px-2.5 h-7 text-xs font-semibold rounded-md bg-warning/15 text-warning dark:text-warning border border-warning/40 hover:bg-warning/25 transition-colors"
                                 >
-                                    View drive
-                                </button>
-                            </>
-                        ) : (
+                                    <MapPinIcon className="w-3 h-3" aria-hidden />
+                                    Directions
+                                </a>
+                            )}
                             <button
                                 type="button"
-                                onClick={handleApplyClick}
-                                className="inline-flex items-center justify-center gap-1.5 px-3 h-6 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all duration-150 ease-out motion-reduce:transform-none shadow-xs"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (onClick) onClick(e as unknown as React.MouseEvent<HTMLAnchorElement>);
+                                    else router.push(getOpportunityPathFromItem(job));
+                                }}
+                                className="inline-flex items-center justify-center px-2.5 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                             >
-                                Apply
-                                <PaperAirplaneIcon className="w-3 h-3 -rotate-45 -mt-0.5" aria-hidden />
+                                View drive
                             </button>
-                        )}
-                    </div>
-                </div>
-            ) : (
-                <div className="flex items-center justify-end gap-2 pt-1 relative z-20 pointer-events-auto">
-                    <a
-                        href={discussionHref}
-                        onClick={handleDiscussClick}
-                        className="inline-flex items-center gap-1 px-1.5 h-6 text-xs font-semibold rounded-md text-muted-foreground hover:text-primary transition-colors shrink-0"
-                        title={`${discussionCount} discussing — Discuss this job`}
-                        aria-label={`Discuss this job (${discussionCount} discussing)`}
-                    >
-                        <ChatBubbleLeftRightIcon className="w-3 h-3" aria-hidden />
-                        {discussionCount} discussing · Discuss
-                    </a>
-                    {isWalkin ? (
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (onClick) onClick(e as unknown as React.MouseEvent<HTMLAnchorElement>);
-                                else router.push(getOpportunityPathFromItem(job));
-                            }}
-                            className="inline-flex items-center justify-center px-2.5 h-6 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-xs"
-                        >
-                            View drive
-                        </button>
+                        </>
                     ) : (
                         <button
                             type="button"
                             onClick={handleApplyClick}
-                            className="inline-flex items-center justify-center gap-1.5 px-3 h-6 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all duration-150 ease-out motion-reduce:transform-none shadow-xs"
+                            className="inline-flex items-center justify-center gap-1.5 px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all duration-150 ease-out motion-reduce:transform-none"
                         >
                             Apply
-                            <PaperAirplaneIcon className="w-3 h-3 -rotate-45 -mt-0.5" aria-hidden />
+                            <ArrowUpRight className="w-3.5 h-3.5" aria-hidden />
                         </button>
                     )}
                 </div>
-            )}
+            </div>
         </div>
     );
 }

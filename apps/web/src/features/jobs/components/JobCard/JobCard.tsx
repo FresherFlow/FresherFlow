@@ -4,7 +4,6 @@ import { Opportunity } from '@fresherflow/types';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { cn } from '@repo/ui/utils/cn';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
-import PaperAirplaneIcon from '@heroicons/react/24/outline/PaperAirplaneIcon';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import BookmarkSolidIcon from '@heroicons/react/24/solid/BookmarkIcon';
 import CheckIcon from '@heroicons/react/24/solid/CheckIcon';
@@ -15,7 +14,7 @@ import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useFirebaseSaved } from '@/features/dashboard/hooks/useSavedJobs';
-import { useFirebaseTracker } from '@/features/dashboard/hooks/useFirebaseTracker';
+import { useTrackerWriter } from '@/features/dashboard/hooks/useFirebaseTracker';
 import { saveOpportunityToCache } from '@/lib/cache/opportunitiesFeedCache';
 import { ActionType } from '@fresherflow/types';
 import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
@@ -25,6 +24,7 @@ import { buildShareUrl } from '@/lib/utils/share';
 import { promptLoginToast } from '@/lib/utils/toastUtils';
 import { Hint } from '@/ui/Tooltip';
 import ChatBubbleLeftRightIcon from '@heroicons/react/24/outline/ChatBubbleLeftRightIcon';
+import { ArrowUpRight } from 'lucide-react';
 import { useCommentCount } from '@/features/jobs/hooks/useCommentCounts';
 import { AutoFitBadges } from './AutoFitBadges';
 import { JobCardMenu } from './JobCardMenu';
@@ -32,7 +32,6 @@ import { buildMetaItems } from './JobCardMetaConfig';
 import { WalkinDateChip } from '@/features/jobs/components/WalkinEventWidgets';
 import { getDriveDetails, isGovernmentOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import {
-    getAccentBorderClass,
     getJobTypeLabel,
     getPostedLabel,
     isFreshlyPosted,
@@ -93,7 +92,9 @@ export default function JobCard({
     const { user } = useAuth();
     const searchParams = useSearchParams();
     const { savedJobsMap, toggleSavedJob } = useFirebaseSaved(user?.id);
-    const { writeTrackerItem } = useFirebaseTracker(user?.id);
+    // Writer-only: this card records the apply action but never reads the
+    // tracker map, so it must not hold a per-instance RTDB subscription.
+    const { writeTrackerItem } = useTrackerWriter(user?.id);
 
     const isDrive = isCampusDriveOpportunity(job);
     const isGovernment = isGovernmentOpportunity(job);
@@ -118,7 +119,15 @@ export default function JobCard({
         ''
     ).trim();
 
-    const allSkills = ((job as { skills?: string[] }).skills || job.requiredSkills || []) as string[];
+    // Memoised on the source arrays, not on `job`: callers rebuild the job
+    // object on every render, so reading them inline would hand a fresh array
+    // to `orderedSkills` (and then to AutoFitBadges) on every pass.
+    const jobSkills = (job as { skills?: string[] }).skills;
+    const requiredSkills = job.requiredSkills;
+    const allSkills = useMemo(
+        () => (jobSkills || requiredSkills || []) as string[],
+        [jobSkills, requiredSkills]
+    );
     const orderedSkills = useMemo(
         () => reorderSkillsBySearch(allSkills, effectiveSearchQuery),
         [allSkills, effectiveSearchQuery]
@@ -150,7 +159,6 @@ export default function JobCard({
 
     const metaItems = buildMetaItems(job, { isGovernment, isDrive, isWalkin });
     const typeLabel = getJobTypeLabel(job, isDrive, isGovernment);
-    const accentClass = getAccentBorderClass(job, isDrive, isGovernment, isWalkin);
     const postedLabel = getPostedLabel(job);
     const commentCount = useCommentCount(job.slug || job.id);
     // V1 job-card requirement: the Discuss CTA must SSR even before counts
@@ -204,12 +212,11 @@ export default function JobCard({
             onMouseLeave={onMouseLeave}
             onClick={handleCardClick}
             className={cn(
-                'group relative bg-card text-card-foreground border border-l-4 rounded-xl p-3.5 flex flex-col gap-2 transition-all duration-150 ease-out cursor-pointer',
+                'group relative bg-card text-card-foreground border rounded-lg p-3.5 flex flex-col gap-2 transition-colors duration-150 ease-out cursor-pointer',
                 isSelected
-                    ? 'border-l-primary border-border/30 bg-primary/[0.03] shadow-xs'
-                    : [accentClass, 'border-border/60 dark:border-border/40 hover:border-border dark:hover:border-border/70 hover:shadow-xs'],
-                isHovered && !isSelected && 'border-border dark:border-border/70 shadow-xs',
-                showApplied && 'border-l-brand-whatsapp',
+                    ? 'border-primary/40 bg-primary/[0.03]'
+                    : 'border-border hover:border-primary/30',
+                isHovered && !isSelected && 'border-primary/30',
                 isJobExpired(job) && 'opacity-60',
                 className
             )}
@@ -349,20 +356,20 @@ export default function JobCard({
                                     if (onClick) onClick(e as unknown as React.MouseEvent<HTMLAnchorElement>);
                                     else router.push(getOpportunityPathFromItem(job));
                                 }}
-                                className="inline-flex items-center justify-center px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-xs"
+                                className="inline-flex items-center justify-center px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                             >
                                 View drive
                             </button>
                         </>
                     ) : (
-                        <button
-                            type="button"
-                            onClick={handleApplyClick}
-                            className="inline-flex items-center justify-center gap-1.5 px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all duration-150 ease-out motion-reduce:transform-none shadow-xs"
-                        >
-                            Apply
-                            <PaperAirplaneIcon className="w-3.5 h-3.5 -rotate-45 -mt-0.5" aria-hidden />
-                        </button>
+                                <button
+                                    type="button"
+                                    onClick={handleApplyClick}
+                                    className="inline-flex items-center justify-center gap-1.5 px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all duration-150 ease-out motion-reduce:transform-none"
+                                >
+                                    Apply
+                                    <ArrowUpRight className="w-3.5 h-3.5" aria-hidden />
+                                </button>
                     )}
                 </div>
             </div>

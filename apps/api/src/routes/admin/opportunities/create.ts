@@ -15,6 +15,7 @@ import {
     buildGovernmentTags, extractGovtLocations, resolveOpportunityDimensions,
     parseSourceKind, parseOrganizationId, parseInstitutionIds,
     buildCompensationCreates, buildEventDetailsCreate, buildEventDetailsUpsert,
+    buildDriveDiscoveryColumns, normalizeWalkInDates,
 } from './_helpers';
 import { handleOpportunityPublished } from '../../../infrastructure/services/opportunity/publish.service';
 import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/opportunity/publicOpportunityCache.service';
@@ -165,7 +166,13 @@ router.post(
                         expiresAt: deriveOpportunityExpiryDate(data, recruitmentMethod),
                         postedByUserId: contributorId || (req.adminId as string),
                         status: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus,
-                        ...(walkInCreate && { driveDetails: walkInCreate }),
+                        ...(walkInCreate && {
+                            driveDetails: walkInCreate,
+                            ...buildDriveDiscoveryColumns(
+                                data.driveDetails,
+                                walkInCreate.create.dates,
+                            ),
+                        }),
                         ...(governmentJobCreate && { governmentJobDetails: governmentJobCreate }),
                         ...(eventDetailsCreate && { eventDetails: eventDetailsCreate }),
                         ...(compensationCreates && { compensations: { create: compensationCreates } }),
@@ -325,7 +332,13 @@ router.post(
                         expiresAt: deriveOpportunityExpiryDate(data, recruitmentMethod),
                         postedByUserId: contributorId || (req.adminId as string),
                         status: OpportunityStatus.DRAFT as unknown as DbOpportunityStatus,
-                        ...(walkInCreate && { driveDetails: walkInCreate }),
+                        ...(walkInCreate && {
+                            driveDetails: walkInCreate,
+                            ...buildDriveDiscoveryColumns(
+                                data.driveDetails,
+                                walkInCreate.create.dates,
+                            ),
+                        }),
                         ...(governmentJobCreate && { governmentJobDetails: governmentJobCreate }),
                         ...(eventDetailsCreate && { eventDetails: eventDetailsCreate }),
                         ...(compensationCreates && { compensations: { create: compensationCreates } }),
@@ -448,7 +461,16 @@ router.put(
                 expiresAt: deriveOpportunityExpiryDate(data, recruitmentMethod),
                 lastVerified: new Date(),
                 ...(data.status === OpportunityStatus.PUBLISHED ? { expiredAt: null, deletedAt: null } : {}),
-                ...(isWalkIn && walkInUpdate && { driveDetails: walkInUpdate }),
+                ...(isWalkIn && walkInUpdate && {
+                    driveDetails: walkInUpdate,
+                    // Editing a drive's dates or city has to move the denormalised
+                    // discovery columns too, or "drives this week" keeps
+                    // returning the old date.
+                    ...buildDriveDiscoveryColumns(
+                        data.driveDetails,
+                        normalizeWalkInDates(data),
+                    ),
+                }),
                 ...(governmentJobUpdate && { governmentJobDetails: governmentJobUpdate }),
                 ...(eventDetailsUpdate && { eventDetails: eventDetailsUpdate }),
             };

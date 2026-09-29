@@ -13,9 +13,12 @@ interface PageProps {
 }
 
 // Shared by generateMetadata + the page, so one request fetches once.
-// Returns null only for unknown handles / lapsed activation windows (the API
+// Returns null only for unknown handles and never-published profiles (the API
 // answers both with 404); transport failures and 5xx rethrow so the error
-// boundary renders instead of the "not live" 404 copy.
+// boundary renders instead of the not-found copy.
+//
+// A lapsed boost is deliberately NOT a 404 — the page stays up. `revalidate = 60`
+// then only governs how fast an edit lands, not whether the URL resolves.
 const getProfile = cache(async (username: string): Promise<PublicProfile | null> => {
     try {
         const res = await serverApiClient<{ success: boolean; data: PublicProfile }>(

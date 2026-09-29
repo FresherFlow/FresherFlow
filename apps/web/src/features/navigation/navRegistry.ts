@@ -30,6 +30,7 @@ import {
     Building,
     Users,
     TrainFront,
+    SlidersHorizontal,
 } from 'lucide-react';
 
 /** lucide-react — same icon set as the admin rail. Accepts these props. */
@@ -104,7 +105,11 @@ export const REGISTRY = {
     referrals: { name: 'Referrals', href: '/account?tab=referral', icon:    UserPlus, requiresAuth: true },
     settings: { name: 'Settings', href: '/account?tab=settings', icon:    Settings, requiresAuth: true },
     appearance: { name: 'Appearance', href: '/account?tab=appearance', icon:    Palette, requiresAuth: true },
-    alerts: { name: 'Alerts', href: '/jobs?tab=alerts', icon: Bell, requiresAuth: true },
+    /* `alerts` is the page that configures what you get notified about, so it
+       is notification settings, not an alerts feed. It keeps the `alerts` query
+       value for existing links; only the label and icon changed. A separate
+       icon stops it reading as a second copy of Notifications. */
+    alerts: { name: 'Notification settings', href: '/jobs?tab=alerts', icon: SlidersHorizontal, requiresAuth: true },
     notifications: { name: 'Notifications', href: '/jobs?tab=notifications', icon: Bell, requiresAuth: true },
     feedback: { name: 'Feedback', href: '/account?tab=feedback', icon: MessageSquareText, requiresAuth: true },
     discussions: { name: 'Discussions', href: '/community?tab=discussions', icon: MessageSquareText },

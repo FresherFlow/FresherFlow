@@ -1,10 +1,10 @@
-import { AtsJob } from '@fresherflow/plugins';
+﻿import { AtsJob } from '@fresherflow/plugins';
 import {
   collectPublicFeeds,
   collectGitHubHiring,
   collectDirectCompanyPortals,
   collectDorkSearches,
-  collectHyderabadWalkinDrives,
+  collectWalkinDrives,
   collectVcStartupPortals,
 
   filterAndVerifyJobs,
@@ -60,13 +60,13 @@ async function runSearchEngine() {
   const channel = options.channel || 'all';
 
   console.log(`\n======================================================`);
-  console.log(`🚀 STARTING EXTERNAL MULTI-CHANNEL JOB SEARCH ENGINE`);
-  console.log(`   └─ Channel: ${channel.toUpperCase()}`);
-  console.log(`   └─ Cutoff: ${hoursOld} hours`);
-  console.log(`   └─ Cache: ${options.noCache ? 'BYPASS' : 'ENABLED'}`);
-  console.log(`   └─ Dorking Enabled: ${options.dork ? 'YES' : 'NO'}`);
-  console.log(`   └─ Role Expansion: ${options.roles ? 'YES' : 'NO'}`);
-  console.log(`   └─ Dry Run: ${options.dryRun ? 'YES' : 'NO'}`);
+  console.log(`ðŸš€ STARTING EXTERNAL MULTI-CHANNEL JOB SEARCH ENGINE`);
+  console.log(`   â””â”€ Channel: ${channel.toUpperCase()}`);
+  console.log(`   â””â”€ Cutoff: ${hoursOld} hours`);
+  console.log(`   â””â”€ Cache: ${options.noCache ? 'BYPASS' : 'ENABLED'}`);
+  console.log(`   â””â”€ Dorking Enabled: ${options.dork ? 'YES' : 'NO'}`);
+  console.log(`   â””â”€ Role Expansion: ${options.roles ? 'YES' : 'NO'}`);
+  console.log(`   â””â”€ Dry Run: ${options.dryRun ? 'YES' : 'NO'}`);
   console.log(`======================================================`);
 
   const runId = options.dryRun ? null : await startRun();
@@ -75,7 +75,7 @@ async function runSearchEngine() {
     try {
       const { sendTelegramMessage } = await import('@fresherflow/utils');
       await sendTelegramMessage(
-        `🚀 <b>External Search Bot Started</b>\n\nChannels: ${channel.toUpperCase()} (${options.dork ? 'Dorks' : 'Fast Mode'})`
+        `ðŸš€ <b>External Search Bot Started</b>\n\nChannels: ${channel.toUpperCase()} (${options.dork ? 'Dorks' : 'Fast Mode'})`
       );
     } catch {
       // Non-blocking
@@ -100,7 +100,7 @@ async function runSearchEngine() {
       (channel === 'all' || channel === 'vc' || channel === 'boards') ? collectVcStartupPortals() : Promise.resolve([]),
       (channel === 'all' || channel === 'companies') ? collectDirectCompanyPortals({ resultsWanted: limit, hoursOld }) : Promise.resolve([]),
       (channel === 'all' || channel === 'github') ? collectGitHubHiring({ resultsWanted: limit }) : Promise.resolve([]),
-      (channel === 'all' || channel === 'walkin') ? collectHyderabadWalkinDrives({ resultsWanted: 10, hoursOld }) : Promise.resolve([]),
+      (channel === 'all' || channel === 'walkin') ? collectWalkinDrives({ resultsWanted: 10, hoursOld }) : Promise.resolve([]),
     ]);
 
     // Job boards (Internshala, LinkedIn, HasJob, HackerNews, WeWorkRemotely) are
@@ -124,7 +124,7 @@ async function runSearchEngine() {
     }
 
     console.log(`\n======================================================`);
-    console.log(`📊 COLLECTED RAW CANDIDATES: ${rawCandidates.length}`);
+    console.log(`ðŸ“Š COLLECTED RAW CANDIDATES: ${rawCandidates.length}`);
     console.log(`======================================================`);
 
     // Verify and Filter using Seen URLs Cache
@@ -140,16 +140,16 @@ async function runSearchEngine() {
       verifiedSourceCounts[src] = (verifiedSourceCounts[src] || 0) + 1;
     }
 
-    // DRY RUN: show what WOULD be posted, touch nothing — no DB write, no social
+    // DRY RUN: show what WOULD be posted, touch nothing â€” no DB write, no social
     // posts, no cache mutation. Safe for sample/local test runs.
     if (options.dryRun) {
-      console.log(`\n⚠️  DRY RUN — skipping DB persist + social posting + cache writes.`);
-      console.log(`🎯 Verified candidates that WOULD be posted (${verifiedJobs.length}):`);
+      console.log(`\nâš ï¸  DRY RUN â€” skipping DB persist + social posting + cache writes.`);
+      console.log(`ðŸŽ¯ Verified candidates that WOULD be posted (${verifiedJobs.length}):`);
       verifiedJobs.forEach((j, i) => {
         console.log(`   ${i + 1}. [${j.company || '?'}] ${j.title}\n      Apply: ${j.applyLink}`);
       });
       const durationSec = Math.round((Date.now() - startTime) / 1000);
-      console.log(`\n📊 DRY SUMMARY\n   ├─ Raw Fetched:   ${stats.totalRaw}\n   ├─ Verified Live:  ${verifiedJobs.length}\n   └─ Duration:      ${durationSec}s`);
+      console.log(`\nðŸ“Š DRY SUMMARY\n   â”œâ”€ Raw Fetched:   ${stats.totalRaw}\n   â”œâ”€ Verified Live:  ${verifiedJobs.length}\n   â””â”€ Duration:      ${durationSec}s`);
       await finishRun(runId, {
         total_found: stats.totalRaw,
         accepted: 0,
@@ -231,22 +231,22 @@ async function runSearchEngine() {
     });
 
     console.log(`\n======================================================`);
-    console.log(`📊 FINAL SWEEP SUMMARY`);
-    console.log(`   ├─ Total Raw Fetched:    ${stats.totalRaw}`);
-    console.log(`   ├─ Stale Filtered:       ${stats.staleFiltered}`);
-    console.log(`   ├─ Rejected (Loc/Score): ${stats.locationFiltered + stats.scoreFiltered}`);
-    console.log(`   ├─ Verified Live Jobs:   ${stats.live} (Dead: ${stats.dead})`);
-    console.log(`   └─ Duration:             ${durationSec}s`);
+    console.log(`ðŸ“Š FINAL SWEEP SUMMARY`);
+    console.log(`   â”œâ”€ Total Raw Fetched:    ${stats.totalRaw}`);
+    console.log(`   â”œâ”€ Stale Filtered:       ${stats.staleFiltered}`);
+    console.log(`   â”œâ”€ Rejected (Loc/Score): ${stats.locationFiltered + stats.scoreFiltered}`);
+    console.log(`   â”œâ”€ Verified Live Jobs:   ${stats.live} (Dead: ${stats.dead})`);
+    console.log(`   â””â”€ Duration:             ${durationSec}s`);
     console.log(`------------------------------------------------------`);
-    console.log(`📈 Verified Jobs by Source:`);
+    console.log(`ðŸ“ˆ Verified Jobs by Source:`);
     for (const [src, count] of Object.entries(verifiedSourceCounts)) {
-      console.log(`   ├─ [${src}]: ${count} verified live roles`);
+      console.log(`   â”œâ”€ [${src}]: ${count} verified live roles`);
     }
     if (Object.keys(verifiedSourceCounts).length === 0) {
-      console.log(`   └─ None verified`);
+      console.log(`   â””â”€ None verified`);
     }
     console.log(`------------------------------------------------------`);
-    console.log(`🎯 Verified Fresh Opportunities (${verifiedJobs.length}):`);
+    console.log(`ðŸŽ¯ Verified Fresh Opportunities (${verifiedJobs.length}):`);
     verifiedJobs.forEach((job, i) => {
       console.log(`   ${i + 1}. [${job.source}] ${job.title}`);
       console.log(`      Company: ${job.company} | Location: ${job.location || 'India/Remote'}`);
@@ -258,15 +258,15 @@ async function runSearchEngine() {
       const { sendTelegramMessage } = await import('@fresherflow/utils');
       let linksSummary = '';
       verifiedJobs.slice(0, 5).forEach((j, i) => {
-        linksSummary += `\n${i + 1}. <b>${j.title}</b> @ ${j.company}\n🔗 <a href="${j.applyLink}">Apply Link</a>`;
+        linksSummary += `\n${i + 1}. <b>${j.title}</b> @ ${j.company}\nðŸ”— <a href="${j.applyLink}">Apply Link</a>`;
       });
 
       const tgMsg =
-        `✅ <b>External Search Bot Finished</b>\n\n` +
-        `🔍 Raw Fetched: ${stats.totalRaw}\n` +
-        `🗑️ Stale/Location/Score Rejected: ${stats.staleFiltered + stats.locationFiltered + stats.scoreFiltered}\n` +
-        `✨ <b>Verified Live Jobs: ${stats.live}</b>\n` +
-        `⏱️ Duration: ${durationSec}s\n` +
+        `âœ… <b>External Search Bot Finished</b>\n\n` +
+        `ðŸ” Raw Fetched: ${stats.totalRaw}\n` +
+        `ðŸ—‘ï¸ Stale/Location/Score Rejected: ${stats.staleFiltered + stats.locationFiltered + stats.scoreFiltered}\n` +
+        `âœ¨ <b>Verified Live Jobs: ${stats.live}</b>\n` +
+        `â±ï¸ Duration: ${durationSec}s\n` +
         (linksSummary ? `\n<b>Top Fresh Opportunities:</b>${linksSummary}` : '');
 
       await sendTelegramMessage(tgMsg);

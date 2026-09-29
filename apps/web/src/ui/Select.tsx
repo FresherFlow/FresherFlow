@@ -12,14 +12,37 @@ const SelectGroup = SelectPrimitive.Group
 
 const SelectValue = SelectPrimitive.Value
 
+/**
+ * Trigger geometry. `default` is the shadcn stock control. `brand` matches
+ * `BrandButton` exactly — sharp corners, the same padding and the same type
+ * size — so a select sitting beside a `BrandButton` in the same panel is not
+ * visibly a different control. The job detail rail had one rail with a 40px
+ * sharp button directly above a 36px rounded select, which read as a mistake.
+ */
+const selectTriggerVariants = {
+  default:
+    "h-9 rounded-lg px-3 py-2 text-xs",
+  brand: "rounded-xs px-4.5 py-2.5 text-[13.5px] font-semibold",
+} as const
+
+/**
+ * Named `triggerVariant`, not `size`: consumers that spread arbitrary props into
+ * `SelectTrigger` (see `features/admin/ui/SmartSelect.tsx`) forward the native
+ * `size` attribute, which is a number and would collide with a `size` union.
+ */
+export type SelectTriggerVariant = keyof typeof selectTriggerVariants
+
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger> & {
+    triggerVariant?: SelectTriggerVariant
+  }
+>(({ className, children, triggerVariant = "default", ...props }, ref) => (
     <SelectPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-lg border border-border bg-card px-3 py-2 text-xs ring-offset-background transition-colors duration-200 data-[placeholder]:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+        "flex w-full items-center justify-between whitespace-nowrap border border-border bg-card ring-offset-background transition-colors duration-200 data-[placeholder]:text-muted-foreground/60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+        selectTriggerVariants[triggerVariant],
         className
       )}
       {...props}

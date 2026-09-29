@@ -56,7 +56,7 @@ const CareerProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
             currentTheme={currentTheme}
         />
 
-        {/* Public page lifecycle — a live page lapses and needs reactivating. */}
+        {/* Public page — permanent once published; the boost is what lapses. */}
         <PublicPageCard
             username={user?.username}
             publishedAt={profile?.profilePublishedAt}

@@ -11,6 +11,8 @@ import { ErrorMessage } from '@/ui/ErrorMessage';
 import { cn } from '@/ui/cn';
 
 import { buildShareText, whatsappShareHref } from '@/features/profile/publicProfile';
+import { describePageState } from '@/features/profile/profileSummary';
+import { usePublicPageActivation } from '@/features/profile/hooks/usePublicPageActivation';
 import { PROFILE_SECTION_ITEMS, type ProfileSectionId } from '@/features/profile/profileSections';
 import { getProfileChecklist } from '@/features/profile/profileChecklist';
 import { useProfileForm } from '@/features/profile/hooks/useProfileForm';
@@ -189,7 +191,11 @@ export default function ProfileEditor() {
                         <div className="hidden lg:block">
                             <ProfileStrengthCard checklist={checklist} onNavigateSection={setActiveSection} className="border-border/40 bg-card/50 shadow-none" />
                         </div>
-                        <PublicPageActions username={user.username} className="hidden lg:block border-border/40 bg-card/50 shadow-none" />
+                        {/* Hidden on Preview: that section already carries the status, the URL and the
+                            publish/re-boost control, and saying all of it twice on one screen is noise. */}
+                        {activeSection !== 'preview' && (
+                            <PublicPageActions username={user.username} className="hidden lg:block border-border/40 bg-card/50 shadow-none" />
+                        )}
                     </aside>
 
                     <div className="min-w-0 lg:col-span-9">
@@ -252,7 +258,9 @@ export default function ProfileEditor() {
                         <div className="mt-5 lg:hidden">
                             <ProfileStrengthCard checklist={checklist} onNavigateSection={setActiveSection} compact className="border-border/40 bg-card/50 shadow-none" />
                         </div>
-                        <PublicPageActions username={user.username} className="mt-4 lg:hidden border-border/40 bg-card/50 shadow-none" />
+                        {activeSection !== 'preview' && (
+                            <PublicPageActions username={user.username} className="mt-4 lg:hidden border-border/40 bg-card/50 shadow-none" />
+                        )}
                     </div>
                 </div>
             </div>
@@ -270,6 +278,10 @@ export default function ProfileEditor() {
  * of the rail — desktop — and under the section on phones.
  */
 function PublicPageActions({ username, className }: { username?: string | null; className?: string }) {
+    // Hooks run before the early return so the order cannot change between renders.
+    const { state } = usePublicPageActivation();
+    const page = describePageState(state);
+
     if (!username) return null;
 
     const shareProfile = () => {
@@ -286,14 +298,19 @@ function PublicPageActions({ username, className }: { username?: string | null; 
                 fresherflow.in/u/{username}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" asChild>
-                    <a href={`/u/${username}`} target="_blank" rel="noopener noreferrer">
-                        <span className="inline-flex items-center gap-1.5">
-                            View page
-                            <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                        </span>
-                    </a>
-                </Button>
+                {/* Only while the link actually resolves — this used to render an "Open page"
+                    button on an unpublished page, which 404s the owner in a new tab. The status
+                    chip and the publish/re-boost control live on the Preview section. */}
+                {page.isLive && (
+                    <Button variant="outline" size="sm" asChild>
+                        <a href={`/u/${username}`} target="_blank" rel="noopener noreferrer">
+                            <span className="inline-flex items-center gap-1.5">
+                                View page
+                                <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                            </span>
+                        </a>
+                    </Button>
+                )}
                 <Button size="sm" onClick={shareProfile}>
                     <span className="inline-flex items-center gap-1.5">
                         <Share2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />

@@ -11,6 +11,7 @@ import {
     getWhatsAppShareUrl,
     parseTransitInfo,
     getTransitDirectionsUrl,
+    getDriveDetails,
 } from '@/features/jobs/utils/walkinMapUtils';
 
 interface MapBottomDriveCardProps {
@@ -45,7 +46,7 @@ export function MapBottomDriveCard({
         );
     }
 
-    const d = opportunity.walkInDetails;
+    const d = getDriveDetails(opportunity);
     const dest =
         d?.latitude && d?.longitude
             ? `${d.latitude},${d.longitude}`

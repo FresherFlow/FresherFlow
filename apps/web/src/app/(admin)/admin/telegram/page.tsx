@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = { title: { absolute: 'Broadcasts | FresherFlow Admin' } };
 
-// import TelegramBroadcastPanel from "@/features/admin/components/TelegramBroadcastPanel";
-// import SocialBroadcastPanel from "@/features/admin/components/SocialBroadcastPanel";
-// import DeliveryControlsPanel from "@/features/admin/components/DeliveryControlsPanel";
+import TelegramBroadcastPanel from "@/features/admin/components/TelegramBroadcastPanel";
+import SocialBroadcastPanel from "@/features/admin/components/SocialBroadcastPanel";
+import DeliveryControlsPanel from "@/features/admin/components/DeliveryControlsPanel";
 
 export default function AdminTelegramPage() {
     return (
@@ -22,13 +22,10 @@ export default function AdminTelegramPage() {
                 </p>
             </div>
 
-            {/* <DeliveryControlsPanel /> */}
-            {/* <TelegramBroadcastPanel /> */}
-            {/* <div className="pt-6 border-t"> */}
-            {/*     <SocialBroadcastPanel /> */}
-            {/* </div> */}
-            <div className="bg-warning/10 border border-warning/20 text-warning dark:text-warning p-4 rounded-lg">
-                Broadcast panels are temporarily offline/disabled.
+            <DeliveryControlsPanel />
+            <TelegramBroadcastPanel />
+            <div className="pt-6 border-t">
+                <SocialBroadcastPanel />
             </div>
         </div>
     );

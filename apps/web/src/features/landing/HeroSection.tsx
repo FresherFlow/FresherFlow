@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
+import { COMMUNITY_UI_ENABLED } from '@/features/community/communityUi';
 
 /**
  * Landing hero — matches the accepted mock:
@@ -71,12 +72,14 @@ export function HeroSection({ newToday, refreshedAt, discussHref = '/community?t
                     >
                         Browse the board <ArrowRightIcon className="h-4 w-4" />
                     </Link>
-                    <Link
-                        href={discussHref}
-                        className="inline-flex items-center gap-2 rounded-[2px] border border-foreground/80 px-[18px] py-[10px] text-[13.5px] font-semibold text-foreground transition-transform hover:-translate-y-px active:scale-[0.98]"
-                    >
-                        Ask / Discuss
-                    </Link>
+                    {COMMUNITY_UI_ENABLED && (
+                        <Link
+                            href={discussHref}
+                            className="inline-flex items-center gap-2 rounded-[2px] border border-foreground/80 px-[18px] py-[10px] text-[13.5px] font-semibold text-foreground transition-transform hover:-translate-y-px active:scale-[0.98]"
+                        >
+                            Ask / Discuss
+                        </Link>
+                    )}
                     <Link
                         href="/post"
                         className="inline-flex items-center gap-2 rounded-[2px] border border-border px-[18px] py-[10px] text-[13.5px] font-semibold text-foreground transition-transform hover:-translate-y-px hover:border-foreground/40 active:scale-[0.98]"

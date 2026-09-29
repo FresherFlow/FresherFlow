@@ -288,7 +288,7 @@ export enum MembershipStatus {
 }
 
 // ========================================
-// COMMUNITY ENUMS (plan 09b §6.3 — must match schema.prisma exactly)
+// COMMUNITY ENUMS (plan 09b ï¿½6.3 ï¿½ must match schema.prisma exactly)
 // ========================================
 
 export enum CommentType {
@@ -346,7 +346,15 @@ export enum NotificationType {
     NEW_MATCHING_JOB = 'NEW_MATCHING_JOB',
     EXPIRED_JOB = 'EXPIRED_JOB',
     COMMENT_ON_EXPIRED = 'COMMENT_ON_EXPIRED',
-    ROOM_HELPFUL = 'ROOM_HELPFUL'
+    ROOM_HELPFUL = 'ROOM_HELPFUL',
+    /** A company answered a fresher's referral request. */
+    REFERRAL_RESPONSE = 'REFERRAL_RESPONSE',
+    INTRO_REQUEST = 'INTRO_REQUEST',
+    CAMPUS_DRIVE_MATCH = 'CAMPUS_DRIVE_MATCH',
+    REGISTRATION_OPEN = 'REGISTRATION_OPEN',
+    REGISTRATION_CLOSING = 'REGISTRATION_CLOSING',
+    OPPORTUNITY_APPLIED = 'OPPORTUNITY_APPLIED',
+    APPLICATION_STAGE_CHANGED = 'APPLICATION_STAGE_CHANGED'
 }
 
 export enum CommunityPostCategory {

@@ -350,19 +350,15 @@ app.get('/robots.txt', (_req, res) => {
     res.type('text/plain').send('User-agent: *\nDisallow: /');
 });
 
-app.get(['/bootstrap-feed.min.json', '/feeds/bootstrap-feed.min.json'], async (req, res) => {
+app.get('/feeds/bootstrap-feed.min.json', async (req, res) => {
     try {
         // FEED_SOURCE=db forces generation from Postgres on every request,
         // bypassing any cached static file. Postgres is the source of truth.
         const serveFromDb = process.env.FEED_SOURCE === 'db';
         const filePath = path.join(process.cwd(), 'public', 'feeds', 'bootstrap-feed.min.json');
-        const legacyPath = path.join(process.cwd(), 'public', 'bootstrap-feed.min.json');
         if (!serveFromDb) {
             if (fs.existsSync(filePath)) {
                 return res.sendFile(filePath);
-            }
-            if (fs.existsSync(legacyPath)) {
-                return res.sendFile(legacyPath);
             }
         }
 
@@ -378,7 +374,7 @@ app.get(['/bootstrap-feed.min.json', '/feeds/bootstrap-feed.min.json'], async (r
     }
 });
 
-app.get(['/government-feed.json', '/feeds/government-feed.json'], async (_req, res) => {
+app.get('/feeds/government-feed.json', async (_req, res) => {
     try {
         const serveFromDb = process.env.FEED_SOURCE === 'db';
         const filePath = path.join(process.cwd(), 'public', 'feeds', 'government-feed.json');
@@ -395,7 +391,7 @@ app.get(['/government-feed.json', '/feeds/government-feed.json'], async (_req, r
 
 // FEED_SOURCE=db read path: the same feeds the CDN serves, generated live
 // from Postgres instead of a prebuilt snapshot.
-app.get(['/feed-index.json', '/feeds/feed-index.json'], async (_req, res) => {
+app.get('/feeds/feed-index.json', async (_req, res) => {
     try {
         const results = await StaticFeedService.generateFeedIndex();
         res.json(results);
@@ -405,7 +401,7 @@ app.get(['/feed-index.json', '/feeds/feed-index.json'], async (_req, res) => {
     }
 });
 
-app.get(['/expired-feed.min.json', '/feeds/expired-feed.min.json'], async (_req, res) => {
+app.get('/feeds/expired-feed.min.json', async (_req, res) => {
     try {
         const results = await StaticFeedService.generateExpiredFeed();
         res.json(results);
@@ -454,7 +450,7 @@ app.get('/skills.json', async (_req, res) => {
     }
 });
 
-app.get(['/stats.json', '/meta/stats.json'], async (_req, res) => {
+app.get('/meta/stats.json', async (_req, res) => {
     try {
         const results = await StaticFeedService.generateStats();
         res.json(results);
@@ -509,13 +505,8 @@ app.get(/^\/(sitemaps\/)?sitemap.*\.xml$/, async (req, res) => {
         }
 
         const filePath = path.join(process.cwd(), 'public', 'sitemaps', path.basename(sitemapName));
-        const legacyPath = path.join(process.cwd(), 'public', path.basename(sitemapName));
         if (fs.existsSync(filePath)) {
             res.type('application/xml').send(fs.readFileSync(filePath, 'utf-8'));
-            return;
-        }
-        if (fs.existsSync(legacyPath)) {
-            res.type('application/xml').send(fs.readFileSync(legacyPath, 'utf-8'));
             return;
         }
 

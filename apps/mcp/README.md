@@ -20,7 +20,7 @@ FRESHERFLOW_API_URL=http://localhost:5000 pnpm --filter fresherflow-mcp dev
 | Env var | Default | Purpose |
 |---|---|---|
 | `FRESHERFLOW_API_URL` | `http://localhost:5000` | Existing FresherFlow API base URL |
-| `FRESHERFLOW_API_KEY` | — | Optional `x-api-key` if the API requires one |
+| `FRESHERFLOW_API_KEY` | — | Pipe-level bulk key: sent as `x-api-key` when the call carries no per-call key. Same tier as below. Never set this to `INTERNAL_API_SECRET`. |
 | `PUBLIC_SITE_URL` | `https://fresherflow.in` | Used to build `jobUrl` links |
 | `PORT` | `5002` | Listen port (`MCP_PORT` takes precedence when both are set) |
 | `OPENAI_APPS_CHALLENGE_TOKEN` | — | Domain-verification token; served verbatim at `/.well-known/openai-apps-challenge`, 404 when unset |
@@ -47,7 +47,20 @@ Health: `GET /health`. MCP endpoint: `/mcp` (Streamable HTTP: `POST`, `GET`, `DE
     cannot falsely tell a user their job is live.
 - Zod validation on all tool inputs and outputs; results capped at 20 jobs per call.
 - Global rate limit: 60 requests/minute per IP; 10s upstream timeout.
-- Submission rate limit: 10/hour per IP (tighter, because the caller is untrusted).
+- Submission rate limits (per IP, per hour): **10 anonymous**, **300 with the bulk key**
+  (`MCP_SUBMIT_KEY` on the API, same value in `FRESHERFLOW_API_KEY` here). Anonymous
+  submissions stay throttled against spam; bulk link-dumps use the key.
+- **Whose key is whose:** the API cannot tell agents apart — all MCP traffic arrives
+  from one IP. So there are two key paths: the *per-call* `submitKey` tool field
+  (the operator pastes it into chat; strangers don't have it, so they stay on
+  10/hour) and the *pipe-level* `FRESHERFLOW_API_KEY` env fallback (upgrades the
+  whole pipe, strangers included — fine while you are the only bulk user, but the
+  per-call key is the precise one). A leaked key buys nothing but faster PENDING
+  rows; it can never publish.
+- `submit_opportunity` responses are always explicit: `201 PENDING_REVIEW` (new),
+  `200 PUBLISHED` (URL already live), `200 PENDING_REVIEW` (URL already staged, not
+  live), `400` with `field: reason` messages on validation errors, `429` when the
+  hourly tier is exhausted. The text reply mirrors the server verdict verbatim.
 - `jobUrl`/`sourceUrl` are **stored as data only** — the server never fetches them.
 - `minSalary`/`maxSalary` (annual INR) are post-filters on published listings because
   the search API supports `q`, `city`, `type`, `page`, `limit` only.

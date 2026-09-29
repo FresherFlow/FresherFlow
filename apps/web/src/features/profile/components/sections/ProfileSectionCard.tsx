@@ -18,6 +18,7 @@ export function ProfileSectionCard({
     action,
     children,
     className,
+    bodyClassName,
     bare = false,
 }: {
     title: string;
@@ -25,6 +26,12 @@ export function ProfileSectionCard({
     action?: ReactNode;
     children: ReactNode;
     className?: string;
+    /**
+     * Overrides the body padding. A section that embeds something with its own
+     * edge-to-edge layout (the public page preview) passes `p-0` so the embedded thing is
+     * not inset twice and does not have to draw a second border inside this one.
+     */
+    bodyClassName?: string;
     /** Render fields without card chrome (stepped flows like onboarding). */
     bare?: boolean;
 }) {
@@ -47,7 +54,7 @@ export function ProfileSectionCard({
                 </div>
                 {action && <div className="shrink-0">{action}</div>}
             </div>
-            <div className="p-5 sm:p-6">{children}</div>
+            <div className={cn('p-5 sm:p-6', bodyClassName)}>{children}</div>
         </section>
     );
 }

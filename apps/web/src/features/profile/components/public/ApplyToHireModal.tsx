@@ -75,8 +75,8 @@ export default function ApplyToHireModal({
                         <DialogHeader>
                             <DialogTitle>Hiring {candidateName}?</DialogTitle>
                             <DialogDescription>
-                                This profile is public — resume and contact links are already open. Send a
-                                short intro to start a conversation.
+                                {candidateName}&apos;s public profile shows skills, projects and
+                                availability. Send a short intro and your details go straight to them.
                             </DialogDescription>
                         </DialogHeader>
 

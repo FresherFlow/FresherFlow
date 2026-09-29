@@ -1,78 +1,78 @@
 import { describe, expect, it } from 'vitest';
 import {
-    PROFILE_PAGE_ACTIVE_DAYS,
+    PROFILE_BOOST_DAYS,
     getProfilePageState,
-    isProfilePageActive,
-    profilePageActiveSince,
-    profilePageExpiresAt,
+    isProfilePagePublished,
+    profileBoostEndsAt,
+    profileBoostSince,
 } from './publicPage.js';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const NOW = new Date('2026-09-21T12:00:00.000Z');
 
-function activatedDaysAgo(days: number) {
+function publishedDaysAgo(days: number) {
     return new Date(NOW.getTime() - days * MS_PER_DAY);
 }
 
-describe('public page activation', () => {
-    it('treats a never-activated page as a draft', () => {
-        expect(getProfilePageState(null, NOW)).toEqual({ status: 'draft', daysLeft: 0, expiresAt: null });
-        expect(isProfilePageActive(null, NOW)).toBe(false);
-        expect(isProfilePageActive(undefined, NOW)).toBe(false);
+describe('public page reachability', () => {
+    it('is unreachable only before the first publication', () => {
+        expect(isProfilePagePublished(null)).toBe(false);
+        expect(isProfilePagePublished(undefined)).toBe(false);
+        expect(isProfilePagePublished('not-a-date')).toBe(false);
+        expect(getProfilePageState(null, NOW).status).toBe('draft');
     });
 
-    it('reports a freshly activated page as live with the full window left', () => {
-        const state = getProfilePageState(NOW, NOW);
-        expect(state.status).toBe('live');
-        expect(state.daysLeft).toBe(PROFILE_PAGE_ACTIVE_DAYS);
-        expect(isProfilePageActive(NOW, NOW)).toBe(true);
-    });
-
-    it('stays live through the middle of the window', () => {
-        const state = getProfilePageState(activatedDaysAgo(3), NOW);
-        expect(state.status).toBe('live');
-        expect(state.daysLeft).toBe(4);
-    });
-
-    it('flags the last warning days as expiring', () => {
-        const state = getProfilePageState(activatedDaysAgo(5.5), NOW);
-        expect(state.status).toBe('expiring');
-        expect(state.daysLeft).toBe(2);
-        expect(isProfilePageActive(activatedDaysAgo(5.5), NOW)).toBe(true);
-    });
-
-    it('goes dark exactly at the window boundary', () => {
-        const state = getProfilePageState(activatedDaysAgo(PROFILE_PAGE_ACTIVE_DAYS), NOW);
-        expect(state.status).toBe('expired');
-        expect(state.daysLeft).toBe(0);
-        expect(isProfilePageActive(activatedDaysAgo(PROFILE_PAGE_ACTIVE_DAYS), NOW)).toBe(false);
-    });
-
-    it('stays dark well past the window', () => {
-        expect(getProfilePageState(activatedDaysAgo(30), NOW).status).toBe('expired');
-        expect(isProfilePageActive(activatedDaysAgo(30), NOW)).toBe(false);
+    it('stays reachable forever once published, however long ago that was', () => {
+        for (const days of [0, 3, PROFILE_BOOST_DAYS, 30, 3650]) {
+            expect(isProfilePagePublished(publishedDaysAgo(days))).toBe(true);
+            expect(getProfilePageState(publishedDaysAgo(days), NOW).isPublished).toBe(true);
+        }
     });
 
     it('accepts ISO strings, matching what a JSON API returns', () => {
-        const iso = activatedDaysAgo(1).toISOString();
-        const state = getProfilePageState(iso, NOW);
+        expect(isProfilePagePublished(NOW.toISOString())).toBe(true);
+    });
+});
+
+describe('boost window', () => {
+    it('reports a freshly published page as boosted for the full window', () => {
+        const state = getProfilePageState(NOW, NOW);
         expect(state.status).toBe('live');
-        expect(state.daysLeft).toBe(6);
+        expect(state.isBoosted).toBe(true);
+        expect(state.daysLeft).toBe(PROFILE_BOOST_DAYS);
     });
 
-    it('ignores an unparseable timestamp instead of crashing', () => {
-        expect(getProfilePageState('not-a-date', NOW).status).toBe('draft');
+    it('flags the last warning days as lapsing', () => {
+        const state = getProfilePageState(publishedDaysAgo(5.5), NOW);
+        expect(state.status).toBe('lapsing');
+        expect(state.isBoosted).toBe(true);
+        expect(state.daysLeft).toBe(2);
     });
 
-    it('derives the database cutoff as the tail of the window', () => {
-        const since = profilePageActiveSince(NOW);
-        expect(since.getTime()).toBe(NOW.getTime() - PROFILE_PAGE_ACTIVE_DAYS * MS_PER_DAY);
-        // Anything older than the cutoff is dark; anything newer is not.
-        expect(getProfilePageState(new Date(since.getTime() - 1), NOW).status).toBe('expired');
-        expect(getProfilePageState(new Date(since.getTime() + 1), NOW).status).not.toBe('expired');
+    it('drops the boost exactly at the window boundary without unpublishing', () => {
+        const state = getProfilePageState(publishedDaysAgo(PROFILE_BOOST_DAYS), NOW);
+        expect(state.status).toBe('unboosted');
+        expect(state.isBoosted).toBe(false);
+        expect(state.daysLeft).toBe(0);
+        // The page itself is untouched — that is the whole point of the split.
+        expect(state.isPublished).toBe(true);
     });
 
-    it('reports the expiry instant for the response payload', () => {
-        expect(profilePageExpiresAt(NOW).getTime()).toBe(NOW.getTime() + PROFILE_PAGE_ACTIVE_DAYS * MS_PER_DAY);
+    it('never re-publishes from an old stamp, only from a fresh one', () => {
+        expect(getProfilePageState(publishedDaysAgo(30), NOW).status).toBe('unboosted');
+        expect(getProfilePageState(NOW, NOW).status).toBe('live');
+    });
+
+    it('derives the directory cutoff as the tail of the window', () => {
+        const since = profileBoostSince(NOW);
+        expect(since.getTime()).toBe(NOW.getTime() - PROFILE_BOOST_DAYS * MS_PER_DAY);
+        expect(getProfilePageState(new Date(since.getTime() - 1), NOW).isBoosted).toBe(false);
+        expect(getProfilePageState(new Date(since.getTime() + 1), NOW).isBoosted).toBe(true);
+    });
+
+    it('reports the boost end instant for the response payload', () => {
+        expect(profileBoostEndsAt(NOW).getTime()).toBe(
+            NOW.getTime() + PROFILE_BOOST_DAYS * MS_PER_DAY
+        );
     });
 });

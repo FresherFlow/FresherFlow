@@ -619,7 +619,7 @@ export async function respondToReferralRequest(
         prisma.notification.create({
             data: {
                 userId: request.authorId,
-                type: NotificationType.COMMENT_REPLY,
+                type: NotificationType.REFERRAL_RESPONSE,
                 actorId: responderId,
                 payload: {
                     kind: 'REFERRAL_RESPONSE',

@@ -12,7 +12,8 @@ import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import FunnelIcon from '@heroicons/react/24/outline/FunnelIcon';
 import { Input } from '@/ui/Input';
-import { useOpportunitiesFeed, getAtsName } from '@/features/jobs/hooks/useOpportunitiesFeed';
+import { useOpportunitiesFeed } from '@/features/jobs/hooks/useOpportunitiesFeed';
+import { countFilterFacets } from '@/features/jobs/utils/filterOpportunities';
 import { CommentCountsProvider } from '@/features/jobs/hooks/useCommentCounts';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { EmptyState } from '@/ui/EmptyState';
@@ -200,55 +201,9 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
     // True while the full feed hasn't arrived yet (we have SSR slice but not all jobs)
     const isFeedPending = !!(initialData && opportunities.length < (initialData.total ?? 0));
 
-    const filterAggregates = useMemo(() => {
-        const locations: Record<string, number> = {};
-        const skills: Record<string, number> = {};
-        const sources: Record<string, number> = {};
-        const years: Record<string, number> = {};
-        const companies: Record<string, number> = {};
-
-        opportunities.forEach(opp => {
-            (opp.locations || []).forEach(loc => {
-                const l = loc.trim();
-                if (l) locations[l] = (locations[l] || 0) + 1;
-            });
-            ((opp as any).skills || opp.requiredSkills || []).forEach((s: string) => {
-                const skill = s.trim();
-                if (skill) skills[skill] = (skills[skill] || 0) + 1;
-            });
-            const atsName = getAtsName(opp.applyLink || (opp as any).sourceLink || opp.companyWebsite);
-            if (atsName) {
-                sources[atsName] = (sources[atsName] || 0) + 1;
-            }
-            const comp = opp.company?.trim();
-            if (comp) {
-                companies[comp] = (companies[comp] || 0) + 1;
-            }
-            let passoutYears = [...((opp as any).allowedPassoutYears || [])];
-            if (passoutYears.length === 0 && opp.passoutYearMin && opp.passoutYearMax) {
-                const min = Number(opp.passoutYearMin);
-                const max = Number(opp.passoutYearMax);
-                if (!isNaN(min) && !isNaN(max) && min <= max) {
-                    passoutYears = Array.from({ length: max - min + 1 }, (_, i) => min + i);
-                }
-            }
-            if (passoutYears.length === 0) {
-                const match = opp.title.match(/(202[0-9]|2030)/);
-                if (match) passoutYears = [Number(match[0])];
-            }
-            passoutYears.forEach((y: string | number) => {
-                const year = String(y).trim();
-                if (year) years[year] = (years[year] || 0) + 1;
-            });
-        });
-
-        const filteredLocations: Record<string, number> = {};
-        for (const [loc, count] of Object.entries(locations)) {
-            if (count >= 1) filteredLocations[loc] = count;
-        }
-
-        return { locations: filteredLocations, skills, sources, years, companies };
-    }, [opportunities]);
+    // Panel counts follow the selected feed type, via the same value the feed
+    // hook receives — switching to Internships re-scopes every count.
+    const filterAggregates = useMemo(() => countFilterFacets(opportunities, selectedType), [opportunities, selectedType]);
 
     // Reset visible count when filters change
     useEffect(() => {

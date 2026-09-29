@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { profileApi } from '@fresherflow/api-client';
-import { getProfilePageState, PROFILE_PAGE_ACTIVE_DAYS } from '@fresherflow/utils';
+import { getProfilePageState, PROFILE_BOOST_DAYS } from '@fresherflow/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 
 interface Props {
@@ -14,9 +14,9 @@ interface Props {
 /**
  * Mobile mirror of the web public page card.
  *
- * A page is only live for PROFILE_PAGE_ACTIVE_DAYS after activation, so without this
- * the rule applies to app users invisibly: their link would go dark with no way back
- * from the app.
+ * Publishing is permanent, so nothing here can take the link away: the card exists to sell
+ * the booster window, which puts the profile in the recruiter directory for
+ * PROFILE_BOOST_DAYS and is invisible to app users without it.
  */
 export const PublicPageCard: React.FC<Props> = ({ username, publishedAt, onActivated }) => {
     const { currentTheme } = useTheme();
@@ -31,27 +31,26 @@ export const PublicPageCard: React.FC<Props> = ({ username, publishedAt, onActiv
 
     const state = getProfilePageState(activatedAt !== undefined ? activatedAt : publishedAt ?? null);
     const { status, daysLeft } = state;
-    const isLive = status === 'live' || status === 'expiring';
 
     const headline =
-        status === 'draft' ? 'Not activated yet'
-            : status === 'live' ? `Live · ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left`
-                : status === 'expiring' ? `Goes offline in ${daysLeft <= 1 ? 'less than a day' : `${daysLeft} days`}`
-                    : 'Offline — activation lapsed';
+        status === 'draft' ? 'Not published yet'
+            : status === 'live' ? `Live · boosted for ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'}`
+                : status === 'lapsing' ? `Boost ends in ${daysLeft <= 1 ? 'less than a day' : `${daysLeft} days`}`
+                    : 'Live · boost ended';
 
     const body =
         status === 'draft'
-            ? `Activate to make fresherflow.in/u/${username} work when you share it. It stays live for ${PROFILE_PAGE_ACTIVE_DAYS} days.`
+            ? `Publish to make fresherflow.in/u/${username} work when you share it. The link then stays online for good, and recruiters see you for ${PROFILE_BOOST_DAYS} days.`
             : status === 'live'
-                ? `fresherflow.in/u/${username} is live. Activate again before it lapses to keep it up.`
-                : status === 'expiring'
-                    ? 'Activate now so your link never goes dark.'
-                    : `Your link is inactive and no longer opens. Activate it again for another ${PROFILE_PAGE_ACTIVE_DAYS} days.`;
+                ? `fresherflow.in/u/${username} is live and boosted. Recruiters find you near the top of their directory.`
+                : status === 'lapsing'
+                    ? 'Re-boost to stay near the top of the recruiter directory. Your link keeps working either way.'
+                    : `Your page is still online and the link still works — you have just dropped out of the recruiter directory. Re-boost for another ${PROFILE_BOOST_DAYS} days.`;
 
     const cta =
-        status === 'draft' ? 'Activate my page'
-            : isLive ? `Extend for ${PROFILE_PAGE_ACTIVE_DAYS} days`
-                : 'Reactivate page';
+        status === 'draft' ? 'Publish my page'
+            : status === 'lapsing' ? 'Re-boost now'
+                : `Re-boost for ${PROFILE_BOOST_DAYS} days`;
 
     const onPress = async () => {
         if (isActivating) return;
@@ -69,7 +68,7 @@ export const PublicPageCard: React.FC<Props> = ({ username, publishedAt, onActiv
         }
     };
 
-    const statusColor = status === 'live' ? colors.success : status === 'expiring' ? colors.warning : colors.textMuted;
+    const statusColor = status === 'live' ? colors.success : status === 'lapsing' ? colors.warning : colors.textMuted;
 
     return (
         <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>

@@ -54,7 +54,9 @@ export function MobileNav() {
     if (isSidebarPage(normalizedPathname)) {
         return (
             <>
-                <MobileTopNav />
+                <Suspense fallback={null}>
+                    <MobileTopNav />
+                </Suspense>
                 <Suspense fallback={null}>
                     <MobileBottomTabs />
                 </Suspense>
@@ -65,7 +67,9 @@ export function MobileNav() {
     return (
         <>
             <SocialSidebar />
-            <MobileTopNav />
+            <Suspense fallback={null}>
+                <MobileTopNav />
+            </Suspense>
             <Suspense fallback={null}>
                 <MobileBottomTabs />
             </Suspense>

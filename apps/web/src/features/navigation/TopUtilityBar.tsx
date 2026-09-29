@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -6,7 +6,7 @@ import { useContext } from 'react';
 import { AuthContext } from '@/lib/auth/AuthContext';
 import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
 import { useTheme } from '@/lib/providers/ThemeContext';
-import { AlertsDropdown } from '@/features/notifications/components/AlertsDropdown';
+import { NotificationsDropdown } from '@/features/notifications/components/NotificationsDropdown';
 import { useOfflineActionQueue } from '@/hooks/useOfflineActionQueue';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import { Cog6ToothIcon, ArrowRightOnRectangleIcon, Squares2X2Icon } from '@heroicons/react/24/outline';
@@ -58,7 +58,7 @@ export function TopUtilityBar() {
                             </span>
                         )}
 
-                        <AlertsDropdown />
+                        <NotificationsDropdown />
 
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>

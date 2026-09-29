@@ -23,11 +23,17 @@ export interface PublicProfile {
     availability: string | null;
     preferredCities: string[];
     workModes: string[];
+    /**
+     * Owner-preview only. The public endpoint stopped serving these two when the page
+     * became minimal: a downloadable resume and a CTC number are exactly the fields
+     * scrapers harvest, and neither survives a "do not crawl" request.
+     */
     expectedCtc: number | null;
     resumeUrl: string | null;
     willingToRelocate: boolean | null;
     openToRecruiters: boolean;
-    /** Last activation stamp. Present only while the page is within its live window. */
+    /** Last boost stamp. Present only while the boost window is open — a freshness signal,
+     *  not a lifetime: the page itself stays online either way. */
     lastActivatedAt?: string | null;
     completionPercentage?: number;
     projects: Array<{

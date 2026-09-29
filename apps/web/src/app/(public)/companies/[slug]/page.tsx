@@ -1,24 +1,29 @@
-import type { Metadata } from 'next';
+﻿import type { Metadata } from 'next';
 import { permanentRedirect, notFound } from 'next/navigation';
 import { logRouteResult } from '@/lib/observability';
-import { Suspense } from 'react';
-import CategoryPage from '@/features/jobs/components/CategoryPage';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
-import { toOpportunityCardDTO, type Opportunity } from '@fresherflow/types';
-import { isGovernmentOpportunity, matchesFeedType } from '@/features/jobs/utils/walkinMapUtils';
-import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
-import { getCompanyDescription } from '@/features/companies/utils/companyContent';
+import { isGovernmentOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import { fetchCompanyShard, fetchCompaniesMetadata, fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { CompanySlugger } from '@/features/companies/utils/companySlugger';
 import { resolveCompanySlugAlias } from '@/features/companies/utils/companySlugAliases';
 import CompanyFollowButton from '@/features/companies/components/CompanyFollowButton';
-import { PageTagLinks } from '@/features/jobs/components/PageTagLinks';
-import { CompanyHubClient } from '@/features/jobs/components/CompanyHubIntel';
-import { getValidDirectoryLinks } from '@/features/jobs/utils/detailUtils';
-import { VALID_LOCATIONS } from '@/features/jobs/utils/locationUtils';
-import { cn } from '@repo/ui/utils/cn';
+import CompanyRoleCard from './_components/CompanyRoleCard';
+import { SkillPill } from '@/features/jobs/components/SkillPill';
+import { Card, CardContent } from '@/ui/Card';
+import { BrandButton } from '@/ui/BrandButton';
+import { toSafeOutboundUrl } from '@/lib/utils/safeOutboundUrl';
+import {
+    BarChart3,
+    Briefcase,
+    Building2,
+    Clock,
+    ExternalLink,
+    Layers,
+    MapPin,
+    type LucideIcon,
+} from 'lucide-react';
 // NOTE: fetchCompaniesMetadata / fetchCompanyShard / fetchFeedIndex are already
 // wrapped in React cache() inside lib/api/cdnFeed.ts, so generateMetadata and
 // the page component share one set of CDN round-trips per request.
@@ -70,6 +75,18 @@ function getKeyLocations(jobs: any[]): string | null {
     const unique = Object.entries(counts).sort((a, b) => b[1] - a[1]).map((e) => e[0]).slice(0, 3);
     if (unique.length === 0) return null;
     return unique.join(', ');
+}
+
+/** "3d ago" / "1mo ago" stamp for a role row. Null when there is no date. */
+function getRelativeDate(value: string | number | Date): string | null {
+    const then = new Date(value).getTime();
+    if (!Number.isFinite(then)) return null;
+    const days = Math.floor((Date.now() - then) / 86400000);
+    if (days <= 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    if (days < 30) return `${days}d ago`;
+    const months = Math.round(days / 30);
+    return months <= 1 ? '1mo ago' : `${months}mo ago`;
 }
 
 function getLastHiringActivity(jobs: any[]): string | null {
@@ -155,7 +172,7 @@ export async function generateMetadata(
     const { slug: rawSlug } = await params;
     const properSlug = slugify(decodeURIComponent(rawSlug));
     const base = SITE_URL.replace(/\/+$/, '');
-    // Metadata must declare the canonical URL we actually serve — resolve
+    // Metadata must declare the canonical URL we actually serve â€” resolve
     // aliases here too, so an old slug's canonical points at the live page
     // instead of endorsing itself.
     const canonicalSlug = resolveCompanySlugAlias(properSlug);
@@ -181,7 +198,7 @@ export async function generateMetadata(
     const hasJobs = Boolean(activeShard && activeShard.opportunities && activeShard.opportunities.length > 0);
 
     // SEO: keep the full <title> within 50-60 chars once the root layout
-    // template ("%s | FresherFlow", 13 chars) is applied — base stays ≤47.
+    // template ("%s | FresherFlow", 13 chars) is applied â€” base stays â‰¤47.
     // Long company names fall back to the shorter form, then truncate.
     let title = `${companyName} Jobs & Openings for Freshers`;
     if (title.length > 47) title = `${companyName} Fresher Jobs 2026`;
@@ -225,7 +242,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     let shouldRedirectTo: string | null = null;
     let matched: any = null;
 
-    // Explicit alias redirects (company renames) — checked before anything
+    // Explicit alias redirects (company renames) â€” checked before anything
     // else so a renamed company's old URL never 404s, even when the CDN
     // directory fetch fails.
     const aliasTarget = resolveCompanySlugAlias(properSlug);
@@ -295,7 +312,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
 
     if (companyJobs.length === 0) {
         // Audit fix (33x /companies/* 404s): a slug the directory knows but
-        // with zero live jobs is gone inventory, not a dead end — 301 to the
+        // with zero live jobs is gone inventory, not a dead end â€” 301 to the
         // closest live page (/companies). Unknown slugs 404 and stay out of
         // the sitemap and internal links (both are live-companies-only).
         if (matched) {
@@ -316,287 +333,228 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     const companyIndustries = Array.from(new Set(
         companyJobs.flatMap((j: any) => j.companyIndustry || [])
     )).filter(Boolean);
-    const companyTopics = Array.from(new Set(
-        companyJobs.flatMap((j: any) => j.companyTopics || [])
-    )).filter(Boolean);
 
-    const allSkills = Array.from(new Set(companyJobs.flatMap(j => (j as any).requiredSkills || []))).filter(Boolean);
-    const allLocations = Array.from(new Set(companyJobs.flatMap(j => (j as any).locations || []))).filter(Boolean);
-    const stats = { locations: allLocations, skills: allSkills };
-    const companyDescriptionHtml = getCompanyDescription(targetSlug, companyName, stats);
+    const atsProvider = getAtsProvider(firstJob?.applyLink);
+    const lastPosted = getLastHiringActivity(companyJobs);
+    const typicalRoles = getTypicalRoles(companyJobs);
+    const keyLocations = getKeyLocations(companyJobs);
+    const portalUrl = firstJob?.companyWebsite || firstJob?.applyLink || null;
 
-    // Validate skills and locations against existing directory paths
-    const validDirectoryLinks = feedIndex?.opportunities
-        ? getValidDirectoryLinks(feedIndex.opportunities)
-        : { validSkills: new Set<string>(), validLocations: new Set<string>() };
-
-    const validLocationsMapKeys = new Set(Object.keys(VALID_LOCATIONS));
-    const mergedValidLocations = new Set([...validDirectoryLinks.validLocations, ...validLocationsMapKeys]);
-
-    const validatedSkills = allSkills.filter(s => {
-        const lower = s.trim().toLowerCase();
-        return validDirectoryLinks.validSkills.has(lower) || validDirectoryLinks.validSkills.has(slugify(s));
-    });
-
-    const validatedLocations = allLocations.filter(l => {
-        const lower = l.trim().toLowerCase();
-        return mergedValidLocations.has(lower) || mergedValidLocations.has(slugify(l));
-    });
-
-    // Compute Hiring DNA in-memory from companyJobs
-    const totalJobsEver = companyJobs.length;
-    const fresherJobsCount = companyJobs.filter((j: Opportunity) =>
-        matchesFeedType(j, 'JOB') || matchesFeedType(j, 'INTERNSHIP') || matchesFeedType(j, 'WALKIN')).length;
-    let avgHiringFrequencyDays: number | string = '—';
-
-    if (companyJobs.length > 1) {
-        const dates = companyJobs
-            .map((j: any) => j.postedAt ? new Date(j.postedAt).getTime() : 0)
-            .filter((d: number) => d > 0)
-            .sort((a: number, b: number) => a - b);
-        if (dates.length > 1) {
-            const diffs: number[] = [];
-            for (let i = 1; i < dates.length; i++) {
-                diffs.push(dates[i] - dates[i - 1]);
-            }
-            const avgDiffMs = diffs.reduce((a, b) => a + b, 0) / diffs.length;
-            const days = Math.round(avgDiffMs / (1000 * 60 * 60 * 24));
-            avgHiringFrequencyDays = days > 0 ? days : 1;
-        }
-    }
-
+    // Skill frequency across this company's live roles.
     const skillCounts: Record<string, number> = {};
     for (const job of companyJobs) {
         for (const s of ((job as any).requiredSkills || [])) {
             if (s) skillCounts[s] = (skillCounts[s] || 0) + 1;
         }
     }
-    let topSkills = Object.entries(skillCounts)
+    const topSkills = Object.entries(skillCounts)
         .sort((a, b) => b[1] - a[1])
-        .slice(0, 8)
+        .slice(0, 10)
         .map(x => x[0]);
-    if (topSkills.length === 0) {
-        topSkills = allSkills.slice(0, 8);
-    }
 
-    let atsProvider = getAtsProvider(firstJob?.applyLink);
-    if (atsProvider === 'Custom / In-house') {
-        const knownAtsJob = companyJobs.find((j: any) => getAtsProvider(j.applyLink || '') !== 'Custom / In-house');
-        if (knownAtsJob) {
-            atsProvider = getAtsProvider(knownAtsJob.applyLink || '');
-        }
-    }
+    // The roles this company has open, newest first. Built from the same array
+    // as everything else above, so nothing on the page can disagree.
+    const openRoles = [...companyJobs]
+        .filter((j: any) => !isGovernmentOpportunity(j))
+        .sort((a: any, b: any) => {
+            const da = a.postedAt ? new Date(a.postedAt).getTime() : 0;
+            const db = b.postedAt ? new Date(b.postedAt).getTime() : 0;
+            return db - da;
+        });
 
-    const topContent = (
-        <div className="space-y-8">
-            {/* Company Profile Card */}
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 p-5 rounded-2xl bg-card border border-border/50 shadow-xs relative">
-                <CompanyLogo
-                    companyName={companyName}
-                    companyWebsite={firstJob?.companyWebsite}
-                    companyLogoUrl={firstJob?.companyLogoUrl}
-                    applyLink={firstJob?.applyLink}
-                    isGovernment={Boolean(firstJob && isGovernmentOpportunity(firstJob))}
-                    className="w-16 h-16 shrink-0"
-                />
-                <div className="flex-1 text-center sm:text-left space-y-1.5 min-w-0">
-                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2">
-                        <h1 className="text-xl font-bold tracking-tight text-foreground">{companyName}</h1>
-                        <div className={cn(
-                            "px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider border",
-                            companyJobs.length > 0 
-                                ? "bg-success/10 text-success border-success/20" 
-                                : "bg-muted text-muted-foreground border-border"
-                        )}>
-                            {companyJobs.length > 0 ? "Actively Hiring" : "No Open Roles"}
-                        </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground font-medium">
-                        {companyJobs.length} active fresher {companyJobs.length === 1 ? 'opening' : 'openings'}
-                    </p>
-                </div>
-                <div className="shrink-0 pt-1">
-                    <CompanyFollowButton companySlug={targetSlug} companyName={companyName} />
-                </div>
-            </div>
+    // Government postings route to /govt/{slug}, not /jobs/{slug}. They stay in
+    // the header count (it is the true total) but are kept out of this list.
+    const listableRoles = openRoles.filter((j: any) => j.slug || j.id);
+    const hiddenRoleCount = openRoles.length - listableRoles.length;
+    // Roles that exist on the feed but have no /jobs/ page to link to. Counted
+    // separately from government roles so the "not listed" note is accurate.
+    const governmentRoleCount = companyJobs.length - openRoles.length;
+    // The list heading counts what the list actually renders, so the number a
+    // reader sees always equals the number of rows below it.
+    const listedRoleCount = listableRoles.length;
 
-            {/* Related Topics & Directories */}
-            {(validatedSkills.length > 0 || validatedLocations.length > 0) && (
-                <PageTagLinks
-                    skills={validatedSkills}
-                    locations={validatedLocations}
-                />
-            )}
+    const ROLE_TYPE_LABEL: Record<string, string> = {
+        FULL_TIME: 'Full time',
+        PART_TIME: 'Part time',
+        INTERNSHIP: 'Internship',
+        CONTRACT: 'Contract',
+    };
 
-            {/* Hiring DNA Section */}
-            <section className="border border-border/50 bg-card rounded-xl p-5 space-y-4 shadow-sm">
-                <h2 className="font-semibold text-lg text-foreground tracking-tight">Hiring DNA</h2>
-                
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="text-center p-3 rounded-lg bg-muted/30">
-                        <p className="text-2xl font-bold text-primary">{totalJobsEver ?? '—'}</p>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-1">Total jobs tracked</p>
-                    </div>
-                    <div className="text-center p-3 rounded-lg bg-muted/30">
-                        <p className="text-2xl font-bold text-primary">{fresherJobsCount ?? '—'}</p>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-1">Fresher roles</p>
-                    </div>
-                    <div className="text-center p-3 rounded-lg bg-muted/30">
-                        <p className="text-2xl font-bold text-primary">{avgHiringFrequencyDays ?? '—'}</p>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-1">Avg days between posts</p>
-                    </div>
-                    <div className="text-center p-3 rounded-lg bg-muted/30">
-                        <p className="text-2xl font-bold text-foreground">{atsProvider ?? '—'}</p>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-1">ATS Platform</p>
-                    </div>
-                </div>
+    const roleMeta = (job: any) => {
+        const locs: string[] = Array.isArray(job.locations) ? job.locations.filter(Boolean) : [];
+        const type = Array.isArray(job.employmentTypes) && job.employmentTypes.length > 0
+            ? ROLE_TYPE_LABEL[job.employmentTypes[0]] ?? String(job.employmentTypes[0]).toLowerCase()
+            : null;
+        return {
+            location: locs.length > 0 ? locs.slice(0, 2).join(', ') : null,
+            type,
+            posted: job.postedAt ? getRelativeDate(job.postedAt) : null,
+            // Outbound link for the row's Apply button. Scraped feed values, so
+            // it goes through the same scheme allowlist as the careers link.
+            applyHref: toSafeOutboundUrl(job.applyLink || job.companyWebsite),
+        };
+    };
 
-                {topSkills?.length > 0 && (
-                    <div className="pt-2 border-t border-border/40">
-                        <p className="text-xs font-bold text-muted-foreground mb-2 uppercase tracking-wider">Top skills they hire for:</p>
-                        <div className="flex flex-wrap gap-1.5">
-                            {topSkills.map(skill => (
-                                <span key={skill} className="px-2 py-0.5 border border-border/60 bg-muted/50 rounded-md text-xs font-medium text-foreground">{skill}</span>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </section>
+    // Company details rows. Each carries an icon so the aside reads as a
+    // labelled list rather than an unlabelled value dump. The filter drops any
+    // field the feed has no value for, so no row shows a placeholder, and every
+    // fact here is rendered exactly once on the page.
+    const detailRows: Array<{ icon: LucideIcon; label: string; value: string }> = [
+        { icon: Briefcase, label: 'Typical roles', value: typicalRoles ?? '' },
+        { icon: MapPin, label: 'Key locations', value: keyLocations ?? '' },
+        { icon: Clock, label: 'Last posted', value: lastPosted ?? '' },
+        { icon: Layers, label: 'Hiring source', value: atsProvider },
+        { icon: Building2, label: 'Company stage', value: companyStage ? companyStage.toLowerCase() : '' },
+    ].filter((row) => row.value && row.value !== 'Custom / In-house');
 
-            {/* Community Intelligence (client-fetched, hidden when empty) */}
-            <CompanyHubClient companyName={companyName} />
-
-            {/* Hiring Intelligence */}
-            <div className="space-y-4">
-                <h2 className="text-xl font-bold tracking-tight text-foreground">Hiring Intelligence</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-xl border border-border/50 bg-muted/30">
-                        <div className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">ATS Provider</div>
-                        <div className="flex items-center gap-2">
-                            <div className="text-sm font-medium text-foreground">{getAtsProvider(firstJob?.applyLink)}</div>
-                            {getAtsProvider(firstJob?.applyLink) !== 'Custom / In-house' && (
-                                <span className="px-1.5 py-0.5 rounded text-xs font-bold bg-primary/10 text-primary uppercase tracking-wider">
-                                    Direct Source
-                                </span>
-                            )}
-                        </div>
-                    </div>
-                    <div className="p-4 rounded-xl border border-border/50 bg-muted/30">
-                        <div className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Open Jobs</div>
-                        <div className="text-sm font-medium text-foreground">{companyJobs.length} open fresher {companyJobs.length === 1 ? 'role' : 'roles'} right now</div>
-                    </div>
-                    {getTypicalRoles(companyJobs) && (
-                        <div className="p-4 rounded-xl border border-border/50 bg-muted/30">
-                            <div className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Typical Roles</div>
-                            <div className="text-sm font-medium text-foreground line-clamp-1" title={getTypicalRoles(companyJobs)!}>{getTypicalRoles(companyJobs)}</div>
-                        </div>
-                    )}
-                    {getKeyLocations(companyJobs) && (
-                        <div className="p-4 rounded-xl border border-border/50 bg-muted/30">
-                            <div className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Key Locations</div>
-                            <div className="text-sm font-medium text-foreground line-clamp-1">{getKeyLocations(companyJobs)}</div>
-                        </div>
-                    )}
-                    {getLastHiringActivity(companyJobs) && (
-                        <div className="p-4 rounded-xl border border-border/50 bg-muted/30">
-                            <div className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Last Hiring Activity</div>
-                            <div className="text-sm font-medium text-foreground">Last posted {getLastHiringActivity(companyJobs)}</div>
-                        </div>
-                    )}
-                    <div className="p-4 rounded-xl border border-border/50 bg-muted/30">
-                        <div className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Career Portal</div>
-                        {firstJob?.companyWebsite || firstJob?.applyLink ? (
-                            <a href={firstJob?.companyWebsite || firstJob?.applyLink} target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-primary hover:underline truncate block">
-                                {(() => {
-                                    const validUrl = firstJob?.companyWebsite || firstJob?.applyLink;
-                                    if (!validUrl) return null;
-                                    try {
-                                        const urlObj = new URL(validUrl);
-                                        if (urlObj.protocol !== 'https:') return 'View Portal';
-                                        return 'View Official Careers Page →';
-                                    } catch { return 'View Portal'; }
-                                })()}
-                            </a>
-                        ) : (
-                            <div className="text-sm font-medium text-foreground">Not listed</div>
-                        )}
-                    </div>
-                    {(companyStage || companySize || companyIndustries.length > 0) && (
-                        <div className="p-4 rounded-xl border border-border/50 bg-muted/30">
-                            <div className="text-xs text-muted-foreground uppercase font-bold tracking-wider mb-1">Company Profile</div>
-                            <div className="space-y-1.5 text-sm font-medium text-foreground">
-                                {companyStage && <div className="capitalize">Stage: {companyStage}</div>}
-                                {companySize && <div>{companySize}</div>}
-                                {companyIndustries.length > 0 && (
-                                    <div className="capitalize">{companyIndustries.slice(0, 2).join(', ')}</div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* About Company */}
-            <div className="space-y-4">
-                <h2 className="text-xl font-bold tracking-tight text-foreground">About {companyName}</h2>
-                <div
-                    className="text-sm text-muted-foreground leading-relaxed space-y-4 company-description-prose max-w-4xl"
-                    dangerouslySetInnerHTML={{ __html: companyDescriptionHtml }}
-                />
-            </div>
-        </div>
-    );
-
-    // Server-rendered crawlable list of current openings. The interactive feed
-    // below is a Suspense-wrapped client component whose static prerender emits
-    // only a skeleton, so this block is what search engines index.
-    const openingsList = (
-        <section className="border border-border/50 bg-card rounded-xl p-5 space-y-3">
-            <h2 className="font-semibold text-lg text-foreground tracking-tight">Current openings at {companyName}</h2>
-            <ul className="space-y-2">
-                {companyJobs.slice(0, 15).map((j: any) => {
-                    const path = j.type === 'GOVERNMENT' || j.governmentJobDetails
-                        ? `/govt/${j.slug || j.id}`
-                        : `/jobs/${j.slug || j.id}`;
-                    return (
-                        <li key={j.id || j.slug} className="text-sm">
-                            <a href={path} className="text-primary hover:underline font-medium">{j.title}</a>
-                            {Array.isArray(j.locations) && j.locations.length > 0 && (
-                                <span className="text-muted-foreground"> — {j.locations.slice(0, 2).join(', ')}</span>
-                            )}
-                        </li>
-                    );
-                })}
-            </ul>
-            {companyJobs.length > 15 && (
-                <p className="text-xs text-muted-foreground">And {companyJobs.length - 15} more openings in the feed below.</p>
-            )}
-        </section>
-    );
+    // Header subtitle. Industry and team size are the only company-level
+    // attributes the feed actually carries, so the hero states those rather
+    // than inventing a description or headquarters line.
+    const headerMeta = [companyIndustries[0], companySize].filter(Boolean).join('  Â·  ');
 
     logRouteResult('/companies/[slug]', '200');
 
+    const safePortalUrl = toSafeOutboundUrl(portalUrl);
+
     return (
-        <>
-            {/* Rendered directly by the server — always present in the HTML,
-                independent of the client feed's Suspense state. */}
-            <div className="w-full max-w-7xl mx-auto px-3 md:px-6 pt-4">
-                {topContent}
-                {openingsList}
+        <div className="w-full max-w-6xl mx-auto px-4 md:px-6 py-5 md:py-8">
+            {/* Identity. No card, no gradient, no shadow: SiteHeader already
+                renders the breadcrumb trail above this, and the logo renders
+                its own surface, so a wrapper box would only stack a third
+                border around it. */}
+
+
+
+            {/* Company identity on the left, the two actions centred from `sm` up.
+                The empty `flex-1` track on the right is what centres them: without
+                a spacer of equal width the action group can only ever sit flush
+                right. Below `sm` that spacer is hidden, so on a phone the group
+                keeps its place at the end of the single row, where there is no
+                width to spare for a centred column. */}
+            <header className="flex items-center gap-3 sm:gap-4">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <CompanyLogo
+                        companyName={companyName}
+                        companyWebsite={firstJob?.companyWebsite}
+                        companyLogoUrl={firstJob?.companyLogoUrl}
+                        applyLink={firstJob?.applyLink}
+                        isGovernment={Boolean(firstJob && isGovernmentOpportunity(firstJob))}
+                        className="!h-14 !w-14 md:!h-20 md:!w-20 shrink-0"
+                        priority
+                    />
+
+                    <div className="min-w-0">
+                        <h1 className="truncate text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+                            {companyName}
+                        </h1>
+                        {headerMeta && (
+                            <p className="mt-1 truncate text-sm text-muted-foreground">{headerMeta}</p>
+                        )}
+                    </div>
+                </div>
+
+                <div className="flex shrink-0 items-center gap-2">
+                    {safePortalUrl && (
+                        <BrandButton asChild variant="outline" size="sm">
+                            <a href={safePortalUrl} target="_blank" rel="noopener noreferrer">
+                                Careers page
+                                <ExternalLink className="size-3.5 shrink-0" aria-hidden="true" />
+                            </a>
+                        </BrandButton>
+                    )}
+                    <CompanyFollowButton companySlug={targetSlug} />
+                </div>
+
+                {/* Balances the centred action group. Decorative only. */}
+                <div className="hidden flex-1 sm:block" aria-hidden="true" />
+            </header>
+
+
+
+            {/* Two columns: the roles list is why the page exists, so it takes
+                the wider track; the aside carries the small facts. */}
+            <div className="mt-5 grid grid-cols-1 items-start gap-5 lg:grid-cols-3">
+                <div className="lg:col-span-2">
+                    <h2 className="text-lg font-bold tracking-tight text-foreground">
+                        {listedRoleCount} open {listedRoleCount === 1 ? 'role' : 'roles'}
+                    </h2>
+                    {/* No wrapper card and no dividers. The saved-jobs page stacks
+                        its rows as individual bordered cards with a gap between
+                        them, and this list is literally that same component, so
+                        framing it again in a box just put a second border around
+                        every card. */}
+                    <div className="mt-3 grid gap-3">
+                        {listableRoles.map((job: any) => {
+                            const meta = roleMeta(job);
+                            return (
+                                <CompanyRoleCard
+                                    key={job.id || job.slug}
+                                    opp={job}
+                                    typeLabel={meta.type ?? undefined}
+                                    applyHref={meta.applyHref}
+                                />
+                            );
+                        })}
+                    </div>
+                    {(hiddenRoleCount > 0 || governmentRoleCount > 0) && (
+                        <p className="mt-3 text-xs text-muted-foreground">
+                            {hiddenRoleCount > 0 && (
+                                <>{hiddenRoleCount} more {hiddenRoleCount === 1 ? 'role is' : 'roles are'} not listed here.</>
+                            )}
+                            {hiddenRoleCount > 0 && governmentRoleCount > 0 && ' '}
+                            {governmentRoleCount > 0 && (
+                                <>{governmentRoleCount} government {governmentRoleCount === 1 ? 'role is' : 'roles are'} listed separately.</>
+                            )}
+                        </p>
+                    )}
+                </div>
+
+                <aside className="space-y-5">
+                    {detailRows.length > 0 && (
+                        <Card>
+                            <CardContent className="p-5">
+                                <h2 className="text-lg font-bold tracking-tight text-foreground">
+                                    Company details
+                                </h2>
+                                <ul className="mt-4 space-y-4">
+                                    {detailRows.map((row) => {
+                                        const Icon = row.icon;
+                                        return (
+                                            <li key={row.label} className="flex items-start gap-3">
+                                                <Icon
+                                                    className="mt-0.5 h-4 w-4 shrink-0 text-foreground"
+                                                    aria-hidden="true"
+                                                />
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold text-foreground">{row.label}</p>
+                                                    <p className="mt-0.5 break-words text-sm text-muted-foreground">
+                                                        {row.value}
+                                                    </p>
+                                                </div>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+
+                                {topSkills.length > 0 && (
+                                    <>
+                                        <div className="my-5 border-t border-border/60" />
+                                        <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                                            <BarChart3 className="h-4 w-4 text-foreground" aria-hidden="true" />
+                                            Skills in demand
+                                        </h3>
+                                        <div className="mt-3 flex flex-wrap gap-1.5">
+                                            {topSkills.map((skill: string) => (
+                                                <SkillPill key={skill} skill={skill} size="sm" />
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+                </aside>
             </div>
-            <Suspense fallback={null}>
-                <CategoryPage
-                    type={null}
-                    initialData={{
-                        opportunities: companyJobs.slice(0, FEED_PAGE_SIZE).map(toOpportunityCardDTO) as any,
-                        total: companyJobs.length,
-                        cachedAt: (feed as any)?.generatedAt ? new Date((feed as any).generatedAt).getTime() : Date.now(),
-                    }}
-                    initialFilters={{ company: [companyName] }}
-                    customTitle={`${companyName} Jobs`}
-                />
-            </Suspense>
-        </>
+        </div>
     );
 }
-

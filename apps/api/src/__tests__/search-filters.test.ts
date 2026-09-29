@@ -260,9 +260,21 @@ describe('buildOpportunityFilterSql', () => {
         expect(build({ passoutYearMin: '2025' })).toContain('"passoutYearMax"');
     });
 
-    it('adds no predicate beyond the four baseline ones for an empty filter set', () => {
+    it('adds no predicate beyond the baseline ones for an empty filter set', () => {
+        // Five, not four: the fifth hides walk-ins whose last date has passed.
+        // Previously a drive stayed in every list until an admin expired it by
+        // hand, so a fresher saw a month-old walk-in as if it were upcoming.
         const filters = parseOpportunityFilters({}, NOW);
-        expect(buildOpportunityFilterSql(filters, { now: NOW }).length).toBe(4);
+        expect(buildOpportunityFilterSql(filters, { now: NOW }).length).toBe(5);
+    });
+
+    it('hides a walk-in whose dates have all passed, but keeps non-drives', () => {
+        // `nextDriveAt` is null in two cases: no DriveDetails at all, and a
+        // drive whose last date passed. Only the first may pass, so the clause
+        // checks the DriveDetails table rather than accepting a bare null.
+        const sql = build({});
+        expect(sql).toContain('"nextDriveAt" >=');
+        expect(sql).toContain('"DriveDetails"');
     });
 
     it('partitions govt and private site modes', () => {
@@ -270,6 +282,58 @@ describe('buildOpportunityFilterSql', () => {
         expect(govt).toContain('GovernmentJobDetails');
         expect(govt).not.toContain('NOT EXISTS');
         expect(build({})).toContain('NOT EXISTS');
+    });
+
+    it('filters drives by the denormalised city column', () => {
+        expect(build({ driveCity: 'Pune' })).toContain('"driveCity"');
+    });
+
+    it('resolves driveWithinDays into an absolute date window', () => {
+        const f = parseOpportunityFilters({ driveWithinDays: '7' }, NOW);
+        expect(f.driveFrom?.toISOString()).toBe(NOW.toISOString());
+        expect(f.driveTo?.toISOString()).toBe('2026-01-22T00:00:00.000Z');
+    });
+
+    it('lets an explicit driveFrom win over driveWithinDays', () => {
+        const f = parseOpportunityFilters(
+            { driveWithinDays: '7', driveFrom: '2026-03-01' },
+            NOW
+        );
+        expect(f.driveFrom?.toISOString()).toBe('2026-03-01T00:00:00.000Z');
+    });
+
+    it('bounds a radius search on latitude and longitude', () => {
+        const sql = build({ driveLat: '17.44', driveLng: '78.37', driveRadiusKm: '10' });
+        expect(sql).toContain('BETWEEN');
+        // A bounding box alone would include the corners, so the exact
+        // great-circle check has to be present too.
+        expect(sql).toContain('ASIN');
+    });
+
+    it('drops a half-specified radius search', () => {
+        // lat without lng must not search from 0,0.
+        const f = parseOpportunityFilters({ driveLat: '17.44', driveRadiusKm: '10' }, NOW);
+        expect(f.driveLat).toBeUndefined();
+        expect(f.driveRadiusKm).toBeUndefined();
+    });
+
+    it('caps the drive radius at 500 km', () => {
+        expect(parseOpportunityFilters({ driveLat: '17.4', driveLng: '78.4', driveRadiusKm: '9000' }, NOW).driveRadiusKm)
+            .toBeUndefined();
+    });
+
+    it('rejects a 0,0 origin as a missing coordinate', () => {
+        const f = parseOpportunityFilters({ driveLat: '0', driveLng: '0', driveRadiusKm: '10' }, NOW);
+        expect(f.driveLat).toBeUndefined();
+    });
+
+    it('emits no raw SQL from drive filter values', () => {
+        const sqlText = build({
+            driveCity: "'; DROP TABLE \"Opportunity\"; --",
+            driveLat: '17.44; DELETE FROM x',
+        });
+        expect(sqlText).not.toContain('DROP TABLE');
+        expect(sqlText).not.toContain('DELETE FROM');
     });
 
     it('emits only bound parameters for a hostile filter set', () => {

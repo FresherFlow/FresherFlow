@@ -11,21 +11,21 @@ import type { Opportunity } from '@fresherflow/types';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
-import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
-import TrashIcon from '@heroicons/react/24/outline/TrashIcon';
-import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
-import BuildingOfficeIcon from '@heroicons/react/24/outline/BuildingOfficeIcon';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
-import { CheckIcon, CurrencyRupeeIcon, DocumentTextIcon } from '@heroicons/react/24/solid';
+import { CheckIcon } from '@heroicons/react/24/solid';
+import { ArrowUpRight, Trash2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/ui/Table';
 import ChevronDownIcon from '@heroicons/react/24/outline/ChevronDownIcon';
 import toast from 'react-hot-toast';
 import { cn } from "@/ui/cn";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/ui/Dialog';
+import { Button } from '@/ui/Button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/ui/DropdownMenu';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
-import { getOpportunityDisplaySalary, parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
+import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
 import { SkeletonTrackerTable } from '@/features/jobs/components/OpportunitySkeletons';
+import { JobSearchField } from '@/features/jobs/components/JobSearchField';
+import { EmptyState } from '@/ui/EmptyState';
+import { BrandButton } from '@/ui/BrandButton';
 
 // Primary Status Tabs
 type TrackerTabKey = 'ALL' | 'SAVED' | 'APPLIED' | 'INTERVIEWED' | 'SELECTED' | 'REJECTED' | 'PLANNED';
@@ -33,39 +33,34 @@ type TrackerTabKey = 'ALL' | 'SAVED' | 'APPLIED' | 'INTERVIEWED' | 'SELECTED' | 
 interface StatusConfig {
     key: ActionType;
     label: string;
-    badgeStyle: string;
 }
 
+// Stage color is gone on purpose: the status control is a plain bordered
+// select in the reference's table. One neutral treatment for every stage.
 const STATUS_CONFIGS: Record<string, StatusConfig> = {
     ['SAVED']: {
         key: 'SAVED' as ActionType,
         label: 'Saved',
-        badgeStyle: 'bg-muted text-muted-foreground dark:text-muted-foreground border-border',
     },
     [ActionType.APPLIED]: {
         key: ActionType.APPLIED,
         label: 'Applied',
-        badgeStyle: 'bg-signal-heat/10 text-signal-heat dark:text-signal-heat border-signal-heat/20',
     },
     [ActionType.INTERVIEWED]: {
         key: ActionType.INTERVIEWED,
         label: 'Interviewing',
-        badgeStyle: 'bg-brand-discord/10 text-brand-discord dark:text-brand-discord border-brand-discord/20',
     },
     [ActionType.SELECTED]: {
         key: ActionType.SELECTED,
         label: 'Offered',
-        badgeStyle: 'bg-success/10 text-success dark:text-success border-success/20',
     },
     [ActionType.REJECTED]: {
         key: ActionType.REJECTED,
         label: 'Rejected',
-        badgeStyle: 'bg-error/10 text-error dark:text-error border-error/20',
     },
     [ActionType.PLANNED]: {
         key: ActionType.PLANNED,
         label: 'Planned',
-        badgeStyle: 'bg-warning/10 text-warning dark:text-warning border-warning/20',
     },
 };
 
@@ -90,103 +85,6 @@ const normalizeStatus = (value: ActionType | string): ActionType => {
 interface TrackedItem extends Opportunity {
     trackerStatus: ActionType | 'SAVED';
     updatedAt: number;
-}
-
-// Local storage helper for job notes
-const NOTES_STORAGE_KEY = 'ff_tracker_notes_v1';
-
-function getStoredNotes(): Record<string, string> {
-    if (typeof window === 'undefined') return {};
-    try {
-        const raw = window.localStorage.getItem(NOTES_STORAGE_KEY);
-        return raw ? JSON.parse(raw) : {};
-    } catch {
-        return {};
-    }
-}
-
-function saveStoredNote(jobId: string, note: string) {
-    if (typeof window === 'undefined') return;
-    try {
-        const current = getStoredNotes();
-        if (note.trim()) {
-            current[jobId] = note;
-        } else {
-            delete current[jobId];
-        }
-        window.localStorage.setItem(NOTES_STORAGE_KEY, JSON.stringify(current));
-    } catch {
-        // ignore
-    }
-}
-
-function TrackerNotesDialog({ jobId, companyName }: { jobId: string; companyName: string }) {
-    const [note, setNote] = useState('');
-    const [isOpen, setIsOpen] = useState(false);
-
-    useEffect(() => {
-        if (isOpen) {
-            const notesMap = getStoredNotes();
-            setNote(notesMap[jobId] || '');
-        }
-    }, [isOpen, jobId]);
-
-    const handleSave = () => {
-        saveStoredNote(jobId, note);
-        toast.success('Notes saved');
-        setIsOpen(false);
-    };
-
-    const hasNotes = !!getStoredNotes()[jobId];
-
-    return (
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-                <button
-                    type="button"
-                    className={cn(
-                        'p-1.5 rounded-lg border flex items-center gap-1 text-xs font-medium active:scale-95 transition-all duration-150 ease-out',
-                        hasNotes
-                            ? 'bg-primary/10 border-primary/30 text-primary'
-                            : 'bg-card border-border/50 text-muted-foreground hover:text-foreground hover:bg-muted/40'
-                    )}
-                    title={hasNotes ? 'View/Edit Notes' : 'Add Notes'}
-                >
-                    <DocumentTextIcon className="w-3.5 h-3.5" />
-                    {hasNotes && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
-                </button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                    <DialogTitle>Notes for {companyName}</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-2">
-                    <textarea
-                        value={note}
-                        onChange={(e) => setNote(e.target.value)}
-                        className="w-full h-36 p-3 text-xs rounded-xl border border-border/60 bg-card text-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none placeholder:text-muted-foreground/60"
-                        placeholder="Add interview dates, recruiter contact details, or preparation notes..."
-                    />
-                    <div className="flex justify-end gap-2">
-                        <button
-                            type="button"
-                            onClick={() => setIsOpen(false)}
-                            className="px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground rounded-lg transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleSave}
-                            className="px-4 py-1.5 text-xs font-bold bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors shadow-sm"
-                        >
-                            Save Notes
-                        </button>
-                    </div>
-                </div>
-            </DialogContent>
-        </Dialog>
-    );
 }
 
 function TrackerPageContent() {
@@ -361,7 +259,7 @@ function TrackerPageContent() {
     return (
         <div className="w-full max-w-7xl mx-auto px-3 md:px-6 py-4 md:py-8 space-y-4 md:space-y-6">
             {/* Header & Controls */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border/40">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4">
                 <div className="space-y-1">
                     <button type="button" onClick={() => router.back()} className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground hover:text-primary transition-colors cursor-pointer">
                         <ArrowLeftIcon className="w-3.5 h-3.5" />
@@ -369,27 +267,21 @@ function TrackerPageContent() {
                     </button>
                     <div className="flex items-center gap-3">
                         <h1 className="text-2xl font-bold tracking-tight text-foreground">Application Tracker</h1>
-                        <span className="text-xs font-semibold tabular-nums text-muted-foreground">
-                            {trackedItems.length} total
-                        </span>
                     </div>
                 </div>
 
                 {/* Search Bar */}
-                <div className="relative min-w-60 sm:min-w-72">
-                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search applications..."
-                        className="w-full h-9 pl-9 pr-3 text-xs bg-card/60 border border-border/60 rounded-xl placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary transition-all"
-                    />
-                </div>
+                <JobSearchField
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    placeholder="Search applications..."
+                    aria-label="Search applications"
+                    className="min-w-60 sm:min-w-72"
+                />
             </div>
 
             {/* Status Tabs Bar */}
-            <div className="flex overflow-x-auto pb-1 gap-2 scrollbar-none border-b border-border/40">
+            <div className="flex overflow-x-auto pb-1 gap-2 scrollbar-none">
                 {TAB_OPTIONS.map((tab) => {
                     const count = tabCounts[tab.key];
                     const isActive = activeTab === tab.key;
@@ -399,17 +291,14 @@ function TrackerPageContent() {
                             type="button"
                             onClick={() => setActiveTab(tab.key)}
                             className={cn(
-                                'px-3.5 py-2 text-xs font-semibold rounded-xl whitespace-nowrap border flex items-center gap-2 cursor-pointer active:scale-95 transition-all duration-150 ease-out',
+                                'px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap border flex items-center gap-1.5 transition-colors cursor-pointer active:scale-95 duration-150 ease-out',
                                 isActive
-                                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                                    : 'bg-card/40 border-border/50 text-muted-foreground hover:text-foreground hover:bg-card/80'
+                                    ? 'border-foreground/30 bg-muted text-foreground'
+                                    : 'border-border bg-transparent text-muted-foreground hover:text-foreground hover:border-foreground/20'
                             )}
                         >
                             {tab.label}
-                            <span className={cn(
-                                'text-xs font-bold tabular-nums',
-                                isActive ? 'text-primary-foreground/80' : 'text-muted-foreground'
-                            )}>
+                            <span className="text-xs tabular-nums text-muted-foreground">
                                 {count}
                             </span>
                         </button>
@@ -421,33 +310,32 @@ function TrackerPageContent() {
             {isLoading ? (
                 <SkeletonTrackerTable />
             ) : filteredItems.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center space-y-4 max-w-xl mx-auto">
-                    <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto text-muted-foreground/50">
-                        <BuildingOfficeIcon className="w-6 h-6" />
-                    </div>
-                    <div className="space-y-1">
-                        <h2 className="text-base font-bold text-foreground">No applications in {TAB_OPTIONS.find(t => t.key === activeTab)?.label}</h2>
-                        <p className="text-muted-foreground text-xs leading-relaxed max-w-xs mx-auto">
-                            Apply to opportunities from the job feed to automatically track your application pipeline.
-                        </p>
-                    </div>
-                    <Link
-                        href="/jobs"
-                        className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold capitalize tracking-widest text-xs rounded-lg hover:bg-primary/90 transition-all shadow"
-                    >
-                        Browse feed
-                    </Link>
-                </div>
+                /* Uses the shared `EmptyState` rather than its own dashed
+                   panel, so it inherits the brand box treatment. The tracker
+                   needs a building icon, not the default search or inbox, so the
+                   icon is passed through the action slot's sibling below. */
+                <EmptyState
+                    icon="inbox"
+                    size="md"
+                    title={`No applications in ${TAB_OPTIONS.find((t) => t.key === activeTab)?.label}`}
+                    description="Apply to opportunities from the job feed to automatically track your application pipeline."
+                    action={
+                        <BrandButton asChild variant="neutral" size="sm">
+                            <Link href="/jobs">Browse feed</Link>
+                        </BrandButton>
+                    }
+                    className="mx-auto max-w-xl"
+                />
             ) : (
                 <div className="w-full overflow-x-auto rounded-xl border border-border/60 bg-card/60 shadow-sm border-border/40">
                     <Table >
                         <TableHeader>
                             <TableRow >
-                                <TableHead >Company & Role</TableHead>
+                                <TableHead >Company</TableHead>
+                                <TableHead >Role</TableHead>
                                 <TableHead >Location</TableHead>
-                                <TableHead >Salary</TableHead>
-                                <TableHead >Stage</TableHead>
-                                <TableHead >Updated</TableHead>
+                                <TableHead >Status</TableHead>
+                                <TableHead >Date</TableHead>
                                 <TableHead >Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -455,12 +343,13 @@ function TrackerPageContent() {
                             {filteredItems.map((item) => {
                                 const companyName = typeof item.company === 'string' ? item.company : (item.company as any)?.name || 'Company';
                                 const locationInfo = parseOpportunityLocation(item.locations);
-                                const salaryText = getOpportunityDisplaySalary(item);
                                 const currentConfig = STATUS_CONFIGS[item.trackerStatus] || STATUS_CONFIGS[ActionType.APPLIED];
+                                const jobHref = `/${item.slug || item.id}`;
+                                const applyHref = item.applyLink && item.applyLink !== '#' ? item.applyLink : null;
 
                                 return (
                                     <TableRow key={item.id} >
-                                        {/* Company & Role */}
+                                        {/* Company */}
                                         <TableCell >
                                             <div className="flex items-center gap-3 min-w-0">
                                                 <div className="shrink-0">
@@ -471,16 +360,18 @@ function TrackerPageContent() {
                                                         className="!w-9 !h-9"
                                                     />
                                                 </div>
-                                                <div className="min-w-0">
-                                                    <p className="text-xs font-medium text-muted-foreground truncate">{companyName}</p>
-                                                    <Link
-                                                        href={`/${item.slug || item.id}`}
-                                                        className="font-bold text-foreground hover:text-primary transition-colors line-clamp-1"
-                                                    >
-                                                        {item.title}
-                                                    </Link>
-                                                </div>
+                                                <span className="text-sm text-foreground truncate">{companyName}</span>
                                             </div>
+                                        </TableCell>
+
+                                        {/* Role */}
+                                        <TableCell >
+                                            <Link
+                                                href={jobHref}
+                                                className="text-sm text-foreground hover:text-primary transition-colors line-clamp-1"
+                                            >
+                                                {item.title}
+                                            </Link>
                                         </TableCell>
 
                                         {/* Location */}
@@ -491,28 +382,13 @@ function TrackerPageContent() {
                                             </div>
                                         </TableCell>
 
-                                        {/* Salary */}
-                                        <TableCell >
-                                            {salaryText ? (
-                                                <div className="flex items-center gap-1 font-semibold text-foreground/80">
-                                                    <CurrencyRupeeIcon className="w-3.5 h-3.5 shrink-0 text-success" />
-                                                    <span>{salaryText}</span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-muted-foreground/50">—</span>
-                                            )}
-                                        </TableCell>
-
-                                        {/* Stage Selector Dropdown */}
+                                        {/* Status selector */}
                                         <TableCell >
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
                                                     <button
                                                         type="button"
-                                                        className={cn(
-                                                            'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-bold cursor-pointer active:scale-95 transition-all duration-150 ease-out',
-                                                            currentConfig.badgeStyle
-                                                        )}
+                                                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border bg-background text-xs font-medium text-foreground hover:bg-muted cursor-pointer active:scale-95 transition-colors duration-150 ease-out"
                                                     >
                                                         <span>{currentConfig.label}</span>
                                                         <ChevronDownIcon className="w-3 h-3 opacity-70" />
@@ -523,10 +399,7 @@ function TrackerPageContent() {
                                                         <DropdownMenuItem
                                                             key={cfg.key}
                                                             onClick={() => void handleStatusChange(item.id, cfg.key)}
-                                                            className={cn(
-                                                                '  cursor-pointer flex items-center justify-between',
-                                                                item.trackerStatus === cfg.key ? ' ' : ''
-                                                            )}
+                                                            className="cursor-pointer flex items-center justify-between"
                                                         >
                                                             <span>{cfg.label}</span>
                                                             {item.trackerStatus === cfg.key && <CheckIcon className="w-3.5 h-3.5 text-primary" />}
@@ -536,32 +409,48 @@ function TrackerPageContent() {
                                             </DropdownMenu>
                                         </TableCell>
 
-                                        {/* Updated Date */}
+                                        {/* Stage-aware date. The column used to be
+                                            headed "Applied" and printed a bare date
+                                            for every row, so a row still sitting at
+                                            "Saved" claimed an application date it
+                                            never had. Prefixing the stage label
+                                            keeps the header honest. */}
                                         <TableCell >
-                                            {new Date(item.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                            <span className="whitespace-nowrap text-sm tabular-nums text-muted-foreground">
+                                                {currentConfig.label}{' '}
+                                                {new Date(item.updatedAt).toLocaleDateString('en-US', {
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                })}
+                                            </span>
                                         </TableCell>
 
-                                        {/* Action Buttons */}
+                                        {/* Actions */}
                                         <TableCell >
                                             <div className="flex items-center justify-end gap-1.5">
-                                                <TrackerNotesDialog jobId={item.id} companyName={companyName} />
-                                                
-                                                <Link
-                                                    href={`/${item.slug || item.id}`}
-                                                    target="_blank"
-                                                    className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted/40 active:scale-95 transition-all duration-150 ease-out"
-                                                    title="View Opportunity"
-                                                >
-                                                    <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
-                                                </Link>
+                                                {applyHref ? (
+                                                    <Button asChild size="sm" variant="outline" className="h-8 px-3 text-xs">
+                                                        <a href={applyHref} target="_blank" rel="noreferrer">
+                                                            Apply URL
+                                                            <ArrowUpRight className="size-3.5" aria-hidden="true" />
+                                                        </a>
+                                                    </Button>
+                                                ) : null}
+                                                <Button asChild size="sm" variant="outline" className="h-8 px-3 text-xs">
+                                                    <Link href={jobHref} target="_blank">
+                                                        Job
+                                                        <ArrowUpRight className="size-3.5" aria-hidden="true" />
+                                                    </Link>
+                                                </Button>
 
                                                 <button
                                                     type="button"
                                                     onClick={() => void handleRemove(item.id)}
-                                                    className="p-1.5 text-muted-foreground hover:text-error rounded-lg hover:bg-error/10 active:scale-95 transition-all duration-150 ease-out"
+                                                    aria-label="Remove from tracker"
                                                     title="Remove from tracker"
+                                                    className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-destructive"
                                                 >
-                                                    <TrashIcon className="w-3.5 h-3.5" />
+                                                    <Trash2 className="size-4" aria-hidden="true" />
                                                 </button>
                                             </div>
                                         </TableCell>

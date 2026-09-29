@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import LoginForm from './_components/LoginForm';
 
-export const revalidate = false;
+export const dynamic = 'force-dynamic';
 
 interface LoginPageProps {
     searchParams: Promise<{ intent?: string; ref?: string }>;
@@ -31,5 +32,9 @@ export async function generateMetadata({ searchParams }: LoginPageProps): Promis
 }
 
 export default function LoginPage() {
-    return <LoginForm />;
+    return (
+        <Suspense fallback={null}>
+            <LoginForm />
+        </Suspense>
+    );
 }

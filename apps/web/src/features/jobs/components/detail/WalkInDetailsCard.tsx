@@ -3,6 +3,7 @@ import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import CheckCircleIcon from '@heroicons/react/24/solid/CheckCircleIcon';
 import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
 import ClipboardDocumentCheckIcon from '@heroicons/react/24/outline/ClipboardDocumentCheckIcon';
+import { getDriveRequiredDocuments, getOsmEmbedUrl } from '@/features/jobs/utils/walkinMapUtils';
 
 type WalkInDetailsCardProps = {
     walkInDetails: NonNullable<Opportunity['walkInDetails']>;
@@ -14,6 +15,11 @@ export function WalkInDetailsCard({ walkInDetails }: WalkInDetailsCardProps) {
     const hasCoords = lat !== undefined && lng !== undefined;
     const query = hasCoords ? `${lat},${lng}` : walkInDetails.venueAddress;
     const navUrl = walkInDetails.venueLink || (query ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}` : null);
+    // OSM cannot geocode an address without a key, so a venue with no stored
+    // coordinates gets the directions link and no map rather than a map that
+    // silently centres on null island.
+    const embedUrl = getOsmEmbedUrl(walkInDetails);
+    const documents = getDriveRequiredDocuments(walkInDetails);
 
     return (
         <div className="bg-warning/80 dark:bg-warning/20 border border-warning/80 dark:border-warning/60 rounded-2xl p-4 mb-4 space-y-3.5 shadow-sm">
@@ -49,14 +55,15 @@ export function WalkInDetailsCard({ walkInDetails }: WalkInDetailsCardProps) {
                         )}
                     </div>
 
-                    {/* Venue Embedded Map */}
-                    {query && (
+                    {/* Venue Embedded Map — keyless OpenStreetMap */}
+                    {embedUrl && (
                         <div className="w-full h-44 mt-2 rounded-lg overflow-hidden relative">
                             <iframe
                                 title="Venue Map Location"
                                 className="w-full h-full border-0 dark:invert dark:hue-rotate-180 dark:contrast-90 dark:brightness-95 transition-all duration-300"
-                                src={`https://maps.google.com/maps?q=${encodeURIComponent(query)}&hl=en&z=15&output=embed`}
+                                src={embedUrl}
                                 loading="lazy"
+                                referrerPolicy="no-referrer-when-downgrade"
                             />
                         </div>
                     )}
@@ -87,7 +94,7 @@ export function WalkInDetailsCard({ walkInDetails }: WalkInDetailsCardProps) {
                     <span>Mandatory Documents to Carry:</span>
                 </p>
                 <ul className="grid grid-cols-1 gap-1.5 text-xs text-foreground/90">
-                    {['Updated Resume (2 Hard Copies)', 'Govt. Photo ID Proof (Aadhaar / PAN)', 'Original Marksheets & Provisional Degree', '2 Passport Size Photos'].map(doc => (
+                    {documents.map(doc => (
                         <li key={doc} className="flex items-center gap-2 font-medium">
                             <CheckCircleIcon className="w-3.5 h-3.5 text-success shrink-0" />
                             <span>{doc}</span>

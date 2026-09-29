@@ -32,15 +32,38 @@ function filterChips(filters: SavedSearch['filters']): FilterChip[] {
     if (filters.batch) chips.push({ key: 'batch', label: `${filters.batch} batch` });
     if (filters.minSalary) chips.push({ key: 'minSalary', label: `≥ ${filters.minSalary / 100000}L` });
     if (filters.closingSoon) chips.push({ key: 'closingSoon', label: 'Closing soon' });
+    if (filters.q) chips.push({ key: 'q', label: `“${filters.q}”` });
+    (filters.workModes ?? []).forEach((mode) =>
+        chips.push({ key: `mode:${mode}`, label: WORK_MODE_LABELS[mode.toUpperCase()] ?? mode }),
+    );
+    (filters.skills ?? []).forEach((skill) => chips.push({ key: `skill:${skill}`, label: skill }));
+    (filters.roles ?? []).forEach((role) => chips.push({ key: `role:${role}`, label: role }));
+    (filters.experience ?? []).forEach((exp) => chips.push({ key: `exp:${exp}`, label: exp }));
     return chips;
 }
 
+const WORK_MODE_LABELS: Record<string, string> = {
+    REMOTE: 'Remote',
+    HYBRID: 'Hybrid',
+    ONSITE: 'On-site',
+    ON_SITE: 'On-site',
+};
+
 function buildSearchUrl(filters: SavedSearch['filters']): string {
     const params = new URLSearchParams();
-    if (filters.city) params.set('city', filters.city);
+    // The saved shape is storage-side; `/jobs` only reads location/year/skills/
+    // role/experience/mode/q — map onto those, or "View matches" opens an
+    // unfiltered feed while claiming the search applied.
+    if (filters.city) params.set('location', filters.city);
     if (filters.company) params.set('company', filters.company);
-    if (filters.tag) params.set('tag', filters.tag);
-    if (filters.batch) params.set('batch', String(filters.batch));
+    const skills = new Set(filters.skills ?? []);
+    if (filters.tag) skills.add(filters.tag);
+    skills.forEach((skill) => params.append('skills', skill));
+    if (filters.batch) params.set('year', String(filters.batch));
+    if (filters.q) params.set('q', filters.q);
+    (filters.roles ?? []).forEach((role) => params.append('role', role));
+    (filters.experience ?? []).forEach((exp) => params.append('experience', exp));
+    (filters.workModes ?? []).forEach((mode) => params.append('mode', mode.toLowerCase()));
     if (filters.minSalary) params.set('minSalary', String(filters.minSalary));
     if (filters.closingSoon) params.set('closingSoon', 'true');
     if (filters.feedType === 'walkins') return `/drives/walk-in${params.toString() ? `?${params}` : ''}`;
@@ -122,20 +145,37 @@ function RowSkeleton() {
  * Creation lives in NewSearchDialog: the page itself stays a pure list and
  * never grows an inline form that pushes content down.
  */
+/** The banner used to say "Something went wrong" for every failure. Tell the
+ * user which of the three real causes it actually was. */
+function describeLoadError(err: unknown): string {
+    const e = err as { statusCode?: number; status?: number; message?: string; name?: string };
+    const status = e.statusCode ?? e.status;
+    if (e.name === 'OfflineError' || status === 0) {
+        return 'Cannot reach the FresherFlow API. Start it locally (pnpm --filter ./apps/api dev) or check NEXT_PUBLIC_API_URL.';
+    }
+    if (status === 401) return 'Your session expired — sign out and back in to load saved searches.';
+    if (status === 403) return 'This account is not allowed to read saved searches.';
+    if (status === 429) return 'Too many requests — wait a moment, then retry.';
+    if (status && status >= 500) {
+        return `The API returned ${status}${e.message ? ` — ${e.message}` : '.'}`;
+    }
+    return e.message ? `Couldn’t load saved searches — ${e.message}` : 'Couldn’t load saved searches.';
+}
+
 export function SearchesTab() {
     const { user, isLoading: authLoading } = useAuth();
     const [searches, setSearches] = useState<SavedSearch[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [dialogOpen, setDialogOpen] = useState(false);
 
     const load = useCallback(() => {
         setLoading(true);
-        setError(false);
+        setError(null);
         fresherNeedsApi
             .listSavedSearches()
             .then((res) => setSearches(res.searches))
-            .catch(() => setError(true))
+            .catch((err) => setError(describeLoadError(err)))
             .finally(() => setLoading(false));
     }, []);
 
@@ -154,7 +194,7 @@ export function SearchesTab() {
             await fresherNeedsApi.updateSavedSearch(s.id, { alertEnabled: !s.alertEnabled });
         } catch {
             setSearches((prev) => prev.map((row) => (row.id === s.id ? { ...row, alertEnabled: s.alertEnabled } : row)));
-            setError(true);
+            setError('Couldn’t save the alert change — try again.');
         }
     }
 
@@ -163,7 +203,7 @@ export function SearchesTab() {
             await fresherNeedsApi.deleteSavedSearch(id);
             setSearches((prev) => prev.filter((s) => s.id !== id));
         } catch {
-            setError(true);
+            setError('Couldn’t delete this search — try again.');
         }
     }
 
@@ -217,7 +257,7 @@ export function SearchesTab() {
 
             {error ? (
                 <ErrorMessage
-                    message="Something went wrong. Try refreshing."
+                    message={error}
                     onRetry={() => load()}
                     variant="subtle"
                 />
@@ -302,7 +342,7 @@ export function SearchesTab() {
                 open={dialogOpen}
                 onOpenChange={setDialogOpen}
                 onSaved={() => load()}
-                onError={() => setError(true)}
+                onError={() => setError('Couldn’t save this search — try again.')}
             />
         </div>
     );

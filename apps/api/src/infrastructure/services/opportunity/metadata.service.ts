@@ -401,13 +401,18 @@ export class MetadataService {
                 }
 
                 if (newTopics.length > 0) {
-                    const syllabusContent = await fetchFromR2('syllabus.json');
+                    /* Lives under feeds/ with the rest of the generated
+                     * payloads. It used to be written to the bucket root while
+                     * StaticFeedService separately synced a copy to
+                     * feeds/syllabus.json — two objects for one dataset, with
+                     * the root copy the only one anything ever read. */
+                    const syllabusContent = await fetchFromR2('feeds/syllabus.json');
                     let syllabus: string[] = [];
                     if (syllabusContent) {
                         try {
                             syllabus = JSON.parse(syllabusContent);
                         } catch (e) {
-                            logger.error('[MetadataService] Failed to parse syllabus.json', e);
+                            logger.error('[MetadataService] Failed to parse feeds/syllabus.json', e);
                         }
                     }
 
@@ -426,7 +431,7 @@ export class MetadataService {
 
                     if (updated) {
                         syllabus.sort((a, b) => a.localeCompare(b));
-                        await uploadToR2('syllabus.json', JSON.stringify(syllabus, null, 2));
+                        await uploadToR2('feeds/syllabus.json', JSON.stringify(syllabus, null, 2));
                     }
                 }
             }

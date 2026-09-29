@@ -1,35 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, type ComponentType, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { cn } from '@/ui/cn';
 import {
-    AcademicCapIcon,
-    MapPinIcon,
-    ClockIcon,
-    GlobeAltIcon,
-    ArrowTopRightOnSquareIcon,
-    UserIcon,
     ArrowLeftIcon,
-    ShareIcon,
-    DocumentDuplicateIcon,
-    PencilSquareIcon,
+    ArrowTopRightOnSquareIcon,
     CheckIcon,
-    BuildingOffice2Icon,
-    UserGroupIcon,
-    BookmarkSquareIcon,
-    FolderIcon,
-    LinkIcon,
-    AdjustmentsHorizontalIcon,
-    CalendarIcon,
-    WrenchScrewdriverIcon,
-    DocumentTextIcon,
+    DocumentDuplicateIcon,
+    EyeIcon,
+    MapPinIcon,
+    PencilSquareIcon,
+    ShareIcon,
+    UserIcon,
 } from '@heroicons/react/24/outline';
-import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
+import { AVAILABILITY_LABEL } from '@/features/profile/publicProfile';
+import { usePublicProfileView } from '@/features/profile/hooks/usePublicProfileView';
 import { SkillPill } from '@/features/jobs/components/SkillPill';
 import ApplyToHireModal from './ApplyToHireModal';
 
@@ -40,17 +29,6 @@ export type CandidateProject = {
     skills: string[];
     githubUrl?: string;
     liveUrl?: string;
-};
-
-export type GithubRepo = {
-    id: number | string;
-    name: string;
-    description: string | null;
-    html_url: string;
-    language: string | null;
-    stargazers_count?: number;
-    updated_at?: string | null;
-    homepage?: string | null;
 };
 
 export type PublicProfileData = {
@@ -92,96 +70,87 @@ export type PublicProfileData = {
         homeState?: string | null;
         visibility?: 'PUBLIC' | 'UNLISTED' | 'PRIVATE' | string | null;
         projects?: CandidateProject[];
-        githubPinnedRepos?: GithubRepo[];
     };
 };
 
-function formatAvailability(availability: string | null): string {
-    if (!availability) return 'Open to Work';
-    const upper = availability.toUpperCase();
-    if (upper === 'IMMEDIATE' || upper === 'FULL_TIME') return 'Open to Work';
-    if (upper === 'OPEN' || upper === 'OPEN_TO_OPPORTUNITIES') return 'Open to Work';
-    if (upper === 'FIFTEEN_DAYS' || upper === '15_DAYS') return 'Available in 15 Days';
-    if (upper === 'THIRTY_DAYS' || upper === '30_DAYS') return 'Available in 30 Days';
-    return availability.replace(/_/g, ' ');
+/** How many skills render before the list collapses behind a "+N more" toggle. */
+const SKILL_LIMIT = 12;
+
+const SOLID_BTN =
+    'inline-flex h-9 items-center justify-center gap-1.5 rounded-xs bg-primary px-4 text-xs font-semibold text-primary-foreground transition-transform duration-150 ease-out hover:-translate-y-px active:scale-[0.98]';
+const GHOST_BTN =
+    'inline-flex h-9 items-center justify-center gap-1.5 rounded-xs border border-border bg-card px-3.5 text-xs font-semibold text-foreground transition-colors duration-150 ease-out hover:border-primary/40 hover:bg-muted/40';
+const SOLID_BTN_SM =
+    'inline-flex h-7 items-center justify-center gap-1 rounded-xs bg-primary px-2.5 text-xs font-semibold text-primary-foreground transition-transform duration-150 ease-out hover:-translate-y-px active:scale-[0.98]';
+const GHOST_BTN_SM =
+    'inline-flex h-7 items-center justify-center gap-1 rounded-xs border border-border bg-card px-2.5 text-xs font-semibold text-foreground transition-colors duration-150 ease-out hover:border-primary/40 hover:bg-muted/40';
+
+/** A stored link may be a bare handle; only ever promote it to https, never downgrade it. */
+function externalHref(url: string): string {
+    return url.startsWith('http') ? url : `https://${url}`;
 }
 
-function formatOpportunityType(type: string): string {
-    const upper = type.toUpperCase();
-    if (upper === 'JOB') return 'Full-time Jobs';
-    if (upper === 'EMPLOYMENT') return 'Jobs';
-    if (upper === 'INTERNSHIP') return 'Internships';
-    if (upper === 'WALKIN' || upper === 'WALK_IN') return 'Walk-in Drives';
-    if (upper === 'GOVERNMENT' || upper === 'GOVT_JOB') return 'Government Jobs';
-    if (upper === 'COMPETITION' || upper === 'HACKATHON' || upper === 'HACKATHONS') return 'Competitions';
-    if (upper === 'SCHOLARSHIP') return 'Scholarships';
-    if (upper === 'EDUCATION') return 'Education';
-    if (upper === 'EVENT') return 'Events';
-    if (upper === 'REMOTE') return 'Remote Jobs';
-    return type.replace(/_/g, ' ');
-}
-
-function formatWorkMode(mode: string): string {
-    const upper = mode.toUpperCase();
-    if (upper === 'ONSITE') return 'Onsite (Office)';
-    if (upper === 'REMOTE') return 'Remote';
-    if (upper === 'HYBRID') return 'Hybrid';
-    return mode.replace(/_/g, ' ');
-}
-
-function extractGithubUsername(githubUrl: string | null | undefined): string | null {
-    if (!githubUrl) return null;
-    const trimmed = githubUrl.trim();
-    if (!trimmed) return null;
-    const cleanUrl = trimmed.replace(/\/+$/, '');
-    const match = cleanUrl.match(/(?:github\.com\/|^@?)([a-zA-Z0-9-]+)$/i);
-    if (match && match[1]) {
-        const name = match[1];
-        if (name.toLowerCase() !== 'github.com') return name;
-    }
-    const parts = cleanUrl.split('/');
-    const last = parts[parts.length - 1]?.replace(/^@/, '');
-    return last || null;
-}
-
-function formatRepoUpdated(updatedAt?: string | null): string | null {
-    if (!updatedAt) return null;
-    try {
-        const date = new Date(updatedAt);
-        if (isNaN(date.getTime())) return null;
-        return `Updated ${formatDistanceToNow(date, { addSuffix: true })}`;
-    } catch {
-        return null;
-    }
-}
-
-function GithubSvgIcon({ className = "w-4 h-4" }: { className?: string }) {
+function GithubSvgIcon({ className }: { className?: string }) {
     return (
-        <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-            <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+        <svg className={className} fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+            />
         </svg>
     );
 }
 
-function LinkedinSvgIcon({ className = "w-4 h-4" }: { className?: string }) {
+/**
+ * Section rule: a mono label, a hairline to the edge, and an optional trailing count.
+ * Every block on this page opens with one, which is what keeps a long page reading as
+ * one document instead of a stack of unrelated cards.
+ */
+function SectionHeading({ label, hint }: { label: string; hint?: string }) {
     return (
-        <svg className={className} fill="currentColor" viewBox="0 0 24 24">
-            <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
-        </svg>
+        <div className="flex items-center gap-3">
+            <h2 className="font-record text-micro uppercase tracking-[0.14em] text-muted-foreground">{label}</h2>
+            <span className="h-px flex-1 bg-border" aria-hidden />
+            {hint && <span className="font-record text-micro tabular-nums text-muted-foreground">{hint}</span>}
+        </div>
     );
 }
 
-export default function PublicProfileClient({ data }: { data?: PublicProfileData | null }) {
+function MetaChip({ icon: Icon, children }: { icon?: ComponentType<{ className?: string }>; children: ReactNode }) {
+    return (
+        <span className="inline-flex min-w-0 items-center gap-1.5 rounded-xs border border-border bg-card px-2.5 py-1 text-xs font-medium text-foreground">
+            {Icon && <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+            <span className="truncate">{children}</span>
+        </span>
+    );
+}
+
+/**
+ * The public page for /u/<handle>.
+ *
+ * Deliberately minimal. Once a profile link is public, search engines, scrapers and
+ * AI crawlers copy it regardless of what robots.txt asks, so everything the world is
+ * not owed is simply left out: no resume URL, no CTC expectation, no full about, no
+ * education timeline beyond degree and batch, no social profile links, and only the
+ * first two projects. Recruiters go further through the intro request, which the
+ * candidate can turn off.
+ *
+ * The owner sees their own page with an edit path and a view count instead.
+ */
+export default function PublicProfileClient({
+    data,
+    variant = 'public',
+}: {
+    data?: PublicProfileData | null;
+    /** `preview` is the owner's editor preview: it must not ping the view counter. */
+    variant?: 'public' | 'preview';
+}) {
+    const isPreview = variant === 'preview';
     const { user: authUser, profile: authProfile } = useAuth();
-    const [mounted, setMounted] = useState(false);
     const [isCopied, setIsCopied] = useState(false);
     const [showAllSkills, setShowAllSkills] = useState(false);
-    const [showFullAbout, setShowFullAbout] = useState(false);
     const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
-
-    useEffect(() => {
-        setMounted(true);
-    }, []);
 
     const user = data?.user || (authUser ? {
         id: authUser.id,
@@ -204,766 +173,397 @@ export default function PublicProfileClient({ data }: { data?: PublicProfileData
         githubUrl: authProfile.githubUrl || null,
         linkedinUrl: authProfile.linkedinUrl || null,
         portfolioUrl: authProfile.portfolioUrl || null,
-        resumeUrl: (authProfile as unknown as Record<string, unknown>).resumeUrl as string | undefined,
+        avatarUrl: authProfile.avatarUrl || null,
         availability: authProfile.availability || null,
         preferredCities: authProfile.preferredCities || [],
         workModes: authProfile.workModes || [],
-        interestedIn: (authProfile as unknown as Record<string, unknown>).interestedIn as string[] | undefined,
-        preferredRoles: (authProfile as unknown as Record<string, unknown>).preferredRoles as string[] | undefined,
         openToRecruiters: Boolean(authProfile.openToRecruiters),
         openToRelocate: Boolean((authProfile as unknown as Record<string, unknown>).openToRelocate),
-        completionPercentage: ((authProfile as unknown as Record<string, unknown>).completionPercentage as number | undefined) ?? 0,
         homeState: (authProfile as unknown as Record<string, unknown>).homeState as string | undefined,
-        githubPinnedRepos: (authProfile as unknown as Record<string, unknown>).githubPinnedRepos as GithubRepo[] | undefined,
     } : null);
 
-    const githubUsername = extractGithubUsername(profile?.githubUrl);
-    const pinnedRepos: GithubRepo[] = Array.isArray(profile?.githubPinnedRepos)
-        ? profile.githubPinnedRepos
-        : [];
-
-    const seoTitle = `${user?.fullName || 'Candidate'} – ${profile?.headline || 'Software Engineer'} | FresherFlow`;
-    useEffect(() => {
-        if (typeof document !== 'undefined' && !document.title.includes('FresherFlow')) {
-            document.title = seoTitle;
-        }
-    }, [seoTitle]);
+    // Owner-only, and never inflated by the owner opening their own page from the editor.
+    const { views } = usePublicProfileView({
+        username: user?.username ?? null,
+        userId: user?.id ?? '',
+        enabled: variant === 'public' && Boolean(user?.id),
+    });
 
     if (!user || !profile) {
         return (
-            <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
-                <div className="flex-1 py-16 px-4 flex items-center justify-center">
-                    <div className="max-w-md w-full bg-card border border-border/60 rounded-2xl p-6 md:p-8 text-center space-y-4 shadow-sm">
-                        <div className="w-14 h-14 bg-muted text-muted-foreground font-bold text-xl rounded-2xl flex items-center justify-center mx-auto border border-border/50">
-                            <UserIcon className="w-7 h-7" />
-                        </div>
-                        <h1 className="text-xl font-bold tracking-tight text-foreground">Candidate Profile Not Found</h1>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                            No public candidate profile exists for this username.
-                        </p>
-                        <div className="pt-2">
-                            <Link
-                                href="/"
-                                className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground font-bold rounded-xl text-xs hover:opacity-95 active:scale-95 transition-all duration-150 ease-out shadow-xs"
-                            >
-                                <ArrowLeftIcon className="w-4 h-4" />
-                                <span>Back to Home</span>
-                            </Link>
-                        </div>
+            <div className="flex min-h-[60vh] w-full items-center justify-center bg-background px-6 py-16 text-foreground">
+                <div className="w-full max-w-md space-y-4 rounded-xs border border-border bg-card p-8 text-center">
+                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xs border border-border bg-muted text-muted-foreground">
+                        <UserIcon className="h-6 w-6" />
                     </div>
+                    <h1 className="font-display text-xl font-bold tracking-tight text-foreground">Profile not found</h1>
+                    <p className="text-sm leading-relaxed text-muted-foreground">
+                        No public fresher profile exists for this username.
+                    </p>
+                    <Link href="/jobs" className={cn(SOLID_BTN, 'w-full')}>
+                        <ArrowLeftIcon className="h-3.5 w-3.5" />
+                        Browse fresher jobs
+                    </Link>
                 </div>
             </div>
         );
     }
 
-    const initials = (user.fullName || user.username)
+    const displayName = user.fullName || user.username;
+    const firstName = displayName.split(' ').filter(Boolean)[0] || 'this fresher';
+
+    const initials = displayName
         .split(' ')
         .filter(Boolean)
-        .map(n => n[0])
+        .map((part) => part[0])
         .join('')
         .toUpperCase()
         .slice(0, 2) || 'FF';
 
-    const isOwnProfile = Boolean(
+    // Forced false inside the editor preview. The viewer there *is* the owner, but the card
+    // exists to show what a visitor gets — so the owner-only branches (Edit profile, the
+    // view-count rail, the CTA suppressed because "you can't intro yourself") are switched off
+    // rather than the preview quietly under-reporting what recruiters see.
+    const isOwnProfile = !isPreview && Boolean(
         authUser &&
-        user &&
         (authUser.id === user.id || authUser.username?.toLowerCase() === user.username.toLowerCase())
     );
 
-    const qualificationText = profile.gradCourse
-        ? `${profile.gradCourse}${profile.gradSpecialization ? ` ${profile.gradSpecialization}` : ''}${profile.gradYear ? ` ${profile.gradYear}` : ''}`
-        : profile.educationLevel || null;
+    // The enum is IMMEDIATE / DAYS_15 / MONTH_1; the shared label map is the single
+    // source. Anything unmapped is shown readably rather than as a raw enum token.
+    const availabilityLabel = profile.availability
+        ? (AVAILABILITY_LABEL as Record<string, string | undefined>)[profile.availability]
+            ?? profile.availability.replace(/_/g, ' ').toLowerCase()
+        : null;
+    const availabilityDot = profile.availability === 'IMMEDIATE' ? 'bg-signal-live' : 'bg-signal-aging';
 
-    const headlineText = profile.headline || 'Software Engineer';
+    const locationBase = profile.homeState
+        || (profile.preferredCities?.length ? profile.preferredCities.slice(0, 2).join(', ') : null);
 
-    const rawLocation = profile.homeState
-        ? profile.homeState
-        : profile.preferredCities && profile.preferredCities.length > 0
-            ? profile.preferredCities.slice(0, 2).join(', ')
-            : 'India';
+    const degreeText = [profile.gradCourse || profile.educationLevel, profile.gradSpecialization]
+        .filter(Boolean)
+        .join(' · ');
 
-    const locationText = `${rawLocation}${profile.openToRelocate ? ' • Open to Relocate' : ''}`;
-    const availabilityText = formatAvailability(profile.availability);
+    // Mirrors the API's cap so what the owner previews is what a visitor actually gets.
+    const projects = (profile.projects || []).filter((project) => project.title).slice(0, 2);
+
+    const skillsList = (profile.skills || []).filter((skill) => typeof skill === 'string' && skill.trim().length > 0);
+    const displayedSkills = showAllSkills ? skillsList : skillsList.slice(0, SKILL_LIMIT);
+    const hiddenSkillsCount = skillsList.length - SKILL_LIMIT;
+
+    const hasAbout = Boolean(profile.about && profile.about.trim().length > 0);
+    const hasEducation = Boolean(degreeText || profile.collegeName || profile.gradYear);
+    const isBlank = !hasAbout && skillsList.length === 0 && projects.length === 0 && !hasEducation;
+
+    const profileUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://fresherflow.in'}/u/${user.username}`;
+
+    const handleCopyLink = async () => {
+        try {
+            await navigator.clipboard.writeText(profileUrl);
+            setIsCopied(true);
+            toast.success('Profile link copied');
+            setTimeout(() => setIsCopied(false), 2500);
+        } catch {
+            toast.error('Could not copy the link');
+        }
+    };
 
     const handleShare = async () => {
-        const canonicalUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://fresherflow.in'}/u/${user.username}`;
         if (typeof navigator !== 'undefined' && navigator.share) {
             try {
                 await navigator.share({
-                    title: seoTitle,
-                    text: profile.headline || `Check out ${user.fullName || 'Candidate'}'s profile on FresherFlow`,
-                    url: canonicalUrl,
+                    title: `${displayName} — Fresher profile`,
+                    text: profile.headline || `Check out ${displayName} on FresherFlow`,
+                    url: profileUrl,
                 });
-            } catch (err: unknown) {
-                if ((err as Error).name !== 'AbortError') {
-                    await handleCopyLink();
-                }
+                return;
+            } catch (error) {
+                // A cancelled share sheet is not a failure; anything else falls back to copying.
+                if ((error as Error).name === 'AbortError') return;
             }
-        } else {
-            await handleCopyLink();
         }
+        await handleCopyLink();
     };
 
-    const handleCopyLink = async () => {
-        const canonicalUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://fresherflow.in'}/u/${user.username}`;
-        try {
-            await navigator.clipboard.writeText(canonicalUrl);
-            setIsCopied(true);
-            toast.success('Profile link copied to clipboard!');
-            setTimeout(() => setIsCopied(false), 2500);
-        } catch {
-            toast.error('Failed to copy link');
-        }
-    };
-
-    const candidateProjects: CandidateProject[] = profile.projects || [];
-    const skillsList = (profile.skills || []).filter(s => typeof s === 'string' && s.trim().length > 0);
-    const displayedSkills = showAllSkills ? skillsList : skillsList.slice(0, 5);
-    const hiddenSkillsCount = skillsList.length - 5;
-
-    const hasAbout = Boolean(profile.about && profile.about.trim().length > 0);
-    const hasEducation = Boolean(profile.gradCourse || profile.educationLevel || profile.pgCourse || profile.twelfthYear || profile.tenthYear);
-    const hasPreferences = Boolean(
-        profile.availability ||
-        (profile.interestedIn && profile.interestedIn.length > 0) ||
-        (profile.preferredRoles && profile.preferredRoles.length > 0) ||
-        (profile.preferredCities && profile.preferredCities.length > 0) ||
-        (profile.workModes && profile.workModes.length > 0)
-    );
-    const hasLinks = Boolean(profile.githubUrl || profile.linkedinUrl || profile.portfolioUrl || profile.resumeUrl);
-    const hasSkills = skillsList.length > 0;
+    const canRequestIntro = !isOwnProfile && profile.openToRecruiters && Boolean(user.id);
+    // With no rail content the two-column grid would leave a dead 300px gutter, so the
+    // second column only exists when there is something to put in it.
+    //
+    const showRail = isOwnProfile || canRequestIntro;
 
     return (
-        <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary/20 selection:text-primary">
-            {/* Main Workspace Container with Physical Entrance Animation */}
-            <div className={cn(
-                "flex-1 w-full max-w-4xl mx-auto px-4 sm:px-6 py-8 md:py-12 space-y-8 md:space-y-12 transition-all duration-300 ease-out",
-                mounted ? "opacity-100 translate-y-0 scale-100" : "opacity-0 translate-y-2 scale-95"
-            )}>
-                {/* HERO HEADER CARD */}
-                <div className="bg-card border border-border/60 rounded-2xl p-5 md:p-6 shadow-xs space-y-4 relative overflow-hidden">
-                    <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                            {/* Avatar */}
-                            {profile.avatarUrl ? (
-                                <Image
-                                    src={profile.avatarUrl}
-                                    alt={user.fullName || 'Candidate'}
-                                    width={80}
-                                    height={80}
-                                    className="w-16 h-16 md:w-20 md:h-20 rounded-2xl object-cover shrink-0 border border-border/80 shadow-xs"
-                                    unoptimized
-                                />
-                            ) : (
-                                <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-primary text-primary-foreground font-extrabold text-xl md:text-2xl flex items-center justify-center shrink-0 shadow-xs">
-                                    {initials}
-                                </div>
-                            )}
+        <div className={cn('w-full bg-background text-foreground', !isPreview && 'min-h-screen')}>
+            <div className={cn('mx-auto w-full', isPreview ? 'max-w-none px-5 py-6' : 'max-w-280 px-6 py-10 md:py-14')}>
 
-                            {/* Candidate Identity */}
-                            <div className="space-y-1.5">
-                                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
-                                    {user.fullName || 'Candidate'}
-                                </h1>
-
-                                <p className="text-sm md:text-base font-medium text-muted-foreground leading-snug">
-                                    {headlineText}
-                                </p>
-
-                                {/* Badges Row */}
-                                <div className="flex items-center gap-2 flex-wrap pt-1">
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-foreground text-xs font-semibold border border-border/60">
-                                        <MapPinIcon className="w-3.5 h-3.5 text-primary shrink-0" />
-                                        <span>{locationText}</span>
-                                    </span>
-
-                                    {qualificationText && (
-                                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-foreground text-xs font-semibold border border-border/60">
-                                            <AcademicCapIcon className="w-3.5 h-3.5 text-primary shrink-0" />
-                                            <span>{qualificationText}</span>
-                                        </span>
-                                    )}
-
-                                    {/* Availability Status Badge */}
-                                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold border border-primary/20">
-                                        <span className="w-2 h-2 rounded-full bg-primary shrink-0 animate-pulse" />
-                                        <span>{availabilityText}</span>
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Tactile Action Buttons */}
-                        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto shrink-0 pt-1 sm:pt-0">
-                            {isOwnProfile && (
-                                <Link
-                                    href="/profile"
-                                    className="flex-1 sm:flex-initial px-3.5 py-2 bg-primary text-primary-foreground font-bold text-xs rounded-xl hover:opacity-95 active:scale-95 transition-all duration-150 ease-out flex items-center justify-center gap-1.5 shadow-xs"
-                                >
-                                    <PencilSquareIcon className="w-3.5 h-3.5 shrink-0" />
-                                    <span>Edit Profile</span>
-                                </Link>
-                            )}
-
-                            <button
-                                type="button"
-                                onClick={handleShare}
-                                className="px-3.5 py-2 bg-card text-foreground font-semibold text-xs rounded-xl border border-border/60 hover:border-border hover:bg-muted/60 active:scale-95 transition-all duration-150 ease-out flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
-                                title="Share Candidate Profile"
-                            >
-                                <ShareIcon className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-                                <span>Share</span>
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={handleCopyLink}
-                                className="px-3.5 py-2 bg-card text-foreground font-semibold text-xs rounded-xl border border-border/60 hover:border-border hover:bg-muted/60 active:scale-95 transition-all duration-150 ease-out flex items-center justify-center gap-2 cursor-pointer shadow-2xs"
-                                title="Copy Profile Link"
-                            >
-                                {isCopied ? (
-                                    <CheckIcon className="w-3.5 h-3.5 shrink-0 text-primary" />
-                                ) : (
-                                    <DocumentDuplicateIcon className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-                                )}
-                                <span>{isCopied ? 'Copied' : 'Copy Link'}</span>
-                            </button>
-                            {/* The intro-request endpoint resolves the target by id, so
-                                the CTA only appears when the page actually has one. */}
-                            {!isOwnProfile && user.id && (
-                                <button
-                                    type="button"
-                                    onClick={() => setIsApplyModalOpen(true)}
-                                    className="px-4 py-2 bg-primary text-primary-foreground font-bold text-xs rounded-xl hover:opacity-95 active:scale-95 transition-all duration-150 ease-out flex items-center justify-center gap-2 shadow-sm"
-                                >
-                                    <UserIcon className="w-3.5 h-3.5 shrink-0" />
-                                    <span>Apply to Hire</span>
-                                </button>
-                            )}
-                        </div>
-                    </div>
+                {/* ── Identity header ─────────────────────────────────────────── */}
+                <div className="flex items-center gap-3 font-record text-micro uppercase tracking-[0.14em] text-muted-foreground">
+                    <span className="h-1.75 w-1.75 rounded-full bg-warning" aria-hidden />
+                    Fresher profile
+                    <span className="h-px flex-1 bg-border" aria-hidden />
+                    <span className="tabular-nums">{profile.gradYear ? `Batch of ${profile.gradYear}` : 'Live link'}</span>
                 </div>
 
-                <ApplyToHireModal
-                    username={user.username}
-                    candidateId={user.id ?? ''}
-                    candidateName={user.fullName || 'Candidate'}
-                    isOpen={isApplyModalOpen}
-                    onClose={() => setIsApplyModalOpen(false)}
-                />
+                <header
+                    className={cn(
+                        'mt-6 flex flex-col gap-6 border-b border-border pb-8 lg:flex-row lg:items-start lg:justify-between',
+                        !isPreview && 'animate-fade-up',
+                    )}
+                >
+                    <div className="flex min-w-0 items-start gap-5">
+                        {profile.avatarUrl ? (
+                            <Image
+                                src={profile.avatarUrl}
+                                alt={displayName}
+                                width={96}
+                                height={96}
+                                className="h-16 w-16 shrink-0 rounded-xs border border-border object-cover md:h-20 md:w-20"
+                                unoptimized
+                            />
+                        ) : (
+                            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xs bg-primary text-xl font-extrabold text-primary-foreground md:h-20 md:w-20 md:text-2xl">
+                                {initials}
+                            </div>
+                        )}
 
-                {/* 1. ABOUT SECTION */}
-                        {hasAbout && (
-                            <div className="bg-card border border-border/60 rounded-2xl p-5 md:p-6 shadow-xs space-y-3">
-                                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                                    <UserIcon className="w-4 h-4 text-primary shrink-0" />
-                                    About
-                                </h2>
-                                <p
-                                    className="text-sm md:text-base text-foreground/90 leading-relaxed whitespace-pre-line font-normal"
-                                    style={!showFullAbout ? { display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : undefined}
-                                >
-                                    {profile.about}
-                                </p>
-                                {profile.about && profile.about.length > 200 && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowFullAbout(!showFullAbout)}
-                                        className="text-xs font-bold text-primary hover:underline active:scale-95 transition-all duration-150 ease-out cursor-pointer pt-0.5 inline-block"
-                                    >
-                                        {showFullAbout ? 'Show less' : 'Read more'}
-                                    </button>
+                        <div className="min-w-0 space-y-2">
+                            <h1 className="font-display text-[clamp(28px,4.4vw,48px)] font-extrabold leading-[1.04] tracking-[-0.03em] text-foreground">
+                                {displayName}
+                            </h1>
+                            <p className="font-record text-xs text-muted-foreground">
+                                @{user.username}
+                                {profile.headline ? <span className="text-foreground"> · {profile.headline}</span> : null}
+                            </p>
+
+                            <div className="flex flex-wrap items-center gap-2 pt-1">
+                                {availabilityLabel && (
+                                    <span className="inline-flex items-center gap-1.5 rounded-xs border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground">
+                                        <span className={cn('h-2 w-2 rounded-full', availabilityDot)} aria-hidden />
+                                        {availabilityLabel}
+                                    </span>
+                                )}
+                                {locationBase && (
+                                    <MetaChip icon={MapPinIcon}>
+                                        {locationBase}
+                                        {profile.openToRelocate ? ' · open to relocate' : ''}
+                                    </MetaChip>
+                                )}
+                                {profile.openToRecruiters && (
+                                    <MetaChip>Open to recruiter intros</MetaChip>
                                 )}
                             </div>
+                        </div>
+                    </div>
+
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                        {isOwnProfile && !isPreview && (
+                            <Link href="/profile" className={SOLID_BTN}>
+                                <PencilSquareIcon className="h-3.5 w-3.5" />
+                                Edit profile
+                            </Link>
+                        )}
+                        {canRequestIntro && (
+                            <button type="button" onClick={() => setIsApplyModalOpen(true)} className={SOLID_BTN}>
+                                Request intro
+                            </button>
+                        )}
+                        <button type="button" onClick={handleShare} className={GHOST_BTN} title="Share this profile">
+                            <ShareIcon className="h-3.5 w-3.5" />
+                            Share
+                        </button>
+                        <button type="button" onClick={handleCopyLink} className={GHOST_BTN} title="Copy the profile link">
+                            {isCopied
+                                ? <CheckIcon className="h-3.5 w-3.5" />
+                                : <DocumentDuplicateIcon className="h-3.5 w-3.5" />}
+                            {isCopied ? 'Copied' : 'Copy link'}
+                        </button>
+                    </div>
+                </header>
+
+                {/* ── Body ───────────────────────────────────────────────────── */}
+                <div className={cn('mt-10 grid grid-cols-1 gap-10', showRail && 'lg:grid-cols-[minmax(0,1fr)_300px]')}>
+                    <div className="min-w-0 space-y-10">
+                        {hasAbout && (
+                            <section className="space-y-4">
+                                <SectionHeading label="About" />
+                                {/* No line-clamp: the API already trimmed this to a short excerpt, so
+                                    clipping it again here would hide text that is public by intent. */}
+                                <p className="whitespace-pre-line text-base leading-relaxed text-muted-foreground">
+                                    {profile.about}
+                                </p>
+                            </section>
                         )}
 
-                        {/* 2. PROJECTS SECTION */}
-                        {(candidateProjects.length > 0 || pinnedRepos.length > 0) && (
-                            <div className="bg-card border border-border/60 rounded-2xl p-5 md:p-6 shadow-xs space-y-4">
-                                <div className="flex items-center justify-between gap-3">
-                                    <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                                        <FolderIcon className="w-4 h-4 text-primary shrink-0" />
-                                        <span className="tabular-nums">Projects ({candidateProjects.length + pinnedRepos.length})</span>
-                                    </h2>
-                                    {(profile.githubUrl || githubUsername) && (
-                                        <a
-                                            href={profile.githubUrl?.startsWith('http') ? profile.githubUrl : `https://github.com/${githubUsername}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline transition-opacity duration-150 ease-out shrink-0"
-                                        >
-                                            <span>View GitHub →</span>
-                                        </a>
-                                    )}
-                                </div>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    {/* 1. Custom Candidate Projects */}
-                                    {candidateProjects.map((proj) => {
-                                        const hasLiveUrl = Boolean(proj.liveUrl && proj.liveUrl.trim().length > 0);
-                                        const hasGithubUrl = Boolean(proj.githubUrl && proj.githubUrl.trim().length > 0);
-
-                                        return (
-                                            <div
-                                                key={proj.id || proj.title}
-                                                className="group relative bg-muted/20 hover:bg-muted/40 border border-border/60 hover:border-border rounded-xl p-4 space-y-3.5 transition-all duration-150 ease-out active:scale-95 flex flex-col justify-between"
-                                            >
-                                                <div className="space-y-2">
-                                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                                        <h3 className="font-bold text-base text-foreground tracking-tight truncate">
-                                                            {proj.title}
-                                                        </h3>
-
-                                                        <div className="flex items-center gap-1.5 shrink-0 pt-1 sm:pt-0">
-                                                            {hasLiveUrl && (
-                                                                <a
-                                                                    href={proj.liveUrl?.startsWith('http') ? proj.liveUrl : `https://${proj.liveUrl}`}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="px-2.5 py-1 text-xs rounded-lg shrink-0 bg-primary text-primary-foreground hover:opacity-95 active:scale-95 transition-all duration-150 ease-out font-bold inline-flex items-center justify-center gap-1 shadow-2xs"
-                                                                >
-                                                                    <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
-                                                                    <span>Live Demo →</span>
-                                                                </a>
-                                                            )}
-                                                            {hasGithubUrl && (
-                                                                <a
-                                                                    href={proj.githubUrl?.startsWith('http') ? proj.githubUrl : `https://${proj.githubUrl}`}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="px-2.5 py-1 text-xs rounded-lg shrink-0 text-muted-foreground hover:text-foreground bg-card hover:bg-accent border border-border/60 active:scale-95 transition-all duration-150 ease-out font-semibold inline-flex items-center justify-center gap-1 shadow-2xs"
-                                                                >
-                                                                    <GithubSvgIcon className="w-3.5 h-3.5" />
-                                                                    <span>Git Docs →</span>
-                                                                </a>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                    {proj.description && (
-                                                        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                                                            {proj.description}
-                                                        </p>
-                                                    )}
-                                                </div>
-
-                                                {proj.skills && proj.skills.length > 0 && (
-                                                    <div className="flex items-center gap-1.5 pt-1 flex-wrap text-xs">
-                                                        {proj.skills.map((skill, idx) => (
-                                                            <SkillPill
-                                                                key={idx}
-                                                                skill={skill}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-
-                                    {/* 2. Pinned GitHub Repos */}
-                                    {pinnedRepos.map((repo) => {
-                                        const timeAgo = formatRepoUpdated(repo.updated_at);
-                                        const hasHomepage = Boolean(repo.homepage && repo.homepage.trim().length > 0);
-
-                                        return (
-                                            <div
-                                                key={repo.id || repo.name}
-                                                className="group relative bg-muted/20 hover:bg-muted/40 border border-border/60 hover:border-border rounded-xl p-4 space-y-3.5 transition-all duration-150 ease-out active:scale-95 flex flex-col justify-between"
-                                            >
-                                                <div className="space-y-2">
-                                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                                        <a
-                                                            href={repo.html_url}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="font-bold text-base text-foreground hover:text-primary tracking-tight transition-colors duration-150 ease-out hover:underline truncate"
-                                                        >
-                                                            {repo.name}
-                                                        </a>
-
-                                                        <div className="flex items-center gap-1.5 shrink-0 pt-1 sm:pt-0">
-                                                            {hasHomepage && (
-                                                                <a
-                                                                    href={repo.homepage?.startsWith('http') ? repo.homepage : `https://${repo.homepage}`}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="px-2.5 py-1 text-xs rounded-lg shrink-0 bg-primary text-primary-foreground hover:opacity-95 active:scale-95 transition-all duration-150 ease-out font-bold inline-flex items-center justify-center gap-1 shadow-2xs"
-                                                                >
-                                                                    <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
-                                                                    <span>Live Demo →</span>
-                                                                </a>
-                                                            )}
-                                                            <a
-                                                                href={repo.html_url}
-                                                                target="_blank"
-                                                                rel="noopener noreferrer"
-                                                                className="px-2.5 py-1 text-xs rounded-lg shrink-0 text-muted-foreground hover:text-foreground bg-card hover:bg-accent border border-border/60 active:scale-95 transition-all duration-150 ease-out font-semibold inline-flex items-center justify-center gap-1 shadow-2xs"
-                                                            >
-                                                                <GithubSvgIcon className="w-3.5 h-3.5" />
-                                                                <span>GitHub →</span>
-                                                            </a>
-                                                        </div>
-                                                    </div>
-
-                                                    {repo.description && (
-                                                        <p
-                                                            className="text-xs sm:text-sm text-muted-foreground leading-relaxed"
-                                                            style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
-                                                        >
-                                                            {repo.description}
-                                                        </p>
-                                                    )}
-                                                </div>
-
-                                                <div className="flex items-center gap-2.5 pt-1 flex-wrap text-xs">
-                                                    {repo.language && (
-                                                        <span className="inline-flex items-center px-2 py-0.5 bg-card text-foreground font-semibold text-xs rounded-md border border-border/60">
-                                                            {repo.language}
-                                                        </span>
-                                                    )}
-                                                    {typeof repo.stargazers_count === 'number' && repo.stargazers_count > 0 && (
-                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary font-bold text-xs rounded-md border border-primary/20 tabular-nums">
-                                                            <StarSolidIcon className="w-3 h-3 text-primary" /> {repo.stargazers_count}
-                                                        </span>
-                                                    )}
-                                                    {timeAgo && (
-                                                        <span className="text-xs font-medium text-muted-foreground">
-                                                            {timeAgo}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* 2. SKILLS SECTION */}
-                        {hasSkills && (
-                            <div className="bg-card border border-border/60 rounded-2xl p-5 md:p-6 shadow-xs space-y-3.5">
-                                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                                    <WrenchScrewdriverIcon className="w-4 h-4 text-primary shrink-0" />
-                                    Skills
-                                </h2>
-
-                                <div className="flex flex-wrap gap-2">
+                        {skillsList.length > 0 && (
+                            <section className="space-y-4">
+                                <SectionHeading label="Skills" hint={String(skillsList.length)} />
+                                <div className="flex flex-wrap gap-1.5">
                                     {displayedSkills.map((skill) => (
-                                        <SkillPill
-                                            key={skill}
-                                            skill={skill}
-                                        />
+                                        <SkillPill key={skill} skill={skill} />
                                     ))}
-
                                     {!showAllSkills && hiddenSkillsCount > 0 && (
                                         <button
                                             type="button"
                                             onClick={() => setShowAllSkills(true)}
-                                            className="inline-flex items-center px-3 py-1.5 bg-secondary text-secondary-foreground hover:bg-muted font-bold text-xs rounded-xl border border-border/60 active:scale-95 transition-all duration-150 ease-out cursor-pointer tabular-nums"
+                                            className="inline-flex items-center rounded-xs border border-border bg-muted/40 px-2.5 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-muted tabular-nums"
                                         >
                                             +{hiddenSkillsCount} more
                                         </button>
                                     )}
-
-                                    {showAllSkills && skillsList.length > 5 && (
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowAllSkills(false)}
-                                            className="inline-flex items-center px-3 py-1.5 text-muted-foreground hover:text-foreground font-medium text-xs rounded-xl active:scale-95 transition-all duration-150 ease-out cursor-pointer"
-                                        >
-                                            Show less
-                                        </button>
-                                    )}
                                 </div>
-                            </div>
+                            </section>
                         )}
 
-                        {/* 3. EDUCATION STEPPER (Connected Timeline) */}
+                        {projects.length > 0 && (
+                            <section className="space-y-4">
+                                <SectionHeading label="Selected work" hint={String(projects.length)} />
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    {projects.map((project) => (
+                                        <article
+                                            key={project.id || project.title}
+                                            className="flex flex-col justify-between gap-4 rounded-xs border border-border bg-card p-4 transition-colors duration-150 ease-out hover:border-primary/40"
+                                        >
+                                            <div className="space-y-2">
+                                                <h3 className="font-semibold leading-snug text-foreground">{project.title}</h3>
+                                                {project.description && (
+                                                    <p className="line-clamp-3 text-sm leading-relaxed text-muted-foreground">
+                                                        {project.description}
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            <div className="space-y-3">
+                                                {(project.skills ?? []).length > 0 && (
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {(project.skills ?? []).map((skill) => (
+                                                            <SkillPill key={skill} skill={skill} size="xs" />
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                {(project.liveUrl || project.githubUrl) && (
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        {project.liveUrl && (
+                                                            <a
+                                                                href={externalHref(project.liveUrl)}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className={SOLID_BTN_SM}
+                                                            >
+                                                                Live demo
+                                                                <ArrowTopRightOnSquareIcon className="h-3 w-3" />
+                                                            </a>
+                                                        )}
+                                                        {project.githubUrl && (
+                                                            <a
+                                                                href={externalHref(project.githubUrl)}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className={GHOST_BTN_SM}
+                                                            >
+                                                                <GithubSvgIcon className="h-3 w-3" />
+                                                                Code
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </article>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+
                         {hasEducation && (
-                            <div className="bg-card border border-border/60 rounded-2xl p-5 md:p-6 shadow-xs space-y-6">
-                                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                                    <AcademicCapIcon className="w-4 h-4 text-primary shrink-0" />
-                                    Education
-                                </h2>
-
-                                <div className="border-l-2 border-primary/20 ml-3 pl-6 space-y-8 py-1">
-                                    {/* Post Graduation */}
-                                    {profile.pgCourse && (
-                                        <div className="relative group">
-                                            <div className="absolute -left-8 top-1 w-4 h-4 rounded-full bg-background border-2 border-primary ring-4 ring-primary/10 transition-transform duration-150 ease-out group-hover:scale-110" />
-                                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                                                <div className="space-y-1">
-                                                    <h3 className="text-base font-bold text-foreground tracking-tight leading-snug">
-                                                        {profile.pgCourse}
-                                                    </h3>
-                                                    <p className="text-xs md:text-sm font-semibold text-muted-foreground">
-                                                        {profile.collegeName || 'Post Graduation Institution'}
-                                                    </p>
-                                                    {profile.pgSpecialization && (
-                                                        <div className="pt-1">
-                                                            <span className="inline-flex items-center px-2.5 py-0.5 bg-muted text-foreground font-semibold text-xs rounded-md border border-border/50">
-                                                                {profile.pgSpecialization}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                {profile.pgYear && (
-                                                    <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-secondary text-secondary-foreground font-bold rounded-xl border border-border/60 shrink-0 self-start tabular-nums">
-                                                        <CalendarIcon className="w-3.5 h-3.5 shrink-0 text-primary" />
-                                                        <span>{profile.pgYear}</span>
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Graduation */}
-                                    {(profile.gradCourse || profile.educationLevel) && (
-                                        <div className="relative group">
-                                            <div className="absolute -left-8 top-1 w-4 h-4 rounded-full bg-background border-2 border-primary ring-4 ring-primary/10 transition-transform duration-150 ease-out group-hover:scale-110" />
-                                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                                                <div className="space-y-1">
-                                                    <h3 className="text-base font-bold text-foreground tracking-tight leading-snug">
-                                                        {[profile.gradCourse || profile.educationLevel].filter(Boolean).join(' ')}
-                                                    </h3>
-                                                    <p className="text-xs md:text-sm font-semibold text-muted-foreground">
-                                                        {[profile.collegeName, profile.collegeState].filter(Boolean).join(' • ') || 'Undergraduate Institution'}
-                                                    </p>
-                                                    {profile.gradSpecialization && (
-                                                        <div className="pt-1">
-                                                            <span className="inline-flex items-center px-2.5 py-0.5 bg-muted text-foreground font-semibold text-xs rounded-md border border-border/50">
-                                                                {profile.gradSpecialization}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                {profile.gradYear && (
-                                                    <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-secondary text-secondary-foreground font-bold rounded-xl border border-border/60 shrink-0 self-start tabular-nums">
-                                                        <CalendarIcon className="w-3.5 h-3.5 shrink-0 text-primary" />
-                                                        <span>{profile.gradYear}</span>
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Secondary / Senior Secondary */}
-                                    {profile.twelfthYear && (
-                                        <div className="relative group">
-                                            <div className="absolute -left-8 top-1 w-4 h-4 rounded-full bg-background border-2 border-primary ring-4 ring-primary/10 transition-transform duration-150 ease-out group-hover:scale-110" />
-                                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                                                <div className="space-y-1">
-                                                    <h3 className="text-base font-bold text-foreground tracking-tight leading-snug">
-                                                        12th Standard / Higher Secondary
-                                                    </h3>
-                                                    <p className="text-xs md:text-sm font-semibold text-muted-foreground">
-                                                        Higher Secondary School Certificate
-                                                    </p>
-                                                    <div className="pt-1">
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 bg-muted text-foreground font-semibold text-xs rounded-md border border-border/50">
-                                                            HSC / Senior Secondary
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-secondary text-secondary-foreground font-bold rounded-xl border border-border/60 shrink-0 self-start tabular-nums">
-                                                    <CalendarIcon className="w-3.5 h-3.5 shrink-0 text-primary" />
-                                                    <span>{profile.twelfthYear}</span>
-                                                </span>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {profile.tenthYear && (
-                                        <div className="relative group">
-                                            <div className="absolute -left-8 top-1 w-4 h-4 rounded-full bg-background border-2 border-primary ring-4 ring-primary/10 transition-transform duration-150 ease-out group-hover:scale-110" />
-                                            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                                                <div className="space-y-1">
-                                                    <h3 className="text-base font-bold text-foreground tracking-tight leading-snug">
-                                                        10th Standard (SSC)
-                                                    </h3>
-                                                    <p className="text-xs md:text-sm font-semibold text-muted-foreground">
-                                                        Secondary School Certificate
-                                                    </p>
-                                                    <div className="pt-1">
-                                                        <span className="inline-flex items-center px-2.5 py-0.5 bg-muted text-foreground font-semibold text-xs rounded-md border border-border/50">
-                                                            SSC / High School
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 bg-secondary text-secondary-foreground font-bold rounded-xl border border-border/60 shrink-0 self-start tabular-nums">
-                                                    <CalendarIcon className="w-3.5 h-3.5 shrink-0 text-primary" />
-                                                    <span>{profile.tenthYear}</span>
-                                                </span>
-                                            </div>
-                                        </div>
+                            <section className="space-y-4">
+                                <SectionHeading label="Education" />
+                                <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
+                                    <div className="min-w-0">
+                                        {degreeText && <p className="font-semibold text-foreground">{degreeText}</p>}
+                                        <p className="text-sm text-muted-foreground">
+                                            {profile.collegeName || 'College not listed'}
+                                        </p>
+                                    </div>
+                                    {profile.gradYear && (
+                                        <span className="font-record text-xs tabular-nums text-muted-foreground">
+                                            Batch of {profile.gradYear}
+                                        </span>
                                     )}
                                 </div>
-                            </div>
-                        )}
-                    {/* 1. CAREER PREFERENCES SECTION */}
-                        {hasPreferences && (
-                            <div className="bg-card border border-border/60 rounded-2xl p-5 md:p-6 shadow-xs space-y-3.5">
-                                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                                    <AdjustmentsHorizontalIcon className="w-4 h-4 text-primary shrink-0" />
-                                    Career Preferences
-                                </h2>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 text-xs md:text-sm">
-                                    {profile.availability && (
-                                        <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/40 transition-colors duration-150 ease-out">
-                                            <ClockIcon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                                            <div>
-                                                <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Availability</p>
-                                                <p className="font-bold text-foreground pt-0.5">
-                                                    {formatAvailability(profile.availability)}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {profile.preferredRoles && profile.preferredRoles.length > 0 && (
-                                        <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/40 transition-colors duration-150 ease-out">
-                                            <UserGroupIcon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                                            <div>
-                                                <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Target Roles</p>
-                                                <p className="font-semibold text-foreground pt-0.5">
-                                                    {profile.preferredRoles.join(', ')}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {profile.preferredCities && profile.preferredCities.length > 0 && (
-                                        <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/40 transition-colors duration-150 ease-out">
-                                            <MapPinIcon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                                            <div>
-                                                <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Target Cities</p>
-                                                <p className="font-semibold text-foreground pt-0.5">
-                                                    {profile.preferredCities.join(', ')}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {profile.workModes && profile.workModes.length > 0 && (
-                                        <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/40 transition-colors duration-150 ease-out">
-                                            <BuildingOffice2Icon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                                            <div>
-                                                <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Work Modes</p>
-                                                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                                    {profile.workModes.map(mode => (
-                                                        <span key={mode} className="px-2 py-0.5 bg-card text-foreground font-semibold text-xs rounded-md border border-border/60">
-                                                            {formatWorkMode(mode)}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {profile.interestedIn && profile.interestedIn.length > 0 && (
-                                        <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/20 hover:bg-muted/40 border border-border/40 transition-colors duration-150 ease-out sm:col-span-2 lg:col-span-1">
-                                            <BookmarkSquareIcon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                                            <div>
-                                                <p className="text-xs uppercase tracking-wider text-muted-foreground font-bold">Interested In</p>
-                                                <div className="flex flex-wrap gap-1.5 mt-1.5">
-                                                    {profile.interestedIn.map(item => (
-                                                        <span key={item} className="px-2 py-0.5 bg-card text-foreground font-semibold text-xs rounded-md border border-border/60">
-                                                            {formatOpportunityType(item)}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                            </section>
                         )}
 
-                        {/* 3. LINKS SECTION */}
-                        {hasLinks && (
-                            <div className="bg-card border border-border/60 rounded-2xl p-5 md:p-6 shadow-xs space-y-3.5">
-                                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                                    <LinkIcon className="w-4 h-4 text-primary shrink-0" />
-                                    Links
-                                </h2>
-
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-2.5 text-xs md:text-sm">
-                                    {profile.githubUrl && (
-                                        <a
-                                            href={profile.githubUrl.startsWith('http') ? profile.githubUrl : `https://${profile.githubUrl}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/60 hover:border-primary/40 hover:bg-muted/40 active:scale-95 transition-all duration-150 ease-out group text-foreground font-bold"
-                                        >
-                                            <div className="flex items-center gap-2.5 overflow-hidden">
-                                                <GithubSvgIcon className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0 transition-colors" />
-                                                <span className="truncate">GitHub</span>
-                                            </div>
-                                            <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-150 ease-out">›</span>
-                                        </a>
-                                    )}
-
-                                    {profile.linkedinUrl && (
-                                        <a
-                                            href={profile.linkedinUrl.startsWith('http') ? profile.linkedinUrl : `https://${profile.linkedinUrl}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/60 hover:border-primary/40 hover:bg-muted/40 active:scale-95 transition-all duration-150 ease-out group text-foreground font-bold"
-                                        >
-                                            <div className="flex items-center gap-2.5 overflow-hidden">
-                                                <LinkedinSvgIcon className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0 transition-colors" />
-                                                <span className="truncate">LinkedIn</span>
-                                            </div>
-                                            <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-150 ease-out">›</span>
-                                        </a>
-                                    )}
-
-                                    {profile.portfolioUrl && (
-                                        <a
-                                            href={profile.portfolioUrl.startsWith('http') ? profile.portfolioUrl : `https://${profile.portfolioUrl}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/60 hover:border-primary/40 hover:bg-muted/40 active:scale-95 transition-all duration-150 ease-out group text-foreground font-bold"
-                                        >
-                                            <div className="flex items-center gap-2.5 overflow-hidden">
-                                                <GlobeAltIcon className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0 transition-colors" />
-                                                <span className="truncate">Portfolio</span>
-                                            </div>
-                                            <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-150 ease-out">›</span>
-                                        </a>
-                                    )}
-
-                                    {profile.resumeUrl && (
-                                        <a
-                                            href={profile.resumeUrl.startsWith('http') ? profile.resumeUrl : `https://${profile.resumeUrl}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/60 hover:border-primary/40 hover:bg-muted/40 active:scale-95 transition-all duration-150 ease-out group text-foreground font-bold"
-                                        >
-                                            <div className="flex items-center gap-2.5 overflow-hidden">
-                                                <DocumentTextIcon className="w-4 h-4 text-muted-foreground group-hover:text-foreground shrink-0 transition-colors" />
-                                                <span className="truncate">Resume</span>
-                                            </div>
-                                            <span className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all duration-150 ease-out">›</span>
-                                        </a>
-                                    )}
-                                </div>
-                            </div>
+                        {isBlank && (
+                            <p className="text-sm text-muted-foreground">
+                                {firstName} is still filling in this profile.
+                            </p>
                         )}
+                    </div>
 
-                        
-{/* STANDALONE ROUTE FOOTER NOTE (No hardcoded <footer> tag per Rule 6) */}
-                <div className="py-6 text-center border-t border-border/40 mt-12 bg-card/30 rounded-xl">
-                    <p className="text-xs font-medium text-muted-foreground">
-                        Built with FresherFlow •{' '}
-                        <Link href="/jobs" className="font-bold text-foreground hover:text-primary transition-colors duration-150 ease-out">
-                            Explore Verified Fresher Jobs →
+                    {/* ── Rail ─────────────────────────────────────────────────── */}
+                    {showRail && (
+                    <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+                        {isOwnProfile ? (
+                            <div className="space-y-3 rounded-xs border border-border bg-card p-5">
+                                <p className="font-record text-micro uppercase tracking-[0.14em] text-muted-foreground">
+                                    Your public view
+                                </p>
+                                <p className="text-sm leading-relaxed text-muted-foreground">
+                                    This is what someone opening your link sees. Your about is published
+                                    as a short excerpt; your resume, CTC expectation and work modes stay
+                                    private.
+                                </p>
+                                {typeof views === 'number' && (
+                                    <p className="flex items-center gap-1.5 font-record text-micro uppercase tracking-[0.14em] text-muted-foreground">
+                                        <EyeIcon className="h-3.5 w-3.5" aria-hidden />
+                                        <span className="tabular-nums">{views.toLocaleString()}</span>
+                                        profile views
+                                    </p>
+                                )}
+                                <Link href="/profile" className={cn(SOLID_BTN, 'w-full')}>
+                                    <PencilSquareIcon className="h-3.5 w-3.5" />
+                                    Edit profile
+                                </Link>
+                            </div>
+                        ) : canRequestIntro ? (
+                            <div className="space-y-3 rounded-xs border border-border bg-card p-5">
+                                <p className="font-record text-micro uppercase tracking-[0.14em] text-muted-foreground">
+                                    Hiring?
+                                </p>
+                                <p className="text-sm leading-relaxed text-muted-foreground">
+                                    Send {firstName} a short intro. Your name and contact go straight to them —
+                                    no account needed.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsApplyModalOpen(true)}
+                                    className={cn(SOLID_BTN, 'w-full')}
+                                >
+                                    Request intro
+                                </button>
+                            </div>
+                        ) : null}
+                    </aside>
+                    )}
+                </div>
+
+                <div className={cn('border-t border-border pt-6', isPreview ? 'mt-8' : 'mt-14')}>
+                    <p className="text-xs text-muted-foreground">
+                        Fresher profile on FresherFlow ·{' '}
+                        <Link href="/jobs" className="font-semibold text-foreground transition-colors hover:text-primary">
+                            Browse verified fresher jobs
                         </Link>
                     </p>
                 </div>
             </div>
+
+            {user.id && (
+                <ApplyToHireModal
+                    username={user.username}
+                    candidateId={user.id}
+                    candidateName={displayName}
+                    isOpen={isApplyModalOpen}
+                    onClose={() => setIsApplyModalOpen(false)}
+                />
+            )}
         </div>
     );
 }

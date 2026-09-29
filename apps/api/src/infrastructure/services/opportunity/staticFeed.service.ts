@@ -265,8 +265,10 @@ export class StaticFeedService {
                 };
                 const walkinsBody = JSON.stringify(walkins);
                 StorageService.writeLocalFile(this.WALKINS_PATH, walkinsBody);
+                // One key, not two. `feeds/walkins.json` used to receive the
+                // same body as `feeds/walkins-feed.json` on every refresh and
+                // nothing in apps/web or apps/mobile ever fetched it.
                 await StorageService.uploadToR2('feeds/walkins-feed.json', walkinsBody, 'application/json');
-                await StorageService.uploadToR2('feeds/walkins.json', walkinsBody, 'application/json');
             }
 
             // 6. Generate & Upload Expired Feed (Past 45 Days)

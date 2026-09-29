@@ -1,6 +1,6 @@
 export const TAXONOMY_MIN_JOBS = 3;
 
-/** URL suffix that marks role/city/skill boards. Year (-batch) and combo boards stay unsuffixed. */
+/** URL suffix that marks role/city/skill boards. Year (-batch) boards stay unsuffixed. */
 export const TAXONOMY_BOARD_SUFFIX = '-jobs';
 
 export interface TaxonomyItem {
@@ -9,28 +9,18 @@ export interface TaxonomyItem {
     count: number;
 }
 
-export interface TaxonomyCombo {
-    roleSlug: string;
-    citySlug: string;
-    roleLabel: string;
-    cityLabel: string;
-    count: number;
-}
-
 export interface TaxonomyRegistry {
     roles: Map<string, TaxonomyItem>;
     cities: Map<string, TaxonomyItem>;
     skills: Map<string, TaxonomyItem>;
     years: Map<number, number>;
-    combos: Map<string, TaxonomyCombo>;
 }
 
 export type ResolvedTaxonomy =
     | { kind: 'role'; slug: string; label: string; item: TaxonomyItem }
     | { kind: 'city'; slug: string; label: string; item: TaxonomyItem }
     | { kind: 'skill'; slug: string; label: string; item: TaxonomyItem }
-    | { kind: 'year'; slug: string; label: string; year: number }
-    | { kind: 'combo'; slug: string; label: string; combo: TaxonomyCombo };
+    | { kind: 'year'; slug: string; label: string; year: number };
 
 /** Curated role seeds — hand-picked, always valid (from legacy /roles). */
 export const CURATED_ROLE_KEYWORDS: Record<string, { label: string; keywords: string[] }> = {

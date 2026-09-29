@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { UsernameGate } from '@/features/auth/components/ProfileGate';
@@ -33,25 +33,15 @@ type FeedbackHistoryItem = {
     createdAt: string;
 };
 
-// Mock feedback history for candidate view
-const MOCK_HISTORY: FeedbackHistoryItem[] = [
-    {
-        id: 'fb-1',
-        type: 'BUG',
-        message: 'Expired job filter was still showing a closed TCS drive.',
-        rating: 4,
-        status: 'RESOLVED',
-        createdAt: '2 days ago',
-    },
-    {
-        id: 'fb-2',
-        type: 'IDEA',
-        message: 'It would be awesome to filter candidates by graduation batch on mobile.',
-        rating: 5,
-        status: 'REVIEWED',
-        createdAt: '1 week ago',
-    },
-];
+function formatHistoryDate(iso: string): string {
+    const time = new Date(iso).getTime();
+    if (Number.isNaN(time)) return iso;
+    const days = Math.floor((Date.now() - time) / 86400000);
+    if (days < 1) return 'today';
+    if (days === 1) return '1d ago';
+    if (days < 30) return `${days}d ago`;
+    return new Date(time).toLocaleDateString();
+}
 
 function FeedbackPageContent() {
     const router = useRouter();
@@ -64,8 +54,30 @@ function FeedbackPageContent() {
     const [rating, setRating] = useState<number | null>(5);
     const [message, setMessage] = useState('');
     const [submitting, setSubmitting] = useState(false);
-    const [history, setHistory] = useState<FeedbackHistoryItem[]>(MOCK_HISTORY);
+    const [history, setHistory] = useState<FeedbackHistoryItem[]>([]);
+    const [historyLoading, setHistoryLoading] = useState(false);
+    const [historyError, setHistoryError] = useState<string | null>(null);
     const [sent, setSent] = useState(false);
+
+    const loadHistory = async () => {
+        setHistoryLoading(true);
+        setHistoryError(null);
+        try {
+            const data = await appFeedbackApi.listMine();
+            setHistory(Array.isArray(data.feedback) ? data.feedback : []);
+        } catch (error) {
+            setHistoryError(error instanceof Error ? error.message : 'Could not load feedback history.');
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'history') {
+            void loadHistory();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab]);
 
     if (!user) return null;
 
@@ -94,25 +106,17 @@ function FeedbackPageContent() {
                 message: message.trim(),
                 rating,
                 status: 'PENDING',
-                createdAt: 'Just now',
+                createdAt: new Date().toISOString(),
             };
             setHistory((prev) => [newItem, ...prev]);
             setMessage('');
             setSent(true);
-        } catch {
-            // Optimistic fallback for preview
-            toast.success('Thanks for the feedback!', { id: toastId });
-            const newItem: FeedbackHistoryItem = {
-                id: `fb-${Date.now()}`,
-                type,
-                message: message.trim(),
-                rating,
-                status: 'PENDING',
-                createdAt: 'Just now',
-            };
-            setHistory((prev) => [newItem, ...prev]);
-            setMessage('');
-            setSent(true);
+            // Reconcile with server truth after a successful submit.
+            void loadHistory();
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Could not submit feedback.', {
+                id: toastId,
+            });
         } finally {
             setSubmitting(false);
         }
@@ -273,7 +277,33 @@ function FeedbackPageContent() {
                 {/* History Tab */}
                 {activeTab === 'history' && (
                     <div className="space-y-4">
-                        {history.length === 0 ? (
+                        {historyLoading ? (
+                            <div className="space-y-3" aria-label="Loading feedback history">
+                                {[1, 2, 3].map((i) => (
+                                    <div
+                                        key={i}
+                                        className="bg-card border border-border/70 rounded-2xl p-4 space-y-2 animate-pulse"
+                                        aria-hidden="true"
+                                    >
+                                        <div className="h-4 w-1/3 rounded bg-muted" />
+                                        <div className="h-3 w-full rounded bg-muted" />
+                                        <div className="h-3 w-2/3 rounded bg-muted" />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : historyError ? (
+                            <div className="bg-card border border-destructive/30 rounded-3xl p-10 text-center space-y-3">
+                                <p className="text-sm font-bold text-foreground">Could not load feedback history</p>
+                                <p className="text-xs text-muted-foreground">{historyError}</p>
+                                <button
+                                    type="button"
+                                    onClick={() => void loadHistory()}
+                                    className="px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:opacity-90 transition-opacity cursor-pointer"
+                                >
+                                    Retry
+                                </button>
+                            </div>
+                        ) : history.length === 0 ? (
                             <div className="bg-card border border-dashed border-border rounded-3xl p-10 text-center space-y-2">
                                 <SparklesIcon className="w-8 h-8 text-muted-foreground/40 mx-auto" />
                                 <p className="text-sm font-bold text-foreground">No feedback submitted yet</p>
@@ -291,7 +321,7 @@ function FeedbackPageContent() {
                                                 <span className="px-2.5 py-0.5 rounded-full bg-muted text-foreground text-xs font-bold uppercase tracking-wider">
                                                     {item.type}
                                                 </span>
-                                                <span className="text-xs text-muted-foreground">{item.createdAt}</span>
+                                                <span className="text-xs text-muted-foreground">{formatHistoryDate(item.createdAt)}</span>
                                             </div>
 
                                             <span

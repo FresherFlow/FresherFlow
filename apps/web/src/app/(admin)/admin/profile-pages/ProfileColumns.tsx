@@ -35,8 +35,9 @@ export interface AdminProfile {
     completionPercentage: number;
     views: number;
     profilePublishedAt: string | null;
-    /** Derived from the activation window — a non-null profilePublishedAt can still be dark. */
-    pageState: 'draft' | 'live' | 'expiring' | 'expired';
+    /** Derived from publication + the boost window. Every state except `draft` is reachable
+     *  by URL — `unboosted` means a live page that is simply no longer promoted. */
+    pageState: 'draft' | 'live' | 'lapsing' | 'unboosted';
     user: { id: string; fullName: string | null; username: string | null; email: string | null; status: string };
 }
 
@@ -73,24 +74,28 @@ export function introStatusBadge(status: string): { label: string; variant: Badg
 
 /**
  * Display name + tone for the derived page state. `pageState` is the API's
- * activation-window verdict, not a stored column, so the four labels are the
- * whole vocabulary and there is no unknown-value branch to write.
+ * publication + boost verdict, not a stored column, so the four labels are the whole
+ * vocabulary and there is no unknown-value branch to write.
+ *
+ * "Live" here means reachable. Only `draft` is dark; `unboosted` is a working page that
+ * has fallen out of the recruiter directory, which is the state moderators should treat
+ * as healthy rather than as a fault.
  */
 const PAGE_STATE_META: Record<AdminProfile['pageState'], { label: string; variant: BadgeVariant }> = {
-    live: { label: 'Live', variant: 'default' },
-    expiring: { label: 'Expiring', variant: 'secondary' },
-    expired: { label: 'Offline', variant: 'outline' },
-    draft: { label: 'Never activated', variant: 'muted' },
+    live: { label: 'Live · boosted', variant: 'default' },
+    lapsing: { label: 'Boost lapsing', variant: 'secondary' },
+    unboosted: { label: 'Live · no boost', variant: 'outline' },
+    draft: { label: 'Never published', variant: 'muted' },
 };
 
 /** Sentinel for "no page-state facet", matching the other admin grids' toolbar convention. */
 export const ALL_PAGE_STATES = 'ALL';
 export const PAGE_STATE_OPTIONS = [
     { value: ALL_PAGE_STATES, label: 'All page states' },
-    { value: 'live', label: 'Live' },
-    { value: 'expiring', label: 'Expiring' },
-    { value: 'expired', label: 'Offline' },
-    { value: 'draft', label: 'Never activated' },
+    { value: 'live', label: 'Live · boosted' },
+    { value: 'lapsing', label: 'Boost lapsing' },
+    { value: 'unboosted', label: 'Live · no boost' },
+    { value: 'draft', label: 'Never published' },
 ];
 
 export function pageStateBadge(state: AdminProfile['pageState']): { label: string; variant: BadgeVariant } {

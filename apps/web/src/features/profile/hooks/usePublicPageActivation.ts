@@ -8,16 +8,18 @@ import { profileApi } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/AuthContext';
 import {
     getProfilePageState,
-    PROFILE_PAGE_ACTIVE_DAYS,
+    isProfilePagePublished,
+    PROFILE_BOOST_DAYS,
     type ProfilePageState,
 } from '@fresherflow/utils';
 
 /**
- * Owns the "activate my public page" action and its derived status.
+ * Owns the one write to the public page and its derived status.
  *
- * A page is only reachable for PROFILE_PAGE_ACTIVE_DAYS after activation, so this is
- * called from the profile card and from the dashboard nudge — one implementation of
- * the publish call, one place that decides what state the user is in.
+ * Called from the profile card, the /account hub row and the dashboard nudge, so there is
+ * one implementation of the publish call and one place that decides what state the user is
+ * in. The same endpoint does both jobs: the first call publishes (permanent), every later
+ * call re-boosts (PROFILE_BOOST_DAYS of recruiter-directory placement).
  */
 export function usePublicPageActivation() {
     const { user, profile, refreshProfile } = useAuth();
@@ -36,17 +38,22 @@ export function usePublicPageActivation() {
         if (isPublishing) return;
         setIsPublishing(true);
         try {
+            const wasPublished = isProfilePagePublished(publishedAt);
             const res = (await profileApi.publishProfile()) as { publishedAt?: string } | null;
             setActivatedAt(res?.publishedAt ? new Date(res.publishedAt) : new Date());
             await refreshProfile().catch(() => undefined);
-            toast.success(`Your page is live for the next ${PROFILE_PAGE_ACTIVE_DAYS} days.`);
+            toast.success(
+                wasPublished
+                    ? `Boosted again — you're at the top of the recruiter directory for ${PROFILE_BOOST_DAYS} days.`
+                    : `Your page is live${username ? ` at fresherflow.in/u/${username}` : ''} — boosted for ${PROFILE_BOOST_DAYS} days.`,
+            );
             if (options?.navigateToPage && pagePath) router.push(pagePath);
         } catch (err) {
             toast.error(getErrorMessage(err, 'Could not activate your page. Try again.'));
         } finally {
             setIsPublishing(false);
         }
-    }, [isPublishing, pagePath, refreshProfile, router]);
+    }, [isPublishing, pagePath, publishedAt, refreshProfile, router, username]);
 
     return { username, pagePath, state, publishedAt, isPublishing, activate };
 }

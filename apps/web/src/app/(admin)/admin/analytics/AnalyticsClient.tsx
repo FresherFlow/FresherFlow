@@ -1,10 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-// import { adminApi } from '@/lib/api/admin';
+import { adminApi } from '@/lib/api/admin';
 import { AdminAnalyticsSkeleton } from '@/features/admin/components/AdminSkeletons';
 
-/*
 type MetricsV2 = {
     generatedAt: string;
     cacheTtlSeconds: number;
@@ -30,23 +29,20 @@ type MetricsV2 = {
         notifiedUsers14d: number;
     };
 };
-*/
 
 export default function AdminAnalyticsPage() {
     const [loading, setLoading] = useState(true);
-    // const [metrics, setMetrics] = useState<MetricsV2 | null>(null);
-    // const [error, setError] = useState<string | null>(null);
+    const [metrics, setMetrics] = useState<MetricsV2 | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     const load = useCallback(async () => {
         setLoading(true);
-        // setError(null);
+        setError(null);
         try {
-            // Comment out system metrics call
-            // const response = await adminApi.getSystemMetricsV2('30d');
-            // setMetrics(response as MetricsV2);
-            // setMetrics(null);
-        } catch {
-            // setError((err as Error).message || 'Failed to load analytics');
+            const response = await adminApi.getSystemMetricsV2('30d');
+            setMetrics(response as MetricsV2);
+        } catch (err) {
+            setError((err as Error).message || 'Failed to load analytics');
         } finally {
             setLoading(false);
         }
@@ -58,20 +54,21 @@ export default function AdminAnalyticsPage() {
 
     if (loading) return <AdminAnalyticsSkeleton />;
 
-    return (
-        <div className="rounded-xl border border-warning/20 bg-warning/10 p-6 text-center max-w-2xl mx-auto my-12">
-            <h2 className="text-lg font-semibold text-warning dark:text-warning">Analytics temporarily offline/disabled</h2>
-            <p className="mt-2 text-sm text-warning dark:text-warning">
-                To optimize backend resources, Postgres-based heavy analytics have been suspended. Authentication, health checks, and standard opportunity operations remain fully functional.
-            </p>
-        </div>
-    );
-}
-
-// const unused_render = null;
-// if (unused_render) {
-//     const metrics: MetricsV2 = null as any;
-    /*
+    if (error || !metrics) {
+        return (
+            <div className="rounded-xl border border-border bg-card p-6 text-center max-w-2xl mx-auto my-12 space-y-3">
+                <h2 className="text-lg font-semibold text-foreground">Could not load analytics</h2>
+                <p className="text-sm text-muted-foreground">{error || 'No metrics available right now.'}</p>
+                <button
+                    type="button"
+                    onClick={() => void load()}
+                    className="px-4 py-2 rounded-lg bg-muted text-foreground text-xs font-semibold hover:bg-muted/80 transition-colors"
+                >
+                    Retry
+                </button>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 pb-10">
@@ -136,5 +133,3 @@ function Row({ label, value }: { label: string; value: number }) {
         </div>
     );
 }
-*/
-// }

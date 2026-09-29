@@ -280,8 +280,9 @@ function registerSubmitOpportunity(server: McpServer) {
             description:
                 'Submit a fresher job or internship to FresherFlow for review. ' +
                 'Use when a user shares a job link they want added to the platform. ' +
-                'IMPORTANT: this only submits the opportunity for review — it is NOT published ' +
-                'until a moderator approves it. Do not tell the user the job is live. ' +
+                'IMPORTANT: a new submission only stages the opportunity for review — it is NOT published ' +
+                'until a moderator approves it. Do not tell the user a new submission is live. ' +
+                'If the response says the URL is already live, that describes the pre-existing listing. ' +
                 'The jobUrl is stored as data only; FresherFlow does not fetch it.',
             inputSchema: {
                 title: SubmitOpportunityInput.shape.title,
@@ -294,6 +295,7 @@ function registerSubmitOpportunity(server: McpServer) {
                 eligibility: SubmitOpportunityInput.shape.eligibility,
                 sourceUrl: SubmitOpportunityInput.shape.sourceUrl,
                 contactEmail: SubmitOpportunityInput.shape.contactEmail,
+                submitKey: SubmitOpportunityInput.shape.submitKey,
             },
             outputSchema: SubmitOpportunityOutputShape,
             annotations: { readOnlyHint: false, openWorldHint: false, destructiveHint: false },
@@ -304,14 +306,15 @@ function registerSubmitOpportunity(server: McpServer) {
             // upstream call.
             const parsed = SubmitOpportunityInput.parse(input);
             const result = await submitOpportunity(parsed);
+            // The server owns the verdict (new / duplicate-live /
+            // duplicate-pending); surface it verbatim with the reference id
+            // so bulk dumps are auditable link by link.
             return {
                 structuredContent: result,
                 content: [
                     {
                         type: 'text' as const,
-                        text: result.published
-                            ? `Your opportunity "${result.submissionId}" is now live on FresherFlow.`
-                            : `Your opportunity was submitted to FresherFlow for review (submission ${result.submissionId}). It has not been published yet.`,
+                        text: `${result.message} [submission ${result.submissionId}]`,
                     },
                 ],
             };

@@ -8,7 +8,13 @@ import * as React from 'react';
  */
 const HREF_TO_COUNT: Record<string, string> = {
     '/jobs': 'opportunities',
-    '/jobs?tab=for-you': 'opportunities',
+    // For You deliberately has no badge. It used to map to the same
+    // `opportunities` total as /jobs, so the rail read "For You 519" directly
+    // above "All Jobs 519" — two identical numbers where one of them is
+    // supposed to be personal. `/api/public/nav-counts` is public and cached,
+    // so it cannot know the viewer's profile; there is no honest number for it
+    // to show, and showing the whole feed under a personal label is worse than
+    // showing nothing. The tab itself reports the real match count.
     '/jobs?type=internship': 'internships',
     '/jobs?mode=remote': 'remote',
     '/drives': 'walkins',

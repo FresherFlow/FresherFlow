@@ -88,17 +88,21 @@ function resolveCdnUrl(): string {
 export const CDN_URL = resolveCdnUrl();
 
 // Dynamically point to the CDN (Cloudflare R2 + Worker in prod, local Express in dev)
-export const BOOTSTRAP_FEED_URL = `${CDN_URL}/bootstrap-feed.min.json`;
-export const EXPIRED_FEED_URL = `${CDN_URL}/expired-feed.min.json`;
-export const FEED_VERSION_URL = `${CDN_URL}/feed-version.json`;
-export const TAKEN_USERNAMES_URL = `${CDN_URL}/taken-usernames.min.json`;
+//
+// Feeds live under folders, matching the R2 keys the API uploads and the paths
+// apps/web uses. These were previously at the CDN root, where nothing published
+// them, so every one of these URLs was already 404ing against the bucket.
+export const BOOTSTRAP_FEED_URL = `${CDN_URL}/feeds/bootstrap-feed.min.json`;
+export const EXPIRED_FEED_URL = `${CDN_URL}/feeds/expired-feed.min.json`;
+export const FEED_VERSION_URL = `${CDN_URL}/meta/feed-version.json`;
+export const TAKEN_USERNAMES_URL = `${CDN_URL}/meta/taken-usernames.min.json`;
 export const GET_CATEGORY_SHARD_URL = (id: string) => `${CDN_URL}/categories/${id}.json`;
 export const EDUCATION_METADATA_URL = `${CDN_URL}/education.json`;
 export const SKILLS_METADATA_URL = `${CDN_URL}/skills.json`;
 export const CITIES_METADATA_URL = `${CDN_URL}/cities.json`;
 export const COMPANIES_METADATA_URL = `${CDN_URL}/companies.json`;
-export const RESOURCES_FEED_URL = `${CDN_URL}/resources-feed.json`;
-export const GOVERNMENT_FEED_URL = `${CDN_URL}/government-feed.json`;
+export const RESOURCES_FEED_URL = `${CDN_URL}/feeds/resources-feed.json`;
+export const GOVERNMENT_FEED_URL = `${CDN_URL}/feeds/government-feed.json`;
 
 export function getApiUrlForSector(sector: string | null): string {
     if (sector === 'GOVERNMENT') {

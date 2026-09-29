@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Plus, X } from 'lucide-react';
 import { OpportunityCategory, type Profile } from '@fresherflow/types';
 import { TOP_TECH_HUBS } from '@fresherflow/utils';
 import { Input } from '@/ui/Input';
 import { Button } from '@/ui/Button';
+import { cn } from '@/ui/cn';
 import { ProfileSectionCard } from '@/features/profile/components/sections/ProfileSectionCard';
 import { SectionFooter, useSectionSave } from '@/features/profile/components/editor/SectionFooter';
 
@@ -49,10 +50,11 @@ const TARGET_ROLES = [
     { value: OpportunityCategory.EVENT, label: 'Events' },
 ];
 
+/** One setup at a time — the picker is a radio group, in the order asked. */
 const WORK_SETUP = [
-    { value: 'ONSITE', label: 'Onsite' },
-    { value: 'HYBRID', label: 'Hybrid' },
     { value: 'REMOTE', label: 'Remote' },
+    { value: 'HYBRID', label: 'Hybrid' },
+    { value: 'ONSITE', label: 'Onsite' },
 ];
 
 /** Order-insensitive comparison, for "have I changed this list". */
@@ -61,12 +63,40 @@ function sameList(a: string[], b: string[]) {
 }
 
 /**
+ * One question, one bordered block.
+ *
+ * A real `fieldset`/`legend` pair, so the question is both the visible label
+ * and the programmatic name of everything inside it — and a stepped flow can
+ * drop a single card without leaving an unlabelled pile of fields behind.
+ */
+function QuestionCard({
+    legend,
+    className,
+    children,
+}: {
+    legend: string;
+    className?: string;
+    children: ReactNode;
+}) {
+    return (
+        <fieldset className={cn('rounded-xl border border-border bg-card p-4 sm:p-5', className)}>
+            <legend className="px-1 text-sm font-semibold text-foreground">{legend}</legend>
+            <div className="mt-3">{children}</div>
+        </fieldset>
+    );
+}
+
+/**
  * Career Preferences.
  *
- * The choices are pill groups that hold their own state, so the section is a
- * form and a read view at the same time: the selected pills are what is saved
- * until you change them. Only "Recruiter details" (expected CTC, resume link,
- * relocation) is typed, and it is part of the same submit.
+ * Four independent question cards — what you want, how you work, where, and
+ * what you expect — each one self-contained, so onboarding can show a subset
+ * and the editor can show all of them in the same order.
+ *
+ * The choices hold their own state, so the section is a form and a read view
+ * at the same time: the selected pills and the checked radio are what get
+ * saved until you change them. Recruiter details (expected CTC, resume link,
+ * relocation) are typed, and they save with the rest in the same submit.
  */
 export function PreferencesSection({
     profile,
@@ -129,199 +159,210 @@ export function PreferencesSection({
         setCityOpen(false);
     };
 
+    // A radiogroup may only report one checked option, so the group shows the
+    // first saved setup. `toggleWorkMode` cannot clear a sibling in the same
+    // tick — the parent rebuilds the list from one snapshot — so a profile
+    // that already holds several setups still saves them all.
+    const selectedMode = WORK_SETUP.find((mode) => workModes.includes(mode.value))?.value ?? '';
+
     return (
-        <ProfileSectionCard title="Career Preferences" description="What you want, and what recruiters need from you." bare={bare}>
+        <ProfileSectionCard title="Career Preferences" description="Just a few quick questions." bare={bare}>
             <form
-                className="space-y-5"
+                className="space-y-4"
                 onSubmit={(event) => {
                     event.preventDefault();
                     void save(onSave, 'Preferences saved.');
                 }}
             >
                 {visibleGroups.includes('roles') && (
-                <fieldset className="space-y-2">
-                    <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Target roles
-                    </legend>
+                <QuestionCard legend="Which roles interest you?">
                     <div className="flex flex-wrap gap-2">
-                        {TARGET_ROLES.map((role) => (
-                            <Button
-                                key={role.value}
-                                type="button"
-                                size="sm"
-                                variant={interestedIn.includes(role.value) ? 'default' : 'outline'}
-                                onClick={() => toggleInterestedIn(role.value)}
-                                disabled={saving}
-                            >
-                                {role.label}
-                            </Button>
-                        ))}
+                        {TARGET_ROLES.map((role) => {
+                            const selected = interestedIn.includes(role.value);
+                            return (
+                                <Button
+                                    key={role.value}
+                                    type="button"
+                                    size="sm"
+                                    variant={selected ? 'default' : 'outline'}
+                                    aria-pressed={selected}
+                                    onClick={() => toggleInterestedIn(role.value)}
+                                    disabled={saving}
+                                >
+                                    {role.label}
+                                </Button>
+                            );
+                        })}
                     </div>
-                </fieldset>
+                </QuestionCard>
                 )}
 
                 {visibleGroups.includes('setup') && (
-                <fieldset className="space-y-2">
-                    <legend className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Work setup
-                    </legend>
-                    <div className="flex flex-wrap gap-2">
-                        {WORK_SETUP.map((mode) => (
-                            <Button
-                                key={mode.value}
-                                type="button"
-                                size="sm"
-                                variant={workModes.includes(mode.value) ? 'default' : 'outline'}
-                                onClick={() => toggleWorkMode(mode.value)}
-                                disabled={saving}
-                            >
-                                {mode.label}
-                            </Button>
-                        ))}
+                <QuestionCard legend="Work preference">
+                    <div role="radiogroup" aria-label="Work preference" className="space-y-2">
+                        {WORK_SETUP.map((mode) => {
+                            const selected = selectedMode === mode.value;
+                            return (
+                                <label
+                                    key={mode.value}
+                                    className={cn(
+                                        'flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 transition-colors',
+                                        selected
+                                            ? 'border-primary bg-primary/5'
+                                            : 'border-border bg-card hover:bg-muted/50',
+                                    )}
+                                >
+                                    <input
+                                        type="radio"
+                                        name="work-mode"
+                                        value={mode.value}
+                                        checked={selected}
+                                        onChange={() => toggleWorkMode(mode.value)}
+                                        disabled={saving}
+                                        className="h-4 w-4 shrink-0 accent-primary"
+                                    />
+                                    <span className="text-sm font-medium text-foreground">{mode.label}</span>
+                                </label>
+                            );
+                        })}
                     </div>
-                </fieldset>
+                </QuestionCard>
                 )}
 
                 {visibleGroups.includes('cities') && (
-                <div className="space-y-2" ref={cityRef}>
-                    <label htmlFor="preferred-city" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Target cities
-                    </label>
-                    <div className="flex gap-2">
-                        <Input
-                            id="preferred-city"
-                            value={cityInput}
-                            onChange={(e) => {
-                                setCityInput(e.target.value);
-                                setCityHighlight(-1);
-                                setCityOpen(true);
-                            }}
-                            onFocus={() => {
-                                setCityOpen(true);
-                                setCityHighlight(-1);
-                            }}
-                            onKeyDown={(e) => {
-                                if (e.key === 'ArrowDown') {
-                                    e.preventDefault();
-                                    setCityHighlight((h) => Math.min(h + 1, cityOptions.length - 1));
-                                } else if (e.key === 'ArrowUp') {
-                                    e.preventDefault();
-                                    setCityHighlight((h) => Math.max(h - 1, 0));
-                                } else if (e.key === 'Enter') {
-                                    e.preventDefault();
-                                    if (cityOpen && cityHighlight >= 0 && cityOptions[cityHighlight]) pickCity(cityOptions[cityHighlight]);
-                                    else if (addCity().ok) setCityOpen(false);
-                                } else if (e.key === 'Escape') {
-                                    setCityOpen(false);
-                                }
-                            }}
-                            disabled={saving}
-                            placeholder="Search city…"
-                            autoComplete="off"
-                        />
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                                if (addCity().ok) setCityOpen(false);
-                            }}
-                            disabled={saving}
-                            aria-label="Add city"
-                        >
-                            <Plus className="h-4 w-4" aria-hidden="true" />
-                        </Button>
-                    </div>
+                <QuestionCard legend="Preferred locations">
+                    <div className="space-y-3" ref={cityRef}>
+                        <div className="flex gap-2">
+                            <Input
+                                id="preferred-city"
+                                value={cityInput}
+                                onChange={(e) => {
+                                    setCityInput(e.target.value);
+                                    setCityHighlight(-1);
+                                    setCityOpen(true);
+                                }}
+                                onFocus={() => {
+                                    setCityOpen(true);
+                                    setCityHighlight(-1);
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'ArrowDown') {
+                                        e.preventDefault();
+                                        setCityHighlight((h) => Math.min(h + 1, cityOptions.length - 1));
+                                    } else if (e.key === 'ArrowUp') {
+                                        e.preventDefault();
+                                        setCityHighlight((h) => Math.max(h - 1, 0));
+                                    } else if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        if (cityOpen && cityHighlight >= 0 && cityOptions[cityHighlight]) pickCity(cityOptions[cityHighlight]);
+                                        else if (addCity().ok) setCityOpen(false);
+                                    } else if (e.key === 'Escape') {
+                                        setCityOpen(false);
+                                    }
+                                }}
+                                disabled={saving}
+                                placeholder="Enter cities…"
+                                aria-label="Preferred locations"
+                                autoComplete="off"
+                            />
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                    if (addCity().ok) setCityOpen(false);
+                                }}
+                                disabled={saving}
+                                aria-label="Add city"
+                            >
+                                <Plus className="h-4 w-4" aria-hidden="true" />
+                            </Button>
+                        </div>
 
-                    {/* Suggestions render in the flow of the form, not as a floating
-                        layer: nothing overlaps, nothing needs to escape a card. */}
-                    {cityOpen && cityOptions.length > 0 && (
-                        <ul className="max-h-40 overflow-y-auto rounded-xl border border-border bg-card p-1">
-                            {cityOptions.map((city, index) => (
-                                <li key={city}>
-                                    <button
-                                        type="button"
-                                        onMouseDown={() => pickCity(city)}
-                                        className={`w-full rounded-lg px-3 py-1.5 text-left text-sm transition-colors ${
-                                            cityHighlight === index ? 'bg-muted' : 'hover:bg-muted'
-                                        }`}
+                        {/* Suggestions render in the flow of the form, not as a floating
+                            layer: nothing overlaps, nothing needs to escape a card. */}
+                        {cityOpen && cityOptions.length > 0 && (
+                            <ul className="max-h-40 overflow-y-auto rounded-xl border border-border bg-card p-1">
+                                {cityOptions.map((city, index) => (
+                                    <li key={city}>
+                                        <button
+                                            type="button"
+                                            onMouseDown={() => pickCity(city)}
+                                            className={cn(
+                                                'w-full rounded-lg px-3 py-1.5 text-left text-sm transition-colors',
+                                                cityHighlight === index ? 'bg-muted' : 'hover:bg-muted',
+                                            )}
+                                        >
+                                            {city}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+
+                        {preferredCities.length > 0 && (
+                            <ul className="flex flex-wrap gap-2">
+                                {preferredCities.map((city) => (
+                                    <li
+                                        key={city}
+                                        className="flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
                                     >
                                         {city}
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-
-                    {preferredCities.length > 0 && (
-                        <ul className="flex flex-wrap gap-2 pt-1">
-                            {preferredCities.map((city) => (
-                                <li
-                                    key={city}
-                                    className="flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
-                                >
-                                    {city}
-                                    <button
-                                        type="button"
-                                        onClick={() => setPreferredCities((prev) => (Array.isArray(prev) ? prev.filter((c) => c !== city) : []))}
-                                        disabled={saving}
-                                        aria-label={`Remove ${city}`}
-                                    >
-                                        <X className="h-3 w-3" aria-hidden="true" />
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPreferredCities((prev) => (Array.isArray(prev) ? prev.filter((c) => c !== city) : []))}
+                                            disabled={saving}
+                                            aria-label={`Remove ${city}`}
+                                        >
+                                            <X className="h-3 w-3" aria-hidden="true" />
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                </QuestionCard>
                 )}
 
                 {/* Recruiters read these next to your other preferences, and they
                     save together — this is the one place either is edited. */}
                 {visibleGroups.includes('recruiter') && (
-                <div className="space-y-4 border-t border-border/50 pt-5">
-                    <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Recruiter details
-                    </h3>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div className="space-y-1.5">
-                            <label htmlFor="expected-ctc" className="text-xs font-medium text-foreground">
-                                Expected CTC (LPA)
-                            </label>
-                            <Input
-                                id="expected-ctc"
-                                value={expectedCtc}
-                                onChange={(e) => setExpectedCtc(e.target.value.replace(/[^0-9]/g, ''))}
-                                placeholder="6"
-                                inputMode="numeric"
-                                disabled={saving}
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label htmlFor="resume-url" className="text-xs font-medium text-foreground">
-                                Resume link
-                            </label>
-                            <Input
-                                id="resume-url"
-                                type="url"
-                                value={resumeUrl}
-                                onChange={(e) => setResumeUrl(e.target.value)}
-                                placeholder="https://drive.google.com/…"
-                                disabled={saving}
-                            />
-                        </div>
-                    </div>
-                    <label className="flex items-center gap-2 text-sm text-foreground">
-                        <input
-                            type="checkbox"
-                            checked={willingToRelocate}
-                            onChange={(e) => setWillingToRelocate(e.target.checked)}
+                <>
+                    <QuestionCard legend="Expected salary (LPA)">
+                        <Input
+                            id="expected-ctc"
+                            value={expectedCtc}
+                            onChange={(e) => setExpectedCtc(e.target.value.replace(/[^0-9]/g, ''))}
+                            placeholder="e.g. 12"
+                            inputMode="numeric"
                             disabled={saving}
-                            className="h-4 w-4 rounded border-border accent-primary"
                         />
-                        Willing to relocate
-                    </label>
-                </div>
+                    </QuestionCard>
+
+                    <QuestionCard legend="Resume link">
+                        <Input
+                            id="resume-url"
+                            type="url"
+                            value={resumeUrl}
+                            onChange={(e) => setResumeUrl(e.target.value)}
+                            placeholder="https://drive.google.com/…"
+                            disabled={saving}
+                        />
+                    </QuestionCard>
+
+                    <QuestionCard legend="Willing to relocate">
+                        <label className="flex cursor-pointer items-center gap-3 text-sm text-foreground">
+                            <input
+                                type="checkbox"
+                                checked={willingToRelocate}
+                                onChange={(e) => setWillingToRelocate(e.target.checked)}
+                                disabled={saving}
+                                className="h-4 w-4 shrink-0 accent-primary"
+                            />
+                            Open to roles in another city
+                        </label>
+                    </QuestionCard>
+                </>
                 )}
 
                 {!hideFooter && <SectionFooter isDirty={isDirty} saving={saving} saveLabel="Save preferences" />}

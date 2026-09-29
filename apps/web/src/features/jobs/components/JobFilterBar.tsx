@@ -1,8 +1,15 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@repo/ui/utils/cn';
+import type { WalkinDrivePeriod } from '@/features/jobs/utils/walkinMapUtils';
+import {
+    getFeedKind,
+    getTypeOptions,
+    isGovtFeed,
+    supportsDimension,
+} from '@/features/jobs/utils/feedKinds';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import ChevronDownIcon from '@heroicons/react/24/outline/ChevronDownIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
@@ -24,7 +31,7 @@ export interface FilterBarFilters {
     company: string[];
     role?: string[];
     experience?: string[];
-    driveDate?: 'all' | 'today' | 'thisWeek';
+    driveDate?: WalkinDrivePeriod;
 }
 
 /**
@@ -60,7 +67,7 @@ interface JobFilterBarProps {
     selectedType?: string | null;
     onTypeChange?: (type: string | null) => void;
     pageType?: string;
-    driveDate?: 'all' | 'today' | 'thisWeek';
+    driveDate?: WalkinDrivePeriod;
     onDriveDateChange?: (v: 'all' | 'today' | 'thisWeek') => void;
     aggregates?: {
         locations: Record<string, number>;
@@ -124,13 +131,6 @@ function PanelClearButton({ show, onClear, label }: { show: boolean; onClear: ()
     );
 }
 
-const TYPE_OPTIONS = [
-    { label: 'All types', value: null },
-    { label: 'Jobs', value: 'JOB' },
-    { label: 'Internships', value: 'INTERNSHIP' },
-    { label: 'Walk-ins', value: 'WALKIN' },
-];
-
 export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, pageType, aggregates, driveDate = 'all', onDriveDateChange }: JobFilterBarProps) {
     const [open, setOpen] = useState<OpenPanel>(null);
     const [locSearch, setLocSearch] = useState('');
@@ -154,7 +154,7 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
 
     // Portaled panels: panels render fixed under their pill (the scrollable bar
     // would clip absolutely-positioned panels). Hover continuity across the
-    // trigger→panel gap is kept with a short delayed close.
+    // triggerâ†’panel gap is kept with a short delayed close.
     const triggerRefs = useRef<Partial<Record<Exclude<OpenPanel, null>, HTMLButtonElement | null>>>({});
     const panelRef = useRef<HTMLDivElement | null>(null);
     const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
@@ -174,7 +174,7 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
 
     // Measure the open trigger so the portaled panel anchors under its pill.
     // freshOpen tracks fresh opens (animate the pop) vs pill-to-pill travel
-    // (content swaps with a soft fade — no close/open replay).
+    // (content swaps with a soft fade â€” no close/open replay).
     const prevOpenRef = useRef<OpenPanel>(null);
     const [freshOpen, setFreshOpen] = useState(false);
     useEffect(() => {
@@ -266,10 +266,14 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
     };
     const closeOnLeave = () => scheduleClose();
 
-    const isGovt = pageType === 'GOVERNMENT';
+    const feedKind = getFeedKind(pageType);
+const isGovt = isGovtFeed(feedKind);
+// Per-feed type options. The government feed does not offer "Walk-ins",
+// which filtered it to nothing.
+const TYPE_OPTIONS = getTypeOptions(feedKind);
 
-    // ── Progressive disclosure ────────────────────────────────────────────
-    // Default bar: Type · Location · (Batch | Qualification) · All Filters.
+    // â”€â”€ Progressive disclosure â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // Default bar: Type Â· Location Â· (Batch | Qualification) Â· All Filters.
     // Wider screens (xl) reveal Role (and Batch on corp pages). The rest
     // (Skills, Course, Source, Company, Sector) live behind the All Filters
     // toggle. A pill always shows once it has an active selection so users
@@ -484,7 +488,7 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
     }, [filters, onTypeChange, setFilters]);
 
     // Reset activeIndex when open panel or search query changes (nothing
-    // pre-highlighted — highlight follows mouse or arrow keys only).
+    // pre-highlighted â€” highlight follows mouse or arrow keys only).
     useEffect(() => {
         setActiveIndex(-1);
     }, [open, locSearch, skillSearch, companySearch, roleSearch]);
@@ -569,7 +573,7 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
                 </div>
             )}
 
-            {/* Fresher quick filter — explicit experience pill (V1 A5).
+            {/* Fresher quick filter â€” explicit experience pill (V1 A5).
                 Toggles filters.experience between [] and ['Fresher']; the feed
                 hook's existing matchesExperience logic treats 'Fresher' as
                 experienceMin === 0. Independent of the Type dropdown so it
@@ -597,7 +601,7 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
                 );
             })()}
 
-            {/* Location pill — always visible (2nd default) */}
+            {/* Location pill â€” always visible (2nd default) */}
             <div className="relative" onMouseLeave={closeOnLeave}>
                 <button
                     ref={el => { triggerRefs.current.location = el; }}
@@ -795,8 +799,8 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
                 </>
             )}
 
-            {/* When (drive date) — walk-in specific */}
-            {pageType === 'WALKIN' && onDriveDateChange && pillVisible('driveDate') && (
+            {/* When (drive date) â€” walk-in specific */}
+                    {supportsDimension(feedKind, 'driveDate') && onDriveDateChange && pillVisible('driveDate') && (
                 <div className="relative" onMouseLeave={closeOnLeave}>
                         <button
                             ref={el => { triggerRefs.current.driveDate = el; }}
@@ -843,7 +847,7 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
             {/* Corporate specific dropdowns */}
             {!isGovt && (
                 <>
-                    {/* Role dropdown — inline from xl */}
+                    {/* Role dropdown â€” inline from xl */}
                     <div className={cn('relative', !pillVisible('role') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             ref={el => { triggerRefs.current.role = el; }}
@@ -1042,7 +1046,7 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
                             </div>
                         , document.body)}
                     </div>
-                    {/* Passout year dropdown — inline from xl */}
+                    {/* Passout year dropdown â€” inline from xl */}
                     <div className={cn('relative', !pillVisible('year') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             ref={el => { triggerRefs.current.year = el; }}
@@ -1105,7 +1109,7 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
                         })(), document.body)}
                     </div>
 
-                    {/* Company dropdown — behind All Filters */}
+                    {/* Company dropdown â€” behind All Filters */}
                     <div className={cn('relative', !pillVisible('company') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             ref={el => { triggerRefs.current.company = el; }}
@@ -1170,7 +1174,7 @@ export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, 
                 </>
             )}
 
-            {/* All Filters toggle — reveals the rest of the pills inline.
+            {/* All Filters toggle â€” reveals the rest of the pills inline.
                 Badge counts active filters that only live behind this pill. */}
             <button
                 type="button"

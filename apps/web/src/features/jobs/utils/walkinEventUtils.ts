@@ -41,6 +41,23 @@ function endOfLocalDay(d: Date): number {
  * All concrete dates a drive happens on (expanded), ascending, deduped by day.
  * Returns [] when nothing parseable exists.
  */
+/**
+ * Epoch ms of a drive's first stored date, or `Infinity` when it has none.
+ *
+ * Sorting wants a single number, and `Date` is not a valid sort fallback:
+ * `Infinity - Infinity` is `NaN`, which makes a comparator return an
+ * inconsistent ordering and scrambles the whole list. Both the date board and
+ * the map's cluster list sort on this.
+ */
+export function firstDriveDateMs(opp: Opportunity): number {
+    const d = getDriveDetails(opp);
+    if (d && Array.isArray(d.dates) && d.dates.length > 0) {
+        const dt = new Date(String(d.dates[0]));
+        if (!Number.isNaN(dt.getTime())) return dt.getTime();
+    }
+    return Infinity;
+}
+
 export function getWalkinDates(opp: Opportunity): Date[] {
     const d = getDriveDetails(opp);
     const out: Date[] = [];

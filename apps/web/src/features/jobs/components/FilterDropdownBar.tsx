@@ -3,6 +3,14 @@
 
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { cn } from '@repo/ui/utils/cn';
+import type { WalkinDrivePeriod } from '@/features/jobs/utils/walkinMapUtils';
+import {
+    getFeedKind,
+    getTypeOptions,
+    isGovtFeed,
+    isWalkinFeed,
+    supportsDimension,
+} from '@/features/jobs/utils/feedKinds';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import ChevronDownIcon from '@heroicons/react/24/outline/ChevronDownIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
@@ -23,7 +31,7 @@ export interface FilterBarFilters {
     source: string[];
     company: string[];
     role?: string[];
-    driveDate?: 'all' | 'today' | 'thisWeek';
+    driveDate?: WalkinDrivePeriod;
 }
 
 const GOVT_SECTORS = ['Defense', 'Railways', 'Banking', 'Teaching', 'Police', 'SSC / UPSC', 'PSU'];
@@ -52,8 +60,15 @@ interface FilterDropdownBarProps {
     selectedType?: string | null;
     onTypeChange?: (type: string | null) => void;
     pageType?: string;
-    driveDate?: 'all' | 'today' | 'thisWeek';
-    onDriveDateChange?: (v: 'all' | 'today' | 'thisWeek') => void;
+    driveDate?: WalkinDrivePeriod;
+    onDriveDateChange?: (v: WalkinDrivePeriod) => void;
+    /**
+     * Walk-in proximity. `null` means no radius limit. Requires
+     * `hasUserLocation`, because a radius around nowhere is meaningless.
+     */
+    driveRadiusKm?: number | null;
+    onDriveRadiusChange?: (v: number | null) => void;
+    hasUserLocation?: boolean;
     aggregates?: {
         locations: Record<string, number>;
         skills: Record<string, number>;
@@ -63,7 +78,7 @@ interface FilterDropdownBarProps {
     };
 }
 
-type OpenPanel = 'location' | 'year' | 'company' | 'type' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | 'source' | 'driveDate' | 'role' | null;
+type OpenPanel = 'location' | 'year' | 'company' | 'type' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | 'source' | 'driveDate' | 'driveRadius' | 'role' | null;
 
 type DropdownOption =
     | { kind: 'type'; value: string | null; label: string }
@@ -99,14 +114,7 @@ const chipBase = 'h-9 px-3 rounded-lg text-sm font-semibold flex items-center ga
 const chipDefault = 'bg-transparent text-muted-foreground hover:bg-muted hover:text-foreground';
 const chipActive = 'bg-chip-active text-chip-active-text border-chip-active-border font-semibold';
 
-const TYPE_OPTIONS = [
-    { label: 'All types', value: null },
-    { label: 'Jobs', value: 'JOB' },
-    { label: 'Internships', value: 'INTERNSHIP' },
-    { label: 'Walk-ins', value: 'WALKIN' },
-];
-
-export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeChange, pageType, aggregates, driveDate = 'all', onDriveDateChange }: FilterDropdownBarProps) {
+export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeChange, pageType, aggregates, driveDate = 'all', onDriveDateChange, driveRadiusKm = null, onDriveRadiusChange, hasUserLocation = false }: FilterDropdownBarProps) {
     const [open, setOpen] = useState<OpenPanel>(null);
     const [locSearch, setLocSearch] = useState('');
     const [skillSearch, setSkillSearch] = useState('');
@@ -167,7 +175,12 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
     };
     const closeOnLeave = () => setOpen(null);
 
-    const isGovt = pageType === 'GOVERNMENT';
+    const feedKind = getFeedKind(pageType);
+    const isGovt = isGovtFeed(feedKind);
+    const isWalkin = isWalkinFeed(feedKind);
+    // Per-feed type options. The government feed does not offer "Walk-ins",
+    // which filtered it to nothing.
+    const TYPE_OPTIONS = getTypeOptions(feedKind);
 
     // ── Progressive disclosure ────────────────────────────────────────────
     // Default bar: Type · Location · (Batch | Qualification) · All Filters.
@@ -180,6 +193,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
         sector: !!filters.sector,
         qualification: !!filters.qualification,
         driveDate: !!driveDate && driveDate !== 'all',
+        driveRadius: driveRadiusKm != null,
         role: (filters.role?.length ?? 0) > 0,
         skills: (filters.skills?.length ?? 0) > 0,
         course: !!filters.course,
@@ -194,6 +208,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
         dim === 'type' ||
         dim === 'location' ||
         dim === 'driveDate' ||
+        (isWalkin && dim === 'driveRadius') ||
         (isWide && (isGovt ? dim === 'qualification' : dim === 'role'));
 
     // Active filters currently hidden behind the All Filters pill (badge).
@@ -652,7 +667,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
             )}
 
             {/* When (drive date) — walk-in specific */}
-            {pageType === 'WALKIN' && onDriveDateChange && (
+                {supportsDimension(feedKind, 'driveDate') && onDriveDateChange && (
                 <div className={cn('relative', !pillVisible('driveDate') && 'hidden')} onMouseLeave={closeOnLeave}>
                     <button
                         onClick={() => toggle('driveDate')}
@@ -661,7 +676,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                         className={cn(chipBase, driveDate && driveDate !== 'all' ? chipActive : chipDefault)}
                     >
                         <CalendarIcon className="w-4 h-4 shrink-0" />
-                        {driveDate === 'today' ? 'Today' : driveDate === 'thisWeek' ? 'This Week' : 'When'}
+                        {driveDate === 'today' ? 'Today' : driveDate === 'thisWeek' ? 'This Week' : driveDate === 'next30Days' ? 'Next 30 Days' : 'When'}
                     </button>
                     {open === 'driveDate' && (
                         <div className="absolute right-0 top-full mt-2 before:absolute before:-top-2 before:inset-x-0 before:h-2 before:content-empty bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-1.5 w-44 z-overlay">
@@ -669,6 +684,7 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                 { value: 'all' as const, label: 'All Dates' },
                                 { value: 'today' as const, label: 'Today' },
                                 { value: 'thisWeek' as const, label: 'This Week' },
+                                { value: 'next30Days' as const, label: 'Next 30 Days' },
                             ]).map((opt, idx) => (
                                 <button
                                     key={opt.value}
@@ -685,6 +701,53 @@ export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeCha
                                     )}
                                 >
                                     <input type="radio" tabIndex={-1} checked={driveDate === opt.value} readOnly className="w-4 h-4 rounded-full border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Walk-in proximity. A walk-in is a physical errand, so "how far"
+               matters as much as "when" — but a radius is meaningless without a
+               location, so the control only appears once one is known. */}
+                {supportsDimension(feedKind, 'driveRadius') && hasUserLocation && onDriveRadiusChange && (
+                <div className={cn('relative', !pillVisible('driveRadius') && 'hidden')} onMouseLeave={closeOnLeave}>
+                    <button
+                        onClick={() => toggle('driveRadius')}
+                        onMouseEnter={() => openOnEnter('driveRadius')}
+                        aria-expanded={open === 'driveRadius'}
+                        aria-haspopup="listbox"
+                        className={cn(chipBase, driveRadiusKm ? chipActive : chipDefault)}
+                    >
+                        <MapPinIcon className="w-4 h-4 shrink-0" />
+                        {driveRadiusKm ? `Within ${driveRadiusKm} km` : 'Distance'}
+                    </button>
+                    {open === 'driveRadius' && (
+                        <div className="absolute right-0 top-full mt-2 before:absolute before:-top-2 before:inset-x-0 before:h-2 before:content-empty bg-card border border-border rounded-xl shadow-lg animate-in fade-in-0 zoom-in-95 duration-150 origin-top p-1.5 w-44 z-overlay">
+                            {([
+                                { value: null, label: 'Any distance' },
+                                { value: 5, label: 'Within 5 km' },
+                                { value: 10, label: 'Within 10 km' },
+                                { value: 25, label: 'Within 25 km' },
+                                { value: 50, label: 'Within 50 km' },
+                            ]).map((opt, idx) => (
+                                <button
+                                    key={String(opt.value)}
+                                    tabIndex={-1}
+                                    ref={el => { itemRefs.current[idx] = el; }}
+                                    onClick={() => {
+                                        onDriveRadiusChange(opt.value);
+                                        setOpen(null);
+                                    }}
+                                    onMouseEnter={() => setActiveIndex(idx)}
+                                    className={cn(
+                                        'w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs text-left transition-colors cursor-pointer',
+                                        idx === activeIndex ? 'bg-muted text-foreground font-semibold' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                    )}
+                                >
+                                    <input type="radio" tabIndex={-1} checked={driveRadiusKm === opt.value} readOnly className="w-4 h-4 rounded-full border-border text-primary focus:ring-primary accent-primary pointer-events-none shrink-0" />
                                     {opt.label}
                                 </button>
                             ))}

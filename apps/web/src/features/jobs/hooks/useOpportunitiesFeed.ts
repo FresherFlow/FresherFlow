@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { readFeedCache, saveFeedCache } from '@/lib/cache/opportunitiesFeedCache';
 import { fetchFullFeedOnClient } from '@/lib/api/cdnFeed';
 import { calculateOpportunityMatch, isNotEligible } from '@/features/jobs/domain/matchScore';
+import { useProfileFilterPrefs, getActiveProfileChips, deriveProfileFilterChips } from '@/features/jobs/hooks/useProfileFilters';
 import { isStaleWalkin, isGovernmentOpportunity, matchesFeedType } from '@/features/jobs/utils/walkinMapUtils';
 export { isStaleWalkin };
 
@@ -16,6 +17,7 @@ import { useFirebaseSaved } from '@/features/dashboard/hooks/useSavedJobs';
 import { promptLoginToast } from '@/lib/utils/toastUtils';
 import { liveSearch, liveJobToOpportunity, type LiveSearchJob } from '@/features/jobs/api/liveSearch';
 import { opportunityMatchesSearch, sanitizeSearchQuery } from '@/features/jobs/utils/searchUtils';
+import { filterOpportunities } from '@/features/jobs/utils/filterOpportunities';
 
 
 const WEB_STATIC_DISCOVERY = true;
@@ -43,6 +45,8 @@ interface UseOpportunitiesFeedOptions {
     experience?: string[] | null;
     minSalary?: number | null;
     maxSalary?: number | null;
+    /** Apply the signed-in profile preferences as visible feed filters. */
+    personalize?: boolean;
     initialData?: {
         opportunities: Opportunity[];
         total: number;
@@ -68,9 +72,19 @@ export function useOpportunitiesFeed({
     roles,
     experience,
     initialData,
+    personalize = false,
 }: UseOpportunitiesFeedOptions) {
     const router = useRouter();
     const { user, profile, isLoading: authLoading } = useAuth();
+    const { prefs: profileFilterPrefs } = useProfileFilterPrefs();
+    // Reveal toggle for the "N don't match your profile" disclosure row.
+    const [showHiddenProfile, setShowHiddenProfile] = useState(false);
+    // Signed-in preferences minus whatever the user switched off are the
+    // profile filters this feed applies — never silently.
+    const activeProfileChips = useMemo(
+        () => (personalize ? getActiveProfileChips(profile, profileFilterPrefs) : []),
+        [personalize, profile, profileFilterPrefs],
+    );
     const { savedJobsMap, toggleSavedJob } = useFirebaseSaved(user?.id);
     const [isMounted, setIsMounted] = useState(false);
 
@@ -332,192 +346,32 @@ export function useOpportunitiesFeed({
         };
     }, [cacheScope, initialData, needsHydration, type]);
 
-    const filteredOpps = useMemo(() => {
+    const { list: filteredOpps, profileMismatchCount, hiddenProfileCount } = useMemo(() => {
         // Live overlay active (explicit submit / no-scope fallback): rank the
         // fan-out results. The query was already applied server-side, so the
         // local token predicate is bypassed — all other filters still apply.
         const isLiveOverlay = liveResults !== null;
         const modeFiltered = isLiveOverlay ? liveResults : opportunities;
 
-        const filtered = modeFiltered.filter(opp => {
-            if (showOnlySaved && !savedJobsMap[opp.id]) {
-                return false;
-            }
-
-            // Support sort === 'expiring': exclude listings without deadline or already expired
-            if (sort === 'expiring') {
-                if (!opp.expiresAt || new Date(opp.expiresAt) < new Date()) {
-                    return false;
-                }
-            }
-
-            // Segregate government jobs from normal feeds
-            const isGovOpp = isGovernmentOpportunity(opp);
-            const isGovFeed = type === 'GOVERNMENT';
-            if (isGovOpp !== isGovFeed) {
-                return false;
-            }
-
-            // Suppress stale walk-in drives whose dates are entirely in the past (unless showOnlySaved is true)
-            if (!showOnlySaved && isStaleWalkin(opp)) {
-                return false;
-            }
-
-            // Filter by selected feed kind (JOB, INTERNSHIP, WALKIN, REMOTE, HACKATHONS)
-            if (type && !matchesFeedType(opp, type)) {
-                return false;
-            }
-
-            if (mode) {
-                const modeArray = Array.isArray(mode) ? mode : [mode];
-                const isRemoteOrHybrid = modeArray.some(m => {
-                    const selectedMode = m.toLowerCase();
-                    const isModeRemote = selectedMode === 'remote';
-                    const isModeHybrid = selectedMode === 'hybrid';
-                    const isModeOnsite = selectedMode === 'on_site' || selectedMode === 'onsite';
-                    
-                    const oppWorkMode = String((opp as unknown as Record<string, unknown>).workMode || '').toLowerCase();
-                    
-                    if (isModeRemote) {
-                        return (opp.locations || []).some(loc => {
-                            const l = loc.toLowerCase();
-                            return l.includes('remote') || l.includes('wfh') || l.includes('work from home');
-                        }) || oppWorkMode === 'remote' || (opp.title || '').toLowerCase().includes('remote');
-                    }
-                    if (isModeHybrid) {
-                        return (opp.locations || []).some(loc => loc.toLowerCase().includes('hybrid')) 
-                        || oppWorkMode === 'hybrid' || (opp.title || '').toLowerCase().includes('hybrid');
-                    }
-                    if (isModeOnsite) {
-                        return oppWorkMode === 'on_site' || oppWorkMode === 'onsite' || 
-                        (!oppWorkMode && !((opp.locations || []).some(loc => {
-                            const l = loc.toLowerCase();
-                            return l.includes('remote') || l.includes('wfh') || l.includes('work from home') || l.includes('hybrid');
-                        })) && !(opp.title || '').toLowerCase().includes('remote') && !(opp.title || '').toLowerCase().includes('hybrid'));
-                    }
-                    return false;
-                });
-                
-                if (!isRemoteOrHybrid) return false;
-            } else if (type === 'REMOTE') {
-                const isRemote = (opp.locations || []).some(loc => {
-                    const l = loc.toLowerCase();
-                    return l.includes('remote') || l.includes('wfh') || l.includes('work from home');
-                }) || (opp as unknown as Record<string, unknown>).workMode === 'REMOTE' || opp.title.toLowerCase().includes('remote');
-                if (!isRemote) return false;
-            }
-
-            if (source && source.length > 0) {
-                const atsName = getAtsName(opp.applyLink || (opp as any).sourceLink || opp.companyWebsite);
-                if (!atsName || !source.some(s => s.toLowerCase() === atsName.toLowerCase())) {
-                    return false;
-                }
-            }
-
-            const matchesSearch = isLiveOverlay || opportunityMatchesSearch(opp, debouncedSearch);
-
-            const matchesLoc = !selectedLoc || (opp.locations || []).some((loc) => {
-                const l = loc.toLowerCase().trim();
-                const s = selectedLoc.toLowerCase().trim();
-                if ((s === 'bangalore' || s === 'bengaluru') && (l === 'bangalore' || l === 'bengaluru')) {
-                    return true;
-                }
-                if ((s === 'gurgaon' || s === 'gurugram') && (l === 'gurgaon' || l === 'gurugram')) {
-                    return true;
-                }
-                return l.includes(s) || s.includes(l);
-            });
-
-            const matchesClosingSoon = !closingSoon || (() => {
-                if (!opp.expiresAt) return false;
-                const expiryDate = new Date(opp.expiresAt);
-                const now = new Date();
-                const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-                return expiryDate >= now && expiryDate <= threeDaysFromNow;
-            })();
-
-            const matchesSector = !sector || (opp.governmentJobDetails?.jobCategory || []).some(cat => 
-                cat.toLowerCase().includes(sector.toLowerCase())
-            );
-
-            const qualMap: Record<string, EducationLevel> = {
-                '10th pass': EducationLevel.TENTH,
-                '12th pass': EducationLevel.INTER,
-                'diploma': EducationLevel.DIPLOMA,
-                'graduate': EducationLevel.DEGREE,
-                'postgraduate': EducationLevel.PG
-            };
-            const mappedQual = qualification ? qualMap[qualification.toLowerCase()] : null;
-
-            const matchesQualification = !qualification || 
-                (mappedQual && ((opp as any).allowedDegrees || []).includes(mappedQual)) ||
-                ((opp.governmentJobDetails as unknown as Record<string, unknown>)?.minimumQualification && String((opp.governmentJobDetails as unknown as Record<string, unknown>).minimumQualification).toLowerCase().includes(qualification.toLowerCase()));
-
-            const courseParts = course ? course.split('/').map(p => p.trim().toLowerCase()) : [];
-            const matchesCourse = !course || 
-                ((opp as any).allowedCourses || []).some((c: string) => {
-                    const cl = c.toLowerCase();
-                    return courseParts.some(cp => cl.includes(cp));
-                }) ||
-                (course === 'Diploma' && ((opp as any).allowedDegrees || []).includes(EducationLevel.DIPLOMA));
-
-            let passoutYears = [...((opp as any).allowedPassoutYears || [])];
-            if (passoutYears.length === 0 && opp.passoutYearMin && opp.passoutYearMax) {
-                const min = Number(opp.passoutYearMin);
-                const max = Number(opp.passoutYearMax);
-                if (!isNaN(min) && !isNaN(max) && min <= max) {
-                    passoutYears = Array.from({ length: max - min + 1 }, (_, i) => min + i);
-                }
-            }
-            if (passoutYears.length === 0) {
-                const titleMatch = opp.title.match(/(202[0-9]|2030)/);
-                if (titleMatch) passoutYears.push(Number(titleMatch[0]));
-            }
-
-            const matchesYear = !selectedYear || 
-                passoutYears.map(Number).includes(Number(selectedYear));
-            
-            const matchesSkills = !skills || skills.length === 0 || skills.some((s: string) =>
-                ((opp as any).skills || opp.requiredSkills || []).some((os: string) => os.toLowerCase() === s.toLowerCase())
-            );
-
-            const matchesRoles = !roles || roles.length === 0 || roles.some((r: string) => {
-                const rLower = r.toLowerCase();
-                const titleMatch = (opp.title || '').toLowerCase().includes(rLower);
-                const normRoleMatch = ((opp.normalizedRole || '') as string).toLowerCase().includes(rLower);
-                const rolesMatch = ((opp as any).roles || []).some((or: string) => or.toLowerCase().includes(rLower));
-                return titleMatch || normRoleMatch || rolesMatch;
-            });
-
-            const matchesExperience = !experience || experience.length === 0 || experience.some(expStr => {
-                const oppMin = opp.experienceMin ?? (opp as any).experienceRange?.min ?? 0;
-                const oppMax = opp.experienceMax ?? (opp as any).experienceRange?.max ?? oppMin;
-                if (expStr.includes('Fresher') || expStr.includes('0 years')) {
-                    return oppMin === 0;
-                }
-                if (expStr === '0-1 years') {
-                    return oppMin <= 1 && oppMax >= 0;
-                }
-                if (expStr === '1-2 years') {
-                    return oppMin <= 2 && oppMax >= 1;
-                }
-                if (expStr === '2-3 years') {
-                    return oppMin <= 3 && oppMax >= 2;
-                }
-                if (expStr === '3-5 years') {
-                    return oppMin <= 5 && oppMax >= 3;
-                }
-                if (expStr === '5+ years') {
-                    return oppMax >= 5 || oppMin >= 5;
-                }
-                return true;
-            });
-
-            const matchesCompany = !company || company.length === 0 || company.some((c: string) =>
-                (opp.company || '').toLowerCase() === c.toLowerCase()
-            );
-
-            return matchesSearch && matchesLoc && matchesClosingSoon && matchesSector && matchesQualification && matchesCourse && matchesYear && matchesSkills && matchesRoles && matchesExperience && matchesCompany;
+        const filtered = filterOpportunities(modeFiltered, {
+            showOnlySaved,
+            savedIds: savedJobsMap,
+            sort,
+            type,
+            mode,
+            source,
+            selectedLoc,
+            closingSoon,
+            sector,
+            qualification,
+            course,
+            selectedYear,
+            skills,
+            roles,
+            experience,
+            company,
+            debouncedSearch,
+            isLiveOverlay,
         });
 
         const enriched = filtered.map((opp) => {
@@ -531,8 +385,16 @@ export function useOpportunitiesFeed({
             };
         });
 
+        // Profile narrowing lives in the URL now: seeded preferences become
+        // `?location=` / `?mode=` / `?year=` and render as ordinary chips, so
+        // this layer only owns what a URL can't express — demoting not-eligible
+        // jobs — plus the disclosure count that makes that visible.
+        const layerOn = personalize && profileFilterPrefs.enabled;
+        const mismatchCount = layerOn ? enriched.filter((opp) => isNotEligible(opp)).length : 0;
+        const base = enriched;
+
         if (!isMounted) {
-            return enriched;
+            return { list: base, profileMismatchCount: mismatchCount, hiddenProfileCount: 0 };
         }
 
         const now = Date.now();
@@ -544,7 +406,7 @@ export function useOpportunitiesFeed({
             }
         ]));
 
-        return enriched.sort((a, b) => {
+        const sorted = base.sort((a, b) => {
             const keysA = sortKeys.get(a.id)!;
             const keysB = sortKeys.get(b.id)!;
 
@@ -553,8 +415,9 @@ export function useOpportunitiesFeed({
             const isExpiredB = keysB.expiresAt < now;
             if (isExpiredA !== isExpiredB) return isExpiredA ? 1 : -1;
 
-            // 2. Not-eligible jobs always go to the bottom
-            if (isNotEligible(a) !== isNotEligible(b)) return isNotEligible(a) ? 1 : -1;
+            // 2. Not-eligible jobs sink to the bottom — unless the user hit
+            //    "show them" on the disclosure row, which un-hides the list.
+            if (layerOn && !showHiddenProfile && isNotEligible(a) !== isNotEligible(b)) return isNotEligible(a) ? 1 : -1;
 
             // 3. Sort override
             if (sort === 'expiring') {
@@ -604,7 +467,12 @@ export function useOpportunitiesFeed({
             // Universal deterministic secondary tie-breaker
             return a.id.localeCompare(b.id);
         });
-    }, [opportunities, liveResults, selectedLoc, selectedYear, closingSoon, sector, qualification, course, skills, company, profile, normalizedSearch, type, mode, source, sort, showOnlySaved, savedJobsMap, isMounted]);
+        return {
+            list: sorted,
+            profileMismatchCount: mismatchCount,
+            hiddenProfileCount: showHiddenProfile ? 0 : mismatchCount,
+        };
+    }, [opportunities, liveResults, selectedLoc, selectedYear, closingSoon, sector, qualification, course, skills, company, profile, normalizedSearch, type, mode, source, sort, showOnlySaved, savedJobsMap, isMounted, activeProfileChips, showHiddenProfile, profileFilterPrefs]);
 
     const toggleSave = async (opportunityId: string) => {
         if (!user) {
@@ -653,5 +521,32 @@ export function useOpportunitiesFeed({
         isLiveSearching,
         liveSearchError,
         isLiveResults: liveResults !== null,
+        // Profile-filter disclosure: how many jobs the profile layer hides or
+        // demotes right now, and the reveal switch behind it.
+        profileMismatchCount,
+        hiddenProfileCount,
+        // `isMounted` guards are load-bearing, not defensive. `profile` comes
+        // from `useAuth()`, so it is empty during SSR and populated on the
+        // client. Without the guard the chip counts are 0 on the server and >0
+        // on the first client render, and the Active Chips row appears where
+        // the server emitted nothing — a hydration mismatch. `profileMismatchCount`
+        // below is already guarded the same way inside the memo.
+        profileChipCount: isMounted ? activeProfileChips.length : 0,
+        // Every chip the profile would apply, switched on or off — the header
+        // must be able to SHOW the personalization layer even while it is paused.
+        profileChipTotal: isMounted ? deriveProfileFilterChips(profile).length : 0,
+        showHiddenProfile,
+        setShowHiddenProfile,
+        // Draft-match counter inputs (mobile filter sheet live count). The
+        // sheet runs the shared predicate with draft values; these are the
+        // current values it also needs. Additive only.
+        savedIds: savedJobsMap,
+        draftBaseInputs: {
+            debouncedSearch,
+            liveResults,
+            activeProfileChips,
+            showHiddenProfile,
+            profileLayerOn: personalize && profileFilterPrefs.enabled,
+        },
     };
 }

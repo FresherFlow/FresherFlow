@@ -3,6 +3,14 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@repo/ui/utils/cn';
+import type { WalkinDrivePeriod } from '@/features/jobs/utils/walkinMapUtils';
+import {
+    getFeedKind,
+    getTypeOptions,
+    isGovtFeed,
+    isWalkinFeed,
+    supportsDimension,
+} from '@/features/jobs/utils/feedKinds';
 import ChevronDownIcon from '@heroicons/react/24/outline/ChevronDownIcon';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import AdjustmentsHorizontalIcon from '@heroicons/react/24/outline/AdjustmentsHorizontalIcon';
@@ -29,18 +37,26 @@ export interface JobsFilterBarFilters {
     source: string[];
     company: string[];
     role?: string[];
-    driveDate?: 'all' | 'today' | 'thisWeek';
+    driveDate?: WalkinDrivePeriod;
 }
 
 interface JobsFilterBarProps {
     filters: JobsFilterBarFilters;
-    setFilters: (f: JobsFilterBarFilters) => void;
+    /**
+     * Accepts a state updater as well as a plain value, because callers hold
+     * `setFilters` from `useState`, whose identity is a
+     * `Dispatch<SetStateAction<...>>`.
+     */
+    setFilters: React.Dispatch<React.SetStateAction<JobsFilterBarFilters>>;
     isLoggedIn: boolean;
     selectedType?: string | null;
     onTypeChange?: (type: string | null) => void;
     pageType?: string;
-    driveDate?: 'all' | 'today' | 'thisWeek';
-    onDriveDateChange?: (v: 'all' | 'today' | 'thisWeek') => void;
+    driveDate?: WalkinDrivePeriod;
+    onDriveDateChange?: (v: WalkinDrivePeriod) => void;
+    driveRadiusKm?: number | null;
+    onDriveRadiusChange?: (v: number | null) => void;
+    hasUserLocation?: boolean;
     aggregates?: {
         locations: Record<string, number>;
         skills: Record<string, number>;
@@ -50,14 +66,7 @@ interface JobsFilterBarProps {
     };
 }
 
-type OpenPanel = 'location' | 'type' | 'batch' | 'when' | 'skills' | 'all' | null;
-
-const TYPE_OPTIONS = [
-    { label: 'All types', value: null },
-    { label: 'Jobs', value: 'JOB' },
-    { label: 'Internships', value: 'INTERNSHIP' },
-    { label: 'Walk-ins', value: 'WALKIN' },
-];
+type OpenPanel = 'location' | 'type' | 'batch' | 'when' | 'distance' | 'skills' | 'all' | null;
 
 const GOVT_SECTORS = ['Defense', 'Railways', 'Banking', 'Teaching', 'Police', 'SSC / UPSC', 'PSU'];
 const GOVT_QUALIFICATIONS = ['10th Pass', '12th Pass', 'Diploma', 'Graduate', 'Postgraduate'];
@@ -97,6 +106,9 @@ export function JobsFilterBar({
     aggregates,
     driveDate = 'all',
     onDriveDateChange,
+    driveRadiusKm = null,
+    onDriveRadiusChange,
+    hasUserLocation = false,
 }: JobsFilterBarProps) {
     const [open, setOpen] = useState<OpenPanel>(null);
     const [locSearch, setLocSearch] = useState('');
@@ -105,8 +117,12 @@ export function JobsFilterBar({
     const [isWide, setIsWide] = useState(false);
     const barRef = useRef<HTMLDivElement>(null);
 
-    const isGovt = pageType === 'GOVERNMENT';
-    const isWalkin = pageType === 'WALKIN';
+  const feedKind = getFeedKind(pageType);
+  const isGovt = isGovtFeed(feedKind);
+  const isWalkin = isWalkinFeed(feedKind);
+  // Per-feed type options. The government feed does not offer "Walk-ins",
+  // which filtered it to nothing.
+  const TYPE_OPTIONS = getTypeOptions(feedKind);
 
     // Wide screens earn the Skills pill inline.
     useEffect(() => {
@@ -272,9 +288,6 @@ export function JobsFilterBar({
                     className={cn(pillBase, locationCount > 0 ? pillActive : pillIdle)}
                 >
                     Location
-                    {locationCount > 0 && (
-                        <span className="bg-primary/15 text-primary rounded-full px-1.5 text-xs font-bold min-w-5 h-5 flex items-center justify-center">{locationCount}</span>
-                    )}
                     <ChevronDownIcon className={cn('w-3.5 h-3.5 shrink-0 transition-transform duration-150', open === 'location' && 'rotate-180')} />
                 </button>
                 {open === 'location' && (
@@ -350,9 +363,6 @@ export function JobsFilterBar({
                     className={cn(pillBase, filters.year !== null ? pillActive : pillIdle)}
                 >
                     Batch
-                    {filters.year !== null && (
-                        <span className="bg-primary/15 text-primary rounded-full px-1.5 text-xs font-bold min-w-5 h-5 flex items-center justify-center">1</span>
-                    )}
                     <ChevronDownIcon className={cn('w-3.5 h-3.5 shrink-0 transition-transform duration-150', open === 'batch' && 'rotate-180')} />
                 </button>
                 {open === 'batch' && (
@@ -372,7 +382,7 @@ export function JobsFilterBar({
             </div>
 
             {/* When — walk-in pages only */}
-            {isWalkin && onDriveDateChange && (
+            {supportsDimension(feedKind, 'driveDate') && onDriveDateChange && (
                 <div className="relative" onMouseEnter={() => openOnEnter('when')} onMouseLeave={closeOnLeave}>
                     <button
                         type="button"
@@ -380,7 +390,7 @@ export function JobsFilterBar({
                         aria-expanded={open === 'when'}
                         className={cn(pillBase, !!driveDate && driveDate !== 'all' ? pillActive : pillIdle)}
                     >
-                        {driveDate === 'today' ? 'Today' : driveDate === 'thisWeek' ? 'This Week' : 'When'}
+                        {driveDate === 'today' ? 'Today' : driveDate === 'thisWeek' ? 'This Week' : driveDate === 'next30Days' ? 'Next 30 Days' : 'When'}
                         <ChevronDownIcon className={cn('w-3.5 h-3.5 shrink-0 transition-transform duration-150', open === 'when' && 'rotate-180')} />
                     </button>
                     {open === 'when' && (
@@ -389,9 +399,43 @@ export function JobsFilterBar({
                                 { value: 'all' as const, label: 'All Dates' },
                                 { value: 'today' as const, label: 'Today' },
                                 { value: 'thisWeek' as const, label: 'This Week' },
+                                { value: 'next30Days' as const, label: 'Next 30 Days' },
                             ]).map(opt => (
                                 <button key={opt.value} type="button" onClick={() => { onDriveDateChange(opt.value); setOpen(null); }} className={rowCls}>
                                     <input type="radio" tabIndex={-1} checked={driveDate === opt.value} readOnly className="w-4 h-4 rounded-full border-border text-primary accent-primary pointer-events-none shrink-0" />
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Distance — walk-in pages, once a location is known. A walk-in is
+                a physical errand, so proximity is as decision-relevant as date.
+                Hidden without a location: a radius around nowhere is noise. */}
+            {supportsDimension(feedKind, 'driveRadius') && onDriveRadiusChange && hasUserLocation && (
+                <div className="relative" onMouseEnter={() => openOnEnter('distance')} onMouseLeave={closeOnLeave}>
+                    <button
+                        type="button"
+                        onClick={() => setOpen(prev => (prev === 'distance' ? null : 'distance'))}
+                        aria-expanded={open === 'distance'}
+                        className={cn(pillBase, driveRadiusKm != null ? pillActive : pillIdle)}
+                    >
+                        {driveRadiusKm != null ? `Within ${driveRadiusKm} km` : 'Distance'}
+                        <ChevronDownIcon className={cn('w-3.5 h-3.5 shrink-0 transition-transform duration-150', open === 'distance' && 'rotate-180')} />
+                    </button>
+                    {open === 'distance' && (
+                        <div className={cn(panelCls, 'p-1.5 w-40 space-y-0.5')}>
+                            {([
+                                { value: null, label: 'Any distance' },
+                                { value: 5, label: 'Within 5 km' },
+                                { value: 10, label: 'Within 10 km' },
+                                { value: 25, label: 'Within 25 km' },
+                                { value: 50, label: 'Within 50 km' },
+                            ]).map(opt => (
+                                <button key={String(opt.value)} type="button" onClick={() => { onDriveRadiusChange(opt.value); setOpen(null); }} className={rowCls}>
+                                    <input type="radio" tabIndex={-1} checked={driveRadiusKm === opt.value} readOnly className="w-4 h-4 rounded-full border-border text-primary accent-primary pointer-events-none shrink-0" />
                                     {opt.label}
                                 </button>
                             ))}
@@ -410,9 +454,6 @@ export function JobsFilterBar({
                         className={cn(pillBase, skillsCount > 0 ? pillActive : pillIdle)}
                     >
                         Skills
-                        {skillsCount > 0 && (
-                            <span className="bg-primary/15 text-primary rounded-full px-1.5 text-xs font-bold min-w-5 h-5 flex items-center justify-center">{skillsCount}</span>
-                        )}
                         <ChevronDownIcon className={cn('w-3.5 h-3.5 shrink-0 transition-transform duration-150', open === 'skills' && 'rotate-180')} />
                     </button>
                     {open === 'skills' && (
@@ -443,9 +484,6 @@ export function JobsFilterBar({
                 >
                     <AdjustmentsHorizontalIcon className="w-4 h-4 shrink-0" />
                     All filters
-                    {allCount > 0 && (
-                        <span className="bg-primary/15 text-primary rounded-full px-1.5 text-xs font-bold min-w-5 h-5 flex items-center justify-center">{allCount}</span>
-                    )}
                     <ChevronDownIcon className={cn('w-3.5 h-3.5 shrink-0 transition-transform duration-150', open === 'all' && 'rotate-180')} />
                 </button>
 

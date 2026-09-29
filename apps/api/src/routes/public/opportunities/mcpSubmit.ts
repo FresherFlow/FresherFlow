@@ -1,6 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
+import crypto from 'crypto';
+import prisma from '../../../infrastructure/database/prisma';
 import { validate } from '../../../middleware/validate';
 import { mcpSubmitOpportunitySchema } from '../../../utils/validation';
+import { createRateLimiter } from '../../../middleware/rateLimit';
 import { mcpSubmitLimiter, submitJob } from '../../../infrastructure/services/community/community.service';
 
 const router = Router();
@@ -15,10 +18,34 @@ const router = Router();
  * - Strict schema: no arbitrary object payload, every field length-capped.
  * - URL fields are DATA ONLY. The server never fetches them.
  * - Tight rate limit (10/hour per IP) to prevent spam through the MCP channel.
+ * - Bulk tier: requests carrying `x-api-key: <MCP_SUBMIT_KEY>` (the operator's
+ *   own key, never INTERNAL_API_SECRET) get 300/hour for link-dump workflows.
+ *   Anonymous callers stay on the 10/hour tier no matter what.
  */
+const mcpSubmitBulkLimiter = createRateLimiter({
+    windowMs: 60 * 60 * 1000,
+    max: 300,
+    message: 'Too many MCP submissions. Please slow down.',
+    keyPrefix: 'mcp_submit_key',
+});
+
+function mcpSubmitRateLimit(req: Request, res: Response, next: NextFunction) {
+    const presented = req.header('x-api-key') ?? '';
+    const expected = process.env.MCP_SUBMIT_KEY ?? '';
+    if (
+        presented &&
+        expected &&
+        presented.length === expected.length &&
+        crypto.timingSafeEqual(Buffer.from(presented), Buffer.from(expected))
+    ) {
+        return mcpSubmitBulkLimiter(req, res, next);
+    }
+    return mcpSubmitLimiter(req, res, next);
+}
+
 router.post(
     '/mcp-submit',
-    mcpSubmitLimiter,
+    mcpSubmitRateLimit,
     validate(mcpSubmitOpportunitySchema),
     async (req: Request, res: Response, next: NextFunction) => {
         try {
@@ -77,15 +104,35 @@ router.post(
             // PENDING_REVIEW: never claim publication. The MCP layer must
             // communicate this state explicitly so ChatGPT cannot tell the
             // user the job is live when it is only staged.
-            return res.status(result.existing ? 200 : 201).json({
+            // Duplicates resolve against the LIVE row state, never a hardcoded
+            // flag: an already-live URL reports PUBLISHED, an already-staged
+            // URL reports PENDING_REVIEW. (submitJob's dedupe paths predate
+            // this contract, so the row is re-read here rather than trusting
+            // its return.)
+            if (result.existing) {
+                const live = await prisma.opportunity.findUnique({
+                    where: { id: result.id },
+                    select: { status: true, slug: true },
+                });
+                const isLive = live?.status === 'PUBLISHED';
+                return res.status(200).json({
+                    success: true,
+                    submissionId: result.id,
+                    slug: result.slug ?? live?.slug ?? null,
+                    status: isLive ? 'PUBLISHED' : 'PENDING_REVIEW',
+                    published: isLive,
+                    message: isLive
+                        ? 'This opportunity is already live on FresherFlow.'
+                        : 'This opportunity was already submitted and is awaiting moderator review. It is not live.',
+                });
+            }
+            return res.status(201).json({
                 success: true,
                 submissionId: result.id,
                 slug: result.slug ?? null,
-                status: result.status,
-                published: result.status === 'PUBLISHED',
-                message: result.existing
-                    ? 'This opportunity already exists on FresherFlow.'
-                    : 'Opportunity submitted for FresherFlow review. It has not been published yet.',
+                status: 'PENDING_REVIEW',
+                published: false,
+                message: 'Opportunity submitted for FresherFlow review. It has not been published yet.',
             });
         } catch (error) {
             return next(error);

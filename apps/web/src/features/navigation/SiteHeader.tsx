@@ -1,11 +1,11 @@
-'use client';
+﻿'use client';
 
 import { Suspense, useContext, Fragment, useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { AuthContext } from '@/lib/auth/AuthContext';
 import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
-import { AlertsDropdown } from '@/features/notifications/components/AlertsDropdown';
+import { NotificationsDropdown } from '@/features/notifications/components/NotificationsDropdown';
 import { useOfflineActionQueue } from '@/hooks/useOfflineActionQueue';
 import { SidebarTrigger } from '@/ui/sidebar';
 import { Separator } from '@/ui/separator';
@@ -99,7 +99,7 @@ function SiteHeaderContent() {
                 </div>
             </div>
 
-            {/* Utility cluster (was TopUtilityBar) — auth-dependent, must not hydrate-mismatch */}
+            {/* Utility cluster (was TopUtilityBar) â€” auth-dependent, must not hydrate-mismatch */}
             {!isAuthRoute && (
                 <div className="flex items-center gap-2 shrink-0" suppressHydrationWarning>
                     <ThemeSwitcher />
@@ -139,8 +139,8 @@ function SiteHeaderContent() {
                                 </span>
                             )}
 
-                            {/* Sidebar pages keep the notification bell — no avatar here. */}
-                            <AlertsDropdown />
+                            {/* Sidebar pages keep the notification bell â€” no avatar here. */}
+                            <NotificationsDropdown />
                         </div>
                     )}
                 </div>

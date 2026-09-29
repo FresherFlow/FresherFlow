@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { database } from '@/lib/api/firebase';
 import { ref, onValue, set, remove } from 'firebase/database';
 import { ActionType } from '@fresherflow/types';
@@ -45,6 +45,60 @@ function saveLocalTracker(map: FirebaseTrackerMap) {
   } catch {
     // Ignore storage errors
   }
+}
+
+/**
+ * Writer-only tracker access, for surfaces that record an action but never read
+ * the map — the feed cards only need `writeTrackerItem`.
+ *
+ * `useFirebaseTracker` owns a map per component *instance* and opens one
+ * Realtime Database `onValue` listener per instance, so a mounted feed paid for
+ * two listeners and two state maps per row (the List view renders both card
+ * variants) and re-rendered every card on every payload. Reading the map is the
+ * only reason to hold that subscription; writing is not.
+ *
+ * Writes stay local-first: the shared localStorage map is updated immediately so
+ * the Tracker tab picks the change up on mount, then the write goes to RTDB.
+ */
+export function useTrackerWriter(userId: string | undefined) {
+  const writeTrackerItem = useCallback(
+    async (opportunityId: string, status: ActionType) => {
+      const newItem: FirebaseTrackerItem = {
+        status,
+        updatedAt: Date.now(),
+      };
+
+      saveLocalTracker({ ...getLocalTracker(), [opportunityId]: newItem });
+
+      if (!userId) return;
+      try {
+        const itemRef = ref(database, `/users/${userId}/tracker/${opportunityId}`);
+        await set(itemRef, newItem);
+      } catch {
+        // Local state remains intact if remote sync fails temporarily
+      }
+    },
+    [userId]
+  );
+
+  const removeTrackerItem = useCallback(
+    async (opportunityId: string) => {
+      const updated = { ...getLocalTracker() };
+      delete updated[opportunityId];
+      saveLocalTracker(updated);
+
+      if (!userId) return;
+      try {
+        const itemRef = ref(database, `/users/${userId}/tracker/${opportunityId}`);
+        await remove(itemRef);
+      } catch {
+        // Local state remains intact
+      }
+    },
+    [userId]
+  );
+
+  return { writeTrackerItem, removeTrackerItem };
 }
 
 export function useFirebaseTracker(userId: string | undefined) {

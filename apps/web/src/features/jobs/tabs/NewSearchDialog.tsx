@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { fresherNeedsApi } from '@fresherflow/api-client';
 import type { SavedSearch } from '@fresherflow/api-client';
 import { Button } from '@/ui/Button';
@@ -27,28 +27,36 @@ export function NewSearchDialog({
     onOpenChange,
     onSaved,
     onError,
+    initial,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onSaved: () => void;
     onError: () => void;
+    /** Filter values the caller prefills from — the feed sends its active set. */
+    initial?: { city?: string; company?: string; batch?: string | number };
 }) {
     const [name, setName] = useState('');
     const [city, setCity] = useState('');
     const [company, setCompany] = useState('');
     const [batch, setBatch] = useState('');
     const [saving, setSaving] = useState(false);
+    const initialRef = useRef(initial);
+    initialRef.current = initial;
 
-    const reset = () => {
+    // Fields land from the caller's filter set when the dialog opens and clear
+    // when it closes — one effect owns both directions, so a controlled `open`
+    // that flips without going through onOpenChange still resets.
+    useEffect(() => {
+        const preset = open ? initialRef.current : undefined;
         setName('');
-        setCity('');
-        setCompany('');
-        setBatch('');
+        setCity(preset?.city ?? '');
+        setCompany(preset?.company ?? '');
+        setBatch(preset?.batch != null && preset.batch !== '' ? String(preset.batch) : '');
         setSaving(false);
-    };
+    }, [open]);
 
     const handleOpenChange = (next: boolean) => {
-        if (!next) reset();
         onOpenChange(next);
     };
 

@@ -341,9 +341,15 @@ export async function submitOpportunity(input: SubmitOpportunityInput): Promise<
 	if (input.sourceUrl) body.sourceUrl = input.sourceUrl;
 	if (input.contactEmail) body.contactEmail = input.contactEmail;
 
+	// Bulk tiering rides the x-api-key header, never the body: per-call key
+	// first (the operator pasting it into chat), server env key second, none
+	// third (anonymous 10/hour tier). The key is never logged anywhere here.
+	const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+	if (input.submitKey) headers['x-api-key'] = input.submitKey;
+
 	const data = await apiFetch<SubmitOpportunityOutput>('/api/opportunities/mcp-submit', {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
+		headers,
 		body: JSON.stringify(body),
 	});
 

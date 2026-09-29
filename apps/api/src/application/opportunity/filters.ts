@@ -137,6 +137,25 @@ function toInt(value: unknown, bounds: { min: number; max: number }): number | u
     return rounded;
 }
 
+/** A finite decimal within range. Rejects 0,0 which is a missing-coordinate artefact. */
+function toCoord(value: unknown, bound: number): number | undefined {
+    const parsed = toNumber(value);
+    if (parsed === undefined) return undefined;
+    if (Math.abs(parsed) > bound) return undefined;
+    if (parsed === 0) return undefined;
+    return parsed;
+}
+
+function toNumberInRange(
+    value: unknown,
+    bounds: { min: number; max: number }
+): number | undefined {
+    const parsed = toNumber(value);
+    if (parsed === undefined) return undefined;
+    if (parsed < bounds.min || parsed > bounds.max) return undefined;
+    return parsed;
+}
+
 /**
  * Accepts an ISO date, or a `+7d` / `+2w` style relative deadline.
  * Returns undefined rather than an Invalid Date, because an invalid Date
@@ -263,6 +282,26 @@ export interface OpportunityFilters {
     sourceKinds: string[];
     trustLevels: string[];
     tags: string[];
+    /**
+     * Drive discovery. Backed by the denormalised `nextDriveAt` / `driveCity`
+     * columns on Opportunity, because `DriveDetails.dates` is an unindexable
+     * `DateTime[]` and `city` sits behind a 1:1 relation.
+     *
+     * `driveCity` is the drive's own city, which can differ from
+     * `Opportunity.locations` (a drive may list "Hyderabad, Pune" as
+     * locations but be held in one physical venue).
+     */
+    driveCity?: string;
+    /** Drives with a date on or after this instant. */
+    driveFrom?: Date;
+    /** Drives with a date on or before this instant. */
+    driveTo?: Date;
+    /** Shorthand for "next N days", applied when `driveFrom`/`driveTo` are absent. */
+    driveWithinDays?: number;
+    /** Origin for a radius search, paired with `driveRadiusKm`. */
+    driveLat?: number;
+    driveLng?: number;
+    driveRadiusKm?: number;
     experienceMin?: number;
     experienceMax?: number;
     salaryMin?: number;
@@ -303,6 +342,13 @@ const EMPTY_FILTERS: OpportunityFilters = {
     page: 1,
     limit: 20,
     offset: 0,
+    driveCity: undefined,
+    driveFrom: undefined,
+    driveTo: undefined,
+    driveWithinDays: undefined,
+    driveLat: undefined,
+    driveLng: undefined,
+    driveRadiusKm: undefined,
 };
 
 /**
@@ -395,7 +441,48 @@ export function parseOpportunityFilters(
         page,
         limit,
         offset: 0,
+        // Drive discovery. `shaped` is `Record<string, unknown>`, so every
+        // value is narrowed here rather than trusted.
+        driveCity:
+            typeof shaped.driveCity === 'string' && shaped.driveCity.trim()
+                ? shaped.driveCity.trim().slice(0, MAX_FILTER_STRING)
+                : undefined,
+        driveFrom: toDate(shaped.driveFrom, now),
+        driveTo: toDate(shaped.driveTo, now),
+        driveWithinDays: toInt(shaped.driveWithinDays, { min: 1, max: 365 }),
+        driveLat: toCoord(shaped.driveLat, 90),
+        driveLng: toCoord(shaped.driveLng, 180),
+        // Capped at 500 km: beyond that a "drive near me" query is not a
+        // proximity search, and an unbounded radius lets one request scan the
+        // whole table.
+        driveRadiusKm: toNumberInRange(shaped.driveRadiusKm, { min: 0.5, max: 500 }),
     };
+
+    // "Next N days" is shorthand for an absolute window. Resolving it here
+    // keeps the SQL builder free of arithmetic, and means an explicit
+    // `driveFrom`/`driveTo` always wins over the relative form.
+    if (
+        filters.driveWithinDays !== undefined &&
+        filters.driveFrom === undefined
+    ) {
+        filters.driveFrom = now;
+        if (filters.driveTo === undefined) {
+            filters.driveTo = new Date(now.getTime() + filters.driveWithinDays * 86_400_000);
+        }
+    }
+
+    // A radius search needs both coordinates and a radius. A half-specified
+    // pair (lat without lng) is dropped rather than searched from 0,0, which
+    // would silently return nothing.
+    if (
+        filters.driveLat === undefined ||
+        filters.driveLng === undefined ||
+        filters.driveRadiusKm === undefined
+    ) {
+        filters.driveLat = undefined;
+        filters.driveLng = undefined;
+        filters.driveRadiusKm = undefined;
+    }
 
     // Step 3: fold the legacy `?type=` param in. Explicit per-dimension params
     // win, so a URL carrying both is not silently overridden.
@@ -520,6 +607,18 @@ export function buildOpportunityFilterSql(
         conditions.push(
             sql`("expiredAt" IS NULL AND ("expiresAt" IS NULL OR "expiresAt" > ${now}))`
         );
+        // A drive is only worth showing while it still has a date to attend.
+        // Without this a walk-in whose last date passed last month keeps
+        // appearing in every drive list until someone expires it by hand.
+        //
+        // `nextDriveAt` is null in two different cases: the listing has no
+        // DriveDetails at all, and the drive's last date has already passed.
+        // Only the first may pass, so a null `nextDriveAt` is only acceptable
+        // alongside a missing relation.
+        conditions.push(sql`(
+            "nextDriveAt" >= ${now}
+            OR "id" NOT IN (SELECT "opportunityId" FROM "DriveDetails")
+        )`);
     }
 
     if (filters.category.length > 0) {
@@ -554,6 +653,53 @@ export function buildOpportunityFilterSql(
     }
     if (filters.sourceKinds.length > 0) {
         conditions.push(sql`"sourceKind"::text = ANY(${filters.sourceKinds})`);
+    }
+
+    // ── Drive discovery ───────────────────────────────────────────────────────
+    // Backed by the denormalised `nextDriveAt` / `driveCity` columns, so each of
+    // these is an indexed comparison rather than a JS pass over every walk-in.
+    if (filters.driveCity) {
+        conditions.push(sql`LOWER("driveCity") = LOWER(${filters.driveCity})`);
+    }
+    if (filters.driveFrom) {
+        conditions.push(sql`"nextDriveAt" >= ${filters.driveFrom}`);
+    }
+    if (filters.driveTo) {
+        conditions.push(sql`"nextDriveAt" <= ${filters.driveTo}`);
+    }
+    if (
+        filters.driveLat !== undefined &&
+        filters.driveLng !== undefined &&
+        filters.driveRadiusKm !== undefined
+    ) {
+        // Bounding box first, then the exact great-circle distance. Postgres
+        // has no spatial index here, so the box is what keeps the row count
+        // small; the distance check then removes the box corners.
+        //
+        // 1 degree of latitude is ~111.32 km everywhere, so the latitude
+        // delta is exact. Longitude degrees shrink with latitude, hence
+        // max(0.01, ...) — a zero divisor at the equator is a 500 error.
+        const latDelta = filters.driveRadiusKm / 111.32;
+        const cosLat = Math.cos((filters.driveLat * Math.PI) / 180);
+        const lngDelta =
+            filters.driveRadiusKm / (111.32 * Math.max(0.01, Math.abs(cosLat)));
+
+        conditions.push(sql`
+            "driveDetails" IS NOT NULL
+            AND "driveDetails"."latitude" IS NOT NULL
+            AND "driveDetails"."longitude" IS NOT NULL
+            AND "driveDetails"."latitude" BETWEEN ${filters.driveLat - latDelta} AND ${filters.driveLat + latDelta}
+            AND "driveDetails"."longitude" BETWEEN ${filters.driveLng - lngDelta} AND ${filters.driveLng + lngDelta}
+        `);
+        // Exact metres check, same constant as the web's haversine helper.
+        conditions.push(sql`
+            6371 * 2 * ASIN(SQRT(
+                POWER(SIN(RADIANS("driveDetails"."latitude" - ${filters.driveLat}) / 2), 2)
+                + COS(RADIANS(${filters.driveLat}))
+                * COS(RADIANS("driveDetails"."latitude"))
+                * POWER(SIN(RADIANS("driveDetails"."longitude" - ${filters.driveLng}) / 2), 2)
+            )) <= ${filters.driveRadiusKm}
+        `);
     }
     if (filters.trustLevels.length > 0) {
         conditions.push(sql`"trustLevel"::text = ANY(${filters.trustLevels})`);

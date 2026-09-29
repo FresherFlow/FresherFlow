@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { alertsApi } from '@/lib/api/client';
+import { apiClient } from '@/lib/api/core';
 import { AuthContext } from '@/lib/auth/AuthContext';
+import type { CommunityNotification } from '@fresherflow/types';
 import {
     ALERTS_UPDATED_EVENT,
     CACHE_TTL,
@@ -18,6 +20,11 @@ import toast from 'react-hot-toast';
 
 const SEEN_TOAST_ALERTS_KEY = 'ff_seen_toast_alerts';
 const FOCUS_REFRESH_COOLDOWN_MS = Number(process.env.NEXT_PUBLIC_ALERTS_FOCUS_COOLDOWN_MS || 120000);
+
+/* `GET /api/notifications` has no unread-count route, so unread notifications
+   are counted from a bounded unread-only page. Past this cap the badge
+   undercounts; the notifications page itself stays exact. */
+const UNREAD_NOTIFICATION_CAP = 50;
 
 function isLogoutInProgress() {
     if (typeof window === 'undefined') return false;
@@ -90,12 +97,31 @@ export function useUnreadNotifications() {
                 return;
             }
             unreadCountState.fetchPromise = (async () => {
-                try {
-                    const data = await alertsApi.getUnreadCount() as { count?: number };
-                    return typeof data?.count === 'number' ? data.count : 0;
-                } catch {
-                    return 0;
-                }
+                /* The bell shows notifications and alert deliveries, so the
+                   badge counts both. The two live in separate tables with
+                   separate endpoints and either can fail alone, so each is
+                   settled on its own and a failure only costs its own count. */
+                const [alerts, notifications] = await Promise.allSettled([
+                    alertsApi.getUnreadCount() as Promise<{ count?: number }>,
+                    apiClient<{ notifications: CommunityNotification[] }>(
+                        `/api/notifications?unread=true&limit=${UNREAD_NOTIFICATION_CAP}`,
+                    ),
+                ]);
+
+                const alertsCount =
+                    alerts.status === 'fulfilled' && typeof alerts.value?.count === 'number'
+                        ? alerts.value.count
+                        : 0;
+                const notificationsCount =
+                    notifications.status === 'fulfilled' &&
+                    Array.isArray(notifications.value?.notifications)
+                        ? Math.min(
+                            notifications.value.notifications.length,
+                            UNREAD_NOTIFICATION_CAP,
+                        )
+                        : 0;
+
+                return alertsCount + notificationsCount;
             })();
             const count = await unreadCountState.fetchPromise;
             if (isLogoutInProgress() || !hasActiveSessionCookie()) {
@@ -179,7 +205,10 @@ export function useUnreadNotifications() {
 
             try {
                 await fetchCount({ force: true });
-                if (window.location.pathname.startsWith('/alerts')) {
+                /* Notification settings live at `/jobs?tab=alerts`. There is no
+                   `/alerts` route, and `pathname` omits the query, so the old
+                   check never matched and the toasts never fired. */
+                if (window.location.search.includes('tab=alerts')) {
                     await showNewAlertToasts();
                 }
                 lastFocusRefreshAtRef.current = now;

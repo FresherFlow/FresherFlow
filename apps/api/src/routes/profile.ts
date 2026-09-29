@@ -6,7 +6,7 @@ import { educationSchema, preferencesSchema, readinessSchema, demographicsSchema
 import { ProfileService } from '../infrastructure/services/platform/profile.service';
 import { AppError } from '../middleware/errorHandler';
 import { createRateLimiter } from '../middleware/rateLimit';
-import { profilePageExpiresAt } from '@fresherflow/utils';
+import { profileBoostEndsAt } from '@fresherflow/utils';
 
 const router: Router = express.Router();
 
@@ -79,8 +79,9 @@ router.post('/publish', publishLimiter, requireVerifiedAuth, async (req: Request
         const { publishedAt } = await ProfileService.publishProfile(req.userId as string);
         res.json({
             publishedAt: publishedAt.toISOString(),
-            // The page is only live until this moment; after it the owner must reactivate.
-            activeUntil: profilePageExpiresAt(publishedAt).toISOString(),
+            // Publishing is permanent — the URL keeps working from here on. This only bounds
+            // the boost (recruiter-directory presence), which the owner can renew any time.
+            boostedUntil: profileBoostEndsAt(publishedAt).toISOString(),
         });
     } catch (error) {
         next(error);

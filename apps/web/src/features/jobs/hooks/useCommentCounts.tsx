@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { CommentCountMap } from '@fresherflow/types';
 
 /**
@@ -11,6 +11,18 @@ import type { CommentCountMap } from '@fresherflow/types';
  * GET /api/jobs/comment-counts?ids=... in a single batch. Counts hydrate
  * client-side — cards render the `0 discussing` zero-state on SSR and swap
  * in the real count when it arrives, so the API can stay public and cacheable.
+ *
+ * Counts are held in refs, not state, and the context value is created once.
+ * The provider renders nothing but `children`, so a counts update has no
+ * business re-rendering anything: each card owns the `useState` that renders
+ * its own number, and the batch hands the value straight to that setter
+ * through the registry. Keeping counts in state made every batch mint a new
+ * context value, which re-ran every card's subscribe effect; because the API
+ * omits zero-count ids (see `getCommentCounts`), those cards were queued
+ * again and fetched again, forever — a request every BATCH_DELAY_MS plus a
+ * re-render of every card in the feed. `requestedRef` also pins "ask once per
+ * id" so a card with no comments settles on the zero-state instead of
+ * looping.
  */
 
 const BATCH_DELAY_MS = 120;
@@ -18,24 +30,23 @@ const MAX_IDS_PER_REQUEST = 200;
 
 type Registry = Map<string, (count: number | undefined) => void>;
 
-const CommentCountsContext = createContext<{
-    register: (id: string, cb: (count: number | undefined) => void) => void;
-    unregister: (id: string, cb: (count: number | undefined) => void) => void;
-} | null>(null);
+interface CommentCountsApi {
+    /** Register a card's id. `cb` fires once the batch resolves, or never if the listing has no comments. */
+    subscribe: (id: string, cb: (count: number | undefined) => void) => void;
+    unsubscribe: (id: string, cb: (count: number | undefined) => void) => void;
+}
+
+const CommentCountsContext = createContext<CommentCountsApi | null>(null);
 
 export function CommentCountsProvider({ children }: { children: React.ReactNode }) {
     const registryRef = useRef<Registry>(new Map());
     const pendingRef = useRef<Set<string>>(new Set());
+    /** Ids already asked for. The API omits zero-count ids, so "no value yet" must not mean "ask again". */
+    const requestedRef = useRef<Set<string>>(new Set());
+    const countsRef = useRef<CommentCountMap>({});
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const [counts, setCounts] = useState<CommentCountMap>({});
 
-    useEffect(() => {
-        return () => {
-            if (timerRef.current) clearTimeout(timerRef.current);
-        };
-    }, []);
-
-    const flush = async () => {
+    const flush = useCallback(async () => {
         timerRef.current = null;
         const ids = Array.from(pendingRef.current);
         pendingRef.current.clear();
@@ -47,41 +58,61 @@ export function CommentCountsProvider({ children }: { children: React.ReactNode 
             try {
                 const { communityApi } = await import('@/features/jobs/api/community');
                 const result = await communityApi.getCommentCounts(batch);
-                setCounts((prev) => ({ ...prev, ...result.counts }));
+                Object.assign(countsRef.current, result.counts ?? {});
             } catch {
-                // Counts are decorative; silently skip failed batches.
+                // Counts are decorative. A failed batch leaves those cards on
+                // the zero-state rather than retrying forever.
             }
         }
 
-        // Notify subscribers registered after the fetch was kicked off.
-        const registry = registryRef.current;
-        for (const [id, cb] of registry) {
-            if (counts[id] !== undefined) cb(counts[id]);
+        // Deliver to everyone currently subscribed, including cards that
+        // mounted while the request was in flight.
+        const counts = countsRef.current;
+        for (const [id, cb] of registryRef.current) {
+            const value = counts[id];
+            if (value !== undefined) cb(value);
         }
-    };
+    }, []);
 
-    const schedule = () => {
-        if (timerRef.current) return;
-        timerRef.current = setTimeout(() => void flush(), BATCH_DELAY_MS);
-    };
+    const subscribe = useCallback(
+        (id: string, cb: (count: number | undefined) => void) => {
+            registryRef.current.set(id, cb);
 
-    const register = (id: string, cb: (count: number | undefined) => void) => {
-        registryRef.current.set(id, cb);
-        if (counts[id] !== undefined) {
-            cb(counts[id]);
-        } else {
+            const known = countsRef.current[id];
+            if (known !== undefined) {
+                cb(known);
+                return;
+            }
+
+            // Ask once per id. A listing with zero comments never appears in
+            // the response, so re-queueing on every subscribe is exactly the
+            // loop that never settled.
+            if (requestedRef.current.has(id)) return;
+            requestedRef.current.add(id);
             pendingRef.current.add(id);
-            schedule();
-        }
-    };
 
-    const unregister = (id: string, cb: (count: number | undefined) => void) => {
+            if (!timerRef.current) {
+                timerRef.current = setTimeout(() => void flush(), BATCH_DELAY_MS);
+            }
+        },
+        [flush]
+    );
+
+    const unsubscribe = useCallback((id: string, cb: (count: number | undefined) => void) => {
         if (registryRef.current.get(id) === cb) {
             registryRef.current.delete(id);
         }
-    };
+    }, []);
 
-    const value = useMemo(() => ({ register, unregister }), [counts]);
+    useEffect(() => {
+        return () => {
+            if (timerRef.current) clearTimeout(timerRef.current);
+        };
+    }, []);
+
+    // Stable for the life of the provider, so a counts update cannot re-run
+    // every subscriber's effect.
+    const value = useMemo(() => ({ subscribe, unsubscribe }), [subscribe, unsubscribe]);
 
     return <CommentCountsContext.Provider value={value}>{children}</CommentCountsContext.Provider>;
 }
@@ -104,8 +135,8 @@ export function useCommentCount(opportunityId: string | null | undefined): numbe
     useEffect(() => {
         if (!ctx || !opportunityId) return;
         const cb = (value: number | undefined) => cbRef.current(value);
-        ctx.register(opportunityId, cb);
-        return () => ctx.unregister(opportunityId, cb);
+        ctx.subscribe(opportunityId, cb);
+        return () => ctx.unsubscribe(opportunityId, cb);
     }, [ctx, opportunityId]);
 
     return count;

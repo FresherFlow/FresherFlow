@@ -75,9 +75,8 @@ export const dashboardApi = {
 // Alerts API calls (Local-First Fallback Safe)
 export const alertsApi = {
     getPreferences: () => apiClient('/api/alerts/preferences').catch(() => ({ enabled: true, emailEnabled: false, dailyDigest: true, closingSoon: true })),
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     getFeed: (kind: 'all' | 'DAILY_DIGEST' | 'CLOSING_SOON' | 'HIGHLIGHT' | 'APP_UPDATE' | 'NEW_JOB' | 'EVENT_REMINDER' = 'all', limit = 50) => {
-        return Promise.resolve({ deliveries: [], unreadCount: 0, total: 0, hasMore: false });
+        return apiClient(`/api/alerts/feed?kind=${encodeURIComponent(kind)}&limit=${limit}`);
     },
     updatePreferences: (data: {
         enabled?: boolean;
@@ -92,8 +91,8 @@ export const alertsApi = {
             method: 'PUT',
             body: JSON.stringify(data)
         }).catch(() => ({ success: true })),
-    getUnreadCount: () => Promise.resolve({ count: 0 }),
-    markAllRead: () => apiClient('/api/alerts/mark-all-read', { method: 'POST' }).catch(() => ({ success: true })),
+    getUnreadCount: () => apiClient<{ count: number }>('/api/alerts/unread-count'),
+    markAllRead: () => apiClient('/api/alerts/mark-all-read', { method: 'POST' }),
     markRead: (id: string) => apiClient(`/api/alerts/${id}/read`, { method: 'POST' }),
     dismiss: (id: string) => apiClient(`/api/alerts/${id}`, { method: 'DELETE' }),
     getDigestItems: (id: string) => apiClient<{

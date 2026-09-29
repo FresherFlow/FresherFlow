@@ -13,6 +13,7 @@ import {
     type SpaceId,
 } from './navConfig';
 import { readSpaceId } from './sidebarState';
+import { isDetailRoute } from './mobileDetailRoutes';
 
 
 export function MobileBottomTabs() {
@@ -89,8 +90,10 @@ export function MobileBottomTabs() {
     }, [user]);
 
     const isAuthRoute = pathname === '/login' || pathname === '/register' || pathname === '/choose-username';
-    // Return null on server AND first client render so SSR/CSR output matches
-    if (!isMounted || !user || isAuthRoute) return null;
+    // Return null on server AND first client render so SSR/CSR output matches.
+    // Detail pages (job, board, company hub, post, room) hide the bar: no tab
+    // is active there and it collides with sticky action bars.
+    if (!isMounted || !user || isAuthRoute || isDetailRoute(pathname || '/')) return null;
 
     return (
         <div className={cn(

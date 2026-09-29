@@ -16,6 +16,7 @@ import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/EmptyState';
 import { Skeleton } from '@/ui/Skeleton';
 import { ErrorMessage } from '@/ui/ErrorMessage';
+import { COMMUNITY_UI_ENABLED } from '@/features/community/communityUi';
 
 const STATE_CHIP: Record<SubmissionViewState, { label: string; variant: 'warning' | 'success' | 'destructive' | 'secondary' }> = {
     PENDING: { label: 'Pending', variant: 'warning' },
@@ -83,21 +84,29 @@ function buildRows(
         });
     }
 
-    for (const post of community?.posts ?? []) {
-        rows.push({
-            key: `post-${post.id}`,
-            kind: post.category === 'HIRING_UPDATE' ? 'Hiring update' : 'Post',
-            title: post.title,
-            subtitle: null,
-            detail: null,
-            createdAt: post.createdAt,
-            chip: chipFor(post.status),
-            href: `/community/${post.id}`,
-            hrefLabel: 'View post',
-            notice: null,
-            noticeTone: 'muted',
-            resubmitSource: null,
-        });
+    // Community posts are withheld while community is paused. These are the only
+    // rows that link into `/community/<id>`, so they are the only ones that let
+    // a paused surface be reached from a page that is still very much live.
+    // Interview experiences and application updates stay: they are
+    // `InterviewExperience` / application-timeline records that link to the job
+    // listing, not to a room or a discussion. See COMMUNITY_UI_ENABLED.
+    if (COMMUNITY_UI_ENABLED) {
+        for (const post of community?.posts ?? []) {
+            rows.push({
+                key: `post-${post.id}`,
+                kind: post.category === 'HIRING_UPDATE' ? 'Hiring update' : 'Post',
+                title: post.title,
+                subtitle: null,
+                detail: null,
+                createdAt: post.createdAt,
+                chip: chipFor(post.status),
+                href: `/community/${post.id}`,
+                hrefLabel: 'View post',
+                notice: null,
+                noticeTone: 'muted',
+                resubmitSource: null,
+            });
+        }
     }
 
     for (const iex of community?.interviews ?? []) {

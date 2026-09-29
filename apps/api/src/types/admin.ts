@@ -117,6 +117,21 @@ export interface AdminOpportunityRequest {
         venueAddress?: string;
         venue?: string;
         venueLink?: string;
+        /**
+         * Location and logistics. These exist on `DriveDetails` but were absent
+         * from this type, so a drive's city, coordinates, cluster, landmark,
+         * transit info, selection process and expiry could never be submitted
+         * through the admin API. That is why admin-created drives had nothing
+         * for the city pages and map to work with.
+         */
+        latitude?: number | null;
+        longitude?: number | null;
+        clusterName?: string | null;
+        city?: string | null;
+        landmark?: string | null;
+        transitInfo?: string | null;
+        selectionProcess?: string | null;
+        expiryDate?: string | null;
         reportingTime?: string;
         startTime?: string;
         endTime?: string;

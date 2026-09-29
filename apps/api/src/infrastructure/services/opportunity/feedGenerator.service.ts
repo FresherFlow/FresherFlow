@@ -90,7 +90,11 @@ export class FeedGeneratorService {
             companySize: true,
             companyIndustry: true,
             companyTopics: true,
-            companyId: true,
+            // `companyId` used to be selected here but the column does not
+            // exist on Opportunity - the company is a plain string, and the
+            // relation is `organizationId`. The stale select made Prisma
+            // reject the whole query, so every feed route that used this
+            // select returned 500.
             description: true,
             jobFunction: true,
             employmentTypes: true,
@@ -258,6 +262,18 @@ export class FeedGeneratorService {
                                 { expiresAt: null },
                                 { expiresAt: { gt: new Date() } }
                             ]
+                        },
+                        // Same rule as the feed index: a drive with
+                        // DriveDetails must still have a future date. `null`
+                        // alone is not enough to pass, because a drive whose
+                        // last date has passed also has `nextDriveAt = null` -
+                        // that is the case this rule exists to catch. Only a
+                        // listing with no DriveDetails at all passes.
+                        {
+                            OR: [
+                                { nextDriveAt: { gte: new Date() } },
+                                { AND: [{ nextDriveAt: null }, { driveDetails: null }] }
+                            ]
                         }
                     ]
                 },
@@ -333,6 +349,20 @@ export class FeedGeneratorService {
                     OR: [
                         { expiresAt: null },
                         { expiresAt: { gt: new Date() } }
+                    ],
+                    // A drive is only worth listing while it still has a date
+                    // to attend. `nextDriveAt` is null both for listings with
+                    // no DriveDetails and for drives whose last date has
+                    // passed, so `null` on its own cannot mean "no drive" -
+                    // that is exactly the row being filtered out here. A row
+                    // without DriveDetails is the only safe pass.
+                    AND: [
+                        {
+                            OR: [
+                                { nextDriveAt: { gte: new Date() } },
+                                { AND: [{ nextDriveAt: null }, { driveDetails: null }] }
+                            ]
+                        }
                     ]
                 },
                 orderBy: { postedAt: 'desc' },

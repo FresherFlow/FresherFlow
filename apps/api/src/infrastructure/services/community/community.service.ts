@@ -1938,7 +1938,15 @@ export async function addCommunityPostComment(input: {
                     userId: parent.authorId,
                     type: NotificationType.COMMENT_REPLY,
                     actorId: input.authorId,
-                    commentId: created.id,
+                    /* No `commentId`. `Notification.commentId` is a foreign key
+                     * to `OpportunityComment`, but `created` is a
+                     * `CommunityPostComment`. Both are cuids from separate
+                     * tables, so the reference could never resolve: the insert
+                     * violated the FK and rolled back the whole transaction,
+                     * which is why replying to a post comment silently failed.
+                     * The excerpt in `payload` carries the content instead.
+                     * A real deep link needs a `communityPostCommentId`
+                     * relation on `Notification`. */
                     payload: { excerpt: input.body.slice(0, 140) },
                 },
             });

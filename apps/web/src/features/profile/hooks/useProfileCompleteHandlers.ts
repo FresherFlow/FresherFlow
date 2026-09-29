@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/lib/utils/error';
 import { profileApi } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { validateEducationData, PROFILE_PAGE_ACTIVE_DAYS } from '@fresherflow/utils';
+import { validateEducationData } from '@fresherflow/utils';
 
 export interface ProfileCompleteForm {
     fullName: string;
@@ -166,7 +166,7 @@ export function useProfileCompleteHandlers(
             if (username) {
                 try {
                     await profileApi.publishProfile();
-                    toast.success(`Profile complete — your page is live for the next ${PROFILE_PAGE_ACTIVE_DAYS} days.`);
+                    toast.success('Profile complete — your page is live and boosted for recruiters.');
                     router.push(`/u/${username}`);
                     return true;
                 } catch {

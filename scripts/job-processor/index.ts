@@ -451,11 +451,19 @@ async function run(): Promise<void> {
                 // Track whether data came from a Native/ATS API or was pre-supplied
                 const isNativeAtsData = !!nativeData;
 
+                // `sourceType === 'AGGREGATOR'` used to be a walk-in signal. It
+                // is not one: an aggregator republishes ordinary postings too,
+                // so that clause classified a large share of normal jobs as
+                // walk-ins, which then got a venue, a reporting time and a
+                // document checklist they do not have. Walk-in now requires an
+                // actual walk-in signal.
+                const hasWalkInVenue = Boolean(
+                    job.venueAddress || job.walkInDetails?.venueAddress
+                );
                 const isWalkIn = rules.type === 'WALKIN' ||
                                  job.type === 'WALKIN' ||
-                                 job.sourceType === 'AGGREGATOR' ||
                                  !!job.walkInDetails ||
-                                 !!job.venueAddress ||
+                                 hasWalkInVenue ||
                                  /walk[\s-]*in/i.test(job.title || '') ||
                                  /walk[\s-]*in/i.test(nativeData?.title || atsContent.title || '') ||
                                  (job.source || '').toLowerCase().includes('walkin');
@@ -478,7 +486,13 @@ async function run(): Promise<void> {
                 }
 
                 const walkInDetails = isWalkIn ? (job.walkInDetails || {
-                    venueAddress: job.venueAddress || 'Hyderabad',
+                    // No invented venue. The old default was the literal string
+                    // 'Hyderabad', which meant an unparsed drive was published
+                    // as if it happened in Hyderabad regardless of its real
+                    // location, and poisoned both the city page and the map.
+                    // `DriveDetails.venueAddress` is non-nullable, so an empty
+                    // string is the honest value when the source omitted it.
+                    venueAddress: job.venueAddress || '',
                     dateRange: job.walkinDate || job.dateRange || 'Active Walk-in',
                     timeRange: job.walkinTime || job.timeRange || '10:00 AM - 1:00 PM',
                     reportingTime: job.reportingTime || '9:30 AM',
@@ -492,7 +506,17 @@ async function run(): Promise<void> {
                     ]
                 }) : null;
 
-                const walkInCity = job.city || job.locationCity || (walkInDetails?.venueAddress ? (walkInDetails.venueAddress.match(/\b(Hyderabad|Bengaluru|Bangalore|Chennai|Pune|Mumbai|Delhi|Noida|Gurugram|Gurgaon|Jaipur|Kolkata|Ahmedabad|Kochi|Coimbatore)\b/i)?.[1] || 'Hyderabad') : 'Hyderabad');
+                // Prefer an explicit city, then a recognised city mentioned in
+                // the venue text, then whatever location text we already parsed.
+                // Falling back to 'Hyderabad' here stamped every drive in India
+                // with Hyderabad.
+                const CITY_PATTERN = /\b(Hyderabad|Secunderabad|Bengaluru|Bangalore|Mumbai|Pune|Delhi|Noida|Gurugram|Gurgaon|Chennai|Kolkata|Ahmedabad|Surat|Jaipur|Lucknow|Nagpur|Indore|Bhopal|Patna|Kochi|Coimbatore|Madurai|Visakhapatnam|Vijayawada|Mysuru|Mysore|Chandigarh|Ludhiana|Bhubaneswar|Guwahati|Trivandrum|Thiruvananthapuram|Goa|Ranchi|Dehradun)\b/i;
+                const venueCity = walkInDetails?.venueAddress?.match(CITY_PATTERN)?.[1] || '';
+                const walkInCity = job.city
+                    || job.locationCity
+                    || (walkInDetails?.venueAddress
+                        ? (venueCity || dbLocations[0] || demuxedLocation?.[0] || '')
+                        : (dbLocations[0] || demuxedLocation?.[0] || ''));
                 const initialLocations = isWalkIn ? [walkInCity] : ((nativeData?.locations && nativeData.locations.length > 0) ? nativeData.locations : (dbLocations.length > 0 ? dbLocations : demuxedLocation));
                 const initialWorkMode = isWalkIn ? 'ONSITE' : (nativeData?.workplaceType ?? dbWorkMode ?? rules.workMode ?? null);
                 const initialType = isWalkIn ? 'WALKIN' : (rules.type ?? 'JOB');

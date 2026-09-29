@@ -1,5 +1,24 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowLeftIcon, CalendarIcon, ClockIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
+
+// This page had no metadata at all, so every post here shared the root layout's title and
+// description and none of them carried a canonical — on a page whose whole job is search traffic.
+export const metadata: Metadata = {
+    title: 'Blog — hiring notes for freshers | FresherFlow',
+    description:
+        'Product notes, hiring data and honest reports on the entry-level job market in India — written for freshers and the people who hire them.',
+    alternates: {
+        canonical: '/blog',
+    },
+    openGraph: {
+        title: 'FresherFlow Blog',
+        description:
+            'Product notes, hiring data and honest reports on the entry-level job market in India.',
+        url: 'https://fresherflow.in/blog',
+        type: 'website',
+    },
+};
 
 interface BlogPost {
     id: string;

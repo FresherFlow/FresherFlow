@@ -2,8 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Briefcase, GraduationCap, MapPin } from 'lucide-react';
-import { LogoImage } from '@/features/shell/LogoImage';
+import { ArrowRight, Briefcase, ChevronRight, GraduationCap, MapPin } from 'lucide-react';
 import { Button } from '@/ui/Button';
 
 // NOTE: no `revalidate` export here — this is a client boundary ('use client'
@@ -15,40 +14,33 @@ const QUICK_LINKS = [
     {
         href: '/jobs',
         label: 'Jobs',
-        tag: 'Explore',
-        text: 'Fresh off-campus roles with direct apply links.',
+        text: 'Fresh off-campus roles.',
         Icon: Briefcase,
     },
     {
         href: '/jobs/internships',
         label: 'Internships',
-        tag: 'Discover',
-        text: 'Current internships shared and discussed by freshers.',
+        text: 'Internships freshers discuss.',
         Icon: GraduationCap,
     },
     {
         href: '/drives/walk-in',
         label: 'Walk-ins',
-        tag: 'Track',
-        text: 'Upcoming drives and city-specific walk-ins.',
+        text: 'City-wise walk-in drives.',
         Icon: MapPin,
     },
 ];
 
 export default function NotFoundPage() {
     const router = useRouter();
+    // Outer scrolls, inner centers: `m-auto` centering inside an
+    // `overflow-hidden` flex parent clips the top when content exceeds the
+    // viewport. `min-h-full` + justify-center centers short content yet grows
+    // and scrolls instead of clipping. No brand row — the app header and
+    // sidebar already carry the logo.
     return (
-        <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-background text-foreground">
-            <div className="m-auto flex w-full max-w-4xl flex-col items-center gap-8 overflow-y-auto px-4 py-8 text-center">
-                <Link
-                    href="/"
-                    aria-label="FresherFlow home"
-                    className="flex animate-in items-center gap-2.5 fade-in-0 slide-in-from-bottom-3 fill-mode-both duration-500"
-                >
-                    <LogoImage width={28} height={28} className="h-7 w-7 object-contain" />
-                    <span className="text-lg font-semibold tracking-wide">FresherFlow</span>
-                </Link>
-
+        <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-y-auto bg-background text-foreground">
+            <div className="mx-auto flex min-h-full w-full max-w-xl flex-col items-center justify-center gap-6 px-4 py-12 text-center">
                 <div
                     className="animate-in space-y-3 fade-in-0 slide-in-from-bottom-3 fill-mode-both duration-500"
                     style={{ animationDelay: '90ms' }}
@@ -57,7 +49,7 @@ export default function NotFoundPage() {
                         <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
                         Lost in the feed
                     </p>
-                    <h1 className="-rotate-2 font-display text-7xl font-black leading-none tracking-tight drop-shadow-md md:text-8xl">
+                    <h1 className="font-display text-7xl font-black leading-none tracking-tight drop-shadow-md md:text-8xl">
                         404
                     </h1>
                     <p className="mx-auto max-w-md text-2xl font-bold tracking-tight md:text-3xl">
@@ -70,45 +62,44 @@ export default function NotFoundPage() {
                 </div>
 
                 <div
-                    className="flex animate-in flex-wrap items-center justify-center gap-3 fade-in-0 slide-in-from-bottom-3 fill-mode-both duration-500"
+                    className="flex animate-in flex-row flex-wrap items-center justify-center gap-3 fade-in-0 slide-in-from-bottom-3 fill-mode-both duration-500"
                     style={{ animationDelay: '180ms' }}
                 >
-                    <Button variant="outline" onClick={() => router.back()}>
+                    <Button variant="outline" size="sm" onClick={() => router.back()}>
                         Go back
                     </Button>
-                    <Button asChild>
-                        <Link href="/">Back to home</Link>
+                    <Button asChild size="sm">
+                        <Link href="/">
+                            Back to home
+                            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                        </Link>
                     </Button>
                 </div>
 
-                <div
-                    className="grid w-full animate-in gap-3 text-left fade-in-0 slide-in-from-bottom-3 fill-mode-both duration-500 sm:grid-cols-3"
+                <nav
+                    aria-label="Where to go next"
+                    className="w-full animate-in overflow-hidden rounded-xl border border-border/70 bg-card text-left fade-in-0 slide-in-from-bottom-3 fill-mode-both duration-500"
                     style={{ animationDelay: '270ms' }}
                 >
-                    {QUICK_LINKS.map(({ href, label, tag, text, Icon }) => (
-                        <Link
-                            key={href}
-                            href={href}
-                            className="group flex items-center gap-4 rounded-xl border border-border/70 bg-card p-3.5 transition-all duration-300 hover:-translate-y-0.5 hover:border-foreground/25 hover:shadow-lg"
-                        >
-                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground transition-colors duration-300 group-hover:bg-foreground group-hover:text-background">
-                                <Icon className="h-5 w-5" />
-                            </span>
-                            <span className="min-w-0 flex-1">
-                                <span className="flex items-center gap-2">
-                                    <span className="text-sm font-bold text-foreground">{label}</span>
-                                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                        {tag}
-                                    </span>
+                    <div className="divide-y divide-border">
+                        {QUICK_LINKS.map(({ href, label, text, Icon }) => (
+                            <Link
+                                key={href}
+                                href={href}
+                                className="group flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/40"
+                            >
+                                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground transition-colors group-hover:bg-foreground group-hover:text-background">
+                                    <Icon className="h-4 w-4" />
                                 </span>
-                                <span className="mt-0.5 block truncate text-xs text-muted-foreground">
-                                    {text}
+                                <span className="min-w-0 flex-1">
+                                    <span className="block text-sm font-bold text-foreground">{label}</span>
+                                    <span className="block text-xs text-muted-foreground">{text}</span>
                                 </span>
-                            </span>
-                            <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-all duration-300 group-hover:translate-x-1 group-hover:text-foreground" />
-                        </Link>
-                    ))}
-                </div>
+                                <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
+                            </Link>
+                        ))}
+                    </div>
+                </nav>
             </div>
         </div>
     );

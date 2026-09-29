@@ -7,7 +7,7 @@ import { validate } from '../../middleware/validate';
 import { optionalAuth } from '../../middleware/auth';
 import { ProfileVisibility } from '@prisma/client';
 import crypto from 'crypto';
-import { logger, profilePageActiveSince } from '@fresherflow/utils';
+import { logger, profileBoostSince } from '@fresherflow/utils';
 
 const router = Router();
 
@@ -45,6 +45,15 @@ const introRequestSchema = z.object({
     recruiterPhone: z.string().max(20).optional(),
 });
 
+/**
+ * Everything the world may read on /u/<handle>.
+ *
+ * Deliberately minimal. A published profile is a shareable link that crawlers and
+ * scrapers will copy whether or not robots.txt asks them not to, so the payload
+ * carries only identity, availability, skills, an about excerpt and the first two
+ * projects. Resume URL, CTC expectation, target work modes and the completion score
+ * stay private and are served only to the owner's own session.
+ */
 const publicProfileSelect = {
     userId: true,
     headline: true,
@@ -57,14 +66,10 @@ const publicProfileSelect = {
     skills: true,
     availability: true,
     preferredCities: true,
-    workModes: true,
-    expectedCtc: true,
-    resumeUrl: true,
     willingToRelocate: true,
     openToRecruiters: true,
     visibility: true,
     profilePublishedAt: true,
-    completionPercentage: true,
     // avatarUrl is a Profile column, not a User one. Selecting it under `user`
     // made every public profile read fail with "Unknown field `avatarUrl` for
     // select statement on model `User`", because this query's root IS the profile.
@@ -77,6 +82,8 @@ const publicProfileSelect = {
             createdAt: true,
             projects: {
                 orderBy: { order: 'asc' as const },
+                // Only the first two projects are published; the rest stay owner-only.
+                take: 2,
                 select: {
                     id: true,
                     title: true,
@@ -102,14 +109,10 @@ type PublicProfileRow = {
     skills: string[];
     availability: string | null;
     preferredCities: string[];
-    workModes: string[];
-    expectedCtc: number | null;
-    resumeUrl: string | null;
     willingToRelocate: boolean | null;
     openToRecruiters: boolean;
     visibility: ProfileVisibility;
     profilePublishedAt: Date | null;
-    completionPercentage: number;
     avatarUrl: string | null;
     user: {
         id: string;
@@ -127,7 +130,23 @@ type PublicProfileRow = {
     };
 };
 
-/** Public payload — never leaks email, DOB, reservation data, or admin fields. */
+/**
+ * Clip free text to a public excerpt.
+ *
+ * Truncation happens here rather than in the browser on purpose: clamping only in
+ * CSS would still ship the whole paragraph to every anonymous caller, which is the
+ * exact leak this page is trying to avoid.
+ */
+function excerpt(text: string | null, max = 250): string | null {
+    if (!text) return null;
+    const trimmed = text.trim();
+    if (trimmed.length <= max) return trimmed;
+    const cut = trimmed.slice(0, max);
+    const lastSpace = cut.lastIndexOf(' ');
+    return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+}
+
+/** Public payload — never leaks email, DOB, reservation data, resume, CTC, or admin fields. */
 function toPublicProfile(row: PublicProfileRow) {
     return {
         userId: row.userId,
@@ -136,7 +155,7 @@ function toPublicProfile(row: PublicProfileRow) {
         avatarUrl: row.avatarUrl,
         memberSince: row.user.createdAt,
         headline: row.headline,
-        about: row.about,
+        about: excerpt(row.about),
         degree: row.gradCourse,
         specialization: row.gradSpecialization,
         gradYear: row.gradYear,
@@ -145,16 +164,15 @@ function toPublicProfile(row: PublicProfileRow) {
         skills: row.skills,
         availability: row.availability,
         preferredCities: row.preferredCities,
-        workModes: row.workModes,
-        expectedCtc: row.expectedCtc,
-        resumeUrl: row.resumeUrl,
         willingToRelocate: row.willingToRelocate,
         openToRecruiters: row.openToRecruiters,
-        completionPercentage: row.completionPercentage,
-        // Only ever exposed for live pages (the query filters expired activations out),
-        // so it is safe to surface as a freshness signal.
+        // A freshness signal, not a lifetime: the page stays up when the boost lapses,
+        // so the UI reads this as "actively looking recently" rather than "still online".
         lastActivatedAt: row.profilePublishedAt,
-        projects: row.user.projects,
+        projects: row.user.projects.map((project) => ({
+            ...project,
+            description: excerpt(project.description, 200),
+        })),
     };
 }
 
@@ -172,8 +190,9 @@ router.get('/browse', publicReadLimiter, async (req: Request, res: Response, nex
         const whereClause: Record<string, unknown> = {
             openToRecruiters: true,
             visibility: { in: [ProfileVisibility.PUBLIC, ProfileVisibility.UNLISTED] },
-            // Stale activations drop out of the directory too.
-            profilePublishedAt: { gt: profilePageActiveSince() },
+            // The boost window is the directory's rule: published a long time ago and never
+            // re-boosted means promoted no longer, even though the page itself stays online.
+            profilePublishedAt: { gt: profileBoostSince() },
             // No `deletedAt` here: User has no soft-delete column, so filtering on it
             // made this whole query throw "Unknown field `deletedAt`" and 500 the
             // /recruiters directory. Suspended accounts are excluded via status.
@@ -242,15 +261,16 @@ router.get('/:username', publicReadLimiter, async (req: Request, res: Response, 
 
         // A published page must be reachable by its own link even when the owner has not
         // opted into recruiter intro requests — the CTA is hidden client-side instead.
-        // (The /browse directory below still requires openToRecruiters: true.)
+        // (The /browse directory above still requires openToRecruiters: true.)
         //
-        // Activation only lasts PROFILE_PAGE_ACTIVE_DAYS: past that the link is dark until
-        // the owner reactivates, so the same cutoff is applied to every public read.
+        // Reachability is publication and nothing else. The 7-day window only governs the
+        // boost, so it must never appear in this query: taking an indexed URL away from its
+        // owner on a timer is link rot, not privacy, and the copies elsewhere survive it.
         const row = (await prisma.profile.findFirst({
             where: {
                 user: { username, status: 'ACTIVE' },
                 visibility: { in: [ProfileVisibility.PUBLIC, ProfileVisibility.UNLISTED] },
-                profilePublishedAt: { gt: profilePageActiveSince() },
+                profilePublishedAt: { not: null },
             },
             select: publicProfileSelect,
         })) as unknown as PublicProfileRow | null;

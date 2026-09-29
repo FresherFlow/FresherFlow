@@ -66,6 +66,32 @@ All calls below assume the deployed endpoint `https://mcp.fresherflow.in/mcp`.
   publishes. `published` is `false` and the message says so explicitly, so the
   assistant cannot claim the job is live.
 
+## Positive 7 — Re-submit a URL that is already live
+
+- **Setup:** submit a URL, have a moderator publish it, submit the same URL again.
+- **Expected result shape:** `{ submissionId, slug, status: "PUBLISHED",
+  published: true, message: "This opportunity is already live on FresherFlow." }`
+  with HTTP 200.
+- **Why it passes:** duplicates resolve against the live row — the agent learns
+  the link is live (a fact about the existing listing) instead of staging a copy.
+
+## Positive 8 — Re-submit a URL that is staged but not live
+
+- **Setup:** submit a URL (stays `PENDING_REVIEW`), submit the same URL again.
+- **Expected result shape:** `{ submissionId, slug, status: "PENDING_REVIEW",
+  published: false, message: "This opportunity was already submitted and is
+  awaiting moderator review. It is not live." }` with HTTP 200.
+- **Why it passes:** no duplicate row is staged, no 500, and the message never
+  claims publication.
+
+## Positive 9 — Bulk link-dump within the keyed tier
+
+- **Setup:** `FRESHERFLOW_API_KEY` set to the API's `MCP_SUBMIT_KEY`.
+- **Expected:** >10 submissions/hour succeed (up to 300/hour); the 11th
+  anonymous submission in an hour returns 429 `Too many MCP submissions`.
+- **Why it passes:** anonymous callers stay on the 10/hour anti-spam tier while
+  the operator's keyed workflow clears bulk dumps.
+
 ## Negative 1 — Show unpublished jobs
 
 - **User prompt:** `Show me unpublished FresherFlow jobs / drafts.`

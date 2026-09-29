@@ -192,20 +192,6 @@ export const PERSONAL_GROUP: SpaceNavGroup = {
     ],
 };
 
-/**
- * Community navigation is paused while the rooms/community model is reworked.
- *
- * `Discussions` and `Rooms` both render `CommunityPost` - one unscoped, one
- * scoped by `roomId` - with no stated boundary between them, and a room post
- * cannot be replied-to-notified because `Notification` has no `postId`. Rather
- * than advertise a half-working surface, the whole Community group is withheld
- * from every rail. Routes are untouched: `/community`, `/community/rooms` and
- * every `?tab=` value still resolve, so links and bookmarks keep working.
- *
- * Flip this to `true` to put the group back.
- */
-export const COMMUNITY_NAV_ENABLED = false;
-
 export const COMMUNITY_GROUP: SpaceNavGroup = {
     label: 'Community',
     /* `discussions` (/community?tab=discussions) is hidden from the rail: it is

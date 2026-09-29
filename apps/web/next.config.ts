@@ -312,9 +312,12 @@ const nextConfig: NextConfig = {
         destination: "/govt/:path*",
         permanent: true,
       },
+      // One hop, not two. This used to land on `/locations/:path*`, which is itself a
+      // legacy source that 301s into /jobs — so every old link crawled two redirects
+      // through a namespace we no longer serve.
       {
         source: "/location/:path*",
-        destination: "/locations/:path*",
+        destination: "/jobs/:path*",
         permanent: true,
       },
 

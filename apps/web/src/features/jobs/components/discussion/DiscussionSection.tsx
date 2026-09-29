@@ -1,27 +1,13 @@
-'use client';
+﻿'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { formatDistanceToNow } from 'date-fns';
+import { useCallback, useState } from 'react';
+import { ReportReason } from '@fresherflow/types';
 import { communityApi } from '@/features/jobs/api/community';
-import { CommentType, CommentVoteValue, ReportReason } from '@fresherflow/types';
-import type { CommunityComment, CommentListResult } from '@fresherflow/types';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { cn } from '@repo/ui/utils/cn';
-import { SkeletonDiscussionRow } from '@/features/jobs/components/OpportunitySkeletons';
 import { SignalsPanel } from './SignalsPanel';
 import { ProvenanceStrip } from './ProvenanceStrip';
 import { InterviewExperiences } from './InterviewExperiences';
 import { ApplicationUpdates } from './ApplicationUpdates';
-
-const COMMENT_TYPES: { key: CommentType; label: string }[] = [
-    { key: CommentType.GENERAL, label: 'General' },
-    { key: CommentType.QUESTION, label: 'Question' },
-    { key: CommentType.EXPERIENCE, label: 'Experience' },
-    { key: CommentType.UPDATE, label: 'Update' },
-    { key: CommentType.WARNING, label: 'Warning' },
-];
 
 const REPORT_REASONS: { key: ReportReason; label: string }[] = [
     { key: ReportReason.SPAM, label: 'Spam' },
@@ -31,236 +17,49 @@ const REPORT_REASONS: { key: ReportReason; label: string }[] = [
     { key: ReportReason.OTHER, label: 'Other' },
 ];
 
-type Tab = 'community' | 'interviews' | 'updates';
-
-const TABS: { key: Tab; label: string }[] = [
-    { key: 'community', label: 'Community' },
-    { key: 'interviews', label: 'Interviews' },
-    { key: 'updates', label: 'Updates' },
-];
-
 type Props = {
     opportunityIdOrSlug: string;
-    postedByUsername?: string | null;
-    postedAt?: string | Date | null;
-    sourceLink?: string | null;
+    postedByUsername: string | null;
+    postedAt: string | Date | null;
+    sourceLink: string | null;
 };
 
+/**
+ * The post-description footer for a job: provenance, a single accuracy signal,
+ * a reporting action, and the two things a fresher actually reads before
+ * applying - other people's interview experiences and application updates.
+ *
+ * This used to be a three-tab control (Community / Interviews / Updates) over a
+ * threaded discussion with its own composer, five category filters, voting,
+ * replies and comment reporting. That tab was the community area, which is
+ * paused (see `features/community/communityUi.ts`), and its read was failing
+ * anyway - so the page shipped a category filter and a `0/500` composer over an
+ * empty list, with "Could not load the discussion" underneath. The two features
+ * that still work are now plain sections; they never needed a tab bar between
+ * them and a third broken sibling.
+ */
 export function DiscussionSection({
     opportunityIdOrSlug,
     postedByUsername,
     postedAt,
     sourceLink,
 }: Props) {
-    const pathname = usePathname();
     const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState<Tab>('community');
-    const [data, setData] = useState<CommentListResult>({ comments: [], total: 0 });
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
-    const [text, setText] = useState('');
-    const [commentType, setCommentType] = useState<CommentType>(CommentType.GENERAL);
-    const [replyTo, setReplyTo] = useState<string | null>(null);
-    const [posting, setPosting] = useState(false);
-    const [formError, setFormError] = useState<string | null>(null);
-    const [reportTarget, setReportTarget] = useState<string | null>(null);
     const [showJobReport, setShowJobReport] = useState(false);
-    // V1 checklist B: Questions filter. Backend exposes totals only
-    // (GET /api/jobs/comment-counts), so per-type counts are derived
-    // client-side from the loaded thread tree (top-level + replies).
-    const [typeFilter, setTypeFilter] = useState<'ALL' | CommentType>('ALL');
-    const composerRef = useRef<HTMLTextAreaElement | null>(null);
 
-    const loginHref = `/login?next=${encodeURIComponent(pathname || `/jobs/${opportunityIdOrSlug}`)}`;
-
-    const load = useCallback(async () => {
-        setLoading(true);
-        setError(false);
-        try {
-            const result = await communityApi.listComments(opportunityIdOrSlug);
-            setData(result);
-        } catch {
-            setError(true);
-        } finally {
-            setLoading(false);
-        }
-    }, [opportunityIdOrSlug]);
-
-    useEffect(() => {
-        void load();
-    }, [load]);
-
-    const submit = async () => {
-        const trimmed = text.trim();
-        if (!trimmed || trimmed.length > 500) {
-            setFormError('Your comment must be between 1 and 500 characters.');
-            return;
-        }
-        setPosting(true);
-        setFormError(null);
-        try {
-            await communityApi.postComment(opportunityIdOrSlug, {
-                text: trimmed,
-                commentType,
-                parentCommentId: replyTo ?? undefined,
-            });
-            setText('');
-            setReplyTo(null);
-            setCommentType(CommentType.GENERAL);
-            await load();
-        } catch (e) {
-            setFormError(e instanceof Error ? e.message : 'Could not post your comment.');
-        } finally {
-            setPosting(false);
-        }
-    };
-
-    const vote = async (commentId: string, value: CommentVoteValue) => {
-        try {
-            await communityApi.voteComment(opportunityIdOrSlug, commentId, value);
-            await load();
-        } catch {
-            /* keep the current tree on failure */
-        }
-    };
-
-    const remove = async (commentId: string) => {
-        try {
-            await communityApi.deleteComment(opportunityIdOrSlug, commentId);
-            await load();
-        } catch {
-            /* keep the current tree on failure */
-        }
-    };
-
-    const report = async (commentId: string, reason: ReportReason) => {
-        try {
-            await communityApi.createCommentReport(opportunityIdOrSlug, commentId, { reason });
-        } finally {
-            setReportTarget(null);
-        }
-    };
-
-    const reportJob = async (reason: ReportReason) => {
-        try {
-            await communityApi.createReport(opportunityIdOrSlug, { reason });
-        } finally {
-            setShowJobReport(false);
-        }
-    };
-
-    const typeCounts = useMemo(() => {
-        const counts: Record<string, number> = { ALL: 0 };
-        for (const t of COMMENT_TYPES) counts[t.key] = 0;
-        const walk = (list: CommunityComment[]) => {
-            for (const c of list) {
-                counts.ALL += 1;
-                if (c.commentType in counts) counts[c.commentType] += 1;
-                if (c.replies.length > 0) walk(c.replies);
+    const reportJob = useCallback(
+        async (reason: ReportReason) => {
+            try {
+                await communityApi.createReport(opportunityIdOrSlug, { reason });
+            } finally {
+                setShowJobReport(false);
             }
-        };
-        walk(data.comments);
-        return counts;
-    }, [data.comments]);
-
-    const threadContainsType = useCallback((comment: CommunityComment, type: CommentType): boolean => {
-        if (comment.commentType === type) return true;
-        return comment.replies.some(r => threadContainsType(r, type));
-    }, []);
-
-    const filteredComments = useMemo(() => {
-        if (typeFilter === 'ALL') return data.comments;
-        return data.comments.filter(c => threadContainsType(c, typeFilter));
-    }, [data.comments, typeFilter, threadContainsType]);
-
-    const beFirstToAsk = useCallback(() => {
-        setCommentType(CommentType.QUESTION);
-        setReplyTo(null);
-        setTypeFilter('ALL');
-        requestAnimationFrame(() => composerRef.current?.focus());
-    }, []);
-
-    const renderComment = (comment: CommunityComment) => (
-        <div key={comment.id} className="space-y-1.5">
-            <div className="flex items-center gap-2 text-xs">
-                <span className="font-semibold text-foreground">
-                    @{comment.user.username || comment.user.fullName || 'user'}
-                </span>
-                <span className="rounded-full bg-muted/40 px-2 py-0.5 text-xs font-semibold text-muted-foreground">
-                    {comment.commentType}
-                </span>
-                <span className="text-muted-foreground">
-                    {formatDistanceToNow(new Date(comment.createdAt), { addSuffix: true })}
-                </span>
-            </div>
-            <p className="text-sm text-foreground whitespace-pre-wrap break-words">{comment.text}</p>
-            <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                <button
-                    type="button"
-                    onClick={() => void vote(comment.id, CommentVoteValue.UPVOTE)}
-                    className={cn('font-semibold hover:text-primary', comment.myVote === 'UPVOTE' && 'text-primary')}
-                >
-                    ▲ {comment.upvotes}
-                </button>
-                <button
-                    type="button"
-                    onClick={() => void vote(comment.id, CommentVoteValue.DOWNVOTE)}
-                    className={cn('font-semibold hover:text-primary', comment.myVote === 'DOWNVOTE' && 'text-primary')}
-                >
-                    ▼ {comment.downvotes}
-                </button>
-                {user && (
-                    <button
-                        type="button"
-                        onClick={() => setReplyTo(replyTo === comment.id ? null : comment.id)}
-                        className="font-semibold hover:text-primary"
-                    >
-                        Reply
-                    </button>
-                )}
-                {user?.id === comment.user.id && (
-                    <button
-                        type="button"
-                        onClick={() => void remove(comment.id)}
-                        className="font-semibold hover:text-destructive"
-                    >
-                        Delete
-                    </button>
-                )}
-                {user && user.id !== comment.user.id && (
-                    <button
-                        type="button"
-                        onClick={() => setReportTarget(reportTarget === comment.id ? null : comment.id)}
-                        className="font-semibold hover:text-primary"
-                    >
-                        Report
-                    </button>
-                )}
-            </div>
-            {reportTarget === comment.id && (
-                <div className="flex flex-wrap gap-2 pt-1">
-                    {REPORT_REASONS.map(reason => (
-                        <button
-                            key={reason.key}
-                            type="button"
-                            onClick={() => void report(comment.id, reason.key)}
-                            className="rounded-full border border-border px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-muted/40"
-                        >
-                            {reason.label}
-                        </button>
-                    ))}
-                </div>
-            )}
-            {comment.replies.length > 0 && (
-                <div className="ml-4 space-y-3 border-l border-border/50 pl-3">
-                    {comment.replies.map(renderComment)}
-                </div>
-            )}
-        </div>
+        },
+        [opportunityIdOrSlug]
     );
 
     return (
-        <section id="discussion" className="space-y-5 py-3 border-t border-border/40">
+        <section id="discussion" className="space-y-5 border-t border-border/40 py-3">
             <ProvenanceStrip
                 postedByUsername={postedByUsername}
                 postedAt={postedAt}
@@ -269,24 +68,24 @@ export function DiscussionSection({
 
             <SignalsPanel opportunityIdOrSlug={opportunityIdOrSlug} />
 
-            {/* ── Report Job ── */}
             {user && (
                 <div className="flex items-center gap-2">
                     <button
                         type="button"
-                        onClick={() => setShowJobReport(!showJobReport)}
-                        className="text-xs font-semibold text-muted-foreground hover:text-destructive transition-colors"
+                        onClick={() => setShowJobReport((v) => !v)}
+                        aria-expanded={showJobReport}
+                        className="text-xs font-semibold text-muted-foreground transition-colors hover:text-destructive"
                     >
                         Report this job
                     </button>
                     {showJobReport && (
                         <div className="flex flex-wrap gap-1.5">
-                            {REPORT_REASONS.map(reason => (
+                            {REPORT_REASONS.map((reason) => (
                                 <button
                                     key={reason.key}
                                     type="button"
                                     onClick={() => void reportJob(reason.key)}
-                                    className="rounded-full border border-border px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                                    className="rounded-full border border-border px-2.5 py-1 text-xs font-semibold text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                                 >
                                     {reason.label}
                                 </button>
@@ -296,181 +95,13 @@ export function DiscussionSection({
                 </div>
             )}
 
-            {/* ── Tabs ── */}
-            <div className="flex gap-1 rounded-xl bg-muted/30 p-1">
-                {TABS.map((tab) => (
-                    <button
-                        key={tab.key}
-                        type="button"
-                        onClick={() => setActiveTab(tab.key)}
-                        className={cn(
-                            'flex-1 rounded-lg px-3 py-2 text-xs font-bold transition-colors',
-                            activeTab === tab.key
-                                ? 'bg-card text-foreground shadow-sm'
-                                : 'text-muted-foreground hover:text-foreground'
-                        )}
-                    >
-                        {tab.label}
-                        {tab.key === 'community' && data.total > 0 && (
-                            <span className="ml-1 text-muted-foreground">({data.total})</span>
-                        )}
-                    </button>
-                ))}
+            <div className="pt-2">
+                <InterviewExperiences opportunityIdOrSlug={opportunityIdOrSlug} />
             </div>
 
-            {/* ── Tab Content ── */}
-            {activeTab === 'community' && (
-                <div className="space-y-3">
-                    <h3 className="text-sm font-bold text-foreground tracking-tight">
-                        Discussion{data.total > 0 ? ` (${data.total})` : ''}
-                    </h3>
-
-                    {user ? (
-                        <div className="space-y-2">
-                            {replyTo && (
-                                <p className="text-xs text-muted-foreground">
-                                    Replying to a comment.{' '}
-                                    <button type="button" onClick={() => setReplyTo(null)} className="font-semibold text-primary hover:underline">
-                                        Cancel
-                                    </button>
-                                </p>
-                            )}
-                            <div className="flex flex-wrap gap-1.5">
-                                {COMMENT_TYPES.map(type => (
-                                    <button
-                                        key={type.key}
-                                        type="button"
-                                        onClick={() => setCommentType(type.key)}
-                                        className={cn(
-                                            'rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors',
-                                            commentType === type.key
-                                                ? 'border-primary/30 bg-primary/10 text-primary'
-                                                : 'border-border text-muted-foreground hover:bg-muted/40'
-                                        )}
-                                    >
-                                        {type.label}
-                                    </button>
-                                ))}
-                            </div>
-                            <textarea
-                                ref={composerRef}
-                                id="discussion-composer"
-                                value={text}
-                                onChange={e => setText(e.target.value)}
-                                rows={3}
-                                maxLength={500}
-                                placeholder="Share what you know about this opening…"
-                                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
-                            />
-                            {formError && <p className="text-xs text-destructive">{formError}</p>}
-                            <div className="flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">{text.length}/500</span>
-                                <button
-                                    type="button"
-                                    onClick={() => void submit()}
-                                    disabled={posting || text.trim().length === 0}
-                                    className="inline-flex h-8 items-center justify-center rounded-lg bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50"
-                                >
-                                    {posting ? 'Posting…' : replyTo ? 'Reply' : 'Post'}
-                                </button>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="rounded-xl border border-dashed border-border bg-card px-4 py-3 text-xs text-muted-foreground">
-                            <Link href={loginHref} className="font-semibold text-primary hover:underline">
-                                Sign in
-                            </Link>{' '}
-                            to join the discussion.
-                        </div>
-                    )}
-
-                    {/* Per-type filter with client-side counts (backend returns totals only). */}
-                    {!loading && !error && data.comments.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Filter discussion by type">
-                            <button
-                                type="button"
-                                onClick={() => setTypeFilter('ALL')}
-                                className={cn(
-                                    'rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors',
-                                    typeFilter === 'ALL'
-                                        ? 'border-primary/30 bg-primary/10 text-primary'
-                                        : 'border-border text-muted-foreground hover:bg-muted/40'
-                                )}
-                            >
-                                All ({typeCounts.ALL})
-                            </button>
-                            {COMMENT_TYPES.map(type => (
-                                <button
-                                    key={type.key}
-                                    type="button"
-                                    onClick={() => setTypeFilter(typeFilter === type.key ? 'ALL' : type.key)}
-                                    className={cn(
-                                        'rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors',
-                                        typeFilter === type.key
-                                            ? 'border-primary/30 bg-primary/10 text-primary'
-                                            : 'border-border text-muted-foreground hover:bg-muted/40'
-                                    )}
-                                >
-                                    {type.key === CommentType.QUESTION ? 'Questions' : `${type.label}s`} ({typeCounts[type.key] ?? 0})
-                                </button>
-                            ))}
-                        </div>
-                    )}
-
-                    {loading ? (
-                        <div className="space-y-3">
-                            {[1, 2].map(i => <SkeletonDiscussionRow key={i} />)}
-                        </div>
-                    ) : error ? (
-                        <div className="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-xs text-muted-foreground">
-                            Could not load the discussion.{' '}
-                            <button type="button" onClick={() => void load()} className="font-semibold text-primary hover:underline">
-                                Retry
-                            </button>
-                        </div>
-                    ) : data.comments.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center">
-                            <p className="text-sm font-bold text-foreground">No discussion yet — be the first to ask.</p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                                Ask about eligibility, dates, or the process. The composer above stays open.
-                            </p>
-                            {user ? (
-                                <button
-                                    type="button"
-                                    onClick={beFirstToAsk}
-                                    className="mt-3 inline-flex h-8 items-center justify-center rounded-lg bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-all hover:bg-primary/90"
-                                >
-                                    Be the first to ask
-                                </button>
-                            ) : (
-                                <Link
-                                    href={loginHref}
-                                    className="mt-3 inline-flex h-8 items-center justify-center rounded-lg bg-primary px-4 text-xs font-bold uppercase tracking-widest text-primary-foreground transition-all hover:bg-primary/90"
-                                >
-                                    Sign in to ask the first question
-                                </Link>
-                            )}
-                        </div>
-                    ) : filteredComments.length === 0 ? (
-                        <div className="rounded-xl border border-dashed border-border bg-card px-4 py-6 text-center text-xs text-muted-foreground">
-                            No {typeFilter === CommentType.QUESTION ? 'questions' : `${typeFilter.toLowerCase()}s`} yet.{' '}
-                            <button type="button" onClick={() => setTypeFilter('ALL')} className="font-semibold text-primary hover:underline">
-                                Show all discussion
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">{filteredComments.map(renderComment)}</div>
-                    )}
-                </div>
-            )}
-
-            {activeTab === 'interviews' && (
-                <InterviewExperiences opportunityIdOrSlug={opportunityIdOrSlug} />
-            )}
-
-            {activeTab === 'updates' && (
+            <div className="pt-2">
                 <ApplicationUpdates opportunityIdOrSlug={opportunityIdOrSlug} />
-            )}
+            </div>
         </section>
     );
 }

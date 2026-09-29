@@ -334,6 +334,18 @@ export const opportunitySchema = z.object({
         venueAddress: z.string().optional(),
         venue: z.string().optional(), // Frontend alias
         venueLink: z.string().optional(), // New: Google Maps URL
+        // Location and logistics. These existed on DriveDetails but were
+        // rejected by the schema, so an admin could never save a drive's city,
+        // coordinates or landmark — which is why the map and city pages had
+        // nothing to show for admin-entered drives.
+        latitude: z.number().min(-90).max(90).optional().nullable(),
+        longitude: z.number().min(-180).max(180).optional().nullable(),
+        clusterName: z.string().optional().nullable(),
+        city: z.string().optional().nullable(),
+        landmark: z.string().optional().nullable(),
+        transitInfo: z.string().optional().nullable(),
+        selectionProcess: z.string().optional().nullable(),
+        expiryDate: z.string().optional().nullable(),
         reportingTime: z.string().optional(),
         startTime: z.string().optional(), // Frontend alias for reportingTime
         endTime: z.string().optional(),

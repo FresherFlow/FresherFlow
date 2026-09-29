@@ -4,12 +4,13 @@ import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { Opportunity } from '@fresherflow/types';
 import {
     getOpportunityCoords,
-    HYDERABAD_DEFAULT_CENTER,
+    getMapFallbackCenter,
     formatSalaryBadge,
     formatShortCompany,
     getDominantCity,
     parseTransitInfo,
     getTransitWalkTimeLabel,
+    getDriveDetails,
 } from '@/features/jobs/utils/walkinMapUtils';
 import { MapCanvas } from './WalkinMap/MapCanvas';
 
@@ -39,8 +40,9 @@ function createVenueIcon(opp: Opportunity, isSelected: boolean, isHovered: boole
     const stateClass = isSelected ? 'state-selected' : isHovered ? 'state-hovered' : 'state-default';
     const logoUrl = opp.companyLogoUrl;
     const initial = company ? company.charAt(0).toUpperCase() : 'C';
-    const transit = parseTransitInfo(opp.walkInDetails?.transitInfo);
-    const transitWalkTime = getTransitWalkTimeLabel(opp.walkInDetails?.transitInfo);
+    const drive = getDriveDetails(opp);
+    const transit = parseTransitInfo(drive?.transitInfo);
+    const transitWalkTime = getTransitWalkTimeLabel(drive?.transitInfo);
 
     const logoHtml = logoUrl 
         ? `<img src="${logoUrl}" alt="${company}" class="venue-pill-logo" loading="lazy" />`
@@ -105,19 +107,25 @@ export function WalkinMapPane({
     const [selectedCluster, setSelectedCluster] = useState<string>('ALL');
     const [markerclusterLoaded, setMarkerclusterLoaded] = useState(false);
 
-    // Unique tech clusters from current opportunities
+    // Unique cluster labels from current opportunities
     const clusters = useMemo(() => {
         const set = new Set<string>();
         opportunities.forEach((o) => {
-            if (o.walkInDetails?.techCluster) {
-                set.add(o.walkInDetails.techCluster.split('/')[0].trim());
+            const label = getDriveDetails(o)?.clusterName;
+            if (label) {
+                set.add(label.split('/')[0].trim());
             }
         });
         return Array.from(set);
     }, [opportunities]);
 
+    // Opens on the selected drive, else the city the visible drives are in.
     const initialCenter = useMemo(() => {
-        return opportunity ? getOpportunityCoords(opportunity) : HYDERABAD_DEFAULT_CENTER;
+        if (opportunity) return getOpportunityCoords(opportunity);
+        return getMapFallbackCenter(opportunities);
+        // Centre is an initial value: re-centring on every list change would
+        // yank the map out from under someone who has panned away.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const cityName = useMemo(() => getDominantCity(opportunities), [opportunities]);

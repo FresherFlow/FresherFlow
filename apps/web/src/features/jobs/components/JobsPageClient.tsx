@@ -101,9 +101,6 @@ export default function JobsPageClient({
                     <HeaderPortal>
                         <UserTabTrail rootLabel="Jobs" rootHref="/jobs" label="For You" />
                     </HeaderPortal>
-                    <div className="lg:hidden w-full max-w-7xl mx-auto px-3 md:px-6 pt-4">
-                        <UserTabTrail rootLabel="Jobs" rootHref="/jobs" label="For You" />
-                    </div>
                     <ForYouTab />
                 </>
             );
@@ -122,10 +119,6 @@ export default function JobsPageClient({
                     <HeaderPortal>
                         <UserTabTrail rootLabel={rootLabel} rootHref={rootHref} label={label} />
                     </HeaderPortal>
-                    {/* SiteHeader is lg+ only — keep the trail in-page below lg. */}
-                    <div className="lg:hidden w-full max-w-7xl mx-auto px-3 md:px-6 pt-4">
-                        <UserTabTrail rootLabel={rootLabel} rootHref={rootHref} label={label} />
-                    </div>
                     <FollowingTab companyDirectory={companyDirectory} />
                 </UsernameGate>
             );
@@ -138,10 +131,6 @@ export default function JobsPageClient({
                 <HeaderPortal>
                     <UserTabTrail rootLabel={rootLabel} rootHref={rootHref} label={label} />
                 </HeaderPortal>
-                {/* SiteHeader is lg+ only — keep the trail in-page below lg. */}
-                <div className="lg:hidden w-full max-w-7xl mx-auto px-3 md:px-6 pt-4">
-                    <UserTabTrail rootLabel={rootLabel} rootHref={rootHref} label={label} />
-                </div>
                 <TabContent />
             </UsernameGate>
         );

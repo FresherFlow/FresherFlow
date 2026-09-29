@@ -1,11 +1,11 @@
 import {
     COMMUNITY_GROUP,
-    COMMUNITY_NAV_ENABLED,
     PERSONAL_GROUP,
     SPACES,
     type SpaceId,
     type SpaceNavItem,
 } from '@/features/navigation/navSpaces';
+import { COMMUNITY_UI_ENABLED } from '@/features/community/communityUi';
 
 /**
  * User-sidebar data file — the exact counterpart of
@@ -131,9 +131,10 @@ export function getSidebarGroups({
     }
 
     if (mounted) {
-        // Community is withheld from every rail while it is reworked — see
-        // COMMUNITY_NAV_ENABLED. Routes still resolve; only the links are gone.
-        if (COMMUNITY_NAV_ENABLED) {
+        // Community is withheld from every rail while it is reworked — the one
+        // switch is COMMUNITY_UI_ENABLED, shared with the hero CTA, the landing
+        // page's discussion counts and share-to-room so nothing still links in.
+        if (COMMUNITY_UI_ENABLED) {
             const community = toGroup(COMMUNITY_GROUP, isAuthed, badges);
             if (community) groups.push(community);
         }

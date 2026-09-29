@@ -50,13 +50,36 @@ const JOB_TYPE_OPTIONS = [
     { label: 'Government', value: 'Government' },
 ];
 
+/**
+ * Cities where drives and campus hiring actually happen, ordered by volume.
+ * Previously six cities with Hyderabad first, which meant a reader in Chennai
+ * or Coimbatore could not be alerted about drives in their own city at all.
+ */
 const LOCATION_OPTIONS = [
     'Bengaluru',
     'Hyderabad',
     'Pune',
-    'Delhi NCR',
     'Chennai',
     'Mumbai',
+    'Delhi NCR',
+    'Noida',
+    'Gurugram',
+    'Kolkata',
+    'Ahmedabad',
+    'Coimbatore',
+    'Kochi',
+    'Indore',
+    'Jaipur',
+    'Lucknow',
+    'Nagpur',
+    'Bhubaneswar',
+    'Visakhapatnam',
+    'Mysuru',
+    'Madurai',
+    'Chandigarh',
+    'Ludhiana',
+    'Trivandrum',
+    'Goa',
     'Remote',
 ];
 
@@ -243,8 +266,8 @@ function AlertSettingsContent() {
                         <ArrowLeftIcon className="w-5 h-5 text-muted-foreground" />
                     </button>
                     <div>
-                        <h1 className="text-xl md:text-2xl font-bold tracking-tight">Alert Settings</h1>
-                        <p className="text-xs text-muted-foreground">Control which job alerts you receive</p>
+      <h1 className="text-xl md:text-2xl font-bold tracking-tight">Notification settings</h1>
+      <p className="text-xs text-muted-foreground">Choose what you get notified about</p>
                     </div>
                 </div>
                 <Link

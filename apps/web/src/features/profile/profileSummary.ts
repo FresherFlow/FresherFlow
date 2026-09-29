@@ -1,90 +1,83 @@
 /**
- * Non-UI code for the summary card at the top of the profile page.
+ * Non-UI code for the public page status shown in the editor and on /account.
  *
- * Turns auth state, the cached profile and the public-page activation state into one
- * view-model. The card renders it; nothing about naming, counting or page status is decided in
- * JSX.
+ * Two facts, deliberately separate, because collapsing them is what made this feature
+ * confusing:
+ *
+ *  - **Reachability** is publication, and publication is permanent. Once the page is
+ *    published it can be crawled, cached and copied, so nothing here models a
+ *    `PRIVATE`/`UNLISTED` axis or offers a "make it private again" action that could not
+ *    keep its promise. `fresherflow.in/u/<handle>` keeps working.
+ *  - **Boost** is promotion, and promotion does lapse. Published a while ago and never
+ *    re-boosted means the profile drops out of the recruiter directory — its URL is
+ *    untouched, it just stops being actively surfaced. That is the only renewable state,
+ *    and it is why "Reactivate" became "Re-boost".
  */
-import type { Profile, User } from '@fresherflow/types';
-import { calculateProfileCompletion, type ProfilePageState } from '@fresherflow/utils';
-import { countChecklist, getProfileChecklist, type ProfileChecklistItem } from '@/features/profile/profileChecklist';
+import type { ProfilePageState } from '@fresherflow/utils';
 
-export type PageTone = 'live' | 'expiring' | 'offline' | 'draft';
+export type PageTone = 'live' | 'lapsing' | 'unboosted' | 'draft';
+
+/** The one thing the owner can do next about `fresherflow.in/u/<handle>`. */
+export type PublicPageAction = 'activate' | 'boost' | 'none';
 
 export interface PublicPageSummary {
     tone: PageTone;
     label: string;
+    /** True while the link resolves — every published page, boosted or not. */
     isLive: boolean;
-    /** Present once a username is claimed, whether or not the page is currently live. */
+    /** True while the profile is promoted in the recruiter directory. */
+    isBoosted: boolean;
+    action: PublicPageAction;
+    /** Present once a username is claimed, whether or not the page is published. */
     url: string | null;
 }
 
-export interface ProfileSummary {
-    displayName: string;
-    handle: string | null;
-    initial: string;
-    avatarUrl: string | null;
-    email: string | null;
-    completion: number;
-    checklist: ProfileChecklistItem[];
-    remaining: ProfileChecklistItem[];
-    doneCount: number;
-    totalCount: number;
-    page: PublicPageSummary;
+/** Button text for a public-page action — one copy of it, shared by both surfaces. */
+export function pageActionLabel(action: Exclude<PublicPageAction, 'none'>): string {
+    return action === 'activate' ? 'Publish page' : 'Re-boost';
+}
+
+export function pageActionBusyLabel(action: Exclude<PublicPageAction, 'none'>): string {
+    return action === 'activate' ? 'Publishing…' : 'Re-boosting…';
 }
 
 /**
- * The 7-day activation window in words a person can act on.
+ * The boost window in words a person can act on.
  *
- * "Expiring" is the important one: it is a day from going dark, and the only state where the
- * owner has something to do before the link stops working.
+ * `lapsing` is the useful one: the page is fine, but the promotion ends in a day or two and
+ * that is the only state where doing something changes the outcome.
  */
 export function describePageState(state: ProfilePageState): Omit<PublicPageSummary, 'url'> {
-    if (state.status === 'live') {
-        return { tone: 'live', label: 'Live', isLive: true };
-    }
-    if (state.status === 'expiring') {
-        const days = state.daysLeft;
+    if (state.status === 'unboosted') {
         return {
-            tone: 'expiring',
-            label: days <= 1 ? 'Goes offline in under a day' : `Goes offline in ${days} days`,
+            tone: 'unboosted',
+            label: 'Live · boost ended',
             isLive: true,
+            isBoosted: false,
+            action: 'boost',
         };
     }
-    if (state.status === 'expired') {
-        return { tone: 'offline', label: 'Offline — activation lapsed', isLive: false };
+
+    if (state.status === 'lapsing') {
+        const days = state.daysLeft;
+        return {
+            tone: 'lapsing',
+            label: days <= 1 ? 'Live · boost ends today' : `Live · boost ends in ${days} days`,
+            isLive: true,
+            isBoosted: true,
+            action: 'boost',
+        };
     }
-    return { tone: 'draft', label: 'Not activated yet', isLive: false };
-}
 
-export function buildProfileSummary({
-    user,
-    profile,
-    pageState,
-    pagePath,
-}: {
-    user: User | null;
-    profile: Profile | null;
-    pageState: ProfilePageState;
-    pagePath: string | null;
-}): ProfileSummary {
-    const checklist = getProfileChecklist(profile);
-    const { done, total } = countChecklist(checklist);
+    if (state.status === 'live') {
+        return {
+            tone: 'live',
+            label: `Live · boosted for ${state.daysLeft} ${state.daysLeft === 1 ? 'day' : 'days'}`,
+            isLive: true,
+            isBoosted: true,
+            action: 'none',
+        };
+    }
 
-    const name = user?.fullName || user?.username || 'Your name';
-    const status = describePageState(pageState);
-
-    return {
-        displayName: name,
-        handle: user?.username ? `@${user.username}` : null,
-        initial: (user?.fullName?.[0] || user?.username?.[0] || 'U').toUpperCase(),
-        avatarUrl: profile?.avatarUrl ?? null,
-        email: user?.email ?? null,
-        completion: calculateProfileCompletion(profile).percentage,
-        checklist,
-        remaining: checklist.filter((item) => !item.done),
-        doneCount: done,
-        totalCount: total,
-        page: { ...status, url: pagePath },
-    };
+    return { tone: 'draft', label: 'Not published yet', isLive: false, isBoosted: false, action: 'activate' };
 }

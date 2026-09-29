@@ -180,14 +180,16 @@ export class EmailService {
     }
 
     /**
-     * Nudge the owner that their public page is about to go dark.
-     * Public pages are live for a bounded activation window, so this is the one
-     * email that keeps the link alive — it has to say exactly what to do.
+     * Nudge the owner that their recruiter boost is about to lapse.
+     *
+     * The page itself never goes offline, so the mail must not imply it does — the only
+     * thing ending is directory placement. The CTA therefore points at the profile editor,
+     * which is where the renewal lives, not at the public page.
      */
-    static async sendProfilePageExpiryReminder(
+    static async sendProfileBoostReminder(
         email: string,
         fullName: string | null | undefined,
-        payload: { username: string; pageUrl: string; daysLeft: number }
+        payload: { username: string; pageUrl: string; boostUrl: string; daysLeft: number }
     ): Promise<void> {
         const greeting = fullName ? `Hi ${fullName.split(' ')[0]},` : 'Hi,';
         const window =
@@ -198,20 +200,21 @@ export class EmailService {
         const html = `
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
                 <p style="font-size: 15px; color: #333;">${greeting}</p>
-                <h2 style="color: #111; margin: 8px 0 12px;">Your page goes offline ${window}</h2>
+                <h2 style="color: #111; margin: 8px 0 12px;">Your recruiter boost ends ${window}</h2>
                 <p style="font-size: 15px; color: #333; margin: 8px 0;">
-                    <strong>${payload.pageUrl}</strong> is live right now. Public pages need a quick
-                    reactivation each week so recruiters only ever see profiles that are still current.
+                    <strong>${payload.pageUrl}</strong> stays online either way — the link keeps working.
+                    What ends is your placement in the recruiter directory, where you sit in front of
+                    recruiters who are actively hiring freshers.
                 </p>
                 <p style="font-size: 14px; color: #555; margin: 8px 0 16px;">
-                    Open your profile and hit activate — it takes a second, and the link keeps working for another 7 days.
+                    Re-boost from your profile and you go back to the top of the list. It takes a second.
                 </p>
-                <a href="${payload.pageUrl}" style="background:#08183d;color:#fff;padding:10px 14px;border-radius:6px;text-decoration:none;display:inline-block;">Open my page</a>
+                <a href="${payload.boostUrl}" style="background:#08183d;color:#fff;padding:10px 14px;border-radius:6px;text-decoration:none;display:inline-block;">Re-boost my profile</a>
                 <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
-                <p style="font-size: 12px; color: #bbb; text-align: center;">If you'd rather not keep the page up, do nothing — it goes offline on its own.</p>
+                <p style="font-size: 12px; color: #bbb; text-align: center;">Do nothing and your page simply stops being promoted — it will not go offline.</p>
             </div>
         `;
 
-        await this.pushToQueue(email, `Your FresherFlow page goes offline ${window}`, html);
+        await this.pushToQueue(email, `Your FresherFlow recruiter boost ends ${window}`, html);
     }
 }

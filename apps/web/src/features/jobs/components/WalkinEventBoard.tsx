@@ -7,8 +7,10 @@ import { Button } from '@/ui/Button';
 import {
     groupWalkinsByDate,
     WALKIN_BUCKETS,
+    firstDriveDateMs,
 } from '@/features/jobs/utils/walkinEventUtils';
 import { WalkinDateChip } from '@/features/jobs/components/WalkinEventWidgets';
+import { getDriveDetails } from '@/features/jobs/utils/walkinMapUtils';
 import { cn } from '@repo/ui/utils/cn';
 
 /**
@@ -30,11 +32,9 @@ export function WalkinEventBoard({ opportunities }: { opportunities: Opportunity
     const groups = useMemo(() => {
         // Newest-posted ascending is meaningless here; sort by next date so
         // buckets read chronologically left-to-right.
-        const sorted = [...opportunities].sort((a, b) => {
-            const da = a.walkInDetails?.dates?.[0] ? new Date(a.walkInDetails.dates[0]).getTime() : Infinity;
-            const db = b.walkInDetails?.dates?.[0] ? new Date(b.walkInDetails.dates[0]).getTime() : Infinity;
-            return da - db;
-        });
+        const sorted = [...opportunities].sort(
+            (a, b) => firstDriveDateMs(a) - firstDriveDateMs(b),
+        );
         return groupWalkinsByDate(sorted);
     }, [opportunities]);
 
@@ -75,16 +75,23 @@ export function WalkinEventBoard({ opportunities }: { opportunities: Opportunity
                                     <WalkinDateChip opp={opp} />
                                 </div>
                                 <span className="text-xs font-semibold text-muted-foreground truncate">{opp.company}</span>
-                                {opp.walkInDetails?.venueAddress && (
-                                    <span className="text-xs text-muted-foreground truncate">
-                                         {opp.walkInDetails.landmark || opp.walkInDetails.venueAddress}
-                                    </span>
-                                )}
-                                {(opp.walkInDetails?.timeRange || opp.walkInDetails?.reportingTime) && (
-                                    <span className="text-xs text-muted-foreground">
-                                         {opp.walkInDetails.timeRange || opp.walkInDetails.reportingTime}
-                                    </span>
-                                )}
+                                {(() => {
+                                    const drive = getDriveDetails(opp);
+                                    return (
+                                        <>
+                                            {drive?.venueAddress && (
+                                                <span className="text-xs text-muted-foreground truncate">
+                                                    {drive.landmark || drive.venueAddress}
+                                                </span>
+                                            )}
+                                            {(drive?.timeRange || drive?.reportingTime) && (
+                                                <span className="text-xs text-muted-foreground">
+                                                    {drive.timeRange || drive.reportingTime}
+                                                </span>
+                                            )}
+                                        </>
+                                    );
+                                })()}
                             </Link>
                         ))}
                     </div>

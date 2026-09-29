@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from "@/ui/cn";
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { Star } from 'lucide-react';
@@ -58,8 +59,42 @@ export function PlatformsPageView({ resources, lastUpdated, title, description, 
         return result;
     }, [resources, category, search, recommendedOnly]);
 
+    // One search, in the header. The header's own placeholder box is decorative
+    // and the previous in-page field sat under it, so /resources?tab=platforms
+    // showed two search boxes. This portals the real control into the same slot
+    // the resources view uses, and the fallback hides via globals.css.
+    const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+    useEffect(() => {
+        setPortalTarget(document.getElementById('top-header-portal-target'));
+    }, []);
+
     return (
         <div className="w-full max-w-7xl mx-auto px-3 md:px-6 py-3 md:py-5 space-y-4 md:space-y-5">
+            {portalTarget && (
+                createPortal(
+                    <div className="relative w-full max-w-xl mx-auto flex-1 lg:ml-6 hidden lg:block">
+                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                        <Input
+                            type="text"
+                            placeholder="Search platforms, tools, tags..."
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            className="h-9 w-full"
+                        />
+                        {search && (
+                            <button
+                                onClick={() => setSearch('')}
+                                aria-label="Clear search"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground rounded-full p-0.5 hover:bg-muted"
+                            >
+                                <XMarkIcon className="w-3 h-3" />
+                            </button>
+                        )}
+                    </div>,
+                    portalTarget
+                )
+            )}
+
             {/* Header */}
             <div className="space-y-1.5 md:space-y-2 max-w-3xl">
                 <h1 className="text-xl md:text-2xl font-extrabold tracking-tight leading-tight">
@@ -70,8 +105,10 @@ export function PlatformsPageView({ resources, lastUpdated, title, description, 
                 </p>
             </div>
 
-            {/* Search + Recommended toggle */}
-            <div suppressHydrationWarning className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            {/* Mobile search only. The site header is `hidden lg:flex`, so below
+                `lg` there is no header to portal into and the field has to live
+                in the page. The "Recommended" toggle stays with it. */}
+            <div suppressHydrationWarning className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 lg:hidden">
                 <div className="relative flex-1 max-w-md">
                     <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input

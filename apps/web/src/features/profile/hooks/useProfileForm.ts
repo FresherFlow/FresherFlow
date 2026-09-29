@@ -24,7 +24,7 @@ type ProfileLike = {
   about?: string | null;
   githubUrl?: string | null;
   linkedinUrl?: string | null;
-  portfolioUrl?: string | null;    openToRecruiters?: boolean | null;
+  portfolioUrl?: string | null;
     expectedCtc?: number | null;
     resumeUrl?: string | null;
     willingToRelocate?: boolean | null;
@@ -37,7 +37,6 @@ export function useProfileForm(cityLimit = 5) {
   const [githubUrl, setGithubUrl] = useState('');
   const [linkedinUrl, setLinkedinUrl] = useState('');
   const [portfolioUrl, setPortfolioUrl] = useState('');
-  const [openToRecruiters, setOpenToRecruiters] = useState(false);
   const [educationLevel, setEducationLevel] = useState('');
   const [tenthYear, setTenthYear] = useState('');
   const [twelfthYear, setTwelfthYear] = useState('');
@@ -93,7 +92,6 @@ export function useProfileForm(cityLimit = 5) {
     setGithubUrl(profile.githubUrl || '');
     setLinkedinUrl(profile.linkedinUrl || '');
     setPortfolioUrl(profile.portfolioUrl || '');
-    setOpenToRecruiters(Boolean(profile.openToRecruiters));
     setExpectedCtc(profile.expectedCtc != null ? String(profile.expectedCtc) : '');
     setResumeUrl(profile.resumeUrl || '');
     setWillingToRelocate(profile.willingToRelocate !== false);
@@ -179,8 +177,6 @@ export function useProfileForm(cityLimit = 5) {
     setLinkedinUrl,
     portfolioUrl,
     setPortfolioUrl,
-    openToRecruiters,
-    setOpenToRecruiters,
     educationLevel,
     setEducationLevel,
     tenthYear,

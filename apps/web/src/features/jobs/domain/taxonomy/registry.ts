@@ -10,14 +10,13 @@ import {
     ROLE_TAG_NOISE,
     skipTagSlug,
 } from './constants';
-import type { TaxonomyRegistry, TaxonomyItem, TaxonomyCombo } from './constants';
+import type { TaxonomyRegistry, TaxonomyItem } from './constants';
 
 export function buildTaxonomyRegistry(opportunities: Opportunity[]): TaxonomyRegistry {
     const roleCounts = new Map<string, number>();
     const cityCounts = new Map<string, number>();
     const skillCounts = new Map<string, number>();
     const yearCounts = new Map<number, number>();
-    const comboCounts = new Map<string, number>();
 
     const bump = (map: Map<string, number>, key: string) =>
         map.set(key, (map.get(key) ?? 0) + 1);
@@ -74,15 +73,6 @@ export function buildTaxonomyRegistry(opportunities: Opportunity[]): TaxonomyReg
                 yearCounts.set(year, (yearCounts.get(year) ?? 0) + 1);
             }
         }
-
-        // ── Role–city combos (inventory-gated, never a matrix) ───────────────
-        for (const roleSlug of matchedRoles) {
-            for (const citySlug of matchedCities) {
-                if (citySlug === 'remote') continue;
-                const key = `${roleSlug}|${citySlug}`;
-                comboCounts.set(key, (comboCounts.get(key) ?? 0) + 1);
-            }
-        }
     }
 
     const cityLabel = (slug: string) =>
@@ -123,23 +113,7 @@ export function buildTaxonomyRegistry(opportunities: Opportunity[]): TaxonomyReg
         if (count >= TAXONOMY_MIN_JOBS) years.set(year, count);
     }
 
-    const combos = new Map<string, TaxonomyCombo>();
-    for (const [key, count] of comboCounts) {
-        if (count < TAXONOMY_MIN_JOBS) continue;
-        const [roleSlug, citySlug] = key.split('|');
-        const role = roles.get(roleSlug);
-        const city = cities.get(citySlug);
-        if (!role || !city) continue;
-        combos.set(key, {
-            roleSlug,
-            citySlug,
-            roleLabel: role.label,
-            cityLabel: city.label,
-            count,
-        });
-    }
-
-    return { roles, cities, skills, years, combos };
+    return { roles, cities, skills, years };
 }
 
 

@@ -17,6 +17,12 @@ const SIGNALS: { key: JobSignalType; label: string }[] = [
     { key: JobSignalType.INCORRECT, label: 'Incorrect' },
 ];
 
+/* Applied / Interviewed / Got offer / Closed were rendered here as a second
+   row of pills. The sidebar already owns that state ("Mark your status"), and
+   two places to mark the same thing is how they drifted apart. This panel is
+   now only a claim about the listing itself, which nobody else collects. */
+const ACCURACY_KEYS: JobSignalType[] = [JobSignalType.HELPFUL, JobSignalType.INCORRECT];
+
 const EMPTY_SUMMARY: Record<JobSignalType, number> = {
     [JobSignalType.APPLIED]: 0,
     [JobSignalType.INTERVIEWED]: 0,
@@ -87,45 +93,51 @@ export function SignalsPanel({ opportunityIdOrSlug }: Props) {
         }
     };
 
+    const renderGroup = (keys: JobSignalType[]) =>
+        keys.map(key => {
+            const signal = SIGNALS.find(s => s.key === key);
+            if (!signal) return null;
+            const isOn = mySignals.includes(key);
+            const count = summary[key] ?? 0;
+            return (
+                <button
+                    key={key}
+                    type="button"
+                    onClick={() => void toggle(key)}
+                    disabled={busy}
+                    aria-pressed={isOn}
+                    className={cn(
+                        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+                        isOn
+                            ? 'border-primary/30 bg-primary/10 text-primary'
+                            : 'border-border bg-muted/20 text-muted-foreground hover:bg-muted/40',
+                        busy && 'opacity-60'
+                    )}
+                >
+                    {signal.label}
+                    {count > 0 && <span className="tabular-nums opacity-70">{count}</span>}
+                </button>
+            );
+        });
+
     return (
-        <section aria-label="Community signals" className="space-y-2.5">
-            <div className="flex items-center justify-between gap-2">
-                <h3 className="text-sm font-bold text-foreground tracking-tight">Community signals</h3>
-                {error && (
+        <section aria-label="Listing accuracy" className="space-y-2">
+            <h3 className="text-sm font-bold text-foreground tracking-tight">Is this listing right?</h3>
+            <div className="flex flex-wrap gap-2">{renderGroup(ACCURACY_KEYS)}</div>
+            {/* A failed read says so instead of rendering zero-count pills that
+                read as real data. */}
+            {error && (
+                <p className="text-xs text-muted-foreground">
+                    Could not load signals.{' '}
                     <button
                         type="button"
                         onClick={() => void load()}
-                        className="text-xs font-semibold text-primary hover:underline"
+                        className="font-semibold text-primary hover:underline"
                     >
                         Retry
                     </button>
-                )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-                {SIGNALS.map(signal => {
-                    const isOn = mySignals.includes(signal.key);
-                    const count = summary[signal.key] ?? 0;
-                    return (
-                        <button
-                            key={signal.key}
-                            type="button"
-                            onClick={() => void toggle(signal.key)}
-                            disabled={busy}
-                            aria-pressed={isOn}
-                            className={cn(
-                                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
-                                isOn
-                                    ? 'border-primary/30 bg-primary/10 text-primary'
-                                    : 'border-border bg-muted/20 text-muted-foreground hover:bg-muted/40',
-                                busy && 'opacity-60'
-                            )}
-                        >
-                            {signal.label}
-                            {count > 0 && <span className="tabular-nums opacity-70">{count}</span>}
-                        </button>
-                    );
-                })}
-            </div>
+                </p>
+            )}
         </section>
     );
 }

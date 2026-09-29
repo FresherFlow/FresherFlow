@@ -1,7 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRateLimit } from '@/lib/api/rateLimit';
 
-const INGESTION_URL = process.env.INGESTION_SERVICE_URL || process.env.NEXT_PUBLIC_INGESTION_URL || process.env.INGESTION_URL || 'http://localhost:3005';
+/**
+ * Base URL of the ingestion service, trailing slashes trimmed.
+ *
+ * The localhost default is a developer convenience and must never reach production: shipped
+ * to Vercel with the env var unset, it would turn a misconfiguration into a plain 500 and
+ * make the cause invisible. `ingestionBaseUrl()` below enforces that split.
+ */
+const INGESTION_URL = (
+    process.env.INGESTION_SERVICE_URL ||
+    process.env.NEXT_PUBLIC_INGESTION_URL ||
+    process.env.INGESTION_URL ||
+    ''
+).replace(/\/+$/, '');
+
+const LOCAL_INGESTION_URL = 'http://localhost:3005';
+
+function ingestionBaseUrl(): string | null {
+    if (INGESTION_URL) return INGESTION_URL;
+    if (process.env.NODE_ENV === 'production') {
+        console.error(
+            '[api/search] No ingestion URL configured (INGESTION_SERVICE_URL / INGESTION_URL). Search is disabled in this environment.',
+        );
+        return null;
+    }
+    return LOCAL_INGESTION_URL;
+}
 
 /**
  * POST /api/search
@@ -21,7 +46,12 @@ async function handleSearch(request: NextRequest) {
             );
         }
 
-        const res = await fetch(`${INGESTION_URL}/search`, {
+        const ingestionUrl = ingestionBaseUrl();
+        if (!ingestionUrl) {
+            return NextResponse.json({ error: 'Search is temporarily unavailable' }, { status: 503 });
+        }
+
+        const res = await fetch(`${ingestionUrl}/search`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ searchTerm, location, hoursOld, companySlug, siteType, resultsWanted }),
@@ -29,10 +59,15 @@ async function handleSearch(request: NextRequest) {
         });
 
         if (!res.ok) {
-            const text = await res.text();
+            // Log the upstream body, never return it: it can carry internal detail and this
+            // is a public route. The client gets the status and nothing else.
+            console.error('[api/search] Upstream search failed', {
+                status: res.status,
+                body: (await res.text()).slice(0, 500),
+            });
             return NextResponse.json(
-                { error: `Search service returned ${res.status}: ${text}` },
-                { status: res.status }
+                { error: 'Search is temporarily unavailable' },
+                { status: res.status >= 500 ? 503 : res.status }
             );
         }
 
@@ -62,11 +97,20 @@ async function listScrapers(request: NextRequest) {
     const url = new URL(request.url);
     if (url.searchParams.get('action') === 'scrapers') {
         try {
-            const res = await fetch(`${INGESTION_URL}/search/scrapers`);
+            const ingestionUrl = ingestionBaseUrl();
+            if (!ingestionUrl) {
+                return NextResponse.json({ error: 'Search is temporarily unavailable' }, { status: 503 });
+            }
+            const res = await fetch(`${ingestionUrl}/search/scrapers`);
+            if (!res.ok) {
+                console.error('[api/search] Upstream scraper list failed', { status: res.status });
+                return NextResponse.json({ error: 'Search is temporarily unavailable' }, { status: 503 });
+            }
             const data = await res.json();
             return NextResponse.json(data);
-        } catch {
-            return NextResponse.json({ error: 'Service unavailable' }, { status: 503 });
+        } catch (error) {
+            console.error('[api/search] Scraper list request failed', error);
+            return NextResponse.json({ error: 'Search is temporarily unavailable' }, { status: 503 });
         }
     }
 

@@ -148,6 +148,32 @@ export function normalizeEducationRequirements(
 }
 
 
+/**
+ * Denormalised discovery columns mirroring DriveDetails onto Opportunity.
+ *
+ * `dates` is an unsized DateTime[] that Postgres cannot index for range
+ * containment, and `city` sits behind a 1:1 relation. Without these, "drives in
+ * this city in the next 7 days" and "drives near me" have to load every
+ * walk-in row into Node and filter there. `nextDriveAt` is the earliest
+ * still-future date, and `driveCity` is the drive's own city, which may differ
+ * from `Opportunity.locations`.
+ */
+export function buildDriveDiscoveryColumns(
+    driveDetails: AdminOpportunityRequest['driveDetails'] | undefined,
+    dates: Date[],
+) {
+    const now = Date.now();
+    const upcoming = dates
+        .filter((d) => d instanceof Date && !Number.isNaN(d.getTime()))
+        .filter((d) => d.getTime() >= now)
+        .sort((a, b) => a.getTime() - b.getTime());
+    const city = String(driveDetails?.city ?? '').trim();
+    return {
+        nextDriveAt: upcoming[0] ?? null,
+        driveCity: city.length > 0 ? city : null,
+    };
+}
+
 export function buildWalkInCreate(data: AdminOpportunityRequest) {
     const driveDetails = data.driveDetails || {};
     const dates = normalizeWalkInDates(data);
@@ -161,6 +187,14 @@ export function buildWalkInCreate(data: AdminOpportunityRequest) {
             timeRange: driveDetails.timeRange,
             venueAddress,
             venueLink: driveDetails.venueLink,
+            latitude: driveDetails.latitude,
+            longitude: driveDetails.longitude,
+            clusterName: driveDetails.clusterName,
+            city: driveDetails.city,
+            landmark: driveDetails.landmark,
+            transitInfo: driveDetails.transitInfo,
+            selectionProcess: driveDetails.selectionProcess,
+            expiryDate: driveDetails.expiryDate,
             reportingTime: reportingTime || 'Contact for timing',
             requiredDocuments: driveDetails.requiredDocuments || [],
             contactPerson: driveDetails.contactPerson,
@@ -180,6 +214,14 @@ export function buildWalkInUpsert(data: AdminOpportunityRequest) {
         timeRange: driveDetails.timeRange,
         venueAddress: venueAddress!,
         venueLink: driveDetails.venueLink,
+        latitude: driveDetails.latitude,
+        longitude: driveDetails.longitude,
+        clusterName: driveDetails.clusterName,
+        city: driveDetails.city,
+        landmark: driveDetails.landmark,
+        transitInfo: driveDetails.transitInfo,
+        selectionProcess: driveDetails.selectionProcess,
+        expiryDate: driveDetails.expiryDate,
         reportingTime: reportingTime || 'Contact for timing',
         requiredDocuments: driveDetails.requiredDocuments || [],
         contactPerson: driveDetails.contactPerson,

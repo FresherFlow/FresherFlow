@@ -53,11 +53,10 @@ export const profileApi = {
             body: JSON.stringify({ username })
         }),
 
-    updateVisibility: (visibility: 'PUBLIC' | 'UNLISTED' | 'PRIVATE') =>
-        apiClient('/api/profile/visibility', {
-            method: 'PATCH',
-            body: JSON.stringify({ visibility })
-        }),
+    // No `updateVisibility` here on purpose. Publishing a page is one-way in practice —
+    // crawlers and caches keep what they copied — so the app does not ship a control that
+    // claims to un-publish one. See features/profile/profileSummary.ts. The endpoint still
+    // exists for admin moderation.
 
     publishProfile: () =>
         apiClient<{ publishedAt: string }>('/api/profile/publish', {

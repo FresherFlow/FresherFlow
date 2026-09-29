@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+﻿import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { Opportunity } from "@fresherflow/types";
 import type { CategoryFeedType } from "@/features/jobs/utils/walkinMapUtils";
@@ -14,19 +14,30 @@ import {
 } from "@/features/jobs/components/GovtPhaseTabs";
 import { formatJobFeedTitle } from "@/features/jobs/utils/formatJobFeedTitle";
 import {
-  getOpportunityDistanceKm,
-  isWalkinInPeriod,
+  filterOpportunities,
+  applyLocalFilters,
+  applyProfileVisibility,
+} from "@/features/jobs/utils/filterOpportunities";
+import {
   type WalkinDrivePeriod,
 } from "@/features/jobs/utils/walkinMapUtils";
 import { sanitizeSearchQuery } from "@/features/jobs/utils/searchUtils";
+import { useProfileFilterPrefs, buildProfileFilterSeed, resetProfileFilterDims } from "@/features/jobs/hooks/useProfileFilters";
 import { FEED_PAGE_SIZE } from "@/lib/utils/feedPageSize";
 
 /**
  * Multi-value filters are encoded as repeated keys (`?company=A&company=B`) so
- * a value containing a comma — a company name or job title — survives a round
+ * a value containing a comma â€” a company name or job title â€” survives a round
  * trip. Older links used one comma-joined value, so a single occurrence is
  * still split on commas: links shared before this change keep working.
  */
+/** Set equality for work modes â€” profile seeds are order-insensitive. */
+const sameModeSet = (a: string[] | null | undefined, b: string[] | null | undefined): boolean => {
+  const left = (a ?? []).map((mode) => mode.toUpperCase()).sort();
+  const right = (b ?? []).map((mode) => mode.toUpperCase()).sort();
+  return left.length > 0 && left.length === right.length && left.every((value, index) => value === right[index]);
+};
+
 const readMultiParam = (
   sp: URLSearchParams | null | undefined,
   key: string,
@@ -81,7 +92,8 @@ export function useCategoryPageState({
   bottomContent,
   userLocation,
 }: UseCategoryPageStateProps) {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const { prefs: profileFilterPrefs, setEnabled: setProfileFiltersEnabled } = useProfileFilterPrefs();
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -89,12 +101,15 @@ export function useCategoryPageState({
   const type = (
     urlType ? urlType.toUpperCase() : propType
   ) as CategoryFeedType | null;
-  const mode = searchParams?.get("mode");
+  // Every `?mode=` value: the feed's mode predicate ORs across them, and a
+  // profile can seed several (`?mode=remote&mode=hybrid`).
+  const modeParams = searchParams?.getAll("mode");
+  const mode = modeParams && modeParams.length > 0 ? modeParams : null;
   const source = readMultiParam(searchParams, "source") ?? [];
   const sort = searchParams?.get("sort");
 
   const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
-  // Value the `?job=` param should hold — the pane's URL is written from this,
+  // Value the `?job=` param should hold â€” the pane's URL is written from this,
   // never read back from a possibly-stale searchParams.
   const jobParamRef = useRef<string | null>(searchParams?.get("job") ?? null);
 
@@ -168,7 +183,7 @@ export function useCategoryPageState({
     jobParamRef.current = jobKey;
     setSelectedOpp(opp);
     // The URL now carries `?job=<slug>`, so the list and the open pane share one
-    // addressable link — shareable, bookmarkable, and reproducible on reload.
+    // addressable link â€” shareable, bookmarkable, and reproducible on reload.
     // Next.js still hands useSearchParams a fresh object for a truthy URL, but
     // `urlSignature` ignores `job`, so no filter array is rebuilt and feed scroll
     // + pagination survive the click. That is why this used to push a bare
@@ -196,7 +211,7 @@ export function useCategoryPageState({
         // went on top of), popstate strips it below.
         window.history.back();
       } else {
-        // Deep link that loaded straight into an open pane — there is no pushed
+        // Deep link that loaded straight into an open pane â€” there is no pushed
         // entry to abandon, so drop the param from the current one.
         stripJobParam();
       }
@@ -239,9 +254,25 @@ export function useCategoryPageState({
   const [draftLoc, setDraftLoc] = useState<string | null>(null);
   const [draftYear, setDraftYear] = useState<number | null>(null);
   const [draftClosingSoon, setDraftClosingSoon] = useState(false);
+  // Walk-in drafts. The mobile drawer edits a copy and commits on Apply, so
+  // these are separate from the live `driveDate` / `driveRadiusKm`.
+  const [draftDriveDate, setDraftDriveDate] = useState<WalkinDrivePeriod>("all");
+  const [draftDriveRadiusKm, setDraftDriveRadiusKm] = useState<number | null>(null);
   const [driveDate, setDriveDate] = useState<WalkinDrivePeriod>(
     (searchParams?.get("driveDate") as WalkinDrivePeriod) || "all",
   );
+  /**
+   * Max distance for a walk-in, in km. `null` means no radius limit, which is
+   * distinct from 0. Shared through the URL so a "drives near me" view is
+   * linkable and survives a reload.
+   */
+  const [driveRadiusKm, setDriveRadiusKm] = useState<number | null>(() => {
+    const raw = searchParams?.get("driveRadiusKm");
+    if (!raw) return null;
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed <= 0 || parsed > 500) return null;
+    return Math.round(parsed);
+  });
   const [draftShowOnlySaved, setDraftShowOnlySaved] = useState(false);
   const [draftSector, setDraftSector] = useState<string | null>(null);
   const [draftQualification, setDraftQualification] = useState<string | null>(
@@ -263,6 +294,85 @@ export function useCategoryPageState({
     setMounted(true);
   }, []);
 
+  // â”€â”€ Profile â†’ URL seeding â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // The profile's preferences are written into the query string, so the
+  // EXISTING chip row renders them: from then on the URL is the single source
+  // of truth â€” shareable, reload-stable, removable like any other filter.
+  const profileSeed = useMemo(() => buildProfileFilterSeed(profile), [profile]);
+
+  /** Fill only the slots the URL left empty; dismissed dimensions stay out. */
+  const applyProfileSeeds = useCallback(() => {
+    if (!profileFilterPrefs.enabled) return;
+    const dismissed = new Set(profileFilterPrefs.dismissed);
+    setFilters((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      if (profileSeed.location && !next.location && !dismissed.has("dim:city")) {
+        next.location = profileSeed.location;
+        changed = true;
+      }
+      if (profileSeed.year && !next.year && !dismissed.has("dim:batch")) {
+        next.year = profileSeed.year;
+        changed = true;
+      }
+      if (profileSeed.workMode?.length && !(next.workMode?.length) && !dismissed.has("dim:workMode")) {
+        next.workMode = profileSeed.workMode;
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [profileFilterPrefs, profileSeed]);
+
+  /** Clear exactly the values the profile put there â€” anything the user
+   * typed themselves is untouched. */
+  const removeProfileSeeds = useCallback(() => {
+    setFilters((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      if (profileSeed.location && next.location === profileSeed.location) {
+        next.location = null;
+        changed = true;
+      }
+      if (profileSeed.year && next.year === profileSeed.year) {
+        next.year = null;
+        changed = true;
+      }
+      if (profileSeed.workMode?.length && sameModeSet(next.workMode, profileSeed.workMode)) {
+        next.workMode = null;
+        changed = true;
+      }
+      return changed ? next : prev;
+    });
+  }, [profileSeed]);
+
+  // Seeding lifecycle: fill on mount / when the profile lands / on re-enable,
+  // and clear the moment the master switch goes off.
+  const prevProfileEnabledRef = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (!mounted) return;
+    const prev = prevProfileEnabledRef.current;
+    const next = profileFilterPrefs.enabled;
+    prevProfileEnabledRef.current = next;
+    if (next) {
+      // Switching back on restores every dimension, so an X'd chip has a way back.
+      if (prev === false) resetProfileFilterDims();
+      applyProfileSeeds();
+    } else if (prev === true) {
+      removeProfileSeeds();
+    }
+  }, [mounted, profileFilterPrefs, applyProfileSeeds, removeProfileSeeds]);
+
+  /** Dimensions the profile currently owns â€” an X on one of these is a
+   * dismissal, not just a cleared param, so reload never re-seeds it. */
+  const profileOwnedDims = useMemo(() => {
+    const owned: string[] = [];
+    if (!profileFilterPrefs.enabled) return owned;
+    if (profileSeed.location && filters.location === profileSeed.location) owned.push("city");
+    if (profileSeed.year && filters.year === profileSeed.year) owned.push("batch");
+    if (profileSeed.workMode?.length && sameModeSet(filters.workMode, profileSeed.workMode)) owned.push("workMode");
+    return owned;
+  }, [profileFilterPrefs.enabled, profileSeed, filters.location, filters.year, filters.workMode]);
+
   // Keep a ref to the latest searchParams so the outbound effect can read
   // the current URL without depending on searchParams reactively.
   const searchParamsRef = React.useRef(searchParams);
@@ -271,7 +381,7 @@ export function useCategoryPageState({
   });
 
   // Sync filter state FROM URL when searchParams change (e.g. sidebar link navigation).
-  // Skip the first render — state is already initialised from searchParams above.
+  // Skip the first render â€” state is already initialised from searchParams above.
   const isFirstRender = React.useRef(true);
   const appliedUrlSignature = React.useRef<string | null>(null);
   const pathname = usePathname();
@@ -279,7 +389,7 @@ export function useCategoryPageState({
     const sp = searchParams;
     const signature = urlSignature(pathname, sp);
 
-    // `?job=` mirrors the open pane, so reconcile it from the URL here — before
+    // `?job=` mirrors the open pane, so reconcile it from the URL here â€” before
     // the signature guard below, which deliberately ignores that param. Back and
     // forward navigation both arrive through this effect.
     const urlJobKey = sp?.get("job") ?? null;
@@ -348,6 +458,7 @@ export function useCategoryPageState({
     filters.role,
     filters.experience,
     driveDate,
+    driveRadiusKm,
   ]);
 
   const mobileActiveCount =
@@ -424,6 +535,7 @@ export function useCategoryPageState({
     updateParam("year", filters.year);
     updateParam("closingSoon", filters.closingSoon);
     updateParam("driveDate", driveDate !== "all" ? driveDate : null);
+    updateParam("driveRadiusKm", driveRadiusKm !== null ? String(driveRadiusKm) : null);
     updateParam("saved", filters.saved);
     updateParam("sector", filters.sector);
     updateParam("qualification", filters.qualification);
@@ -469,7 +581,7 @@ export function useCategoryPageState({
     setMulti("experience", filters.experience);
 
     // Board pages (canonicalRedirect && initialFilters) encode their filter in
-    // the path — e.g. `/jobs/javascript` ~ skills=JavaScript. Final pass strips
+    // the path â€” e.g. `/jobs/javascript` ~ skills=JavaScript. Final pass strips
     // any board-implied param so the URL stays canonical (no `?skills=` echo),
     // which is what caused the filter to appear duplicated on taxonomy boards.
     if (canonicalRedirect && initialFilters) {
@@ -529,6 +641,7 @@ export function useCategoryPageState({
     filters.experience,
     filters.workMode,
     driveDate,
+    driveRadiusKm,
     mounted,
   ]);
 
@@ -544,10 +657,22 @@ export function useCategoryPageState({
     clearLiveSearch,
     isLiveSearching,
     isLiveResults,
+    profileMismatchCount,
+    hiddenProfileCount,
+    profileChipCount,
+    profileChipTotal,
+    showHiddenProfile,
+    setShowHiddenProfile,
+    savedIds,
+    draftBaseInputs,
   } = useOpportunitiesFeed({
     type,
     mode,
-    source,
+    // Live UI state, not the URL snapshot: filters.source seeds from ?source=
+    // but UI edits only touch state, and the silent history.replaceState sync
+    // never re-renders â€” so the URL value goes stale one edit behind. The
+    // Source facet filtered nothing until reload.
+    source: filters.source,
     company: filters.company,
     sort,
     selectedLoc: filters.location,
@@ -562,6 +687,9 @@ export function useCategoryPageState({
     experience: filters.experience,
     search,
     initialData,
+    // The feed applies the signed-in profile preferences as visible filters â€”
+    // the disclosure row in CategoryPageView accounts for what they hide.
+    personalize: true,
   });
 
   useEffect(() => {
@@ -602,126 +730,18 @@ export function useCategoryPageState({
   const feedTotal = initialData?.total ?? 0;
 
   const visibleOpps = useMemo(() => {
-    const filtered = filteredOpps.filter((opp) => {
-      if (filters.saved) return true;
-      if (
-        type !== 'GOVERNMENT' &&
-        opp.expiresAt &&
-        new Date(opp.expiresAt) < new Date()
-      )
-        return false;
-      if (type === 'GOVERNMENT' && govtPhase !== "ALL") {
-        const s =
-          (opp.governmentJobDetails as any)?.applicationStatus || "OPEN";
-        if (!s || !GOVT_PHASE_STATUSES[govtPhase].includes(s)) return false;
-      }
-      if (type === 'GOVERNMENT' && govtCategory !== null) {
-        if (!jobMatchesCategory(opp.governmentJobDetails, govtCategory))
-          return false;
-      }
-      if (type !== 'GOVERNMENT') {
-        if (filters.workMode && filters.workMode.length > 0) {
-          const isMatch = filters.workMode.some((m) => {
-            const sel = m.toLowerCase();
-            const oppWorkMode = String(
-              (opp as any).workMode || "",
-            ).toLowerCase();
-            if (sel === "remote") {
-              return (
-                (opp.locations || []).some((loc) => {
-                  const l = loc.toLowerCase();
-                  return (
-                    l.includes("remote") ||
-                    l.includes("wfh") ||
-                    l.includes("work from home")
-                  );
-                }) ||
-                oppWorkMode === "remote" ||
-                (opp.title || "").toLowerCase().includes("remote")
-              );
-            }
-            if (sel === "hybrid") {
-              return (
-                (opp.locations || []).some((loc) =>
-                  loc.toLowerCase().includes("hybrid"),
-                ) ||
-                oppWorkMode === "hybrid" ||
-                (opp.title || "").toLowerCase().includes("hybrid")
-              );
-            }
-            if (sel === "on_site" || sel === "onsite") {
-              return (
-                oppWorkMode === "on_site" ||
-                oppWorkMode === "onsite" ||
-                (!oppWorkMode &&
-                  !(opp.locations || []).some((loc) => {
-                    const l = loc.toLowerCase();
-                    return (
-                      l.includes("remote") ||
-                      l.includes("wfh") ||
-                      l.includes("work from home") ||
-                      l.includes("hybrid")
-                    );
-                  }) &&
-                  !(opp.title || "").toLowerCase().includes("remote") &&
-                  !(opp.title || "").toLowerCase().includes("hybrid"))
-              );
-            }
-            return false;
-          });
-          if (!isMatch) return false;
-        }
-        if (filters.skills && filters.skills.length > 0) {
-          const hasAllSkills = filters.skills.every((s) =>
-            opp.requiredSkills?.some(
-              (rs) => rs.toLowerCase() === s.toLowerCase(),
-            ),
-          );
-          if (!hasAllSkills) return false;
-        }
-        if (filters.role && filters.role.length > 0) {
-          const matchesRole = filters.role.some((r) => {
-            const rLower = r.toLowerCase();
-            const titleMatch = (opp.title || "").toLowerCase().includes(rLower);
-            const normRoleMatch = ((opp.normalizedRole || "") as string)
-              .toLowerCase()
-              .includes(rLower);
-            const rolesMatch = ((opp as any).roles || []).some(
-              (roleItem: string) => roleItem.toLowerCase().includes(rLower),
-            );
-            return titleMatch || normRoleMatch || rolesMatch;
-          });
-          if (!matchesRole) return false;
-        }
-      }
-
-      // Walk-in date filter: today or this week
-      if (type === 'WALKIN' && driveDate !== "all") {
-        if (!isWalkinInPeriod(opp, driveDate)) return false;
-      }
-
-      return true;
+    return applyLocalFilters(filteredOpps, {
+      saved: filters.saved,
+      workMode: filters.workMode,
+      skills: filters.skills,
+      role: filters.role,
+      type,
+      govtPhase,
+      govtCategory,
+      userLocation: userLocation ?? null,
+      driveDate,
+      driveRadiusKm: driveRadiusKm ?? null,
     });
-
-    // For WALKIN type: compute distance from user and sort nearest-first
-    if (type === 'WALKIN' && userLocation) {
-      const withDistance = filtered.map((opp) => ({
-        ...opp,
-        distanceKm: getOpportunityDistanceKm(
-          opp,
-          userLocation.latitude,
-          userLocation.longitude,
-        ),
-      }));
-      withDistance.sort((a, b) => {
-        const dA = a.distanceKm ?? Infinity;
-        const dB = b.distanceKm ?? Infinity;
-        return dA - dB;
-      });
-      return withDistance;
-    }
-
-    return filtered;
   }, [
     filteredOpps,
     filters.saved,
@@ -733,6 +753,7 @@ export function useCategoryPageState({
     govtCategory,
     userLocation,
     driveDate,
+    driveRadiusKm,
   ]);
 
   useEffect(() => {
@@ -811,7 +832,7 @@ export function useCategoryPageState({
       type !== 'GOVERNMENT' &&
       type !== 'WALKIN'
     ) {
-      // A `?job=` link names the row the pane must show — never replace it with
+      // A `?job=` link names the row the pane must show â€” never replace it with
       // row #1 just because that job sits outside the current filter view.
       if (jobKey && resolvedJobRef.current?.found) return;
       if (visibleOpps.length === 0) {
@@ -853,6 +874,9 @@ export function useCategoryPageState({
     setDraftCompany(filters.company || []);
     setDraftRole(filters.role || []);
     setDraftExperience(filters.experience ?? []);
+    // Seed the drive drafts so the drawer opens showing what is already applied.
+    setDraftDriveDate(driveDate);
+    setDraftDriveRadiusKm(driveRadiusKm);
     setIsMobileFilterOpen(true);
   };
 
@@ -872,6 +896,10 @@ export function useCategoryPageState({
       role: draftRole,
       experience: draftExperience ?? [],
     });
+    // Commit the walk-in drafts. Without this the drawer's When and Distance
+    // sections changed the pills on screen but never filtered anything.
+    setDriveDate(draftDriveDate);
+    setDriveRadiusKm(draftDriveRadiusKm);
     setIsMobileFilterOpen(false);
   };
 
@@ -879,6 +907,14 @@ export function useCategoryPageState({
     setSearch("");
     clearLiveSearch();
     setDriveDate("all");
+    setDraftDriveDate("all");
+    setDraftDriveRadiusKm(null);
+    // The walk-in radius is a filter too. Leaving it set meant "Clear all
+    // filters" still showed nothing for anyone outside the radius.
+    setDriveRadiusKm(null);
+    // Profile chips live in the same row as the manual ones, so "clear all"
+    // clears them too â€” the switch visibly flips to Off, nothing hides.
+    setProfileFiltersEnabled(false);
     setFilters({
       location: null,
       year: null,
@@ -895,6 +931,75 @@ export function useCategoryPageState({
       experience: [],
     });
   };
+
+  // Live match count for the mobile filter sheet's commit button. Runs the
+  // exact applied pipeline â€” pass 1 with draft facets, profile gate, pass 2
+  // with draft facets â€” so the number on the button is precisely what Apply
+  // produces. Same shared predicates, zero duplication.
+  const draftMatchCount = useMemo(() => {
+    const base = draftBaseInputs.liveResults !== null ? draftBaseInputs.liveResults : opportunities;
+    const pass1 = filterOpportunities(base, {
+      showOnlySaved: draftShowOnlySaved,
+      savedIds,
+      sort,
+      type,
+      mode,
+      source: draftSource,
+      selectedLoc: draftLoc,
+      closingSoon: draftClosingSoon,
+      sector: draftSector,
+      qualification: draftQualification,
+      course: draftCourse,
+      selectedYear: draftYear,
+      skills: draftSkills,
+      roles: draftRole,
+      experience: draftExperience,
+      company: draftCompany,
+      debouncedSearch: draftBaseInputs.debouncedSearch,
+      isLiveOverlay: draftBaseInputs.liveResults !== null,
+    });
+    const gated = applyProfileVisibility(pass1, {
+      activeProfileChips: draftBaseInputs.activeProfileChips,
+      layerOn: draftBaseInputs.profileLayerOn,
+      showHiddenProfile: draftBaseInputs.showHiddenProfile,
+    });
+    return applyLocalFilters(gated, {
+      saved: draftShowOnlySaved,
+      workMode: draftWorkMode,
+      skills: draftSkills,
+      role: draftRole,
+      type,
+      govtPhase,
+      govtCategory,
+      userLocation: userLocation ?? null,
+      driveDate,
+    }).length;
+  }, [
+    opportunities,
+    draftLoc,
+    draftYear,
+    draftClosingSoon,
+    draftShowOnlySaved,
+    draftSector,
+    draftQualification,
+    draftCourse,
+    draftWorkMode,
+    draftSkills,
+    draftSource,
+    draftCompany,
+    draftRole,
+    draftExperience,
+    sort,
+    type,
+    mode,
+    govtPhase,
+    govtCategory,
+    userLocation,
+    driveDate,
+    driveRadiusKm,
+    savedIds,
+    draftBaseInputs,
+  ]);
 
   return {
     type,
@@ -962,9 +1067,19 @@ export function useCategoryPageState({
     openMobileFilters,
     applyMobileFilters,
     clearAll,
+    draftMatchCount,
 
     driveDate,
+
     setDriveDate,
+
+    driveRadiusKm,
+
+    setDriveRadiusKm,
+    draftDriveDate,
+    setDraftDriveDate,
+    draftDriveRadiusKm,
+    setDraftDriveRadiusKm,
 
     visibleCount,
     setVisibleCount,
@@ -977,6 +1092,14 @@ export function useCategoryPageState({
     topContent,
     bottomContent,
     userLocation: userLocation ?? null,
+
+    profileMismatchCount,
+    hiddenProfileCount,
+    profileChipCount,
+    profileChipTotal,
+    profileOwnedDims,
+    showHiddenProfile,
+    setShowHiddenProfile,
   };
 }
 

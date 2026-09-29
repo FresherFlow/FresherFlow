@@ -1,18 +1,23 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { type Opportunity } from '@fresherflow/types';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTriangleIcon';
-import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
-import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
-import TagIcon from '@heroicons/react/24/outline/TagIcon';
-import UserIcon from '@heroicons/react/24/outline/UserIcon';
-import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
+import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
+import { BrandButton } from '@/ui/BrandButton';
+import { DidYouApplyCard } from '@/features/jobs/components/detail/DidYouApplyCard';
+import AuthModal from '@/features/auth/components/AuthModal';
+import {
+    setPendingAction,
+    takePendingAction,
+    type PendingAction,
+    type PendingActionInput,
+} from '@/lib/storage/pendingAction';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
 
 import Link from 'next/link';
@@ -37,7 +42,6 @@ import { DetailHeroSection } from '@/features/jobs/components/detail/DetailHeroS
 import { DetailSidebarActions } from '@/features/jobs/components/detail/DetailSidebarActions';
 import { ExpiredWarning } from '@/features/jobs/components/detail/ExpiredWarning';
 import { DescriptionSection } from '@/features/jobs/components/detail/DescriptionSection';
-import { DiscussionSection } from '@/features/jobs/components/discussion/DiscussionSection';
 import { GovernmentJobDetailView } from '@/features/jobs/components/detail/GovernmentJobDetailView';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 // import { AppPromoBanner } from '@/features/landing/AppPromoBanner';
@@ -65,6 +69,25 @@ export default function OpportunityDetailClient({
     const { user, profile } = useAuth();
 
     // Core Logic Hook
+    /* Guest Save. Opens the in-page auth modal instead of a toast, remembers the
+       intent so it can be replayed, then replays it on return. The auth journey
+       is unchanged: still /login -> username claim -> /onboarding, and
+       ?redirect= now survives that whole trip. Declared before
+       useOpportunityDetail because the hook takes `requestAuth`. */
+    const [pendingAuth, setPendingAuth] = useState<PendingAction | null>(null);
+    const [authModalOpen, setAuthModalOpen] = useState(false);
+
+    const requestAuth = useCallback((action: PendingActionInput) => {
+        setPendingAction(action);
+        setPendingAuth(action);
+        setAuthModalOpen(true);
+    }, []);
+
+    const closeAuthModal = useCallback(() => {
+        setAuthModalOpen(false);
+        setPendingAuth(null);
+    }, []);
+
     const {
         opp,
         isLoading,
@@ -78,18 +101,23 @@ export default function OpportunityDetailClient({
         handleApply,
         handleShare,
         handleCopyLink
-    } = useOpportunityDetail(id, initialData, user, initialRelatedData);
+    } = useOpportunityDetail(id, initialData, user, initialRelatedData, [], requestAuth);
+
+    // Replay once, keyed on `user` becoming truthy after the round trip.
+    const replayedRef = useRef(false);
+    useEffect(() => {
+        if (!user || replayedRef.current) return;
+        const stored = takePendingAction();
+        replayedRef.current = true;
+        setPendingAuth(null);
+        if (stored?.type === 'save-job') {
+            void handleToggleSave();
+        }
+    }, [user, handleToggleSave]);
 
     const ds = useOpportunityDerivedState(opp as Opportunity, profile, searchParams);
 
     const [showStickyHeader, setShowStickyHeader] = useState(false);
-    useEffect(() => {
-        const onScroll = () => {
-            setShowStickyHeader(window.scrollY > 80);
-        };
-        window.addEventListener('scroll', onScroll, { passive: true });
-        return () => window.removeEventListener('scroll', onScroll);
-    }, []);
 
     const [isMounted, setIsMounted] = useState(false);
     useEffect(() => { setIsMounted(true); }, []);
@@ -195,17 +223,6 @@ export default function OpportunityDetailClient({
                         formatDeadline={ds.formatDeadline}
                     />
 
-                    {/* V1 checklist B: government pages get the same discussion access as other jobs. */}
-                    <DiscussionSection
-                        opportunityIdOrSlug={opp.slug || opp.id}
-                        postedByUsername={
-                            (opp as { user?: { username?: string | null; fullName?: string | null } }).user?.username ||
-                            (opp as { referredByUsername?: string }).referredByUsername ||
-                            null
-                        }
-                        postedAt={(opp as { postedAt?: string | Date }).postedAt ?? null}
-                        sourceLink={opp.sourceLink ?? null}
-                    />
 
                     {relatedForMode.length > 0 && (
                         <div className="pt-6 border-t border-border">
@@ -219,12 +236,17 @@ export default function OpportunityDetailClient({
 
     return (
         <div className="min-h-screen selection:bg-primary/20 bg-background text-foreground">
-            {/* Scroll-Reactive Header on Mobile */}
+            {/* Scroll-Reactive Header on Mobile.
+                This is a REPLACEMENT for the app header, not a second bar on top
+                of it: same `z-*` band, same height, fully opaque. At
+                `bg-background/95` + `backdrop-blur-md` the app header showed
+                through underneath, so scrolling produced two stacked bars and it
+                read as a new layer appearing. */}
             <div className={cn(
-                "md:hidden fixed top-0 left-0 right-0 z-80 bg-background/95 backdrop-blur-md border-b border-border/40 px-4 flex items-center justify-between transition-all duration-300 transform pt-0",
-                showStickyHeader 
-                    ? "translate-y-0 opacity-100" 
-                    : "-translate-y-full opacity-0 pointer-events-none"
+                "md:hidden fixed top-0 left-0 right-0 z-80 flex items-center justify-between border-b border-border/40 bg-background px-4 pt-0 transition-transform duration-300",
+                showStickyHeader
+                    ? "translate-y-0"
+                    : "-translate-y-full pointer-events-none"
             )}
             style={{ height: `calc(3.5rem + env(safe-area-inset-top))` }}
             >
@@ -260,9 +282,16 @@ export default function OpportunityDetailClient({
                 </div>
             </div>
 
-            {/* Main Layout: Title+Content (left) + Sidebar (right) */}
-            <div className="max-w-7xl mx-auto px-4 pt-4 pb-8 md:pt-6">
-                {/* Breadcrumbs — mobile only (desktop has header breadcrumb) */}
+            {/* Main Layout: Title+Content (left) + Sidebar (right).
+                `pb-32` on mobile reserves the height of the fixed apply bar
+                (48px button + 12px top + 12px bottom + safe-area inset) so the
+                last related card can scroll clear of it instead of being
+                permanently clipped underneath. */}
+            <div className={cn(
+                "max-w-7xl mx-auto px-4 pt-4 pb-8 md:pt-6",
+                ds.hasApplyLink && "pb-32 lg:pb-8"
+            )}>
+                {/* Breadcrumbs  -- €” mobile only (desktop has header breadcrumb) */}
                 <nav className="md:hidden flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground font-medium select-none mb-4">
                     <Link href="/" className="hover:text-primary transition-colors">Home</Link>
                     <span className="text-muted-foreground/40">/</span>
@@ -301,6 +330,20 @@ export default function OpportunityDetailClient({
 
                         {opp.expiresAt && ds.isExpired(opp) && <ExpiredWarning opportunityId={opp.id} opportunityTitle={opp.title} />}
 
+                        {/* Post-apply confirmation. Self-gates on the armed
+                            session flag, so it renders nothing until the user
+                            has been sent out to the employer's site and is due
+                            back. Sits above the description at both widths. */}
+                        {opp && (
+                            <DidYouApplyCard
+                                jobId={opp.id}
+                                jobTitle={opp.title}
+                                company={opp.company}
+                                setAction={handleSetAction}
+                                isUpdatingAction={isUpdatingAction}
+                            />
+                        )}
+
                         {/* Mobile-Only Sidebar boxes */}
                         <div className="lg:hidden space-y-4">
                             <RequirementsBox opp={opp} educationDetails={ds.educationDetails} />
@@ -332,69 +375,6 @@ export default function OpportunityDetailClient({
                             description={opp.description}
                             title="Description"
                         />
-
-                        {/* Internal Linking Tag Chips */}
-                        <div className="space-y-3 py-3 border-t border-border/40">
-                            <h3 className="text-sm font-bold text-foreground tracking-tight">Explore Related Placements</h3>
-                            <div className="flex flex-wrap gap-2 text-xs">
-                                <Link href={`/companies/${(opp as any).companySlug || getCompanySlug((opp as any).companyWebsite, opp.company)}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/5 hover:bg-primary/10 text-primary font-semibold border border-primary/10 transition-colors">
-                                    <BriefcaseIcon className="w-3.5 h-3.5" />
-                                    {opp.company} Careers
-                                </Link>
-                                {opp.allowedPassoutYears?.map(year => (
-                                    <Link key={year} href={`/jobs/${year}-batch`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
-                                        <CalendarIcon className="w-3.5 h-3.5" />
-                                        {year} Batch Jobs
-                                    </Link>
-                                ))}
-                                {opp.locations?.filter(loc => {
-                                    if (loc.toLowerCase() === 'india' || loc.toLowerCase() === 'pan india') return false;
-                                    if (validDirectoryLinks?.validLocations?.length) {
-                                        return validDirectoryLinks.validLocations.includes(loc.trim().toLowerCase());
-                                    }
-                                    return true;
-                                }).map(loc => {
-                                    const locSlug = slugify(loc);
-                                    return (
-                                        <Link key={loc} href={`/jobs/${locSlug}-jobs`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
-                                            <MapPinIcon className="w-3.5 h-3.5" />
-                                            Jobs in {loc}
-                                        </Link>
-                                    );
-                                })}
-                                {opp.requiredSkills?.filter(skill => {
-                                    if (validDirectoryLinks?.validSkills?.length) {
-                                        return validDirectoryLinks.validSkills.includes(skill.trim().toLowerCase());
-                                    }
-                                    return true;
-                                }).slice(0, 5).map(skill => (
-                                    <Link key={skill} href={`/jobs/${slugify(skill)}-jobs`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
-                                        <TagIcon className="w-3.5 h-3.5" />
-                                        <span className="capitalize">{skill}</span>{' '}Jobs
-                                    </Link>
-                                ))}
-                                {(() => {
-                                    if (!opp.jobFunction) return null;
-                                    if (opp.jobFunction.toLowerCase() === 'internship') {
-                                        return (
-                                            <Link href="/jobs/internships" className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
-                                                <UserIcon className="w-3.5 h-3.5" />
-                                                <span className="capitalize">{opp.jobFunction}</span> Jobs
-                                            </Link>
-                                        );
-                                    }
-                                    const roleSlug = slugify(opp.jobFunction);
-                                    const CURATED_ROLES = new Set(['software-engineer', 'data-analyst', 'business-analyst', 'frontend-developer', 'test-engineer']);
-                                    if (!CURATED_ROLES.has(roleSlug)) return null;
-                                    return (
-                                        <Link href={`/jobs/${roleSlug}-jobs`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-primary/5 hover:text-primary text-muted-foreground font-semibold border border-border transition-colors">
-                                            <UserIcon className="w-3.5 h-3.5" />
-                                            <span className="capitalize">{opp.jobFunction}</span> Jobs
-                                        </Link>
-                                    );
-                                })()}
-                            </div>
-                        </div>
 
                         {/* Mobile-Only Progress Tracker */}
                         {isMounted && user && (
@@ -434,21 +414,14 @@ export default function OpportunityDetailClient({
                         {opp.applicationDetails && opp.applicationDetails.method === 'ASSESSMENT' && (
                             <ComplexityCard applicationDetails={opp.applicationDetails} />
                         )}
-
-                        <DiscussionSection
-                            opportunityIdOrSlug={opp.slug || opp.id}
-                            postedByUsername={
-                                (opp as { user?: { username?: string | null; fullName?: string | null } }).user?.username ||
-                                (opp as { referredByUsername?: string }).referredByUsername ||
-                                null
-                            }
-                            postedAt={(opp as { postedAt?: string | Date }).postedAt ?? null}
-                            sourceLink={opp.sourceLink ?? null}
-                        />
                     </div>
 
-                    {/* RIGHT: Sidebar (desktop only, sticky) */}
-                    <aside className="hidden lg:block lg:col-span-2 lg:sticky lg:top-14">
+                    {/* RIGHT: Sidebar (desktop only, sticky).
+                        `self-start` is what enables the sticky child  -- €” without
+                        it the grid item stretches to the full row height and
+                        there is nothing left to stick within. No max-height and
+                        no internal scroll: the rail scrolls with the page. */}
+                    <aside className="hidden lg:col-span-2 lg:block lg:sticky lg:top-14 lg:self-start">
                         <div className="bg-card border border-border/60 rounded-2xl p-5 space-y-5">
                             <DetailSidebarActions
                                 user={user}
@@ -482,41 +455,169 @@ export default function OpportunityDetailClient({
                 <div className="mt-8 pt-6 border-t border-border/40">
                     <RelatedOpportunities relatedOpps={relatedForMode} isLoadingRelated={isLoadingRelated} />
                 </div>
+
+                {/* Internal links. These are real pages and the SEO is worth
+                    keeping, but they were eight filled pills sitting between the
+                    description and the related-jobs grid in the same visual
+                    language as real UI - so they read as content nobody could use
+                    and pushed the actual next step down the page. Moved below the
+                    grid and reduced to one quiet line of plain text links. */}
+                <nav
+                    aria-label="Related directories"
+                    className="mt-6 border-t border-border/40 pt-4 text-xs text-muted-foreground"
+                >
+                    <span className="mr-2">Related:</span>{' '}
+                    <Link
+                        href={`/companies/${(opp as any).companySlug || getCompanySlug((opp as any).companyWebsite, opp.company)}`}
+                        className="font-medium underline underline-offset-2 transition-colors hover:text-foreground"
+                    >
+                        {opp.company} Careers
+                    </Link>
+                    {opp.allowedPassoutYears?.map((year) => (
+                        <span key={year}>
+                            {' · '}
+                            <Link
+                                href={`/jobs/${year}-batch`}
+                                className="font-medium underline underline-offset-2 transition-colors hover:text-foreground"
+                            >
+                                {year} batch jobs
+                            </Link>
+                        </span>
+                    ))}
+                    {opp.locations
+                        ?.filter((loc) => {
+                            if (loc.toLowerCase() === 'india' || loc.toLowerCase() === 'pan india') return false;
+                            if (validDirectoryLinks?.validLocations?.length) {
+                                return validDirectoryLinks.validLocations.includes(loc.trim().toLowerCase());
+                            }
+                            return true;
+                        })
+                        .map((loc) => (
+                            <span key={loc}>
+                                {' · '}
+                                <Link
+                                    href={`/jobs/${slugify(loc)}-jobs`}
+                                    className="font-medium underline underline-offset-2 transition-colors hover:text-foreground"
+                                >
+                                    Jobs in {loc}
+                                </Link>
+                            </span>
+                        ))}
+                    {opp.requiredSkills
+                        ?.filter((skill) => {
+                            if (validDirectoryLinks?.validSkills?.length) {
+                                return validDirectoryLinks.validSkills.includes(skill.trim().toLowerCase());
+                            }
+                            return true;
+                        })
+                        .slice(0, 5)
+                        .map((skill) => (
+                            <span key={skill}>
+                                {' · '}
+                                <Link
+                                    href={`/jobs/${slugify(skill)}-jobs`}
+                                    className="font-medium capitalize underline underline-offset-2 transition-colors hover:text-foreground"
+                                >
+                                    {skill} jobs
+                                </Link>
+                            </span>
+                        ))}
+                    {(() => {
+                        if (!opp.jobFunction) return null;
+                        if (opp.jobFunction.toLowerCase() === 'internship') {
+                            return (
+                                <span>
+                                    {' · '}
+                                    <Link
+                                        href="/jobs/internships"
+                                        className="font-medium capitalize underline underline-offset-2 transition-colors hover:text-foreground"
+                                    >
+                                        {opp.jobFunction} jobs
+                                    </Link>
+                                </span>
+                            );
+                        }
+                        const roleSlug = slugify(opp.jobFunction);
+                        const CURATED_ROLES = new Set([
+                            'software-engineer',
+                            'data-analyst',
+                            'business-analyst',
+                            'frontend-developer',
+                            'test-engineer',
+                        ]);
+                        if (!CURATED_ROLES.has(roleSlug)) return null;
+                        return (
+                            <span>
+                                {' · '}
+                                <Link
+                                    href={`/jobs/${roleSlug}-jobs`}
+                                    className="font-medium capitalize underline underline-offset-2 transition-colors hover:text-foreground"
+                                >
+                                    {opp.jobFunction} jobs
+                                </Link>
+                            </span>
+                        );
+                    })()}
+                </nav>
             </div>
 
-            {/* Sticky Bottom Apply Bar on Mobile */}
+            {/* Sticky Bottom Apply Bar on Mobile.
+                The bar is `fixed`, so the page must reserve room for it or the
+                last card ("Explore more jobs") sits permanently underneath  -- €”
+                that is what clipped the tail of Key Skills on a phone. */}
             {ds.hasApplyLink && (
-                <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur px-4 py-3.5 pb-3 shadow-sm flex items-center gap-2.5">
+                <div
+                    // Safe-area inset on a fixed bottom bar, same as AdminBottomNav.
+                    style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+                    className="lg:hidden fixed bottom-0 left-0 right-0 z-50 flex items-center gap-2.5 border-t border-border bg-card px-4 pt-3 shadow-sm"
+                >
                     <div className="flex-1">
                         {ds.listingState === 'EXPIRED' ? (
-                            <button
-                                disabled
-                                className="w-full h-12 rounded-xl bg-muted border border-border text-muted-foreground flex items-center justify-center gap-2 text-sm font-bold cursor-not-allowed select-none"
-                            >
-                                <span className="w-2 h-2 rounded-full bg-muted-foreground/50" />
+                            <div className="flex h-12 w-full items-center justify-center gap-2 rounded-xs border border-muted bg-muted/50 text-sm font-bold text-muted-foreground select-none">
                                 Applications Closed
-                            </button>
+                            </div>
                         ) : (
-                            <button
+                            <BrandButton
+                                variant="neutral"
                                 onClick={handleApply}
-                                className="w-full h-12 text-sm bg-primary text-primary-foreground hover:bg-primary/95 active:scale-95 rounded-xl flex items-center justify-center gap-2 font-bold shadow-md hover:shadow-lg transition-all"
+                                className="h-12 w-full"
                             >
-                                {isGovernmentJob ? 'Apply on Official Portal' : 'Apply on Website'}
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
-                                </svg>
-                            </button>
+                                {isGovernmentJob ? 'Apply on official portal' : 'Apply on company site'}
+                                <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                            </BrandButton>
                         )}
                     </div>
-                    <CopyButton
+                    {/* Share, not a bare copy-link control: the copy button was
+                        the same action as Share with no label, and desktop now
+                        offers Share only. */}
+                    <BrandButton
                         variant="ghost"
-                        value={typeof window !== 'undefined' ? window.location.href : ''}
-                        icon={LinkIcon}
-                        iconClassName="w-5 h-5"
-                        
-                    />
+                        size="icon"
+                        onClick={handleShare}
+                        aria-label="Share"
+                        title="Share"
+                        className="h-12 shrink-0"
+                    >
+                        <ShareIcon className="w-5 h-5" />
+                    </BrandButton>
                 </div>
             )}
+            {/* In-page auth, so a guest tapping Save keeps their place and
+                their pending action. Falls back to the full /login page from
+                inside the modal if they prefer it. */}
+            <AuthModal
+                isOpen={authModalOpen}
+                onClose={closeAuthModal}
+                intent={
+                    pendingAuth?.type === 'save-job'
+                        ? 'Sign in to save this job, and keep tracking where it takes you.'
+                        : undefined
+                }
+                onAuthenticated={() => {
+                    setAuthModalOpen(false);
+                    setPendingAuth(null);
+                }}
+            />
         </div>
     );
 }

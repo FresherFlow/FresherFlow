@@ -116,16 +116,10 @@
     96.7% 0.007 97
   ); /* #F5F4EF — CaptionsTool warm gray */
 
-  /* -- Paper: the value that replaces pure white only ----------------- */
-  /*
-     Scope is strictly pure white. Paper is what cards, popovers, the sidebar
-     and text-on-navy/orange/red use instead of #ffffff. Every other light
-     token (background, borders, muted, chips, hovers) is untouched.
-  */
-  /* Paper is the app's own off-white, not a tint. It had drifted to chroma
-     0.018 / hue 250, which tinted the sidebar blue. It now matches
-     --color-background exactly, so the sidebar reads as the same neutral the
-     rest of the surface already uses. */
+  /* Paper: off-white for the sidebar and text on saturated fills. Cards and
+     popovers are pure white on purpose. Equals --color-background since
+     f9eae2b6 removed the blue tint; give it a distinct value to restore
+     sidebar separation. */
   --color-paper: oklch(93.6% 0.003 248);
 
   /* ── Typography ──────────────────────────────────────────────── */

@@ -21,7 +21,14 @@ export function useElementSize<T extends HTMLElement = HTMLDivElement>() {
 
         const update = () => {
             const rect = node.getBoundingClientRect();
-            setSize({ width: rect.width, height: rect.height });
+            // Keep the previous object when nothing moved: a fresh object every
+            // callback re-rendered the consumer even for size-neutral
+            // notifications (e.g. a height-only change on a width-only reader).
+            setSize((prev) =>
+                prev.width === rect.width && prev.height === rect.height
+                    ? prev
+                    : { width: rect.width, height: rect.height }
+            );
         };
 
         update();

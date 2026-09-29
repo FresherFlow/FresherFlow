@@ -4,8 +4,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { authApi } from '@/lib/api/client';
 import { UsernameGate } from '@/features/auth/components/ProfileGate';
-import { isProfilePageActive } from '@fresherflow/utils';
+import { isProfilePagePublished } from '@fresherflow/utils';
 import toast from 'react-hot-toast';
 import {
     ArrowLeftIcon,
@@ -74,9 +75,9 @@ function SettingsPageContent() {
     const maskedEmail = user?.email ? maskEmail(user.email) : 'Not provided';
     const expectedConfirmText = user?.username || 'DELETE';
     const publicPagePath = user?.username ? `/u/${user.username}` : null;
-    // Same activation rule the public route enforces (visibility + fresh
-    // profilePublishedAt): the View link must not point at a 404.
-    const isPublicPageLive = isProfilePageActive(profile?.profilePublishedAt ?? null);
+    // Same reachability rule the public route enforces (visibility + published at least
+    // once): the View link must not point at a 404. A lapsed boost does not affect this.
+    const isPublicPageLive = isProfilePagePublished(profile?.profilePublishedAt ?? null);
 
     // Copy-link toast pattern mirrors ProfilePreviewCard — never alert().
     const copyPublicPageLink = async () => {
@@ -89,21 +90,36 @@ function SettingsPageContent() {
         }
     };
 
-    const handleDeleteAccount = () => {
+    const handleDeleteAccount = async () => {
         if (confirmInput.trim().toLowerCase() !== expectedConfirmText.toLowerCase()) {
             toast.error(`Please type "${expectedConfirmText}" to confirm.`);
             return;
         }
         setIsDeleting(true);
-        setTimeout(() => {
-            setIsDeleting(false);
+        try {
+            await authApi.deleteAccount();
             setIsDeleteModalOpen(false);
             setConfirmInput('');
-            toast.error('Account deletion is coming soon. Please contact support to request data removal.');
-        }, 500);
+            toast.success('Your account has been deleted.');
+            if (logout) {
+                await logout('/login');
+            } else {
+                router.push('/login');
+            }
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : 'Could not delete the account.');
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
-    const handleSignOutAll = () => {
+    const handleSignOutAll = async () => {
+        try {
+            await authApi.logoutAll();
+            toast.success('Signed out of all sessions.');
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Could not sign out all sessions.');
+        }
         if (logout) {
             void logout('/login');
         } else {
@@ -111,8 +127,23 @@ function SettingsPageContent() {
         }
     };
 
-    const handleSignOutOthers = () => {
-        toast.error('Signing out other devices is coming soon.');
+    const handleSignOutOthers = async () => {
+        const toastId = toast.loading('Signing out other devices...');
+        try {
+            const { revokedCount } = await authApi.logoutOthers();
+            if (revokedCount > 0) {
+                toast.success(
+                    `Signed out ${revokedCount} other session${revokedCount === 1 ? '' : 's'}.`,
+                    { id: toastId }
+                );
+            } else {
+                toast.success('No other active sessions found.', { id: toastId });
+            }
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : 'Could not sign out other sessions.', {
+                id: toastId,
+            });
+        }
     };
 
     return (
@@ -212,7 +243,7 @@ function SettingsPageContent() {
                                         href="/account"
                                         className="px-3 py-1.5 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold rounded-xl transition-colors"
                                     >
-                                        Activate page
+                                        Publish page
                                     </Link>
                                 )}
                             </div>

@@ -6,15 +6,28 @@ import { useSavedJobs } from '@/features/dashboard/hooks/useSavedJobs';
 import type { Opportunity } from '@fresherflow/types';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { JobSearchField } from '@/features/jobs/components/JobSearchField';
 import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
-import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import FunnelIcon from '@heroicons/react/24/outline/FunnelIcon';
-import JobCard from '@/features/jobs/components/JobCard';
+import { Bookmark } from 'lucide-react';
 import { fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { readFeedCache, getOpportunityFromCache } from '@/lib/cache/opportunitiesFeedCache';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/ui/DropdownMenu';
 import { Button } from '@/ui/Button';
-import { SkeletonJobCard } from '@/features/jobs/components/OpportunitySkeletons';
+import { BrandButton } from '@/ui/BrandButton';
+import { Skeleton } from '@/ui/Skeleton';
+import SavedJobCard from '@/features/jobs/components/SavedJobCard';
+
+function timeAgo(iso: string | Date): string {
+    const diff = Date.now() - new Date(iso).getTime();
+    if (Number.isNaN(diff)) return '';
+    const days = Math.floor(diff / 86400000);
+    if (days < 1) return 'today';
+    if (days === 1) return '1d ago';
+    if (days < 30) return `${days}d ago`;
+    const months = Math.floor(days / 30);
+    return months === 1 ? '1mo ago' : `${months}mo ago`;
+}
 
 function SavedJobsPageContent() {
     const router = useRouter();
@@ -28,7 +41,7 @@ function SavedJobsPageContent() {
     useEffect(() => {
         async function loadFeed() {
             try {
-                // Card-only view — lightweight index instead of the 2MB bootstrap.
+                // Card-only view Ã¢â‚¬â€ lightweight index instead of the 2MB bootstrap.
                 const feed = await fetchFeedIndex();
                 if (feed?.opportunities) {
                     const cached = readFeedCache()?.opportunities || [];
@@ -48,32 +61,29 @@ function SavedJobsPageContent() {
     const [searchQuery, setSearchQuery] = useState('');
     const [sortBy, setSortBy] = useState<'recent' | 'az'>('recent');
 
-    const savedOpportunities = useMemo(() => {
+    const { savedJobs, unavailableIds } = useMemo(() => {
         const oppMap = new Map<string, Opportunity>();
         allOpportunities.forEach(o => oppMap.set(o.id, o));
 
         // Get list of all saved IDs
         const savedIds = Object.keys(savedJobsMap).filter(id => savedJobsMap[id]);
-        
-        let list: Opportunity[] = savedIds.map(id => {
+
+        const found: Opportunity[] = [];
+        const missing: string[] = [];
+        savedIds.forEach(id => {
             const existing = oppMap.get(id) || getOpportunityFromCache(id);
-            if (existing) return existing;
-            // Fallback opportunity object for saved jobs not in current feed
-            return ({
-                id,
-                title: 'Saved Job Opportunity',
-                company: 'FresherFlow Listing',
-                type: 'JOB',
-                postedAt: new Date().toISOString(),
-                batchYears: [2024, 2025, 2026],
-                locations: ['Flexible / Remote'],
-                requiredSkills: ['General'],
-                applyUrl: '#',
-                source: 'FresherFlow',
-                freshness: 'RECENT',
-                status: 'ACTIVE'
-            } as unknown) as Opportunity;
+            if (existing) {
+                found.push(existing);
+            } else {
+                // The saved ID is no longer in the feed or cache: the listing
+                // expired or was removed. Keep only the ID Ã¢â‚¬â€ rendering a fake
+                // title/company/apply link here would be a lie.
+                missing.push(id);
+            }
         });
+
+        let list: Opportunity[] = found;
+        let unavailable: string[] = missing;
 
         if (searchQuery.trim()) {
             const query = searchQuery.trim().toLowerCase();
@@ -81,13 +91,15 @@ function SavedJobsPageContent() {
                 const companyName = typeof opp.company === 'string' ? opp.company : (opp.company as any)?.name || '';
                 return opp.title.toLowerCase().includes(query) || companyName.toLowerCase().includes(query);
             });
+            unavailable = unavailable.filter(() => 'unavailable listing'.includes(query));
         }
 
         if (sortBy === 'az') {
             list.sort((a, b) => a.title.localeCompare(b.title));
+            unavailable.sort((a, b) => a.localeCompare(b));
         }
 
-        return list;
+        return { savedJobs: list, unavailableIds: unavailable };
     }, [allOpportunities, savedJobsMap, searchQuery, sortBy]);
 
     return (
@@ -100,30 +112,34 @@ function SavedJobsPageContent() {
                     </button>
                     <div className="flex items-center gap-3">
                         <h1 className="text-2xl font-bold tracking-tight text-foreground">Saved Jobs</h1>
+                        {/* Split counts, because a single "9 saved" hid the fact
+                            that three of those nine can no longer be opened. */}
                         <span className="text-xs font-semibold tabular-nums text-muted-foreground">
-                            {savedOpportunities.length} saved
+                            {savedJobs.length} saved
                         </span>
+                        {unavailableIds.length > 0 && (
+                            <span className="text-xs font-medium tabular-nums text-muted-foreground/70">
+                                {unavailableIds.length} unavailable
+                            </span>
+                        )}
                     </div>
                 </div>
 
                 {/* Filters */}
                 <div className="flex items-center gap-3">
-                    <div className="relative min-w-55 sm:min-w-70">
-                        <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Filter by company or role..."
-                            className="w-full h-9 pl-9 pr-3 text-xs bg-card/60 border border-border/60 backdrop-blur-xl rounded-xl placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary hover:border-border transition-all duration-150 ease-out shadow-sm"
-                        />
-                    </div>
+                    <JobSearchField
+                        value={searchQuery}
+                        onChange={setSearchQuery}
+                        placeholder="Filter by company or role..."
+                        aria-label="Filter saved jobs"
+                        className="min-w-55 sm:min-w-70"
+                    />
                     
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm">
+                            <Button variant="outline" size="sm" aria-label="Sort saved jobs">
                                 <FunnelIcon className="h-4 w-4" />
-                                {sortBy === 'recent' ? 'Most Recent' : 'A-Z'}
+                                <span className="hidden sm:inline">{sortBy === 'recent' ? 'Most Recent' : 'A-Z'}</span>
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -139,14 +155,32 @@ function SavedJobsPageContent() {
             </div>
 
             {isLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                    {[1, 2, 3].map((i) => (
-                        <SkeletonJobCard key={i} />
+                <div className="grid gap-3 lg:grid-cols-2" aria-hidden="true">
+                    {[1, 2, 3, 4].map((i) => (
+                        <div
+                            key={i}
+                            className="flex flex-col gap-2.5 rounded-xs border border-border bg-card p-3 sm:flex-row sm:items-start"
+                        >
+                            <div className="flex min-w-0 flex-1 items-center gap-3">
+                                <Skeleton className="h-10 w-10 shrink-0" />
+                                <div className="min-w-0 flex-1 space-y-1.5">
+                                    <Skeleton className="h-4 w-2/5" />
+                                    <Skeleton className="h-3 w-3/5" />
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-end gap-2 sm:justify-start">
+                                <Skeleton className="h-8 w-8 shrink-0" />
+                                <Skeleton className="h-8 w-20 shrink-0" />
+                            </div>
+                        </div>
                     ))}
                 </div>
-            ) : savedOpportunities.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-border/60 bg-card/60 backdrop-blur-xl shadow-md p-12 text-center space-y-4 max-w-xl mx-auto animate-in fade-in-0 zoom-in-95 duration-200">
-                    <div className="w-12 h-12 bg-muted/80 rounded-full flex items-center justify-center mx-auto text-muted-foreground/60">
+            ) : savedJobs.length === 0 && unavailableIds.length === 0 ? (
+                <div className="rounded-xs border border-border p-12 text-center space-y-4 max-w-xl mx-auto animate-in fade-in-0 zoom-in-95 duration-200">
+                    {/* No fill: the box takes the page background and is delimited
+                        by its border alone. A `bg-card` here read as a white panel
+                        sitting on a grey page. */}
+                    <div className="w-12 h-12 bg-muted/80 rounded-xs flex items-center justify-center mx-auto text-muted-foreground/60">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                         </svg>
@@ -157,33 +191,55 @@ function SavedJobsPageContent() {
                             Save current and active openings from the feed to compare and apply later.
                         </p>
                     </div>
-                    <Link
-                        href="/jobs"
-                        className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold text-xs rounded-lg hover:bg-primary/90 active:scale-95 transition-all duration-150 ease-out shadow-sm"
-                    >
-                        Find jobs shared by freshers →
-                    </Link>
+                    {/* `neutral`, not `solid`: the brand orange is for our own
+                        calls to action on the landing page. Inside a saved-jobs
+                        empty state it reads as a promo. */}
+                    <BrandButton asChild variant="neutral" size="sm">
+                        <Link href="/jobs">Find jobs shared by freshers</Link>
+                    </BrandButton>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                    {savedOpportunities.map((opp, index) => (
-                        <div 
-                            key={opp.id} 
-                            role="listitem" 
-                            className="animate-in fade-in-0 zoom-in-95 duration-200"
-                            style={{ animationDelay: `${Math.min(index * 50, 250)}ms` }}
+                <div className="grid gap-3 lg:grid-cols-2">
+                    {savedJobs.map((opp) => (
+                        <SavedJobCard
+                            key={opp.id}
+                            opp={opp}
+                            isSaved
+                            onToggleSave={() => toggleSavedJob(opp.id)}
+                        />
+                    ))}
+                    {unavailableIds.map((id) => (
+                        <div
+                            key={`unavailable-${id}`}
+                            className="flex min-w-0 flex-col gap-2.5 rounded-xs border border-border/50 bg-transparent p-3 sm:flex-row sm:items-start"
                         >
-                            <JobCard
-                                job={{
-                                    ...opp,
-                                    normalizedRole: opp.title,
-                                    salary: (opp.salaryMin !== undefined && opp.salaryMax !== undefined) ? { min: opp.salaryMin, max: opp.salaryMax } : undefined,
-                                }}
-                                jobId={opp.id}
-                                isSaved={true}
-                                onToggleSave={() => toggleSavedJob(opp.id)}
-                                className="bg-card/60 border-border/60 backdrop-blur-xl shadow-md hover:shadow-lg hover:border-primary/40 active:scale-95 transition-all duration-150 ease-out"
-                            />
+                            <div className="flex min-w-0 flex-1 items-start gap-3">
+                                <div className="min-w-0 flex-1">
+                                    <p className="line-clamp-2 text-sm font-medium leading-snug text-muted-foreground">
+                                        Unavailable listing
+                                    </p>
+                                    <p className="mt-1 truncate text-xs leading-snug text-muted-foreground/70">
+                                        This listing expired or was removed.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 sm:self-center">
+                                <button
+                                    type="button"
+                                    onClick={() => toggleSavedJob(id)}
+                                    aria-label="Remove unavailable listing from saved"
+                                    title="Remove from saved"
+                                    className="flex size-8 shrink-0 items-center justify-center rounded-xs border border-border/50 text-muted-foreground transition-colors hover:bg-muted"
+                                >
+                                    <Bookmark className="size-4" fill="currentColor" aria-hidden="true" />
+                                </button>
+                                <Link
+                                    href="/jobs"
+                                    className="inline-flex h-8 shrink-0 items-center justify-center px-4 font-semibold text-xs rounded-md border border-border hover:bg-muted transition-colors"
+                                >
+                                    Find similar
+                                </Link>
+                            </div>
                         </div>
                     ))}
                 </div>

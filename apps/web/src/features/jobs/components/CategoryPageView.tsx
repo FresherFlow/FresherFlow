@@ -1,10 +1,10 @@
-/* eslint-disable shadcn/no-arbitrary-values, shadcn/no-unknown-classes, shadcn/no-restyle, shadcn/require-static-classes, shadcn/no-raw-colors */
+﻿/* eslint-disable shadcn/no-arbitrary-values, shadcn/no-unknown-classes, shadcn/no-restyle, shadcn/require-static-classes, shadcn/no-raw-colors */
 import { cn } from '@repo/ui/utils/cn';
 import { useMemo, useEffect, useState, useCallback, Suspense, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useFeedHeader } from '@/lib/providers/FeedHeaderProvider';
 import Link from 'next/link';
-import { getAtsName } from '@/features/jobs/hooks/useOpportunitiesFeed';
+import { countFilterFacets } from '@/features/jobs/utils/filterOpportunities';
 import { useRouter } from 'next/navigation';
 import { Opportunity } from '@fresherflow/types';
 import type { CategoryFeedType } from '@/features/jobs/utils/walkinMapUtils';
@@ -13,6 +13,7 @@ import dynamic from 'next/dynamic';
 const OpportunityDetailPane = dynamic(() => import('./OpportunityDetailPane').then(m => m.OpportunityDetailPane));
 import { JobCardResponsive } from '@/features/jobs/components/JobCard';
 import { OpportunityRow } from '@/features/jobs/components/OpportunityRow';
+import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
 import Squares2X2Icon from '@heroicons/react/24/outline/Squares2X2Icon';
@@ -39,10 +40,13 @@ import { SkillPill } from '@/features/jobs/components/SkillPill';
 import { Button } from '@/ui/Button';
 import { Hint } from '@/ui/Tooltip';
 import { Input } from '@/ui/Input';
+import { BrandButton } from '@/ui/BrandButton';
 import { OpportunityDetailPaneSkeleton, SkeletonJobCard } from '@/features/jobs/components/OpportunitySkeletons';
 import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { EmptyState } from '@/ui/EmptyState';
 import { JobsFilterBar } from '@/features/jobs/components/JobsFilterBar';
+import { PersonalizationBar } from '@/features/jobs/components/PersonalizationBar';
+import { dismissProfileFilterDims } from '@/features/jobs/hooks/useProfileFilters';
 import { WalkinMapPane } from '@/features/jobs/components/WalkinMapPane';
 import {
     GovtPhaseTabs,
@@ -55,7 +59,7 @@ const MobileFilterDrawer = dynamic(() =>
     import('@/features/jobs/components/MobileFilterDrawer').then(m => m.MobileFilterDrawer)
 );
 
-// ─── Config ──────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const CATEGORY_CONFIG = {
     JOB:        { title: 'Jobs for Freshers',          subtitle: 'Full-time opportunities across India',            icon: BriefcaseIcon },
@@ -92,7 +96,7 @@ function formatFeedAge(tsMs?: number): string {
     if (days === 1) return 'yesterday';
     return `${days}d ago`;
 }
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// â”€â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function LiveTicker({ items }: { items: { label: string; href: string; tag: string; tagColor: string }[] }) {
     if (items.length === 0) return null;
@@ -136,7 +140,7 @@ function LiveTicker({ items }: { items: { label: string; href: string; tag: stri
     );
 }
 
-// ─── Presenter ────────────────────────────────────────────────────────────────
+// â”€â”€â”€ Presenter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 export function CategoryPageView({
     type, user, opportunities, filteredOpps, visibleOpps, isLoading, error, profileIncomplete, mounted, isDesktop,
@@ -149,9 +153,12 @@ export function CategoryPageView({
     draftWorkMode, setDraftWorkMode, draftSkills, setDraftSkills, draftSource, setDraftSource, draftCompany, setDraftCompany,
     draftExperience, setDraftExperience,
     mobileActiveCount, openMobileFilters, applyMobileFilters, clearAll,
+    draftMatchCount,
     visibleCount, setVisibleCount, isJobSaved, isJobApplied, toggleSave, reload,
     customTitle, topContent, bottomContent, userLocation, driveDate, setDriveDate,
+    driveRadiusKm, setDriveRadiusKm,
     feedUpdatedAt, feedTotal,
+    profileMismatchCount, hiddenProfileCount, profileChipCount, profileChipTotal, profileOwnedDims, showHiddenProfile, setShowHiddenProfile,
     onLocationRequest, onLocationClear, locationLoading, locationRequested, locationDenied
 }: CategoryPageState & {
     onLocationRequest?: () => void;
@@ -162,6 +169,9 @@ export function CategoryPageView({
 }) {
     const router = useRouter();
     const mobileGrid = isDesktop === false;
+    // Desktop renders the SAME row in both views â€” see the feed map below for
+    // why the card tree is not used here.
+    const desktopRows = type !== 'GOVERNMENT' && isDesktop === true;
     const config = (type ? CATEGORY_CONFIG[type] : undefined) ?? { title: 'Jobs', subtitle: '', icon: BriefcaseIcon };
     const { targetRef: loadMoreRef, isIntersecting } = useIntersectionObserver({ threshold: 0.1, rootMargin: '400px' });
     const { setCount } = useFeedHeader();
@@ -210,7 +220,7 @@ export function CategoryPageView({
         };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Selecting a job must never move the list — if anything (remount,
+    // Selecting a job must never move the list â€” if anything (remount,
     // browser anchoring) resets the list scroll on select, put it back.
     // Only arms on row click, so filter/search resets still work.
     useEffect(() => {
@@ -221,55 +231,9 @@ export function CategoryPageView({
             el.scrollTop = savedListScrollTopRef.current;
         }
     }, [selectedOpp]);
-    const filterAggregates = useMemo(() => {
-        const locations: Record<string, number> = {};
-        const skills: Record<string, number> = {};
-        const sources: Record<string, number> = {};
-        const years: Record<string, number> = {};
-        const companies: Record<string, number> = {};
-
-        opportunities.forEach(opp => {
-            (opp.locations || []).forEach(loc => {
-                const l = loc.trim();
-                if (l) locations[l] = (locations[l] || 0) + 1;
-            });
-            ((opp as any).skills || opp.requiredSkills || []).forEach((s: string) => {
-                const skill = s.trim();
-                if (skill) skills[skill] = (skills[skill] || 0) + 1;
-            });
-            const atsName = getAtsName(opp.applyLink || (opp as any).sourceLink || opp.companyWebsite);
-            if (atsName) {
-                sources[atsName] = (sources[atsName] || 0) + 1;
-            }
-            const comp = opp.company?.trim();
-            if (comp) {
-                companies[comp] = (companies[comp] || 0) + 1;
-            }
-            let passoutYears = [...((opp as any).allowedPassoutYears || [])];
-            if (passoutYears.length === 0 && opp.passoutYearMin && opp.passoutYearMax) {
-                const min = Number(opp.passoutYearMin);
-                const max = Number(opp.passoutYearMax);
-                if (!isNaN(min) && !isNaN(max) && min <= max) {
-                    passoutYears = Array.from({ length: max - min + 1 }, (_, i) => min + i);
-                }
-            }
-            if (passoutYears.length === 0) {
-                const match = opp.title.match(/(202[0-9]|2030)/);
-                if (match) passoutYears = [Number(match[0])];
-            }
-            passoutYears.forEach((y: string | number) => {
-                const year = String(y).trim();
-                if (year) years[year] = (years[year] || 0) + 1;
-            });
-        });
-
-        const filteredLocations: Record<string, number> = {};
-        for (const [loc, count] of Object.entries(locations)) {
-            if (count >= 1) filteredLocations[loc] = count;
-        }
-
-        return { locations: filteredLocations, skills, sources, years, companies };
-    }, [opportunities]);
+    // Panel counts are scoped to this page's feed type (internships page =
+    // internship counts), via the same `type` the feed hook receives.
+    const filterAggregates = useMemo(() => countFilterFacets(opportunities, type), [opportunities, type]);
 
     // Unified reactive scroll reset on any filter, search, tab, or type change
     useEffect(() => {
@@ -415,23 +379,33 @@ export function CategoryPageView({
         </>
     );
 
-    // ── Detail pane toggle (persisted) ──────────────────────────────────────
+    // â”€â”€ Detail pane toggle (persisted) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     const [showDetail, setShowDetail] = useState(false);
     const headerRef = useRef<HTMLDivElement>(null);
     const feedRef = useRef<HTMLDivElement>(null);
     // Keep the feed box exactly viewport-tall (no outer scroll), whatever height
     // the title row / filters / active chips take up. Panes fill the box with
-    // flex heights and scroll internally — no viewport math in the panes.
+    // flex heights and scroll internally â€” no viewport math in the panes.
+    //
+    // This writes the height of the box the observed header sits in, from that
+    // box's own offset â€” so it must never write the value it already applied.
+    // `getBoundingClientRect()` reports fractional geometry, and re-writing a
+    // height that layout then reflects back re-fires the observer on the
+    // effect's own output; that is the ResizeObserver loop that pinned the List
+    // view (the Split pane absorbs the same writes differently). Rounding the
+    // input once and comparing it makes each pass idempotent.
     useEffect(() => {
         const el = headerRef.current;
         if (!el || typeof ResizeObserver === 'undefined') return;
+        let appliedTop: number | null = null;
         const update = () => {
             const feedEl = feedRef.current;
-            if (feedEl) {
-                const feedRect = feedEl.getBoundingClientRect();
-                // 6px breathing room so the box's rounded bottom + shadow stay visible
-                feedEl.style.height = `calc(100dvh - ${Math.ceil(feedRect.top)}px - 6px)`;
-            }
+            if (!feedEl) return;
+            const top = Math.ceil(feedEl.getBoundingClientRect().top);
+            if (top === appliedTop) return;
+            appliedTop = top;
+            // 6px breathing room so the box's rounded bottom + shadow stay visible
+            feedEl.style.height = `calc(100dvh - ${top}px - 6px)`;
         };
         update();
         const ro = new ResizeObserver(update);
@@ -443,7 +417,7 @@ export function CategoryPageView({
         };
     }, []);
     const [hoveredOppId, setHoveredOppId] = useState<string | null>(null);
-    // Sliding hover highlight geometry — glides between rows instead of snapping.
+    // Sliding hover highlight geometry â€” glides between rows instead of snapping.
     const [hoverRect, setHoverRect] = useState<{ top: number; height: number } | null>(null);
     const [mobileMapView, setMobileMapView] = useState(false);
     useEffect(() => {
@@ -462,17 +436,29 @@ export function CategoryPageView({
         });
     }, [handleCloseOpportunityPane]);
 
+    // Manual filters + search â€” what the save-this-search nudge reacts to.
+    const activeFilterTally = useMemo(
+        () => mobileActiveCount + (search.trim().length > 0 ? 1 : 0),
+        [mobileActiveCount, search],
+    );
+
     return (
         <div id="feed-scroll-container" ref={feedRef} className="w-full max-w-7xl mx-auto flex flex-col" style={{ height: 'calc(100dvh - 3.5rem)' }}>
             {portalTarget && headerPortalContent ? createPortal(headerPortalContent, portalTarget) : null}
 
-            {/* Sticky header — transparent so it can never mismatch the page:
-                only blur + hairline remain, scrolled cards frost beneath */}
-            <div ref={headerRef} className="shrink-0 border-b border-border/50 bg-transparent px-3 backdrop-blur-md md:px-6 pt-2.5 pb-0 space-y-2">
+            {/* Sticky header â€” transparent so it can never mismatch the page:
+                only blur + hairline remain, scrolled cards frost beneath.
+                relative z-20 is load-bearing: backdrop-blur traps the filter
+                panels' z-100 inside this header's stacking context, while the
+                detail pane paints at relative z-10 â€” without an explicit level
+                here, page content renders ABOVE open filter dropdowns. z-20
+                clears detail content but stays under map view (30), sticky
+                action bars (40) and modals (100+). */}
+            <div ref={headerRef} className="relative z-20 shrink-0 border-b border-border/50 bg-transparent px-3 backdrop-blur-md md:px-6 pt-2.5 pb-0 space-y-2">
 
             {type === 'GOVERNMENT' ? (
                 /* Govt Compact Top Row: Title/Count left, Filters right.
-                   Search lives in the header on desktop (portaled above) —
+                   Search lives in the header on desktop (portaled above) â€”
                    the inline box below is mobile-only, like other feeds. */
                 <div className="flex items-center justify-between gap-3 pb-1">
                     {/* Left: Compact Search Bar (mobile only) + Title/Count */}
@@ -496,7 +482,7 @@ export function CategoryPageView({
                         </div>
                         <div className="hidden lg:flex items-center text-sm font-semibold text-muted-foreground whitespace-nowrap">
                             <span className="text-foreground font-bold mr-1.5">Government Jobs</span>
-                            • <span className="ml-1.5">{mounted && visibleOpps.length > 0 ? visibleOpps.length : '0'} found</span>
+                            â€¢ <span className="ml-1.5">{mounted && visibleOpps.length > 0 ? visibleOpps.length : '0'} found</span>
                         </div>
                     </div>
 
@@ -513,13 +499,13 @@ export function CategoryPageView({
 
                         {/* Desktop filter dropdowns */}
                         <div className="hidden lg:flex items-center gap-2 flex-wrap">
-                            <JobsFilterBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} aggregates={filterAggregates} driveDate={driveDate} onDriveDateChange={setDriveDate} />
+                            <JobsFilterBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} aggregates={filterAggregates} driveDate={driveDate} onDriveDateChange={setDriveDate} driveRadiusKm={driveRadiusKm ?? null} onDriveRadiusChange={setDriveRadiusKm} hasUserLocation={!!userLocation} />
                         </div>
                     </div>
                 </div>
             ) : (
                 <>
-                    {/* Non-govt mobile search bar — inline, full width. Desktop search is portaled to TopHeaderBar */}
+                    {/* Non-govt mobile search bar â€” inline, full width. Desktop search is portaled to TopHeaderBar */}
                     <div className="relative group lg:hidden">
                         <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
@@ -567,9 +553,9 @@ export function CategoryPageView({
 
                             {/* Desktop filter dropdowns + toggle */}
                             <div className="hidden lg:flex items-center gap-2 flex-wrap">
-                                <JobsFilterBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} aggregates={filterAggregates} driveDate={driveDate} onDriveDateChange={setDriveDate} />
+                                <JobsFilterBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} aggregates={filterAggregates} driveDate={driveDate} onDriveDateChange={setDriveDate} driveRadiusKm={driveRadiusKm ?? null} onDriveRadiusChange={setDriveRadiusKm} hasUserLocation={!!userLocation} />
                                 
-                                {/* View mode switcher (List vs Split) — icons only;
+                                {/* View mode switcher (List vs Split) â€” icons only;
                                     each icon always visible, state shown via highlight */}
                                 <div className="inline-flex items-center bg-muted rounded-lg border border-border/70 shrink-0 p-0.5">
                                     <button
@@ -605,7 +591,7 @@ export function CategoryPageView({
                 </>
             )}
 
-            {/* Govt tabs — phases only. Categories live in the sidebar
+            {/* Govt tabs â€” phases only. Categories live in the sidebar
                 (same URL-driven state); the ticker sits under the title row
                 now that search owns the header. */}
             {type === 'GOVERNMENT' && (
@@ -624,7 +610,7 @@ export function CategoryPageView({
             )}
 
             {/* Active Chips */}
-            {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0) || (filters.source && filters.source.length > 0) || (filters.company && filters.company.length > 0) || (filters.experience && filters.experience.length > 0) || (type === 'GOVERNMENT' && govtCategory)) ? (
+            {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0) || (filters.source && filters.source.length > 0) || (filters.company && filters.company.length > 0) || (filters.experience && filters.experience.length > 0) || (type === 'GOVERNMENT' && govtCategory) || profileChipTotal > 0 || profileChipCount > 0 || profileMismatchCount > 0) ? (
                 <div className="flex flex-wrap items-center gap-1.5 pb-2">
                     {type === 'GOVERNMENT' && govtCategory ? (
                         <button onClick={() => setGovtCategory(null)} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
@@ -641,16 +627,25 @@ export function CategoryPageView({
                         </button>
                     )}
                     {filters.workMode?.map(m => (
-                        <button key={m} onClick={() => setFilters({...filters, workMode: filters.workMode!.filter(x => x !== m).length > 0 ? filters.workMode!.filter(x => x !== m) : null})} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                        <button key={m} onClick={() => {
+                            const rest = filters.workMode!.filter(x => x !== m);
+                            setFilters({...filters, workMode: rest.length > 0 ? rest : null});
+                            // Profile-seeded chip: removing the last mode dismisses the
+                            // dimension, so reload never re-seeds it.
+                            if (rest.length === 0 && profileOwnedDims.includes('workMode')) dismissProfileFilterDims(['workMode']);
+                        }} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
                             <HomeIcon className="w-3.5 h-3.5 shrink-0" />
                             <span>{m === 'REMOTE' ? 'Remote' : m === 'HYBRID' ? 'Hybrid' : 'On-site'}</span>
                             <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
                     ))}
                     {filters.location && (
-                        <button onClick={() => setFilters({...filters, location: null})} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                        <button onClick={() => {
+                            setFilters({...filters, location: null});
+                            if (profileOwnedDims.includes('city')) dismissProfileFilterDims(['city']);
+                        }} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
                             <MapPinIcon className="w-3.5 h-3.5 shrink-0" />
-                            <span>{filters.location}</span>
+                            <span>{filters.location.split(',').map((c) => c.trim()).filter(Boolean).join(', ')}</span>
                             <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
                     )}
@@ -703,7 +698,10 @@ export function CategoryPageView({
                         </button>
                     )}
                     {filters.year && (
-                        <button onClick={() => setFilters({...filters, year: null})} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                        <button onClick={() => {
+                            setFilters({...filters, year: null});
+                            if (profileOwnedDims.includes('batch')) dismissProfileFilterDims(['batch']);
+                        }} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
                             <CalendarIcon className="w-3.5 h-3.5 shrink-0" />
                             <span>{filters.year} Batch</span>
                             <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
@@ -730,11 +728,23 @@ export function CategoryPageView({
                         <XMarkIcon className="w-3.5 h-3.5" />
                         clear all
                     </button>
+
+                    {/* Profile chips + switch + hidden-jobs disclosure live in
+                        THIS row with the manual chips â€” never a row of their own. */}
+                    <PersonalizationBar
+                        mismatchCount={profileMismatchCount}
+                        showHidden={showHiddenProfile}
+                        onToggleShow={() => setShowHiddenProfile((value) => !value)}
+                        filterCount={activeFilterTally}
+                        saveCity={filters.location}
+                        saveCompany={filters.company?.[0] ?? null}
+                        saveBatch={filters.year}
+                    />
                 </div>
             ) : null}
             </div>{/* end sticky header */}
 
-            {/* Scrollable content — locked in split mode, panes scroll internally */}
+            {/* Scrollable content â€” locked in split mode, panes scroll internally */}
             <div ref={scrollContainerRef} onScroll={handleScroll} className={cn(
                 "flex-1 overflow-y-auto px-3 md:px-6 pb-2 space-y-2",
                 type !== 'GOVERNMENT' && showDetail && "xl:overflow-hidden xl:pb-0 xl:space-y-0"
@@ -756,9 +766,15 @@ export function CategoryPageView({
                     draftSource={draftSource} setDraftSource={setDraftSource}
                     draftCompany={draftCompany} setDraftCompany={setDraftCompany}
                     draftExperience={draftExperience} setDraftExperience={setDraftExperience}
-                    isLoggedIn={!!user}
-                    pageType={type ?? undefined}
-                    aggregates={filterAggregates}
+  isLoggedIn={!!user}
+  pageType={type ?? undefined}
+  aggregates={filterAggregates}
+  draftDriveDate={driveDate}
+  setDraftDriveDate={setDriveDate}
+  draftDriveRadiusKm={driveRadiusKm ?? null}
+  setDraftDriveRadiusKm={setDriveRadiusKm}
+  hasUserLocation={!!userLocation}
+  draftMatchCount={draftMatchCount}
                     onApply={applyMobileFilters}
                     onClear={() => {
                         setDraftLoc(null); setDraftYear(null); setDraftClosingSoon(false);
@@ -768,8 +784,10 @@ export function CategoryPageView({
                         if (setDraftSkills) setDraftSkills([]);
                         if (setDraftSource) setDraftSource([]);
                         if (setDraftCompany) setDraftCompany([]);
-                        if (setDraftExperience) setDraftExperience([]);
-                    }}
+  if (setDraftExperience) setDraftExperience([]);
+  if (setDriveDate) setDriveDate("all");
+  if (setDriveRadiusKm) setDriveRadiusKm(null);
+  }}
                 />
             </Suspense>
 
@@ -840,15 +858,31 @@ export function CategoryPageView({
                 <div className="flex flex-col min-w-0 pt-3.5">
                     <EmptyState
                         title={`No ${dynamicTitle} found`}
-                        description={
-                            (mobileActiveCount > 0 || search.trim().length > 0 || (driveDate !== undefined && driveDate !== "all"))
-                                ? "Try removing some filters or search keywords."
-                                : undefined
-                        }
+                        description={(() => {
+                            if (hiddenProfileCount > 0) {
+                                return `${hiddenProfileCount} jobs are hidden because they don't match your profile.`;
+                            }
+                            // Name the drive filter that emptied the list. A
+                            // bare "try removing some filters" after choosing
+                            // "within 5 km" leaves the reader guessing which
+                            // one is responsible.
+                            if (type === 'WALKIN' && driveRadiusKm != null) {
+                                return `No drives within ${driveRadiusKm} km of you. Try a wider radius or another date.`;
+                            }
+                            if (type === 'WALKIN' && driveDate !== 'all') {
+                                return `No drives ${driveDate === 'today' ? 'today' : driveDate === 'thisWeek' ? 'this week' : 'in the next 30 days'}. Try a wider date range.`;
+                            }
+                            if (mobileActiveCount > 0 || search.trim().length > 0 || (driveDate !== undefined && driveDate !== "all")) {
+                                return "Try removing some filters or search keywords.";
+                            }
+                            return undefined;
+                        })()}
                         action={
-                            (mobileActiveCount > 0 || search.trim().length > 0 || (driveDate !== undefined && driveDate !== "all"))
-                                ? <Button variant="outline" onClick={clearAll} size="ctaCompact" label="caps">Clear all filters</Button>
-                                : undefined
+                            hiddenProfileCount > 0
+                                ? <Button variant="outline" onClick={() => setShowHiddenProfile(true)} size="ctaCompact" label="caps">Show them</Button>
+                                : (mobileActiveCount > 0 || search.trim().length > 0 || (driveDate !== undefined && driveDate !== "all") || (type === 'WALKIN' && driveRadiusKm != null))
+                                    ? <Button variant="outline" onClick={clearAll} size="ctaCompact" label="caps">Clear all filters</Button>
+                                    : undefined
                         }
                         variant="ghost"
                     />
@@ -868,7 +902,7 @@ export function CategoryPageView({
                     )}
                 </div>
             ) : (
-                // ── Flat grid (filtered by phase / search) ─────────────────────
+                // â”€â”€ Flat grid (filtered by phase / search) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 <div className={cn(
                     "w-full grid gap-2 items-start",
                     (type !== 'GOVERNMENT' && showDetail)
@@ -882,11 +916,12 @@ export function CategoryPageView({
                         onScroll={handleScroll}
                         className={cn(
                             "min-w-0 pt-3.5",
-                            type !== 'GOVERNMENT' && showDetail && "xl:pt-0 xl:h-full xl:min-h-0 xl:overflow-y-auto xl:px-6 [:root[data-show-detail='false']_&]:xl:h-auto [:root[data-show-detail='false']_&]:xl:overflow-y-visible [:root[data-show-detail='false']_&]:xl:px-0"
+                            type !== 'GOVERNMENT' && showDetail && "xl:pt-4 xl:h-full xl:min-h-0 xl:overflow-y-auto xl:px-6 [:root[data-show-detail='false']_&]:xl:h-auto [:root[data-show-detail='false']_&]:xl:overflow-y-visible [:root[data-show-detail='false']_&]:xl:px-0"
                         )}
                     >
                         <div className={cn(
                             "grid grid-cols-1 gap-3",
+                            desktopRows && !showDetail && "gap-0 divide-y divide-border/60",
                             type !== 'GOVERNMENT' && showDetail && "gap-2 relative xl:gap-0 xl:divide-y xl:divide-border"
                         )}>
                             {(type !== 'GOVERNMENT' && showDetail) && (
@@ -901,24 +936,48 @@ export function CategoryPageView({
                                 />
                             )}
                             {visibleOpps.slice(0, visibleCount).map((opp, index) => (
-                                (type !== 'GOVERNMENT' && showDetail) ? (
+                                // One row implementation for the whole desktop
+                                // feed â€” List and Split render the same thing.
+                                //
+                                // List used to render the card tree here while
+                                // Split rendered this row, so the two views
+                                // disagreed about what a row costs. A card mounts
+                                // a hidden measurement strip, a ResizeObserver, a
+                                // synchronous layout pass over every badge and an
+                                // icon load per skill â€” per card â€” and the List
+                                // view hung while Split stayed smooth. The row has
+                                // no hooks at all.
+                                //
+                                // Desktop-only: showDetail persists in
+                                // localStorage, so without the viewport gate the
+                                // split leaks into phone widths where its detail
+                                // column cannot display. Mobile is cards, always.
+                                desktopRows ? (
                                     <OpportunityRow
                                         key={opp.id}
                                         opp={opp}
                                         isSaved={isJobSaved(opp)}
                                         isApplied={isJobApplied(opp)}
                                         onToggleSave={() => toggleSave(opp.id)}
-                                        isSelected={Boolean(isDesktop && selectedOpp && opp.id === selectedOpp.id)}
-                                        onMouseEnter={(e) => {
+                                        isSelected={Boolean(showDetail && selectedOpp && opp.id === selectedOpp.id)}
+                                        onMouseEnter={showDetail ? (e) => {
                                             const el = e.currentTarget as HTMLElement;
                                             setHoverRect({ top: el.offsetTop, height: el.offsetHeight });
                                             setHoveredOppId(opp.id);
-                                        }}
-                                        onMouseLeave={() => {
+                                        } : undefined}
+                                        onMouseLeave={showDetail ? () => {
                                             setHoveredOppId(null);
                                             setHoverRect(null);
-                                        }}
+                                        } : undefined}
                                         onClick={() => {
+                                            // Split selects into its pane; List
+                                            // opens the job page. One paradigm
+                                            // per view, and the List must not
+                                            // carry the split's hover geometry.
+                                            if (!showDetail) {
+                                                router.push(getOpportunityPathFromItem(opp));
+                                                return;
+                                            }
                                             savedListScrollTopRef.current = gridContainerRef.current?.scrollTop ?? 0;
                                             preserveListScrollRef.current = true;
                                             handleSelectOpportunity(opp);
@@ -945,6 +1004,10 @@ priority={index < 4}
                                             : 'wide'
                                     }
                                     onClick={(e) => {
+                                        // Mobile opens the detail bottom sheet
+                                        // (mobileGrid); desktop split selects into
+                                        // its pane. The job page is never pushed
+                                        // from the feed â€” one paradigm per viewport.
                                         if (type !== 'GOVERNMENT' && (showDetail || mobileGrid)) {
                                             e.preventDefault();
                                             handleSelectOpportunity(opp);
@@ -1026,7 +1089,9 @@ priority={index < 4}
                         </div>
                     )}
 
-                    {/* Mobile Detail Bottom Sheet */}
+                    {/* Mobile Detail Bottom Sheet â€” the mobile paradigm. Taps
+                        select (mobileGrid) and the job opens here, never as a
+                        page push and never as desktop split rows. */}
                     <Drawer.Root
                         open={isDesktop === false && !!selectedOpp && type !== 'GOVERNMENT'}
                         onOpenChange={(open) => { if (!open) handleCloseOpportunityPane(); }}
@@ -1061,19 +1126,19 @@ priority={index < 4}
                             <div className="shrink-0 flex justify-center">
                                 <div className="mobile-map-drag-handle" />
                             </div>
-                            <div className="flex-1 min-h-0">
-                                <WalkinMapPane
-                                    opportunity={selectedOpp}
-                                    opportunities={visibleOpps}
-                                    totalDrives={visibleOpps.length}
-                                    hoveredOppId={hoveredOppId}
-                                    userLocation={userLocation}
-                                    onLocationRequest={onLocationRequest}
-                                    onLocationClear={onLocationClear}
-                                    locationLoading={locationLoading}
-                                    locationRequested={locationRequested}
-                                    locationDenied={locationDenied}
-                                    onSelectOpportunity={handleSelectOpportunity}
+                        <div className="flex-1 min-h-0">
+                            <WalkinMapPane
+                                opportunity={selectedOpp}
+                                opportunities={visibleOpps}
+                                totalDrives={visibleOpps.length}
+                                hoveredOppId={hoveredOppId}
+                                userLocation={userLocation}
+                                onLocationRequest={onLocationRequest}
+                                onLocationClear={onLocationClear}
+                                locationLoading={locationLoading}
+                                locationRequested={locationRequested}
+                                locationDenied={locationDenied}
+                                onSelectOpportunity={handleSelectOpportunity}
                                     onClearSelection={handleCloseOpportunityPane}
                                     onHoverOpportunity={setHoveredOppId}
                                 />
@@ -1127,7 +1192,7 @@ priority={index < 4}
  *
  * The feed above is a list of openings, so a missing one is best shown as an
  * unfilled slot: a dashed rule with a dashed plus tile standing in for the row
- * that should be there. Deliberately not a card — the rule is the structure
+ * that should be there. Deliberately not a card â€” the rule is the structure
  * and the tile is the only thing that moves, so the affordance reads as "add a
  * row" rather than "here is another module". The tile fills on hover and the
  * arrow nudges, so the row acknowledges the pointer without any animation on
@@ -1231,16 +1296,16 @@ function RelatedSearches({
     return (
         <div className="pt-8 pb-8 border-t border-border/50 mt-8 mb-4">
             <h3 className="text-sm font-medium text-muted-foreground mb-4">People also searched</h3>
-            <div className="flex flex-wrap gap-2.5">
-                {relatedTerms.map(term => (
-                    <button
+            <div className="flex flex-wrap gap-2">
+                {relatedTerms.map((term) => (
+                    <BrandButton
                         key={term}
+                        variant="outline"
                         onClick={() => onSearch(term)}
-                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-muted/40 hover:bg-muted text-sm text-foreground transition-colors border border-border/40 hover:border-border"
                     >
-                        <MagnifyingGlassIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                        <MagnifyingGlassIcon className="h-3.5 w-3.5 text-muted-foreground" />
                         {term}
-                    </button>
+                    </BrandButton>
                 ))}
             </div>
         </div>

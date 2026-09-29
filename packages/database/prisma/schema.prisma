@@ -780,6 +780,25 @@ model Opportunity {
   // ── Expiry Management ──────────────────────────────────────────────────────
   expiresAt DateTime?
   expiredAt DateTime?
+
+  /// Earliest still-future date from DriveDetails.dates, mirrored on the
+  /// opportunity so drives can be filtered by time in SQL.
+  ///
+  /// DriveDetails.dates is an unsized DateTime[] scalar list. Postgres cannot
+  /// use an index for range containment on a bare array, so "drives in the next
+  /// 7 days" and "drives near me" had to load every walk-in row into Node and
+  /// filter in JS. This column makes both a plain indexed comparison.
+  ///
+  /// Maintained by DriveDetails write paths and expiryCron. Null for anything
+  /// without DriveDetails, and null once every date has passed.
+  nextDriveAt DateTime?
+
+  /// DriveDetails.city mirrored for the same reason as nextDriveAt: `city` lives
+  /// on DriveDetails, and joining through a 1:1 relation to filter a list is
+  /// slower than an indexed column on the row being listed. Null unless a
+  /// drive. Written by the same paths that maintain nextDriveAt.
+  driveCity String?
+
   status    OpportunityStatus @default(DRAFT) // Starts as draft
 
   // ── Soft Delete Support (PRODUCTION MUST-HAVE) ─────────────────────────────
@@ -853,8 +872,14 @@ model Opportunity {
   @@index([status, deletedAt, category, postedAt(desc)])
   @@index([status, postedAt(desc)])
   @@index([category, sector, status])
-  @@index([recruitmentMethod, status])
-  @@index([workMode, status])
+@@index([recruitmentMethod, status])
+// Drive discovery: "walk-ins in city X in the next N days", status-scoped so the
+// public feed filter stays a single index scan.
+@@index([status, nextDriveAt])
+// Drive discovery: proximity search. City leads with a date window because
+// radius search without a date bound returns every expired drive first.
+@@index([driveCity, nextDriveAt])
+@@index([workMode, status])
   @@index([experienceLevel, status])
   @@index([sourceKind, postedAt(desc)])
   @@index([trustScore(desc), status])
@@ -1740,6 +1765,7 @@ enum NotificationType {
   REGISTRATION_CLOSING
   OPPORTUNITY_APPLIED
   APPLICATION_STAGE_CHANGED
+  REFERRAL_RESPONSE
 }
 
 model CommentVote {

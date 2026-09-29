@@ -158,6 +158,35 @@ Caching mistakes can publish stale or private data. Treat cache changes as produ
 - Cache keys and tags must include the smallest safe scope
 - Confirm public SEO pages never depend on request cookies or user identity
 
+## Tooling rules
+
+Use the dedicated tools for reading and searching. They are faster, they
+respect ignore rules, and their output is directly citable.
+
+**Do not, for code search or reading:**
+
+- `Select-String`, `Get-Content`, `Get-ChildItem` pipelines for finding or
+  reading source
+- multi-clause PowerShell one-liners that string-match source
+- re-reading a file the `Read` tool already returned in full
+
+**Use instead:**
+
+| Task | Tool |
+|---|---|
+| find a symbol or string | `Grep` |
+| read a file, or a range of one | `Read` |
+| find a file by name | `Glob` |
+| edit | `Edit` |
+| create a file | `Write` |
+| plan or audit across many files | `Task` with `explore` |
+
+**Bash is for shell work only:** `git`, `pnpm`, builds, tests, migrations,
+starting or stopping processes, inspecting ports. It is not a search tool.
+
+If a shell command grows past roughly one pipeline, it belongs in `Grep` or
+`Task`. Chained pipelines are slow, unreadable, and hide their own mistakes.
+
 ## Validation
 
 Run validation from the repo root unless an app guide says otherwise.
@@ -205,6 +234,33 @@ Assume the worktree may contain user or teammate edits.
 - Do not run destructive git commands unless the user explicitly asks
 - If unrelated changes appear, leave them alone
 - If related unowned changes block the task, ask before overwriting
+
+### Git write policy
+
+Editing files is the job. Git state is not, unless the user asks for it.
+
+**Do not, without an explicit request:**
+
+- `git add` / `git stage` — do not stage, even "just the files I touched"
+- `git commit`, `git commit --amend`
+- `git push`, `git checkout`, `git switch`, `git restore`, `git reset`
+- `git stash`
+- create branches, tags, or worktrees
+- `git pull`, `git merge`, `git rebase`
+- run `prisma migrate deploy` / `db:push` against any database
+- start or stop background services without being asked
+
+Staging by habit is still a write. "I only staged, I did not commit" is not an
+excuse — the user decides what enters the index.
+
+**Allowed by default:** read-only git (`status`, `diff`, `log`, `show`).
+
+**Migrations** are schema changes to a real database. Write the migration file,
+run `db:generate`, and say plainly that the migration is not applied. Applying
+it is a separate, explicit approval.
+
+**Reporting:** when work is done, name the files changed and say they are left
+unstaged. If the user wants them staged, they will say so.
 
 ## Design system
 

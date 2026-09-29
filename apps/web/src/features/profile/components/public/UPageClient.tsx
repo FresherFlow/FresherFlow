@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowRightIcon } from '@heroicons/react/24/outline';
 import { usernameApi } from '@fresherflow/api-client';
-import { isValidUsername, PROFILE_PAGE_ACTIVE_DAYS } from '@fresherflow/utils';
+import { isValidUsername, PROFILE_BOOST_DAYS } from '@fresherflow/utils';
 import { SiteFooter } from '@/features/shell/SiteFooter';
 import { SmoothScroll } from '@/features/landing/SmoothScroll';
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -183,7 +183,6 @@ export function UPageClient() {
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <h3 className="text-xl font-extrabold tracking-tight">Krish Sharma</h3>
                                     <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold">● Market Ready</span>
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-card border border-border text-muted-foreground text-xs font-medium">1.2k views</span>
                                 </div>
                                 <p className="text-sm text-muted-foreground">B.Tech CSE — VTU · 2026 · Bengaluru · Available Immediately</p>
                                 <p className="text-xs font-mono text-primary">fresherflow.in/u/krish_sharma</p>
@@ -198,8 +197,8 @@ export function UPageClient() {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
                         <div className="lg:col-span-2 border-r border-border p-6 space-y-6">
                             <div className="space-y-3">
-                                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Featured Projects · 3</h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Selected work · 2</h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <div className="rounded-xl border border-border p-4 space-y-2 hover:border-primary/30 hover:shadow-md transition-all">
                                         <div className="flex items-center justify-between"><h5 className="font-bold text-sm">AI Scanner</h5><span className="text-xs px-1.5 py-0.5 rounded bg-primary text-primary-foreground">Live</span></div>
                                         <p className="text-xs text-muted-foreground">Real-time pipeline · TypeScript · Redis · BullMQ</p>
@@ -209,11 +208,6 @@ export function UPageClient() {
                                         <div className="flex items-center justify-between"><h5 className="font-bold text-sm">Mobile App</h5><span className="text-xs px-1.5 py-0.5 rounded border">GitHub</span></div>
                                         <p className="text-xs text-muted-foreground">Expo · MMKV · Offline sync</p>
                                         <div className="flex gap-1"><span className="text-xs px-1.5 py-0.5 bg-muted rounded">Expo</span><span className="text-xs px-1.5 py-0.5 bg-muted rounded">React</span></div>
-                                    </div>
-                                    <div className="rounded-xl border border-border p-4 space-y-2 hover:border-primary/30 hover:shadow-md transition-all">
-                                        <h5 className="font-bold text-sm">Walk-in Map</h5>
-                                        <p className="text-xs text-muted-foreground">Hyderabad drives · Leaflet · Supercluster</p>
-                                        <div className="flex gap-1"><span className="text-xs px-1.5 py-0.5 bg-muted rounded">Leaflet</span></div>
                                     </div>
                                 </div>
                             </div>
@@ -231,9 +225,8 @@ export function UPageClient() {
                                 <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Looking for</h4>
                                 <div className="rounded-xl bg-card border border-border p-4 space-y-3">
                                     <div><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Cities</p><p className="text-sm font-medium">Bengaluru, Hyderabad, Remote</p></div>
-                                    <div><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Work mode</p><p className="text-sm font-medium">Onsite, Hybrid, Remote</p></div>
-                                    <div><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Expected CTC</p><p className="text-sm font-bold text-primary">6 LPA</p></div>
-                                    <a href="#" className="inline-flex text-xs font-semibold text-primary hover:underline">View resume ↗</a>
+                                    <div><p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Availability</p><p className="text-sm font-bold text-primary">Actively looking</p></div>
+                                    <p className="text-xs text-muted-foreground">Resume, CTC and full education stay private on the public page.</p>
                                 </div>
                             </div>
                             <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 text-center space-y-2">
@@ -257,7 +250,7 @@ export function UPageClient() {
                         {[
                             { title: "Interactive Project Demos", desc: "1-click live apps and GitHub docs, not just names." },
                             { title: "Structured Preferences", desc: "Job, Internship, Walk-In and work mode visible instantly." },
-                            { title: "Academic Timeline", desc: "10th, 12th, UG, PG in a clean chronological view." },
+                            { title: "Education & batch", desc: "Degree, specialization and passing year, at a glance." },
                         ].map((f) => (
                             <div key={f.title} className="bg-[var(--ff-band-bg)] px-6 pb-6 pt-7 space-y-2">
                                 <h3 className="font-bold text-[var(--ff-band-ink)]">{f.title}</h3>
@@ -278,9 +271,10 @@ export function UPageClient() {
                     <div className="space-y-3">
                         {[
                             { q: "Is it really free?", a: "Yes — 100% free for students & freshers." },
-                            { q: "Who can see it?", a: `Anyone with your fresherflow.in/u/username link. Your resume and contact links are always visible on it. Turn recruiter visibility on or off anytime. The page stays live for ${PROFILE_PAGE_ACTIVE_DAYS} days at a time — reactivate it to keep the link working.` },
+                            { q: "Who can see it?", a: "Anyone with your fresherflow.in/u/username link. They see a short profile — name, headline, skills, batch, education and your first two projects. Your resume, CTC expectation and full education never go public. Once published the link keeps working for good." },
+                            { q: "How do recruiters find me?", a: `Publishing puts you in the recruiter directory for ${PROFILE_BOOST_DAYS} days, near the top of it. When the boost runs out your page stays online and the link still works — you just drop out of the directory until you re-boost, which takes one tap.` },
                             { q: "Can I edit after?", a: "Yes — edit from /profile, live instantly." },
-                            { q: "What do recruiters see?", a: "Skills, projects with live/GitHub, education, availability and one-click Request intro." },
+                            { q: "What do recruiters see?", a: "The same public profile — skills, up to two projects with live or GitHub links, batch, education and availability." },
                         ].map((item) => (
                             <details key={item.q} className="group rounded-2xl border border-border/60 bg-card p-5 open:bg-card">
                                 <summary className="flex items-center justify-between gap-4 cursor-pointer list-none">

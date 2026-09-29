@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import type { OpportunityCardDTO } from '@fresherflow/types';
 import { CommentCountsProvider, useCommentCount } from '@/features/jobs/hooks/useCommentCounts';
+import { COMMUNITY_UI_ENABLED } from '@/features/community/communityUi';
 
 /**
  * Latest jobs with community actions (V1 checklist §G): every card exposes
@@ -83,13 +84,17 @@ function LatestJobRow({ job }: { job: OpportunityCardDTO }) {
                 </span>
             </div>
             <div className="mt-2.5 flex flex-wrap items-center gap-x-4 gap-y-2 pl-[72px] font-record text-[11px] tracking-[0.02em] text-muted-foreground">
-                <DiscussingCount id={job.slug || job.id} />
-                <Link
-                    href={discussHref}
-                    className="font-semibold text-foreground underline decoration-border underline-offset-2 transition-colors hover:decoration-foreground"
-                >
-                    Discuss
-                </Link>
+                {COMMUNITY_UI_ENABLED && (
+                    <>
+                        <DiscussingCount id={job.slug || job.id} />
+                        <Link
+                            href={discussHref}
+                            className="font-semibold text-foreground underline decoration-border underline-offset-2 transition-colors hover:decoration-foreground"
+                        >
+                            Discuss
+                        </Link>
+                    </>
+                )}
                 {outbound ? (
                     <a
                         href={outbound}

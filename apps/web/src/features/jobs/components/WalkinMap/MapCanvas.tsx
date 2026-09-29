@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import { MAP_TILE_CONFIG } from '@/features/jobs/utils/mapTileConfig';
-import { HYDERABAD_DEFAULT_CENTER } from '@/features/jobs/utils/walkinMapUtils';
+import { INDIA_FALLBACK_CENTER } from '@/features/jobs/utils/walkinMapUtils';
 
 interface MapCanvasProps {
     initialCenter?: [number, number];
@@ -15,8 +15,8 @@ interface MapCanvasProps {
 }
 
 export function MapCanvas({
-    initialCenter = HYDERABAD_DEFAULT_CENTER,
-    initialZoom = 13,
+    initialCenter = INDIA_FALLBACK_CENTER,
+    initialZoom = 12,
     loadingText = 'Loading Walk-in Map...',
     onMapReady,
     onViewportChange,

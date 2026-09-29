@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -6,7 +6,7 @@ import { useState, useContext } from 'react';
 import { cn } from '@/ui/cn';
 import { AuthContext } from '@/lib/auth/AuthContext';
 import AuthDialog from '@/features/auth/components/AuthDialog';
-import { AlertsDropdown } from '@/features/notifications/components/AlertsDropdown';
+import { NotificationsDropdown } from '@/features/notifications/components/NotificationsDropdown';
 
 export default function TopNav() {
     const pathname = usePathname();
@@ -116,7 +116,7 @@ export default function TopNav() {
                             )}
 
                             {user ? (
-                                <AlertsDropdown />
+                                <NotificationsDropdown />
                             ) : (
                                 <button
                                     onClick={handleAlertsClick}

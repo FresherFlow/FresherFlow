@@ -1,12 +1,11 @@
 'use client';
 
-import { Fragment, useState } from 'react';
+import { Fragment } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { UsernameGate } from '@/features/auth/components/ProfileGate';
-import { profileApi } from '@/lib/api/client';
-import { describePageState } from '@/features/profile/profileSummary';
+import { describePageState, pageActionBusyLabel, pageActionLabel } from '@/features/profile/profileSummary';
 import { getProfileGaps } from '@/features/profile/profileChecklist';
 import { usePublicPageActivation } from '@/features/profile/hooks/usePublicPageActivation';
 import {
@@ -25,7 +24,7 @@ const SECTIONS = [
     {
         key: 'profile',
         title: 'Profile',
-        description: 'Candidate details, skills, education and visibility.',
+        description: 'Candidate details, skills, education and links.',
         href: '/account?tab=profile',
         Icon: UserIcon,
     },
@@ -104,30 +103,28 @@ function AccountOverviewContent() {
 }
 
 /**
- * "Your public page" hub row (profile unification): the one place in /account
- * that names fresherflow.in/u/<username>, shows the activation status chip
- * (same usePublicPageActivation rule as PublicPageCard and the editor
- * preview), and links out to view, copy, visibility, and the next checklist
- * gap. Reads only the cached useAuth profile — no new fetch.
+ * "Your public page" hub row: the one place in /account that names
+ * fresherflow.in/u/<username>, shows the boost status chip (the same
+ * usePublicPageActivation rule as the editor preview), and links out to view,
+ * copy, and the next checklist gap. Reads only the cached useAuth profile — no
+ * new fetch.
  *
- * Two independent axes decide whether /u/<self> resolves (API
- * routes/public/profiles.ts): visibility IN (PUBLIC, UNLISTED) AND a fresh
- * profilePublishedAt stamp. The toggle alone cannot revive a draft/expired
- * page, so a non-live page gets Activate instead of the toggle — otherwise
- * "Make public" would claim success while View still 404s.
+ * The row offers exactly two things: open the page while it resolves, and publish or
+ * re-boost when there is something to renew. Publishing is permanent, so the URL survives
+ * a lapsed boost — the only thing re-boosting buys is recruiter-directory placement.
+ * There is deliberately no "hide my page" control here — see profileSummary.ts for why
+ * that switch was removed rather than fixed.
  */
 function YourPublicPageRow() {
-    const { profile, updateProfileState, refreshProfile } = useAuth();
-    // Single source for pagePath + activation state; activate() stamps
-    // profilePublishedAt via the existing publish endpoint (no navigation —
-    // the owner stays on /account and the chip flips via refreshProfile).
+    const { profile } = useAuth();
+    // Single source for pagePath + status; activate() calls the one publish endpoint
+    // (which also re-boosts) with no navigation, so the owner stays on /account and
+    // the chip flips via refreshProfile.
     const { username, pagePath, state, isPublishing, activate } = usePublicPageActivation();
-    const [toggling, setToggling] = useState(false);
 
     const displayUrl = username ? `fresherflow.in/u/${username}` : null;
     const page = describePageState(state);
     const nextGap = getProfileGaps(profile)[0] ?? null;
-    const visibility = profile?.visibility ?? 'PRIVATE';
 
     // Copy-link toast pattern mirrors ProfilePreviewCard — never alert().
     const copyUrl = async () => {
@@ -140,26 +137,10 @@ function YourPublicPageRow() {
         }
     };
 
-    const toggleVisibility = async () => {
-        if (toggling) return;
-        const next = visibility === 'PUBLIC' ? 'PRIVATE' : 'PUBLIC';
-        setToggling(true);
-        try {
-            await profileApi.updateVisibility(next);
-            updateProfileState({ visibility: next });
-            await refreshProfile().catch(() => undefined);
-            toast.success(next === 'PUBLIC' ? 'Your page is now public.' : 'Your page is now private.');
-        } catch (err) {
-            toast.error((err as Error).message || 'Could not update visibility. Try again.');
-        } finally {
-            setToggling(false);
-        }
-    };
-
     const chipClass =
         page.tone === 'live'
             ? 'bg-success/10 text-success border-success/20'
-            : page.tone === 'expiring'
+            : page.tone === 'lapsing'
               ? 'bg-warning/10 text-warning border-warning/20'
               : 'bg-muted text-muted-foreground border-border/60';
 
@@ -192,38 +173,28 @@ function YourPublicPageRow() {
                             <ClipboardDocumentIcon className="size-3.5" aria-hidden="true" />
                             Copy link
                         </button>
-                        {page.isLive ? (
-                            <>
-                                {/* View-page link pattern mirrors ProfileEditor header;
-                                    rendered only while live like ProfilePreviewCard,
-                                    so it can never point at a 404. */}
-                                <a
-                                    href={pagePath}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-muted/60 transition-colors"
-                                >
-                                    View page
-                                    <ArrowTopRightOnSquareIcon className="size-3.5" aria-hidden="true" />
-                                </a>
-                                <button
-                                    type="button"
-                                    onClick={() => void toggleVisibility()}
-                                    disabled={toggling}
-                                    aria-pressed={visibility === 'PUBLIC'}
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-muted/60 transition-colors disabled:opacity-50 cursor-pointer"
-                                >
-                                    {toggling ? 'Saving…' : visibility === 'PUBLIC' ? 'Make private' : 'Make public'}
-                                </button>
-                            </>
-                        ) : (
+                        {/* Rendered only while the link really resolves, so it can never point
+                            at a 404. Independent of the action below: an unboosted page is still
+                            live, and its owner should be able to open it. */}
+                        {page.isLive && (
+                            <a
+                                href={pagePath}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-semibold text-foreground hover:bg-muted/60 transition-colors"
+                            >
+                                View page
+                                <ArrowTopRightOnSquareIcon className="size-3.5" aria-hidden="true" />
+                            </a>
+                        )}
+                        {page.action !== 'none' && (
                             <button
                                 type="button"
                                 onClick={() => void activate()}
                                 disabled={isPublishing}
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
                             >
-                                {isPublishing ? 'Activating…' : 'Activate my page'}
+                                {isPublishing ? pageActionBusyLabel(page.action) : pageActionLabel(page.action)}
                             </button>
                         )}
                     </>
