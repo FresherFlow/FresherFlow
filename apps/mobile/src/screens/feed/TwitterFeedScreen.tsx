@@ -2,7 +2,8 @@ import React, { memo, useState, useMemo, useCallback } from 'react';
 import { View, StyleSheet, StatusBar, Text } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Opportunity, OpportunityType } from '@fresherflow/types';
+import { Opportunity } from '@fresherflow/types';
+import { isInternshipOpportunity, isWalkinOpportunity } from '@/utils/taxonomy';
 import { useFeed } from '@/hooks/useFeed';
 import { useSaved } from '@repo/frontend-core';
 import { JobPost } from './components/JobPost';
@@ -44,8 +45,8 @@ export const TwitterFeedScreenContent: React.FC<Props> = memo(({ navigation }) =
 
     return opportunities.filter(opp => {
       if (activeFilter === 'Remote') return opp.workMode === 'REMOTE';
-      if (activeFilter === 'Walk-in') return opp.type === OpportunityType.WALKIN;
-      if (activeFilter === 'Internship') return opp.type === OpportunityType.INTERNSHIP;
+      if (activeFilter === 'Walk-in') return isWalkinOpportunity(opp);
+      if (activeFilter === 'Internship') return isInternshipOpportunity(opp);
       if (activeFilter === 'Software') {
         const text = `${opp.title} ${opp.description} ${opp.requiredSkills?.join(' ')}`.toLowerCase();
         return text.includes('software') || text.includes('developer') || text.includes('engineer') || text.includes('code');

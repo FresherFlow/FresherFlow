@@ -3,12 +3,17 @@ import { cn } from "@/ui/cn"
 
 const Card = React.forwardRef<
     HTMLDivElement,
-    React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+    React.HTMLAttributes<HTMLDivElement> & {
+        // Padded card (saved-search rows). Owns the outer padding so call
+        // sites never restyle spacing on the primitive.
+        padded?: boolean
+    }
+>(({ className, padded = false, ...props }, ref) => (
     <div
         ref={ref}
         className={cn(
             "rounded-xl border border-border/70 bg-card/90 text-card-foreground shadow-sm backdrop-blur",
+            padded && "p-4",
             className
         )}
         {...props}

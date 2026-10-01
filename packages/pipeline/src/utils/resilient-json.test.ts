@@ -153,15 +153,3 @@ describe('safeJsonStringify', () => {
         expect(safeJsonStringify(node)).toContain('[Circular]');
     });
 });
-    it('rejects a payload that parses but has the wrong shape', async () => {
-        mockFetch([{ status: 200, body: '{"unexpected":true}' }]);
-        const res = await fetchJsonWithRetry<unknown>('https://cdn.test/shape.json', {
-            attempts: 2,
-            backoffMs: 1,
-            validate: (d) => Array.isArray(d),
-        });
-
-        expect(res.ok).toBe(false);
-        if (!res.ok) expect(res.reason).toBe('unexpected JSON shape');
-    });
-});

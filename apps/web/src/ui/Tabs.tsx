@@ -5,7 +5,20 @@ import * as TabsPrimitive from "@radix-ui/react-tabs"
 
 import { cn } from "@/ui/cn"
 
-const Tabs = TabsPrimitive.Root
+const Tabs = ({
+    spaced = false,
+    className,
+    ...props
+}: React.ComponentPropsWithoutRef<typeof TabsPrimitive.Root> & {
+    // Stacked tab layout (admin dashboard hub). Owns the vertical rhythm so
+    // call sites never restyle spacing on the primitive.
+    spaced?: boolean
+}) => (
+    <TabsPrimitive.Root
+        className={cn(spaced && "space-y-4", className)}
+        {...props}
+    />
+)
 
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
@@ -39,12 +52,15 @@ TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
 
 const TabsContent = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
->(({ className, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content> & {
+    spaced?: boolean
+  }
+>(({ className, spaced = false, ...props }, ref) => (
   <TabsPrimitive.Content
     ref={ref}
     className={cn(
       "mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+      spaced && "space-y-4",
       className
     )}
     {...props}

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { isGovernmentOpportunity } from '@/utils/taxonomy';
 import { 
     getLocalAlerts, 
     getUnseenCount, 
@@ -47,8 +48,8 @@ const sortAlerts = (alerts: LocalAlert[]) => {
 const getCounts = (alerts: LocalAlert[]) => {
     const unread = alerts.filter(a => !a.readAt);
     return {
-        privateUnreadCount: unread.filter(a => a.opportunity.type !== 'GOVERNMENT').length,
-        govtUnreadCount: unread.filter(a => a.opportunity.type === 'GOVERNMENT').length,
+        privateUnreadCount: unread.filter(a => !isGovernmentOpportunity(a.opportunity)).length,
+        govtUnreadCount: unread.filter(a => isGovernmentOpportunity(a.opportunity)).length,
     };
 };
 
@@ -116,7 +117,8 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         try {
             const currentAlerts = get().alerts;
             const updated = currentAlerts.map(a => {
-                if (!sector || a.opportunity.type === sector || (sector === 'PRIVATE' && a.opportunity.type !== 'GOVERNMENT')) {
+                const isGov = isGovernmentOpportunity(a.opportunity);
+                if (!sector || (sector === 'GOVERNMENT' ? isGov : !isGov)) {
                     return { ...a, readAt: a.readAt || new Date().toISOString() };
                 }
                 return a;
@@ -134,7 +136,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
             const currentAlerts = get().alerts;
             const updated = currentAlerts.filter(a => {
                 if (!sector) return false;
-                const isGov = a.opportunity.type === 'GOVERNMENT';
+                const isGov = isGovernmentOpportunity(a.opportunity);
                 if (sector === 'GOVERNMENT') {
                     return !isGov;
                 } else {

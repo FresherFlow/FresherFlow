@@ -36,18 +36,18 @@ export function AdminProfileMenu() {
                 <Button
                     type="button"
                     variant="ghost"
+                    size="avatar"
                     aria-label="Admin profile menu"
-                    className="relative h-8 w-8 shrink-0 rounded-full p-0"
                 >
-                    <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-muted text-xs font-semibold text-foreground">
+                    <Avatar size="sm">
+                        <AvatarFallback textSize="xs" textWeight="semibold" tone="foreground">
                             {initial}
                         </AvatarFallback>
                     </Avatar>
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
+                <DropdownMenuLabel weight="normal">
                     <div className="flex min-w-0 flex-col gap-1">
                         <p className="truncate text-sm font-medium leading-none">{name}</p>
                         {email ? (
@@ -72,13 +72,13 @@ export function AdminProfileMenu() {
                         </DropdownMenuItem>
                     </DropdownMenuGroup>
                 ) : (
-                    <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                    <DropdownMenuLabel size="xs" weight="normal" tone="muted">
                         Moderator queues
                     </DropdownMenuLabel>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                    className="text-destructive focus:text-destructive"
+                    tone="destructive"
                     onClick={() => {
                         void logout();
                     }}

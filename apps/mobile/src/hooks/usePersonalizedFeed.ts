@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Opportunity, Profile } from '@fresherflow/types';
+import { matchesFeedType } from '@/utils/taxonomy';
 import { 
     checkEligibility,
     EligibilityResult
@@ -24,7 +25,7 @@ export const usePersonalizedFeed = (
     const filtered = useMemo(() => {
         return initialOpportunities.filter(opp => {
             if (filters.remoteOnly && opp.workMode !== 'REMOTE') return false;
-            if (filters.type && opp.type !== filters.type) return false;
+            if (filters.type && !matchesFeedType(opp, filters.type)) return false;
             if (filters.batchYear) {
                 const hasYears = opp.allowedPassoutYears && opp.allowedPassoutYears.length > 0;
                 if (hasYears && !opp.allowedPassoutYears.includes(filters.batchYear)) {

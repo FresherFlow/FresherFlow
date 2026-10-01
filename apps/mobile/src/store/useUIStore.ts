@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { Opportunity, OpportunityType, WorkMode } from '@fresherflow/types';
+import { Opportunity, WorkMode } from '@fresherflow/types';
+import { FeedType } from '@/utils/taxonomy';
 
 interface ActionSheetState {
   isOpen: boolean;
@@ -17,7 +18,7 @@ interface ShareSheetState {
 }
 
 export interface PersistedExploreFilters {
-  types: OpportunityType[];
+  types: FeedType[];
   workModes: WorkMode[];
   batchYears: number[];
   tag: string | null;

@@ -14,9 +14,9 @@ export default function ProfilePageError({
     }
 
     return (
-        <div className="flex min-h-[60vh] w-full items-center justify-center bg-background px-6 py-16 text-foreground">
+        <div className="flex w-full items-center justify-center bg-background px-6 py-16 text-foreground" style={{ minHeight: '60vh' }}>
             <div className="w-full max-w-md space-y-4 rounded-xs border border-border bg-card p-8">
-                <p className="font-record text-micro uppercase tracking-[0.14em] text-muted-foreground">
+                <p className="font-record text-micro uppercase text-muted-foreground" style={{ letterSpacing: '0.14em' }}>
                     Something broke
                 </p>
                 <h2 className="font-display text-xl font-bold tracking-tight text-foreground">
@@ -29,7 +29,7 @@ export default function ProfilePageError({
                     <button
                         type="button"
                         onClick={() => reset()}
-                        className="inline-flex h-9 items-center justify-center rounded-xs bg-primary px-4 text-xs font-semibold text-primary-foreground transition-transform duration-150 ease-out hover:-translate-y-px active:scale-[0.98]"
+                        className="inline-flex h-9 items-center justify-center rounded-xs bg-primary px-4 text-xs font-semibold text-primary-foreground transition-transform duration-150 ease-out hover:-translate-y-px active-press-soft"
                     >
                         Try again
                     </button>

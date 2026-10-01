@@ -90,6 +90,7 @@ import { TYPOGRAPHY } from '@/system/constants/typography';
 
 // Premium System
 import { toTitleCase, formatListToTitleCase } from '@/utils/text';
+import { getTypeDisplayLabel, isGovernmentOpportunity } from '@/utils/taxonomy';
 import { Share2 as LucideShare } from 'lucide-react-native';
 const Linkedin = LucideShare;
 const Twitter = LucideShare;
@@ -1579,7 +1580,7 @@ const GovtJobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props)
                             </View>
                             <View style={styles.badgeRow}>
                                 <View style={[styles.typeBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
-                                    <Text style={[styles.typeText, { color: currentTheme.colors.primary }]}>{opportunity.type === 'JOB' ? 'Full Time' : opportunity.type === 'INTERNSHIP' ? 'Internship' : opportunity.type === 'WALKIN' ? 'Walk-in' : toTitleCase(opportunity.type as any || '')}</Text>
+                                    <Text style={[styles.typeText, { color: currentTheme.colors.primary }]}>{getTypeDisplayLabel(opportunity)}</Text>
                                 </View>
                                 {(opportunity.clicksCount || 0) > 200 && (
                                     <View style={[styles.typeBadge, { backgroundColor: alpha(currentTheme.colors.error, 0.1), borderColor: alpha(currentTheme.colors.error, 0.2), borderWidth: 1 }]}>
@@ -1885,7 +1886,7 @@ const GovtJobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props)
                                         applyLink={item.applyLink}
                                         logoUrl={item.companyLogoUrl}
                                         size={32}
-                                        isGovernment={item.type === 'GOVERNMENT'}
+                                        isGovernment={isGovernmentOpportunity(item)}
                                     />
                                     <View style={styles.similarText}>
                                         <Text style={[styles.similarTitle, { color: currentTheme.colors.text }]} numberOfLines={1}>{item.title}</Text>

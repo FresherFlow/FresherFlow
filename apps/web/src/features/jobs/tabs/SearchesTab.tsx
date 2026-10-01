@@ -240,9 +240,8 @@ export function SearchesTab() {
                 </div>
                 <Button
                     type="button"
-                    size="sm"
+                    size="chip"
                     onClick={() => setDialogOpen(true)}
-                    className="gap-1.5"
                 >
                     <Plus className="size-4" aria-hidden="true" />
                     New search
@@ -265,7 +264,7 @@ export function SearchesTab() {
                     title="No saved searches yet"
                     description="Save “2026 batch + Bangalore” and get alerted when matching jobs land."
                     action={
-                        <Button type="button" size="sm" onClick={() => setDialogOpen(true)} className="gap-1.5">
+                        <Button type="button" size="chip" onClick={() => setDialogOpen(true)}>
                             <Plus className="size-4" aria-hidden="true" />
                             New search
                         </Button>
@@ -278,7 +277,7 @@ export function SearchesTab() {
                     {searches.map((s) => {
                         const chips = filterChips(s.filters);
                         return (
-                            <Card key={s.id} className="p-4">
+                            <Card key={s.id} padded>
                                 <div className="flex items-start justify-between gap-3">
                                     <div className="min-w-0 flex-1">
                                         <div className="flex flex-wrap items-center gap-2">
@@ -308,7 +307,7 @@ export function SearchesTab() {
                                     />
                                 </div>
                                 <div className="mt-3 flex items-center justify-between gap-2 border-t border-border pt-3">
-                                    <Button asChild size="sm" variant="link" className="h-auto gap-1 p-0 text-xs">
+                                    <Button asChild size="linkSm" variant="link">
                                         <Link href={buildSearchUrl(s.filters)}>
                                             View matches
                                             <ArrowUpRight className="size-3.5" aria-hidden="true" />
@@ -316,12 +315,11 @@ export function SearchesTab() {
                                     </Button>
                                     <Button
                                         type="button"
-                                        size="icon"
-                                        variant="ghost"
+                                        size="iconSm"
+                                        variant="ghostDanger"
                                         onClick={() => void remove(s.id)}
                                         aria-label={`Delete ${s.name}`}
                                         title={`Delete ${s.name}`}
-                                        className="size-8 text-muted-foreground transition-colors hover:text-destructive"
                                     >
                                         <Trash2 className="size-4" aria-hidden="true" />
                                     </Button>

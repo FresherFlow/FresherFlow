@@ -1,5 +1,5 @@
 import { BOARD_SCRAPER_REGISTRY, ScraperInputDto } from '@fresherflow/plugins';
-import { parseWalkInDetails, matchHyderabadCluster } from '@fresherflow/utils';
+import { parseWalkInDetails, matchTechCluster } from '@fresherflow/utils';
 import { upsertJobs, startRun, finishRun } from '@fresherflow/pipeline';
 
 export interface WalkinSearchInput {
@@ -84,7 +84,10 @@ export async function searchWalkinDrives(input: WalkinSearchInput = {}): Promise
           const details = parseWalkInDetails(title, desc, location);
 
           // Geocode Tech Cluster
-          const matchedCluster = matchHyderabadCluster(`${details.venueAddress} ${desc} ${title}`);
+          const matchedCluster = matchTechCluster(`${details.venueAddress} ${desc} ${title}`);
+          // No curated locality matched. Skip rather than pin the drive to a
+          // cluster in the wrong city (same rule as the pipeline walk-in collectors).
+          if (!matchedCluster) continue;
           const clusterName = matchedCluster.cluster.name;
 
           clusterBreakdown[clusterName] = (clusterBreakdown[clusterName] || 0) + 1;

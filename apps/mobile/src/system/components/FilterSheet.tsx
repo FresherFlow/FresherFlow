@@ -28,7 +28,8 @@ import { mScale, SPACING, RADIUS } from '../constants/dimensions';
 import * as Haptics from 'expo-haptics';
 import { ExploreFilters } from '@/hooks/useExplore';
 
-import { OpportunityType, WorkMode } from '@fresherflow/types';
+import { WorkMode } from '@fresherflow/types';
+import { FeedType, FEED_TAB_LABELS } from '@/utils/taxonomy';
 
 const { height } = Dimensions.get('window');
 
@@ -57,7 +58,7 @@ export const FilterSheet = React.forwardRef<FilterSheetRef, FilterSheetProps>(({
         dismiss: () => bottomSheetModalRef.current?.dismiss(),
     }));
 
-    const toggleType = (type: OpportunityType) => {
+    const toggleType = (type: FeedType) => {
         void Haptics.selectionAsync();
         setTempFilters(produce(draft => {
             if (!draft.types) draft.types = [];
@@ -245,9 +246,9 @@ export const FilterSheet = React.forwardRef<FilterSheetRef, FilterSheetProps>(({
                     contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
                 >
                     <FilterSection title="Opportunity Type">
-                        <Option label="Jobs" active={tempFilters.types?.includes(OpportunityType.JOB)} onPress={() => toggleType(OpportunityType.JOB)} />
-                        <Option label="Internships" active={tempFilters.types?.includes(OpportunityType.INTERNSHIP)} onPress={() => toggleType(OpportunityType.INTERNSHIP)} />
-                        <Option label="Walk-ins" active={tempFilters.types?.includes(OpportunityType.WALKIN)} onPress={() => toggleType(OpportunityType.WALKIN)} />
+                        <Option label={FEED_TAB_LABELS.JOB} active={tempFilters.types?.includes('JOB')} onPress={() => toggleType('JOB')} />
+                        <Option label={FEED_TAB_LABELS.INTERNSHIP} active={tempFilters.types?.includes('INTERNSHIP')} onPress={() => toggleType('INTERNSHIP')} />
+                        <Option label={FEED_TAB_LABELS.WALKIN} active={tempFilters.types?.includes('WALKIN')} onPress={() => toggleType('WALKIN')} />
                     </FilterSection>
  
                     <FilterSection title="Work Mode">

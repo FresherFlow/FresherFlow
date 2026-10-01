@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { Opportunity } from '@fresherflow/types';
+import { isWalkinOpportunity } from '@/utils/taxonomy';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFeedStore } from '@/store/useFeedStore';
 import { useSaved } from '@repo/frontend-core';
@@ -56,8 +57,8 @@ export function useDashboard() {
             return exp > now && exp < fortyEightHoursFromNow;
         });
 
-        const walkins = expiringOpps.filter(o => o.type === 'WALKIN');
-        const others = expiringOpps.filter(o => o.type !== 'WALKIN');
+        const walkins = expiringOpps.filter(o => isWalkinOpportunity(o));
+        const others = expiringOpps.filter(o => !isWalkinOpportunity(o));
 
         // 2. Newly added in last 24h
         const newlyAdded = cachedItems.filter(o => {

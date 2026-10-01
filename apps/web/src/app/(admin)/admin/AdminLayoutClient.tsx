@@ -34,25 +34,13 @@ function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="flex h-dvh w-screen overflow-hidden bg-background text-foreground">
             <AdminSidebar />
             <SidebarInset
+                insetCard={variant === 'inset' && collapsible !== 'none'}
+                insetCollapsed={!open}
                 className={cn(
                     // min-h-0 is load-bearing: without it this flex item will
                     // not shrink below its content height, the grid below grows
                     // unbounded, and the footer is clipped with nowhere to scroll.
-                    'min-w-0 min-h-0 flex-1 overflow-hidden bg-background md:bg-muted/10',
-                    // `SidebarInset` styles the inset variant through a
-                    // `peer-data-[variant=inset]` sibling selector, which cannot
-                    // match here: the rail is nested inside AdminSidebar's
-                    // `hidden lg:block` wrapper. Mirror that styling from the
-                    // layout context so `inset` still renders as a card. The
-                    // primitive keeps `ml-0` only while expanded and falls back
-                    // to the uniform `m-2` (`ml-2`) when collapsed — mirroring
-                    // `ml-0` unconditionally skewed content ~0.5rem left of the
-                    // fixed header in the collapsed state. `none` renders no
-                    // peer element, so the primitive applies no card styling
-                    // there either.
-                    variant === 'inset' &&
-                        collapsible !== 'none' &&
-                        (open ? 'md:m-2 md:ml-0 md:rounded-xl md:shadow' : 'md:m-2 md:rounded-xl md:shadow'),
+                    'min-w-0 min-h-0 flex-1 overflow-hidden',
                 )}
             >
                 <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">

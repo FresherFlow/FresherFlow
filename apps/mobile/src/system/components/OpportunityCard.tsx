@@ -1,7 +1,8 @@
 import React, { memo } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, Pressable } from 'react-native';
 import { IndianRupee, MapPin, Users, Clock, Bookmark, ChevronRight, Briefcase, Trophy } from 'lucide-react-native';
-import { Opportunity, OpportunityType } from '@fresherflow/types';
+import { Opportunity } from '@fresherflow/types';
+import { getFeedBadgeLabel } from '@/utils/taxonomy';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { alpha } from '@/theme';
 import { SurfaceCard } from './PremiumPrimitives';
@@ -29,16 +30,17 @@ interface Props {
 
 
 
-const getTypeConfig = (type: OpportunityType, theme: AppTheme) => {
-  switch (type) {
-    case OpportunityType.JOB:
+const getTypeConfig = (opportunity: Opportunity, theme: AppTheme) => {
+  const badge = getFeedBadgeLabel(opportunity);
+  switch (badge) {
+    case 'JOB':
       return { label: 'Full Time', color: theme.colors.primary, bg: alpha(theme.colors.primary, 0.1) };
-    case OpportunityType.INTERNSHIP:
+    case 'INTERNSHIP':
       return { label: 'Internship', color: theme.colors.primary, bg: alpha(theme.colors.primary, 0.1) };
-    case OpportunityType.WALKIN:
+    case 'WALKIN':
       return { label: 'Walk-in', color: theme.colors.warning, bg: alpha(theme.colors.warning, 0.1) };
     default:
-      return { label: toTitleCase(type), color: theme.colors.textMuted, bg: alpha(theme.colors.text, 0.05) };
+      return { label: toTitleCase(badge), color: theme.colors.textMuted, bg: alpha(theme.colors.text, 0.05) };
   }
 };
 
@@ -58,7 +60,7 @@ export const OpportunityCard = memo(({
   const openActionSheet = useUIStore(s => s.actionSheet.open);
   const { getStateForCity } = useCitiesMetadata();
 
-  const config = getTypeConfig(opportunity.type, currentTheme);
+  const config = getTypeConfig(opportunity, currentTheme);
 
   const handleLongPress = () => {
       haptic.medium();

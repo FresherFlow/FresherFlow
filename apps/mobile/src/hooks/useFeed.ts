@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
-import { OpportunityType, Profile } from '@fresherflow/types';
+import { Profile } from '@fresherflow/types';
+import { FeedType, isInternshipOpportunity, isWalkinOpportunity, matchesFeedType } from '@/utils/taxonomy';
 import { useSaved } from '@repo/frontend-core';
 import { useFollows } from '@/hooks/useFollows';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -18,7 +19,7 @@ export const useFeed = (initialFeedType: string | null = null) => {
         return (user?.profile as Profile) || null;
     });
     const [searchQuery, setSearchQuery] = useState('');
-    const [activeFilter, setActiveFilter] = useState<'ALL' | OpportunityType>('ALL');
+    const [activeFilter, setActiveFilter] = useState<'ALL' | FeedType>('ALL');
     const [activeCity, setActiveCity] = useState('ALL');
     const [selectedTag, setSelectedTag] = useState<string | null>(null);
     const [feedType, setFeedType] = useState<string | null>(initialFeedType);
@@ -159,7 +160,7 @@ export const useFeed = (initialFeedType: string | null = null) => {
         let result = cachedItems;
 
         if (activeFilter !== 'ALL') {
-            result = result.filter(j => j.type === activeFilter);
+            result = result.filter(j => matchesFeedType(j, activeFilter));
         }
 
         if (feedType === 'remote') {
@@ -167,9 +168,9 @@ export const useFeed = (initialFeedType: string | null = null) => {
         } else if (feedType === '2026') {
             result = result.filter(j => !j.allowedPassoutYears || j.allowedPassoutYears.length === 0 || j.allowedPassoutYears.includes(2026));
         } else if (feedType === 'internships') {
-            result = result.filter(j => j.type === 'INTERNSHIP');
+            result = result.filter(j => isInternshipOpportunity(j));
         } else if (feedType === 'walkins') {
-            result = result.filter(j => j.type === 'WALKIN');
+            result = result.filter(j => isWalkinOpportunity(j));
         } else if (feedType && /^\d{4}$/.test(feedType)) {
             const year = Number(feedType);
             result = result.filter(j => !j.allowedPassoutYears || j.allowedPassoutYears.length === 0 || j.allowedPassoutYears.includes(year));

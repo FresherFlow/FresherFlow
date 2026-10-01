@@ -22,6 +22,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Profile } from '@fresherflow/types';
 import { useProfile } from '@/hooks/useProfile';
 import { useSectorStore } from '@/store/useSectorStore';
+import { isGovernmentOpportunity } from '@/utils/taxonomy';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Notifications'>;
 
@@ -291,8 +292,9 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
         return alerts
             .filter(a => a.opportunity.matchReason !== 'Complete profile to see eligibility')
             .filter(a => {
-                if (sector === 'GOVERNMENT') return a.opportunity.type === 'GOVERNMENT';
-                return a.opportunity.type !== 'GOVERNMENT';
+                const isGov = isGovernmentOpportunity(a.opportunity);
+                if (sector === 'GOVERNMENT') return isGov;
+                return !isGov;
             }).length;
     }, [alerts, sector]);
 
@@ -316,8 +318,9 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
         alerts
             .filter(a => a.opportunity.matchReason !== 'Complete profile to see eligibility')
             .filter(a => {
-                if (sector === 'GOVERNMENT') return a.opportunity.type === 'GOVERNMENT';
-                return a.opportunity.type !== 'GOVERNMENT';
+                const isGov = isGovernmentOpportunity(a.opportunity);
+                if (sector === 'GOVERNMENT') return isGov;
+                return !isGov;
             })
             .forEach(alert => {
                 const time = new Date(alert.sentAt).getTime();

@@ -25,6 +25,9 @@ const badgeVariants = cva(
                     "border-transparent bg-brand-discord/15 text-brand-discord hover:bg-brand-discord/25",
             },
             size: {
+                // Dense count chip for nav badges (sidebar + admin rail).
+                // Matches the previous `px-1 py-0` call-site combo exactly.
+                xs: "px-1 py-0",
                 // Compact chip for dense rows (table cells, tab triggers).
                 sm: "px-1.5 py-0.5",
                 md: "px-2.5 py-0.5",

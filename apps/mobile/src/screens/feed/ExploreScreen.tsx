@@ -38,8 +38,9 @@ import { useExplore } from '@/hooks/useExplore';
 import { useProfile } from '@/hooks/useProfile';
 import { useFeedStore } from '@/store/useFeedStore';
 import { saveRecentSearchKeyword } from '@/utils/userBehavior';
-import { Opportunity, OpportunityType } from '@fresherflow/types';
-import { CORE_CATEGORIES, CONTROLLED_TAGS, CATEGORY_LABELS } from '@fresherflow/constants';
+import { Opportunity } from '@fresherflow/types';
+import { CONTROLLED_TAGS } from '@fresherflow/constants';
+import { EXPLORE_FEED_TABS, FEED_TAB_LABELS, getFeedBadgeLabel } from '@/utils/taxonomy';
 import { useToast } from '@/contexts/ToastContext';
 import { alpha } from '@/theme';
 import { toTitleCase } from '@/utils/text';
@@ -167,7 +168,7 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     logoUrl: opp.companyLogoUrl ?? undefined,
                     website: opp.companyWebsite ?? undefined,
                     opportunityCount: 1,
-                    industry: opp.jobFunction || opp.type,
+                    industry: opp.jobFunction || getFeedBadgeLabel(opp),
                     firstOpp: opp
                 });
             }
@@ -396,7 +397,7 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             contentContainerStyle={styles.chipContent}
                         >
                             {filters.types && filters.types.map(t => (
-                                <FilterChip key={t} label={CATEGORY_LABELS[t] || t} onRemove={() => setFilters({ types: filters.types.filter(x => x !== t) })} />
+                                <FilterChip key={t} label={FEED_TAB_LABELS[t] || t} onRemove={() => setFilters({ types: filters.types.filter(x => x !== t) })} />
                             ))}
                             {filters.tag && (
                                 <FilterChip label={filters.tag} onRemove={() => setFilters({ tag: null })} />
@@ -462,7 +463,7 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                             )}
                                         </TouchableOpacity>
 
-                                        {CORE_CATEGORIES.map((cat: OpportunityType) => (
+                                        {EXPLORE_FEED_TABS.map((cat) => (
                                             <TouchableOpacity
                                                 key={cat}
                                                 onPress={() => {
@@ -473,7 +474,7 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                                         setViewMode('opportunities');
                                                         setFilters({ types: [...(filters.types || []), cat] });
                                                         // Intercept and store high-intent category selection interest
-                                                        const label = CATEGORY_LABELS[cat] || cat;
+                                                        const label = FEED_TAB_LABELS[cat] || cat;
                                                         if (label.length >= 3) {
                                                             saveRecentSearchKeyword(label.toLowerCase());
                                                         }
@@ -489,7 +490,7 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                                 }]}
                                             >
                                                 <Text style={[styles.categoryLabel, { color: (viewMode === 'opportunities' && filters.types?.includes(cat)) ? currentTheme.colors.background : currentTheme.colors.primary }]}>
-                                                    {CATEGORY_LABELS[cat] || cat}
+                                                    {FEED_TAB_LABELS[cat] || cat}
                                                 </Text>
                                                 {(viewMode === 'opportunities' && filters.types?.includes(cat)) && (
                                                     <X size={14} color={currentTheme.colors.background} />

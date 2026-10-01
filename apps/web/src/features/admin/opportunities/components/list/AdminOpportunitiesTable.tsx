@@ -60,8 +60,7 @@ function BulkIconAction({
         <Button
           type="button"
           variant={variant}
-          size="icon"
-          className="size-8"
+          size="iconSm"
           disabled={disabled}
           onClick={onClick}
           aria-label={description}

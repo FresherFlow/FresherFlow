@@ -92,6 +92,7 @@ import { TYPOGRAPHY } from '@/system/constants/typography';
 
 // Premium System
 import { toTitleCase, formatListToTitleCase } from '@/utils/text';
+import { getPrimaryEmploymentType, getTypeDisplayLabel, isGovernmentOpportunity, isInternshipOpportunity, isWalkinOpportunity } from '@/utils/taxonomy';
 import { Share2 as LucideShare } from 'lucide-react-native';
 const Linkedin = LucideShare;
 const Twitter = LucideShare;
@@ -164,7 +165,10 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
   );
 
   const isGovt = useMemo(
-    () => (opportunity || initialOpp)?.type === 'GOVERNMENT',
+    () => {
+        const opp = opportunity || initialOpp;
+        return opp ? isGovernmentOpportunity(opp) : false;
+    },
     [opportunity, initialOpp],
   );
 
@@ -669,7 +673,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             <Text style={[styles.companyName, { color: currentTheme.colors.text }]}>{opportunity.company}</Text>
                             <View style={styles.badgeRow}>
                                 <View style={[styles.typeBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
-                                    <Text style={[styles.typeText, { color: currentTheme.colors.primary }]}>{opportunity.type === 'JOB' ? 'Full Time' : opportunity.type === 'INTERNSHIP' ? 'Internship' : opportunity.type === 'WALKIN' ? 'Walk-in' : toTitleCase(opportunity.type as any || '')}</Text>
+                                    <Text style={[styles.typeText, { color: currentTheme.colors.primary }]}>{getTypeDisplayLabel(opportunity)}</Text>
                                 </View>
                                 {(opportunity.clicksCount || 0) > 200 && (
                                     <View style={[styles.typeBadge, { backgroundColor: alpha(currentTheme.colors.error, 0.1), borderColor: alpha(currentTheme.colors.error, 0.2), borderWidth: 1 }]}>
@@ -802,7 +806,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             <IndianRupee size={20} color={currentTheme.colors.primary} />
                             <View style={styles.detailContent}>
                                 <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>
-                                    {opportunity.type === 'INTERNSHIP' ? 'Stipend' : 'Salary'}
+                                    {isInternshipOpportunity(opportunity) ? 'Stipend' : 'Salary'}
                                 </Text>
                                 <Text style={[styles.detailValue, { color: currentTheme.colors.text }]}>
                                     {formatSalary(opportunity) || 'NDA'}
@@ -829,7 +833,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             <View style={styles.detailContent}>
                                 <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>Employment</Text>
                                 <Text style={[styles.detailValue, { color: currentTheme.colors.text }]}>
-                                    {toTitleCase(opportunity.employmentType?.replace(/_/g, ' ')) || (opportunity.type === 'INTERNSHIP' ? 'Internship' : 'Full Time')}
+                                    {toTitleCase(getPrimaryEmploymentType(opportunity)?.replace(/_/g, ' ')) || (isInternshipOpportunity(opportunity) ? 'Internship' : 'Full Time')}
                                 </Text>
                             </View>
                         </View>
@@ -1152,7 +1156,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                 </Animated.View>
             )}
                        {/* Curated Preparation Resources (Private Jobs) */}
-            {opportunity.type !== 'GOVERNMENT' && matchedResources.length > 0 && (
+            {!isGovernmentOpportunity(opportunity) && matchedResources.length > 0 && (
                 <Animated.View style={{ opacity: fadeAnim4, transform: [{ translateY: fadeAnim4.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
                     <Section 
                         title="Preparation Resources"
@@ -1195,7 +1199,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
             )}
 
             {/* Walk-in Details (Conditional) */}
-            {opportunity.type === 'WALKIN' && opportunity.walkInDetails && (
+            {isWalkinOpportunity(opportunity) && opportunity.walkInDetails && (
                 <Animated.View style={{ opacity: fadeAnim4, transform: [{ translateY: fadeAnim4.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
                     <Section title="Walk-in Venue">
                         <SurfaceCard style={[styles.walkInCard, { borderColor: currentTheme.colors.warning }]}>

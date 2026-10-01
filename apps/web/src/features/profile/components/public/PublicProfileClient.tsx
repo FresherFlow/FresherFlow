@@ -77,11 +77,11 @@ export type PublicProfileData = {
 const SKILL_LIMIT = 12;
 
 const SOLID_BTN =
-    'inline-flex h-9 items-center justify-center gap-1.5 rounded-xs bg-primary px-4 text-xs font-semibold text-primary-foreground transition-transform duration-150 ease-out hover:-translate-y-px active:scale-[0.98]';
+    'inline-flex h-9 items-center justify-center gap-1.5 rounded-xs bg-primary px-4 text-xs font-semibold text-primary-foreground transition-transform duration-150 ease-out hover:-translate-y-px active-press-soft';
 const GHOST_BTN =
     'inline-flex h-9 items-center justify-center gap-1.5 rounded-xs border border-border bg-card px-3.5 text-xs font-semibold text-foreground transition-colors duration-150 ease-out hover:border-primary/40 hover:bg-muted/40';
 const SOLID_BTN_SM =
-    'inline-flex h-7 items-center justify-center gap-1 rounded-xs bg-primary px-2.5 text-xs font-semibold text-primary-foreground transition-transform duration-150 ease-out hover:-translate-y-px active:scale-[0.98]';
+    'inline-flex h-7 items-center justify-center gap-1 rounded-xs bg-primary px-2.5 text-xs font-semibold text-primary-foreground transition-transform duration-150 ease-out hover:-translate-y-px active-press-soft';
 const GHOST_BTN_SM =
     'inline-flex h-7 items-center justify-center gap-1 rounded-xs border border-border bg-card px-2.5 text-xs font-semibold text-foreground transition-colors duration-150 ease-out hover:border-primary/40 hover:bg-muted/40';
 
@@ -110,7 +110,7 @@ function GithubSvgIcon({ className }: { className?: string }) {
 function SectionHeading({ label, hint }: { label: string; hint?: string }) {
     return (
         <div className="flex items-center gap-3">
-            <h2 className="font-record text-micro uppercase tracking-[0.14em] text-muted-foreground">{label}</h2>
+            <h2 className="font-record text-micro uppercase text-muted-foreground" style={{ letterSpacing: '0.14em' }}>{label}</h2>
             <span className="h-px flex-1 bg-border" aria-hidden />
             {hint && <span className="font-record text-micro tabular-nums text-muted-foreground">{hint}</span>}
         </div>
@@ -191,7 +191,7 @@ export default function PublicProfileClient({
 
     if (!user || !profile) {
         return (
-            <div className="flex min-h-[60vh] w-full items-center justify-center bg-background px-6 py-16 text-foreground">
+            <div className="flex w-full items-center justify-center bg-background px-6 py-16 text-foreground" style={{ minHeight: '60vh' }}>
                 <div className="w-full max-w-md space-y-4 rounded-xs border border-border bg-card p-8 text-center">
                     <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xs border border-border bg-muted text-muted-foreground">
                         <UserIcon className="h-6 w-6" />
@@ -296,7 +296,7 @@ export default function PublicProfileClient({
             <div className={cn('mx-auto w-full', isPreview ? 'max-w-none px-5 py-6' : 'max-w-280 px-6 py-10 md:py-14')}>
 
                 {/* ── Identity header ─────────────────────────────────────────── */}
-                <div className="flex items-center gap-3 font-record text-micro uppercase tracking-[0.14em] text-muted-foreground">
+                <div className="flex items-center gap-3 font-record text-micro uppercase text-muted-foreground" style={{ letterSpacing: '0.14em' }}>
                     <span className="h-1.75 w-1.75 rounded-full bg-warning" aria-hidden />
                     Fresher profile
                     <span className="h-px flex-1 bg-border" aria-hidden />
@@ -326,7 +326,7 @@ export default function PublicProfileClient({
                         )}
 
                         <div className="min-w-0 space-y-2">
-                            <h1 className="font-display text-[clamp(28px,4.4vw,48px)] font-extrabold leading-[1.04] tracking-[-0.03em] text-foreground">
+                            <h1 className="font-display font-extrabold text-foreground" style={{ fontSize: 'clamp(28px,4.4vw,48px)', lineHeight: 1.04, letterSpacing: '-0.03em' }}>
                                 {displayName}
                             </h1>
                             <p className="font-record text-xs text-muted-foreground">
@@ -380,8 +380,8 @@ export default function PublicProfileClient({
                 </header>
 
                 {/* ── Body ───────────────────────────────────────────────────── */}
-                <div className={cn('mt-10 grid grid-cols-1 gap-10', showRail && 'lg:grid-cols-[minmax(0,1fr)_300px]')}>
-                    <div className="min-w-0 space-y-10">
+                <div className={cn('mt-10 flex flex-col gap-10', showRail && 'lg:flex-row')}>
+                    <div className="min-w-0 flex-1 space-y-10">
                         {hasAbout && (
                             <section className="space-y-4">
                                 <SectionHeading label="About" />
@@ -500,10 +500,10 @@ export default function PublicProfileClient({
 
                     {/* ── Rail ─────────────────────────────────────────────────── */}
                     {showRail && (
-                    <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
+                    <aside className="space-y-6 lg:sticky lg:top-24 lg:w-75 lg:shrink-0 lg:self-start">
                         {isOwnProfile ? (
                             <div className="space-y-3 rounded-xs border border-border bg-card p-5">
-                                <p className="font-record text-micro uppercase tracking-[0.14em] text-muted-foreground">
+                                <p className="font-record text-micro uppercase text-muted-foreground" style={{ letterSpacing: '0.14em' }}>
                                     Your public view
                                 </p>
                                 <p className="text-sm leading-relaxed text-muted-foreground">
@@ -512,7 +512,7 @@ export default function PublicProfileClient({
                                     private.
                                 </p>
                                 {typeof views === 'number' && (
-                                    <p className="flex items-center gap-1.5 font-record text-micro uppercase tracking-[0.14em] text-muted-foreground">
+                                    <p className="flex items-center gap-1.5 font-record text-micro uppercase text-muted-foreground" style={{ letterSpacing: '0.14em' }}>
                                         <EyeIcon className="h-3.5 w-3.5" aria-hidden />
                                         <span className="tabular-nums">{views.toLocaleString()}</span>
                                         profile views
@@ -525,7 +525,7 @@ export default function PublicProfileClient({
                             </div>
                         ) : canRequestIntro ? (
                             <div className="space-y-3 rounded-xs border border-border bg-card p-5">
-                                <p className="font-record text-micro uppercase tracking-[0.14em] text-muted-foreground">
+                                <p className="font-record text-micro uppercase text-muted-foreground" style={{ letterSpacing: '0.14em' }}>
                                     Hiring?
                                 </p>
                                 <p className="text-sm leading-relaxed text-muted-foreground">

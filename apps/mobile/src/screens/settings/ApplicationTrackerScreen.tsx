@@ -1,4 +1,5 @@
 import React, { memo, useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { isGovernmentOpportunity } from '@/utils/taxonomy';
 import {
     StyleSheet,
     Text,
@@ -343,10 +344,11 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
         return (actions as ActionRecord[]).filter((item) => {
             const opp = item.opportunity;
             if (!opp) return false;
+            const isGov = isGovernmentOpportunity(opp);
             if (isGovt) {
-                return opp.type === 'GOVERNMENT';
+                return isGov;
             } else {
-                return opp.type !== 'GOVERNMENT';
+                return !isGov;
             }
         });
     }, [actions, isGovt]);

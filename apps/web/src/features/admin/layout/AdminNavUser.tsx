@@ -43,10 +43,10 @@ export function AdminNavUser() {
                     <DropdownMenuTrigger asChild>
                         <SidebarMenuButton
                             size="lg"
-                            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                            highlightOnOpen
                         >
-                            <Avatar className="h-8 w-8 rounded-lg">
-                                <AvatarFallback className="rounded-lg">{initial}</AvatarFallback>
+                            <Avatar size="sm" shape="lg">
+                                <AvatarFallback shape="lg">{initial}</AvatarFallback>
                             </Avatar>
                             <div className="grid flex-1 text-start text-sm leading-tight">
                                 <span className="truncate font-semibold">{name}</span>
@@ -56,15 +56,16 @@ export function AdminNavUser() {
                         </SidebarMenuButton>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
-                        className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
                         side={isMobile ? 'bottom' : 'right'}
                         align="end"
                         sideOffset={4}
+                        radius="lg"
+                        className="w-(--radix-dropdown-menu-trigger-width) min-w-56"
                     >
-                        <DropdownMenuLabel className="p-0 font-normal">
+                        <DropdownMenuLabel spacing="none" weight="normal">
                             <div className="flex items-center gap-2 px-1 py-1.5 text-start text-sm">
-                                <Avatar className="h-8 w-8 rounded-lg">
-                                    <AvatarFallback className="rounded-lg">{initial}</AvatarFallback>
+                                <Avatar size="sm" shape="lg">
+                                    <AvatarFallback shape="lg">{initial}</AvatarFallback>
                                 </Avatar>
                                 <div className="grid flex-1 text-start text-sm leading-tight">
                                     <span className="truncate font-semibold">{name}</span>
@@ -89,7 +90,7 @@ export function AdminNavUser() {
                                 </DropdownMenuItem>
                             </DropdownMenuGroup>
                         ) : (
-                            <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                            <DropdownMenuLabel size="xs" weight="normal" tone="muted">
                                 Moderator queues
                             </DropdownMenuLabel>
                         )}
@@ -98,7 +99,7 @@ export function AdminNavUser() {
                             onClick={() => {
                                 void logout();
                             }}
-                            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                            tone="destructiveMuted"
                         >
                             <LogOut className="size-4 shrink-0" />
                             {isStaffAdmin ? 'Sign out' : 'Exit to app'}

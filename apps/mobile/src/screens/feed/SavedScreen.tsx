@@ -26,6 +26,7 @@ import { useSavedJobs } from '@/hooks/useSavedJobs';
 import { useSavedItems } from '@/hooks/useSavedItems';
 import { openExternalURL } from '@/utils/browser';
 import { Opportunity } from '@fresherflow/types';
+import { isGovernmentOpportunity } from '@/utils/taxonomy';
 import { JobCard } from '@/system/components/OpportunityCard';
 import { saveDetailCache } from '@/utils/cache/offlineCache';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -140,10 +141,11 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const filteredSavedJobs = React.useMemo(() => {
         if (!savedJobs) return [];
         return savedJobs.filter((job) => {
+            const isGov = isGovernmentOpportunity(job);
             if (sector === 'GOVERNMENT') {
-                return job.type === 'GOVERNMENT';
+                return isGov;
             } else {
-                return job.type !== 'GOVERNMENT';
+                return !isGov;
             }
         });
     }, [savedJobs, sector]);

@@ -283,8 +283,10 @@ Sidebar.displayName = "Sidebar"
 
 const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
-  React.ComponentProps<typeof Button>
->(({ className, onClick, ...props }, ref) => {
+  React.ComponentProps<typeof Button> & {
+    muted?: boolean
+  }
+>(({ className, muted = false, onClick, ...props }, ref) => {
   const { toggleSidebar } = useSidebar()
 
   return (
@@ -297,7 +299,14 @@ const SidebarTrigger = React.forwardRef<
       // (`size-7` button, icon sized by the button's `[&_svg]:size-4`). Our
       // Button has no svg rule, so the PanelLeft was rendering at its 24px
       // default inside the 28/36px button.
-      className={cn("size-7 [&_svg]:size-4", className)}
+      className={cn(
+        "size-7 [&_svg]:size-4",
+        // Muted header trigger (admin TopHeaderBar): owns the muted base,
+        // hover treatments, rounded shape and shrink so call sites never
+        // restyle the primitive.
+        muted && "shrink-0 rounded-lg text-muted-foreground hover:bg-muted/80 hover:text-foreground",
+        className
+      )}
       onClick={(event) => {
         onClick?.(event)
         toggleSidebar()
@@ -411,14 +420,23 @@ SidebarRail.displayName = "SidebarRail"
 
 const SidebarInset = React.forwardRef<
   HTMLDivElement,
-  React.ComponentProps<"main">
->(({ className, ...props }, ref) => {
+  React.ComponentProps<"main"> & {
+    // Inset card chrome (admin shell): owns the card background, outer
+    // margin, rounded shape and shadow so call sites never restyle the
+    // primitive. `insetCollapsed` mirrors the primitive's own collapsed
+    // `ml-2` fallback (expanded keeps `ml-0`).
+    insetCard?: boolean
+    insetCollapsed?: boolean
+  }
+>(({ className, insetCard = false, insetCollapsed = false, ...props }, ref) => {
   return (
     <main
       ref={ref}
       className={cn(
         "relative flex w-full flex-1 flex-col bg-sidebar",
         "md:peer-data-[variant=inset]:m-2 md:peer-data-[state=collapsed]:peer-data-[variant=inset]:ml-2 md:peer-data-[variant=inset]:ml-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow",
+        insetCard && "bg-background md:bg-muted/10 md:m-2 md:rounded-xl md:shadow",
+        insetCard && !insetCollapsed && "md:ml-0",
         className
       )}
       {...props}
@@ -651,6 +669,10 @@ const SidebarMenuButton = React.forwardRef<
   React.ComponentProps<"button"> & {
     asChild?: boolean
     isActive?: boolean
+    // Persistent open-state highlight (user menu). Owns the
+    // `data-[state=open]` bg + text so call sites never restyle color on the
+    // primitive.
+    highlightOnOpen?: boolean
     tooltip?: string | React.ComponentProps<typeof TooltipContent>
   } & VariantProps<typeof sidebarMenuButtonVariants>
 >(
@@ -658,6 +680,7 @@ const SidebarMenuButton = React.forwardRef<
     {
       asChild = false,
       isActive = false,
+      highlightOnOpen = false,
       variant = "default",
       size = "default",
       tooltip,
@@ -675,7 +698,11 @@ const SidebarMenuButton = React.forwardRef<
         data-sidebar="menu-button"
         data-size={size}
         data-active={isActive}
-        className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+        className={cn(
+          sidebarMenuButtonVariants({ variant, size }),
+          highlightOnOpen && "data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground",
+          className
+        )}
         {...props}
       />
     )

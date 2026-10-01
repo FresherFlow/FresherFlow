@@ -30,7 +30,7 @@ export function ErrorState({
         <div className={cn('flex min-h-0 w-full flex-1 flex-col overflow-hidden', className)}>
             <div className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto">
             <div className="m-auto flex w-full max-w-2xl flex-col items-center gap-2 px-4 py-6 text-center">
-                <h1 className="text-[7rem] font-bold leading-none tracking-tight">{code}</h1>
+                <h1 className="text-8xl font-bold leading-none tracking-tight">{code}</h1>
                 <p className="font-medium">{title}</p>
                 {message ? (
                     <p className="text-center text-sm text-muted-foreground">{message}</p>

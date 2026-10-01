@@ -251,7 +251,7 @@ async function buildReport(): Promise<Report> {
         label: 'aggregators.json',
         attempts: 2,
         timeoutMs: 15_000,
-        validate: (d) => typeof d === 'object' && d !== null,
+        validate: (d: unknown) => typeof d === 'object' && d !== null,
     });
     const config: AggregatorsConfig = configRes.ok && configRes.data ? configRes.data : {};
     const channels = Array.isArray(config.telegram_channels) ? config.telegram_channels : [];

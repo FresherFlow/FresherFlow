@@ -111,7 +111,7 @@ function hasBadge(badge: number | undefined): badge is number {
 }
 
 function NavBadge({ children }: { children: ReactNode }) {
-    return <Badge className="rounded-full px-1 py-0 text-xs">{children}</Badge>;
+    return <Badge size="xs">{children}</Badge>;
 }
 
 function SidebarMenuLink({

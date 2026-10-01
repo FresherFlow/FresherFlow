@@ -426,14 +426,14 @@ function TrackerPageContent() {
                                         <TableCell >
                                             <div className="flex items-center justify-end gap-1.5">
                                                 {applyHref ? (
-                                                    <Button asChild size="sm" variant="outline" className="h-8 px-3 text-xs">
+                                                    <Button asChild size="xs" variant="outline">
                                                         <a href={applyHref} target="_blank" rel="noreferrer">
                                                             Apply URL
                                                             <ArrowUpRight className="size-3.5" aria-hidden="true" />
                                                         </a>
                                                     </Button>
                                                 ) : null}
-                                                <Button asChild size="sm" variant="outline" className="h-8 px-3 text-xs">
+                                                <Button asChild size="xs" variant="outline">
                                                     <Link href={jobHref} target="_blank">
                                                         Job
                                                         <ArrowUpRight className="size-3.5" aria-hidden="true" />

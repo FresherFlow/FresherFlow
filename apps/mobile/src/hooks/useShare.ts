@@ -110,7 +110,7 @@ export const useShare = () => {
                         title: urlMatch.title,
                         company: urlMatch.company,
                         locations: urlMatch.locations,
-                        type: urlMatch.type,
+                        category: urlMatch.category,
                         isDuplicate: true,
                         existingId: urlMatch.id
                     });

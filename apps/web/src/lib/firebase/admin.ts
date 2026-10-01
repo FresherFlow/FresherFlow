@@ -1,4 +1,4 @@
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { initializeApp, getApps, cert, type App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 
 const project_id = process.env.FIREBASE_PROJECT_ID?.replace(/^"|"$/g, '') || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID?.replace(/^"|"$/g, '');
@@ -6,7 +6,7 @@ const client_email = process.env.FIREBASE_CLIENT_EMAIL?.replace(/^"|"$/g, '');
 const private_key = process.env.FIREBASE_PRIVATE_KEY?.replace(/^"|"$/g, '')?.replace(/\\n/g, '\n');
 
 const apps = getApps();
-let app;
+let app: App;
 
 if (apps.length === 0) {
     if (project_id && client_email && private_key) {

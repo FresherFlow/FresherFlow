@@ -80,7 +80,7 @@ function DiscussionDock({
                 <button
                     type="button"
                     aria-label={count > 0 ? `Open ${heading.toLowerCase()} (${count} comments)` : `Open ${heading.toLowerCase()}`}
-                    className="fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-[transform,background-color] duration-150 ease-out active:scale-[0.97] hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transform-none motion-reduce:transition-none lg:bottom-6 lg:right-6"
+                    className="fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all duration-150 ease-out active-press hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 motion-reduce:transform-none motion-reduce:transition-none lg:bottom-6 lg:right-6"
                 >
                     {pulse && (
                         <span
@@ -101,7 +101,8 @@ function DiscussionDock({
                 side="top"
                 align="end"
                 sideOffset={12}
-                className="w-[min(92vw,380px)] overflow-hidden p-0"
+                layout="dock"
+                className="overflow-hidden"
             >
                 <header className="flex items-center justify-between gap-3 border-b border-border/60 bg-card px-4 py-3">
                     <div className="min-w-0">
@@ -121,7 +122,7 @@ function DiscussionDock({
                     error={error}
                     onPost={postComment}
                     onDelete={deleteComment}
-                    className="h-[min(60vh,420px)]"
+                    style={{ height: 'min(60vh,420px)' }}
                 />
             </PopoverContent>
         </Popover>

@@ -3,7 +3,8 @@ import { Share } from 'react-native';
 import { openExternalURL } from '@/utils/browser';
 import { formatOpportunityShareText } from '@/utils/shareTargets';
 import axios from 'axios';
-import { Opportunity, OpportunityType, ActionType, FeedbackReason } from '@fresherflow/types';
+import { Opportunity, ActionType, FeedbackReason } from '@fresherflow/types';
+import { getFeedBadgeLabel } from '@/utils/taxonomy';
 import { /* opportunityClicksApi, */ actionsApi, feedbackApi, opportunitiesApi } from '@fresherflow/api-client';
 import { useNotifications, useSaved, enqueueOfflineReport, enqueueOfflineClickTrack } from '@repo/frontend-core';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -224,7 +225,7 @@ export const useOpportunityDetail = (
                             if (opp.company === currentOpp.company) score += 100;
 
                             // Match by type (Job vs Internship)
-                            if (opp.type === currentOpp.type) score += 30;
+                            if (getFeedBadgeLabel(opp) === getFeedBadgeLabel(currentOpp)) score += 30;
 
                             // Match by Role/Function
                             if (opp.jobFunction && currentOpp.jobFunction && opp.jobFunction === currentOpp.jobFunction) score += 50;

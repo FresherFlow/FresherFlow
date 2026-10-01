@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import * as PopoverPrimitive from "@radix-ui/react-popover"
+import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/ui/cn"
 
@@ -11,10 +12,29 @@ const PopoverTrigger = PopoverPrimitive.Trigger
 
 const PopoverAnchor = PopoverPrimitive.Anchor
 
+const popoverContentVariants = cva("", {
+  variants: {
+    layout: {
+      default: "",
+      // Discussion dock panel: fixed dock width + no inner padding (the
+      // header/chat own their padding). Width is bespoke with no scale
+      // equivalent, so it lives in the primitive (exempt from the
+      // no-arbitrary-values rule) instead of at the call site.
+      dock: "w-[min(92vw,380px)] p-0",
+    },
+  },
+  defaultVariants: {
+    layout: "default",
+  },
+})
+
+type PopoverContentProps = React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content> &
+  VariantProps<typeof popoverContentVariants>
+
 const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>
->(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
+  PopoverContentProps
+>(({ className, align = "center", sideOffset = 4, layout, ...props }, ref) => (
   <PopoverPrimitive.Portal>
     <PopoverPrimitive.Content
       ref={ref}
@@ -22,6 +42,7 @@ const PopoverContent = React.forwardRef<
       sideOffset={sideOffset}
       className={cn(
         "z-50 w-72 rounded-xl border border-border/80 bg-popover p-4 text-popover-foreground shadow-xl outline-none animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 duration-150 data-[state=closed]:duration-100 ease-out data-[side=bottom]:origin-top data-[side=top]:origin-bottom data-[side=left]:origin-right data-[side=right]:origin-left motion-reduce:transform-none motion-reduce:transition-none",
+        popoverContentVariants({ layout }),
         className
       )}
       {...props}

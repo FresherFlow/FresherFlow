@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { Opportunity, OpportunityType, WorkMode, Profile, ActionType } from '@fresherflow/types';
+import { Opportunity, WorkMode, Profile, ActionType } from '@fresherflow/types';
+import { FeedType, isGovernmentOpportunity, matchesFeedType } from '@/utils/taxonomy';
 import { readFeedCache, saveFeedCache, saveLastSyncTimestamp, readTrackerCacheSync, readFeedCacheSync } from '@/utils/cache/offlineCache';
 import { generateCdnSignature } from '@/utils/cdnSignature';
 import debounce from 'lodash.debounce';
@@ -19,7 +20,7 @@ import { useFeedStore } from '@/store/useFeedStore';
 
 
 export interface ExploreFilters {
-    types: OpportunityType[];
+    types: FeedType[];
     workModes: WorkMode[];
     batchYears: number[];
     tag: string | null;
@@ -262,13 +263,13 @@ export function useExplore() {
 
         // Ensure we filter out items that don't belong to the active sector
         items = items.filter(j => {
-            if (sector === 'GOVERNMENT') return j.type === 'GOVERNMENT';
-            return j.type !== 'GOVERNMENT';
+            if (sector === 'GOVERNMENT') return isGovernmentOpportunity(j);
+            return !isGovernmentOpportunity(j);
         });
 
         // Apply Filters Locally
         if (filters.types && filters.types.length > 0) {
-            items = items.filter(j => filters.types.includes(j.type));
+            items = items.filter(j => filters.types.some(t => matchesFeedType(j, t)));
         }
 
         if (filters.tag) {

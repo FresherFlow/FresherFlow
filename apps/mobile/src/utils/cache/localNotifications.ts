@@ -22,6 +22,7 @@ import { getLocalAlertPrefs } from './localAlerts';
 import { calculateOpportunityMatch } from '@fresherflow/utils';
 import { getSeenIds } from './seenJobs';
 import { getJSON, setJSON, getString, setString } from '../storage';
+import { isGovernmentOpportunity } from '@/utils/taxonomy';
 import { useAuthStore } from '@/store/useAuthStore';
 import * as Notifications from 'expo-notifications';
 
@@ -523,7 +524,8 @@ export async function markAllLocalAlertsAsRead(sector?: 'PRIVATE' | 'GOVERNMENT'
   try {
     const alerts = await getLocalAlerts();
     const updated = alerts.map(a => {
-        if (!sector || a.opportunity.type === sector || (sector === 'PRIVATE' && a.opportunity.type !== 'GOVERNMENT')) {
+        const isGov = isGovernmentOpportunity(a.opportunity);
+        if (!sector || (sector === 'GOVERNMENT' ? isGov : !isGov)) {
             return { ...a, readAt: a.readAt || new Date().toISOString() };
         }
         return a;
@@ -539,7 +541,7 @@ export async function clearAllLocalAlerts(sector?: 'PRIVATE' | 'GOVERNMENT'): Pr
     const alerts = await getLocalAlerts();
     const updated = alerts.filter(a => {
         if (!sector) return false;
-        const isGov = a.opportunity.type === 'GOVERNMENT';
+        const isGov = isGovernmentOpportunity(a.opportunity);
         if (sector === 'GOVERNMENT') {
             return !isGov;
         } else {

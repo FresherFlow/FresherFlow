@@ -3,6 +3,7 @@
 import * as React from "react"
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
 import { Check, ChevronRight, Circle } from "lucide-react"
+import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/ui/cn"
 
@@ -56,10 +57,25 @@ const DropdownMenuSubContent = React.forwardRef<
 DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName
 
+const dropdownMenuContentVariants = cva("", {
+    variants: {
+        radius: {
+            xl: "",
+            lg: "rounded-lg",
+        },
+    },
+    defaultVariants: {
+        radius: "xl",
+    },
+})
+
+type DropdownMenuContentProps = React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content> &
+    VariantProps<typeof dropdownMenuContentVariants>
+
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
+  DropdownMenuContentProps
+>(({ className, sideOffset = 4, radius, ...props }, ref) => (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
       ref={ref}
@@ -67,6 +83,7 @@ const DropdownMenuContent = React.forwardRef<
       className={cn(
         "z-50 max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-xl border border-border/80 bg-card p-1.5 text-card-foreground shadow-xl",
         "animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 duration-150 data-[state=closed]:duration-100 ease-out data-[side=bottom]:origin-top data-[side=top]:origin-bottom data-[side=left]:origin-right data-[side=right]:origin-left motion-reduce:transform-none motion-reduce:transition-none",
+        dropdownMenuContentVariants({ radius }),
         className
       )}
       {...props}
@@ -75,17 +92,33 @@ const DropdownMenuContent = React.forwardRef<
 ))
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName
 
+const dropdownMenuItemVariants = cva("", {
+    variants: {
+        tone: {
+            default: "",
+            destructive: "text-destructive focus:text-destructive",
+            destructiveMuted: "text-destructive focus:bg-destructive/10 focus:text-destructive",
+        },
+    },
+    defaultVariants: {
+        tone: "default",
+    },
+})
+
+type DropdownMenuItemProps = React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
+    inset?: boolean
+} & VariantProps<typeof dropdownMenuItemVariants>
+
 const DropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
-    inset?: boolean
-  }
->(({ className, inset, ...props }, ref) => (
+  DropdownMenuItemProps
+>(({ className, inset, tone, ...props }, ref) => (
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
       "relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-foreground outline-none transition-colors hover:bg-muted focus:bg-muted focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&>svg]:size-4 [&>svg]:shrink-0",
       inset && "pl-8",
+      dropdownMenuItemVariants({ tone }),
       className
     )}
     {...props}
@@ -139,17 +172,42 @@ const DropdownMenuRadioItem = React.forwardRef<
 ))
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName
 
+const dropdownMenuLabelVariants = cva("", {
+    variants: {
+        spacing: {
+            default: "",
+            none: "p-0",
+        },
+        size: {
+            default: "",
+            xs: "text-xs",
+        },
+        weight: {
+            default: "",
+            normal: "font-normal",
+        },
+        tone: {
+            default: "",
+            muted: "text-muted-foreground",
+        },
+    },
+    defaultVariants: {},
+})
+
+type DropdownMenuLabelProps = React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
+    inset?: boolean
+} & VariantProps<typeof dropdownMenuLabelVariants>
+
 const DropdownMenuLabel = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Label>,
-  React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
-    inset?: boolean
-  }
->(({ className, inset, ...props }, ref) => (
+  DropdownMenuLabelProps
+>(({ className, inset, spacing, size, weight, tone, ...props }, ref) => (
   <DropdownMenuPrimitive.Label
     ref={ref}
     className={cn(
       "px-2 py-1.5 text-sm font-semibold",
       inset && "pl-8",
+      dropdownMenuLabelVariants({ spacing, size, weight, tone }),
       className
     )}
     {...props}

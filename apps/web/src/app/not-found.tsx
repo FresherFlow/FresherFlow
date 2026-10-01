@@ -42,8 +42,8 @@ export default function NotFoundPage() {
         <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-y-auto bg-background text-foreground">
             <div className="mx-auto flex min-h-full w-full max-w-xl flex-col items-center justify-center gap-6 px-4 py-12 text-center">
                 <div
-                    className="animate-in space-y-3 fade-in-0 slide-in-from-bottom-3 fill-mode-both duration-500"
-                    style={{ animationDelay: '90ms' }}
+                    className="animate-in space-y-3 fade-in-0 slide-in-from-bottom-3 duration-500"
+                    style={{ animationDelay: '90ms', animationFillMode: 'both' }}
                 >
                     <p className="flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest text-muted-foreground">
                         <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
@@ -62,8 +62,8 @@ export default function NotFoundPage() {
                 </div>
 
                 <div
-                    className="flex animate-in flex-row flex-wrap items-center justify-center gap-3 fade-in-0 slide-in-from-bottom-3 fill-mode-both duration-500"
-                    style={{ animationDelay: '180ms' }}
+                    className="flex animate-in flex-row flex-wrap items-center justify-center gap-3 fade-in-0 slide-in-from-bottom-3 duration-500"
+                    style={{ animationDelay: '180ms', animationFillMode: 'both' }}
                 >
                     <Button variant="outline" size="sm" onClick={() => router.back()}>
                         Go back
@@ -78,8 +78,8 @@ export default function NotFoundPage() {
 
                 <nav
                     aria-label="Where to go next"
-                    className="w-full animate-in overflow-hidden rounded-xl border border-border/70 bg-card text-left fade-in-0 slide-in-from-bottom-3 fill-mode-both duration-500"
-                    style={{ animationDelay: '270ms' }}
+                    className="w-full animate-in overflow-hidden rounded-xl border border-border/70 bg-card text-left fade-in-0 slide-in-from-bottom-3 duration-500"
+                    style={{ animationDelay: '270ms', animationFillMode: 'both' }}
                 >
                     <div className="divide-y divide-border">
                         {QUICK_LINKS.map(({ href, label, text, Icon }) => (

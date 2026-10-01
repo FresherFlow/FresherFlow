@@ -46,7 +46,7 @@ function DashboardHubContent() {
                 not a dashboard action. Export lives on the listings header
                 where the data is. The whole row went with the h1 — it had no
                 description and no actions left to hold. */}
-            <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
+            <Tabs value={activeTab} onValueChange={handleTabChange} spaced>
                 <div className="w-full overflow-x-auto pb-2">
                     <TabsList>
                         {TABS.map((tab) => (
@@ -56,16 +56,16 @@ function DashboardHubContent() {
                         ))}
                     </TabsList>
                 </div>
-                <TabsContent value="overview" className="space-y-4">
+                <TabsContent value="overview" spaced>
                     <OverviewTab />
                 </TabsContent>
-                <TabsContent value="analytics" className="space-y-4">
+                <TabsContent value="analytics" spaced>
                     <AnalyticsClient />
                 </TabsContent>
-                <TabsContent value="reports" className="space-y-4">
+                <TabsContent value="reports" spaced>
                     <ReportsClient />
                 </TabsContent>
-                <TabsContent value="notifications" className="space-y-4">
+                <TabsContent value="notifications" spaced>
                     <NotificationsSummary />
                 </TabsContent>
             </Tabs>

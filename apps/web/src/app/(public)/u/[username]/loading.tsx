@@ -33,8 +33,8 @@ export default function ProfilePageLoading() {
                     </div>
                 </div>
 
-                <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1fr)_300px]">
-                    <div className="min-w-0 space-y-10">
+                <div className="mt-10 flex flex-col gap-10 lg:flex-row">
+                    <div className="min-w-0 flex-1 space-y-10">
                         {[0, 1].map((block) => (
                             <div key={block} className="space-y-4">
                                 <div className="flex items-center gap-3">
@@ -49,7 +49,7 @@ export default function ProfilePageLoading() {
                             </div>
                         ))}
                     </div>
-                    <div className="h-40 animate-pulse rounded-xs border border-border bg-muted/30" />
+                    <div className="h-40 animate-pulse rounded-xs border border-border bg-muted/30 lg:w-75 lg:shrink-0" />
                 </div>
             </div>
         </div>

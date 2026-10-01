@@ -1,4 +1,5 @@
 import { Opportunity, SalaryPeriod } from '@fresherflow/types';
+import { isInternshipOpportunity } from '@/utils/taxonomy';
 
 /**
  * Formats salary or stipend based on period and available values.
@@ -8,7 +9,7 @@ export const formatSalary = (opportunity: Opportunity, isShortForm = false): str
     const { salaryRange, salaryMin, salaryMax, salaryPeriod, stipend } = opportunity;
     
     // If it's an internship and stipend string exists, use it as primary
-    if (opportunity.type === 'INTERNSHIP' && stipend) {
+    if (isInternshipOpportunity(opportunity) && stipend) {
         if (isShortForm) {
             // Hide purely text stipends or very long strings
             if (!/\d/.test(stipend) || stipend.length > 20) {

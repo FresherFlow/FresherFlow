@@ -18,9 +18,9 @@ export const revalidate = false;
  */
 export default function ProfilePageNotFound() {
     return (
-        <div className="flex min-h-[70vh] w-full items-center justify-center bg-background px-6 py-16 text-foreground">
+        <div className="flex w-full items-center justify-center bg-background px-6 py-16 text-foreground" style={{ minHeight: '70vh' }}>
             <div className="w-full max-w-lg space-y-5">
-                <div className="flex items-center gap-3 font-record text-micro uppercase tracking-[0.14em] text-muted-foreground">
+                <div className="flex items-center gap-3 font-record text-micro uppercase text-muted-foreground" style={{ letterSpacing: '0.14em' }}>
                     <span className="h-1.75 w-1.75 rounded-full bg-warning" aria-hidden />
                     Fresher profile
                     <span className="h-px flex-1 bg-border" aria-hidden />
@@ -39,7 +39,7 @@ export default function ProfilePageNotFound() {
                     <div className="flex flex-col gap-2 pt-2 sm:flex-row">
                         <Link
                             href="/login?redirect=/account?tab=profile"
-                            className="inline-flex h-10 items-center justify-center rounded-xs bg-primary px-5 text-xs font-semibold text-primary-foreground transition-transform duration-150 ease-out hover:-translate-y-px active:scale-[0.98]"
+                            className="inline-flex h-10 items-center justify-center rounded-xs bg-primary px-5 text-xs font-semibold text-primary-foreground transition-transform duration-150 ease-out hover:-translate-y-px active-press-soft"
                         >
                             Sign in to publish
                         </Link>

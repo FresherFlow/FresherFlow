@@ -110,7 +110,7 @@ function hasAdminBadge(badge: string | number | undefined): badge is string | nu
 }
 
 function AdminNavBadge({ children }: { children: ReactNode }) {
-    return <Badge className="rounded-full px-1 py-0 text-xs">{children}</Badge>;
+    return <Badge size="xs">{children}</Badge>;
 }
 
 function AdminSidebarMenuLink({

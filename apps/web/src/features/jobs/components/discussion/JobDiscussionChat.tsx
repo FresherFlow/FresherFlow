@@ -61,9 +61,9 @@ function MessageSkeleton() {
             {[0, 1, 2].map((index) => (
                 <div key={index} className={cn('flex gap-2.5', index % 2 === 1 && 'justify-end')}>
                     {index % 2 === 0 && <Skeleton variant="pill" className="h-8 w-8 shrink-0" />}
-                    <div className="max-w-[80%] space-y-1.5">
+                    <div className="max-w-4/5 space-y-1.5">
                         <Skeleton className="h-3 w-24" />
-                        <Skeleton className="h-10 w-56 rounded-lg" />
+                        <Skeleton variant="panel" className="h-10 w-56" />
                     </div>
                 </div>
             ))}
@@ -82,9 +82,10 @@ type Props = {
     ) => Promise<boolean>;
     onDelete: (commentId: string) => Promise<void>;
     className?: string;
+    style?: React.CSSProperties;
 };
 
-export function JobDiscussionChat({ comments, loading, error, onPost, onDelete, className }: Props) {
+export function JobDiscussionChat({ comments, loading, error, onPost, onDelete, className, style }: Props) {
     const { user } = useAuth();
     const [draft, setDraft] = useState('');
     const [posting, setPosting] = useState(false);
@@ -179,7 +180,7 @@ export function JobDiscussionChat({ comments, loading, error, onPost, onDelete, 
     }
 
     return (
-        <div className={cn('flex min-h-0 flex-col', className)}>
+        <div className={cn('flex min-h-0 flex-col', className)} style={style}>
             <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
                 {loading ? (
                     <MessageSkeleton />
@@ -214,16 +215,16 @@ export function JobDiscussionChat({ comments, loading, error, onPost, onDelete, 
                                         className={cn('group flex gap-2.5', isOwn ? 'justify-end' : 'justify-start')}
                                     >
                                         {!isOwn && (
-                                            <Avatar className="h-8 w-8 shrink-0">
+                                            <Avatar size="sm">
                                                 {comment.user.avatarUrl ? (
                                                     <AvatarImage src={comment.user.avatarUrl} alt="" />
                                                 ) : null}
-                                                <AvatarFallback className="text-micro font-bold text-muted-foreground">
+                                                <AvatarFallback textSize="micro" textWeight="bold" tone="muted">
                                                     {initials(comment.user)}
                                                 </AvatarFallback>
                                             </Avatar>
                                         )}
-                                        <div className={cn('flex max-w-[82%] flex-col gap-1', isOwn && 'items-end')}>
+                                        <div className={cn('flex flex-col gap-1', isOwn && 'items-end')} style={{ maxWidth: '82%' }}>
                                             <div className={cn('flex items-center gap-2', isOwn && 'flex-row-reverse')}>
                                                 <span className="text-micro font-semibold text-muted-foreground">
                                                     {isOwn ? 'You' : displayName(comment.user)}
@@ -333,10 +334,12 @@ export function JobDiscussionChat({ comments, loading, error, onPost, onDelete, 
                         aria-label={asking ? 'Write a question' : 'Write a comment'}
                         className="min-h-0 resize-none"
                     />
-                    <Button type="submit" size="chip" disabled={!canPost} className="shrink-0">
-                        <PaperAirplaneIcon className="h-4 w-4" aria-hidden="true" />
-                        {posting ? 'Posting…' : asking ? 'Ask' : 'Post'}
-                    </Button>
+                    <div className="shrink-0">
+                        <Button type="submit" size="chip" disabled={!canPost}>
+                            <PaperAirplaneIcon className="h-4 w-4" aria-hidden="true" />
+                            {posting ? 'Posting…' : asking ? 'Ask' : 'Post'}
+                        </Button>
+                    </div>
                 </div>
             </form>
 

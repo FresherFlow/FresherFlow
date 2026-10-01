@@ -24,6 +24,10 @@ const buttonVariants = cva(
                 outline: "border border-border bg-background text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted",
                 secondary: "bg-secondary text-secondary-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:bg-secondary/80",
                 ghost: "[@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted [@media(hover:hover)_and_(pointer:fine)]:hover:text-foreground",
+                // Muted icon button that turns destructive on hover (row delete
+                // actions). Owns the muted base + red hover so call sites never
+                // restyle color/motion on the primitive.
+                ghostDanger: "text-muted-foreground transition-colors hover:text-destructive [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted [@media(hover:hover)_and_(pointer:fine)]:hover:text-destructive",
                 // Hover uses `muted`, not `accent`: in the dark theme
                 // `--color-accent` is near-white (oklch 97.7%), so `hover:bg-accent`
                 // filled the button solid white. Light mode is unchanged — accent
@@ -40,6 +44,18 @@ const buttonVariants = cva(
                 // minimum) and the 6px gap between icon and label, which the
                 // primitive owns so call sites never restyle spacing.
                 chip: "h-10 gap-1.5 px-4 text-sm",
+                // Dense 32px outline action (tracker tables). Matches the
+                // previous `h-8 px-3 text-xs` call-site combo exactly.
+                xs: "h-8 px-3 text-xs",
+                // 32px square icon (bulk/row actions). Keeps the base
+                // rounded-md; use `avatar` below for the circular trigger.
+                iconSm: "h-8 w-8",
+                // 32px circular avatar trigger (header profile menu). Owns
+                // position + shape + padding so the call site stays clean.
+                avatar: "relative h-8 w-8 shrink-0 rounded-full p-0",
+                // Text-link with icon (view-matches). Owns auto height + tight
+                // gap + no padding so call sites never restyle the primitive.
+                linkSm: "h-auto gap-1 p-0 text-xs",
                 // Wide CTA sizes for empty/error state actions. Pair with label="caps".
                 cta: "h-12 px-8 py-2 text-sm",
                 ctaCompact: "h-11 px-6 py-2 text-sm",

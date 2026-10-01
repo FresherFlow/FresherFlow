@@ -64,9 +64,11 @@ function Thread({
                     </h2>
                     <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
                 </div>
-                <Button asChild variant="outline" size="sm" className="shrink-0">
-                    <Link href={href}>{isCompany ? 'Open company' : 'Open job'}</Link>
-                </Button>
+                <div className="shrink-0">
+                    <Button asChild variant="outline" size="sm">
+                        <Link href={href}>{isCompany ? 'Open company' : 'Open job'}</Link>
+                    </Button>
+                </div>
             </header>
             <JobDiscussionChat
                 comments={comments}
@@ -116,7 +118,7 @@ export default function DiscussionsClient({
                 </p>
             </div>
 
-            <div className="flex h-[70vh] gap-3 overflow-hidden rounded-2xl border border-border bg-card p-2">
+            <div className="flex gap-3 overflow-hidden rounded-2xl border border-border bg-card p-2" style={{ height: '70vh' }}>
                 {/* Conversation list */}
                 <div className={cn('flex min-h-0 w-full flex-col sm:w-72', selected && 'hidden sm:flex')}>
                     <div className="px-1 pb-2 pt-1">

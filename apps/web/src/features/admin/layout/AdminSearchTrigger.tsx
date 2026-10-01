@@ -25,7 +25,7 @@ export function AdminSearchTrigger({ className = '' }: { className?: string }) {
         >
             <Search aria-hidden className="h-4 w-4 shrink-0" />
             <span className="min-w-0 flex-1 truncate text-left">Search&hellip;</span>
-            <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium group-hover:bg-muted/60 sm:flex">
+            <kbd className="pointer-events-none hidden h-5 select-none items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-micro font-medium group-hover:bg-muted/60 sm:flex">
                 <span className="text-xs">&#8984;</span>K
             </kbd>
         </button>

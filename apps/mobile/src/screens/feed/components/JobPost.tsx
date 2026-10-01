@@ -7,7 +7,8 @@ import Animated, {
   Easing 
 } from 'react-native-reanimated';
 import { CompanyLogo } from '@repo/ui';
-import { Opportunity, OpportunityType } from '@fresherflow/types';
+import { Opportunity } from '@fresherflow/types';
+import { getFeedBadgeLabel, isWalkinOpportunity } from '@/utils/taxonomy';
 import { MapPin, IndianRupee, Bookmark, ExternalLink, Zap } from 'lucide-react-native';
 import { formatSalary } from '@/utils/formatters';
 import { haptic } from '@/utils/haptics';
@@ -90,10 +91,10 @@ export const JobPost = memo(({
           </View>
           <View style={[
             styles.typeBadge,
-            opportunity.type === OpportunityType.WALKIN && styles.walkinBadge
+            isWalkinOpportunity(opportunity) && styles.walkinBadge
           ]}>
             <Text style={styles.typeBadgeText}>
-              {opportunity.type === OpportunityType.WALKIN ? 'WALK-IN' : opportunity.type}
+              {isWalkinOpportunity(opportunity) ? 'WALK-IN' : getFeedBadgeLabel(opportunity)}
             </Text>
           </View>
         </View>

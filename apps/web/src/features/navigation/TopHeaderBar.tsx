@@ -48,7 +48,7 @@ function TopHeaderBarContent() {
                     </>
                 ) : isAdminRoute ? (
                     <div className="flex min-w-0 flex-1 items-center gap-2">
-                        <SidebarTrigger className="size-7 shrink-0 rounded-lg text-muted-foreground hover:bg-muted/80 hover:text-foreground" />
+                        <SidebarTrigger muted />
                         <div aria-hidden className="h-6 w-px shrink-0 bg-border" />
                         <div className="min-w-0 flex-1 truncate text-lg font-semibold text-foreground">{adminTitle}</div>
                         <div className="ml-auto flex shrink-0 items-center gap-1.5">
