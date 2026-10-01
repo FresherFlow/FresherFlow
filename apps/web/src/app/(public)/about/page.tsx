@@ -14,7 +14,9 @@ import {
 } from 'lucide-react';
 
 export const metadata: Metadata = {
-    title: 'About FresherFlow | Jobs, powered by freshers.',
+    // `absolute`: the title names the brand already, and the root layout's
+    // "%s | FresherFlow" template was appending a second suffix.
+    title: { absolute: 'About FresherFlow | Jobs, powered by freshers.' },
     description:
         'FresherFlow is a community of freshers who share opportunities, discuss hiring, and keep each other informed — so no fresher applies blind.',
     alternates: {
@@ -24,7 +26,7 @@ export const metadata: Metadata = {
         title: 'About FresherFlow — Jobs, powered by freshers.',
         description:
             'FresherFlow is a community of freshers who share opportunities, discuss hiring, and keep each other informed — so no fresher applies blind.',
-        url: 'https://fresherflow.in/about',
+        url: '/about',
         type: 'website',
     },
 };

@@ -116,55 +116,47 @@ export const parseOpportunityLocation = (locations?: string[] | null): ParsedOpp
     };
 };
 
+/**
+ * The location chips a detail page renders, each a `City, State` run.
+ *
+ * Shares the token rules with `parseOpportunityLocation` above. It used to
+ * re-declare both the remote-alias set and its own title-caser — and the local
+ * title-caser lower-cased the tail of every word, so the same listing read
+ * `New Mumbai` in the chips and `NEW mumbai` in the hero.
+ */
 export function getGroupedLocations(locations?: string[] | null): string[] {
     const rawTokens = (locations ?? [])
-        .flatMap(l => l.split(','))
-        .map(l => l.trim())
-        .filter(l => l.toLowerCase() !== 'india' && l !== '');
-    
-    if (rawTokens.length === 0) return [];
-    
-    const toTitleCaseLocal = (value: string): string =>
-        value
-            .split(' ')
-            .filter(Boolean)
-            .map((part) => part[0]?.toUpperCase() + part.slice(1).toLowerCase())
-            .join(' ');
-            
-    const lowerTokens = rawTokens.map(t => t.toLowerCase());
+        .flatMap((value) => value.split(','))
+        .map((token) => token.trim())
+        .filter((token) => token && !INDIA_ALIASES.has(token.toLowerCase()));
 
-    const REMOTE_ALIASES_LOCAL = new Set(['remote', 'work from home', 'wfh', 'pan india', 'anywhere']);
-    if (lowerTokens.some(t => REMOTE_ALIASES_LOCAL.has(t))) {
+    if (rawTokens.length === 0) return [];
+
+    if (rawTokens.some((token) => REMOTE_ALIASES.has(token.toLowerCase()))) {
         return ['Remote'];
     }
 
     const cities = new Set<string>();
     const states = new Set<string>();
 
-    rawTokens.forEach(token => {
-        const lower = token.toLowerCase();
-        if (isStateName(lower)) {
-            states.add(toTitleCaseLocal(token));
-        } else {
-            cities.add(toTitleCaseLocal(token));
-        }
+    rawTokens.forEach((token) => {
+        const target = isStateName(token.toLowerCase()) ? states : cities;
+        target.add(toTitleCase(token));
     });
 
     const uniqueCities = Array.from(cities);
 
     if (uniqueCities.length === 1) {
         const city = uniqueCities[0];
-        const lowerCity = city.toLowerCase();
-        const state = Array.from(states)[0] || getStateForCity(lowerCity);
-        if (state) {
-            return [`${city}, ${toTitleCaseLocal(state)}`];
-        }
-        return [city];
-    } else if (uniqueCities.length > 1) {
-        // If multiple cities, hide the state entirely!
-        return uniqueCities;
-    } else {
-        // Only states or other tokens
-        return Array.from(states);
+        const state = Array.from(states)[0] || getStateForCity(city.toLowerCase());
+        return state ? [`${city}, ${state}`] : [city];
     }
+
+    if (uniqueCities.length > 1) {
+        // Several cities: a single state would misdescribe the rest, so hide it.
+        return uniqueCities;
+    }
+
+    // Only states, or tokens we could not place.
+    return Array.from(states);
 }

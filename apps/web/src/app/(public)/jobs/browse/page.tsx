@@ -10,22 +10,30 @@ import {
 // On-demand revalidation via /api/revalidate — same policy as the feed routes.
 export const revalidate = false;
 
+// Single home for the sharable strings: the openGraph and twitter titles used to
+// say "Browse All Job Boards | FresherFlow" while the document title said
+// "... | Jobs by Role, City, Skill & Batch", so a shared link and the tab
+// disagreed about the same page.
+const BROWSE_TITLE = 'Browse All Job Boards | Jobs by Role, City, Skill & Batch';
+const BROWSE_DESCRIPTION =
+    'Every FresherFlow job board in one directory: roles, cities, skills, batch years and role–city boards — all built from the live feed.';
+
 export const metadata: Metadata = {
-    title: 'Browse All Job Boards | Jobs by Role, City, Skill & Batch',
-    description: 'Every FresherFlow job board in one directory: roles, cities, skills, batch years and role–city boards — all built from the live feed.',
+    title: BROWSE_TITLE,
+    description: BROWSE_DESCRIPTION,
     alternates: {
         canonical: '/jobs/browse',
     },
     openGraph: {
-        title: 'Browse All Job Boards | FresherFlow',
-        description: 'Every FresherFlow job board in one directory: roles, cities, skills, batch years and role–city boards.',
+        title: BROWSE_TITLE,
+        description: BROWSE_DESCRIPTION,
         type: 'website',
         images: [{ url: '/main.png', width: 1200, height: 630, alt: 'FresherFlow job boards directory' }],
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Browse All Job Boards | FresherFlow',
-        description: 'Every FresherFlow job board in one directory: roles, cities, skills, batch years and role–city boards.',
+        title: BROWSE_TITLE,
+        description: BROWSE_DESCRIPTION,
         images: ['/main.png'],
     },
 };

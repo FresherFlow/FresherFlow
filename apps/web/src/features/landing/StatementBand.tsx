@@ -26,7 +26,7 @@ export function StatementBand() {
                 <div className="mt-10 flex flex-wrap justify-center gap-3">
                     <Link
                         href="/jobs"
-                        className="inline-flex items-center gap-2 rounded-[2px] bg-[var(--ff-accent)] px-[18px] py-[10px] text-[13.5px] font-semibold text-paper transition-transform hover:-translate-y-px active:scale-[0.98]"
+                        className="inline-flex items-center gap-2 rounded-[2px] bg-[var(--ff-accent)] px-[18px] py-[10px] text-[13.5px] font-semibold text-[var(--color-ff-accent-ink)] transition-transform hover:-translate-y-px active:scale-[0.98]"
                     >
                         Browse jobs <ArrowRightIcon className="h-4 w-4" />
                     </Link>

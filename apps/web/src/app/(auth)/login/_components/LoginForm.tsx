@@ -412,7 +412,7 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
                                     <Input id="auth-email" type="email" variant="form" required autoComplete="email" inputMode="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-11 h-12" placeholder="Enter your email address" />
                                 </div>
                             </div>
-                            <button type="submit" disabled={(mounted && isLoading) || isProcessing || !email.trim() || !EMAIL_PATTERN.test(email.trim())} className="w-full h-12 rounded-xl bg-ff-accent text-paper font-semibold text-sm flex items-center justify-center gap-2 hover:opacity-90 active-press-soft transition-all disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-100">
+                            <button type="submit" disabled={(mounted && isLoading) || isProcessing || !email.trim() || !EMAIL_PATTERN.test(email.trim())} className="w-full h-12 rounded-xl bg-ff-accent text-[var(--color-ff-accent-ink)] font-semibold text-sm flex items-center justify-center gap-2 hover:opacity-90 active-press-soft transition-all disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-100">
                                 {isProcessing ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : <>Continue <span aria-hidden>→</span></>}
                             </button>
                             <div className="relative py-3"><div className="absolute inset-0 flex items-center"><span className="w-full border-t border-border" /></div><div className="relative flex justify-center"><span className="bg-card px-3 text-xs text-muted-foreground">or</span></div></div>

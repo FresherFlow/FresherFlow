@@ -27,7 +27,7 @@ const readinessLimiter = rateLimit({
     max: 60,
     standardHeaders: true,
     legacyHeaders: false,
-    message: { error: 'Too many requests' },
+    message: { error: { code: 'RATE_LIMITED', message: 'Too many requests', requestId: 'rate-limit' } },
 });
 
 /**

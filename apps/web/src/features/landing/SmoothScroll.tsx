@@ -17,15 +17,48 @@ export function SmoothScroll() {
             touchMultiplier: 1.4,
         });
 
+        // An unconditional rAF loop ran for the entire lifetime of the
+        // landing page: a wakeup every frame even with no scroll in flight,
+        // and continued while the tab was backgrounded. Gated on visibility
+        // so a hidden tab costs nothing, and the loop is torn down on unmount.
         let raf = 0;
+        let running = true;
+
         const loop = (time: number) => {
             lenis.raf(time);
             raf = requestAnimationFrame(loop);
         };
-        raf = requestAnimationFrame(loop);
+        const start = () => {
+            if (running) return;
+            running = true;
+            raf = requestAnimationFrame(loop);
+        };
+        const stop = () => {
+            if (!running) return;
+            running = false;
+            cancelAnimationFrame(raf);
+        };
+
+        const onVisibilityChange = () => {
+            if (document.hidden) {
+                stop();
+                lenis.stop();
+            } else {
+                lenis.start();
+                start();
+            }
+        };
+
+        if (document.hidden) {
+            running = false;
+        } else {
+            raf = requestAnimationFrame(loop);
+        }
+        document.addEventListener('visibilitychange', onVisibilityChange);
 
         return () => {
-            cancelAnimationFrame(raf);
+            stop();
+            document.removeEventListener('visibilitychange', onVisibilityChange);
             lenis.destroy();
         };
     }, []);

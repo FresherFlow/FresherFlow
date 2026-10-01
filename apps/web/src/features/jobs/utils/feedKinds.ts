@@ -130,10 +130,6 @@ export function getTypeOptions(feed: FeedKind) {
     return TYPE_OPTIONS[feed];
 }
 
-export function getFilterDimensions(feed: FeedKind): FilterDimension[] {
-    return DIMENSIONS[feed];
-}
-
 /** True when the feed exposes the given dimension. Use this to gate a pill. */
 export function supportsDimension(
     feed: FeedKind,

@@ -20,7 +20,13 @@ export function useOpportunityFormHandlers(form: ReturnType<typeof useOpportunit
             return;
         }
 
-        const payload = buildOpportunityPayload({
+        // Built inside a try: `buildOpportunityPayload` parses the 21 JSON detail
+        // fields and throws on malformed JSON. It used to run before the request
+        // try/catch, so one bad character produced an unhandled rejection — no
+        // toast, and `setIsLoading(false)` never ran.
+        let payload: Record<string, unknown>;
+        try {
+        payload = buildOpportunityPayload({
             type: form.type,
             title: form.title,
             company: form.company,
@@ -134,6 +140,10 @@ export function useOpportunityFormHandlers(form: ReturnType<typeof useOpportunit
             appDuration: form.appDuration,
             appRequiredItems: form.appRequiredItems
         });
+        } catch (err: unknown) {
+            toast.error(`Could not read the form: ${getErrorMessage(err)}`);
+            return;
+        }
 
         form.setIsLoading(true);
         const toastId = toast.loading(isEditMode ? 'Updating listing...' : 'Publishing listing...');

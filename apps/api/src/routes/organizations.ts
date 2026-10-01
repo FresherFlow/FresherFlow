@@ -122,6 +122,14 @@ router.post('/', requireAuth, validate(createOrgSchema), async (req: Request, re
  */
 router.get('/:id', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
+        // Reads ask for VIEWER in this router, per the contract in the file
+        // header. This route was the one read that skipped it, and
+        // `getOrganization` includes `members.user.email`, so any authenticated
+        // user could read any organization's full member roster with email
+        // addresses by guessing an id or slug. Authorize before loading, exactly
+        // as the sibling read routes do.
+        await authorize(req, OrgRole.VIEWER);
+
         const id = String(req.params.id);
         const organization = await OrganizationService.getOrganization(id);
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRateLimit } from '@/lib/api/rateLimit';
+import { withAdminAuth } from '@/lib/server/adminAuth';
 import { hasIngestionDb, queryRows, ingestionDbError } from '@/lib/server/ingestion/db';
 import { loadDefaultTargets } from '@/lib/server/ingestion/targets';
 
@@ -41,4 +42,4 @@ async function getStats(request: NextRequest) {
   }
 }
 
-export const GET = withRateLimit(getStats, { windowMs: 60_000, max: 60, keyPrefix: 'discovery-stats' });
+export const GET = withRateLimit(withAdminAuth(getStats), { windowMs: 60_000, max: 60, keyPrefix: 'discovery-stats' });

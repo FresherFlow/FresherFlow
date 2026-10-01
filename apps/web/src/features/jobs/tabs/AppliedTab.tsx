@@ -8,6 +8,10 @@ import { fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { readFeedCache, getOpportunityFromCache } from '@/lib/cache/opportunitiesFeedCache';
 import { ActionType } from '@fresherflow/types';
 import type { Opportunity } from '@fresherflow/types';
+import {
+    getTrackerOptions,
+    normalizeTrackerActionType,
+} from '@fresherflow/utils';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
@@ -35,51 +39,44 @@ interface StatusConfig {
     label: string;
 }
 
-// Stage color is gone on purpose: the status control is a plain bordered
-// select in the reference's table. One neutral treatment for every stage.
+/**
+ * The tab bar's own ordering, plus the pseudo-stage `SAVED`, which exists only
+ * in this table (a saved listing has no `ActionType`).
+ *
+ * Stage *labels* are not defined here. They come from the shared
+ * `getTrackerStageLabel`, which is the same source the opportunity detail select
+ * reads, so a stage cannot be called "Offered" in this table and "Selected" on
+ * the detail page for the same stored value. This table used to carry its own
+ * `STATUS_CONFIGS` and that is how the two drifted apart.
+ */
 const STATUS_CONFIGS: Record<string, StatusConfig> = {
     ['SAVED']: {
         key: 'SAVED' as ActionType,
         label: 'Saved',
     },
-    [ActionType.APPLIED]: {
-        key: ActionType.APPLIED,
-        label: 'Applied',
-    },
-    [ActionType.INTERVIEWED]: {
-        key: ActionType.INTERVIEWED,
-        label: 'Interviewing',
-    },
-    [ActionType.SELECTED]: {
-        key: ActionType.SELECTED,
-        label: 'Offered',
-    },
-    [ActionType.REJECTED]: {
-        key: ActionType.REJECTED,
-        label: 'Rejected',
-    },
-    [ActionType.PLANNED]: {
-        key: ActionType.PLANNED,
-        label: 'Planned',
-    },
+    ...Object.fromEntries(
+        getTrackerOptions(false).map(
+            (option): [string, StatusConfig] => [option.key, { key: option.key, label: option.label }],
+        ),
+    ),
 };
 
 const TAB_OPTIONS: { key: TrackerTabKey; label: string }[] = [
     { key: 'ALL', label: 'All' },
     { key: 'SAVED', label: 'Saved' },
-    { key: 'APPLIED', label: 'Applied' },
-    { key: 'INTERVIEWED', label: 'Interviewing' },
-    { key: 'SELECTED', label: 'Offered' },
-    { key: 'REJECTED', label: 'Rejected' },
-    { key: 'PLANNED', label: 'Planned' },
+    ...Object.entries(STATUS_CONFIGS)
+        .filter(([key]) => key !== 'SAVED')
+        .map(([key, cfg]) => ({ key: key as TrackerTabKey, label: cfg.label })),
 ];
 
+/**
+ * Fold a stored tracker value onto its canonical `ActionType` key.
+ * `SAVED` is a real pseudo-stage here rather than an alias, so it passes
+ * through untouched.
+ */
 const normalizeStatus = (value: ActionType | string): ActionType => {
-    if (value === ActionType.PLANNING || value === 'PLANNED') return ActionType.PLANNED;
-    if (value === ActionType.ATTENDED || value === 'INTERVIEWED') return ActionType.INTERVIEWED;
-    if (value === 'SELECTED' || value === 'OFFERED') return ActionType.SELECTED;
-    if (value === 'REJECTED') return ActionType.REJECTED;
-    return ActionType.APPLIED;
+    if (value === 'SAVED') return 'SAVED' as ActionType;
+    return normalizeTrackerActionType(value) as ActionType;
 };
 
 interface TrackedItem extends Opportunity {

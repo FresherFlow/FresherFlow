@@ -1,21 +1,7 @@
 import { getApiBaseForEndpoint } from '@/lib/api/client';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
+import { enumToTypeParam } from '@/lib/opportunity/typeParam';
 import type { Opportunity } from '@fresherflow/types';
-
-export const typeParamToEnum = (value: string) => {
-    const v = value.toLowerCase();
-    if (v === 'job' || v === 'jobs') return 'JOB';
-    if (v === 'internship' || v === 'internships') return 'INTERNSHIP';
-    if (v === 'walk-in' || v === 'walkin' || v === 'walkins' || v === 'walk-ins') return 'WALKIN';
-    return value.toUpperCase();
-};
-
-export const enumToTypeParam = (value: string) => {
-    if (value === 'JOB') return 'job';
-    if (value === 'INTERNSHIP') return 'internship';
-    if (value === 'WALKIN') return 'walk-in';
-    return value.toLowerCase();
-};
 
 export const buildExportUrl = (typeFilter: string, statusFilter: string) => {
     const params = new URLSearchParams();

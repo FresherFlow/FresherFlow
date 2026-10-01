@@ -14,6 +14,7 @@ import {
     supportsDimension,
 } from '@/features/jobs/utils/feedKinds';
 import { Drawer, DrawerContent } from '@/ui/drawer';
+import { CURATED_ROLE_KEYWORDS } from '@/features/jobs/domain/taxonomy/constants';
 
 // Removed hardcoded locations
 
@@ -38,7 +39,16 @@ const CORP_COURSES = ['B.Tech/B.E.', 'M.C.A.', 'MBA', 'B.Sc/B.Com/B.A', 'Diploma
 
 // Removed hardcoded years and skills
 
-type OpenSection = 'type' | 'experience' | 'location' | 'year' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | 'source' | 'company' | 'driveDate' | 'driveRadius' | null;
+type OpenSection = 'type' | 'experience' | 'location' | 'year' | 'sector' | 'qualification' | 'course' | 'workMode' | 'skills' | 'source' | 'company' | 'driveDate' | 'driveRadius' | 'role' | 'closingSoon' | 'saved' | null;
+
+/**
+ * Role options, from the curated taxonomy — the same source `boardFilters` uses
+ * to write `?role=` and the same source the desktop `JobFilterBar` reads. The
+ * drawer previously had no role section at all while the desktop bar had one,
+ * so a phone user could not set or clear a role that a saved search or a role
+ * board had put in the URL.
+ */
+const ROLE_OPTIONS = Object.values(CURATED_ROLE_KEYWORDS).map((role) => role.label);
 
 interface MobileFilterDrawerProps {
     isOpen: boolean;
@@ -50,9 +60,11 @@ interface MobileFilterDrawerProps {
     draftYear: number | null;
     setDraftYear: (year: number | null) => void;
     draftClosingSoon: boolean;
-    setDraftClosingSoon: (val: boolean) => void;
+    setDraftClosingSoon?: (val: boolean) => void;
     draftShowOnlySaved: boolean;
-    setDraftShowOnlySaved: (val: boolean) => void;
+    setDraftShowOnlySaved?: (val: boolean) => void;
+    draftRole?: string[];
+    setDraftRole?: (val: string[]) => void;
     draftSector: string | null;
     setDraftSector: (val: string | null) => void;
     draftQualification: string | null;
@@ -152,7 +164,11 @@ export function MobileFilterDrawer({
     draftYear,
     setDraftYear,
     draftClosingSoon,
+    setDraftClosingSoon,
     draftShowOnlySaved,
+    setDraftShowOnlySaved,
+    draftRole,
+    setDraftRole,
     draftSector,
     setDraftSector,
     draftQualification,
@@ -178,6 +194,7 @@ export function MobileFilterDrawer({
     aggregates,
     onApply,
     onClear,
+    isLoggedIn = false,
     draftMatchCount = null,
 }: MobileFilterDrawerProps) {
     const [openSection, setOpenSection] = useState<OpenSection>(setDraftType ? 'type' : 'location');
@@ -307,6 +324,73 @@ export function MobileFilterDrawer({
                                     );
                                 })()}
                             </div>
+                        </Section>
+                    ) : null}
+
+                    {setDraftRole && supportsDimension(feedKind, 'role') ? (
+                        <Section
+                            title="Role"
+                            isOpen={openSection === 'role'}
+                            onToggle={() => setOpenSection(openSection === 'role' ? null : 'role')}
+                        >
+                            <div className="flex flex-wrap gap-2">
+                                <Pill
+                                    active={(draftRole ?? []).length === 0}
+                                    onClick={() => setDraftRole([])}
+                                >
+                                    Any
+                                </Pill>
+                                {ROLE_OPTIONS.map((role) => {
+                                    const isSelected = (draftRole ?? []).includes(role);
+                                    return (
+                                        <Pill
+                                            key={role}
+                                            active={isSelected}
+                                            onClick={() => setDraftRole(
+                                                isSelected
+                                                    ? (draftRole ?? []).filter((r) => r !== role)
+                                                    : [...(draftRole ?? []), role]
+                                            )}
+                                        >
+                                            {role}
+                                        </Pill>
+                                    );
+                                })}
+                            </div>
+                        </Section>
+                    ) : null}
+
+                    {/* Closing soon / Saved only. Both were in the active-filter
+                        count and both had a removable chip, but neither had a
+                        control, so a phone user who landed on a link setting
+                        either could only clear it by editing the URL. */}
+                    {setDraftClosingSoon ? (
+                        <Section
+                            title="Deadline"
+                            isOpen={openSection === 'closingSoon'}
+                            onToggle={() => setOpenSection(openSection === 'closingSoon' ? null : 'closingSoon')}
+                        >
+                            <div className="flex flex-wrap gap-2">
+                                <Pill active={!draftClosingSoon} onClick={() => setDraftClosingSoon(false)}>Any deadline</Pill>
+                                <Pill active={draftClosingSoon} onClick={() => setDraftClosingSoon(true)}>Closing soon</Pill>
+                            </div>
+                        </Section>
+                    ) : null}
+                    {setDraftShowOnlySaved ? (
+                        <Section
+                            title="Saved"
+                            isOpen={openSection === 'saved'}
+                            onToggle={() => setOpenSection(openSection === 'saved' ? null : 'saved')}
+                        >
+                            <div className="flex flex-wrap gap-2">
+                                <Pill active={!draftShowOnlySaved} onClick={() => setDraftShowOnlySaved(false)}>All listings</Pill>
+                                <Pill active={draftShowOnlySaved} onClick={() => setDraftShowOnlySaved(true)}>Saved only</Pill>
+                            </div>
+                            {!isLoggedIn && (
+                                <p className="text-xs text-muted-foreground pt-1">
+                                    Sign in to narrow these listings to the ones you saved.
+                                </p>
+                            )}
                         </Section>
                     ) : null}
 

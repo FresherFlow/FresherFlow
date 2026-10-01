@@ -61,13 +61,13 @@ Use `pnpm`. Do not use `npm` or `yarn`.
 | Prisma client | `packages/database` |
 | Shared request and response types | `packages/types/src/index.ts` |
 | Frontend API wrappers | `packages/api-client/src/` |
-| Business rules | `packages/domain` |
+| Business rules | API application and infrastructure services, with pure helpers in `packages/utils` and `packages/types`. There is no `packages/domain` yet; see `docs/ARCHITECTURE-TRUTH.md` |
 | Shared utilities | `packages/utils/src/` |
 | Shared UI primitives | `packages/ui` |
 | Bootstrap feed | Cloudflare R2 object behind the FresherFlow CDN |
 | Mobile feed cache | `apps/mobile/src/utils/cache/syncModule.ts` and MMKV |
 | Queue contracts | `packages/queue` |
-| Redis clients | `packages/redis` |
+| Redis clients | `packages/database/src/redis.ts`, re-exported by `packages/database/src/index.ts` |
 
 ### One home per fact
 
@@ -94,13 +94,13 @@ Keep boundaries hard:
 - Frontend apps call backend data through `packages/api-client`
 - Frontend apps do not import from `apps/api`
 - API routes validate input, then delegate to application or infrastructure services
-- Business rules that can survive a backend rewrite belong in `packages/domain`
+- Business rules that can survive a backend rewrite belong in an API application or infrastructure service, or as pure helpers in `packages/utils` and `packages/types`
 - Multi-table writes use `prisma.$transaction`
 - Heavy work uses BullMQ workers, not request handlers
 - Mobile feed data flows through `syncModule.ts` only
 - Feed regeneration starts from admin or publish flows, not public frontend routes
 
-Do not add new code under `apps/api/src/domain`. Move legacy logic to `packages/domain`, application services, or infrastructure as you touch it.
+Do not add new code under `apps/api/src/domain`. Move legacy logic to an application service, infrastructure, or a pure helper in `packages/utils` as you touch it.
 
 ## Environment rules
 

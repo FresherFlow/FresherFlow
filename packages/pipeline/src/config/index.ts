@@ -1,6 +1,7 @@
 import path from "node:path";
 import { registerAggregatorDomains } from "../core/extractor.js";
 import { loadEnvSync, loadEnv } from "./loadEnv.js";
+import { fetchJsonWithRetry } from "../utils/resilient-json.js";
 
 // --- LOAD ENV ---
 // The loader itself lives in ./loadEnv.js (no heavy imports). Re-export here so
@@ -143,60 +144,99 @@ export type TargetSite = {
 
 export let TARGET_SITES: TargetSite[] = [];
 
+/**
+ * Load aggregator/site/channel config from the CDN.
+ *
+ * Returns an empty list when the config is unavailable — callers skip the
+ * aggregator stage rather than failing the run. The reason is logged and cached
+ * so a config outage is visible in the logs instead of looking like "no sites
+ * configured".
+ */
+let targetSitesLoadError: string | null = null;
+let targetSitesLoadErrorReported = false;
+
+/** Last failure reason from `fetchTargetSitesFromCdn`, or null if it last succeeded. */
+export function getTargetSitesLoadError(): string | null {
+    return targetSitesLoadError;
+}
+
 export async function fetchTargetSitesFromCdn(): Promise<TargetSite[]> {
-  try {
-    const res = await fetch(`${CDN_URL}/aggregators.json`);
-    if (res.ok) {
-      const raw: any = await res.json();
-      const list: any[] = Array.isArray(raw) ? raw : (raw?.sites ?? []);
-      // Preserve all site fields (including optional `ignore`) — never drop
-      // unknown fields when normalizing.
-      TARGET_SITES = list.map((s) => ({ ...s, urls: s.urls ?? [] }));
-      // Domain lists live in JSON, never in code. Merge order: aggregators.json
-      // `_rules` first (backward compat), then rules.json overrides when present.
-      // Both fetches are best-effort — empty defaults mean filters stay off.
-      if (raw?._rules && typeof raw._rules === "object") {
-        for (const key of Object.keys(raw._rules)) {
-          if (Array.isArray(raw._rules[key])) {
-            AGGREGATOR_RULES._rules[key] = raw._rules[key];
-          } else {
-            AGGREGATOR_RULES[key] = raw._rules[key];
-          }
+    try {
+        const res = await fetchJsonWithRetry(`${CDN_URL}/aggregators.json`, {
+            label: 'aggregators.json',
+            attempts: 3,
+            timeoutMs: 15_000,
+            validate: (data) => typeof data === 'object' && data !== null,
+        });
+        if (res.ok) {
+            const raw: any = res.data;
+            const list: any[] = Array.isArray(raw) ? raw : (raw?.sites ?? []);
+            // Preserve all site fields (including optional `ignore`) — never drop
+            // unknown fields when normalizing.
+            TARGET_SITES = list.map((s) => ({ ...s, urls: s.urls ?? [] }));
+            targetSitesLoadError = null;
+            // Domain lists live in JSON, never in code. Merge order: aggregators.json
+            // `_rules` first (backward compat), then rules.json overrides when present.
+            // Both fetches are best-effort — empty defaults mean filters stay off.
+            if (raw?._rules && typeof raw._rules === "object") {
+                for (const key of Object.keys(raw._rules)) {
+                    if (Array.isArray(raw._rules[key])) {
+                        AGGREGATOR_RULES._rules[key] = raw._rules[key];
+                    } else {
+                        AGGREGATOR_RULES[key] = raw._rules[key];
+                    }
+                }
+            }
+            try {
+                await fetchRulesFromCdn();
+            } catch {}
+            // Register every aggregator site hostname (regular + govt URLs) so
+            // their pages are never treated as real apply links.
+            const hosts: string[] = [];
+            for (const site of TARGET_SITES) {
+                for (const u of [...(site.urls || []), ...(site.govtUrls || [])]) {
+                    try {
+                        hosts.push(new URL(u).hostname);
+                    } catch {}
+                }
+            }
+            registerAggregatorDomains(hosts);
+            console.log(`[Config] Loaded ${TARGET_SITES.length} aggregator site(s) from CDN.`);
+            return TARGET_SITES;
         }
-      }
-      try {
-        await fetchRulesFromCdn();
-      } catch {}
-      // Register every aggregator site hostname (regular + govt URLs) so
-      // their pages are never treated as real apply links.
-      const hosts: string[] = [];
-      for (const site of TARGET_SITES) {
-        for (const u of [...(site.urls || []), ...(site.govtUrls || [])]) {
-          try {
-            hosts.push(new URL(u).hostname);
-          } catch {}
-        }
-      }
-      registerAggregatorDomains(hosts);
-      return TARGET_SITES;
+        targetSitesLoadError = res.reason;
+    } catch (err) {
+        targetSitesLoadError = err instanceof Error ? err.message : String(err);
     }
-  } catch {}
-  return TARGET_SITES;
+    if (!targetSitesLoadErrorReported) {
+        targetSitesLoadErrorReported = true;
+        console.warn(
+            `[Config] aggregators.json unavailable (${targetSitesLoadError}). ` +
+            `Aggregator and channel discovery will be skipped this run.`,
+        );
+    }
+    return TARGET_SITES;
 }
 
 export async function fetchRulesFromCdn(): Promise<void> {
-  try {
-    const res = await fetch(`${CDN_URL}/rules.json`);
-    if (res.ok) {
-      const rules: any = await res.json();
-      for (const key of Object.keys(rules)) {
-        if (Array.isArray(rules[key])) {
-          AGGREGATOR_RULES._rules[key] = rules[key];
-        }
-      }
-      console.log(`[Config] Loaded rules from rules.json`);
+    const res = await fetchJsonWithRetry(`${CDN_URL}/rules.json`, {
+        label: 'rules.json',
+        attempts: 2,
+        timeoutMs: 10_000,
+        validate: (data) => typeof data === 'object' && data !== null,
+    });
+    if (!res.ok) {
+        // Best-effort: rules only tighten filters, so defaults stay permissive.
+        console.warn(`[Config] rules.json unavailable (${res.reason}); using default filter rules.`);
+        return;
     }
-  } catch {}
+    const rules: any = res.data;
+    for (const key of Object.keys(rules)) {
+        if (Array.isArray(rules[key])) {
+            AGGREGATOR_RULES._rules[key] = rules[key];
+        }
+    }
+    console.log(`[Config] Loaded rules from rules.json`);
 }
 
 export const AGGREGATOR_RULES: Record<string, any> = {
@@ -298,25 +338,27 @@ export async function loadRoleWords(): Promise<Set<string>> {
   if (_roleWordsPromise) return _roleWordsPromise;
 
   _roleWordsPromise = (async () => {
-    try {
-      const res = await fetch(`${CDN_URL}/api/meta/roles.json`, {
-        signal: AbortSignal.timeout(8000),
-      });
-      if (res.ok) {
-                const roles = (await res.json()) as string[];
+    const res = await fetchJsonWithRetry(`${CDN_URL}/api/meta/roles.json`, {
+      label: 'roles.json',
+      attempts: 2,
+      timeoutMs: 8000,
+      validate: (data) => Array.isArray(data),
+    });
+    if (res.ok) {
+        const roles = res.data as string[];
         const words = new Set<string>();
         for (const role of roles) {
-          for (const w of role.toLowerCase().split(/\s+/)) {
+          for (const w of String(role).toLowerCase().split(/\s+/)) {
             if (w.length >= 2) words.add(w);
           }
         }
         _roleWords = words;
         console.log(`[RoleFilter] Loaded ${words.size} role words from CDN`);
         return words;
-      }
-    } catch (err) {
-      console.warn("[RoleFilter] CDN fetch failed:", (err as Error).message);
     }
+    // Empty set disables the title filter — permissive, so a missing roles.json
+    // costs precision, never correctness. Never throw here.
+    console.warn(`[RoleFilter] roles.json unavailable (${res.reason}); title role-word filter disabled for this run.`);
     _roleWords = new Set();
     return _roleWords;
   })();

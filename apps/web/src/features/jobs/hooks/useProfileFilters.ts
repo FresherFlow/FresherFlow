@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Opportunity, Profile } from '@fresherflow/types';
+import { matchesDeclaredPassoutYear } from '@/features/jobs/domain/passoutYears';
+import { formatWorkMode } from '@/features/profile/preferences';
 
 /**
  * Profile preferences as FIRST-CLASS, VISIBLE feed filters.
@@ -40,13 +42,6 @@ export interface ProfileFilterPrefs {
 
 const STORAGE_KEY = 'ff:profileFilters';
 const DEFAULT_PREFS: ProfileFilterPrefs = { enabled: true, dismissed: [] };
-
-const WORK_MODE_LABELS: Record<string, string> = {
-    REMOTE: 'Remote',
-    HYBRID: 'Hybrid',
-    ONSITE: 'On-site',
-    ON_SITE: 'On-site',
-};
 
 // ─── Persisted prefs (localStorage-backed, subscribe-able) ───────────────────
 
@@ -139,7 +134,7 @@ export function deriveProfileFilterChips(profile: Profile | null | undefined): P
                 id: `workMode:${value}`,
                 dim: 'workMode',
                 value,
-                label: WORK_MODE_LABELS[value] ?? value,
+                label: formatWorkMode(value),
             });
         }
     }
@@ -249,15 +244,10 @@ export function matchesProfileFilters(opportunity: Opportunity, chips: ProfileFi
     }
 
     const batchChip = chips.find((chip) => chip.dim === 'batch');
-    if (batchChip) {
-        const year = Number(batchChip.value);
-        const allowed = (opportunity.allowedPassoutYears ?? []).map(Number).filter(Number.isFinite);
-        if (allowed.length > 0 && !allowed.includes(year)) {
-            const min = Number(opportunity.passoutYearMin);
-            const max = Number(opportunity.passoutYearMax);
-            const inRange = Number.isFinite(min) && Number.isFinite(max) && year >= min && year <= max;
-            if (!inRange) return false;
-        }
+    if (batchChip && !matchesDeclaredPassoutYear(opportunity, Number(batchChip.value))) {
+        // The same rule the feed filter applies, so a listing can never be
+        // visible in the feed and simultaneously flagged as a profile mismatch.
+        return false;
     }
 
     return true;

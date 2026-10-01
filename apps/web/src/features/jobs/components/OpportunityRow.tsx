@@ -8,6 +8,7 @@ import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
 import { getPostedLabel } from '@/features/jobs/components/JobCard/jobCardUtils';
 import { isInternshipOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
+import { resolveShowApplied } from '@/features/jobs/domain/trackerState';
 
 interface OpportunityRowProps {
     opp: Opportunity;
@@ -49,6 +50,10 @@ export function OpportunityRow({
 }: OpportunityRowProps) {
     const location = parseOpportunityLocation(opp.locations);
     const posted = getPostedLabel(opp as Opportunity);
+    // Reading the payload's actions needs no hook, so the row stays hook-less
+    // (see `CategoryPageView`). Without this, an APPLIED action was invisible in
+    // the split sidebar even though the list card above it showed Applied.
+    const showApplied = resolveShowApplied(opp, isApplied);
     const mode = getModeLabel(opp);
     const typePrefix = getTypePrefix(opp);
     const meta = [typePrefix, location.shortLabel !== 'Remote' ? location.shortLabel : null, mode]
@@ -98,7 +103,7 @@ export function OpportunityRow({
                 )}
                 <span className="mt-0.5 block text-sm text-muted-foreground">
                     {posted}
-                    {isApplied ? ' · Applied' : ''}
+                    {showApplied ? ' · Applied' : ''}
                 </span>
             </button>
             <button

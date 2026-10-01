@@ -1,38 +1,17 @@
 'use client';
 
-import { Opportunity } from '@fresherflow/types';
-import { useRouter } from 'next/navigation';
 import { cn } from '@repo/ui/utils/cn';
-import React, { useMemo } from 'react';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import BookmarkSolidIcon from '@heroicons/react/24/solid/BookmarkIcon';
 import CheckIcon from '@heroicons/react/24/solid/CheckIcon';
-import toast from 'react-hot-toast';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
-import { useAuth } from '@/lib/auth/AuthContext';
-import { useFirebaseSaved } from '@/features/dashboard/hooks/useSavedJobs';
-import { useTrackerWriter } from '@/features/dashboard/hooks/useFirebaseTracker';
-import { saveOpportunityToCache } from '@/lib/cache/opportunitiesFeedCache';
-import { ActionType } from '@fresherflow/types';
-import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
-import { isCampusDriveOpportunity } from '@/features/jobs/domain/driveTimeline';
-import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
-import { promptLoginToast } from '@/lib/utils/toastUtils';
 import { JobCardBadges } from './JobCardBadges';
 import { ArrowUpRight } from 'lucide-react';
-import { getDriveDetails, isGovernmentOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
-import {
-    getPostedLabel,
-    isJobExpired,
-    reorderSkillsBySearch,
-} from './jobCardUtils';
-
-type JobAction = { actionType: string };
-type JobWithActions = Opportunity & { actions?: JobAction[] };
+import { useJobCardActions, type JobCardOpportunity } from './useJobCardActions';
 
 interface MobileJobCardProps {
-    job: Opportunity;
+    job: JobCardOpportunity;
     jobId: string;
     onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
     isSaved?: boolean;
@@ -40,6 +19,7 @@ interface MobileJobCardProps {
     onToggleSave?: () => void;
     priority?: boolean;
     searchQuery?: string;
+    searchedSkill?: string;
     className?: string;
 }
 
@@ -52,36 +32,34 @@ export function JobCardMobile({
     onToggleSave,
     priority = false,
     searchQuery,
+    searchedSkill,
     className,
 }: MobileJobCardProps) {
-    const router = useRouter();
-    const { user } = useAuth();
-    const { savedJobsMap, toggleSavedJob } = useFirebaseSaved(user?.id);
-    // Writer-only: this card records the apply action but never reads the
-    // tracker map, so it must not hold a per-instance RTDB subscription.
-    const { writeTrackerItem } = useTrackerWriter(user?.id);
-
-    const isDrive = isCampusDriveOpportunity(job);
-    const isGovernment = isGovernmentOpportunity(job);
-    const isWalkin = isWalkinOpportunity(job);
-
-    const targetId = jobId || job.id;
-    const isJobSaved = isSaved !== undefined ? isSaved : Boolean(savedJobsMap[targetId] || savedJobsMap[job.id]);
-
-    const trackerAction = (job as JobWithActions).actions?.find?.((a) =>
-        ['APPLIED', 'PLANNED', 'SAVED_FOR_LATER', 'INTERVIEWING', 'OFFERED', 'REJECTED'].includes(a.actionType)
-    );
-    const trackerStatus = trackerAction?.actionType ?? null;
-    const showApplied = trackerStatus === 'APPLIED' || (!trackerStatus && isApplied);
-
-    const allSkills = ((job as { skills?: string[] }).skills || job.requiredSkills || []) as string[];
-    const orderedSkills = useMemo(
-        () => reorderSkillsBySearch(allSkills, searchQuery || ''),
-        [allSkills, searchQuery]
-    );
-    const locationInfo = isDrive
-        ? { shortLabel: 'PAN India', fullLabel: 'PAN India' }
-        : parseOpportunityLocation(job.locations);
+    const {
+        isGovernment,
+        isWalkin,
+        isExpired,
+        isJobSaved,
+        showApplied,
+        orderedSkills,
+        locationInfo,
+        jobPath,
+        directionsUrl,
+        postedLabel,
+        handleSaveClick,
+        handleApplyClick,
+        handleCardClick,
+        handleLinkClick,
+    } = useJobCardActions({
+        job,
+        jobId,
+        isSaved,
+        isApplied,
+        onToggleSave,
+        onClick,
+        searchQuery,
+        searchedSkill,
+    });
 
     // Mobile data diet: title 1 line, company 1 line, 2 skills + overflow,
     // actions. No meta strip (mode duplicates the location row; education,
@@ -90,64 +68,13 @@ export function JobCardMobile({
     // lists become full-screen cards — the whole card is 5 short rows.
     const mobileSkills = orderedSkills.slice(0, 2);
     const mobileOverflow = Math.max(0, orderedSkills.length - mobileSkills.length);
-    const postedLabel = getPostedLabel(job);
-
-    const driveDetails = getDriveDetails(job);
-    const walkinDestination =
-        driveDetails?.latitude && driveDetails?.longitude
-            ? `${driveDetails.latitude},${driveDetails.longitude}`
-            : driveDetails?.venueAddress;
-    const directionsUrl =
-        driveDetails?.venueLink ||
-        (walkinDestination
-            ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(walkinDestination)}`
-            : '');
-
-    const handleSaveClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (!user) {
-            promptLoginToast('Sign in to save opportunities');
-            return;
-        }
-        saveOpportunityToCache({ ...job, id: targetId } as Opportunity);
-        if (onToggleSave) {
-            onToggleSave();
-        } else {
-            toggleSavedJob(targetId)
-                .then(() => toast.success(isJobSaved ? 'Removed from bookmarks' : 'Added to bookmarks'))
-                .catch(() => toast.error('Bookmark update failed'));
-        }
-    };
-
-    const handleApplyClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        e.preventDefault();
-        const targetUrl = job.applyLink || job.companyWebsite;
-        const applyAction = isWalkinOpportunity(job) ? ActionType.PLANNED : ActionType.APPLIED;
-
-        saveOpportunityToCache({ ...job, id: targetId } as Opportunity);
-        writeTrackerItem(targetId, applyAction).catch(() => undefined);
-
-        if (targetUrl) {
-            window.open(targetUrl, '_blank', 'noopener,noreferrer');
-            toast.success('Opening application link...');
-        } else {
-            toast.error('No application link available');
-        }
-    };
-
-    const handleCardClick = (e: React.MouseEvent) => {
-        if ((e.target as HTMLElement).closest('a, button, [role="menuitem"], input, select, textarea')) return;
-        onClick?.(e as unknown as React.MouseEvent<HTMLAnchorElement>);
-        if (!e.defaultPrevented) router.push(getOpportunityPathFromItem(job));
-    };
 
     return (
         <div
             className={cn(
                 'group relative bg-card text-card-foreground border rounded-lg p-2.5 flex flex-col gap-2 transition-colors duration-150 ease-out cursor-pointer',
                 'border-border hover:border-primary/30',
-                isJobExpired(job) && 'opacity-60',
+                isExpired && 'opacity-60',
                 className
             )}
             onClick={handleCardClick}
@@ -217,11 +144,7 @@ export function JobCardMobile({
                             )}
                             <button
                                 type="button"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (onClick) onClick(e as unknown as React.MouseEvent<HTMLAnchorElement>);
-                                    else router.push(getOpportunityPathFromItem(job));
-                                }}
+                                onClick={handleLinkClick(jobPath)}
                                 className="inline-flex items-center justify-center px-2.5 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                             >
                                 View drive

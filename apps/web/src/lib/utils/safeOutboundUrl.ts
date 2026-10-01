@@ -7,8 +7,7 @@
  * that, so the only real gate is parsing the string with `new URL()` and
  * requiring an http(s) scheme — never `url.includes('domain.com')`.
  *
- * `features/landing/LatestJobsList.tsx` still keeps a private copy of this
- * helper; this is the canonical one and the copy should be deleted.
+ * This is the single home for the check; every outbound link goes through it.
  */
 
 /** Matches a leading scheme (`https:`, `javascript:`, `data:` ...). */

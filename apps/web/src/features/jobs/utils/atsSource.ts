@@ -2,7 +2,7 @@
  * Canonical opportunity → source display name.
  *
  * Single home for the "Source" taxonomy used by the jobs Source filter
- * (`FilterDropdownBar`, feed aggregates) and the companies directory.
+ * (`JobFilterBar`/`JobsFilterBar`, feed aggregates) and the companies directory.
  * Maps applyLink || sourceLink || companyWebsite to names like
  * Greenhouse, Naukri, Careers, Website. Keep in sync — do not duplicate.
  */

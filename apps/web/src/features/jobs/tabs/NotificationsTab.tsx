@@ -9,7 +9,6 @@ import { alertsApi } from "@/lib/api/client";
 import {
   ArrowLeftIcon,
   Cog6ToothIcon,
-  BriefcaseIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@repo/ui/utils/cn";
 import { Skeleton } from "@/ui/Skeleton";
@@ -215,47 +214,34 @@ function NotificationsPageContent() {
           ))}
         </div>
       ) : visibleNotifications.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center space-y-4">
-          <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto text-muted-foreground/50">
-            <BriefcaseIcon className="w-6 h-6" />
-          </div>
-          {filter === "unread" && notifications.length > 0 ? (
-            <div className="space-y-2">
-              <h2 className="text-base font-bold text-foreground">
-                All caught up
-              </h2>
-              <p className="text-muted-foreground text-xs leading-relaxed max-w-xs mx-auto">
-                Nothing unread. Switch to All to browse earlier notifications.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <h2 className="text-base font-bold text-foreground">
-                No notifications yet
-              </h2>
-              <p className="text-muted-foreground text-xs leading-relaxed max-w-xs mx-auto">
-                We&apos;ll let you know when a new job matches your alerts, or a
-                job you follow changes.
-              </p>
-            </div>
-          )}
-          {filter === "unread" && notifications.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => setFilter("all")}
-              className="inline-flex h-9 items-center justify-center px-6 bg-muted text-foreground font-bold text-xs rounded-lg hover:bg-muted/80 transition-all"
-            >
-              Show all
-            </button>
-          ) : (
-            <Link
-              href="/jobs"
-              className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold capitalize tracking-widest text-xs rounded-lg hover:bg-primary/90 transition-all shadow"
-            >
-              Browse jobs
-            </Link>
-          )}
-        </div>
+        <EmptyState
+          icon="inbox"
+          size="md"
+          title={filter === "unread" && notifications.length > 0 ? "All caught up" : "No notifications yet"}
+          description={
+            filter === "unread" && notifications.length > 0
+              ? "Nothing unread. Switch to All to browse earlier notifications."
+              : "We'll let you know when a new job matches your alerts, or a job you follow changes."
+          }
+          action={
+            filter === "unread" && notifications.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setFilter("all")}
+                className="inline-flex h-9 items-center justify-center px-6 bg-muted text-foreground font-bold text-xs rounded-lg hover:bg-muted/80 transition-all"
+              >
+                Show all
+              </button>
+            ) : (
+              <Link
+                href="/jobs"
+                className="inline-flex h-9 items-center justify-center px-6 bg-primary text-primary-foreground font-bold capitalize tracking-widest text-xs rounded-lg hover:bg-primary/90 transition-all shadow"
+              >
+                Browse jobs
+              </Link>
+            )
+          }
+        />
       ) : (
         <div className="space-y-6">
           {groups.map((group) => (
@@ -273,7 +259,9 @@ function NotificationsPageContent() {
                     )}
                     onClick={() => {
                       void markRead(notif);
-                      if (notif.opportunitySlug) {
+                      if (notif.href) {
+                        router.push(notif.href);
+                      } else if (notif.opportunitySlug) {
                         router.push(`/jobs/${notif.opportunitySlug}`);
                       } else if (notif.fallbackHref) {
                         router.push(notif.fallbackHref);

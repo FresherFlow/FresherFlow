@@ -317,21 +317,100 @@ function normalizeAcademic(value: string) {
 
 import { ActionType } from '@fresherflow/types';
 
+/**
+ * The one canonical stage vocabulary for the application tracker.
+ *
+ * Three surfaces let a user set or read a stage — the opportunity detail select
+ * (`getTrackerOptions`), the Application Tracker tab, and the job card — and they
+ * each carried their own table. They drifted: the detail page said "Selected"
+ * where the tracker said "Offered" and "Interviewed" where the tracker said
+ * "Interviewing", and `REJECTED` existed on the tracker but had no option in the
+ * detail select, so a rejected listing rendered a value the control could not
+ * represent.
+ *
+ * The rule is deliberately mechanical: **the label is the enum key**, so a new
+ * stage cannot acquire a second name. The one exception is `INTERVIEWED`, which
+ * a walk-in reader calls "Attended" — that is a genuine difference in what
+ * happened, not a synonym, so it is a parameter rather than a second table.
+ *
+ * Enum values are stored data and are NOT renamed here. Only the display strings
+ * are unified.
+ */
+export const TRACKER_STAGE_LABELS: Record<string, string> = {
+    [ActionType.APPLIED]: 'Applied',
+    [ActionType.PLANNED]: 'Planned',
+    [ActionType.INTERVIEWED]: 'Interviewed',
+    [ActionType.SELECTED]: 'Selected',
+    [ActionType.REJECTED]: 'Rejected',
+};
+
+/**
+ * Canonical stage keys, in pipeline order. A walk-in drive has no "Applied"
+ * step — you turn up — so that key is dropped for that flow by
+ * `getTrackerOptions`. `REJECTED` is offered on every flow: recording a
+ * rejection is how a job seeker prunes their pipeline, and leaving it out of the
+ * detail page meant a rejection set elsewhere was invisible and unrepresentable
+ * here.
+ */
+export const CANONICAL_TRACKER_ACTION_TYPES: ActionType[] = [
+    ActionType.APPLIED,
+    ActionType.PLANNED,
+    ActionType.INTERVIEWED,
+    ActionType.SELECTED,
+    ActionType.REJECTED,
+];
+
+/** Label for a stage key, tolerating legacy and alternate stored spellings. */
+export function getTrackerStageLabel(value: ActionType | string, isWalkinFlow = false): string {
+    const key = normalizeTrackerActionType(value);
+    if (key === ActionType.INTERVIEWED && isWalkinFlow) return 'Attended';
+    return TRACKER_STAGE_LABELS[key] ?? String(value);
+}
+
+/**
+ * Spellings that reach us from stored data but are not canonical `ActionType`
+ * members. `PLANNING` and `ATTENDED` are declared legacy values on the enum
+ * itself; `OFFERED` / `INTERVIEWING` / `SAVED_FOR_LATER` were never enum members
+ * but older tracker rows carry them, and the card's pipeline list has always
+ * named them. Without this map a listing whose action was stored as `OFFERED`
+ * would resolve to a stage key that no select has an option for, and the
+ * control would render empty.
+ */
+const TRACKER_ACTION_ALIASES: Record<string, ActionType> = {
+    PLANNING: ActionType.PLANNED,
+    ATTENDED: ActionType.INTERVIEWED,
+    OFFERED: ActionType.SELECTED,
+    INTERVIEWING: ActionType.INTERVIEWED,
+    SAVED_FOR_LATER: ActionType.PLANNED,
+};
+
+/**
+ * The non-canonical spellings that reach us from stored data. Exported so a
+ * consumer that needs to *match* raw values (rather than normalise them) can ask
+ * for the full accepted set instead of writing a second list that can drift.
+ */
+export const TRACKER_ACTION_ALIAS_KEYS: string[] = Object.keys(TRACKER_ACTION_ALIASES);
+
+/**
+ * Fold any known spelling of a stage onto its canonical `ActionType` key.
+ * Unknown values are returned unchanged so a value this build does not know
+ * about is still shown as-is rather than silently becoming "Applied".
+ */
+export function normalizeTrackerActionType(value: ActionType | string | null | undefined): string {
+    if (value === null || value === undefined) return '';
+    return TRACKER_ACTION_ALIASES[value] ?? value;
+}
+
 export function getCurrentActionType(opportunity: Opportunity | null): ActionType | null {
     if (!opportunity?.actions?.length) return null;
     const current = opportunity.actions[0].actionType as ActionType;
-    if (current === ActionType.PLANNING) return ActionType.PLANNED;
-    if (current === ActionType.ATTENDED) return ActionType.INTERVIEWED;
-    return current;
+    return normalizeTrackerActionType(current) as ActionType;
 }
 
 export function getTrackerOptions(isWalkinFlow: boolean): Array<{ key: ActionType; label: string }> {
-    return [
-        ...(isWalkinFlow ? [] : [{ key: ActionType.APPLIED, label: 'Applied' }]),
-        { key: ActionType.PLANNED, label: 'Planned' },
-        { key: ActionType.INTERVIEWED, label: isWalkinFlow ? 'Attended' : 'Interviewed' },
-        { key: ActionType.SELECTED, label: 'Selected' },
-    ];
+    return CANONICAL_TRACKER_ACTION_TYPES
+        .filter((key) => !(isWalkinFlow && key === ActionType.APPLIED))
+        .map((key) => ({ key, label: getTrackerStageLabel(key, isWalkinFlow) }));
 }
 
 export type SharePlatform = 'telegram' | 'linkedin' | 'x' | 'instagram' | 'facebook' | 'other';

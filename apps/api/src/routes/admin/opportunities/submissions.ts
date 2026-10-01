@@ -6,6 +6,7 @@ import { generateSlug } from '@fresherflow/utils';
 import { handleOpportunityPublished } from '../../../infrastructure/services/opportunity/publish.service';
 import { actorId, requirePermission } from '../../../middleware/auth';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
+import { sendError, ErrorCode } from '../../../middleware/errorHandler';
 import crypto from 'node:crypto';
 
 const router = Router();
@@ -28,10 +29,10 @@ router.post('/bulk', requireRawBulkPermission, async (req: Request & { adminId?:
     try {
         const { ids, action } = req.body;
         if (!ids || !Array.isArray(ids) || ids.length === 0) {
-            return res.status(400).json({ message: 'IDs array is required' });
+            return sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'IDs array is required', req.requestId);
         }
         if (!action || (action !== 'PUBLISH' && action !== 'ARCHIVE')) {
-            return res.status(400).json({ message: 'Valid action (PUBLISH or ARCHIVE) is required' });
+            return sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'Valid action (PUBLISH or ARCHIVE) is required', req.requestId);
         }
 
         const now = new Date();
@@ -178,17 +179,17 @@ router.post('/:id/link', requirePermission('opportunity.edit'), async (req: Requ
         const { opportunityId } = req.body;
 
         if (!opportunityId) {
-            return res.status(400).json({ message: 'opportunityId is required' });
+            return sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'opportunityId is required', req.requestId);
         }
 
         const raw = await prisma.rawOpportunity.findUnique({ where: { id } });
         if (!raw) {
-            return res.status(404).json({ message: 'Submission not found' });
+            return sendError(res, 404, ErrorCode.NOT_FOUND, 'Submission not found', req.requestId);
         }
 
         const opp = await prisma.opportunity.findFirst({ where: { id: opportunityId, deletedAt: null } });
         if (!opp) {
-            return res.status(404).json({ message: 'Opportunity not found' });
+            return sendError(res, 404, ErrorCode.NOT_FOUND, 'Opportunity not found', req.requestId);
         }
 
         const updated = await prisma.rawOpportunity.update({

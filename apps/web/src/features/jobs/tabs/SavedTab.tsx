@@ -16,18 +16,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from '@/ui/Button';
 import { BrandButton } from '@/ui/BrandButton';
 import { Skeleton } from '@/ui/Skeleton';
+import { EmptyState } from '@/ui/EmptyState';
 import SavedJobCard from '@/features/jobs/components/SavedJobCard';
-
-function timeAgo(iso: string | Date): string {
-    const diff = Date.now() - new Date(iso).getTime();
-    if (Number.isNaN(diff)) return '';
-    const days = Math.floor(diff / 86400000);
-    if (days < 1) return 'today';
-    if (days === 1) return '1d ago';
-    if (days < 30) return `${days}d ago`;
-    const months = Math.floor(days / 30);
-    return months === 1 ? '1mo ago' : `${months}mo ago`;
-}
 
 function SavedJobsPageContent() {
     const router = useRouter();
@@ -176,28 +166,21 @@ function SavedJobsPageContent() {
                     ))}
                 </div>
             ) : savedJobs.length === 0 && unavailableIds.length === 0 ? (
-                <div className="rounded-xs border border-border p-12 text-center space-y-4 max-w-xl mx-auto animate-in fade-in-0 zoom-in-95 duration-200">
-                    {/* No fill: the box takes the page background and is delimited
-                        by its border alone. A `bg-card` here read as a white panel
-                        sitting on a grey page. */}
-                    <div className="w-12 h-12 bg-muted/80 rounded-xs flex items-center justify-center mx-auto text-muted-foreground/60">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                        </svg>
-                    </div>
-                    <div className="space-y-2">
-                        <h2 className="text-base font-bold tracking-tight text-foreground">No saved opportunities yet</h2>
-                        <p className="text-muted-foreground text-xs leading-relaxed max-w-xs mx-auto">
-                            Save current and active openings from the feed to compare and apply later.
-                        </p>
-                    </div>
-                    {/* `neutral`, not `solid`: the brand orange is for our own
-                        calls to action on the landing page. Inside a saved-jobs
-                        empty state it reads as a promo. */}
-                    <BrandButton asChild variant="neutral" size="sm">
-                        <Link href="/jobs">Find jobs shared by freshers</Link>
-                    </BrandButton>
-                </div>
+                <EmptyState
+                    icon="inbox"
+                    size="md"
+                    className="mx-auto max-w-xl"
+                    title="No saved opportunities yet"
+                    description="Save current and active openings from the feed to compare and apply later."
+                    /* `neutral`, not `solid`: the brand orange is for our own calls
+                       to action on the landing page. Inside a saved-jobs empty
+                       state it reads as a promo. */
+                    action={
+                        <BrandButton asChild variant="neutral" size="sm">
+                            <Link href="/jobs">Find jobs shared by freshers</Link>
+                        </BrandButton>
+                    }
+                />
             ) : (
                 <div className="grid gap-3 lg:grid-cols-2">
                     {savedJobs.map((opp) => (

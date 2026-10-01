@@ -13,6 +13,7 @@ export * from './core/staleness.js';
 
 export * from './utils/url.js';
 export * from './utils/timeout.js';
+export * from './utils/resilient-json.js';
 export * from './config/constants.js';
 export * from './config/index.js';
 export * from './utils/logger.js';

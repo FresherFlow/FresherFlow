@@ -1,6 +1,7 @@
 import type { Opportunity } from '@fresherflow/types';
 import { slugify } from '@fresherflow/utils/slugify';
 import { VALID_LOCATIONS } from '@/features/jobs/utils/locationUtils';
+import { matchesDeclaredPassoutYear } from '@/features/jobs/domain/passoutYears';
 import { CURATED_ROLE_KEYWORDS } from './constants';
 import type { ResolvedTaxonomy } from './constants';
 
@@ -38,7 +39,7 @@ export function matchCity(opp: Opportunity, citySlug: string): boolean {
 }
 
 export function matchYear(opp: Opportunity, year: number): boolean {
-    return Boolean(opp.allowedPassoutYears && Array.isArray(opp.allowedPassoutYears) && opp.allowedPassoutYears.includes(year));
+    return matchesDeclaredPassoutYear(opp, year);
 }
 
 export function matchTaxonomy(opp: Opportunity, resolved: ResolvedTaxonomy): boolean {

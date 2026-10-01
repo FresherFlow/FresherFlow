@@ -1,27 +1,12 @@
 'use client';
 
-import { Opportunity } from '@fresherflow/types';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useMemo } from 'react';
 import { cn } from '@repo/ui/utils/cn';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import BookmarkSolidIcon from '@heroicons/react/24/solid/BookmarkIcon';
 import CheckIcon from '@heroicons/react/24/solid/CheckIcon';
-import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
-import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
-import { useMemo, useRef } from 'react';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
-import toast from 'react-hot-toast';
-import { useAuth } from '@/lib/auth/AuthContext';
-import { useFirebaseSaved } from '@/features/dashboard/hooks/useSavedJobs';
-import { useTrackerWriter } from '@/features/dashboard/hooks/useFirebaseTracker';
-import { saveOpportunityToCache } from '@/lib/cache/opportunitiesFeedCache';
-import { ActionType } from '@fresherflow/types';
-import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
-import { isCampusDriveOpportunity } from '@/features/jobs/domain/driveTimeline';
-import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
-import { buildShareUrl } from '@/lib/utils/share';
-import { promptLoginToast } from '@/lib/utils/toastUtils';
 import { Hint } from '@/ui/Tooltip';
 import ChatBubbleLeftRightIcon from '@heroicons/react/24/outline/ChatBubbleLeftRightIcon';
 import { ArrowUpRight } from 'lucide-react';
@@ -30,23 +15,11 @@ import { AutoFitBadges } from './AutoFitBadges';
 import { JobCardMenu } from './JobCardMenu';
 import { buildMetaItems } from './JobCardMetaConfig';
 import { WalkinDateChip } from '@/features/jobs/components/WalkinEventWidgets';
-import { getDriveDetails, isGovernmentOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
-import {
-    getJobTypeLabel,
-    getPostedLabel,
-    isFreshlyPosted,
-    isJobExpired,
-    reorderSkillsBySearch,
-    resolvePassoutYears,
-    formatPassoutYears,
-    formatEducationEligibility,
-    generateJobSummaryText,
-} from './jobCardUtils';
-
-export { resolvePassoutYears, generateJobSummaryText, reorderSkillsBySearch, formatPassoutYears, formatEducationEligibility } from './jobCardUtils';
+import { getJobTypeLabel, isFreshlyPosted } from './jobCardUtils';
+import { useJobCardActions, type JobCardOpportunity } from './useJobCardActions';
 
 interface JobCardProps {
-    job: Opportunity & { matchScore?: number; matchReason?: string };
+    job: JobCardOpportunity;
     jobId: string;
     onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
     isSaved?: boolean;
@@ -63,9 +36,6 @@ interface JobCardProps {
     searchedSkill?: string;
     className?: string;
 }
-
-type JobAction = { actionType: string };
-type JobWithActions = Opportunity & { actions?: JobAction[]; distanceKm?: number };
 
 export default function JobCard({
     job,
@@ -85,125 +55,52 @@ export default function JobCard({
     searchedSkill,
     className,
 }: JobCardProps) {
-    const mountedRef = useRef(false);
-    if (typeof window !== 'undefined') mountedRef.current = true;
+    const {
+        isDrive,
+        isGovernment,
+        isWalkin,
+        isExpired,
+        targetId,
+        isJobSaved,
+        showApplied,
+        orderedSkills,
+        locationInfo,
+        jobPath,
+        shareUrl,
+        directionsUrl,
+        postedLabel,
+        handleSaveClick,
+        handleApplyClick,
+        handleCardClick,
+        handleLinkClick,
+        handleAdminEditClick,
+    } = useJobCardActions({
+        job,
+        jobId,
+        isSaved,
+        isApplied,
+        onToggleSave,
+        onClick,
+        searchQuery,
+        searchedSkill,
+    });
 
-    const router = useRouter();
-    const { user } = useAuth();
-    const searchParams = useSearchParams();
-    const { savedJobsMap, toggleSavedJob } = useFirebaseSaved(user?.id);
-    // Writer-only: this card records the apply action but never reads the
-    // tracker map, so it must not hold a per-instance RTDB subscription.
-    const { writeTrackerItem } = useTrackerWriter(user?.id);
-
-    const isDrive = isCampusDriveOpportunity(job);
-    const isGovernment = isGovernmentOpportunity(job);
-    const isWalkin = isWalkinOpportunity(job);
-
-    const targetId = jobId || job.id;
-    const isJobSaved = isSaved !== undefined ? isSaved : Boolean(savedJobsMap[targetId] || savedJobsMap[job.id]);
-
-    const trackerAction = (job as JobWithActions).actions?.find?.((a) =>
-        ['APPLIED', 'PLANNED', 'SAVED_FOR_LATER', 'INTERVIEWING', 'OFFERED', 'REJECTED'].includes(a.actionType)
+      // Memoized: this feeds AutoFitBadges, which measures rendered badge widths
+    // in a layout effect. An unmemoized call returned a fresh array on every
+    // render, so the effect body re-ran on every unrelated parent render and
+    // forced a synchronous layout pass per card.
+    const metaItems = useMemo(
+        () => buildMetaItems(job, { isGovernment, isDrive, isWalkin }),
+        [job, isGovernment, isDrive, isWalkin]
     );
-    const trackerStatus = trackerAction?.actionType ?? null;
-    const showApplied = trackerStatus === 'APPLIED' || (!trackerStatus && isApplied);
-
-    const effectiveSearchQuery = (
-        searchQuery ||
-        searchedSkill ||
-        searchParams?.get('q') ||
-        searchParams?.get('search') ||
-        searchParams?.get('skill') ||
-        searchParams?.get('query') ||
-        ''
-    ).trim();
-
-    // Memoised on the source arrays, not on `job`: callers rebuild the job
-    // object on every render, so reading them inline would hand a fresh array
-    // to `orderedSkills` (and then to AutoFitBadges) on every pass.
-    const jobSkills = (job as { skills?: string[] }).skills;
-    const requiredSkills = job.requiredSkills;
-    const allSkills = useMemo(
-        () => (jobSkills || requiredSkills || []) as string[],
-        [jobSkills, requiredSkills]
-    );
-    const orderedSkills = useMemo(
-        () => reorderSkillsBySearch(allSkills, effectiveSearchQuery),
-        [allSkills, effectiveSearchQuery]
-    );
-
-    const locationInfo = isDrive
-        ? { shortLabel: 'PAN India', fullLabel: 'PAN India' }
-        : parseOpportunityLocation(job.locations);
-
-    const shareUrl =
-        typeof window !== 'undefined'
-            ? buildShareUrl(`${window.location.origin}${getOpportunityPathFromItem(job)}`, {
-                  platform: 'other',
-                  source: 'opportunity_share',
-                  medium: 'share',
-                  campaign: 'opportunity_share',
-                  ref: 'share',
-              })
-            : '';
-
-    const driveDetails = getDriveDetails(job);
-    const walkinDestination =
-        driveDetails?.latitude && driveDetails?.longitude
-            ? `${driveDetails.latitude},${driveDetails.longitude}`
-            : driveDetails?.venueAddress;
-    const directionsUrl =
-        driveDetails?.venueLink ||
-        (walkinDestination ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(walkinDestination)}` : '');
-
-    const metaItems = buildMetaItems(job, { isGovernment, isDrive, isWalkin });
     const typeLabel = getJobTypeLabel(job, isDrive, isGovernment);
-    const postedLabel = getPostedLabel(job);
     const commentCount = useCommentCount(job.slug || job.id);
     // V1 job-card requirement: the Discuss CTA must SSR even before counts
     // hydrate client-side, so fall back to the zero-state (0 discussing).
     const discussionCount = commentCount ?? 0;
-    const discussionHref = `${getOpportunityPathFromItem(job)}#discussion`;
-
-    const handleSaveClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (!user) {
-            promptLoginToast('Sign in to save opportunities');
-            return;
-        }
-        saveOpportunityToCache({ ...job, id: targetId } as Opportunity);
-        if (onToggleSave) {
-            onToggleSave();
-        } else {
-            toggleSavedJob(targetId)
-                .then(() => toast.success(isJobSaved ? 'Removed from bookmarks' : 'Added to bookmarks'))
-                .catch(() => toast.error('Bookmark update failed'));
-        }
-    };
-
-    const handleApplyClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        e.preventDefault();
-        const targetUrl = job.applyLink || job.companyWebsite;
-        const applyAction = isWalkinOpportunity(job) ? ActionType.PLANNED : ActionType.APPLIED;
-
-        saveOpportunityToCache({ ...job, id: targetId } as Opportunity);
-        writeTrackerItem(targetId, applyAction).catch(() => undefined);
-
-        if (targetUrl) {
-            window.open(targetUrl, '_blank', 'noopener,noreferrer');
-            toast.success('Opening application link...');
-        } else {
-            toast.error('No application link available');
-        }
-    };
-
-    const handleCardClick = (e: React.MouseEvent) => {
-        if ((e.target as HTMLElement).closest('a, button, [role="menuitem"], input, select, textarea')) return;
-        onClick?.(e as unknown as React.MouseEvent<HTMLAnchorElement>);
-        if (!e.defaultPrevented) router.push(getOpportunityPathFromItem(job));
-    };
+    // The job page hosts the thread in a dock; the query flag opens it on
+    // arrival instead of jumping to an anchor that no longer exists.
+    const discussionHref = `${jobPath}?discuss=1`;
 
     return (
         <div
@@ -217,7 +114,7 @@ export default function JobCard({
                     ? 'border-primary/40 bg-primary/[0.03]'
                     : 'border-border hover:border-primary/30',
                 isHovered && !isSelected && 'border-primary/30',
-                isJobExpired(job) && 'opacity-60',
+                isExpired && 'opacity-60',
                 className
             )}
         >
@@ -310,11 +207,7 @@ export default function JobCard({
                 <div className="flex shrink-0 items-center gap-2">
                     <a
                         href={discussionHref}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            if (onClick) onClick(e as unknown as React.MouseEvent<HTMLAnchorElement>);
-                            else router.push(discussionHref);
-                        }}
+                        onClick={handleLinkClick(discussionHref)}
                         className="inline-flex items-center gap-1 px-1 h-7 text-xs font-medium rounded-md text-muted-foreground hover:text-primary transition-colors shrink-0 whitespace-nowrap"
                         title={discussionCount > 0 ? `${discussionCount} discussing — Discuss this job` : 'Discuss this job'}
                         aria-label={discussionCount > 0 ? `Discuss this job (${discussionCount} discussing)` : 'Discuss this job'}
@@ -351,11 +244,7 @@ export default function JobCard({
                             )}
                             <button
                                 type="button"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (onClick) onClick(e as unknown as React.MouseEvent<HTMLAnchorElement>);
-                                    else router.push(getOpportunityPathFromItem(job));
-                                }}
+                                onClick={handleLinkClick(jobPath)}
                                 className="inline-flex items-center justify-center px-3 h-7 text-xs font-semibold rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
                             >
                                 View drive
@@ -376,10 +265,7 @@ export default function JobCard({
             {isAdmin && (
                 <Hint label="Edit Listing (Admin)" side="top">
                     <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            router.push(`/admin/opportunities/edit/${job.slug || job.id}`);
-                        }}
+                        onClick={handleAdminEditClick}
                         className="absolute top-2 right-20 p-1.5 rounded-full bg-card border border-border shadow-lg text-primary hover:bg-primary/10 transition-colors z-30"
                         aria-label="Edit Listing (Admin)"
                     >

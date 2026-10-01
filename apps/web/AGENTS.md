@@ -251,6 +251,7 @@ Public pages need stable metadata and crawl-safe content.
 | `API_URL` | Server | Server-side API base URL |
 | `NEXT_PUBLIC_ADMIN_API_URL` | Client | Optional admin API override |
 | `NEXT_PUBLIC_USE_SEPARATE_ADMIN_API` | Client | Optional admin routing flag |
+| `JWT_ADMIN_SECRET` | Server | Admin session JWT for `/api/admin/**`; must equal what `apps/api` signs with. Falls back to `JWT_ACCESS_SECRET`, then `JWT_SECRET`. Unset **or mismatched** makes every `/api/admin/**` route deny with 403 — fails closed, never open |
 
 Client code may read only `NEXT_PUBLIC_*`. Server code may read server-only env vars. Never commit `.env` files.
 

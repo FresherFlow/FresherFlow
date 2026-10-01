@@ -5,6 +5,7 @@ import { Prisma } from '@fresherflow/database';
 import { adminRateLimit } from '../../../middleware/adminRateLimit';
 import { withAdminAudit } from '../../../middleware/adminAudit';
 import { validate } from '../../../middleware/validate';
+import { sendError, ErrorCode } from '../../../middleware/errorHandler';
 import { opportunitySchema } from '../../../utils/validation';
 import { requirePermission } from '../../../middleware/auth';
 import { generateSlug, generateCompanyLogoUrl, normalizeSkills, sanitizeCustomSlug, resolveUniqueSlug } from '@fresherflow/utils';
@@ -64,7 +65,7 @@ router.post(
 
             const { sourceLink, applyLink } = normalizeOpportunityLinks(data.sourceLink, data.applyLink);
             if (!isWalkIn && !applyLink) {
-                return res.status(400).json({ message: 'At least one sourceLink or applyLink is required' });
+                return sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'At least one sourceLink or applyLink is required', req.requestId);
             }
 
             // Duplicate protection (same rule as ingest-draft): the immediate-
@@ -83,7 +84,7 @@ router.post(
                     select: { id: true, slug: true, status: true, title: true },
                 });
                 if (existing) {
-                    return res.status(409).json({ message: 'Duplicate listing detected by applyLink', duplicate: existing });
+                    return sendError(res, 409, ErrorCode.CONFLICT, 'Duplicate listing detected by applyLink', req.requestId, existing);
                 }
             }
 
@@ -232,7 +233,7 @@ router.post(
 
             const { sourceLink, applyLink } = normalizeOpportunityLinks(data.sourceLink, data.applyLink);
             if (!isWalkIn && !applyLink) {
-                return res.status(400).json({ message: 'At least one sourceLink or applyLink is required' });
+                return sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'At least one sourceLink or applyLink is required', req.requestId);
             }
 
             // Lightweight de-duplication
@@ -249,7 +250,7 @@ router.post(
                     select: { id: true, slug: true, status: true, title: true },
                 });
                 if (existing) {
-                    return res.status(409).json({ message: 'Duplicate listing detected by applyLink', duplicate: existing });
+                    return sendError(res, 409, ErrorCode.CONFLICT, 'Duplicate listing detected by applyLink', req.requestId, existing);
                 }
             }
 
@@ -399,7 +400,7 @@ router.put(
                 where: { OR: [{ id: idParam }, { slug: idParam }] },
                 include: { governmentJobDetails: true, driveDetails: true },
             });
-            if (!existing) return res.status(404).json({ message: 'Opportunity not found' });
+            if (!existing) return sendError(res, 404, ErrorCode.NOT_FOUND, 'Opportunity not found', req.requestId);
 
             const { category, recruitmentMethod, employmentTypes, isWalkIn, isGovt } = resolveOpportunityDimensions(data);
 
@@ -431,7 +432,7 @@ router.put(
                 : (data.locations ?? []);
             const { sourceLink, applyLink } = normalizeOpportunityLinks(data.sourceLink, data.applyLink);
             if (!isWalkIn && !applyLink) {
-                return res.status(400).json({ message: 'At least one sourceLink or applyLink is required' });
+                return sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'At least one sourceLink or applyLink is required', req.requestId);
             }
 
             const updateData: Prisma.OpportunityUpdateInput = {
@@ -583,12 +584,12 @@ router.patch(
             const idParam = req.params.id as string;
             const { status } = req.body as { status: string };
 
-            if (!status) return res.status(400).json({ message: 'status is required' });
+            if (!status) return sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'status is required', req.requestId);
 
             const existing = await prisma.opportunity.findFirst({
                 where: { OR: [{ id: idParam }, { slug: idParam }] },
             });
-            if (!existing) return res.status(404).json({ message: 'Opportunity not found' });
+            if (!existing) return sendError(res, 404, ErrorCode.NOT_FOUND, 'Opportunity not found', req.requestId);
 
             const opportunity = await prisma.opportunity.update({
                 where: { id: existing.id as string },

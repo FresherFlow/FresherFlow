@@ -45,7 +45,7 @@ const STATUS_VARIANT: Record<string, string> = {
   PENDING_REVIEW: "bg-warning/10 text-warning dark:text-warning border-warning/30",
   EXPIRED: "bg-warning/10 text-warning dark:text-warning border-warning/30",
   REJECTED: "bg-error/10 text-error dark:text-error border-error/30",
-  ARCHIVED: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/30",
+  ARCHIVED: "bg-muted/60 text-muted-foreground border-border",
   DELETED: "bg-error/10 text-error dark:text-error border-error/30",
 }
 

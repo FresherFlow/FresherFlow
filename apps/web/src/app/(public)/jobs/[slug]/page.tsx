@@ -11,13 +11,14 @@ import {
     fetchOpportunityForMetadata,
     generateOpportunityMetadata,
     generateOpportunityJsonLd,
-    generateOpportunityBreadcrumbsJsonLd,
     getExpiryState,
     getTypeHubPath,
     ExtendedOpportunity
 } from '@/features/jobs/domain/opportunitySeo';
-import { fetchGovernmentFeed, fetchFeedIndex } from '@/lib/api/cdnFeed';
+import { fetchGovernmentFeed, fetchFeedIndex, fetchCompaniesMetadata } from '@/lib/api/cdnFeed';
+import { CompanySlugger } from '@/features/companies/utils/companySlugger';
 import { getRelatedOpportunities, getValidDirectoryLinks } from '@/features/jobs/utils/detailUtils';
+import { getJobDiscussionForSeo } from '@/features/jobs/domain/jobDiscussionSeo';
 import { getFeedBadgeLabel, isInternshipOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import {
     buildTaxonomyRegistry,
@@ -254,6 +255,16 @@ export default async function OpportunityDetailPage({ params }: Props) {
             permanentRedirect(getTypeHubPath(getFeedBadgeLabel(opportunityData)));
         }
 
+        // The listing payload carries no company slug, so the detail links and
+        // the JSON-LD breadcrumb would each guess one from the website. Resolve
+        // it with the same slugger `/companies/{slug}` uses, so the link points
+        // at the page that actually exists.
+        const companyDirectory = await fetchCompaniesMetadata().catch(() => null);
+        const companySlug = companyDirectory ? new CompanySlugger(companyDirectory).getSlug(opportunityData) : null;
+        if (companySlug) {
+            opportunityData = { ...opportunityData, companySlug } as ExtendedOpportunity;
+        }
+
         if (feed?.opportunities) {
             relatedOpportunitiesData = getRelatedOpportunities(opportunityData, feed.opportunities);
             validDirectoryLinks = getValidDirectoryLinks(feed.opportunities);
@@ -273,6 +284,12 @@ export default async function OpportunityDetailPage({ params }: Props) {
     // Server-rendered H1 + summary so crawlers always see real content —
     // the interactive detail view below is a Suspense-wrapped client
     // component whose static HTML is just a skeleton.
+    // Discussion structured data: read only for a live listing whose index says
+    // the thread has comments. Null leaves the JSON-LD exactly as before.
+    const seoDiscussion = opportunityData && !getExpiryState(opportunityData).isExpired
+        ? await getJobDiscussionForSeo(opportunityData.id)
+        : null;
+
     const detailHeading = opportunityData ? (
         <div className="w-full max-w-4xl mx-auto px-4 pt-4 sr-only">
             <h1 className="text-xl font-bold text-foreground tracking-tight">
@@ -298,7 +315,7 @@ export default async function OpportunityDetailPage({ params }: Props) {
             {opportunityData && !getExpiryState(opportunityData).isExpired && (
                 <script
                     type="application/ld+json"
-                    dangerouslySetInnerHTML={{ __html: JSON.stringify(generateOpportunityJsonLd(opportunityData)) }}
+                    dangerouslySetInnerHTML={{ __html: JSON.stringify(generateOpportunityJsonLd(opportunityData, seoDiscussion)) }}
                 />
             )}
             <Suspense fallback={<OpportunityDetailSkeleton />}>
@@ -312,6 +329,22 @@ export default async function OpportunityDetailPage({ params }: Props) {
                     }}
                 />
             </Suspense>
+            {/* Server-rendered because the FAQPage JSON-LD above describes it:
+                Google requires the Q&A to be visible on the page, not embedded
+                in schema alone. Renders nothing when no question has an answer. */}
+            {seoDiscussion?.faqs && seoDiscussion.faqs.length > 0 && (
+                <section className="mx-auto w-full max-w-4xl px-4 pb-10">
+                    <h2 className="text-lg font-bold text-foreground">Questions freshers asked</h2>
+                    <dl className="mt-4 space-y-4">
+                        {seoDiscussion.faqs.map((faq) => (
+                            <div key={faq.question}>
+                                <dt className="text-sm font-semibold text-foreground">{faq.question}</dt>
+                                <dd className="mt-1 text-sm text-muted-foreground">{faq.answer}</dd>
+                            </div>
+                        ))}
+                    </dl>
+                </section>
+            )}
         </>
     );
 }

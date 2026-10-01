@@ -12,7 +12,7 @@ import {
 } from '@fresherflow/utils';
 import { validate } from '../middleware/validate';
 import { sendOtpSchema, verifyOtpSchema, googleAuthSchema } from '../utils/validation';
-import { AppError } from '../middleware/errorHandler';
+import { AppError, sendError, ErrorCode } from '../middleware/errorHandler';
 import { requireAuth } from '../middleware/auth';
 import { AuthService } from '../infrastructure/services/platform/auth.service';
 import { EmailService } from '../infrastructure/services/alerts/email.service';
@@ -183,8 +183,8 @@ async function hydrateProfileCompletion(userId: string, profile: Profile | null)
 }
 
 // POST /api/auth/anonymous
-router.post('/anonymous', (_req: Request, res: Response) => {
-    return res.status(404).json({ error: 'Not available' });
+router.post('/anonymous', (req: Request, res: Response) => {
+    return sendError(res, 404, ErrorCode.NOT_FOUND, 'Not available', req.requestId);
 });
 
 // ─── HANDSHAKE ────────────────────────────────────────────────────────────────

@@ -9,23 +9,13 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { cn } from '@repo/ui/utils/cn';
 import { EmptyState } from '@/ui/EmptyState';
 import { ErrorMessage } from '@/ui/ErrorMessage';
+import { formatRelativeTime } from '@/lib/utils/relativeTime';
 
 const STATUS_STYLES: Record<string, string> = {
     OPEN: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
     FULFILLED: 'bg-primary/10 text-primary',
     CLOSED: 'bg-muted/40 text-muted-foreground',
 };
-
-function timeAgo(iso: string): string {
-    const diff = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return 'just now';
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-}
 
 export function ReferralBoardClient() {
     const { user } = useAuth();
@@ -230,7 +220,7 @@ export function ReferralBoardClient() {
                                 {req.role ? <p className="mt-0.5 truncate text-xs text-muted-foreground">{req.role}</p> : null}
                                 {req.note ? <p className="mt-2 text-sm text-foreground/90">{req.note}</p> : null}
                             </div>
-                            <span className="shrink-0 text-xs text-muted-foreground">{timeAgo(req.createdAt)}</span>
+                            <span className="shrink-0 text-xs text-muted-foreground">{formatRelativeTime(req.createdAt, 'days')}</span>
                         </div>
 
                         <div className="mt-3 flex items-center justify-between">
@@ -289,7 +279,7 @@ export function ReferralBoardClient() {
                                     <div key={resp.id} className="rounded-xl bg-muted/30 p-3">
                                         <div className="flex items-center justify-between">
                                             <span className="text-xs font-semibold text-foreground">@{resp.responder.username ?? 'anon'}</span>
-                                            <span className="text-xs text-muted-foreground">{timeAgo(resp.createdAt)}</span>
+                                            <span className="text-xs text-muted-foreground">{formatRelativeTime(resp.createdAt, 'days')}</span>
                                         </div>
                                         {resp.message ? <p className="mt-1 text-sm text-foreground/90">{resp.message}</p> : null}
                                         {resp.contactHandle ? (

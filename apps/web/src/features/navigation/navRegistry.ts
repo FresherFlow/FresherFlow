@@ -113,6 +113,10 @@ export const REGISTRY = {
     notifications: { name: 'Notifications', href: '/jobs?tab=notifications', icon: Bell, requiresAuth: true },
     feedback: { name: 'Feedback', href: '/account?tab=feedback', icon: MessageSquareText, requiresAuth: true },
     discussions: { name: 'Discussions', href: '/community?tab=discussions', icon: MessageSquareText },
+    /* The live per-job discussion inbox (`/discussions`). Deliberately a
+       separate id from `discussions` above, which is the paused CommunityPost
+       feed: this one is advertised while the community feed stays hidden. */
+    discussionsFeed: { name: 'Discussions', href: '/discussions', icon: MessageSquareText },
     salary: { name: 'Salary & Offers', href: '/community?tab=salary', icon:    Banknote },
     rooms: { name: 'Rooms', href: '/community?tab=rooms', icon:    Users },
     savedSearches: { name: 'Saved Searches', href: '/jobs?tab=searches', icon:    Bookmark },
@@ -151,6 +155,7 @@ export const JOBS_NAV_ITEMS: NavItem[] = [
     nav('jobBoards'),
     nav('companies', { name: 'Companies' }),
     nav('resources'),
+    nav('discussionsFeed'),
     nav('govt'),
 ];
 

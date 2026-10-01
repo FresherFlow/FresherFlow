@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withRateLimit } from '@/lib/api/rateLimit';
+import { withAdminAuth } from '@/lib/server/adminAuth';
 
 const WORKER_URL = process.env.WORKER_URL || '';
 const WORKER_SECRET = process.env.WORKER_SECRET ?? '';
@@ -37,4 +38,4 @@ async function getPlatforms() {
     }
 }
 
-export const GET = withRateLimit(getPlatforms, { windowMs: 60_000, max: 60, keyPrefix: 'social-platforms' });
+export const GET = withRateLimit(withAdminAuth(getPlatforms), { windowMs: 60_000, max: 60, keyPrefix: 'social-platforms' });

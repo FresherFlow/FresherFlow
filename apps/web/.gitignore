@@ -32,6 +32,12 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the example templates. `.env*` above also matches `*.example`, so
+# without these the documented variable names in .env.example and
+# .env.local.example would never reach another developer. Only the literal
+# `.example` suffixes are re-included; a real .env / .env.local stays ignored.
+!.env.example
+!.env.local.example
 
 # vercel
 .vercel

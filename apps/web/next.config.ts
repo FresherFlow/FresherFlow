@@ -225,6 +225,29 @@ const nextConfig: NextConfig = {
           { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive, nosnippet" },
         ],
       },
+      // ── (user) group: noindex at the edge ──
+      // Every route in `src/app/(user)` is private or is a stub that 308s into
+      // a tabbed app page. None of it is indexable, and none of it declared
+      // `robots` in metadata — `next.config.ts` is the only place that can
+      // guarantee the header on all eleven paths and their children at once.
+      //
+      // A header, not just `metadata.robots`, is deliberate: ten of these
+      // responses are 308 redirects, and a robots meta tag in a body that is
+      // never sent stops nothing. Google honours `X-Robots-Tag: noindex` on a
+      // redirect response and will not follow it.
+      //
+      // One entry, not twenty-two: a path-to-regexp custom pattern lists the
+      // whole group, and `:userPath*` matches zero or more segments so this
+      // also covers `/account` itself, not just `/account/...`. Verified
+      // against the bundled matcher in `next/dist/compiled/path-to-regexp`:
+      // matches /account, /saved, /profile/complete, /saved/x; does not match
+      // /jobs or /admin.
+      {
+        source: "/:userSection(account|alerts|dashboard|feedback|followed-companies|notifications|profile|referral|saved|settings|tracker)/:userPath*",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive, nosnippet" },
+        ],
+      },
       {
         source: "/:path*",
         headers: baseHeaders,
@@ -403,6 +426,20 @@ const nextConfig: NextConfig = {
       {
         source: "/download",
         destination: "/app",
+        permanent: true,
+      },
+      // Commit 73eb2ca9 renamed (moderator)/moderation/ → (moderator)/moderator/
+      // (R100 — the directory moved, contents unchanged), so every /moderation
+      // link 404s. The area is permanent under its new name; 301 in ONE hop for
+      // the hub and every queue under it.
+      {
+        source: "/moderation",
+        destination: "/moderator",
+        permanent: true,
+      },
+      {
+        source: "/moderation/:path*",
+        destination: "/moderator/:path*",
         permanent: true,
       },
       {

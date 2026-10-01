@@ -8,6 +8,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { cn } from "@/ui/cn";
 import { toast } from 'react-hot-toast';
+import { toSafeOutboundUrl } from '@/lib/utils/safeOutboundUrl';
 
 import {
  IngestionTarget,
@@ -367,14 +368,16 @@ export function DiscoveryWorkspace() {
  </div>
 
  <div className="flex flex-wrap gap-3 items-center text-xs">
+ {toSafeOutboundUrl(job.apply_link) && (
  <a
- href={job.apply_link}
+ href={toSafeOutboundUrl(job.apply_link) ?? undefined}
  target="_blank"
  rel="noreferrer"
  className="font-medium text-primary hover:underline flex items-center gap-1"
  >
  Apply Link <ArrowTopRightOnSquareIcon className="w-3 h-3" />
  </a>
+ )}
  <span className="text-muted-foreground text-xs">
  Exp: {job.experience_min}–{job.experience_max} yrs
  </span>

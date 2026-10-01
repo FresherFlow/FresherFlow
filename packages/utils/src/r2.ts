@@ -81,6 +81,44 @@ export async function uploadJsonToR2(jsonObject: unknown, bucketName: string, de
     return false;
 }
 
+/**
+ * Upload an HTML document with the correct content type.
+ *
+ * `uploadJsonToR2` always stores `application/json`, which makes a browser
+ * download a report instead of rendering it. Reports served from the CDN need
+ * `text/html` and a short cache so a regeneration is visible quickly.
+ */
+export async function uploadHtmlToR2(html: string, bucketName: string, destinationKey: string): Promise<boolean> {
+    const s3Client = getS3Client();
+    if (!s3Client) {
+        console.warn('R2 credentials not fully configured. Skipping HTML upload.');
+        return false;
+    }
+
+    const command = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: destinationKey,
+        Body: html,
+        ContentType: 'text/html; charset=utf-8',
+        CacheControl: 'public, max-age=300',
+    });
+
+    let attempts = 0;
+    while (attempts < 3) {
+        try {
+            await s3Client.send(command);
+            console.log(`Successfully uploaded HTML to R2 bucket ${bucketName} at key ${destinationKey}`);
+            return true;
+        } catch (error) {
+            attempts++;
+            console.error(`Failed to upload HTML to R2 (Attempt ${attempts}/3):`, error);
+            if (attempts === 3) return false;
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+        }
+    }
+    return false;
+}
+
 export async function downloadJsonFromR2(bucketName: string, key: string): Promise<unknown | null> {
     const s3Client = getS3Client();
     if (!s3Client) return null;

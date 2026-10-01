@@ -5,14 +5,14 @@ import { Suspense } from 'react';
 import OpportunityDetailClient from '@/features/jobs/components/detail/OpportunityDetailClient';
 import { Skeleton } from '@/ui/Skeleton';
 import { getOpportunityPath } from '@/features/jobs/domain/opportunityPath';
-import { fetchFeedIndex, fetchGovernmentFeed } from '@/lib/api/cdnFeed';
+import { fetchFeedIndex, fetchGovernmentFeed, fetchCompaniesMetadata } from '@/lib/api/cdnFeed';
+import { CompanySlugger } from '@/features/companies/utils/companySlugger';
 import { getFeedBadgeLabel, isGovernmentOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import { getRelatedOpportunities } from '@/features/jobs/utils/detailUtils';
 import {
     fetchOpportunityForPage,
     generateOpportunityMetadata,
     generateOpportunityJsonLd,
-    generateOpportunityBreadcrumbsJsonLd,
     getExpiryState,
     ExtendedOpportunity
 } from '@/features/jobs/domain/opportunitySeo';
@@ -164,6 +164,16 @@ export default async function GovernmentJobDetailPage({ params }: { params: Prom
             permanentRedirect('/govt');
         }
 
+        // The listing payload carries no company slug, so the detail links and
+        // the JSON-LD breadcrumb would each guess one from the website. Resolve
+        // it with the same slugger `/companies/{slug}` uses, so the link points
+        // at the page that actually exists.
+        const companyDirectory = await fetchCompaniesMetadata().catch(() => null);
+        const companySlug = companyDirectory ? new CompanySlugger(companyDirectory).getSlug(opp) : null;
+        if (companySlug) {
+            opp = { ...opp, companySlug } as ExtendedOpportunity;
+        }
+
         related = govtFeed?.opportunities ? getRelatedOpportunities(opp, govtFeed.opportunities) : [];
     } catch (err) {
         // Re-throw Next.js navigation signals (notFound, redirect) — they must propagate.
@@ -177,10 +187,7 @@ export default async function GovernmentJobDetailPage({ params }: { params: Prom
     return (
         <>
             {opp && !getExpiryState(opp).isExpired && (
-                <>
-                    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(generateOpportunityJsonLd(opp)) }} />
-                    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(generateOpportunityBreadcrumbsJsonLd(opp)) }} />
-                </>
+                <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(generateOpportunityJsonLd(opp)) }} />
             )}
             <Suspense fallback={<GovernmentDetailSkeleton />}>
                 <OpportunityDetailClient id={slug} initialData={opp} initialRelatedData={related} />

@@ -135,12 +135,12 @@ export function UPageClient() {
                         </div>
                         <button
                             type="submit"
-                            className="inline-flex items-center justify-center gap-2 rounded-[2px] bg-[var(--ff-accent)] px-[18px] py-[10px] text-[13.5px] font-semibold text-paper transition-transform hover:-translate-y-px active:scale-[0.98] shrink-0 disabled:opacity-60"
+                            className="inline-flex items-center justify-center gap-2 rounded-[2px] bg-[var(--ff-accent)] px-[18px] py-[10px] text-[13.5px] font-semibold text-[var(--color-ff-accent-ink)] transition-transform hover:-translate-y-px active:scale-[0.98] shrink-0 disabled:opacity-60"
                             disabled={!username.trim() || availability === 'taken' || availability === 'invalid' || availability === 'checking' || isClaiming}
                         >
                             {isClaiming ? (
                                 <span className="inline-flex items-center gap-2">
-                                    <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <span className="h-4 w-4 border-2 border-[var(--color-ff-accent-ink)] border-t-transparent rounded-full animate-spin" />
                                     Claiming…
                                 </span>
                             ) : (
@@ -163,7 +163,7 @@ export function UPageClient() {
                     </div>
 
                     <div className="ff-hero-eyebrow flex items-center gap-2.5 font-record text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                        <span className="h-[7px] w-[7px] rounded-full bg-[var(--color-pin)]" aria-hidden />
+                        <span className="h-[7px] w-[7px] rounded-full bg-[var(--ff-accent)]" aria-hidden />
                         BOARD 00 · HOW IT WORKS
                         <span className="h-px flex-1 bg-border" aria-hidden />
                     </div>
@@ -309,12 +309,12 @@ export function UPageClient() {
                         </div>
                         <button
                             type="submit"
-                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-[2px] bg-[var(--ff-accent)] px-[18px] py-[10px] text-[13.5px] font-semibold text-paper hover:-translate-y-px active:scale-[0.98] disabled:opacity-60"
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-[2px] bg-[var(--ff-accent)] px-[18px] py-[10px] text-[13.5px] font-semibold text-[var(--color-ff-accent-ink)] hover:-translate-y-px active:scale-[0.98] disabled:opacity-60"
                             disabled={!username.trim() || availability === 'taken' || availability === 'invalid' || availability === 'checking' || isClaiming}
                         >
                             {isClaiming ? (
                                 <span className="inline-flex items-center gap-2">
-                                    <span className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    <span className="h-4 w-4 border-2 border-[var(--color-ff-accent-ink)] border-t-transparent rounded-full animate-spin" />
                                     Claiming…
                                 </span>
                             ) : (

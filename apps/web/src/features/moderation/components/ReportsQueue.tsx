@@ -39,7 +39,7 @@ const FILTERS: { value: ReportStatus; label: string }[] = [
  *
  * Mounted from three places — `/admin/reports` (which owns the page header),
  * the Reports tab of `/admin/dashboard` (which has its own h1) and
- * `/moderation/reports` (whose layout has one too) — so the heading and the
+ * `/moderator/reports` (whose layout has one too) — so the heading and the
  * scroll container live at the route, not here. A background refetch also keeps
  * the rows already on screen instead of replacing the whole list with a
  * skeleton, which is why the loading state is a sibling branch and not an early

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { withRateLimit } from '@/lib/api/rateLimit';
+import { withAdminAuth } from '@/lib/server/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,4 +18,4 @@ async function getBootstrapFeed() {
     }
 }
 
-export const GET = withRateLimit(getBootstrapFeed, { windowMs: 60_000, max: 60, keyPrefix: 'bootstrap-feed' });
+export const GET = withRateLimit(withAdminAuth(getBootstrapFeed), { windowMs: 60_000, max: 60, keyPrefix: 'bootstrap-feed' });

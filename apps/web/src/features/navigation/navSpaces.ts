@@ -111,6 +111,9 @@ export const SPACES: Space[] = [
                 items: [
                     ...pick(JOBS_NAV_ITEMS, 'companies', 'resources', 'contribute'),
                     ...pick(ACCOUNT_NAV_ITEMS, 'following'),
+                    // Real page now: job-attached threads, not the paused
+                    // CommunityPost feed the hidden `discussions` row points at.
+                    ...pick(JOBS_NAV_ITEMS, 'discussionsFeed'),
                 ],
             },
         ],

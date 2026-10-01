@@ -22,7 +22,7 @@ export default function Page() {
         // engage at all.
         //
         // The header lives here, not in `ReportsClient`: the same component is
-        // also a tab of `/admin/dashboard` and a page under `/moderation`, and
+        // also a tab of `/admin/dashboard` and a page under `/moderator`, and
         // both of those shells already have an h1. Keeping the heading at the
         // route means it can never double up, and it also means a refetch (the
         // queue re-fetches on every status change) cannot take the heading off

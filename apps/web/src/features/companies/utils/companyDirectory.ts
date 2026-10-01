@@ -87,28 +87,75 @@ function aggregateCompanies(
     return companyData;
 }
 
+/**
+ * A company can arrive under two different slugs when its roles carry two
+ * different logo domains: `CompanySlugger` derives the slug from the Clearbit
+ * domain first, so `modulr.com` and `modulrfinance.com` both render as
+ * "Modulr" but aggregate to two separate rows with split role counts. The
+ * website is the authoritative identity, so entries sharing a host are the
+ * same company and their counts are summed.
+ */
+function mergeByWebsite(items: CompanyDirectoryItem[]): CompanyDirectoryItem[] {
+    const byHost = new Map<string, CompanyDirectoryItem>();
+
+    for (const item of items) {
+        let host: string | null = null;
+        if (item.website) {
+            try {
+                host = new URL(item.website).hostname.toLowerCase().replace(/^www\./, '');
+            } catch {
+                host = null;
+            }
+        }
+        if (!host) {
+            byHost.set(`~${item.slug}`, item);
+            continue;
+        }
+
+        const existing = byHost.get(host);
+        if (!existing) {
+            byHost.set(host, item);
+            continue;
+        }
+
+        byHost.set(host, {
+            ...existing,
+            // Keep whichever slug carries more roles so the link points at the
+            // busier of the two, and sum so neither set of roles goes missing.
+            slug: item.count > existing.count ? item.slug : existing.slug,
+            count: existing.count + item.count,
+            logoUrl: existing.logoUrl ?? item.logoUrl,
+            website: existing.website ?? item.website,
+            sources: [...(existing.sources ?? []), ...(item.sources ?? [])],
+        });
+    }
+
+    return Array.from(byHost.values());
+}
+
 /** The /companies directory: live companies only, busiest first, then A–Z. */
 export function buildCompanyDirectory(
     opportunities: Opportunity[],
     directory: CompanyDirectoryMeta[],
 ): CompanyDirectoryItem[] {
-    return Object.values(aggregateCompanies(opportunities, directory))
-        .filter((co) => co.count > 0)
-        .map((co) => ({
-            name: co.name,
-            slug: co.slug,
-            count: co.count,
-            logoUrl: co.logoUrl,
-            website: co.website,
-            sources: Object.entries(co.sourceRoles)
-                .map(([name, roles]) => ({ name, roles }))
-                .sort((a, b) => b.roles - a.roles || a.name.localeCompare(b.name)),
-            companyStage: co.companyStage,
-            companySize: co.companySize,
-            companyIndustry: co.companyIndustry,
-            companyTopics: co.companyTopics,
-        }))
-        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+    return mergeByWebsite(
+        Object.values(aggregateCompanies(opportunities, directory))
+            .filter((co) => co.count > 0)
+            .map((co) => ({
+                name: co.name,
+                slug: co.slug,
+                count: co.count,
+                logoUrl: co.logoUrl,
+                website: co.website,
+                sources: Object.entries(co.sourceRoles)
+                    .map(([name, roles]) => ({ name, roles }))
+                    .sort((a, b) => b.roles - a.roles || a.name.localeCompare(b.name)),
+                companyStage: co.companyStage,
+                companySize: co.companySize,
+                companyIndustry: co.companyIndustry,
+                companyTopics: co.companyTopics,
+            }))
+    ).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
 /**

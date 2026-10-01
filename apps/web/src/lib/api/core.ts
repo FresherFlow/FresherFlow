@@ -1,5 +1,6 @@
 import { markDetailSyncedNow, markFeedSyncedNow } from '@/lib/cache/syncStatus';
 import { toCleanMessage } from '@/lib/utils/error';
+import { normalizeApiBase } from '@/lib/api/normalize-api-base';
 
 // Thrown when a request is made with no network connectivity.
 // Callers can check `err instanceof OfflineError` to skip toast notifications.
@@ -222,13 +223,6 @@ export function getAdminAccessToken() {
 
 export function clearAdminAccessToken() {
     clearStorage(ADMIN_ACCESS_TOKEN_KEY);
-}
-
-function normalizeApiBase(raw?: string): string {
-    const value = (raw || '').trim();
-    if (!value) return '';
-    const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
-    return withProtocol.replace(/\/+$/, '');
 }
 
 const DEFAULT_API_URL = normalizeApiBase(process.env.NEXT_PUBLIC_API_URL);

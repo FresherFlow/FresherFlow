@@ -17,8 +17,19 @@ if (!hasDb) {
 
 const isRemoteDb = connectionString && !connectionString.includes('localhost') && !connectionString.includes('127.0.0.1');
 
+// Never disable TLS verification by default. Remote connections are exactly the
+// case that must be verified. An explicit opt-out remains available for
+// local/dev proxies via PG_SSL_REJECT_UNAUTHORIZED=0.
+const rejectUnauthorized = process.env.PG_SSL_REJECT_UNAUTHORIZED !== '0';
+
+if (isRemoteDb && !rejectUnauthorized && process.env.NODE_ENV === 'production') {
+  // Defence in depth: a stray env var must not silently expose the ingestion
+  // database to interception. Fail closed instead.
+  throw new Error('TLS verification must not be disabled in production');
+}
+
 export const pool = new Pool({
   connectionString,
-  ssl: isRemoteDb ? { rejectUnauthorized: false } : undefined,
+  ssl: isRemoteDb ? { rejectUnauthorized } : undefined,
 });
 

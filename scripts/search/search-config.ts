@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { fetchJsonWithRetry, readJsonFileSafe } from '@fresherflow/pipeline';
 
 export interface SearchTarget {
   company: string;
@@ -54,20 +55,24 @@ export async function loadAtsDataTargets(): Promise<SearchTarget[]> {
   if (CDN_URL) {
     console.log(`Fetching ATS targets from CDN (${CDN_URL}/api/ats/india)...`);
     for (const atsName of ATS_PROVIDERS) {
-      try {
-        const res = await fetch(`${CDN_URL}/api/ats/india/${atsName}.json`);
+        // Per-provider isolation: one missing provider file must not abort the
+        // whole sweep, and a transient CDN error is worth one retry.
+        const res = await fetchJsonWithRetry(`${CDN_URL}/api/ats/india/${atsName}.json`, {
+            label: `${atsName}.json`,
+            attempts: 2,
+            timeoutMs: 15_000,
+        });
         if (res.ok) {
-          const data = await res.json();
-          processAtsData(atsName, data, targets);
+            processAtsData(atsName, res.data, targets);
+        } else {
+            console.warn(`  [ats] ${atsName}.json unavailable (${res.reason}); skipping this provider.`);
         }
-      } catch (err) {
-         // silently continue to next
-      }
     }
     if (targets.length > 0) {
       console.log(`Loaded ${targets.length} targets from CDN`);
       return targets;
     }
+    console.warn('CDN returned no usable ATS targets. Falling back to local verified files.');
   }
 
   const atsDirs = [
@@ -76,24 +81,33 @@ export async function loadAtsDataTargets(): Promise<SearchTarget[]> {
   ];
 
   for (const atsDir of atsDirs) {
-  try {
-    const files = await fs.readdir(atsDir);
+    // A missing directory is normal in CI (docs/data is not always checked out).
+    // A malformed file inside it is not — report it rather than swallowing it.
+    let files: string[];
+    try {
+      files = await fs.readdir(atsDir);
+    } catch {
+      continue;
+    }
     for (const file of files) {
       if (!file.endsWith('.json') || file === 'b.txt' || file === 'companies.json' || file.includes('-from-') || file === 'known-bad-slugs.json' || file === 'removed.json' || file === 'registry.csv') continue;
       const atsName = file.replace('.json', '');
       const filePath = path.join(atsDir, file);
-      try {
-        const raw = await fs.readFile(filePath, 'utf8');
-        const data = JSON.parse(raw);
-        processAtsData(atsName, data, targets);
-      } catch {
-        // Skip malformed JSON
+      const data = await readJsonFileSafe(filePath);
+      if (data === null) {
+        console.warn(`  [ats] ${filePath} is missing or not valid JSON; skipping.`);
+        continue;
       }
+      processAtsData(atsName, data, targets);
     }
-  } catch {
-    // directory not accessible, continue
   }
-  } // end for atsDir
+
+  if (targets.length === 0) {
+    console.warn(
+      'No ATS targets could be loaded from CDN or local files. ' +
+      'This sweep will find no board-based jobs — check docs/data/ats or the CDN path.',
+    );
+  }
 
   return targets;
 }

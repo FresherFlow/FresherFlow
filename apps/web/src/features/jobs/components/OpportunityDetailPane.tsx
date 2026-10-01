@@ -1,6 +1,5 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { type Opportunity } from '@fresherflow/types';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
@@ -25,13 +24,15 @@ import { Hint } from '@/ui/Tooltip';
 import { CopyButton } from '@/ui/CopyButton';
 
 // Subcomponents from detail page
-import { WalkInDetailsCard } from '@/features/jobs/components/detail/WalkInDetailsCard';
-import { ComplexityCard } from '@/features/jobs/components/detail/ComplexityCard';
 import { DetailRequirements } from '@/features/jobs/components/detail/DetailRequirements';
 import { DetailTimeline } from '@/features/jobs/components/detail/DetailTimeline';
-import { DetailCampusDriveInfo } from '@/features/jobs/components/detail/DetailCampusDriveInfo';
-import { ExpiredWarning } from '@/features/jobs/components/detail/ExpiredWarning';
 import { DescriptionSection } from '@/features/jobs/components/detail/DescriptionSection';
+import {
+    CampusDriveInfoIfCampus,
+    ExpiredWarningIfAny,
+    FormComplexityCard,
+    WalkInDetailsCardIfAny,
+} from '@/features/jobs/components/detail/OpportunityDetailSections';
 import { GovernmentJobDetailView } from '@/features/jobs/components/detail/GovernmentJobDetailView';
 import { OpportunityDetailPaneSkeleton } from '@/features/jobs/components/OpportunitySkeletons';
 
@@ -41,8 +42,7 @@ import { useOpportunityDerivedState } from '@/features/jobs/hooks/useOpportunity
 import { WalkinTrustStrip } from '@/features/jobs/components/WalkinTrustStrip';
 import { parseOpportunityLocation, getGroupedLocations } from '@/features/jobs/domain/opportunityDisplay';
 import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
-import { getDriveDetails, getFeedBadgeLabel, getPrimaryEmploymentType, isGovernmentOpportunity, isInternshipOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
-import { isNotEligible } from '@/features/jobs/domain/matchScore';
+import { getPrimaryEmploymentType, isInternshipOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 
 interface OpportunityDetailPaneProps {
     oppId: string;
@@ -71,7 +71,6 @@ function getPostedLabel(postedAtVal?: string | Date | null) {
 import { useRef, useEffect } from 'react';
 
 export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = false, allOpps = [] }: OpportunityDetailPaneProps) {
-    const searchParams = useSearchParams();
     const { user, profile } = useAuth();
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -95,7 +94,7 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
         handleCopyLink
     } = useOpportunityDetail(oppId, initialData, user, [], allOpps);
 
-    const ds = useOpportunityDerivedState(opp as Opportunity, profile, searchParams);
+    const ds = useOpportunityDerivedState(opp as Opportunity);
 
 
     if (isLoading) {
@@ -227,11 +226,10 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                         handleShare={handleShare}
                         handleCopyLink={handleCopyLink}
                         listingState={ds.listingState}
-                        formatDeadline={ds.formatDeadline}
                     />
                 ) : (
                     <div className="space-y-4">
-                        {opp.expiresAt && ds.isExpired(opp) && <ExpiredWarning opportunityId={opp.id} opportunityTitle={opp.title} />}
+                        <ExpiredWarningIfAny opp={opp} isExpired={ds.isExpired} />
 
                         {/* Compact header: badges + location + meta — all in one tight block */}
                         <div className="space-y-3">
@@ -337,25 +335,20 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                             title="Description"
                         />
 
-                        {opp.applicationDetails && opp.applicationDetails.method === 'FORM' && (
-                            <ComplexityCard applicationDetails={opp.applicationDetails} />
-                        )}
+                        <FormComplexityCard opp={opp} />
 
-                        {isWalkinOpportunity(opp) && getDriveDetails(opp) && (
-                            <WalkInDetailsCard walkInDetails={getDriveDetails(opp) as NonNullable<Opportunity['walkInDetails']>} />
-                        )}
+                        <WalkInDetailsCardIfAny opp={opp} />
 
                         {isWalkinOpportunity(opp) && (
                             <WalkinTrustStrip opportunityIdOrSlug={opp.slug || opp.id} />
                         )}
 
-                        {ds.isCampusDrive && (
-                            <DetailCampusDriveInfo
-                                driveMeta={ds.driveMeta}
-                                hasApplyLink={ds.hasApplyLink}
-                                handleApply={handleApply}
-                            />
-                        )}
+                        <CampusDriveInfoIfCampus
+                            isCampusDrive={ds.isCampusDrive}
+                            driveMeta={ds.driveMeta}
+                            hasApplyLink={ds.hasApplyLink}
+                            handleApply={handleApply}
+                        />
 
                         <DetailTimeline
                             timelineEvents={ds.timelineEvents}

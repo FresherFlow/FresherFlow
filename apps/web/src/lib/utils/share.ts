@@ -51,6 +51,31 @@ export function buildShareUrl(rawUrl: string, options: ShareLinkOptions = {}) {
     }
 }
 
+/**
+ * The canonical, tracking-free URL for a shared page. `buildShareUrl` stamps
+ * `ref`/`source`/`utm_*` on the way out; anyone who re-shares a link they
+ * received would otherwise copy the previous sharer's campaign params along
+ * with it. Returns the input unchanged when it cannot be parsed.
+ */
+export function getCleanShareUrl(rawUrl: string) {
+    try {
+        const url = new URL(rawUrl);
+        [
+            'ref',
+            'source',
+            'medium',
+            'campaign',
+            'platform',
+            'utm_source',
+            'utm_medium',
+            'utm_campaign',
+        ].forEach((param) => url.searchParams.delete(param));
+        return url.toString();
+    } catch {
+        return rawUrl;
+    }
+}
+
 export function buildInviteUrl(rawOrigin: string, referralCode: string) {
     try {
         const code = referralCode.toUpperCase();

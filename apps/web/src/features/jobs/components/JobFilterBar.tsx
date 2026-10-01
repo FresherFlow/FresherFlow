@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { cn } from '@repo/ui/utils/cn';
+import { useClickOutside } from '@/hooks/useClickOutside';
 import type { WalkinDrivePeriod } from '@/features/jobs/utils/walkinMapUtils';
 import {
     getFeedKind,
@@ -14,8 +15,11 @@ import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import ChevronDownIcon from '@heroicons/react/24/outline/ChevronDownIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
+import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
+import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import AdjustmentsHorizontalIcon from '@heroicons/react/24/outline/AdjustmentsHorizontalIcon';
 import { SkillPill } from '@/features/jobs/components/SkillPill';
+import { CURATED_ROLE_KEYWORDS } from '@/features/jobs/domain/taxonomy/constants';
 
 export interface FilterBarFilters {
     location: string | null;
@@ -45,20 +49,23 @@ const GOVT_SECTORS = ['Defense', 'Railways', 'Banking', 'Teaching', 'Police', 'S
 const GOVT_QUALIFICATIONS = ['10th Pass', '12th Pass', 'Diploma', 'Graduate', 'Postgraduate'];
 const CORP_COURSES = ['B.Tech/B.E.', 'M.C.A.', 'MBA', 'B.Sc/B.Com/B.A', 'Diploma'];
 
-const ROLE_OPTIONS = [
-    'Software Engineer',
-    'Frontend Developer',
-    'Backend Developer',
-    'Full Stack Developer',
-    'Data Scientist',
-    'Data Analyst',
-    'QA / Test Engineer',
-    'DevOps Engineer',
-    'Product Manager',
-    'UI/UX Designer',
-    'Android Developer',
-    'iOS Developer',
-];
+/**
+ * Role options, taken from the curated taxonomy rather than a list invented
+ * here.
+ *
+ * `CURATED_ROLE_KEYWORDS` is the single source for what a "role" is on this
+ * site: `boardFilters` puts exactly these `label`s into `?role=`, and
+ * `buildTaxonomyRegistry` builds the role boards from the same slugs. The bar
+ * used to carry its own 12-item hardcoded list that had drifted from it —
+ * "Data Scientist" and "QA / Test Engineer" were offered here while the
+ * taxonomy's "Data Analyst" and "Business Analyst" were not, so a filter set on
+ * this bar and one arriving from a saved search or a role board were different
+ * vocabularies for the same dimension.
+ *
+ * The chip row still renders whatever is active, so a role set from a board or
+ * a saved search is always removable even when it is not one of these.
+ */
+const ROLE_OPTIONS = Object.values(CURATED_ROLE_KEYWORDS).map((role) => role.label);
 
 interface JobFilterBarProps {
     filters: FilterBarFilters;
@@ -95,21 +102,6 @@ type DropdownOption =
     | { kind: 'company'; company: string; count: number }
     | { kind: 'role'; role: string };
 
-function useClickOutside(ref: React.RefObject<HTMLElement | null>, handler: (e: MouseEvent | TouchEvent) => void) {
-    useEffect(() => {
-        const listener = (e: MouseEvent | TouchEvent) => {
-            if (!ref.current || ref.current.contains(e.target as Node)) return;
-            handler(e);
-        };
-        document.addEventListener('mousedown', listener);
-        document.addEventListener('touchstart', listener);
-        return () => {
-            document.removeEventListener('mousedown', listener);
-            document.removeEventListener('touchstart', listener);
-        };
-    }, [ref, handler]);
-}
-
 const pillBase = 'h-8 px-3 rounded-lg text-sm font-semibold flex items-center gap-1.5 transition-all duration-150 ease-out active:scale-95 whitespace-nowrap select-none cursor-pointer outline-none shrink-0 motion-reduce:transform-none motion-reduce:transition-none';
 const pillDefault = 'text-muted-foreground hover:text-foreground hover:bg-muted';
 const pillOpen = 'bg-muted text-foreground ring-1 ring-border';
@@ -131,7 +123,7 @@ function PanelClearButton({ show, onClear, label }: { show: boolean; onClear: ()
     );
 }
 
-export function JobFilterBar({ filters, setFilters, selectedType, onTypeChange, pageType, aggregates, driveDate = 'all', onDriveDateChange }: JobFilterBarProps) {
+export function JobFilterBar({ filters, setFilters, isLoggedIn, selectedType, onTypeChange, pageType, aggregates, driveDate = 'all', onDriveDateChange }: JobFilterBarProps) {
     const [open, setOpen] = useState<OpenPanel>(null);
     const [locSearch, setLocSearch] = useState('');
     const [skillSearch, setSkillSearch] = useState('');
@@ -278,7 +270,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
     // (Skills, Course, Source, Company, Sector) live behind the All Filters
     // toggle. A pill always shows once it has an active selection so users
     // can see and clear what they set.
-    type FilterDim = 'type' | 'location' | 'sector' | 'qualification' | 'driveDate' | 'role' | 'skills' | 'course' | 'source' | 'year' | 'company';
+    type FilterDim = 'type' | 'location' | 'sector' | 'qualification' | 'driveDate' | 'role' | 'skills' | 'course' | 'source' | 'year' | 'company' | 'closingSoon' | 'saved';
 
     const dimActive: Record<FilterDim, boolean> = {
         type: !!selectedType,
@@ -292,6 +284,8 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
         source: (filters.source?.length ?? 0) > 0,
         year: filters.year !== null,
         company: (filters.company?.length ?? 0) > 0,
+        closingSoon: filters.closingSoon,
+        saved: filters.saved,
     };
 
     const pillVisible = (dim: FilterDim) =>
@@ -301,6 +295,15 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
         dim === 'location' ||
         dim === 'driveDate' ||
         (isWide && (isGovt ? dim === 'qualification' : dim === 'role' || dim === 'year'));
+
+    // `closingSoon` and `saved` are simple on/off toggles rather than panels, so
+    // they are never behind the "All Filters" disclosure — a user who has one
+    // active must be able to see and switch it off without opening a menu, and
+    // both are one click to change. `saved` needs an account: the feed hook
+    // refuses a saved-only view for a signed-out visitor, so offering the
+    // toggle to one would filter to nothing.
+    const pillAlwaysVisible = (dim: FilterDim) =>
+        dim === 'closingSoon' || (dim === 'saved' && isLoggedIn) || pillVisible(dim);
 
     // Active filters that live behind the All Filters pill (badge count).
     const hiddenActiveCount = (isGovt
@@ -908,6 +911,35 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                             </div>
                         , document.body)}
                     </div>
+
+                    {/* Closing soon / Saved only. Both were readable from the URL
+                        (`?closingSoon=true`, `?saved=true`) and both rendered a
+                        removable chip, but neither had a control anywhere, so a
+                        link that set either one could only be undone by editing
+                        the address bar. `SearchesTab` genuinely emits
+                        `closingSoon=true` when a saved search is opened. */}
+                    {pillAlwaysVisible('closingSoon') && (
+                        <button
+                            type="button"
+                            onClick={() => setFilters({ ...filters, closingSoon: !filters.closingSoon })}
+                            aria-pressed={filters.closingSoon}
+                            className={cn(pillBase, filters.closingSoon ? pillOpen : pillDefault)}
+                        >
+                            <ClockIcon className="h-4 w-4 shrink-0" />
+                            Closing soon
+                        </button>
+                    )}
+                    {pillAlwaysVisible('saved') && (
+                        <button
+                            type="button"
+                            onClick={() => setFilters({ ...filters, saved: !filters.saved })}
+                            aria-pressed={filters.saved}
+                            className={cn(pillBase, filters.saved ? pillOpen : pillDefault)}
+                        >
+                            <BookmarkIcon className="h-4 w-4 shrink-0" />
+                            Saved only
+                        </button>
+                    )}
 
                     <div className={cn('relative', !pillVisible('skills') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button

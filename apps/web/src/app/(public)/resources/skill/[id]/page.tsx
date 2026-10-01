@@ -20,9 +20,23 @@ export async function generateMetadata(props: SkillResourcesPageProps) {
             break;
         }
     }
+    const name = skillName || 'this skill';
+    const description = `Preparation material, interview guides, and resources for ${name}.`;
+
     return {
         title: `${skillName || 'Skill'} Prep Resources`,
-        description: `Preparation material, interview guides, and resources for ${skillName || 'this skill'}.`,
+        description,
+        alternates: { canonical: `/resources/skill/${params.id}` },
+        openGraph: {
+            title: `${skillName || 'Skill'} Prep Resources`,
+            description,
+            url: `/resources/skill/${params.id}`,
+        },
+        twitter: {
+            card: 'summary',
+            title: `${skillName || 'Skill'} Prep Resources`,
+            description,
+        },
     };
 }
 

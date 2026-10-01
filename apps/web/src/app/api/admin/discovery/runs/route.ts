@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRateLimit } from '@/lib/api/rateLimit';
+import { withAdminAuth } from '@/lib/server/adminAuth';
 import { hasIngestionDb, queryRows, ingestionDbError } from '@/lib/server/ingestion/db';
 
 export const dynamic = 'force-dynamic';
@@ -29,4 +30,4 @@ async function getRuns(request: NextRequest) {
   }
 }
 
-export const GET = withRateLimit(getRuns, { windowMs: 60_000, max: 60, keyPrefix: 'discovery-runs' });
+export const GET = withRateLimit(withAdminAuth(getRuns), { windowMs: 60_000, max: 60, keyPrefix: 'discovery-runs' });

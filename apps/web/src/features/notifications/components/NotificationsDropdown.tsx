@@ -116,7 +116,9 @@ export function NotificationsDropdown({ className }: { className?: string }) {
                 void markRead(item);
             }
             setIsOpen(false);
-            if (item.opportunitySlug) {
+            if (item.href) {
+                router.push(item.href);
+            } else if (item.opportunitySlug) {
                 router.push(`/jobs/${item.opportunitySlug}`);
             } else if (item.fallbackHref) {
                 router.push(item.fallbackHref);

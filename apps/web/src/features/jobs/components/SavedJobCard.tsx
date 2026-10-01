@@ -8,17 +8,8 @@ import { BrandButton } from '@/ui/BrandButton';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
 import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
-
-function timeAgo(iso: string | Date): string {
-    const diff = Date.now() - new Date(iso).getTime();
-    if (Number.isNaN(diff)) return '';
-    const days = Math.floor(diff / 86400000);
-    if (days < 1) return 'today';
-    if (days === 1) return '1d ago';
-    if (days < 30) return `${days}d ago`;
-    const months = Math.floor(days / 30);
-    return months === 1 ? '1mo ago' : `${months}mo ago`;
-}
+import { getPostedLabel } from '@/features/jobs/components/JobCard/jobCardUtils';
+import { toSafeOutboundUrl } from '@/lib/utils/safeOutboundUrl';
 
 export interface SavedJobCardProps {
     opp: Opportunity;
@@ -63,9 +54,13 @@ export default function SavedJobCard({
     const resolvedApplyHref =
         applyHref !== undefined
             ? applyHref
-            : (opp as { applyLink?: string }).applyLink || (opp as { companyWebsite?: string }).companyWebsite || null;
+            /* Scraped links can carry a `javascript:`/`data:` scheme; the
+               fallback goes through the same trust boundary as every other
+               outbound link rather than straight into `href`. */
+            : toSafeOutboundUrl((opp as { applyLink?: string }).applyLink)
+                ?? toSafeOutboundUrl((opp as { companyWebsite?: string }).companyWebsite);
     const locShort = parseOpportunityLocation(opp.locations).shortLabel;
-    const age = opp.postedAt ? timeAgo(opp.postedAt) : '';
+    const age = getPostedLabel(opp) ?? '';
     const metaText = showCompany ? `${companyName}${age ? ` Â· ${age}` : ''}` : age;
 
     return (

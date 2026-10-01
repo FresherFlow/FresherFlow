@@ -30,13 +30,6 @@ interface DetailHeroSectionProps {
     displaySalary: string | null;
     locationInfo: { shortLabel: string; fullLabel: string; cities?: string[] };
     formatDeadline: (opp: Opportunity) => string | null;
-    isExpired: (opp: Opportunity) => boolean;
-    isClosingSoon: (opp: Opportunity) => boolean;
-    isMobile?: boolean;
-    hasApplyLink?: boolean;
-    handleApply?: () => void;
-    handleShare?: () => void;
-    handleCopyLink?: () => void;
 }
 
 export function DetailHeroSection({
@@ -48,12 +41,6 @@ export function DetailHeroSection({
     displaySalary: _displaySalary,
     locationInfo,
     formatDeadline,
-    isExpired,
-    isClosingSoon,
-    hasApplyLink,
-    handleApply,
-    handleShare,
-    handleCopyLink,
 }: DetailHeroSectionProps) {
     const isGovernmentJob = Boolean(opp.governmentJobDetails);
     const govDetails = opp.governmentJobDetails;

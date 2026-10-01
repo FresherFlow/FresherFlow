@@ -39,19 +39,33 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     const { username } = await params;
     const profile = await getProfile(username);
     if (!profile) {
-        return { title: 'Profile not found — FresherFlow' };
+        // `absolute` — the root template appended a second "| FresherFlow".
+        return { title: { absolute: 'Profile not found — FresherFlow' }, robots: { index: false, follow: false } };
     }
     const name = profile.fullName || username;
     const headline = profile.headline || `${profile.degree || 'Fresher'} · ${profile.gradYear ?? ''}`.trim();
+    const description = headline
+        ? `${headline} · Skills: ${(profile.skills || []).slice(0, 5).join(', ')}`
+        : `View ${name}'s fresher profile on FresherFlow.`;
+    // No OG image: a profile has no shareable asset, and inheriting the site-wide
+    // `/opengraph-image` would put a generic brand card on a personal URL.
     return {
         title: `${name} — Fresher Profile`,
-        description: headline
-            ? `${headline} · Skills: ${(profile.skills || []).slice(0, 5).join(', ')}`
-            : `View ${name}'s fresher profile on FresherFlow.`,
+        description,
+        // Profiles are indexed by username only, so the canonical is the one URL
+        // that must never be a variant. Without it, a profile reachable under two
+        // casings splits its own signals.
+        alternates: { canonical: `/u/${username}` },
         openGraph: {
             title: `${name} — Fresher Profile`,
-            description: headline || undefined,
+            description,
             type: 'profile',
+            url: `/u/${username}`,
+        },
+        twitter: {
+            card: 'summary',
+            title: `${name} — Fresher Profile`,
+            description,
         },
     };
 }

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '@fresherflow/database';
 import { requireAdmin } from '../../middleware/auth';
 import { logger } from '@fresherflow/utils';
+import { sendError, ErrorCode } from '../../middleware/errorHandler';
 
 const router = Router();
 
@@ -13,8 +14,7 @@ router.post('/', requireAdmin, async (req, res, next) => {
         const payload = req.body;
 
         if (!payload.opportunityId) {
-             res.status(400).json({ error: 'opportunityId is required to associate this government job data with an opportunity.' });
-             return;
+             return sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'opportunityId is required to associate this government job data with an opportunity.', req.requestId);
         }
 
         const govtJob = await prisma.governmentJobDetails.upsert({

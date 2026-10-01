@@ -482,6 +482,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         let unsubscribe: (() => void) | undefined;
+        // The dynamic import resolves after this effect has usually already been
+        // torn down, so the returned cleanup almost never sees `unsubscribe`.
+        // Track cancellation and re-check it once the import lands, otherwise
+        // the listener survives unmount and StrictMode's double-mount leaves two.
+        let cancelled = false;
         import('@/lib/api/firebase').then(({ auth }) => {
             unsubscribe = auth.onAuthStateChanged((firebaseUser: any) => {
                 if (isLoggingOutRef.current) return;
@@ -498,8 +503,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     loadUser({ silent: true });
                 }
             });
+            if (cancelled) unsubscribe();
         });
         return () => {
+            cancelled = true;
             if (unsubscribe) unsubscribe();
         };
     }, [loadUser]);

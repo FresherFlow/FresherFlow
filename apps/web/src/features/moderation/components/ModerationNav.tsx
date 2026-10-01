@@ -5,13 +5,13 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/ui/cn';
 
 const QUEUES = [
-    { href: '/moderation/submissions', label: 'Job submissions' },
+    { href: '/moderator/submissions', label: 'Job submissions' },
     { href: '/admin/opportunities', label: 'Listings' },
-    { href: '/moderation/interviews', label: 'Interviews' },
-    { href: '/moderation/updates', label: 'Hiring updates' },
-    { href: '/moderation/resources', label: 'Resources' },
-    { href: '/moderation/reports', label: 'Reports' },
-    { href: '/moderation/content', label: 'Content' },
+    { href: '/moderator/interviews', label: 'Interviews' },
+    { href: '/moderator/updates', label: 'Hiring updates' },
+    { href: '/moderator/resources', label: 'Resources' },
+    { href: '/moderator/reports', label: 'Reports' },
+    { href: '/moderator/content', label: 'Content' },
 ];
 
 export function ModerationNav() {
@@ -20,10 +20,10 @@ export function ModerationNav() {
         <nav aria-label="Moderation queues" className="border-b border-border bg-card">
             <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center gap-1 overflow-x-auto px-4 py-2">
                 <Link
-                    href="/moderation"
+                    href="/moderator"
                     className={cn(
                         'rounded-full px-3 py-1.5 text-sm font-semibold',
-                        pathname === '/moderation' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+                        pathname === '/moderator' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
                     )}
                 >
                     Overview

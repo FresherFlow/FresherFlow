@@ -9,9 +9,28 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug } = await params;
+    // Title-case the slug: the raw value is lowercase and hyphenated
+    // ("cse-2026"), which reads as a URL fragment in a SERP, not a page name.
+    const label = slug
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, (char) => char.toUpperCase());
+    const title = `${label} — Fresher Community`;
+    const description = `Join the ${label} community on FresherFlow — discussions, shared jobs, walk-in drives, and opportunities with other freshers.`;
+
     return {
-        title: slug.replace(/-/g, ' '),
-        description: `Join the ${slug.replace(/-/g, ' ')} community — discussions, jobs, and opportunities.`,
+        title,
+        description,
+        alternates: { canonical: `/community/rooms/${slug}` },
+        openGraph: {
+            title,
+            description,
+            url: `/community/rooms/${slug}`,
+        },
+        twitter: {
+            card: 'summary',
+            title,
+            description,
+        },
     };
 }
 

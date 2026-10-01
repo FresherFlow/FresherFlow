@@ -30,6 +30,7 @@ import { selectionColumn } from "@/features/admin/discovery/selectionColumn";
 import { AdminOpportunityRow, getStatusLabel } from "./listUtils";
 import { MetaPill, OpportunityStatusCell } from "./statuses";
 import { isGovernmentOpportunity, kindFromOpportunity, type OpportunityKind } from "./formUtils";
+import { toSafeOutboundUrl } from "@/lib/utils/safeOutboundUrl";
 
 /** Operator-facing type label; `GOVERNMENT` is a sector, not a card type. */
 export const TYPE_LABELS: Record<OpportunityKind, string> = {
@@ -315,7 +316,10 @@ export function useOpportunityColumns(
           const isDraft = label === "DRAFT";
           const isDeleted = label === "DELETED";
           const canChangeStatus = label === "LIVE" || label === "EXPIRED";
-          const link = opp.applyLink || opp.sourceLink;
+          // Scraped apply/source links can carry `javascript:` or `data:`, so
+          // the value that reaches `href` is the parsed http(s) URL, not the
+          // stored string. A rejected link drops the menu item entirely.
+          const link = toSafeOutboundUrl(opp.applyLink || opp.sourceLink);
 
           return (
             <DropdownMenu>

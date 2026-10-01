@@ -17,9 +17,23 @@ export async function generateMetadata(props: CompanyResourcesPageProps) {
         name => name.toLowerCase().replace(/\s+/g, '-') === params.id
     );
     
+    const name = companyName || 'this company';
+    const description = `Explore interview preparation guides, study materials, and career resources for ${name}.`;
+
     return {
         title: `${companyName || 'Company'} Prep Resources`,
-        description: `Explore interview preparation guides, study materials, and career resources for ${companyName || 'this company'}.`,
+        description,
+        alternates: { canonical: `/resources/company/${params.id}` },
+        openGraph: {
+            title: `${companyName || 'Company'} Prep Resources`,
+            description,
+            url: `/resources/company/${params.id}`,
+        },
+        twitter: {
+            card: 'summary',
+            title: `${companyName || 'Company'} Prep Resources`,
+            description,
+        },
     };
 }
 

@@ -35,10 +35,19 @@ export type MetaItem = {
 
 const MAX_META_ITEMS = 5;
 
-function formatWorkMode(mode: string | null): string | null {
+/**
+ * A raw, possibly-scraped work mode turned into a meta-strip label.
+ *
+ * Distinct from `formatWorkMode` in `features/profile/preferences`, which maps
+ * the *stored enum* (`ONSITE`/`ON_SITE`/`HYBRID`/`REMOTE`). This one normalises
+ * the free-text variants a source page can carry ('in office', 'in-office').
+ * The label vocabulary must still match that map, hence 'On-site' rather than
+ * 'Onsite' — the split-view row renders the same job's mode.
+ */
+function getWorkModeMetaLabel(mode: string | null): string | null {
     if (!mode) return null;
     const normalized = mode.toLowerCase().replace(/_/g, ' ');
-    if (normalized === 'in office' || normalized === 'onsite' || normalized === 'in-office') return 'Onsite';
+    if (normalized === 'in office' || normalized === 'onsite' || normalized === 'in-office') return 'On-site';
     if (normalized === 'hybrid') return 'Hybrid';
     if (normalized === 'remote') return 'Remote';
     return mode.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -61,7 +70,7 @@ export function buildMetaItems(
 ): MetaItem[] {
     const { isGovernment, isDrive, isWalkin } = opts;
     const items: MetaItem[] = [];
-    const workMode = formatWorkMode((job.workMode as string) || (job as { mode?: string }).mode || null);
+    const workMode = getWorkModeMetaLabel((job.workMode as string) || (job as { mode?: string }).mode || null);
     const salary = getSalaryLabel(job, isGovernment, isDrive);
     const posted = getPostedLabel(job);
     const expiry = getExpiryLabel(job, isGovernment);

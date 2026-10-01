@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/ui/Dialog';
 import { EmptyState } from '@/ui/EmptyState';
 import { SkillPill } from '@/features/jobs/components/SkillPill';
 import { RunResult, NormalizedJob } from '../types';
+import { toSafeOutboundUrl } from '@/lib/utils/safeOutboundUrl';
 
 interface DryRunModalProps {
  open: boolean;
@@ -85,9 +86,9 @@ export function DryRunModal({ open, result, onClose, onInspectJob }: DryRunModal
  )}
 
  <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs mt-1">
- {job.apply_link ? (
+ {toSafeOutboundUrl(job.apply_link) ? (
  <a
- href={job.apply_link}
+ href={toSafeOutboundUrl(job.apply_link) ?? undefined}
  target="_blank"
  rel="noopener noreferrer"
  className="text-primary hover:underline flex items-center gap-1"

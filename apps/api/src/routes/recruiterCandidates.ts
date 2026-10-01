@@ -21,7 +21,11 @@ router.get('/candidates', requireAuth, async (req: Request, res: Response, next:
         const whereClause: Record<string, unknown> = {
             openToRecruiters: true,
             user: {
-                deletedAt: null
+                // `User` has no `deletedAt` column; deactivation is tracked in
+                // `status`. This predicate previously named a field the model does
+                // not have, so the query failed at runtime. `Record<string, unknown>`
+                // suppressed the type error that would have caught it.
+                status: 'ACTIVE'
             }
         };
 
@@ -93,12 +97,26 @@ router.get('/candidates/:id', requireAuth, async (req: Request, res: Response, n
         const recruiterId = req.userId!;
         const targetId = String(req.params.id);
 
+        // The list route scopes to `openToRecruiters: true`; this detail route
+        // must carry the same opt-in predicate. Without it, any authenticated
+        // user could enumerate candidate profiles by id -- including the email
+        // address in the select below -- for candidates who never opted in to
+        // recruiter visibility. A detail route is not a wider door than the list
+        // that leads to it.
         const profile = await prisma.profile.findFirst({
             where: {
                 OR: [
                     { id: targetId },
                     { userId: targetId }
-                ]
+                ],
+                openToRecruiters: true,
+                visibility: { not: 'PRIVATE' },
+                user: {
+                    // `User` has no `deletedAt`; soft-deactivation is `status`.
+                    // Filtering on the non-existent column made this query throw
+                    // at runtime, so the guard has to use the real field.
+                    status: 'ACTIVE'
+                }
             },
             include: {
                 user: {

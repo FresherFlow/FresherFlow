@@ -2,15 +2,19 @@ import express, { Request, Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import prisma from '../../infrastructure/database/prisma';
 import { redis } from '@fresherflow/database';
+import { sendError, ErrorCode } from '../../middleware/errorHandler';
 
 const router = express.Router();
 
+// `message` must be the standard envelope, not a bare string: a string
+// `error` field is unreadable by `packages/api-client`, which showed users a
+// generic "Request failed (429)" instead of the limit message.
 const healthLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
     max: 30, // Limit to 30 requests per minute
     standardHeaders: true,
     legacyHeaders: false,
-    message: { error: 'Too many requests' },
+    message: { error: { code: ErrorCode.RATE_LIMITED, message: 'Too many requests', requestId: 'rate-limit' } },
 });
 
 /**
@@ -20,7 +24,7 @@ const healthLimiter = rateLimit({
 router.get('/health', (req: Request, res: Response) => {
     // Kill switch to stop Render/Monitoring hits entirely
     if (process.env.ENABLE_HEALTH_CHECK === 'false') {
-        res.status(503).json({ error: 'Health checks disabled in this environment' });
+        sendError(res, 503, ErrorCode.SERVICE_UNAVAILABLE, 'Health checks disabled in this environment', req.requestId);
         return;
     }
     res.status(200).send('ok');
@@ -32,7 +36,7 @@ router.get('/health', (req: Request, res: Response) => {
  */
 router.get('/health/deep', healthLimiter, async (req: Request, res: Response) => {
     if (process.env.ENABLE_HEALTH_CHECK === 'false') {
-        res.status(503).json({ error: 'Health checks disabled' });
+        sendError(res, 503, ErrorCode.SERVICE_UNAVAILABLE, 'Health checks disabled', req.requestId);
         return;
     }
 

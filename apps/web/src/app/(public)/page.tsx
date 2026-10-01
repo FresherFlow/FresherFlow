@@ -12,7 +12,6 @@ import { LandingMarquee } from '@/features/landing/LandingMarquee';
 import { fetchFeedIndex, fetchCompaniesMetadata } from '@/lib/api/cdnFeed';
 import { toOpportunityCardDTO } from '@fresherflow/types';
 import { matchesFeedType } from '@/features/jobs/utils/walkinMapUtils';
-import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
 // On-demand revalidation via /api/revalidate — called when jobs are published/expired.
 export const revalidate = false;
@@ -33,15 +32,6 @@ export const metadata: Metadata = {
         images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'FresherFlow — fresher jobs and internships in India' }],
     },
     twitter: { card: 'summary_large_image', title: LANDING_TITLE, description: LANDING_DESCRIPTION, images: ['/twitter-image'] },
-};
-
-const organizationJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: 'FresherFlow',
-    ...(SITE_URL ? { url: SITE_URL, logo: `${SITE_URL}/fresherflow-logo-v2.png` } : {}),
-    description: LANDING_DESCRIPTION,
-    sameAs: ['https://x.com/fresherflowin', 'https://linkedin.com/company/fresherflow'],
 };
 
 const MS_PER_DAY = 86_400_000;
@@ -110,7 +100,8 @@ export default async function LandingPage() {
     return (
         <>
             <SmoothScroll />
-            <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
+            {/* No Organization JSON-LD here: the root layout already emits one from
+                <head>, and this block duplicated it with a conflicting shape. */}
             <LandingMarquee newToday={newToday} refreshedAt={refreshedAt} walkins={walkins} />
             <HeroSection newToday={newToday} refreshedAt={refreshedAt} discussHref={discussHref} />
             <StatBand data={{ total: opps.length, internships, walkins, companies: companyCounts.size }} />

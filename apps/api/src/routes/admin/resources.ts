@@ -4,6 +4,7 @@ import { body, query, validationResult } from 'express-validator';
 import prisma from '../../infrastructure/database/prisma';
 import { hasPermission, requirePermission, requireStaff } from '../../middleware/auth';
 import { withAdminAudit } from '../../middleware/adminAudit';
+import { sendError, ErrorCode } from '../../middleware/errorHandler';
 import { ResourceItemStatus } from '@fresherflow/types';
 
 const router = Router();
@@ -41,7 +42,7 @@ router.get('/',
         try {
             const errors = validationResult(req);
             if (!errors.isEmpty()) {
-                res.status(400).json({ error: 'Validation failed', details: errors.array() });
+                sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'Validation failed', req.requestId, errors.array());
                 return;
             }
 
@@ -112,7 +113,7 @@ router.post('/',
         try {
             const errors = validationResult(req);
             if (!errors.isEmpty()) {
-                res.status(400).json({ error: 'Validation failed', details: errors.array() });
+                sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'Validation failed', req.requestId, errors.array());
                 return;
             }
 
@@ -177,7 +178,7 @@ router.patch('/:id',
         try {
             const errors = validationResult(req);
             if (!errors.isEmpty()) {
-                res.status(400).json({ error: 'Validation failed', details: errors.array() });
+                sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'Validation failed', req.requestId, errors.array());
                 return;
             }
 
@@ -189,7 +190,7 @@ router.patch('/:id',
             });
 
             if (!existing) {
-                res.status(404).json({ error: 'Collection not found' });
+                sendError(res, 404, ErrorCode.NOT_FOUND, 'Collection not found', req.requestId);
                 return;
             }
 
@@ -269,18 +270,18 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction): P
         });
 
         if (!existing) {
-            res.status(404).json({ error: 'Collection not found' });
+            sendError(res, 404, ErrorCode.NOT_FOUND, 'Collection not found', req.requestId);
             return;
         }
 
         const actor = req.adminId ?? req.userId;
         if (!actor) {
-            res.status(401).json({ error: 'Authentication required' });
+            sendError(res, 401, ErrorCode.UNAUTHENTICATED, 'Authentication required', req.requestId);
             return;
         }
         const needed = existing.status === 'PENDING_REVIEW' ? 'resource.moderate' : 'resource.manage';
         if (!(await hasPermission(actor, needed))) {
-            res.status(403).json({ error: 'Forbidden: Insufficient permissions' });
+            sendError(res, 403, ErrorCode.FORBIDDEN, 'Forbidden: Insufficient permissions', req.requestId);
             return;
         }
 
@@ -318,7 +319,7 @@ router.post('/:id/items',
         try {
             const errors = validationResult(req);
             if (!errors.isEmpty()) {
-                res.status(400).json({ error: 'Validation failed', details: errors.array() });
+                sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'Validation failed', req.requestId, errors.array());
                 return;
             }
 
@@ -330,7 +331,7 @@ router.post('/:id/items',
             });
 
             if (!existing) {
-                res.status(404).json({ error: 'Collection not found' });
+                sendError(res, 404, ErrorCode.NOT_FOUND, 'Collection not found', req.requestId);
                 return;
             }
 
@@ -364,7 +365,7 @@ router.patch('/:collectionId/items/:itemId',
         try {
             const errors = validationResult(req);
             if (!errors.isEmpty()) {
-                res.status(400).json({ error: 'Validation failed', details: errors.array() });
+                sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'Validation failed', req.requestId, errors.array());
                 return;
             }
 
@@ -376,7 +377,7 @@ router.patch('/:collectionId/items/:itemId',
             });
 
             if (!existing) {
-                res.status(404).json({ error: 'Resource item not found' });
+                sendError(res, 404, ErrorCode.NOT_FOUND, 'Resource item not found', req.requestId);
                 return;
             }
 
@@ -404,7 +405,7 @@ router.delete('/:collectionId/items/:itemId', requirePermission('resource.manage
         });
 
         if (!existing) {
-            res.status(404).json({ error: 'Resource item not found' });
+            sendError(res, 404, ErrorCode.NOT_FOUND, 'Resource item not found', req.requestId);
             return;
         }
 

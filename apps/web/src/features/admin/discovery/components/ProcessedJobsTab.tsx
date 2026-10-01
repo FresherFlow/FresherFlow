@@ -26,6 +26,7 @@ import { cn } from "@/ui/cn";
 import { ProcessedJob } from "../types";
 import { toast } from "react-hot-toast";
 import { getErrorMessage } from "@/lib/utils/error";
+import { toSafeOutboundUrl } from "@/lib/utils/safeOutboundUrl";
 import { DataGrid, DataGridColumn, DataGridActionsContext } from "@/ui/data-grid/DataGrid";
 import { FilterSelect } from "@/ui/data-grid/FilterSelect";
 import { selectionColumn } from "../selectionColumn";
@@ -363,7 +364,7 @@ export function ProcessedJobsTab() {
         meta: { cellClassName: "text-right" },
         cell: ({ row }: { row: { original: ProcessedJob } }) => {
           const job = row.original;
-          const applyUrl = job.applyLink || job.apply_link || "#";
+          const applyUrl = toSafeOutboundUrl(job.applyLink || job.apply_link);
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -372,11 +373,13 @@ export function ProcessedJobsTab() {
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuItem asChild>
-                  <a href={applyUrl} target="_blank" rel="noreferrer" className="flex items-center cursor-pointer w-full">
-                    <ArrowTopRightOnSquareIcon className="w-4 h-4 mr-2" /> Apply Link
-                  </a>
-                </DropdownMenuItem>
+                 {applyUrl && (
+                 <DropdownMenuItem asChild>
+                   <a href={applyUrl} target="_blank" rel="noreferrer" className="flex items-center cursor-pointer w-full">
+                     <ArrowTopRightOnSquareIcon className="w-4 h-4 mr-2" /> Apply Link
+                   </a>
+                 </DropdownMenuItem>
+                 )}
                 <DropdownMenuItem onClick={() => setVerifyModalJob(job)} className="cursor-pointer">
                   <EyeIcon className="w-4 h-4 mr-2" /> Preview JSON
                 </DropdownMenuItem>

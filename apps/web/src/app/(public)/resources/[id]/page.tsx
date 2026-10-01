@@ -14,11 +14,31 @@ export async function generateMetadata(props: ResourceDetailPageProps) {
     const params = await props.params;
     const feed = await getResourcesFeed();
     const collection = feed.resources.find(c => c.id === params.id);
-    if (!collection) return { title: 'Resource Not Found' };
-    
+    // A missing collection renders `notFound()`, so this title would otherwise
+    // be served with a 200 on the not-found path and become a thin indexable
+    // page. `noindex` keeps the miss out of the index; `follow` stays true so
+    // crawlers can still reach the resources that do exist.
+    if (!collection) {
+        return { title: 'Resource Not Found', robots: { index: false, follow: true } };
+    }
+
+    const description = collection.description
+        || `Preparation material and resources for ${collection.title}`;
+
     return {
         title: `${collection.title} | Prep Resources`,
-        description: collection.description || `Preparation material and resources for ${collection.title}`,
+        description,
+        alternates: { canonical: `/resources/${params.id}` },
+        openGraph: {
+            title: `${collection.title} | Prep Resources`,
+            description,
+            url: `/resources/${params.id}`,
+        },
+        twitter: {
+            card: 'summary',
+            title: `${collection.title} | Prep Resources`,
+            description,
+        },
     };
 }
 

@@ -9,10 +9,19 @@ export interface FieldProps extends React.HTMLAttributes<HTMLDivElement> {
     htmlFor?: string;
     labelClassName?: string;
     icon?: React.ReactNode;
+    /**
+     * Ids the control can point at with `aria-describedby`.
+     *
+     * `description` and `error` used to render as bare `<div>`s with no `id`, so
+     * no control could reference them — a screen reader read the help text and
+     * the error as unrelated prose, and the error was never announced.
+     */
+    descriptionId?: string;
+    errorId?: string;
 }
 
 export const Field = React.forwardRef<HTMLDivElement, FieldProps>(
-    ({ className, label, description, error, required, htmlFor, labelClassName, icon, children, ...props }, ref) => {
+    ({ className, label, description, error, required, htmlFor, labelClassName, icon, descriptionId, errorId, children, ...props }, ref) => {
         return (
             <div ref={ref} className={cn("space-y-1.5 w-full", className)} {...props}>
                 {label && (
@@ -25,13 +34,13 @@ export const Field = React.forwardRef<HTMLDivElement, FieldProps>(
                     </label>
                 )}
                 {description && (
-                    <div className="text-xs text-muted-foreground/70 mb-1.5">
+                    <div id={descriptionId} className="text-xs text-muted-foreground/70 mb-1.5">
                         {description}
                     </div>
                 )}
                 {children}
                 {error && (
-                    <div className="text-xs text-destructive mt-1.5">
+                    <div id={errorId} role="alert" className="text-xs text-destructive mt-1.5">
                         {error}
                     </div>
                 )}

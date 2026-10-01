@@ -7,7 +7,7 @@ import {
 import { discoverChannelJobs } from "./src/pipeline/channels.js";
 import { discoverDorkerJobs } from "./src/pipeline/dorker.js";
 import { verifyCandidates } from "./src/pipeline/verifier.js";
-import { persistLocalData, uploadToDataLake } from "./src/pipeline/storage.js";
+import { persistLocalData, uploadToDataLake, saveFoundJobsSnapshot } from "./src/pipeline/storage.js";
 import {
   sendNotifications,
   writeGitHubSummary,
@@ -62,6 +62,9 @@ async function run() {
 
     // 5. Storage & Notifications
     await persistLocalData(state);
+    // Save the accessible jobs JSON BEFORE the notification stage, because
+    // sending notifications is what posts to social media.
+    await saveFoundJobsSnapshot(state);
     await sendNotifications(state);
     await writeGitHubSummary(state);
     await uploadToDataLake(state, runId); // Pass runId to storage for upserts

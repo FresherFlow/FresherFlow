@@ -37,6 +37,11 @@ jobs:
       - name: Download Discovered Jobs Artifact
         if: github.event_name == 'workflow_run'
         uses: actions/download-artifact@v4
+        # A successful discovery run that found zero jobs uploads no artifact
+        # (upload-artifact only warns on an empty path). download-artifact fails
+        # hard on a missing name, which would kill this job before the graceful
+        # fallback below can run. Missing artifact == nothing to process.
+        continue-on-error: true
         with:
           name: discovered-jobs
           path: ${{ runner.temp }}/artifacts
@@ -45,7 +50,16 @@ jobs:
 
       - name: Secure Artifact Transfer
         if: github.event_name == 'workflow_run'
-        run: cp ${{ runner.temp }}/artifacts/discovered_jobs.json scripts/job-processor/discovered_jobs.json
+        # The upstream run may have produced no artifact (zero jobs found, or the
+        # artifact step was skipped). Touch an empty, well-formed file so the
+        # processor can exit cleanly instead of the copy failing the workflow.
+        run: |
+          if [ -f "${{ runner.temp }}/artifacts/discovered_jobs.json" ]; then
+            cp "${{ runner.temp }}/artifacts/discovered_jobs.json" scripts/job-processor/discovered_jobs.json
+          else
+            echo "No discovered_jobs.json artifact from the upstream run — writing an empty input."
+            echo '{"version":1,"source":"job-discovery-bot","jobs":[]}' > scripts/job-processor/discovered_jobs.json
+          fi
 
       - name: Run Job Processor
         working-directory: scripts/job-processor

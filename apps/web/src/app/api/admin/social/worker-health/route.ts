@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { withRateLimit } from '@/lib/api/rateLimit';
+import { withAdminAuth } from '@/lib/server/adminAuth';
 
 const WORKER_URL = process.env.WORKER_URL || '';
 const WORKER_SECRET = process.env.WORKER_SECRET ?? '';
@@ -31,4 +32,4 @@ async function getWorkerHealth() {
     }
 }
 
-export const GET = withRateLimit(getWorkerHealth, { windowMs: 60_000, max: 60, keyPrefix: 'social-worker-health' });
+export const GET = withRateLimit(withAdminAuth(getWorkerHealth), { windowMs: 60_000, max: 60, keyPrefix: 'social-worker-health' });

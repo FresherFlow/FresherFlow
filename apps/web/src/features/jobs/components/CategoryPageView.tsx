@@ -49,6 +49,7 @@ import { PersonalizationBar } from '@/features/jobs/components/PersonalizationBa
 import { dismissProfileFilterDims } from '@/features/jobs/hooks/useProfileFilters';
 import { WalkinMapPane } from '@/features/jobs/components/WalkinMapPane';
 import {
+    GovtCategoryFilter,
     GovtPhaseTabs,
 } from '@/features/jobs/components/GovtPhaseTabs';
 import { type CategoryPageState } from '@/features/jobs/hooks/useCategoryPageState';
@@ -146,11 +147,12 @@ export function CategoryPageView({
     type, user, opportunities, filteredOpps, visibleOpps, isLoading, error, profileIncomplete, mounted, isDesktop,
     selectedOpp, handleSelectOpportunity, handleCloseOpportunityPane,
     search, setSearch, submitLiveSearch, clearLiveSearch, filters, setFilters,
-    govtPhase, setGovtPhase, govtCategory, setGovtCategory, phaseCounts,
+    govtPhase, setGovtPhase, govtCategory, setGovtCategory, phaseCounts, categoryCounts,
     isMobileFilterOpen, setIsMobileFilterOpen, draftLoc, setDraftLoc, draftYear, setDraftYear,
     draftClosingSoon, setDraftClosingSoon, draftShowOnlySaved, setDraftShowOnlySaved,
     draftSector, setDraftSector, draftQualification, setDraftQualification, draftCourse, setDraftCourse,
     draftWorkMode, setDraftWorkMode, draftSkills, setDraftSkills, draftSource, setDraftSource, draftCompany, setDraftCompany,
+    draftRole, setDraftRole,
     draftExperience, setDraftExperience,
     mobileActiveCount, openMobileFilters, applyMobileFilters, clearAll,
     draftMatchCount,
@@ -606,11 +608,24 @@ export function CategoryPageView({
                         onChange={phase => { setGovtPhase(phase); setGovtCategory(null); }}
                         counts={phaseCounts}
                     />
+                    {/* Category row. `?category=` was readable, filterable and had
+                        a removable chip, but the only way to set it was to hand-edit
+                        the URL — `GovtCategoryFilter` was built, exported and never
+                        rendered, and `useCategoryPageState` computed `categoryCounts`
+                        for it and returned them unused. Both now have a consumer.
+                        The options and the matching predicate are the same
+                        `GOVT_CATEGORIES` / `jobMatchesCategory` pair the filter
+                        itself uses, so the counts cannot disagree with the filter. */}
+                    <GovtCategoryFilter
+                        active={govtCategory}
+                        onChange={setGovtCategory}
+                        counts={categoryCounts}
+                    />
                 </div>
             )}
 
             {/* Active Chips */}
-            {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0) || (filters.source && filters.source.length > 0) || (filters.company && filters.company.length > 0) || (filters.experience && filters.experience.length > 0) || (type === 'GOVERNMENT' && govtCategory) || profileChipTotal > 0 || profileChipCount > 0 || profileMismatchCount > 0) ? (
+            {(search || filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course || (filters.workMode && filters.workMode.length > 0) || (filters.skills && filters.skills.length > 0) || (filters.source && filters.source.length > 0) || (filters.company && filters.company.length > 0) || (filters.role && filters.role.length > 0) || (filters.experience && filters.experience.length > 0) || (type === 'GOVERNMENT' && govtCategory) || profileChipTotal > 0 || profileChipCount > 0 || profileMismatchCount > 0) ? (
                 <div className="flex flex-wrap items-center gap-1.5 pb-2">
                     {type === 'GOVERNMENT' && govtCategory ? (
                         <button onClick={() => setGovtCategory(null)} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
@@ -680,6 +695,13 @@ export function CategoryPageView({
                         <button key={c} onClick={() => setFilters({...filters, company: filters.company!.filter(x => x !== c)})} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
                             <BuildingOfficeIcon className="w-3.5 h-3.5 shrink-0" />
                             <span>{c}</span>
+                            <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
+                        </button>
+                    ))}
+                    {filters.role?.map(r => (
+                        <button key={r} onClick={() => setFilters({...filters, role: filters.role!.filter(x => x !== r)})} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                            <BriefcaseIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span>{r}</span>
                             <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
                     ))}
@@ -758,6 +780,7 @@ export function CategoryPageView({
                     draftYear={draftYear} setDraftYear={setDraftYear}
                     draftClosingSoon={draftClosingSoon} setDraftClosingSoon={setDraftClosingSoon}
                     draftShowOnlySaved={draftShowOnlySaved} setDraftShowOnlySaved={setDraftShowOnlySaved}
+                    draftRole={draftRole} setDraftRole={setDraftRole}
                     draftSector={draftSector} setDraftSector={setDraftSector}
                     draftQualification={draftQualification} setDraftQualification={setDraftQualification}
                     draftCourse={draftCourse} setDraftCourse={setDraftCourse}
@@ -780,6 +803,7 @@ export function CategoryPageView({
                         setDraftLoc(null); setDraftYear(null); setDraftClosingSoon(false);
                         setDraftShowOnlySaved(false); setDraftSector(null);
                         setDraftQualification(null); setDraftCourse(null);
+                        setDraftRole([]);
                         if (setDraftWorkMode) setDraftWorkMode(null);
                         if (setDraftSkills) setDraftSkills([]);
                         if (setDraftSource) setDraftSource([]);

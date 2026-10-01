@@ -82,6 +82,7 @@ export function JobCardResponsive({
                     onToggleSave={onToggleSave}
                     priority={priority}
                     searchQuery={searchQuery}
+                    searchedSkill={searchedSkill}
                     className={className}
                 />
             </div>

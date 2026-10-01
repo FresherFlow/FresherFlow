@@ -4,14 +4,15 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/ui/Dialog';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import {
- ArrowTopRightOnSquareIcon,
- MapPinIcon,
- CodeBracketIcon,
- EyeIcon,
- SparklesIcon,
- CheckCircleIcon,
- XCircleIcon,
+  ArrowTopRightOnSquareIcon,
+  MapPinIcon,
+  CodeBracketIcon,
+  EyeIcon,
+  SparklesIcon,
+  CheckCircleIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline';
+import { toSafeOutboundUrl } from '@/lib/utils/safeOutboundUrl';
 
 interface PayloadModalProps {
  open: boolean;
@@ -84,9 +85,9 @@ export function PayloadModal({
  </div>
  </div>
 
- {applyLink && (
+ {toSafeOutboundUrl(applyLink) && (
  <a
- href={applyLink}
+ href={toSafeOutboundUrl(applyLink) ?? undefined}
  target="_blank"
  rel="noreferrer"
  className="px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer"

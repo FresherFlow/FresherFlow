@@ -15,8 +15,14 @@ const OPPORTUNITY_LABELS: Record<string, string> = {
     WALKIN: 'Walk-ins',
 };
 
+/**
+ * The one work-mode label map. `ON_SITE` is the spelling older rows and some
+ * scraped listings use; both spellings have to render the same, so it lives
+ * here rather than being re-declared per surface.
+ */
 const WORK_MODE_LABELS: Record<string, string> = {
     ONSITE: 'On-site',
+    ON_SITE: 'On-site',
     HYBRID: 'Hybrid',
     REMOTE: 'Remote',
 };

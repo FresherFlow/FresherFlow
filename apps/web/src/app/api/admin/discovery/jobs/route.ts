@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRateLimit } from '@/lib/api/rateLimit';
+import { withAdminAuth } from '@/lib/server/adminAuth';
 import { hasIngestionDb, queryRows, execute, ingestionDbError } from '@/lib/server/ingestion/db';
 
 export const dynamic = 'force-dynamic';
@@ -81,6 +82,6 @@ async function deleteJobs(request: NextRequest) {
 
 const rateLimitOptions = { windowMs: 60_000, max: 60, keyPrefix: 'discovery-jobs' };
 
-export const GET = withRateLimit(getJobs, rateLimitOptions);
-export const PATCH = withRateLimit(patchJob, rateLimitOptions);
-export const DELETE = withRateLimit(deleteJobs, rateLimitOptions);
+export const GET = withRateLimit(withAdminAuth(getJobs), rateLimitOptions);
+export const PATCH = withRateLimit(withAdminAuth(patchJob), rateLimitOptions);
+export const DELETE = withRateLimit(withAdminAuth(deleteJobs), rateLimitOptions);

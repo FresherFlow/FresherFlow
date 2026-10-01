@@ -1,10 +1,54 @@
+import { XMLParser } from 'fast-xml-parser';
+
 const DESKTOP_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
 const FETCH_TIMEOUT_MS = 10_000;
 const MAX_CHILD_SITEMAPS = 8;
-// Sitemaps with ~1000 URLs run ~100-300KB. Refuse absurd payloads before regex.
+// Sitemaps with ~1000 URLs run ~100-300KB. Refuse absurd payloads before parsing.
 const MAX_SITEMAP_BYTES = 5_000_000;
+
+/**
+ * Namespace prefixes are deliberately preserved: stripping them would rewrite
+ * <image:loc> to <loc> and collide with the real URL element in urlsets that
+ * carry image entries. Values stay strings so ISO timestamps are not coerced
+ * into Date objects.
+ */
+const xmlParser = new XMLParser({
+  ignoreAttributes: true,
+  removeNSPrefix: false,
+  parseTagValue: false,
+  trimValues: true,
+});
+
+function parseXml(xml: string): Record<string, unknown> | null {
+  try {
+    const doc = xmlParser.parse(xml) as Record<string, unknown>;
+    return doc && typeof doc === 'object' ? doc : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A repeated element may arrive as one object or an array; normalise both. */
+function asArray(value: unknown): unknown[] {
+  if (value === undefined || value === null) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+/** Read an element's text, unwrapping a CDATA or `#text` node if present. */
+function elementText(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    const inner = record['#text'];
+    if (inner === undefined || inner === null) return null;
+    const text = String(inner).trim();
+    return text.length > 0 ? text : null;
+  }
+  const text = String(value).trim();
+  return text.length > 0 ? text : null;
+}
 
 export type SitemapPostUrl = { url: string; lastmod: string | null };
 
@@ -43,6 +87,10 @@ async function fetchText(url: string): Promise<string | null> {
   }
 }
 
+/**
+ * robots.txt is not XML — it stays line-based. Only sitemaps go through the
+ * XML parser.
+ */
 function parseRobotsSitemaps(robotsText: string): string[] {
   if (robotsText.length > 1_000_000) return [];
   const out: string[] = [];
@@ -51,13 +99,6 @@ function parseRobotsSitemaps(robotsText: string): string[] {
     if (m && m[1] && isHttpUrl(m[1])) out.push(m[1].trim());
   }
   return out;
-}
-
-function extractTag(block: string, tag: 'loc' | 'lastmod'): string | null {
-  const m = block.match(
-    tag === 'loc' ? /<loc>\s*([^<]+?)\s*<\/loc>/i : /<lastmod>\s*([^<]+?)\s*<\/lastmod>/i,
-  );
-  return m?.[1]?.trim() || null;
 }
 
 function sameSiteOrigin(a: string, b: string): boolean {
@@ -74,15 +115,17 @@ function sameSiteOrigin(a: string, b: string): boolean {
 
 function parseUrlset(xml: string, origin: string): SitemapPostUrl[] {
   const out: SitemapPostUrl[] = [];
-  const blocks = xml.match(/<url>([\s\S]*?)<\/url>/gi);
-  if (!blocks) return out;
-  for (const block of blocks) {
-    const loc = extractTag(block, 'loc');
+  const doc = parseXml(xml);
+  const urlset = doc?.['urlset'] as Record<string, unknown> | undefined;
+  if (!urlset || typeof urlset !== 'object') return out;
+  for (const entry of asArray(urlset['url'])) {
+    if (!entry || typeof entry !== 'object') continue;
+    const loc = elementText((entry as Record<string, unknown>)['loc']);
     if (!loc || !isHttpUrl(loc)) continue;
     // Same-site match ignoring a www prefix: sitemap hosts routinely list the
     // www variant while seeds use the apex (or vice versa). Still same site.
     if (!sameSiteOrigin(loc, origin)) continue;
-    out.push({ url: loc, lastmod: extractTag(block, 'lastmod') });
+    out.push({ url: loc, lastmod: elementText((entry as Record<string, unknown>)['lastmod']) });
   }
   return out;
 }
@@ -144,11 +187,29 @@ export function expandSitemapEntries(origin: string, entries: readonly unknown[]
 
 function parseIndexChildren(xml: string): string[] {
   const out: string[] = [];
-  const blocks = xml.match(/<sitemap>([\s\S]*?)<\/sitemap>/gi);
-  if (!blocks) return out;
-  for (const block of blocks) {
-    const loc = extractTag(block, 'loc');
+  const doc = parseXml(xml);
+  const index = doc?.['sitemapindex'] as Record<string, unknown> | undefined;
+  if (!index || typeof index !== 'object') return out;
+  for (const entry of asArray(index['sitemap'])) {
+    if (!entry || typeof entry !== 'object') continue;
+    const loc = elementText((entry as Record<string, unknown>)['loc']);
     if (loc && isHttpUrl(loc)) out.push(loc);
+  }
+  return out;
+}
+
+/** Read the loc/lastmod pairs of a sitemap index into a map for freshness checks. */
+function parseIndexLastmods(xml: string): Map<string, string> {
+  const out = new Map<string, string>();
+  const doc = parseXml(xml);
+  const index = doc?.['sitemapindex'] as Record<string, unknown> | undefined;
+  if (!index || typeof index !== 'object') return out;
+  for (const entry of asArray(index['sitemap'])) {
+    if (!entry || typeof entry !== 'object') continue;
+    const record = entry as Record<string, unknown>;
+    const loc = elementText(record['loc']);
+    const lastmod = elementText(record['lastmod']);
+    if (loc && lastmod && isHttpUrl(loc)) out.set(loc.toLowerCase(), lastmod);
   }
   return out;
 }
@@ -190,14 +251,7 @@ export async function filterByIndexFreshness(
     if (!indexUrl) indexUrl = `${root}/sitemap_index.xml`;
     const xml = await fetchText(indexUrl);
     if (!xml) return candidates;
-    const blocks = xml.match(/<sitemap>([\s\S]*?)<\/sitemap>/gi);
-    if (!blocks) return candidates;
-    const indexLastmod = new Map<string, string>();
-    for (const block of blocks) {
-      const loc = extractTag(block, 'loc');
-      const lastmod = extractTag(block, 'lastmod');
-      if (loc && lastmod && isHttpUrl(loc)) indexLastmod.set(loc.toLowerCase(), lastmod);
-    }
+    const indexLastmod = parseIndexLastmods(xml);
     if (indexLastmod.size === 0) return candidates;
     return candidates.filter((c) => {
       const lm = indexLastmod.get(c.toLowerCase());

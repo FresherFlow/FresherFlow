@@ -7,6 +7,7 @@ import { CommunityPostCategory } from '@fresherflow/types';
 import type { CommunityFeedResult } from '@fresherflow/types';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { cn } from '@repo/ui/utils/cn';
+import { EmptyState } from '@/ui/EmptyState';
 import { PostCard } from './PostCard';
 import { CATEGORIES } from './postCategories';
 
@@ -311,11 +312,16 @@ export function CommunityFeedClient() {
                     </button>
                 </div>
             ) : posts.length === 0 ? (
-                <div className="p-8 text-center text-xs text-muted-foreground">
-                    {hasActiveFilters
-                        ? 'No posts match your filters. Try removing some filters.'
-                        : 'No discussions yet. Be the first to start one!'}
-                </div>
+                <EmptyState
+                    icon="inbox"
+                    size="md"
+                    title={hasActiveFilters ? 'No posts match your filters' : 'No discussions yet'}
+                    description={
+                        hasActiveFilters
+                            ? 'Try removing some filters.'
+                            : 'Be the first to start one!'
+                    }
+                />
             ) : (
                 <div className="space-y-4">
                     {posts.map((post) => (

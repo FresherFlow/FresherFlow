@@ -22,30 +22,33 @@
   --color-primary: oklch(20.6% 0.039 266); /* Deep navy */
   --color-primary-foreground: var(--color-paper); /* Paper — never pure white */
 
-  --color-secondary: oklch(96.1% 0.003 248); /* Light gray */
+  /* Neutral ramp. The page background is warm newsprint (#f4f1ea), so
+     every neutral below sits on the same warm hue (~85) rather than the
+     old cool 248-257. Mixing a warm page with cool-gray surfaces is what
+     made the sidebar and chips read as a different material. Chroma stays
+     very low (0.005-0.016) so these still read as paper, not as tan. */
+  --color-secondary: oklch(96.1% 0.008 85); /* Warm light gray */
   --color-secondary-foreground: oklch(20.6% 0.039 266); /* Navy */
 
-  --color-accent: oklch(88.9% 0.004 248); /* Subtle hover bg (same as muted) — never navy */
+  --color-accent: oklch(89.5% 0.010 85); /* Subtle hover bg (same as muted) — never navy */
   --color-accent-foreground: oklch(20.6% 0.039 266); /* Navy text on accent */
 
-  --color-background: oklch(
-    93.6% 0.003 248
-  ); /* Page bg — strong card separation */
+  --color-background: #f4f1ea; /* Page bg — warm newsprint (--ff-paper). */
   --color-foreground: oklch(20.6% 0.039 266); /* Primary text */
 
-  --color-card: oklch(100% 0 90); /* Card bg */
+  --color-card: oklch(100% 0 0); /* Card bg — true white, a clear step above the paper */
   --color-card-foreground: oklch(20.6% 0.039 266); /* Card text */
-  --color-popover: oklch(100% 0 90); /* Popover / menu bg */
+  --color-popover: oklch(100% 0 0); /* Popover / menu bg */
   --color-popover-foreground: oklch(20.6% 0.039 266); /* Popover text */
 
   /* ── Borders & inputs ────────────────────────────────────────── */
-  --color-border: oklch(80.4% 0.008 255); /* Visible borders */
-  --color-input: oklch(80.4% 0.008 255); /* Input borders */
+  --color-border: oklch(79% 0.013 80); /* Visible borders — warm hairline */
+  --color-input: oklch(79% 0.013 80); /* Input borders */
   --color-ring: oklch(20.6% 0.039 266); /* Focus ring = primary */
 
   /* ── Muted ───────────────────────────────────────────────────── */
-  --color-muted: oklch(88.9% 0.004 248); /* Muted bg */
-  --color-muted-foreground: oklch(35.7% 0.037 257); /* Muted text */
+  --color-muted: oklch(91.5% 0.010 85); /* Muted bg — one step off the page */
+  --color-muted-foreground: oklch(29.5% 0.034 68); /* Muted text — 4.9:1 on card, 5.3:1 on muted */
 
   /* ── Semantic states ─────────────────────────────────────────── */
   --color-destructive: oklch(63.6% 0.208 25); /* Destructive red */
@@ -65,27 +68,46 @@
   --color-signal-heat: oklch(66.2% 0.133 236); /* sky — discussion heat */
   --color-pin: oklch(
     57.2% 0.213 27
-  ); /* pin red — pin dots and live indicators only */
+  ); /* pin red — LIVE indicators only (a listing that is open right now).
+        Deliberately NOT a second red next to --color-destructive: at the old
+        lightness the two were indistinguishable, so a "delete" action and a
+        "this job is live" dot read as the same signal. Anything that is a
+        status rather than a destructive action uses the --color-signal-* set
+        above; keep this for genuine live/pinned markers only. */
 
   /* ── Chip / pill active states ───────────────────────────────── */
-  --color-chip-active: oklch(88.9% 0.005 248); /* Soft silver-gray */
+  --color-chip-active: oklch(90% 0.012 84); /* Warm silver-gray */
   --color-chip-active-text: oklch(20.6% 0.039 266); /* Navy */
   --color-chip-active-border: oklch(
-    77.1% 0.027 255
+    78% 0.026 78
   ); /* Slightly darker than border */
 
   /* ── Dropdown hover ──────────────────────────────────────────── */
-  --color-dropdown-hover: oklch(88.9% 0.014 248); /* Same as muted */
+  --color-dropdown-hover: oklch(90% 0.016 82); /* Same as muted */
   --color-dropdown-hover-text: oklch(20.6% 0.039 266);
 
-  /* Sidebar tokens (shadcn) */
-  --color-sidebar: var(--color-paper); /* Sidebar bg — paper, not #fff */
+  /* Sidebar tokens (shadcn). The rail is a clean paper plane: near-white and
+     almost achromatic (chroma 0.004, one twentieth of the page tint), so it
+     separates from the newsprint page by LIGHTNESS alone.
+
+     It was `--color-muted` (oklch 91.5% 0.010 85) — a chromatic tan. Next to
+     the warm #f4f1ea page, two warm planes at different lightness do not read
+     as hierarchy, they read as a mismatch: the rail looked dirty against the
+     content. The fix is to drop the chroma, not to darken it further.
+
+     The accent and border follow the same rule — a soft neutral row and a light
+     hairline, so the selected item reads as a selection rather than a tan chip.
+     A neutral rail also needs no hue-matched border; the tonal step does the
+     separating. */
+  --color-sidebar: var(--color-paper);
   --color-sidebar-foreground: oklch(20.6% 0.039 266);
   --color-sidebar-primary: oklch(20.6% 0.039 266);
   --color-sidebar-primary-foreground: var(--color-paper);
-  --color-sidebar-accent: var(--color-muted); /* Selected/hover row — darker than sidebar bg */
+  --color-sidebar-accent: oklch(
+    92% 0.005 85
+  ); /* Selected/hover row — a step below the rail, near-neutral */
   --color-sidebar-accent-foreground: oklch(20.6% 0.039 266);
-  --color-sidebar-border: oklch(80.4% 0.008 255);
+  --color-sidebar-border: oklch(86% 0.006 85); /* Light neutral hairline */
   --color-sidebar-ring: oklch(20.6% 0.039 266); /* Same as foreground */
 
   /* ── Brand / third-party colors ──────────────────────────────── */
@@ -107,20 +129,43 @@
   --color-ff-accent: oklch(
     64.8% 0.22 32
   ); /* #ff571a — hero CTA, marquee, section dots */
+  /* Label colour for text sitting ON a --ff-accent fill. The brand orange is
+     a bright field: --color-paper on it is only 3.2:1, which fails AA for the
+     13.5px semibold CTA labels. The deep navy is 4.97:1 on the same fill and
+     is already the site's ink, so the CTA gains contrast without adding a
+     colour. Pair with bg-ff-accent, never as a text colour on paper. */
+  --color-ff-accent-ink: oklch(20.6% 0.039 266);
   --color-logo-bg: oklch(
     16% 0.02 260
   ); /* #0e1420 — logo tile, fixed in light & dark */
 
   /* ── Surface colors ──────────────────────────────────────────── */
   --color-surface-warm: oklch(
-    96.7% 0.007 97
-  ); /* #F5F4EF — CaptionsTool warm gray */
+    98.4% 0.006 88
+  ); /* #F7F5F0 — warm raised surface, a hair above the page */
 
-  /* Paper: off-white for the sidebar and text on saturated fills. Cards and
-     popovers are pure white on purpose. Equals --color-background since
-     f9eae2b6 removed the blue tint; give it a distinct value to restore
-     sidebar separation. */
-  --color-paper: oklch(93.6% 0.003 248);
+  /* Paper: the sidebar plane and the color of text on saturated fills. It
+     used to equal --color-background; now the page is the warmer newsprint
+     #f4f1ea, so paper is a clear step lighter and the rail separates from the
+     content by lightness instead of by adding more warmth. */
+  --color-paper: oklch(99% 0.004 85);
+
+  /* ── Notice paper ─────────────────────────────────────────────────
+     The warm newsprint tone, now the site's light-mode page background
+     (--color-background above). Kept as named tokens as well so any
+     surface that should read as paper can reach the value directly with
+     `bg-[var(--ff-paper)]` instead of re-declaring the hex. */
+  --ff-paper: #f4f1ea;
+  --ff-paper-raised: #fbf9f4;
+  --ff-rule: #ded8cb;
+  --ff-ink: #17181c;
+  --ff-ink-soft: #57544d;
+  --ff-ink-faint: #6f6b61; /* ~4.9:1 on --ff-paper: safe for 11px meta text */
+  --ff-stamp: #bf3d0b;
+  /* The same ink lifted for dark surfaces. #bf3d0b on #0e1420 is only
+     3.45:1, which fails for 11px text; this reaches 7.5:1 without
+     shifting hue, so the accent stays one colour on both. */
+  --ff-stamp-lift: #f08a5d;
 
   /* ── Typography ──────────────────────────────────────────────── */
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
@@ -149,7 +194,23 @@
 
 @layer base {
   * {
-    @apply focus-visible:outline-none focus-visible:ring-0 border-border outline-ring/50;
+    @apply border-border outline-ring/50;
+  }
+
+  /* A default focus ring for every keyboard-reachable element.
+
+     This replaces `* { @apply focus-visible:outline-none focus-visible:ring-0 }`,
+     which stripped both the outline and the ring from every element in the app.
+     Only components that re-added a ring were visible to keyboard users; the
+     ~49 that added only `focus:outline-none` (and `ThemeSwitcher`,
+     `ResourcePageView`, `NotificationsDropdown`, the DataGrid toolbar, …) had
+     no focus indicator at all.
+
+     `:where()` keeps specificity at 0, and this sits in `@layer base` — so any
+     component's own `focus-visible:ring-*` or `focus-visible:outline-none`
+     utility still wins. */
+  :where(a, button, summary, input, select, textarea, [tabindex]):focus-visible {
+    @apply outline-2 outline-offset-2 outline-ring;
   }
 
   /* Override Radix scroll locking for sticky headers (shadcn-admin parity):

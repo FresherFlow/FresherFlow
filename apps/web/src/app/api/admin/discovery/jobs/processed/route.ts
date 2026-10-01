@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRateLimit } from '@/lib/api/rateLimit';
+import { withAdminAuth } from '@/lib/server/adminAuth';
 import {
   hasIngestionDb,
   queryRows,
@@ -65,5 +66,5 @@ async function patchProcessed(request: NextRequest) {
 
 const rateLimitOptions = { windowMs: 60_000, max: 60, keyPrefix: 'discovery-jobs-processed' };
 
-export const GET = withRateLimit(getProcessed, rateLimitOptions);
-export const PATCH = withRateLimit(patchProcessed, rateLimitOptions);
+export const GET = withRateLimit(withAdminAuth(getProcessed), rateLimitOptions);
+export const PATCH = withRateLimit(withAdminAuth(patchProcessed), rateLimitOptions);

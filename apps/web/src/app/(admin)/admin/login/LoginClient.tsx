@@ -29,7 +29,7 @@ const adminEmailConfigured = ADMIN_EMAIL.length > 0;
  * its own collapsed first-run panel.
  *
  * Moderators do not sign in here at all — they use the normal FresherFlow login
- * and are admitted to /moderation by permission, so that path is a link out.
+ * and are admitted to /moderator by permission, so that path is a link out.
  */
 export default function AdminLoginPage() {
     const router = useRouter();
@@ -352,7 +352,7 @@ export default function AdminLoginPage() {
                 <p className="text-center text-sm text-muted-foreground">
                     Moderator?{' '}
                     <Link
-                        href="/login?redirect=/moderation"
+                        href="/login?redirect=/moderator"
                         className="font-medium text-foreground underline-offset-4 hover:underline"
                     >
                         Sign in with your FresherFlow account

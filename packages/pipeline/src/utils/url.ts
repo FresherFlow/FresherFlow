@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { CDN_SECRET, CDN_URL } from '../config/index.js';
+import { fetchJsonWithRetry, type JsonFetchOptions, type JsonFetchResult } from './resilient-json.js';
 
 // Helper to sign the CDN URL
 export function signUrl(pathname: string): string {
@@ -8,6 +9,32 @@ export function signUrl(pathname: string): string {
     const message = `${pathname}:${t}`;
     const sig = crypto.createHmac('sha256', CDN_SECRET).update(message).digest('hex');
     return `${CDN_URL}${pathname}?t=${t}&sig=${sig}`;
+}
+
+/**
+ * Sign a CDN path and fetch it as JSON without throwing.
+ *
+ * The signed feed is an optimisation (dedupe against published jobs), never a
+ * hard requirement: a missing signature secret, a 404, or a CDN outage must
+ * degrade to an empty feed rather than abort the run. Callers decide whether
+ * running without the bootstrap cache is acceptable.
+ */
+export async function fetchSignedJson<T = unknown>(
+    pathname: string,
+    options: JsonFetchOptions & { validate?: (data: unknown) => boolean } = {},
+): Promise<JsonFetchResult<T>> {
+    if (!CDN_SECRET) {
+        return {
+            ok: false,
+            reason: 'CDN_SIGNATURE_SECRET is not set',
+            status: null,
+            attempts: 0,
+        };
+    }
+    return fetchJsonWithRetry<T>(signUrl(pathname), {
+        label: options.label ?? pathname,
+        ...options,
+    });
 }
 
 // Strip query parameters and protocols for normalized comparison

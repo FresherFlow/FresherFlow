@@ -1,9 +1,18 @@
 /**
- * Process-local, dependency-free metrics registry for Phase 19 ingestion + alert paths.
+ * Process-local, dependency-free metrics registry for Phase 19 ingestion + alert paths, and the
+ * HTTP request path.
  *
- * WHY no prom-client: the API is the only consumer and the surface we need is a handful of
- * counters and latency histograms snapshotted over the admin metrics route. A dependency-free
- * registry keeps the bundle and audit surface small.
+ * WHY no prom-client: the API is the only producer and the surface we need is a handful of
+ * counters and latency histograms snapshotted over the admin metrics route and exported as a
+ * scrape payload. A dependency-free registry keeps the bundle and audit surface small. The
+ * exposition renderer below is hand-written for the same reason.
+ *
+ * SCOPE, READ THIS BEFORE TRUSTING A NUMBER: everything in this file is per-process and
+ * in-memory. It resets on deploy and is NOT shared between replicas, so a counter read from one
+ * instance describes that instance, not the service. Cross-instance aggregation is the scraper's
+ * job: every series carries an `instance` const label, and counters and histogram buckets are
+ * summed by the collector. The snapshot's own p95/error-rate style gauges are derived per process
+ * and are the numbers that must NOT be summed.
  *
  * WHY bounding is the whole point of this file: a metrics registry keyed by labels grows for the
  * lifetime of the process. One accidental high-cardinality label (a user id, an opportunity id, a
@@ -63,6 +72,14 @@ const OVERFLOW_KEY = '__overflow__=true';
 
 export const INGESTION_NAMESPACE = 'ingestion';
 export const ALERT_NAMESPACE = 'alert';
+/**
+ * HTTP request metrics get their own namespace so the scrape endpoint can apply a stricter label
+ * policy to them (bounded route patterns, never a raw request path) without loosening the
+ * ingestion/alert series. Counters and histograms only: gauges such as per-route averages are
+ * DERIVED at scrape time from the middleware's own map rather than stored here, so this registry
+ * stays a fixed set of monotonic series.
+ */
+export const HTTP_NAMESPACE = 'http';
 
 type HistogramState = {
     help: string;
@@ -86,7 +103,8 @@ function createNamespace(): Namespace {
 
 const namespaces: Record<string, Namespace> = {
     [INGESTION_NAMESPACE]: createNamespace(),
-    [ALERT_NAMESPACE]: createNamespace()
+    [ALERT_NAMESPACE]: createNamespace(),
+    [HTTP_NAMESPACE]: createNamespace()
 };
 
 /** Canonical, order-independent key for a label set. */
@@ -243,9 +261,9 @@ export function getAlertMetrics(): MetricsSnapshot {
     return snapshot(namespaces[ALERT_NAMESPACE] as Namespace);
 }
 
-/** Test/diagnostic helper: clear both namespaces. */
+/** Test/diagnostic helper: clear every namespace, including the HTTP one. */
 export function resetMetrics(): void {
-    for (const name of [INGESTION_NAMESPACE, ALERT_NAMESPACE]) {
+    for (const name of [INGESTION_NAMESPACE, ALERT_NAMESPACE, HTTP_NAMESPACE]) {
         const ns = namespaces[name];
         ns?.counters.clear();
         ns?.help.clear();
@@ -253,4 +271,166 @@ export function resetMetrics(): void {
     }
 }
 
+/** Content type a Prometheus scraper expects for the text exposition format. */
+export const PROMETHEUS_CONTENT_TYPE = 'text/plain; version=0.0.4; charset=utf-8';
+
+/**
+ * Render a snapshot as Prometheus text exposition format (version 0.0.4).
+ *
+ * WHY hand-render instead of prom-client: the registry above is deliberately dependency-free and
+ * bounded, and this is the only conversion the API needs. The output is a valid scrape payload, so
+ * any Prometheus-compatible collector (Prometheus, Grafana Agent, Datadog agent, OTEL collector)
+ * can ingest it without adding a client library on this side.
+ *
+ * @param constLabels labels attached to every series, used to distinguish replicas. A per-process
+ *   counter is only aggregatable across instances if the collector can tell the instances apart,
+ *   so the scrape handler passes an instance identity here.
+ */
+export function renderPrometheusText(toRender: MetricsSnapshot, constLabels?: Record<string, string>): string {
+    const lines: string[] = [];
+    const base = sanitizeLabels(constLabels);
+
+    // Counters. HELP/TYPE is emitted once per metric name, before its first series.
+    const seenCounters = new Set<string>();
+    for (const counter of toRender.counters) {
+        const name = sanitizeMetricName(counter.name);
+        if (!seenCounters.has(name)) {
+            seenCounters.add(name);
+            lines.push(`# HELP ${name} ${escapeHelp(counter.help || name)}`);
+            lines.push(`# TYPE ${name} counter`);
+        }
+        lines.push(`${name}${formatLabels({ ...base, ...(counter.labels ?? {}) })} ${formatValue(counter.value)}`);
+    }
+
+    // Histograms. The snapshot already stores cumulative bucket counts, so each bucket is emitted
+    // as-is and the implicit +Inf bucket is derived from the total count.
+    const seenHistograms = new Set<string>();
+    for (const histogram of toRender.histograms) {
+        const name = sanitizeMetricName(histogram.name);
+        const seriesLabels = { ...base, ...(histogram.labels ?? {}) };
+        if (!seenHistograms.has(name)) {
+            seenHistograms.add(name);
+            lines.push(`# HELP ${name} ${escapeHelp(histogram.help || name)}`);
+            lines.push(`# TYPE ${name} histogram`);
+        }
+        for (const bucket of histogram.buckets) {
+            lines.push(
+                `${name}_bucket${formatLabels({ ...seriesLabels, le: formatValue(bucket.le) })} ${formatValue(bucket.count)}`
+            );
+        }
+        lines.push(`${name}_bucket${formatLabels({ ...seriesLabels, le: '+Inf' })} ${formatValue(histogram.count)}`);
+        lines.push(`${name}_sum${formatLabels(seriesLabels)} ${formatValue(histogram.sumMs)}`);
+        lines.push(`${name}_count${formatLabels(seriesLabels)} ${formatValue(histogram.count)}`);
+    }
+
+    return lines.length ? `${lines.join('\n')}\n` : '';
+}
+
+// ---------------------------------------------------------------------------
+// HTTP request series
+// ---------------------------------------------------------------------------
+
+/** Counter name for served requests. The `_total` suffix follows the Prometheus convention. */
+export const HTTP_REQUESTS_TOTAL = 'http_server_requests_total';
+/** Histogram name for end-to-end request latency. */
+export const HTTP_REQUEST_DURATION_MS = 'http_server_request_duration_ms';
+
+/**
+ * Record one served HTTP request.
+ *
+ * WHY the caller passes an already-normalized route pattern: `req.route.path` is an Express
+ * pattern (`/api/jobs/:id`), which is low-cardinality and code-controlled. The raw `req.path` is
+ * NOT acceptable here — it embeds ids and slugs, so it would create a new series per request and
+ * is a cardinality bomb. A caller with no matched route must pass a fixed fallback such as
+ * `unmatched`, never the raw path. The series cap plus overflow folding is the second line of
+ * defence, not the first.
+ */
+export function observeHttpRequest(route: string, method: string, statusCode: number, durationMs: number): void {
+    const ns = namespaces[HTTP_NAMESPACE] as Namespace;
+    bumpCounter(
+        ns,
+        HTTP_REQUESTS_TOTAL,
+        'HTTP requests served, by route, method and status code.',
+        { route, method, status: String(statusCode) },
+        1
+    );
+    observe(
+        ns,
+        HTTP_REQUEST_DURATION_MS,
+        'HTTP request end-to-end latency in milliseconds.',
+        finiteOrZero(durationMs),
+        { route, method }
+    );
+}
+
+export function getHttpMetrics(): MetricsSnapshot {
+    return snapshot(namespaces[HTTP_NAMESPACE] as Namespace);
+}
+
+/** Every namespace keyed by namespace name. Used by the scrape endpoint. */
+export function getAllMetrics(): Record<string, MetricsSnapshot> {
+    const out: Record<string, MetricsSnapshot> = {};
+    for (const name of Object.keys(namespaces)) {
+        out[name] = snapshot(namespaces[name] as Namespace);
+    }
+    return out;
+}
+
+
+
+const METRIC_NAME_RE = /[^a-zA-Z0-9_:]/g;
+
+/**
+ * Coerce an arbitrary metric or label name into a legal Prometheus name.
+ * WHY sanitize instead of throw: a malformed name must never fail a scrape. Illegal characters
+ * become `_`, and a leading digit is prefixed, which is what the exposition format requires.
+ */
+function sanitizeMetricName(name: string): string {
+    const cleaned = (name || 'unnamed').replace(METRIC_NAME_RE, '_');
+    return /^[a-zA-Z_:]/.test(cleaned) ? cleaned : `_${cleaned}`;
+}
+
+/** HELP text escaping: backslash and newline only. Quotes are literal in HELP. */
+function escapeHelp(value: string): string {
+    return value.replace(/\\/g, '\\\\').replace(/\n/g, '\\n');
+}
+
+/** Label value escaping per the exposition format: backslash, double quote, newline. */
+function escapeLabelValue(value: string): string {
+    return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
+}
+
+/** Bound a single label value so one long value cannot bloat the scrape body. */
+const MAX_LABEL_VALUE_LEN = 200;
+
+function sanitizeLabels(labels?: Record<string, string>): Record<string, string> {
+    if (!labels) return {};
+    const out: Record<string, string> = {};
+    for (const [key, value] of Object.entries(labels)) {
+        const safeValue =
+            value.length > MAX_LABEL_VALUE_LEN ? `${value.slice(0, MAX_LABEL_VALUE_LEN)}__truncated` : value;
+        out[sanitizeMetricName(key)] = safeValue;
+    }
+    return out;
+}
+
+/** Render a label set with keys sorted, so scrapes are byte-stable and diffable. */
+function formatLabels(labels: Record<string, string>): string {
+    const keys = Object.keys(labels).sort();
+    if (!keys.length) return '';
+    return `{${keys.map((key) => `${key}="${escapeLabelValue(labels[key] as string)}"`).join(',')}}`;
+}
+
+/**
+ * Public wrapper over the label renderer, so a caller assembling extra series (process gauges,
+ * health checks) escapes and orders labels exactly the way the registry does.
+ */
+export function prometheusLabelBlock(labels: Record<string, string>): string {
+    return formatLabels(sanitizeLabels(labels));
+}
+
+/** A non-finite value renders as `NaN`/`Infinity` and is rejected by a scraper, so it collapses to 0. */
+function formatValue(value: number): string {
+    return Number.isFinite(value) ? String(value) : '0';
+}
 

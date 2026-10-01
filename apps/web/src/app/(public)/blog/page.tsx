@@ -5,7 +5,9 @@ import { ArrowLeftIcon, CalendarIcon, ClockIcon, ChevronDownIcon } from '@heroic
 // This page had no metadata at all, so every post here shared the root layout's title and
 // description and none of them carried a canonical — on a page whose whole job is search traffic.
 export const metadata: Metadata = {
-    title: 'Blog — hiring notes for freshers | FresherFlow',
+    // `absolute` because the title already carries the brand: the root layout's
+    // "%s | FresherFlow" template appended a second one.
+    title: { absolute: 'Blog — hiring notes for freshers | FresherFlow' },
     description:
         'Product notes, hiring data and honest reports on the entry-level job market in India — written for freshers and the people who hire them.',
     alternates: {
@@ -15,7 +17,7 @@ export const metadata: Metadata = {
         title: 'FresherFlow Blog',
         description:
             'Product notes, hiring data and honest reports on the entry-level job market in India.',
-        url: 'https://fresherflow.in/blog',
+        url: '/blog',
         type: 'website',
     },
 };

@@ -1,7 +1,7 @@
 import { chromium, Page } from 'playwright';
 
 // Shared utilities — canonical source lives in job-discovery/src
-import { signUrl, normalizeUrl, loadEnv, EXPIRED_REGEXES, withTimeout, AGGREGATOR_RULES } from '@fresherflow/pipeline';
+import { normalizeUrl, loadEnv, EXPIRED_REGEXES, withTimeout, AGGREGATOR_RULES, fetchSignedJson } from '@fresherflow/pipeline';
 import { sendTelegramMessage } from '@fresherflow/utils';
 
 await loadEnv();
@@ -184,17 +184,22 @@ async function run() {
     }
     
     let feed: FeedJson | undefined;
-    try {
-        const url = signUrl('/bootstrap-feed.min.json');
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`Feed fetch failed: ${res.statusText}`);
-        feed = await res.json() as FeedJson;
-    } catch (err) {
-        console.error("Failed to fetch CDN JSON", err instanceof Error ? err.message : String(err));
-        process.exit(1);
+    // The CDN feed is one of three sources (CDN + ingestion API + external board).
+    // Losing it degrades coverage; it does not invalidate the run. Only exit when
+    // every source is gone, otherwise there is genuinely nothing to sweep.
+    const cdnFeed = await fetchSignedJson<FeedJson>('/bootstrap-feed.min.json', {
+        label: 'bootstrap-feed.min.json',
+        attempts: 3,
+        validate: (data) => typeof data === 'object' && data !== null,
+    });
+    if (cdnFeed.ok) {
+        feed = cdnFeed.data;
+    } else {
+        console.warn(`⚠️  CDN feed unavailable (${cdnFeed.reason}). Continuing with ingestion + external sources only.`);
     }
 
     let opportunities = feed?.opportunities || [];
+    let cdnOpportunityCount = opportunities.length;
 
     let ingestionSuccess = false;
     for (let attempt = 1; attempt <= 3; attempt++) {
@@ -239,6 +244,7 @@ async function run() {
     // below, so overlaps with production/processed/discovered cost zero extra
     // checks. Already-EXPIRED entries are never re-fetched. Unset = skipped.
     const externalJobsUrl = (process.env.EXTERNAL_JOBS_JSON || '').trim();
+    let externalSourceStatus = externalJobsUrl ? 'configured' : 'not configured';
     if (externalJobsUrl) {
         try {
             const extRes = await fetch(externalJobsUrl);
@@ -248,19 +254,49 @@ async function run() {
                     .filter(j => j.applyLink && (j.status || 'PUBLISHED') !== 'EXPIRED')
                     .map(j => ({ id: '', title: j.title || 'External job', company: j.company || 'Unknown', applyLink: j.applyLink as string, sourceLink: j.applyLink as string, type: 'external' as const }));
                 opportunities = opportunities.concat(extOpps);
+                externalSourceStatus = `ok (${extOpps.length})`;
                 console.log(`Added ${extOpps.length} jobs from external board feed.`);
             } else {
+                externalSourceStatus = `HTTP ${extRes.status}`;
                 console.warn(`External board feed returned status: ${extRes.status}`);
             }
         } catch (err) {
+            externalSourceStatus = err instanceof Error ? err.message : String(err);
             console.warn('External board feed fetch failed (continuing without it):', err instanceof Error ? err.message : String(err));
         }
     }
 
-    console.log(`Found ${opportunities.length} active opportunities to check.`);
-    
+    // Every source failed. This is a real outage, not a degraded run — sweeping
+    // zero jobs would report a false "all healthy" and skip expiry checks.
+    const totalAvailable = opportunities.length;
+    if (totalAvailable === 0) {
+        const sources = [
+            `CDN feed: ${cdnFeed.ok ? 'ok' : cdnFeed.reason}`,
+            `Ingestion API: ${ingestionSuccess ? 'ok' : 'unavailable'}`,
+            `External board feed: ${externalSourceStatus}`,
+        ].join(' | ');
+        console.error(`FATAL: no sweep sources available — nothing to check. Sources: ${sources}`);
+        await sendTelegramMessage(
+            `🚨 <b>Job Sweeper Aborted</b>\n\nNo job sources were reachable, so no jobs were checked.\n\n<code>${sources.replace(/</g, '&lt;')}</code>`,
+        );
+        if (process.env.GITHUB_STEP_SUMMARY) {
+            const fs = await import('fs/promises');
+            await fs.appendFile(
+                process.env.GITHUB_STEP_SUMMARY,
+                `# 🧹 Job Sweeper Bot Results\n\n` +
+                    `| Metric | Value |\n|---|---|\n` +
+                    `| **Status** | ❌ Aborted — no sources reachable |\n` +
+                    `| **Jobs Checked** | 0 |\n\n` +
+                    `Sources: ${sources}\n`,
+            ).catch(() => { /* summary is best-effort */ });
+        }
+        process.exit(1);
+    }
+
+    console.log(`Found ${totalAvailable} active opportunities to check (CDN feed: ${cdnOpportunityCount}).`);
+
     // Message 1: Summary
-    await sendTelegramMessage(`🤖 <b>Job Sweeper Started</b>\n\nChecking ${opportunities.length} active jobs...`);
+    await sendTelegramMessage(`🤖 <b>Job Sweeper Started</b>\n\nChecking ${totalAvailable} active jobs...`);
 
     const expiredJobs: FeedOpportunity[] = [];
     const reviewJobs: FeedOpportunity[] = [];

@@ -15,6 +15,7 @@ import {
 import { logDecision } from "@fresherflow/pipeline";
 import { findActualApplyLink } from "@fresherflow/pipeline";
 import { isRejectedApplyUrl } from "@fresherflow/pipeline";
+import { fetchJsonWithRetry } from "@fresherflow/pipeline";
 import { extractAtsBoard, buildJobIdentity } from "@fresherflow/pipeline";
 import { parseJobTextLite } from "@fresherflow/parser";
 import * as cheerio from "cheerio";
@@ -60,25 +61,33 @@ export async function loadChannelList(): Promise<{
   channels: string[];
   priorityChannels: string[];
 }> {
-  try {
-    const res = await fetch(`${CDN_URL}/aggregators.json`);
-    if (res.ok) {
-      const data = await res.json();
-      // New CDN format uses telegram_channels (old flat format used channel_list)
-      const channels = data?.telegram_channels ?? data?.channel_list;
-      if (Array.isArray(channels)) {
-        const priorityChannels = Array.isArray(data?.priority_channels)
-          ? (data.priority_channels as unknown[]).filter(
-              (c): c is string => typeof c === "string",
-            )
-          : [];
-        return { channels, priorityChannels };
-      }
+  const res = await fetchJsonWithRetry(`${CDN_URL}/aggregators.json`, {
+    label: 'aggregators.json (channels)',
+    attempts: 2,
+    timeoutMs: 15_000,
+    validate: (data) => typeof data === 'object' && data !== null,
+  });
+
+  if (res.ok) {
+    const data: any = res.data;
+    // New CDN format uses telegram_channels (old flat format used channel_list)
+    const channels = data?.telegram_channels ?? data?.channel_list;
+    if (Array.isArray(channels)) {
+      const priorityChannels = Array.isArray(data?.priority_channels)
+        ? (data.priority_channels as unknown[]).filter(
+            (c): c is string => typeof c === "string",
+          )
+        : [];
+      return { channels, priorityChannels };
     }
-  } catch {}
+    console.warn(
+      "aggregators.json has no telegram_channels array. Skipping Channel discovery.",
+    );
+    return { channels: [], priorityChannels: [] };
+  }
 
   console.warn(
-    "No telegram_channels found in CDN aggregators.json. Skipping Channel discovery.",
+    `No telegram_channels found (aggregators.json unavailable: ${res.reason}). Skipping Channel discovery.`,
   );
   return { channels: [], priorityChannels: [] };
 }

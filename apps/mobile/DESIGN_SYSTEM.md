@@ -65,9 +65,26 @@ Base: dark mode only. Background is near-black `#020404`. Primary text is off-wh
 | Token | Value | Use Case |
 |---|---|---|
 | `colors.error` | `#CF6679` | Error states, form validation |
-| `colors.success` | `#03DAC6` | Match scores, confirmed actions |
+| `colors.success` | `#199C59` | Match scores, confirmed actions |
 | `colors.warning` | `#FFB74D` | Review flags, expiry warnings |
 | `colors.info` | `#D2E8F7` | Informational banners |
+| `colors.ffAccent` | `#FF571A` | Brand accent — primary actions, brand marks |
+| `colors.accentInk` | `#17181C` | Label text sitting **on** an `ffAccent` fill |
+
+### Brand accent
+
+`ffAccent` is the same orange as web `--ff-accent` (`#ff571a`), so the one
+saturated brand colour is identical on both platforms. Two rules:
+
+- It is the **only** saturated brand colour. `colors.secondary` (`#FF6B6B`) is a
+  coral for praise/medal moments, not a general accent.
+- A label on a filled `ffAccent` button uses `colors.accentInk`, never
+  `colors.text`. Off-white on the orange is 2.95:1 and fails WCAG AA; `accentInk`
+  is 5.6:1.
+
+`colors.success` is deliberately the same emerald as web
+(`oklch(61.1% 0.147 154)` → `#199C59`, 5.8:1 on `background`) rather than a
+mobile-only hue, so "confirmed / eligible" is one colour across web and mobile.
 
 ### Elevation Colors
 

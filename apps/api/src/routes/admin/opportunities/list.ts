@@ -5,6 +5,7 @@ import { OpportunityStatus } from '@fresherflow/types';
 import { searchOpportunities, parseOpportunityFilters } from '../../../application/opportunity';
 import { requirePermission } from '../../../middleware/auth';
 import { parsePagination } from '../../../utils/pagination';
+import { sendError, ErrorCode } from '../../../middleware/errorHandler';
 import {
     normalizeTypeParam, parseAdminStatusFilter, buildExpiredWhere, buildIdOrSlugWhere,
 } from './_helpers';
@@ -244,7 +245,7 @@ router.get('/summary', requirePermission('opportunity.review'), async (_req: Req
 router.get('/:id', requirePermission('opportunity.review'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const id = req.params.id as string;
-        if (!id) return res.status(400).json({ message: 'Opportunity ID or slug is required' });
+        if (!id) return sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'Opportunity ID or slug is required', req.requestId);
 
         const cacheKey = `detail_${id}`;
         const cached = adminCache.get(cacheKey);
@@ -260,7 +261,7 @@ router.get('/:id', requirePermission('opportunity.review'), async (req: Request,
                 _count: { select: { actions: true, feedback: true } },
             },
         });
-        if (!opportunity) return res.status(404).json({ message: 'Opportunity not found' });
+        if (!opportunity) return sendError(res, 404, ErrorCode.NOT_FOUND, 'Opportunity not found', req.requestId);
 
         const responsePayload = { opportunity };
         adminCache.set(cacheKey, responsePayload);

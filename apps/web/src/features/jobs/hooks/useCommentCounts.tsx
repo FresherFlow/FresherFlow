@@ -126,18 +126,17 @@ export function CommentCountsProvider({ children }: { children: React.ReactNode 
 export function useCommentCount(opportunityId: string | null | undefined): number | undefined {
     const ctx = useContext(CommentCountsContext);
     const [count, setCount] = useState<number | undefined>(undefined);
-    const cbRef = useRef<(count: number | undefined) => void>(() => undefined);
-
-    useEffect(() => {
-        cbRef.current = setCount;
-    });
-
+    // `setCount` from useState is referentially stable, so the subscription
+    // callback can close over it directly. The previous version routed it
+    // through a ref refreshed by an effect with NO dependency array, which
+    // React re-ran after every render of every mounted card - one extra
+    // effect pass per card per render across the whole feed.
     useEffect(() => {
         if (!ctx || !opportunityId) return;
-        const cb = (value: number | undefined) => cbRef.current(value);
+        const cb = (value: number | undefined) => setCount(value);
         ctx.subscribe(opportunityId, cb);
         return () => ctx.unsubscribe(opportunityId, cb);
-    }, [ctx, opportunityId]);
+    }, [ctx, opportunityId, setCount]);
 
     return count;
 }

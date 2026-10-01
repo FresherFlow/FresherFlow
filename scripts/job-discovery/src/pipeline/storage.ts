@@ -9,6 +9,7 @@ import { saveVisited, saveRejectedReasons, savePostedLinks } from '@fresherflow/
 import { parseJobUrl } from '@fresherflow/parser';
 
 import { withConcurrency } from '@fresherflow/pipeline';
+import { normalizeUrl } from '@fresherflow/pipeline';
 import { upsertJobs } from '@fresherflow/pipeline';
 import { resolveAndAttachCompanies } from '@fresherflow/pipeline';
 import { enrichJobPayload } from '@fresherflow/pipeline';
@@ -188,13 +189,99 @@ function isAtsBoardOrCompany(applyLink: string): boolean {
     }
 }
 
+/**
+ * Pre-social snapshot of everything found this run, in one accessible JSON.
+ *
+ * Runs BEFORE the notification stage, i.e. before anything is posted to social
+ * media. `uploadToDataLake` runs after social posting and only carries the
+ * non-ATS curated set, so consumers that need the run's full output on time
+ * (the India-Jobs-Internships board among them) read this instead.
+ *
+ * Cumulative and deduped by normalized apply link: re-running never drops a
+ * job a consumer already saw, and the original `discoveredAt` is preserved.
+ */
+export async function saveFoundJobsSnapshot(state: DiscoveryState): Promise<void> {
+    const fresh = state.newJobsFound
+        .filter((j) => !!j.applyLink && !!j.title)
+        .map((j) => ({
+            title: j.title,
+            company: j.company || 'Company',
+            applyLink: j.applyLink,
+            source: j.source,
+            sourceType: j.sourceType,
+            locations: [j.location, j.locationCity].filter((l): l is string => !!l && !!l.trim()),
+            discoveredAt: j.discoveredAt || new Date().toISOString(),
+            reviewRequired: !!j.reviewRequired,
+        }));
+
+    if (fresh.length === 0) return;
+
+    // Merge into the previous snapshot so consumers always see the full set.
+    let existing: Array<{ applyLink?: string }> = [];
+    try {
+        const res = await fetch(`${CDN_URL}/jobs/found.json`);
+        if (res.ok) {
+            const data: any = await res.json();
+            existing = Array.isArray(data) ? data : (Array.isArray(data?.jobs) ? data.jobs : []);
+        }
+    } catch {
+        // First run or CDN miss — start from this run's set.
+    }
+
+    const seen = new Set<string>();
+    const merged: Array<Record<string, unknown>> = [];
+    for (const job of [...existing, ...fresh] as Array<Record<string, unknown>>) {
+        const url = job?.applyLink;
+        if (!url) continue;
+        const key = normalizeUrl(String(url));
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push(job);
+    }
+    const capped = merged.length > 50000 ? merged.slice(-50000) : merged;
+
+    const bySource: Record<string, number> = {};
+    for (const job of capped) {
+        const s = String(job.source || 'unknown');
+        bySource[s] = (bySource[s] || 0) + 1;
+    }
+
+    const payload = {
+        version: 1,
+        source: 'job-discovery-bot',
+        generatedAt: new Date().toISOString(),
+        counts: {
+            total: capped.length,
+            thisRun: fresh.length,
+            ats: fresh.filter((j) => j.sourceType === 'ATS').length,
+            aggregator: fresh.filter((j) => j.sourceType === 'AGGREGATOR').length,
+            confirmed: fresh.filter((j) => !j.reviewRequired).length,
+            review: fresh.filter((j) => j.reviewRequired).length,
+        },
+        bySource,
+        jobs: capped,
+    };
+
+    const bucket = (process.env.R2_BUCKET_NAME || '').trim();
+    if (!bucket) {
+        console.warn('R2_BUCKET_NAME not set — found-jobs snapshot not uploaded to the CDN.');
+        return;
+    }
+    await uploadJsonToR2(payload, bucket, 'jobs/found.json');
+    console.log(`Saved found-jobs snapshot before social: ${fresh.length} this run, ${capped.length} total → jobs/found.json`);
+}
+
 export async function uploadToDataLake(state: DiscoveryState, runId: string | null) {
     const allJobs = state.newJobsFound;
 
-    if (!process.env.R2_BUCKET_NAME) {
-        throw new Error('FATAL: R2_BUCKET_NAME environment variable is required but not set.');
+    // R2 persistence is the last stage. Without credentials the run still has
+    // value: the Supabase upsert below, the local artifacts and the notifications
+    // all still run. Warn and skip the R2 writes rather than throwing away a
+    // completed crawl.
+    const r2Bucket: string | undefined = process.env.R2_BUCKET_NAME;
+    if (!r2Bucket) {
+        console.warn('R2_BUCKET_NAME is not set — skipping R2 upload of discovered jobs. Supabase upsert, local artifacts and notifications are unaffected.');
     }
-    const r2Bucket: string = process.env.R2_BUCKET_NAME;
 
     // Categorize jobs
     const supabaseJobs = allJobs.filter(job => job.sourceType === 'ATS' || isAtsBoardOrCompany(job.applyLink));
@@ -206,6 +293,8 @@ export async function uploadToDataLake(state: DiscoveryState, runId: string | nu
         await upsertJobs(supabaseJobs, runId);
         console.log(`Successfully completed Supabase upserts!`);
     }
+
+    if (!r2Bucket) return;
 
     // ── Curated Remaining Jobs to R2 ──────────────────────────────────────────────────────
     if (r2Jobs.length > 0) {

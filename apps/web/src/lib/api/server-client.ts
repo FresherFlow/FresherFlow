@@ -1,13 +1,9 @@
 
 
 import { ADMIN_WEB_HOST } from '@/lib/utils/runtimeConfig';
+import { normalizeApiBase } from '@/lib/api/normalize-api-base';
+
 const DEFAULT_API_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || '';
-function normalizeApiBase(raw?: string): string {
-    const value = (raw || '').trim();
-    if (!value) return '';
-    const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
-    return withProtocol.replace(/\/+$/, '');
-}
 
 const USER_API_URL = normalizeApiBase(process.env.USER_API_URL || process.env.NEXT_PUBLIC_USER_API_URL) || normalizeApiBase(DEFAULT_API_URL);
 const USE_SEPARATE_ADMIN_API = process.env.USE_SEPARATE_ADMIN_API === 'true' || process.env.NEXT_PUBLIC_USE_SEPARATE_ADMIN_API === 'true';
@@ -109,7 +105,18 @@ export async function serverApiClient<T = any>(endpoint: string, options: Reques
 
         // Handle 204 No Content or empty responses
         const text = await response.text();
-        return (text ? JSON.parse(text) : null) as T;
+        if (!text) return null as T;
+        // A 200 can still carry a non-JSON body (a proxy's HTML error page, a
+        // truncated response). Unguarded, `JSON.parse` threw a SyntaxError from
+        // deep inside the caller's render path and the `as T` never applied.
+        // Malformed now resolves to the same `null` an empty body already
+        // returns, so callers have exactly one "no data" case to handle.
+        try {
+            return JSON.parse(text) as T;
+        } catch {
+            console.error(`Server API Error (${endpoint}) - non-JSON response body`);
+            return null as T;
+        }
     } catch (error) {
         const clean = error instanceof Error ? error.message.split('\n')[0].trim() : 'Request failed';
         console.error(`Server API Error (${endpoint}) - ${clean}`);

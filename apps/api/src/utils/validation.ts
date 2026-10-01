@@ -220,6 +220,15 @@ const applicationDetailsSchema = z.object({
 export const opportunitySchema = z.object({
     status: z.nativeEnum(OpportunityStatus).optional(),
     category: z.enum(['job', 'internship', 'walk-in']).optional(), // Frontend alias
+    // Sent by the admin form and read by `routes/admin/opportunities/create.ts`
+    // (`sanitizeCustomSlug`) and `application/opportunity/create.ts`, but this
+    // schema is a closed `z.object` and `validate.ts` replaces the body with its
+    // output — so an admin-typed slug was silently dropped before either handler
+    // could read it.
+    customSlug: z.string().max(200).nullable().optional(),
+    // Read at `application/opportunity/create.ts:113`; without it every listing
+    // saved as PRIVATE no matter what the form said.
+    sector: z.string().nullable().optional(),
     rawOpportunityId: z.string().optional(),
     applicationDetails: applicationDetailsSchema.nullable().optional(),
 
@@ -234,6 +243,15 @@ export const opportunitySchema = z.object({
     allowedCourses: z.array(z.string()).optional().default([]),
     allowedSpecializations: z.array(z.string()).optional().default([]),
     allowedPassoutYears: z.array(z.number().int()).optional().default([]),
+    // Both are written by the form's batch-range inputs and read by the public
+    // filters (`application/opportunity/filters.ts:750-755`), so dropping them
+    // here made an admin-set batch range disappear after save.
+    passoutYearMin: z.number().int().nullable().optional(),
+    passoutYearMax: z.number().int().nullable().optional(),
+    // Validated against the enum rather than `z.array(z.string())`: the column is
+    // a Prisma `Availability[]`, so free text would reach the database and fail
+    // as a 500 instead of a clean 400.
+    allowedAvailability: z.array(z.nativeEnum(Availability)).nullable().optional().default([]),
     requiredSkills: z.array(z.string()).default([]),
     locations: z.array(z.string()).optional().default([]),
 

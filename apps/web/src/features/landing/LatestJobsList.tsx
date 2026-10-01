@@ -5,6 +5,7 @@ import { ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import type { OpportunityCardDTO } from '@fresherflow/types';
 import { CommentCountsProvider, useCommentCount } from '@/features/jobs/hooks/useCommentCounts';
 import { COMMUNITY_UI_ENABLED } from '@/features/community/communityUi';
+import { toSafeOutboundUrl } from '@/lib/utils/safeOutboundUrl';
 
 /**
  * Latest jobs with community actions (V1 checklist §G): every card exposes
@@ -12,17 +13,6 @@ import { COMMUNITY_UI_ENABLED } from '@/features/community/communityUi';
  * and Apply opens the verified outbound link (or the detail page when the
  * job has no external link).
  */
-
-function toSafeOutboundUrl(raw: string | null | undefined): string | null {
-    if (!raw) return null;
-    try {
-        const url = new URL(raw, 'https://fresherflow.in');
-        if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
-        return url.toString();
-    } catch {
-        return null;
-    }
-}
 
 function stampFor(o: OpportunityCardDTO): { label: 'LIVE' | 'AGING'; cls: string } {
     const days = Math.floor((Date.now() - new Date(o.postedAt).getTime()) / 86400000);
@@ -151,7 +141,7 @@ export function LatestJobsList({ jobs }: { jobs: OpportunityCardDTO[] }) {
                     </Link>
                     <Link
                         href="/contribute"
-                        className="inline-flex items-center gap-2 rounded-[2px] bg-[var(--ff-accent)] px-3 py-1.5 text-paper transition-transform hover:-translate-y-px active:scale-[0.98]"
+                        className="inline-flex items-center gap-2 rounded-[2px] bg-[var(--ff-accent)] px-3 py-1.5 text-[var(--color-ff-accent-ink)] transition-transform hover:-translate-y-px active:scale-[0.98]"
                     >
                         Contribute
                     </Link>

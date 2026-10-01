@@ -28,8 +28,13 @@ interface RateLimitOptions {
  */
 export function createRateLimiter(options: RateLimitOptions) {
     return async (req: Request, res: Response, next: NextFunction) => {
-        // Use X-Forwarded-For if behind a proxy, otherwise req.ip
-        const ip = (req.headers['x-forwarded-for'] as string) || req.ip || 'unknown-ip';
+        // Key on `req.ip`, which `app.set('trust proxy', 1)` in `src/index.ts`
+        // resolves from exactly one proxy hop. The raw `x-forwarded-for` header
+        // is client-supplied before it reaches that proxy: keying on it let any
+        // caller mint a fresh bucket per request by rotating the header, which
+        // made every limiter built on this factory bypassable with one curl —
+        // including the auth and OTP limiters.
+        const ip = req.ip || 'unknown-ip';
         const key = `${options.keyPrefix || 'rl'}:${ip}`;
         const now = Date.now();
 

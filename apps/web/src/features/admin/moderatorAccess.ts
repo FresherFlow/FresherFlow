@@ -6,9 +6,9 @@ import { MODERATION_PERMISSIONS } from '@/features/moderation/moderationAuth';
  * an array means moderator nav showing only rows whose `permission` is
  * included.
  *
- * Split of duties with the dedicated `/moderation` area (own layout, gate,
+ * Split of duties with the dedicated `/moderator` area (own layout, gate,
  * nav, hub): community queues live THERE. Inside `/admin`, moderators keep
- * only Listings review, which has no `/moderation` home — mirroring the API
+ * only Listings review, which has no `/moderator` home — mirroring the API
  * gates (`requirePermission`) so the nav never offers a page whose
  * endpoints would 403:
  *
@@ -60,7 +60,7 @@ export function canAccessAdminRoute(
 }
 
 /**
- * Moderator landing: the dedicated `/moderation` hub whenever the grant
+ * Moderator landing: the dedicated `/moderator` hub whenever the grant
  * carries any queue permission (same set its gate checks). Otherwise ''
  * (revoked or bare grant → 403 page, not a guess). Listings-only holders
  * still land in the hub — it links every queue including Listings review.
@@ -69,5 +69,5 @@ export function getModeratorLanding(permissions: string[]): string {
     const hasQueue = (MODERATION_PERMISSIONS as readonly string[]).some((key) =>
         permissions.includes(key),
     );
-    return hasQueue ? '/moderation' : '';
+    return hasQueue ? '/moderator' : '';
 }

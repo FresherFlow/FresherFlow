@@ -130,16 +130,39 @@ const toCsvList = (value: unknown): string[] => {
 };
 
 
-const toFloat = (value: string) => {
+/**
+ * Reads the first numeric run out of a free-text field.
+ *
+ * The previous implementation stripped every character outside `[0-9.]` and ran
+ * `parseFloat` on the remains, which read "5-10" as 5.10 and "1e5" as 15.
+ * Matching the first `-?\d+(\.\d+)?` run instead keeps "₹5,00,000" → 500000 and
+ * "10 LPA" → 10, while reading "5-10" as 5 and refusing non-numeric text.
+ */
+const toNumber = (value: string): number | undefined => {
     if (!value) return undefined;
-    const parsed = parseFloat(value.replace(/[^0-9.]/g, ''));
+    const match = value.replace(/,/g, '').match(/-?\d+(?:\.\d+)?/);
+    if (!match) return undefined;
+    const parsed = Number(match[0]);
     return Number.isFinite(parsed) ? parsed : undefined;
+};
+
+const toFloat = (value: string) => toNumber(value);
+
+/** Integer variant. Returns `undefined` rather than NaN, which JSON.stringify would send as `null`. */
+const toInt = (value: string) => {
+    const parsed = toNumber(value);
+    return parsed === undefined ? undefined : Math.trunc(parsed);
 };
 
 
 const getOrdinalNum = (n: number) => {
     if (n <= 0) return String(n);
-    const suffix = ['th', 'st', 'nd', 'rd'][(n > 10 && n < 14) ? 0 : (n % 10 < 4 ? n % 10 : 0)];
+    // 11th/12th/13th break the last-digit rule, and the old `n > 10 && n < 14`
+    // guard only caught two-digit values — 111 rendered as "111st". Test the
+    // last two digits so 111 becomes 111th.
+    const lastTwo = n % 100;
+    if (lastTwo >= 11 && lastTwo <= 13) return `${n}th`;
+    const suffix = ['th', 'st', 'nd', 'rd'][n % 10 < 4 ? n % 10 : 0];
     return `${n}${suffix}`;
 };
 
@@ -162,15 +185,16 @@ const formatDateRange = (start: string, end: string) => {
 const formatTime = (value: string) => {
     if (!value) return '';
     const [hourPart, minutePart] = value.split(':');
-    let hours = parseInt(hourPart, 10);
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12 || 12;
+    const parsedHours = parseInt(hourPart, 10);
+    if (!Number.isFinite(parsedHours) || !minutePart) return '';
+    const ampm = parsedHours >= 12 ? 'PM' : 'AM';
+    const hours = parsedHours % 12 || 12;
     return `${hours}:${minutePart} ${ampm}`;
 };
 
 const formatSalaryRange = (amount: string, period: SalaryPeriod) => {
-    const raw = parseFloat(amount.replace(/[^0-9.]/g, ''));
-    if (!raw || Number.isNaN(raw)) return '';
+    const raw = toNumber(amount);
+    if (raw === undefined || raw === 0) return '';
     if (period === 'YEARLY') {
         const lpa = raw >= 100000 ? raw / 100000 : raw;
         return `${Number.isInteger(lpa) ? lpa.toFixed(0) : lpa.toFixed(1)} LPA`;
@@ -185,10 +209,25 @@ const toEndOfDayIso = (value: string) => {
     return date.toISOString();
 };
 
+/**
+ * Parses one of the 21 government `*Json` textareas.
+ *
+ * Throws a located message rather than the raw `JSON.parse` error: these fields
+ * are indistinguishable in the form, so "Unexpected token } at position 5" left
+ * the admin with no way to tell which box to fix. The caller wraps
+ * `buildOpportunityPayload` in a try/catch and surfaces this as a toast.
+ */
 const parseJsonInput = <T,>(value: string): T | undefined => {
     const trimmed = value.trim();
     if (!trimmed) return undefined;
-    return JSON.parse(trimmed) as T;
+    try {
+        return JSON.parse(trimmed) as T;
+    } catch {
+        const preview = trimmed.length > 40 ? `${trimmed.slice(0, 40)}…` : trimmed;
+        throw new Error(
+            `Invalid JSON in a detail field starting with "${preview}". Fix the JSON syntax and submit again.`
+        );
+    }
 };
 
 export const buildOpportunityPayload = (values: OpportunityFormValues): Record<string, unknown> => {
@@ -225,8 +264,8 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
         allowedCourses: values.allowedCourses,
         allowedSpecializations: values.allowedSpecializations,
         allowedPassoutYears: values.passoutYears,
-        passoutYearMin: values.passoutYearMin ? parseInt(values.passoutYearMin, 10) : null,
-        passoutYearMax: values.passoutYearMax ? parseInt(values.passoutYearMax, 10) : null,
+        passoutYearMin: toInt(values.passoutYearMin) ?? null,
+        passoutYearMax: toInt(values.passoutYearMax) ?? null,
         allowedAvailability: values.allowedAvailability ? toCsvList(values.allowedAvailability) : [],
         requiredSkills: toCsvList(values.requiredSkills),
         locations: toCsvList(values.locations),
@@ -249,21 +288,34 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
         applicationDetails: isGovt ? null : {
             method: values.appMethod,
             platform: (values.appMethod !== 'DIRECT' && values.appPlatform) ? values.appPlatform : undefined,
-            estimatedMinutes: (values.appMethod !== 'DIRECT' && values.appDuration && parseInt(values.appDuration, 10) > 0) ? parseInt(values.appDuration, 10) : undefined,
+            estimatedMinutes: (values.appMethod !== 'DIRECT' && (toInt(values.appDuration) ?? 0) > 0) ? toInt(values.appDuration) : undefined,
             requiredItems: (values.appMethod !== 'DIRECT') ? values.appRequiredItems : undefined,
         }
     };
 
     if (kind === 'WALKIN') {
         const autoDateRange = formatDateRange(values.startDate, values.endDate);
-        const autoTimeRange = `${formatTime(values.startTime)} - ${formatTime(values.endTime)}`;
+        // `formatTime` returns '' for a blank input, so the old template literal
+        // was always at least " - ". That made `autoTimeRange` permanently
+        // truthy and the manually typed `walkInTimeRange` unreachable, so an
+        // admin who filled only the free-text range still saved " - ". Join only
+        // the parts that exist.
+        const autoTimeRange = [formatTime(values.startTime), formatTime(values.endTime)]
+            .filter(Boolean)
+            .join(' - ');
         payload.driveDetails = {
             dateRange: autoDateRange || values.walkInDateRange || undefined,
             timeRange: autoTimeRange || values.walkInTimeRange || undefined,
             venueAddress: values.venueAddress,
             venueLink: values.venueLink || undefined,
             reportingTime: autoTimeRange || undefined,
-            dates: values.startDate ? [values.startDate, walkInEndDate || values.startDate] : undefined,
+            // Only echo the end date when it differs from the start, otherwise a
+            // single-day drive shipped `["2026-02-02", "2026-02-02"]`.
+            dates: values.startDate
+                ? (walkInEndDate && walkInEndDate !== values.startDate
+                    ? [values.startDate, walkInEndDate]
+                    : [values.startDate])
+                : undefined,
             requiredDocuments: toCsvList(values.requiredDocuments),
             contactPerson: values.contactPerson || undefined,
             contactPhone: values.contactPhone || undefined,
@@ -294,12 +346,12 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
             officialNotificationUrl: values.officialNotificationUrl || undefined,
             advertisementNumber: values.advertisementNumber || undefined,
             applicationMode: values.applicationMode || undefined,
-            vacancyCount: values.vacancyCount ? parseInt(values.vacancyCount, 10) : undefined,
+            vacancyCount: toInt(values.vacancyCount),
             vacancyBreakdown: parseJsonInput(values.vacancyBreakdownJson),
             applicationFee: values.applicationFee || undefined,
             applicationFeeDetails: parseJsonInput(values.applicationFeeJson),
-            ageMin: values.ageMin ? parseInt(values.ageMin, 10) : undefined,
-            ageMax: values.ageMax ? parseInt(values.ageMax, 10) : undefined,
+            ageMin: toInt(values.ageMin),
+            ageMax: toInt(values.ageMax),
             ageRelaxation: values.ageRelaxation || undefined,
             eligibilityDetails: parseJsonInput(values.eligibilityDetailsJson),
             reservationNotes: values.reservationNotes || undefined,
@@ -326,14 +378,14 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
             ageRelaxationRules: parseJsonInput(values.ageRelaxationRulesJson),
             officialSourceVerified: values.officialSourceVerified || undefined,
             sourceLastCheckedAt: values.sourceLastCheckedAt || undefined,
-            extractionConfidence: values.extractionConfidence ? parseFloat(values.extractionConfidence) : undefined,
+            extractionConfidence: toFloat(values.extractionConfidence),
             notificationPdfUrl: values.notificationPdfUrl || undefined,
             admitCardUrl: values.admitCardUrl || undefined,
             resultUrl: values.resultUrl || undefined,
             answerKeyUrl: values.answerKeyUrl || undefined,
             syllabusUrl: values.syllabusUrl || undefined,
             previousPapersUrl: values.previousPapersUrl || undefined,
-            basicPay: values.basicPay ? parseInt(values.basicPay, 10) : undefined,
+            basicPay: toInt(values.basicPay),
             payLevel: values.payLevel || undefined,
             allowances: toCsvList(values.allowances),
         };

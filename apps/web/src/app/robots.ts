@@ -9,8 +9,11 @@ export default function robots(): MetadataRoute.Robots {
 
     return {
         rules: [
-            // Social crawlers: explicitly allow OG image routes so Twitter/Facebook
-            // card images are never blocked by the broader /api disallow below.
+            // Social crawlers: the empty `disallow` is what grants these bots
+            // everything — a named group takes precedence over the `*` group
+            // below, so `/api/og/` card images are fetched despite the `/api`
+            // disallow. The `allow` list documents the intent; the empty
+            // `disallow` is what actually does it.
             {
                 userAgent: 'Twitterbot',
                 allow: ['/api/og/'],
@@ -28,25 +31,23 @@ export default function robots(): MetadataRoute.Robots {
             },
             {
                 userAgent: '*',
-                allow: [
-                    '/',
-                    '/jobs',
-                    '/jobs/internships',
-                    '/drives',
-                    '/drives/off-campus',
-                    '/drives/walk-in',
-                    '/govt',
-                    '/companies',
-                ],
+                // No `allow` here on purpose. An `Allow` rule cannot narrow a
+                // group that has no `Disallow: /`, so the eight hub paths this
+                // group used to "allow" were indexable by default all along and
+                // the list never changed crawler behaviour — it only documented
+                // intent. Everything not listed below is crawlable.
                 disallow: [
                     '/api',
                     '/admin',
+                    '/moderator',
                     '/admin-manifest.json',
                     '/deadlines',
                     '/account',
                     '/onboarding',
                     '/login',
                     '/signup',
+                    '/join',
+                    '/choose-username',
                     '/logout',
                     '/dev',
                     '/sentry-example-page',

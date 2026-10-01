@@ -25,7 +25,6 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@fresherflow/api-client": "^1.0.0",
     "@fresherflow/constants": "^1.0.0",
-    "@fresherflow/database": "^1.0.0",
     "@fresherflow/parser": "^1.0.0",
     "@fresherflow/pipeline": "^1.0.0",
     "@fresherflow/plugins": "workspace:^",

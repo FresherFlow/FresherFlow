@@ -13,6 +13,7 @@ import CompanyRoleCard from './_components/CompanyRoleCard';
 import { SkillPill } from '@/features/jobs/components/SkillPill';
 import { Card, CardContent } from '@/ui/Card';
 import { BrandButton } from '@/ui/BrandButton';
+import { CompanyDiscussionDock } from '@/features/jobs/components/discussion/JobDiscussionDock';
 import { toSafeOutboundUrl } from '@/lib/utils/safeOutboundUrl';
 import {
     BarChart3,
@@ -554,6 +555,11 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                         </Card>
                     )}
                 </aside>
+
+            {/* Company thread: lives on the company, not a listing, so the
+                hiring-process talk survives the job it started on. Fixed
+                position, so it never affects this grid's layout. */}
+            <CompanyDiscussionDock companySlug={targetSlug} companyName={companyName} />
             </div>
         </div>
     );

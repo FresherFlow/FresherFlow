@@ -13,6 +13,7 @@ import { EmptyState } from '@/ui/EmptyState';
 import { ErrorMessage } from '@/ui/ErrorMessage';
 import { Skeleton } from '@/ui/Skeleton';
 import { cn } from '@/ui/cn';
+import { formatWorkMode } from '@/features/profile/preferences';
 import { NewSearchDialog } from './NewSearchDialog';
 
 const SIGN_IN_REDIRECT = '/jobs?tab=searches';
@@ -34,20 +35,13 @@ function filterChips(filters: SavedSearch['filters']): FilterChip[] {
     if (filters.closingSoon) chips.push({ key: 'closingSoon', label: 'Closing soon' });
     if (filters.q) chips.push({ key: 'q', label: `“${filters.q}”` });
     (filters.workModes ?? []).forEach((mode) =>
-        chips.push({ key: `mode:${mode}`, label: WORK_MODE_LABELS[mode.toUpperCase()] ?? mode }),
+        chips.push({ key: `mode:${mode}`, label: formatWorkMode(mode.toUpperCase()) }),
     );
     (filters.skills ?? []).forEach((skill) => chips.push({ key: `skill:${skill}`, label: skill }));
     (filters.roles ?? []).forEach((role) => chips.push({ key: `role:${role}`, label: role }));
     (filters.experience ?? []).forEach((exp) => chips.push({ key: `exp:${exp}`, label: exp }));
     return chips;
 }
-
-const WORK_MODE_LABELS: Record<string, string> = {
-    REMOTE: 'Remote',
-    HYBRID: 'Hybrid',
-    ONSITE: 'On-site',
-    ON_SITE: 'On-site',
-};
 
 function buildSearchUrl(filters: SavedSearch['filters']): string {
     const params = new URLSearchParams();

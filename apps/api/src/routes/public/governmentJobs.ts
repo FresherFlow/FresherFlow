@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '@fresherflow/database';
 import { logger } from '@fresherflow/utils';
 import { createRateLimiter } from '../../middleware/rateLimit';
+import { sendError, ErrorCode } from '../../middleware/errorHandler';
 
 const router = Router();
 
@@ -53,8 +54,7 @@ router.get('/:jobId', publicGovtReadLimiter, async (req, res, next) => {
         });
 
         if (!job) {
-             res.status(404).json({ error: 'Government job not found' });
-             return;
+             return sendError(res, 404, ErrorCode.NOT_FOUND, 'Government job not found', req.requestId);
         }
 
         res.status(200).json(job);

@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { DiscoveryState } from '@fresherflow/pipeline';
 import { ATS_CDN_BASE, ATS_PROVIDERS, TARGET_SITES, fetchTargetSitesFromCdn, AGGREGATOR_RULES } from '@fresherflow/pipeline';
-import { normalizeUrl, sanitizeAtsUrl, isValidApplyLink } from '@fresherflow/pipeline';
+import { normalizeUrl, sanitizeAtsUrl, isValidApplyLink, fetchJsonWithRetry, readJsonFileSafe } from '@fresherflow/pipeline';
 import { isLocationIndiaOrRemote, scoreJobDescription, hasFresherKeyword, isActualJob, isFresherJob, isSeniorJob } from '@fresherflow/utils';
 import { logDecision } from '@fresherflow/pipeline';
 import { findActualApplyLink } from '@fresherflow/pipeline';
@@ -13,6 +13,16 @@ import { withTimeout } from '@fresherflow/pipeline';
 import { runAtsDiscovery, runDirectCompanyDiscovery } from '@fresherflow/pipeline';
 
 const SITEMAP_SAFETY_WINDOW = 15;
+
+/**
+ * ATS board registries are `Record<boardSlug, companyName>`. Anything else would
+ * blow up later inside the ATS runner, so reject the shape at load time and let
+ * that one provider be skipped.
+ */
+function isBoardRegistry(value: unknown): value is Record<string, string> {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+    return Object.values(value).every((v) => typeof v === 'string');
+}
 
 export async function discoverAtsJobs(state: DiscoveryState) {
     console.log(`\n=== 🏢 Phase 0: Direct Company & ATS Discovery ===\n`);
@@ -27,18 +37,20 @@ export async function discoverAtsJobs(state: DiscoveryState) {
     try {
         if (ATS_CDN_BASE) {
             console.log(`Fetching ATS Boards from CDN (${ATS_CDN_BASE})...`);
+            // Per-provider isolation is the point here: a 404 for one provider must
+            // never stop the other 30 from loading.
             await Promise.all(ATS_PROVIDERS.map(async provider => {
-                try {
-                    const res = await fetch(`${ATS_CDN_BASE}/${provider}.json`);
-                    if (res.ok) {
-                        state.atsRegistry[provider] = await res.json();
-                        console.log(`  -> Loaded ${provider}.json from CDN`);
-                    } else if (res.status !== 404) {
-                        console.warn(`  -> Failed to fetch ${provider}.json: ${res.statusText}`);
-                    }
-                } catch (err) {
-                    // Fall back to local file
+                const res = await fetchJsonWithRetry<Record<string, string>>(`${ATS_CDN_BASE}/${provider}.json`, {
+                    label: `ats/${provider}.json`,
+                    attempts: 2,
+                    timeoutMs: 15_000,
+                    validate: isBoardRegistry,
+                });
+                if (res.ok) {
+                    state.atsRegistry[provider] = res.data;
+                    console.log(`  -> Loaded ${provider}.json from CDN`);
                 }
+                // 404 means "no boards for this provider" — expected, not an error.
             }));
         }
 
@@ -52,16 +64,29 @@ export async function discoverAtsJobs(state: DiscoveryState) {
                 if (!state.atsRegistry[provider]) {
                     const filePath = path.join(targetDir, `${provider}.json`);
                     if (fs.existsSync(filePath)) {
-                        try {
-                            state.atsRegistry[provider] = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+                        const data = await readJsonFileSafe<Record<string, string>>(filePath);
+                        if (data !== null && isBoardRegistry(data)) {
+                            state.atsRegistry[provider] = data;
                             console.log(`  -> Loaded ${provider}.json from local ats-boards`);
-                        } catch {}
+                        } else {
+                            console.warn(`  -> ${provider}.json is not a valid board registry; skipping this provider.`);
+                        }
                     }
                 }
             }
         }
     } catch (err) {
         console.error("Error fetching ATS registry:", err);
+    }
+
+    const loadedProviders = Object.keys(state.atsRegistry).length;
+    if (loadedProviders === 0) {
+        console.warn(
+            '⚠️  No ATS board registry could be loaded (CDN and local ats-boards both unavailable). ' +
+            'ATS discovery will find nothing this run.',
+        );
+    } else {
+        console.log(`Loaded ${loadedProviders}/${ATS_PROVIDERS.length} ATS providers into the registry.`);
     }
 
     const atsJobs = await runAtsDiscovery(

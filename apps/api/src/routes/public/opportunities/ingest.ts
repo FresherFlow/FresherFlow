@@ -3,6 +3,7 @@ import { UrlParser } from '@fresherflow/parser';
 import { normalizeOpportunityUrl } from '@fresherflow/utils';
 import { logger } from '@fresherflow/utils';
 import { createRateLimiter } from '../../../middleware/rateLimit';
+import { sendError, ErrorCode } from '../../../middleware/errorHandler';
 
 const router = Router();
 
@@ -23,14 +24,14 @@ router.post('/ingest', ingestLinkLimiter, async (req: Request, res: Response, ne
     try {
         const { url } = req.body;
         if (!url || typeof url !== 'string') {
-            return res.status(400).json({ message: 'A valid URL string is required' });
+            return sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'A valid URL string is required', req.requestId);
         }
 
         // Basic URL validation
         try {
             new URL(url);
         } catch {
-            return res.status(400).json({ message: 'Invalid URL format' });
+            return sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'Invalid URL format', req.requestId);
         }
 
         const normalizedUrl = normalizeOpportunityUrl(url);

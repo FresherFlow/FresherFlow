@@ -314,15 +314,6 @@ export const extractDomain = (value?: string | null) => {
     }
 };
 
-export const typeParamToEnum = (value: string) => {
-    const v = value.toLowerCase();
-    if (v === 'job' || v === 'jobs' || v === 'employment') return 'JOB';
-    if (v === 'internship' || v === 'internships') return 'INTERNSHIP';
-    if (v === 'walk-in' || v === 'walkin' || v === 'walkins' || v === 'walk-ins' || v === 'walk_in') return 'WALKIN';
-    if (v === 'government' || v === 'govt' || v === 'government-job') return 'GOVERNMENT';
-    return value.toUpperCase();
-};
-
 export const getPublicOpportunityUrl = (slugOrId: string, opportunityType: OpportunityKind) => {
     const configuredOrigin =
         process.env.NEXT_PUBLIC_SITE_URL

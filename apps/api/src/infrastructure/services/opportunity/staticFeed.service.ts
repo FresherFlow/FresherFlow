@@ -34,6 +34,91 @@ const isGovernmentRow = (opp: unknown): boolean => {
 };
 
 /**
+ * Escape a value for use inside a `<loc>` element.
+ *
+ * Every sitemap `<loc>` in this file is built by string interpolation of values
+ * that ultimately come from scraped job postings: slugs, company names, city
+ * and skill names. A company legitimately named `A & B` or `L&T` produces a
+ * raw `&` in the XML, which is not well-formed — a single one of those makes
+ * the whole child sitemap unparseable, and an unparseable sitemap is silently
+ * dropped rather than reported.
+ *
+ * `&` must be replaced first, otherwise the ampersands introduced by the later
+ * replacements get double-escaped. The control-character strip is what keeps
+ * a stray newline inside a scraped company name from being read as the end of
+ * the `<loc>` element.
+ */
+function xmlLoc(value: string): string {
+    return value
+        // eslint-disable-next-line no-control-regex
+        .replace(/[\u0000-\u001F\u007F]/g, '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+}
+
+/**
+ * Refuse to generate sitemaps against an origin that is not the public site.
+ *
+ * This exists because it already went wrong. `getPublicSiteUrl()` falls back to
+ * `http://localhost:3000` whenever `PUBLIC_FRONTEND_URL`, `PUBLIC_WEB_URL` and
+ * `FRONTEND_URL` are all unset or unparseable. A publish run under that
+ * condition uploaded eight sitemaps in which **every single `<loc>` was
+ * `http://localhost:3000/...`** — 180 URLs pointing at a machine that does not
+ * exist. Google cannot fetch those, so the entire sitemap contributed nothing,
+ * and it did so silently: the run reported success, the files were 200 on the
+ * CDN, and nothing errored anywhere.
+ *
+ * The web app cannot repair it either. `app/api/public/sitemap/route.ts`
+ * rewrites `SITE_URL` to the request host, so it corrects an already-correct
+ * production origin — but it has no way to recognise and replace a `localhost`
+ * origin, so the bad value passes straight through to the crawler.
+ *
+ * So this fails loudly instead. `refresh()` catches and logs the throw, which
+ * means the publish aborts and leaves the previous (valid) sitemaps in place —
+ * a loud failure beats silently publishing an unindexable one.
+ */
+function assertSitemapBaseUrl(baseUrl: string): void {
+    if (!baseUrl) {
+        throw new Error(
+            '[StaticFeedService] Refusing to generate sitemaps: getPublicSiteUrl() is empty. ' +
+                'Set PUBLIC_FRONTEND_URL (or PUBLIC_WEB_URL / FRONTEND_URL) to the public web origin, ' +
+                'e.g. https://fresherflow.in'
+        );
+    }
+
+    let hostname: string;
+    try {
+        hostname = new URL(baseUrl).hostname.toLowerCase();
+    } catch {
+        throw new Error(
+            `[StaticFeedService] Refusing to generate sitemaps: getPublicSiteUrl() returned the ` +
+                `unparseable value ${JSON.stringify(baseUrl)}. Set PUBLIC_FRONTEND_URL to the public ` +
+                'web origin, e.g. https://fresherflow.in'
+        );
+    }
+
+    if (hostname === 'localhost' || hostname.endsWith('.localhost') || hostname === '0.0.0.0') {
+        throw new Error(
+            `[StaticFeedService] Refusing to generate sitemaps: getPublicSiteUrl() resolved to the ` +
+                `local origin ${JSON.stringify(baseUrl)}. Publishing this would put localhost URLs in ` +
+                'every <loc>, which no crawler can fetch. Set PUBLIC_FRONTEND_URL to the public web ' +
+                'origin, e.g. https://fresherflow.in'
+        );
+    }
+
+    if (hostname === '127.0.0.1' || /^(\d{1,3}\.){3}\d{1,3}$/.test(hostname)) {
+        throw new Error(
+            `[StaticFeedService] Refusing to generate sitemaps: getPublicSiteUrl() resolved to a ` +
+                `private/loopback address ${JSON.stringify(baseUrl)}. Set PUBLIC_FRONTEND_URL to the ` +
+                'public web origin, e.g. https://fresherflow.in'
+        );
+    }
+}
+
+/**
  * Service to generate "Distributed Static Data Shards" for discovery.
  * Decoupled from live API for high performance and low infrastructure cost.
  *
@@ -342,17 +427,31 @@ export class StaticFeedService {
                 });
 
                 const baseUrl = getPublicSiteUrl();
+                assertSitemapBaseUrl(baseUrl);
                 const staticDate = new Date().toISOString().split('T')[0];
+                // Every entry here must be a live, indexable, canonical 200.
+                //
+                // `/jobs/walkins` was here and had to come out: `next.config.ts`
+                // 301s it to `/drives/walk-in`, so listing it handed Google a
+                // redirect instead of a page. `/drives/walk-in` — the actual hub —
+                // was missing. Sitemaps should list destination URLs, not the
+                // legacy spellings that lead to them.
                 const staticRoutes = [
                     '',
                     '/jobs',
+                    '/jobs/browse',
                     '/jobs/internships',
-                    '/jobs/walkins',
                     '/jobs/full-time',
                     '/jobs/part-time',
+                    '/jobs/remote',
                     '/drives',
                     '/drives/off-campus',
+                    '/drives/walk-in',
                     '/govt',
+                    '/companies',
+                    '/resources',
+                    '/community',
+                    '/recruiters',
                     '/about',
                     '/blog',
                     '/contact',
@@ -489,20 +588,31 @@ export class StaticFeedService {
                 // 1. sitemap-jobs.xml
                 let jobsXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 jobsXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-                staticRoutes.forEach(r => jobsXml += `  <url><loc>${baseUrl}${r}</loc><lastmod>${staticDate}</lastmod></url>\n`);
+                // Static routes deliberately carry NO <lastmod>.
+                //
+                // They used to be stamped with today's date on every publish, which
+                // is a claim that all ~20 of them changed today, every day. A
+                // crawler that learns a field is noise stops using it for anything,
+                // including the per-opportunity dates below that ARE honest. The
+                // staticDate fallback therefore applies only where a real
+                // modification time is missing, never to the route list.
+                //
+                // Same reasoning as `freehire/web/src/lib/sitemap.ts:89-92`, which
+                // leaves lastmod undefined when there is no honest date to state.
+                staticRoutes.forEach(r => jobsXml += `  <url><loc>${xmlLoc(baseUrl + r)}</loc></url>\n`);
                 sitemapOpps.forEach(opp => {
                     const slugOrId = (opp.slug || opp.id) as string;
                     const rawDate = (opp.updatedAt || opp.postedAt) as string | Date | undefined;
                     const dateStr = rawDate ? new Date(rawDate).toISOString().split('T')[0] : staticDate;
                     const prefix = isGovernmentRow(opp) ? 'govt' : 'jobs';
-                    jobsXml += `  <url><loc>${baseUrl}/${prefix}/${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>weekly</changefreq></url>\n`;
+                    jobsXml += `  <url><loc>${xmlLoc(baseUrl)}/${prefix}/${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>weekly</changefreq></url>\n`;
                 });
                 jobsXml += '</urlset>';
 
                 // 2. sitemap-companies.xml
                 let companiesXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 companiesXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-                validCompanies.forEach(c => companiesXml += `  <url><loc>${baseUrl}/companies/${FeedGeneratorService.getCompanySlug(c)}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+                validCompanies.forEach(c => companiesXml += `  <url><loc>${xmlLoc(baseUrl)}/companies/${xmlLoc(FeedGeneratorService.getCompanySlug(c))}</loc><changefreq>daily</changefreq></url>\n`);
                 companiesXml += '</urlset>';
 
                 // 3. sitemap-skills.xml
@@ -510,53 +620,58 @@ export class StaticFeedService {
                 skillsXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
                 // Canonical board URLs under the unified /jobs namespace (doc 22 v2):
 // skills → /jobs/{slug}-jobs
-validSkills.forEach(s => skillsXml += `  <url><loc>${baseUrl}/jobs/${s}-jobs</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+validSkills.forEach(s => skillsXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${xmlLoc(s)}-jobs</loc><changefreq>daily</changefreq></url>\n`);
                 skillsXml += '</urlset>';
 
                 // 4. sitemap-roles.xml
                 let rolesXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 rolesXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
                 // roles → /jobs/{slug}-jobs
-validRoles.forEach(r => rolesXml += `  <url><loc>${baseUrl}/jobs/${r}-jobs</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+validRoles.forEach(r => rolesXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${xmlLoc(r)}-jobs</loc><changefreq>daily</changefreq></url>\n`);
                 rolesXml += '</urlset>';
 
                 // 5. sitemap-locations.xml
                 let locationsXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 locationsXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
                 // cities → /jobs/{slug}-jobs ('remote' included — it's a city board in the registry)
-validLocations.forEach(l => locationsXml += `  <url><loc>${baseUrl}/jobs/${l}-jobs</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+validLocations.forEach(l => locationsXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${xmlLoc(l)}-jobs</loc><changefreq>daily</changefreq></url>\n`);
                 locationsXml += '</urlset>';
 
                 // 6. sitemap-batches.xml
                 let batchesXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 batchesXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
                 // batches → /jobs/{year}-batch (years keep the -batch form, no -jobs suffix)
-validBatches.forEach(b => batchesXml += `  <url><loc>${baseUrl}/jobs/${b}-batch</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+validBatches.forEach(b => batchesXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${b}-batch</loc><changefreq>daily</changefreq></url>\n`);
                 batchesXml += '</urlset>';
 
                 // 7. sitemap-walkins.xml
                 let walkinsXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 walkinsXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-                walkinsXml += `  <url><loc>${baseUrl}/jobs/walkins</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`;
+                // The hub URL. This was `/jobs/walkins`, which `next.config.ts`
+                // 301s to `/drives/walk-in` — so the sitemap was advertising a
+                // redirect as a page. `/drives/walk-in` is also in staticRoutes;
+                // a duplicate `<loc>` across two child sitemaps is harmless but
+                // pointless, so only the per-city pages live here.
+                walkinsXml += `  <url><loc>${xmlLoc(baseUrl)}/drives/walk-in</loc><changefreq>daily</changefreq></url>\n`;
                 const walkinOpps = activeMapped.filter(isWalkinRow);
                 walkinOpps.forEach(opp => {
                     const slugOrId = (opp.slug || opp.id) as string;
                     const rawDate = (opp.updatedAt || opp.postedAt) as string | Date | undefined;
                     const dateStr = rawDate ? new Date(rawDate).toISOString().split('T')[0] : staticDate;
-                    walkinsXml += `  <url><loc>${baseUrl}/jobs/${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>daily</changefreq></url>\n`;
+                    walkinsXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>daily</changefreq></url>\n`;
                 });
                 walkinsXml += '</urlset>';
 
                 // 8. sitemap-govt.xml
                 let govtXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 govtXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-                govtXml += `  <url><loc>${baseUrl}/govt</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`;
+                govtXml += `  <url><loc>${xmlLoc(baseUrl)}/govt</loc><changefreq>daily</changefreq></url>\n`;
                 const govtOpps = sitemapOpps.filter(isGovernmentRow);
                 govtOpps.forEach(opp => {
                     const slugOrId = (opp.slug || opp.id) as string;
                     const rawDate = (opp.updatedAt || opp.postedAt) as string | Date | undefined;
                     const dateStr = rawDate ? new Date(rawDate).toISOString().split('T')[0] : staticDate;
-                    govtXml += `  <url><loc>${baseUrl}/govt/${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>weekly</changefreq></url>\n`;
+                    govtXml += `  <url><loc>${xmlLoc(baseUrl)}/govt/${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>weekly</changefreq></url>\n`;
                 });
                 govtXml += '</urlset>';
 
@@ -573,8 +688,11 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${baseUrl}/jobs/${b}-batch<
                 ];
                 let indexXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 indexXml += '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+                // The one place a `staticDate` lastmod is correct: this child file IS
+                // rewritten by this run, so today really is when it last changed.
+                // That is the distinction the per-URL entries above fail to make.
                 sitemaps.forEach(s => {
-                    indexXml += `  <sitemap>\n    <loc>${baseUrl}/${s}</loc>\n    <lastmod>${staticDate}</lastmod>\n  </sitemap>\n`;
+                    indexXml += `  <sitemap>\n    <loc>${xmlLoc(baseUrl)}/${s}</loc>\n    <lastmod>${staticDate}</lastmod>\n  </sitemap>\n`;
                 });
                 indexXml += '</sitemapindex>';
 

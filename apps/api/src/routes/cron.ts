@@ -5,6 +5,7 @@ import { runAlertsCycle } from '../infrastructure/services/alerts/alerts.service
 import { runDueSources } from '../application/ingestion/scheduling';
 import { StaticFeedService } from '../infrastructure/services/opportunity/staticFeed.service';
 import { logger } from '@fresherflow/utils';
+import { sendError, ErrorCode } from '../middleware/errorHandler';
 
 const router = Router();
 
@@ -29,7 +30,7 @@ router.use((req, res, next) => {
 
     if (!cronSecret) {
         logger.error('CRON_SECRET is not configured for github actions');
-        res.status(500).json({ error: 'Server configuration error' });
+        sendError(res, 500, ErrorCode.INTERNAL, 'Server configuration error', req.requestId);
         return;
     }
 
@@ -38,7 +39,7 @@ router.use((req, res, next) => {
 
     if (token !== cronSecret) {
         logger.warn('Unauthorized cron invocation attempt');
-        res.status(401).json({ error: 'Unauthorized' });
+        sendError(res, 401, ErrorCode.UNAUTHENTICATED, 'Unauthorized', req.requestId);
         return;
     }
 

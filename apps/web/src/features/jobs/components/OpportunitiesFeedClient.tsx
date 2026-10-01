@@ -25,25 +25,11 @@ import { useIntersectionObserver } from '@/hooks/useIntersectionObserver';
 import { Opportunity } from '@fresherflow/types';
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/ui/Breadcrumb';
 import { useFeedHeader } from '@/lib/providers/FeedHeaderProvider';
+import { typeParamToEnum, enumToTypeParam } from '@/lib/opportunity/typeParam';
 
 const MobileFilterDrawer = dynamic(() => import('@/features/jobs/components/MobileFilterDrawer').then(m => m.MobileFilterDrawer));
 const OpportunityGrid = dynamic(() => import('@/features/jobs/components/OpportunityGrid').then(m => m.OpportunityGrid));
 const ProfileReadinessRequired = dynamic(() => import('@/features/jobs/components/ProfileReadinessRequired').then(m => m.ProfileReadinessRequired));
-
-const typeParamToEnum = (value: string) => {
-    const v = value.toLowerCase();
-    if (v === 'job' || v === 'jobs' || v === 'full-time' || v === 'full time') return 'JOB';
-    if (v === 'internship' || v === 'internships') return 'INTERNSHIP';
-    if (v === 'walk-in' || v === 'walkin' || v === 'walkins' || v === 'walk-ins') return 'WALKIN';
-    return value.toUpperCase();
-};
-
-const enumToTypeParam = (value: string) => {
-    if (value === 'JOB') return 'job';
-    if (value === 'INTERNSHIP') return 'internship';
-    if (value === 'WALKIN') return 'walk-in';
-    return value.toLowerCase();
-};
 
 interface OpportunitiesFeedClientProps {
     initialData?: {

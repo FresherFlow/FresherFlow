@@ -1572,7 +1572,19 @@ export interface CommunityNotification {
     actor?: CommunityCommentUser | null;
     opportunity?: { id: string; slug: string; title: string } | null;
     commentId?: string | null;
-    payload?: { excerpt?: string; submissionPublished?: boolean } | null;
+    payload?: {
+        excerpt?: string;
+        submissionPublished?: boolean;
+        /**
+         * A thread-follow fanout row (see `notifyThreadFollowers`). The comment
+         * lives in Firebase RTDB, so its id cannot go in `commentId` (a foreign
+         * key to the Postgres comment table) and travels here with the thread
+         * coordinates instead.
+         */
+        threadKind?: 'job' | 'company';
+        threadId?: string;
+        firebaseCommentId?: string;
+    } | null;
     readAt: string | null;
     createdAt: string;
 }

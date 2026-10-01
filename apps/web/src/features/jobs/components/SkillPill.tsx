@@ -68,7 +68,27 @@ export function useSkillIcon(skill: string) {
 
 export function SkillIcon({ skill, className }: { skill: string; className?: string }) {
   const { iconName, isLoaded } = useSkillIcon(skill);
-  
+  return <SkillIconView className={className} iconName={iconName} isLoaded={isLoaded} />;
+}
+
+/**
+ * Presentational half of `SkillIcon`, split out so a caller that already
+ * resolved the icon can render it without calling `useSkillIcon` a second
+ * time. `SkillPill` needs the resolved name to pick its colour variant, so
+ * it calls the hook itself and renders the icon. It used to render
+ * `<SkillIcon>`, which resolved the same skill again - two `useState`
+ * pairs, two effects and two `loadIcons` passes per visible pill, on every
+ * card in the feed.
+ */
+function SkillIconView({
+  className,
+  iconName,
+  isLoaded,
+}: {
+  className?: string;
+  iconName: string | null;
+  isLoaded: boolean;
+}) {
   if (!isLoaded) {
     // Return a placeholder of the same size to avoid layout shift while loading
     return <div className={cn("inline-block", className)} aria-hidden="true" />;
@@ -103,7 +123,7 @@ interface SkillPillProps {
 }
 
 export function SkillPill({ skill, className, size = 'sm', variant = 'default', hideFallbackIcon = false }: SkillPillProps) {
-  const { iconName } = useSkillIcon(skill);
+  const { iconName, isLoaded } = useSkillIcon(skill);
 
   const hasIcon = Boolean(iconName);
   const showIcon = hasIcon || !hideFallbackIcon;
@@ -135,13 +155,14 @@ export function SkillPill({ skill, className, size = 'sm', variant = 'default', 
       )}
     >
       {showIcon && (
-        <SkillIcon
-          skill={skill}
+        <SkillIconView
           className={cn(
             'shrink-0',
             size === 'xs' ? 'w-2.5 h-2.5' : 'w-3.5 h-3.5',
             hasIcon && iconName?.startsWith('simple-icons:') ? 'text-current' : ''
           )}
+          iconName={iconName}
+          isLoaded={isLoaded}
         />
       )}
       <span className="truncate min-w-0">{formatSkillTitleCase(skill)}</span>

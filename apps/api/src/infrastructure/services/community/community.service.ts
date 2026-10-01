@@ -503,6 +503,101 @@ export async function postComment(input: {
     } satisfies CommunityCommentNode;
 }
 
+/**
+ * Notifies the followers of a discussion thread that a new comment landed.
+ *
+ * The live discussion plane is Firebase RTDB, but notifications live in
+ * Postgres. A follow is recorded by the client as
+ * `/commentFollows/{threadKind}/{threadId}/{userId} = true`; this reads that set
+ * with the admin SDK and writes one row per follower except the author.
+ *
+ * `commentId` is intentionally null. It is a foreign key to `OpportunityComment`
+ * (the Postgres comment table), and the comment id here belongs to a Firebase
+ * node — writing it would violate the FK. It travels in `payload` instead, along
+ * with the thread coordinates the client needs to open the right thread.
+ *
+ * `COMMENT_REPLY` is reused rather than adding an enum value, so this needs no
+ * schema migration.
+ */
+export async function notifyThreadFollowers(input: {
+    threadKind: 'job' | 'company';
+    threadId: string;
+    actorId: string;
+    commentId: string;
+    excerpt: string;
+}): Promise<{ notified: number }> {
+    if (!input.threadId) return { notified: 0 };
+
+    try {
+        const { getFirebaseApp } = await import('../../../lib/firebase');
+        const { getDatabase } = await import('firebase-admin/database');
+        const db = getDatabase(getFirebaseApp());
+
+        const snapshot = await db
+            .ref(`/commentFollows/${input.threadKind}/${input.threadId}`)
+            .get();
+        const followers = snapshot.val() as Record<string, unknown> | null;
+        if (!followers) return { notified: 0 };
+
+        const recipientIds = Object.keys(followers).filter((id) => id && id !== input.actorId);
+        if (recipientIds.length === 0) return { notified: 0 };
+
+        // Bounded fanout: a single comment must not mint an unbounded write.
+        const capped = recipientIds.slice(0, 500);
+
+        // `/commentFollows` is client-writable, so it can name ids that no longer
+        // exist in Postgres. `Notification.userId` is a foreign key, and
+        // `createMany` is one batch: a single stale id would abort every row and
+        // notify nobody. Resolve the recipients first so only real users are
+        // written, and a bad follow cannot poison the thread's fanout.
+        const recipients = await prisma.user.findMany({
+            where: { id: { in: capped } },
+            select: { id: true },
+        });
+        if (recipients.length === 0) return { notified: 0 };
+
+        // A job thread is keyed by the opportunity id, which is also what the
+        // notification needs in order to link back to the job. Derived here
+        // rather than taken from the request: the client already sends the same
+        // id as `threadId`, and an unknown id from the body would violate the
+        // FK on `Notification.opportunityId` and drop the whole batch.
+        const opportunityId =
+            input.threadKind === 'job'
+                ? (
+                      await prisma.opportunity.findUnique({
+                          where: { id: input.threadId },
+                          select: { id: true },
+                      })
+                  )?.id ?? null
+                : null;
+
+        const excerpt = input.excerpt.slice(0, 140);
+
+        const result = await prisma.notification.createMany({
+            data: recipients.map(({ id: userId }) => ({
+                userId,
+                type: NotificationType.COMMENT_REPLY,
+                actorId: input.actorId,
+                opportunityId,
+                commentId: null,
+                payload: {
+                    threadKind: input.threadKind,
+                    threadId: input.threadId,
+                    firebaseCommentId: input.commentId,
+                    excerpt,
+                },
+            })),
+        });
+
+        return { notified: result.count };
+    } catch (error) {
+        // Best-effort side channel: a failed fanout must not fail the comment
+        // the author already posted.
+        logger.error('[notifyThreadFollowers] fanout failed', error);
+        return { notified: 0 };
+    }
+}
+
 export async function voteComment(input: {
     commentId: string;
     userId: string;

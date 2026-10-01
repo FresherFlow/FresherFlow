@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { listR2Objects, downloadJsonFromR2, uploadJsonToR2 } from '@fresherflow/utils/r2';
 import { ATS_PROVIDERS } from '@fresherflow/pipeline';
+import { readJsonFileSafe, safeJsonStringify } from './resilient-json.js';
 
 // State storage backend. Discovery bots are intentionally isolated:
 // - 'r2' (default): shared R2 state used by the ATS discovery bot
@@ -24,27 +25,38 @@ async function writeLocalJsonAtomic(file: string, data: unknown): Promise<void> 
     const dir = path.dirname(file);
     await fs.mkdir(dir, { recursive: true });
     const tmp = `${file}.${process.pid}.tmp`;
-    await fs.writeFile(tmp, JSON.stringify(data), 'utf8');
+    // safeJsonStringify: state maps are large and built incrementally. A
+    // circular reference would otherwise throw here and lose the whole shard.
+    await fs.writeFile(tmp, safeJsonStringify(data), 'utf8');
     await fs.rename(tmp, file);
 }
 
 function getBucket(): string {
-    if (!process.env.R2_BUCKET_NAME) throw new Error('R2_BUCKET_NAME is not set.');
-    return process.env.R2_BUCKET_NAME;
+    // Callers already guard on R2_BUCKET_NAME, so reaching here means a caller
+    // regressed. Return empty rather than throw: a missing bucket degrades state
+    // persistence to a warning instead of failing the whole discovery run.
+    const bucket = (process.env.R2_BUCKET_NAME || '').trim();
+    if (!bucket) {
+        console.warn('R2_BUCKET_NAME is not set — state persistence to R2 is disabled for this run.');
+        return '';
+    }
+    return bucket;
 }
 
 // Load cached visited URLs from sharded R2 folders
 export async function loadVisited(): Promise<Record<string, string[]>> {
     if (STATE_STORAGE === 'local') {
         const { visited } = localStatePaths();
-        try {
-            const data = JSON.parse(await fs.readFile(visited, 'utf8'));
-            if (data && typeof data === 'object') {
-                console.log(`Loading visited state from GitHub-cache file: ${visited}`);
-                return data;
-            }
-        } catch {}
-        console.warn(`No cached visited state at ${visited}, starting fresh.`);
+        const data = await readJsonFileSafe<Record<string, string[]>>(visited);
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+            console.log(`Loading visited state from GitHub-cache file: ${visited}`);
+            return data;
+        }
+        if (data !== null) {
+            console.warn(`⚠️  visited state at ${visited} is not an object — starting fresh.`);
+        } else {
+            console.warn(`No cached visited state at ${visited}, starting fresh.`);
+        }
         return {};
     }
     if (!process.env.R2_BUCKET_NAME) {
@@ -105,14 +117,16 @@ export async function saveVisited(visited: Record<string, string[]>) {
 export async function loadRejectedReasons(): Promise<Record<string, string>> {
     if (STATE_STORAGE === 'local') {
         const { rejected } = localStatePaths();
-        try {
-            const data = JSON.parse(await fs.readFile(rejected, 'utf8'));
-            if (data && typeof data === 'object') {
-                console.log(`Loading rejected reasons from GitHub-cache file: ${rejected}`);
-                return data;
-            }
-        } catch {}
-        console.warn(`No cached rejected reasons at ${rejected}, starting fresh.`);
+        const data = await readJsonFileSafe<Record<string, string>>(rejected);
+        if (data && typeof data === 'object' && !Array.isArray(data)) {
+            console.log(`Loading rejected reasons from GitHub-cache file: ${rejected}`);
+            return data;
+        }
+        if (data !== null) {
+            console.warn(`⚠️  rejected reasons at ${rejected} is not an object — starting fresh.`);
+        } else {
+            console.warn(`No cached rejected reasons at ${rejected}, starting fresh.`);
+        }
         return {};
     }
     if (!process.env.R2_BUCKET_NAME) {
@@ -170,14 +184,16 @@ export async function saveRejectedReasons(reasons: Record<string, string>) {
 export async function loadPostedLinks(): Promise<string[]> {
     if (STATE_STORAGE === 'local') {
         const { posted } = localStatePaths();
-        try {
-            const data = JSON.parse(await fs.readFile(posted, 'utf8'));
-            if (Array.isArray(data)) {
-                console.log(`Loading posted links from GitHub-cache file: ${posted}`);
-                return data;
-            }
-        } catch {}
-        console.warn(`No cached posted links at ${posted}, starting fresh.`);
+        const data = await readJsonFileSafe<string[]>(posted);
+        if (Array.isArray(data)) {
+            console.log(`Loading posted links from GitHub-cache file: ${posted}`);
+            return data.filter((u): u is string => typeof u === 'string');
+        }
+        if (data !== null) {
+            console.warn(`⚠️  posted links at ${posted} is not an array — starting fresh.`);
+        } else {
+            console.warn(`No cached posted links at ${posted}, starting fresh.`);
+        }
         return [];
     }
     // ATS bot never posts to social — nothing to track in R2 mode

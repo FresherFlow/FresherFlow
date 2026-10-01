@@ -23,6 +23,10 @@ export function formatDeadline(opportunity: Opportunity) {
 export function sortTimelineEvents(events: Opportunity['events'] = []): TimelineEventView[] {
     return (events || [])
         .map((event): TimelineEventView => ({ ...event, _dt: new Date(event.eventDate) }))
+        // An unparseable `eventDate` becomes an Invalid Date, which sorts as
+        // NaN and drops out of every downstream comparison. Filter it here so
+        // no consumer has to defend against it.
+        .filter((event) => !Number.isNaN(event._dt.getTime()))
         .sort((a, b) => a._dt.getTime() - b._dt.getTime());
 }
 

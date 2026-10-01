@@ -46,7 +46,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     }
 
     if (!user) {
-        return <div className="opacity-0 pointer-events-none">{children}</div>; // Will redirect
+        // `null`, not `<div className="opacity-0 pointer-events-none">`. Hidden
+        // markup still mounts and still runs effects, so every gated page's data
+        // fetches fired for anonymous visitors on top of the redirect — and
+        // `pointer-events-none` does not stop scripted events. Nothing should be
+        // in the DOM until the session is known.
+        return null;
     }
 
     return <>{children}</>;
@@ -99,7 +104,9 @@ export function UsernameGate({ children }: { children: React.ReactNode }) {
     }
 
     if (!user) {
-        return <div className="opacity-0 pointer-events-none">{children}</div>; // Will redirect
+        // See AuthGate above: hidden-but-mounted children still run their
+        // effects and their requests.
+        return null;
     }
 
     return <>{children}</>;

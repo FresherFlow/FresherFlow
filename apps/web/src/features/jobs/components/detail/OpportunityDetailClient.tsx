@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -28,7 +28,6 @@ import { slugify } from '@fresherflow/utils/slugify';
 import { getCompanySlug } from '@/features/jobs/domain/opportunityDisplay';
 
 // Subcomponents
-const WalkInDetailsCard = dynamic(() => import('@/features/jobs/components/detail/WalkInDetailsCard').then(m => m.WalkInDetailsCard));
 const ComplexityCard = dynamic(() => import('@/features/jobs/components/detail/ComplexityCard').then(m => m.ComplexityCard));
 const RelatedOpportunities = dynamic(() => import('@/features/jobs/components/detail/RelatedOpportunities').then(m => m.RelatedOpportunities));
 import {
@@ -37,19 +36,24 @@ import {
     AdditionalDetailsBox
 } from '@/features/jobs/components/detail/DetailRequirements';
 import { DetailTimeline } from '@/features/jobs/components/detail/DetailTimeline';
-import { DetailCampusDriveInfo } from '@/features/jobs/components/detail/DetailCampusDriveInfo';
 import { DetailHeroSection } from '@/features/jobs/components/detail/DetailHeroSection';
 import { DetailSidebarActions } from '@/features/jobs/components/detail/DetailSidebarActions';
-import { ExpiredWarning } from '@/features/jobs/components/detail/ExpiredWarning';
 import { DescriptionSection } from '@/features/jobs/components/detail/DescriptionSection';
+import {
+    CampusDriveInfoIfCampus,
+    ExpiredWarningIfAny,
+    FormComplexityCard,
+    WalkInDetailsCardIfAny,
+} from '@/features/jobs/components/detail/OpportunityDetailSections';
 import { GovernmentJobDetailView } from '@/features/jobs/components/detail/GovernmentJobDetailView';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
+import { JobDiscussionDock } from '@/features/jobs/components/discussion/JobDiscussionDock';
 // import { AppPromoBanner } from '@/features/landing/AppPromoBanner';
 
 // Hooks & Utils
 import { useOpportunityDetail } from '@/features/jobs/hooks/useOpportunityDetail';
 import { useOpportunityDerivedState } from '@/features/jobs/hooks/useOpportunityDerivedState';
-import { getDriveDetails, isInternshipOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
+import { isInternshipOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 
 type Props = {
     id: string;
@@ -65,8 +69,7 @@ export default function OpportunityDetailClient({
     validDirectoryLinks
 }: Props) {
     const router = useRouter();
-    const searchParams = useSearchParams();
-    const { user, profile } = useAuth();
+    const { user } = useAuth();
 
     // Core Logic Hook
     /* Guest Save. Opens the in-page auth modal instead of a toast, remembers the
@@ -115,7 +118,7 @@ export default function OpportunityDetailClient({
         }
     }, [user, handleToggleSave]);
 
-    const ds = useOpportunityDerivedState(opp as Opportunity, profile, searchParams);
+    const ds = useOpportunityDerivedState(opp as Opportunity);
 
     const [showStickyHeader, setShowStickyHeader] = useState(false);
 
@@ -220,7 +223,6 @@ export default function OpportunityDetailClient({
                         handleShare={handleShare}
                         handleCopyLink={handleCopyLink}
                         listingState={ds.listingState}
-                        formatDeadline={ds.formatDeadline}
                     />
 
 
@@ -319,16 +321,9 @@ export default function OpportunityDetailClient({
                             displaySalary={ds.displaySalary}
                             locationInfo={ds.locationInfo}
                             formatDeadline={ds.formatDeadline}
-                            isExpired={ds.isExpired}
-                            isClosingSoon={ds.isClosingSoon}
-                            isMobile={false}
-                            hasApplyLink={ds.hasApplyLink}
-                            handleApply={handleApply}
-                            handleShare={handleShare}
-                            handleCopyLink={handleCopyLink}
                         />
 
-                        {opp.expiresAt && ds.isExpired(opp) && <ExpiredWarning opportunityId={opp.id} opportunityTitle={opp.title} />}
+                        <ExpiredWarningIfAny opp={opp} isExpired={ds.isExpired} />
 
                         {/* Post-apply confirmation. Self-gates on the armed
                             session flag, so it renders nothing until the user
@@ -350,21 +345,16 @@ export default function OpportunityDetailClient({
                             <AdditionalDetailsBox opp={opp} />
                         </div>
 
-                        {opp.applicationDetails && opp.applicationDetails.method === 'FORM' && (
-                            <ComplexityCard applicationDetails={opp.applicationDetails} />
-                        )}
+                        <FormComplexityCard opp={opp} />
 
-                        {isWalkinOpportunity(opp) && getDriveDetails(opp) && (
-                            <WalkInDetailsCard walkInDetails={getDriveDetails(opp) as NonNullable<Opportunity['walkInDetails']>} />
-                        )}
+                        <WalkInDetailsCardIfAny opp={opp} />
 
-                        {ds.isCampusDrive && (
-                            <DetailCampusDriveInfo
-                                driveMeta={ds.driveMeta}
-                                hasApplyLink={ds.hasApplyLink}
-                                handleApply={handleApply}
-                            />
-                        )}
+                        <CampusDriveInfoIfCampus
+                            isCampusDrive={ds.isCampusDrive}
+                            driveMeta={ds.driveMeta}
+                            hasApplyLink={ds.hasApplyLink}
+                            handleApply={handleApply}
+                        />
 
                         <DetailTimeline
                             timelineEvents={ds.timelineEvents}
@@ -434,13 +424,11 @@ export default function OpportunityDetailClient({
                                 isCampusDrive={ds.isCampusDrive}
                                 timelineEvents={ds.timelineEvents}
                                 jumpToTimeline={jumpToTimeline}
-                                loginFromDetailHref={ds.loginFromDetailHref}
                                 listingState={ds.listingState}
                                 formatDeadline={ds.formatDeadline}
                                 handleApply={handleApply}
                                 handleToggleSave={handleToggleSave}
                                 handleShare={handleShare}
-                                handleCopyLink={handleCopyLink}
                             />
                             <div className="border-t border-border/40" />
                             <DetailRequirements
@@ -602,6 +590,10 @@ export default function OpportunityDetailClient({
                     </BrandButton>
                 </div>
             )}
+            {/* Per-job discussion as a floating dock. Client-only and off the
+                ISR content path, so the public, crawlable page is unchanged. */}
+            <JobDiscussionDock opportunityId={opp.id} jobTitle={opp.title} />
+
             {/* In-page auth, so a guest tapping Save keeps their place and
                 their pending action. Falls back to the full /login page from
                 inside the modal if they prefer it. */}

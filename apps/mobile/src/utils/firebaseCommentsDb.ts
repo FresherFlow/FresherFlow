@@ -31,6 +31,42 @@ function getDb() {
 }
 
 /**
+ * Keeps `/commentIndex/{jobId}` in step with the thread so web can render a
+ * badge and the /discussions inbox without reading any thread.
+ *
+ * A transaction, not a read-then-write: web and mobile both write this node and
+ * an increment must not be lost to a concurrent update. `count` is the only
+ * field web relies on; the preview fields are refreshed on each new comment.
+ */
+async function bumpCommentIndex(
+  jobId: string,
+  delta: 1 | -1,
+  last?: { text: string; author: string }
+): Promise<void> {
+  const database = getDb();
+  if (!database) return;
+
+  try {
+    await database.ref(`/commentIndex/${jobId}`).transaction((current: unknown) => {
+      const existing = current && typeof current === 'object' ? (current as Record<string, unknown>) : {};
+      const next: Record<string, unknown> = {
+        ...existing,
+        count: Math.max(0, (Number(existing.count) || 0) + delta),
+      };
+      if (delta > 0 && last) {
+        next.lastActivityAt = Date.now();
+        next.lastText = last.text.slice(0, 140);
+        next.lastAuthor = last.author;
+      }
+      return next;
+    });
+  } catch (error) {
+    // The index is a convenience: a failed bump must never fail the comment.
+    console.warn('[firebaseCommentsDb] Failed to update comment index:', error);
+  }
+}
+
+/**
  * Posts a new comment to a specific opportunity in Firebase RTDB.
  */
 export async function postFirebaseComment(
@@ -60,6 +96,11 @@ export async function postFirebaseComment(
 
     await newCommentRef.set(commentData);
 
+    await bumpCommentIndex(jobId, 1, {
+      text: commentData.text,
+      author: commentData.user.fullName || commentData.user.username || 'Fresher',
+    });
+
     return {
       id: commentId,
       text: commentData.text,
@@ -85,6 +126,7 @@ export async function deleteFirebaseComment(jobId: string, commentId: string): P
 
   try {
     await database.ref(`/comments/${jobId}`).child(commentId).remove();
+    await bumpCommentIndex(jobId, -1);
     return true;
   } catch (error) {
     console.warn('[firebaseCommentsDb] Failed to delete comment:', error);

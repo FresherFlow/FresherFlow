@@ -31,7 +31,7 @@ const handleBroadcast = async (req: Request, res: Response): Promise<void> => {
 
         const notificationBody = body || message;
         if (!title || !notificationBody) {
-            res.status(400).json({ error: { message: 'Title and body/message are required' } });
+            res.status(400).json({ error: { code: 'VALIDATION_FAILED', message: 'Title and body/message are required', requestId: req.requestId } });
             return;
         }
 

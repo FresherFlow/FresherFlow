@@ -6,6 +6,7 @@ export const USER_PATHS = [
     "/alerts",
     "/tracker",
     "/saved",
+    "/moderator",
 ];
 
 export const ADMIN_ROOT_PREFIXES = [

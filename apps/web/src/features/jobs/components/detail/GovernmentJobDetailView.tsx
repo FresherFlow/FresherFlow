@@ -21,6 +21,8 @@ import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTria
 import UserGroupIcon from '@heroicons/react/24/outline/UserGroupIcon';
 import InformationCircleIcon from '@heroicons/react/24/outline/InformationCircleIcon';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
+import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
+import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 
 import React from 'react';
@@ -47,7 +49,6 @@ interface GovernmentJobDetailViewProps {
     handleShare: () => void;
     handleCopyLink: () => void;
     listingState: string;
-    formatDeadline: (opp: Opportunity) => string | null;
 }
 
 
@@ -290,12 +291,22 @@ export function GovernmentJobDetailView({
     handleSetAction,
     hasApplyLink,
     handleApply,
+    handleToggleSave,
     handleShare,
     handleCopyLink,
     listingState,
 }: GovernmentJobDetailViewProps) {
     const details = opp.governmentJobDetails || {} as any;
     const hasSalaryInfo = Boolean(details.basicPay || details.payLevel || (details.allowances && details.allowances.length > 0) || details.extraMetadata?.promotionPath || details.extraMetadata?.careerGrowth || details.extraMetadata?.promotionOpportunities);
+
+    const isOppSaved = Boolean(opp.isSaved);
+
+    // Guests are handled by the handler itself: it opens the auth modal and
+    // replays the intent on return. No toast here, that would double-prompt.
+    const handleSaveClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        void handleToggleSave();
+    };
 
     // Helper to clean leading asterisk from text
     const cleanAsteriskPrefix = (text: string) => {
@@ -823,7 +834,21 @@ export function GovernmentJobDetailView({
                 )}
 
                 {/* Share and Copy Links */}
-                <div className="grid grid-cols-2 gap-2 pt-1 mt-4">
+                <div className="grid grid-cols-3 gap-2 pt-1 mt-4">
+                    <button
+                        type="button"
+                        onClick={handleSaveClick}
+                        aria-pressed={isOppSaved}
+                        className={cn(
+                            "flex items-center justify-center gap-1.5 h-9 rounded-lg border text-xs font-bold uppercase tracking-wider transition-colors",
+                            isOppSaved
+                                ? "border-primary/20 bg-primary/10 text-primary"
+                                : "border-border bg-muted/20 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                    >
+                        {isOppSaved ? <BookmarkSolidIcon className="w-3.5 h-3.5" /> : <BookmarkIcon className="w-3.5 h-3.5" />}
+                        {isOppSaved ? 'Saved' : 'Save'}
+                    </button>
                     <button
                         onClick={handleShare}
                         className="flex items-center justify-center gap-1.5 h-9 rounded-lg border border-border bg-muted/20 text-muted-foreground hover:bg-muted hover:text-foreground text-xs font-bold uppercase tracking-wider transition-colors"

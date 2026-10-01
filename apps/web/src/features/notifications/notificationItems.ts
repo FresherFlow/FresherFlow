@@ -4,6 +4,7 @@ import type {
     CommunityNotification,
 } from "@fresherflow/types";
 import { ALERTS_UPDATED_EVENT } from "@/lib/cache/unreadCount";
+import { formatRelativeTime } from "@/lib/utils/relativeTime";
 
 /**
  * Tell every mounted bell that the unread counts are stale. Reading one is
@@ -39,7 +40,31 @@ export type NotificationItem = {
      * this a notification such as a referral response is a dead row.
      */
     fallbackHref?: string | null;
+    /**
+     * Explicit destination. Takes priority over `opportunitySlug` because a row
+     * can belong to a job and still need to land somewhere more specific than
+     * the job page — a thread-follow notification opens the discussion itself.
+     */
+    href?: string | null;
 };
+
+/**
+ * Where a thread-follow notification should open. Job threads are keyed by the
+ * opportunity id and link through the job's slug; company threads have no
+ * opportunity, so the slug *is* the thread id.
+ */
+function threadFollowHref(
+    threadKind: string | null,
+    threadId: string | null,
+    opportunitySlug: string | null,
+): string | null {
+    if (!threadId) return null;
+    if (threadKind === "company") return `/companies/${threadId}?discuss=1`;
+    if (threadKind === "job" && opportunitySlug) {
+        return `/jobs/${opportunitySlug}?discuss=1`;
+    }
+    return null;
+}
 
 function readPayloadString(
     notification: CommunityNotification,
@@ -110,6 +135,7 @@ export function toAlertItem(delivery: AlertDelivery): NotificationItem {
         source: "alerts",
         alertKind: delivery.kind,
         fallbackHref: null,
+        href: null,
     };
 }
 
@@ -126,12 +152,32 @@ export function toNotificationItem(
 ): NotificationItem {
     const name = actorName(notification);
     const opportunityTitle = notification.opportunity?.title ?? null;
+    const opportunitySlug = notification.opportunity?.slug ?? null;
     const company = readPayloadString(notification, "company");
+    // Thread-follow rows ride COMMENT_REPLY (no new enum value, no migration) but
+    // they are not replies to the reader's comment. The payload says which thread
+    // they belong to, and that is what tells the two apart.
+    const threadKind = readPayloadString(notification, "threadKind");
+    const threadId = readPayloadString(notification, "threadId");
+    const isThreadFollow =
+        notification.type === "COMMENT_REPLY" &&
+        (threadKind === "job" || threadKind === "company") &&
+        threadId !== null;
     let title: string;
 
     switch (notification.type) {
         case "COMMENT_REPLY":
-            title = `${name} replied to your comment`;
+            if (!isThreadFollow) {
+                title = `${name} replied to your comment`;
+                break;
+            }
+            if (opportunityTitle) {
+                title = `New comment on ${opportunityTitle}`;
+            } else if (threadKind === "company") {
+                title = "New comment in a company discussion";
+            } else {
+                title = "New comment in a discussion you follow";
+            }
             break;
         case "COMMENT_VOTE":
             title = `${name} voted on your comment`;
@@ -229,7 +275,7 @@ export function toNotificationItem(
         body: notification.payload?.excerpt ?? null,
         isRead: Boolean(notification.readAt),
         receivedAt: new Date(notification.createdAt).getTime(),
-        opportunitySlug: notification.opportunity?.slug ?? null,
+        opportunitySlug,
         opportunityTitle,
         commentId: notification.commentId ?? null,
         source: "community",
@@ -241,23 +287,21 @@ export function toNotificationItem(
             !notification.opportunity?.slug
                 ? "/account?tab=referral"
                 : null,
+        // A thread-follow row opens the discussion itself, not just the job.
+        href: isThreadFollow
+            ? threadFollowHref(threadKind, threadId, opportunitySlug)
+            : null,
     };
 }
 
+/**
+ * Kept as the notification-facing name; the rule itself lives in
+ * `lib/utils/relativeTime` so the community surfaces share it. Past a week a
+ * notification shows its date. "date" is explicit rather than a default so this
+ * file cannot drift onto the other fallback by accident.
+ */
 export function timeAgo(receivedAt: number): string {
-    const diffMs = Date.now() - receivedAt;
-    if (diffMs < 0) return "just now";
-    const mins = Math.floor(diffMs / 60000);
-    if (mins < 1) return "just now";
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    if (days < 7) return `${days}d ago`;
-    return new Date(receivedAt).toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-    });
+    return formatRelativeTime(receivedAt, "date");
 }
 
 export function groupByDay(

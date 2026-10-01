@@ -17,6 +17,7 @@
     "@fresherflow/utils": "workspace:*",
     "@supabase/supabase-js": "^2.112.0",
     "cheerio": "^1.0.0",
+    "fast-xml-parser": "^5.11.2",
     "playwright": "^1.62.1"
   },
   "devDependencies": {

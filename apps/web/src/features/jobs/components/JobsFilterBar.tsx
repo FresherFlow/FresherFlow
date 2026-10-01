@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@repo/ui/utils/cn';
+import { useClickOutside } from '@/hooks/useClickOutside';
 import type { WalkinDrivePeriod } from '@/features/jobs/utils/walkinMapUtils';
 import {
     getFeedKind,
@@ -81,21 +82,6 @@ const pillBase =
     'h-8 px-3.5 rounded-full text-sm font-medium flex items-center gap-1.5 whitespace-nowrap select-none cursor-pointer outline-none transition-colors duration-150';
 const pillIdle = 'text-foreground hover:bg-muted';
 const pillActive = 'bg-primary/10 text-primary font-semibold';
-
-function useClickOutside(ref: React.RefObject<HTMLElement | null>, handler: () => void) {
-    useEffect(() => {
-        const listener = (e: MouseEvent | TouchEvent) => {
-            if (!ref.current || ref.current.contains(e.target as Node)) return;
-            handler();
-        };
-        document.addEventListener('mousedown', listener);
-        document.addEventListener('touchstart', listener);
-        return () => {
-            document.removeEventListener('mousedown', listener);
-            document.removeEventListener('touchstart', listener);
-        };
-    }, [ref, handler]);
-}
 
 export function JobsFilterBar({
     filters,

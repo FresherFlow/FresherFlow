@@ -89,6 +89,7 @@ import candidateInterestsRoutes from './routes/candidateInterests';
 import candidateProjectsRoutes from './routes/candidateProjects';
 import communityJobsRouter from './routes/community/jobs';
 import communityNotificationsRouter from './routes/community/notifications';
+import communityDiscussionActivityRouter from './routes/community/discussionActivity';
 import communityUsersRouter from './routes/community/users';
 import communityPostsRouter from './routes/community/communityPosts';
 import communityInterviewsRouter from './routes/community/interviews';
@@ -560,6 +561,7 @@ if (isUserMode) {
     app.use('/api/interests', candidateInterestsRoutes);
     app.use('/api/candidate/projects', candidateProjectsRoutes);
     app.use('/api/jobs', communityJobsRouter);
+    app.use('/api/discussions', communityDiscussionActivityRouter);
     app.use('/api/notifications', communityNotificationsRouter);
     app.use('/api/users', communityUsersRouter);
     app.use('/api/community', communityPostsRouter);
@@ -609,8 +611,8 @@ if (isAdminMode) {
 app.use((req, res) => {
     res.status(404).json({
         error: {
+            code: 'NOT_FOUND',
             message: 'Route not found',
-            path: req.path,
             requestId: req.requestId
         }
     });

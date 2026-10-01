@@ -7,6 +7,7 @@ import { PaginationControls } from '@/ui/data-table/DataTablePagination';
 import { Skeleton } from '@/ui/Skeleton';
 import { EmptyState } from '@/ui/EmptyState';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
+import { toSafeOutboundUrl } from '@/lib/utils/safeOutboundUrl';
 import { Opportunity, HashTab } from '../types';
 
 interface OpportunityQueueTabProps {
@@ -125,9 +126,9 @@ export function OpportunityQueueTab({
  >
  <CodeBracketIcon className="w-3 h-3" /> payload
  </button>
- {job.applyLink && (
+ {toSafeOutboundUrl(job.applyLink) && (
  <a
- href={job.applyLink}
+ href={toSafeOutboundUrl(job.applyLink) ?? undefined}
  target="_blank"
  rel="noopener noreferrer"
  className="text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer flex items-center gap-1"

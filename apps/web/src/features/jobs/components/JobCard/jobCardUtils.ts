@@ -3,25 +3,27 @@ import { getOpportunityDisplaySalary, normalizeSalaryInput } from '@/features/jo
 import { getDriveMetadata, isCampusDriveOpportunity } from '@/features/jobs/domain/driveTimeline';
 import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
 import { getDriveDetails, isInternshipOpportunity, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
+import { getDeclaredPassoutYears } from '@/features/jobs/domain/passoutYears';
 
 export function resolvePassoutYears(job: Opportunity): number[] {
-    let passoutYears = [...(job.allowedPassoutYears || [])];
-    if (passoutYears.length === 0 && job.passoutYearMin && job.passoutYearMax) {
-        const min = Number(job.passoutYearMin);
-        const max = Number(job.passoutYearMax);
-        if (!isNaN(min) && !isNaN(max) && min <= max) {
-            passoutYears = Array.from({ length: max - min + 1 }, (_, i) => min + i);
-        }
-    }
-    if (passoutYears.length === 0 && job.title) {
-        const titleMatch = job.title.match(/(202[0-9]|2030)/g);
-        if (titleMatch) passoutYears = Array.from(new Set(titleMatch.map(Number))).sort((a, b) => a - b);
-    }
-    if (passoutYears.length === 0 && job.description) {
-        const descMatch = job.description.match(/(202[0-9]|2030)/g);
-        if (descMatch) passoutYears = Array.from(new Set(descMatch.map(Number))).sort((a, b) => a - b);
-    }
-    return passoutYears;
+    const declared = getDeclaredPassoutYears(job);
+    if (declared.length > 0) return declared;
+    return inferPassoutYearsFromText(job);
+}
+
+/**
+ * Display-only fallback: a card may show "Batch 2024" when the listing states
+ * the year only in its title or description. Filtering must not infer this way
+ * — that is why it lives here and not in `getDeclaredPassoutYears`.
+ */
+function inferPassoutYearsFromText(job: Opportunity): number[] {
+    const yearsIn = (text?: string | null): number[] => {
+        const matches = text?.match(/(202[0-9]|2030)/g);
+        return matches ? Array.from(new Set(matches.map(Number))).sort((a, b) => a - b) : [];
+    };
+
+    const fromTitle = yearsIn(job.title);
+    return fromTitle.length > 0 ? fromTitle : yearsIn(job.description);
 }
 
 export function formatPassoutYears(years: number[]): string | null {
@@ -144,18 +146,6 @@ export function reorderSkillsBySearch(skills: string[] = [], searchQuery?: strin
     return [...matches, ...nonMatches];
 }
 
-export function getVisibleSkills(skills: string[] = [], budget = 30) {
-    const visible: string[] = [];
-    let currentLen = 0;
-    for (const s of skills) {
-        const est = s.length + 3;
-        if (currentLen + est > budget && visible.length > 0) break;
-        visible.push(s);
-        currentLen += est;
-    }
-    return { visible, remainingCount: skills.length - visible.length };
-}
-
 export function getPostedLabel(job: Opportunity): string | null {
     const postedAt = job.postedAt ? new Date(job.postedAt) : null;
     if (!postedAt || Number.isNaN(postedAt.getTime())) return null;
@@ -201,19 +191,6 @@ export function getExpiryLabel(job: Opportunity, isGovernment: boolean): string 
     return `Closes in ${days} days`;
 }
 
-export function getEligibilityLine(job: Opportunity): string | null {
-    const passoutYears = resolvePassoutYears(job);
-    const formattedBatch = formatPassoutYears(passoutYears);
-    const formattedEdu = formatEducationEligibility(job);
-
-    const parts: string[] = [];
-    if (formattedBatch) parts.push(`Batch ${formattedBatch}`);
-    if (formattedEdu) parts.push(formattedEdu);
-
-    if (parts.length === 0) return null;
-    return parts.join(' · ');
-}
-
 export function getSalaryLabel(job: Opportunity, isGovernment: boolean, isDrive: boolean): string | null {
     const govtMeta = job.governmentJobDetails as { payScale?: string } | undefined;
     const payScale = govtMeta?.payScale;
@@ -232,11 +209,4 @@ export function getJobTypeLabel(job: Opportunity, isDrive: boolean, isGovernment
     if (isInternshipOpportunity(job)) return 'Intern';
     if (isWalkinOpportunity(job)) return 'Walk-in';
     return 'Job';
-}
-
-export function getAccentBorderClass(job: Opportunity, isDrive: boolean, isGovernment: boolean, isWalkin: boolean): string {
-    if (isWalkin || isDrive) return 'border-l-amber-500';
-    if (isGovernment) return 'border-l-slate-500';
-    if (isInternshipOpportunity(job)) return 'border-l-violet-500';
-    return 'border-l-primary';
 }

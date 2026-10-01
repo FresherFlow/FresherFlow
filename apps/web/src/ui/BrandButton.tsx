@@ -23,7 +23,9 @@ type BrandSize = 'sm' | 'md' | 'icon'
 
 const VARIANTS: Record<BrandVariant, string> = {
     // Primary CTA. Hover lifts by a pixel; active presses in.
-    solid: 'bg-[var(--ff-accent)] text-paper hover:opacity-90 active:scale-[0.98]',
+    // Label is navy, not paper: paper on the brand orange is 3.2:1 and fails AA
+    // at this size. See --color-ff-accent-ink in globals.css.
+    solid: 'bg-[var(--ff-accent)] text-[var(--color-ff-accent-ink)] hover:opacity-90 active:scale-[0.98]',
     // Solid but brand-neutral. For actions that leave the site, so the loud
     // brand accent is not spent on a click through to someone else's page.
     neutral: 'bg-foreground text-background hover:opacity-90 active:scale-[0.98]',

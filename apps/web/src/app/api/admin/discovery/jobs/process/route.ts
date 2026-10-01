@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRateLimit } from '@/lib/api/rateLimit';
+import { withAdminAuth } from '@/lib/server/adminAuth';
 
 const INGESTION_URL = process.env.INGESTION_SERVICE_URL || process.env.NEXT_PUBLIC_INGESTION_URL || process.env.INGESTION_URL || 'http://localhost:3005';
 const INGESTION_SECRET = process.env.INGESTION_SECRET || process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET || '';
@@ -35,4 +36,4 @@ async function processJobs(request: NextRequest) {
   }
 }
 
-export const POST = withRateLimit(processJobs, { windowMs: 60_000, max: 30, keyPrefix: 'discovery-jobs-process' });
+export const POST = withRateLimit(withAdminAuth(processJobs), { windowMs: 60_000, max: 30, keyPrefix: 'discovery-jobs-process' });

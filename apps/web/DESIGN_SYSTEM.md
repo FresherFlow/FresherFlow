@@ -127,6 +127,36 @@ For social media buttons and brand-specific UI:
 |---|---|---|
 | `bg-surface-warm` | `--color-surface-warm` | Warm gray surfaces (CaptionsTool) |
 
+### Brand Accent (Landing / Marketing)
+
+| Token | Value | Use Case |
+|---|---|---|
+| `bg-ff-accent` / `text-ff-accent` | `--color-ff-accent` `#ff571a` | Hero CTA fill, marquee, section dots, accent text on paper |
+| `text-ff-accent-ink` | `--color-ff-accent-ink` navy | Label text **on** a `bg-ff-accent` fill |
+
+The brand orange is a bright field, so a light label on it does not reach WCAG AA:
+`--color-paper` on `--color-ff-accent` is **3.2:1** and fails the 4.5:1 required
+for the 13.5px semibold CTA labels. `--color-ff-accent-ink` (the same deep navy
+as `--color-primary`) is **4.97:1** on that fill, so every solid accent CTA pairs
+`bg-ff-accent` with `text-ff-accent-ink`.
+
+```tsx
+// Correct — solid accent CTA
+<Link className="bg-ff-accent text-ff-accent-ink" />
+
+// Wrong — 3.2:1, fails AA
+<Link className="bg-ff-accent text-paper" />
+```
+
+`text-ff-accent` as a **text colour on paper** is a separate, still-open problem
+worth knowing about: it is also 3.2:1, and it is currently used below the 4.5:1
+threshold at small sizes — `AuthModal`/`DidYouApplyCard` (`text-xs`),
+`ComparisonSection` (10.5px) and the `LandingMarquee`/`ProofSection` inline
+`<b>` values. The large `StatementBand` headline is fine (display size). Fixing
+those means darkening the *text* usage of the orange without changing the brand
+fill, which is a separate change; do not "fix" it by editing `--ff-accent`, since
+that would alter the CTA fill and the logo-adjacent brand marks at the same time.
+
 ### Neutral Scale (Static)
 
 Used for decorative elements, illustrations, or when semantic tokens aren't appropriate.

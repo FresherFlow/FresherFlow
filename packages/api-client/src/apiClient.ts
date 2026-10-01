@@ -93,8 +93,19 @@ export class ApiClient {
                     normalizedError = new OfflineError();
                 } else {
                     const status = error.response.status;
-                    const body = error.response.data as { error?: { message?: string }; message?: string } | null | undefined;
-                    const message = body?.error?.message || body?.message || `Request failed (${status})`;
+                    const body = error.response.data as
+                        | { error?: { message?: string } | string; message?: string }
+                        | null
+                        | undefined;
+                    // `error` has been three different shapes across this API over
+                    // time: an object envelope, a bare string, and occasionally a
+                    // flat `{ message }`. Unwrap all of them, otherwise the reason
+                    // is discarded and the user only sees "Request failed (400)".
+                    const errorField = body?.error;
+                    const message =
+                        (typeof errorField === 'string' ? errorField : errorField?.message) ||
+                        body?.message ||
+                        `Request failed (${status})`;
                     normalizedError = new HttpError(message, status, body);
                 }
 

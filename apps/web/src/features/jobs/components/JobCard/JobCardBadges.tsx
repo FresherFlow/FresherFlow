@@ -40,11 +40,13 @@ export function JobCardBadges({
 }: JobCardBadgesProps) {
     const router = useRouter();
 
-    const pill = compact
-        ? 'inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap shrink-0 min-w-0'
-        : 'inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap shrink-0 min-w-0';
-    const icon = compact ? 'w-3 h-3 shrink-0' : 'w-3 h-3 shrink-0';
-    const text = compact ? 'truncate text-xs' : 'truncate text-xs';
+    // These three used to branch on `compact` with the same string in both arms.
+    // The mobile card's density comes from which badges it is given (two skills,
+    // no meta strip) and from `SkillPill`'s size, not from these classes, so the
+    // shared pill geometry is stated once.
+    const pill = 'inline-flex items-center gap-1 text-xs font-medium whitespace-nowrap shrink-0 min-w-0';
+    const icon = 'w-3 h-3 shrink-0';
+    const text = 'truncate text-xs';
 
     const showSkills = measure || ready;
 
@@ -98,13 +100,13 @@ export function JobCardBadges({
 
             {showSkills && skills.map((skill) => {
                 const pillNode = (
-<SkillPill
-                            skill={skill}
-                            size={compact ? 'xs' : 'sm'}
-                            hideFallbackIcon={compact}
-                            variant="plain"
-                            className="h-6"
-                        />
+                    <SkillPill
+                        skill={skill}
+                        size={compact ? 'xs' : 'sm'}
+                        hideFallbackIcon={compact}
+                        variant="plain"
+                        className="h-6"
+                    />
                 );
 
                 return measure ? (

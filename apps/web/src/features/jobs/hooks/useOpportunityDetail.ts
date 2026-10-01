@@ -7,7 +7,7 @@ import { getRecentViewedByIdOrSlug, saveRecentViewed } from '@/lib/cache/recentV
 import { analytics } from '@/lib/api/analytics';
 import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
 import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
-import { buildLoginFromDetailHref, getDetailShareUrl } from '@/features/jobs/domain/opportunityDetailHelpers';
+import { getCleanShareUrl } from '@/lib/utils/share';
 import { setPendingAction, type PendingActionInput } from '@/lib/storage/pendingAction';
 import { getRelatedOpportunities } from '@/features/jobs/utils/detailUtils';
 import { useFirebaseTracker } from '@/features/dashboard/hooks/useFirebaseTracker';
@@ -43,6 +43,20 @@ export function useOpportunityDetail(
     const hasTrackedDetailViewRef = useRef(false);
     const hasShownNotFoundRef = useRef(false);
     const hasAttemptedLoadRef = useRef(false);
+    /**
+     * Monotonic id for detail loads, same pattern as `useOpportunitiesFeed`'s
+     * `liveRequestIdRef`. Minted before every load; a load whose id is no
+     * longer current has been superseded (the `id` prop changed, or the effect
+     * ran again) and must not commit state. Without it a slow earlier response
+     * can land after a fast later one and render the wrong opportunity.
+     */
+    const loadRequestIdRef = useRef(0);
+    /**
+     * Which `initialData` has already been pushed into `opp`. Replaces reading
+     * `opp?.id` inside the load effect, which made the effect depend on state
+     * it also wrote, so it re-ran after every `setOpp`.
+     */
+    const appliedInitialDataIdRef = useRef<string | null>(null);
 
     const { trackerMap, writeTrackerItem, removeTrackerItem } = useFirebaseTracker(user?.id);
     const { savedJobsMap, toggleSavedJob } = useFirebaseSaved(user?.id);
@@ -67,8 +81,16 @@ export function useOpportunityDetail(
         return oppWithActions;
     }, [opp, trackerMap, savedJobsMap, user?.id]);
 
-    const loadOpportunity = useCallback(async () => {
+    /**
+     * `requestId` defaults to the current id so a standalone call (the Retry
+     * button calls `loadOpportunity()` with no argument) adopts the live
+     * generation and is therefore never treated as superseded.
+     */
+    const loadOpportunity = useCallback(async (requestId: number = loadRequestIdRef.current) => {
         if (initialDataRef.current) return;
+
+        // True once a newer load has started; every commit below is gated on it.
+        const superseded = () => loadRequestIdRef.current !== requestId;
 
         setIsLoading(true);
         setError(null);
@@ -78,6 +100,7 @@ export function useOpportunityDetail(
             // Shard first (~2.5KB)  -- €” bootstrap (~2MB) is only a fallback now.
             const { fetchBootstrapFeed, fetchExpiredFeed } = await import('@/lib/api/cdnFeed');
             let opportunity = await fetchOpportunityDetail(id);
+            if (superseded()) return;
 
             if (!opportunity) {
                 const feed = await fetchBootstrapFeed();
@@ -94,6 +117,8 @@ export function useOpportunityDetail(
                 ) ?? null;
             }
 
+            if (superseded()) return;
+
             if (!opportunity) {
                 // CDN shard missing (feed publishes lag behind index)  -- €” fall back
                 // to the same-origin bootstrap-feed proxy, which serves the full
@@ -101,6 +126,7 @@ export function useOpportunityDetail(
                 // from apiClient's unwrapping and 404 here is a clean miss.
                 try {
                     const res = await fetch(`/api/public/job?id=${encodeURIComponent(id)}`);
+                    if (superseded()) return;
                     if (res.ok) {
                         const detail = await res.json() as { opportunity?: Opportunity };
                         if (detail?.opportunity?.id) {
@@ -124,6 +150,8 @@ export function useOpportunityDetail(
                 throw new Error('Listing not found.');
             }
 
+            if (superseded()) return;
+
             const sanitized = {
                 ...opportunity,
                 locations: opportunity.locations || [],
@@ -141,6 +169,9 @@ export function useOpportunityDetail(
                 isSaved: opportunity.isSaved || false
             });
         } catch (err: unknown) {
+            // A superseded load must not surface its failure either: the error
+            // belongs to an opportunity the user already navigated away from.
+            if (superseded()) return;
             const errorMessage = (err as Error)?.message || 'Listing not found.';
             setError(errorMessage);
 
@@ -151,7 +182,9 @@ export function useOpportunityDetail(
                 toastError(err, 'Listing not found.');
             }
         } finally {
-            setIsLoading(false);
+            // Only the current load owns the spinner. A late-finishing
+            // superseded load must not clear it while the newer one is running.
+            if (!superseded()) setIsLoading(false);
         }
     }, [id]);
 
@@ -196,32 +229,57 @@ export function useOpportunityDetail(
         };
     }, [initialData, initialDataId, initialHasDescription]);
 
+    /**
+     * Loads the opportunity for `id`, or adopts server-provided `initialData`.
+     *
+     * `opp?.id` is deliberately NOT a dependency. It was read in the guard below
+     * and written in the same body, so the effect re-ran after every `setOpp`:
+     * once per load, and because this effect also cleared
+     * `hasTrackedDetailViewRef`, that re-run made the analytics effect below
+     * fire `jobView` a second time for the same opportunity.
+     * `appliedInitialDataIdRef` answers "have I already adopted this one?"
+     * without reading the state this effect writes, so the effect now runs only
+     * when the request actually changes: a new `id`, new `initialData`, or a new
+     * `loadOpportunity` (which is a `useCallback` on `[id]`).
+     */
     useEffect(() => {
+        // Mint a generation before anything else, so an in-flight load for the
+        // previous `id` is already superseded by the time this effect returns.
+        const requestId = ++loadRequestIdRef.current;
+
         if (initialData) {
-            if (opp?.id !== initialData.id) {
+            if (appliedInitialDataIdRef.current !== initialData.id) {
+                appliedInitialDataIdRef.current = initialData.id;
                 setOpp(initialData);
                 setIsLoading(false);
                 setError(null);
             }
             return;
-        } 
+        }
+        appliedInitialDataIdRef.current = null;
+
         if (id) {
             setOpp(null);
             setIsLoading(true);
             setError(null);
             hasAttemptedLoadRef.current = true;
-            
+
             const cached = getRecentViewedByIdOrSlug(id);
             if (cached) {
                 setOpp(cached);
                 setIsLoading(false);
             }
-            
-            void loadOpportunity();
+
+            void loadOpportunity(requestId);
+
+            // Reset only on a genuine fetch, and only for the opportunity now
+            // loading. Leaving these on the `initialData` path is what keeps a
+            // re-render from re-firing the view-tracking effect for the
+            // opportunity already on screen.
+            hasTrackedDetailViewRef.current = false;
+            hasShownNotFoundRef.current = false;
         }
-        hasTrackedDetailViewRef.current = false;
-        hasShownNotFoundRef.current = false;
-    }, [id, initialData, initialDataId, opp?.id, loadOpportunity]);
+    }, [id, initialData, initialDataId, loadOpportunity]);
 
     useEffect(() => {
         if (opp) {
@@ -342,7 +400,7 @@ export function useOpportunityDetail(
 
     const handleShare = async () => {
         const jobUrl = opp ? `${window.location.origin}${getOpportunityPathFromItem(opp)}` : window.location.href;
-        const shareUrl = getDetailShareUrl(jobUrl);
+        const shareUrl = getCleanShareUrl(jobUrl);
         const shareData = {
             title: `${opp?.title} at ${opp?.company}`,
             text: `Check out this opportunity: ${opp?.title} at ${opp?.company}`,
@@ -366,7 +424,7 @@ export function useOpportunityDetail(
     const handleCopyLink = async () => {
         try {
             const jobUrl = opp ? `${window.location.origin}${getOpportunityPathFromItem(opp)}` : window.location.href;
-            await navigator.clipboard.writeText(getDetailShareUrl(jobUrl));
+            await navigator.clipboard.writeText(getCleanShareUrl(jobUrl));
             toast.success('Link copied to clipboard!');
         } catch (err: unknown) {
             toastError(err, 'Failed to copy link');

@@ -26,7 +26,18 @@ export const theme = {
         border: 'rgba(245, 247, 248, 0.12)',
         muted: 'rgba(245, 247, 248, 0.38)',
         error: '#CF6679',
-        success: '#03DAC6',
+        // Web uses oklch(61.1% 0.147 154) for success. Same emerald here so a
+        // "confirmed / eligible" state is one colour across web and mobile —
+        // it was teal #03DAC6 on mobile only, which read as a different system.
+        // 5.8:1 on --color-background (#020404).
+        success: '#199C59',
+        // The one saturated brand colour, matching web --ff-accent (#ff571a).
+        // 6.5:1 on #020404. Use for primary actions and brand marks only;
+        // pair with `accentInk` for a label sitting on a filled accent button.
+        ffAccent: '#FF571A',
+        // Label colour ON an ffAccent fill. Off-white is only 2.95:1 there and
+        // fails AA; this near-black is 5.6:1. Mirrors web --color-ff-accent-ink.
+        accentInk: '#17181C',
         warning: '#FFB74D',
         info: '#D2E8F7',
         overlay: 'rgba(2, 4, 4, 0.7)',

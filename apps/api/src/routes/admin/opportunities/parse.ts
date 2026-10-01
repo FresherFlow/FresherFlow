@@ -3,7 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { ParsedJob } from '@fresherflow/types';
 import { requirePermission } from '../../../middleware/auth';
-import { AppError } from '../../../middleware/errorHandler';
+import { AppError, sendError, ErrorCode } from '../../../middleware/errorHandler';
 
 const router = Router();
 
@@ -36,7 +36,7 @@ function getParserModule(): Promise<ParserModule> {
 router.post('/parse', requirePermission('opportunity.review'), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { text } = req.body;
-        if (!text) return res.status(400).json({ message: 'Text is required' });
+        if (!text) return sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'Text is required', req.requestId);
         const { parseJobText } = await getParserModule().catch(() => {
             throw new AppError('Parser module is unavailable on this deployment.', 503);
         });

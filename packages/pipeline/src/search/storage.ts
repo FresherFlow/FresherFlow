@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { AtsJob } from '@fresherflow/plugins';
+import { readJsonFileSafe } from '../utils/resilient-json.js';
 import { startRun, finishRun } from '../db/repositories/discoveryRuns.js';
 import { upsertJobs } from '../db/repositories/discoveredJobs.js';
 
@@ -9,15 +10,16 @@ const CACHE_FILE = path.join(CACHE_DIR, 'seen_urls.json');
 const POSTED_FILE = path.join(CACHE_DIR, 'posted_urls.json');
 
 export async function loadSeenUrlsCache(): Promise<Set<string>> {
-  try {
-    const raw = await fs.readFile(CACHE_FILE, 'utf8');
-    const arr = JSON.parse(raw);
-    if (Array.isArray(arr)) {
-      console.log(`[Cache] 📦 Loaded ${arr.length} previously seen job URLs from GitHub cache.`);
-      return new Set(arr);
-    }
-  } catch {
-    // Cache file doesn't exist yet on fresh runs
+  // Cache state is an optimisation for dedupe, never a correctness requirement:
+  // a missing or corrupt cache file means "seen nothing yet", so the run still
+  // proceeds and simply re-encounters already-seen URLs.
+  const arr = await readJsonFileSafe<unknown[]>(CACHE_FILE);
+  if (Array.isArray(arr)) {
+    console.log(`[Cache] 📦 Loaded ${arr.length} previously seen job URLs from GitHub cache.`);
+    return new Set(arr.filter((u): u is string => typeof u === 'string'));
+  }
+  if (arr !== null) {
+    console.warn('[Cache] ⚠️ seen_urls.json is not an array — treating cache as empty.');
   }
   return new Set<string>();
 }
@@ -34,15 +36,14 @@ export async function saveSeenUrlsCache(seenUrls: Set<string>): Promise<void> {
 }
 
 export async function loadPostedUrlsCache(): Promise<string[]> {
-  try {
-    const raw = await fs.readFile(POSTED_FILE, 'utf8');
-    const arr = JSON.parse(raw);
-    if (Array.isArray(arr)) {
-      console.log(`[Social] 📦 Loaded ${arr.length} previously posted job URLs from GitHub cache.`);
-      return arr;
-    }
-  } catch {
-    // Cache file doesn't exist yet on fresh runs
+  // Same contract as loadSeenUrlsCache: social dedupe state is best-effort.
+  const arr = await readJsonFileSafe<unknown[]>(POSTED_FILE);
+  if (Array.isArray(arr)) {
+    console.log(`[Social] 📦 Loaded ${arr.length} previously posted job URLs from GitHub cache.`);
+    return arr.filter((u): u is string => typeof u === 'string');
+  }
+  if (arr !== null) {
+    console.warn('[Social] ⚠️ posted_urls.json is not an array — treating social cache as empty.');
   }
   return [];
 }

@@ -1,5 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { withRateLimit } from '@/lib/api/rateLimit';
+import { withAdminAuth } from '@/lib/server/adminAuth';
 import { serverApiClient } from '@/lib/api/server-client';
 import {
   hasIngestionDb,
@@ -362,5 +363,8 @@ async function handlePush(req?: NextRequest) {
   }
 }
 
-export const GET = withRateLimit(handlePush, { windowMs: 60_000, max: 30, keyPrefix: 'discovery-push' });
-export const POST = withRateLimit(handlePush, { windowMs: 60_000, max: 30, keyPrefix: 'discovery-push' });
+// POST only: `handlePush` creates/updates opportunities and flips
+// `processed_jobs` status. A GET that writes is both an HTTP contract violation
+// and a CSRF hole — `SameSite=Lax` still rides a cross-site top-level
+// navigation, and no safe method may be reachable without an origin check.
+export const POST = withRateLimit(withAdminAuth(handlePush), { windowMs: 60_000, max: 30, keyPrefix: 'discovery-push' });

@@ -16,6 +16,7 @@ import Link from 'next/link';
 import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
 import { getDriveDetails, isGovernmentOpportunity, isWalkInOpportunity, kindFromOpportunity } from '@/features/admin/opportunities/formUtils';
 import { getOpportunityDisplaySalary, getGroupedLocations } from '@/features/jobs/domain/opportunityDisplay';
+import { toSafeOutboundUrl } from '@/lib/utils/safeOutboundUrl';
 import { DescriptionSection } from '@/features/jobs/components/detail/DescriptionSection';
 import { WalkInDetailsCard } from '@/features/jobs/components/detail/WalkInDetailsCard';
 
@@ -59,6 +60,10 @@ export const AdminOpportunityPreviewModal = ({ show, opportunityId, onClose }: A
     }, [show, opportunityId]);
 
     if (!show) return null;
+
+    // Scraped apply links can carry `javascript:` or `data:`, so only the
+    // parsed http(s) URL is allowed to reach `href`.
+    const safeApplyLink = toSafeOutboundUrl(opp?.applyLink);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-6 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
@@ -106,9 +111,9 @@ export const AdminOpportunityPreviewModal = ({ show, opportunityId, onClose }: A
                                 </div>
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
-                                {opp.applyLink && (
+                                {safeApplyLink && (
                                     <a
-                                        href={opp.applyLink}
+                                        href={safeApplyLink}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="px-3 h-8 text-xs bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg flex items-center gap-1.5 font-bold transition-colors"

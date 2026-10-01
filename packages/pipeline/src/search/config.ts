@@ -1,3 +1,4 @@
+import { fetchJsonWithRetry } from '../utils/resilient-json.js';
 export const CORE_SEARCH_KEYWORDS = [
   // 1. Core Engineering & Graduate Trainee
   'Software Engineer Fresher',
@@ -50,17 +51,20 @@ export const CORE_SEARCH_KEYWORDS = [
 ];
 
 export async function loadRolesFromCdn(): Promise<string[]> {
-  try {
-    const CDN_URL = (process.env.NEXT_PUBLIC_CDN_URL || process.env.CDN_URL || 'https://cdn.fresherflow.in').trim().replace(/\/$/, '');
-    const res = await fetch(`${CDN_URL}/api/meta/roles.json`, { signal: AbortSignal.timeout(8000) });
-    if (res.ok) {
-            const roles = (await res.json()) as string[];
-      if (Array.isArray(roles) && roles.length > 0) {
-        return roles.slice(0, 30);
-      }
-    }
-  } catch {
-    // Fallback
+  const CDN_URL = (process.env.NEXT_PUBLIC_CDN_URL || process.env.CDN_URL || 'https://cdn.fresherflow.in').trim().replace(/\/$/, '');
+  // Keyword list is an optimisation — the hardcoded CORE_SEARCH_KEYWORDS below is
+  // a complete fallback, so an unavailable roles.json must never abort the sweep.
+  const res = await fetchJsonWithRetry<string[]>(`${CDN_URL}/api/meta/roles.json`, {
+    label: 'roles.json',
+    attempts: 2,
+    timeoutMs: 8000,
+    validate: (data) => Array.isArray(data),
+  });
+  if (res.ok && res.data.length > 0) {
+    return res.data.slice(0, 30);
+  }
+  if (!res.ok) {
+    console.warn(`[Roles] roles.json unavailable (${res.reason}); using built-in keyword list.`);
   }
   return CORE_SEARCH_KEYWORDS;
 }

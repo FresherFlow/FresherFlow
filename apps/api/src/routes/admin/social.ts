@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { SocialPlatform, SocialPostStatus } from '@prisma/client';
 import { listSocialPosts, retrySocialPost } from '../../infrastructure/services/alerts/social/socialPost.service';
 import { requireAdmin } from '../../middleware/auth';
+import { sendError, ErrorCode } from '../../middleware/errorHandler';
 
 import { z } from 'zod';
 
@@ -30,7 +31,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     res.json(result);
   } catch (err) {
     if (err instanceof z.ZodError) {
-      res.status(400).json({ error: 'Invalid query parameters', details: err.issues });
+      sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'Invalid query parameters', req.requestId, err.issues);
       return;
     }
     next(err);

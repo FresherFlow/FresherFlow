@@ -14,13 +14,28 @@ const userStatusSchema = z.object({
     reason: z.string().trim().max(500).optional(),
 });
 
+/** Hard ceiling on how many rows a single list response may return. */
+const MAX_LIST_LIMIT = 500;
+
+/**
+ * `Number(req.query.limit) || 1000` accepted anything the caller asked for,
+ * including NaN-adjacent and multi-million values, so one request could pull a
+ * large slice of the user table into memory. Bounded, and a non-numeric limit
+ * falls back to the default instead of silently becoming 0 or Infinity.
+ */
+function parseLimit(raw: unknown, fallback: number): number {
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 1) return fallback;
+    return Math.min(Math.floor(n), MAX_LIST_LIMIT);
+}
+
 /**
  * GET /api/admin/users
  * List all registered users from the database.
  */
 router.get('/', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const limit = Number(req.query.limit) || 1000;
+        const limit = parseLimit(req.query.limit, 100);
         const users = await prisma.user.findMany({
             orderBy: {
                 createdAt: 'desc'
@@ -49,8 +64,11 @@ router.get('/', requireAdmin, async (req: Request, res: Response, next: NextFunc
  * GET /api/admin/users/handles
  * List all claimed user handles.
  */
-router.get('/handles', requireAdmin, async (_req: Request, res: Response, next: NextFunction) => {
+router.get('/handles', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
     try {
+        // Bounded: this previously had no `take` at all, so the response size was
+        // the size of the table.
+        const limit = parseLimit(req.query.limit, 200);
         const users = await prisma.user.findMany({
             where: {
                 username: { not: null }
@@ -58,6 +76,7 @@ router.get('/handles', requireAdmin, async (_req: Request, res: Response, next: 
             orderBy: {
                 createdAt: 'desc'
             },
+            take: limit,
             select: {
                 id: true,
                 username: true,
@@ -196,12 +215,20 @@ router.post('/:userId/status', requireStaff, requirePermission('user.manage'), a
  * GET /api/admin/users/referrers
  * List top referrers and their conversion metrics.
  */
-router.get('/referrers', requireAdmin, async (_req: Request, res: Response, next: NextFunction) => {
+router.get('/referrers', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
     try {
+        // Bounded, and ordered so the list is stable across calls. Sorting by
+        // signup count happens after the query, so the cap is applied to a
+        // deterministic order rather than an arbitrary one.
+        const limit = parseLimit(req.query.limit, 200);
         const referrers = await prisma.user.findMany({
             where: {
                 referralCode: { not: null }
             },
+            orderBy: {
+                createdAt: 'desc'
+            },
+            take: limit,
             include: {
                 _count: {
                     select: { referrals: true }
@@ -209,8 +236,18 @@ router.get('/referrers', requireAdmin, async (_req: Request, res: Response, next
             }
         });
 
+        // Also unbounded: every REFERRAL_CLICK row was read on each request just
+        // to count them in memory. Bounded to a recent window, which is all a
+        // conversion metric needs.
         const clicksData = await prisma.platformEvent.findMany({
-            where: { type: 'REFERRAL_CLICK' },
+            where: {
+                type: 'REFERRAL_CLICK',
+                createdAt: {
+                    gte: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000)
+                }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 10_000,
             select: { metadata: true }
         });
 

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>SEO audit &mdash; FresherFlow &mdash; 2026-09-29</title>
+<style>
+  :root { --ink:#111418; --muted:#5b6470; --line:#e3e7ec; --bg:#fff; --soft:#f7f9fb;
+          --bad:#b4232a; --good:#1c6b4a; --warn:#8a5a00; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:0 20px 96px; background:var(--bg); color:var(--ink);
+         font:16px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  main { max-width:860px; margin:0 auto; }
+  header { padding:56px 0 28px; border-bottom:1px solid var(--line); margin-bottom:40px; }
+  h1 { font-size:30px; line-height:1.2; margin:0 0 10px; letter-spacing:-0.02em; }
+  .sub { color:var(--muted); font-size:15px; margin:0; }
+  h2 { font-size:21px; margin:52px 0 6px; letter-spacing:-0.01em; scroll-margin-top:16px; }
+  h3 { font-size:17px; margin:34px 0 10px; }
+  p { margin:12px 0; }
+  ul { margin:10px 0 16px; padding-left:20px; }
+  li { margin:6px 0; }
+  .verdict { background:var(--soft); border:1px solid var(--line); border-left:4px solid var(--bad);
+             border-radius:6px; padding:18px 20px; margin:0 0 36px; }
+  .verdict p { margin:8px 0 0; }
+  .lead { font-size:17px; }
+  .tw { overflow-x:auto; margin:18px 0 24px; }
+  table { border-collapse:collapse; width:100%; font-size:14.5px; }
+  th,td { text-align:left; padding:9px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { font-weight:600; color:var(--muted); font-size:13px; text-transform:uppercase; letter-spacing:0.04em; }
+  td.n, th.n { text-align:right; font-variant-numeric:tabular-nums; }
+  code { background:var(--soft); border:1px solid var(--line); border-radius:4px;
+         padding:1px 5px; font-size:13.5px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .bad { color:var(--bad); font-weight:600; }
+  .good { color:var(--good); font-weight:600; }
+  .warn { color:var(--warn); font-weight:600; }
+  nav.toc { background:var(--soft); border:1px solid var(--line); border-radius:6px; padding:16px 20px; margin:0 0 8px; }
+  nav.toc ol { margin:8px 0 0; padding-left:20px; }
+  nav.toc li { margin:4px 0; }
+  nav.toc a { color:var(--ink); text-decoration:none; border-bottom:1px solid var(--line); }
+  details { margin:20px 0; border:1px solid var(--line); border-radius:6px; padding:0; }
+  details > summary { cursor:pointer; padding:12px 18px; font-weight:600; font-size:15px; }
+  details[open] > summary { border-bottom:1px solid var(--line); }
+  details .body { padding:6px 18px 18px; font-size:14.5px; }
+  .note { color:var(--muted); font-size:14px; }
+  footer { margin-top:64px; padding-top:20px; border-top:1px solid var(--line); color:var(--muted); font-size:13.5px; }
+  a { color:#1a56b8; }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>SEO audit: FresherFlow</h1>
+  <p class="sub">fresherflow.in &middot; observed 2026-09-29 &middot; code and live-CDN audit, no Search Console</p>
+</header>
+
+<nav class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#verdict">Verdict</a></li>
+    <li><a href="#recommendations">Recommendations</a></li>
+    <li><a href="#what-else">What else we checked</a></li>
+    <li><a href="#how">How this report was made</a></li>
+  </ol>
+</nav>
+
+<h2 id="verdict">Verdict</h2>
+
+<div class="verdict">
+  <p class="lead"><strong>The sitemap has never worked.</strong> All 190 URLs in all eight
+  sitemap files point at <code>http://localhost:3000</code> &mdash; a computer that does not
+  exist. Google cannot fetch any of them, so the sitemap has contributed nothing to
+  discovery, while every file returned HTTP 200 and every publish run reported success.</p>
+  <p>This is not a ranking problem or a content problem. It is a discovery problem, and it sits
+  upstream of both. No amount of on-page work reaches Google until this is fixed.</p>
+</div>
+
+<p>Read this first, because it changes what the rest of the report means. Most SEO problems show up
+in Search Console as impressions you do not have. This one does not: a sitemap full of unfetchable
+URLs is not an error condition, it is quietly ignored. There is no warning to look for, which is
+why it survived.</p>
+
+<p>The technical foundations underneath it are genuinely good. Rewrite-backed sitemaps, a shared
+<code>JobPosting</code> builder, one <code>Organization</code> node, a 301 namespace consolidation,
+pixel-calibrated snippets. Someone cared about this. The failure is one environment variable being
+unset.</p>
+
+<h2 id="recommendations">Recommendations</h2>
+
+<h3>1. Set the public site origin on the API, and make the bad value impossible to publish</h3>
+
+<p><strong>Do this</strong></p>
+<ul>
+  <li>Set <code>PUBLIC_FRONTEND_URL=https://fresherflow.in</code> on the API deployment.</li>
+  <li>Deploy the web fix in <code>app/api/public/sitemap/route.ts</code> that rewrites any absolute
+      origin inside a <code>&lt;loc&gt;</code> to the requested domain.</li>
+  <li>Run a publish, so the sitemaps regenerate against the real origin.</li>
+</ul>
+
+<p><strong>Why</strong></p>
+<ul>
+  <li>All 190 URLs across eight files are <code>http://localhost:3000</code>, observed today.</li>
+  <li>Root cause: <code>getPublicSiteUrl()</code> falls back to localhost when three env vars are unset.</li>
+  <li><code>.env.example</code> shipped those vars commented out, so a deploy built from it hits the fallback.</li>
+  <li>The web app could not repair it: it rewrote only the expected origin, and localhost never matched.</li>
+  <li>Verified: the rewrite repairs 106 of 106 URLs in the real broken file, with zero localhost left.</li>
+</ul>
+
+<p>Two independent fixes, and both matter. The API guard stops a bad sitemap ever being written
+again, so the next person cannot repeat this. The web rewrite repairs the file already sitting on
+the CDN, so <strong>it starts working the moment the web app deploys</strong>, without waiting on a
+publish.</p>
+
+<p>One owner action remains, and it is a deployment setting rather than a code change: set
+<code>PUBLIC_FRONTEND_URL=https://fresherflow.in</code> on the API. Without it the guard will block
+every publish.</p>
+
+<p class="note">Both code fixes are done. The env var is not, because it is not in the repository.</p>
+
+<h3>1b. Stop lying about <code>lastmod</code></h3>
+
+<p><strong>Do this</strong></p>
+<ul>
+  <li>Leave <code>&lt;lastmod&gt;</code> off static routes instead of stamping today's date on each publish.</li>
+</ul>
+
+<p><strong>Why</strong></p>
+<ul>
+  <li>About 20 static routes carried today's date, refreshed on every publish, so all of them claimed to change daily.</li>
+  <li>A crawler that learns a date field is noise stops trusting it, including the honest per-job dates.</li>
+  <li>Per-opportunity <code>lastmod</code> values come from real <code>updatedAt</code>/<code>postedAt</code> and are unaffected.</li>
+</ul>
+
+<p>Small change, disproportionate effect: it protects the per-job dates, which are the ones worth
+protecting.</p>
+
+<h3>2. Give the site something to be found for</h3>
+
+<p><strong>Do this</strong></p>
+<ul>
+  <li>Add a <code>/blog/[slug]</code> route. Today <code>/blog</code> is one file with three
+      hardcoded posts in an array, all sharing one URL.</li>
+  <li>Ship a proximity-sorted "walk-in drives near me" view on
+      <code>/drives/walk-in/[city]</code>.</li>
+  <li>Decide whether this product wants a programmatic page type competitors do not have.</li>
+</ul>
+
+<p><strong>Why</strong></p>
+<ul>
+  <li>There is no post route at all, so nothing in the blog is individually addressable.</li>
+  <li>The geo primitives exist and go unused: <code>walkinMapUtils.ts</code> has lat, lng,
+      <code>techCluster</code>, and a Haversine distance function. The page imports it and never
+      calls it.</li>
+  <li>No linkable asset exists anywhere, so outreach has nothing to point at.</li>
+  <li>India-specific recruitment is a real moat: <code>OFF_CAMPUS</code> and <code>POOL_CAMPUS</code>
+      appear in no major ATS.</li>
+</ul>
+
+<p>The walk-in map is the interesting one. The hardest data on the site is already collected, and
+the surface that would use it is unbuilt. It is also the most plausible thing here to earn links,
+which matters more than it looks: the site currently has nothing anyone would want to cite.</p>
+
+<p class="note">A product decision, not an SEO one. Ranked second because the sitemap fix comes
+first, not because it matters less.</p>
+
+<h2 id="what-else">What else we checked</h2>
+
+<div class="tw">
+<table>
+<thead><tr><th>Opportunity</th><th>What we found</th><th>Decision</th></tr></thead>
+<tbody>
+<tr>
+  <td>Indexable private routes</td>
+  <td>Eleven <code>(user)</code> routes had no <code>noindex</code> anywhere</td>
+  <td class="good">Fixed. One header in <code>next.config.ts</code> now covers all of them</td>
+</tr>
+<tr>
+  <td>Pages with no canonical link</td>
+  <td>Six public routes returned a title and description only</td>
+  <td class="good">Fixed. All six now declare a canonical, social tags, and index rules</td>
+</tr>
+<tr>
+  <td>Unescaped XML in sitemaps</td>
+  <td>Every <code>&lt;loc&gt;</code> was built by raw string interpolation</td>
+  <td class="good">Fixed. A company named <code>L&amp;T</code> would have broken the whole file</td>
+</tr>
+<tr>
+  <td>Sitemap listing a redirect</td>
+  <td><code>/jobs/walkins</code> was listed but 301s, and the real hub was absent</td>
+  <td class="good">Fixed. The destination is what gets listed now</td>
+</tr>
+<tr>
+  <td>Missing hubs in the sitemap</td>
+  <td>Seven live pages absent, including <code>/jobs/browse</code> and <code>/jobs/remote</code></td>
+  <td class="good">Fixed. All seven added</td>
+</tr>
+<tr>
+  <td>Stale audit findings</td>
+  <td>Eight of ten items in the existing audit were already fixed by other work</td>
+  <td class="warn">Re-verified against source before touching anything</td>
+</tr>
+<tr>
+  <td>Duplicate feed fetches</td>
+  <td>One route appeared to fetch the same feed five times</td>
+  <td>Not a defect. Already memoised upstream</td>
+</tr>
+<tr>
+  <td>Dead redirect stubs</td>
+  <td>Ten routes exist only to issue a redirect, carrying unused metadata</td>
+  <td>Deferred. Real cleanup, no indexing impact</td>
+</tr>
+<tr>
+  <td>Site availability</td>
+  <td>fresherflow.in returned 503 throughout this audit</td>
+  <td class="warn">Out of scope, but no page could be crawled live</td>
+</tr>
+<tr>
+  <td>Competitor SEO code</td>
+  <td>Ten job-board repos reviewed locally. Only one has a real sitemap system</td>
+  <td>Informational. The technical spine is table stakes, not an edge</td>
+</tr>
+</tbody>
+</table>
+</div>
+
+<h2 id="how">How this report was made</h2>
+
+<p>Made with the <a href="https://openseo.so/docs/skills/seo-audit" target="_blank" rel="noopener">OpenSEO SEO Audit skill</a>.
+Every finding here comes from reading the source and fetching the live CDN directly. No Search
+Console, ranking, volume, or backlink data was available, so no claim in this report rests on
+measured traffic, and nothing here should be read as a traffic forecast.</p>
+
+<p>Two limits worth stating plainly. The web app returned 503 throughout, so no page could be crawled
+or rendered live, and the sitemap proxy could not be exercised end to end. And no credit-consuming
+data tool was used, so there is no Search Console, ranking, or volume data behind any claim here.</p>
+
+<p>Project context was written back to OpenSEO (business overview, positioning, six competitors,
+fifteen key pages, and the research log) using only free tools. Credit balance after the work:
+208, unchanged.</p>
+
+<details>
+<summary>Evidence and methodology</summary>
+<div class="body">
+
+<p><strong>Live CDN observations, 2026-09-29.</strong> Each sitemap fetched directly:</p>
+
+<div class="tw">
+<table>
+<thead><tr><th>File</th><th class="n">Status</th><th class="n">URLs</th><th>First <code>&lt;loc&gt;</code></th></tr></thead>
+<tbody>
+<tr><td>sitemap.xml (index)</td><td class="n">200</td><td class="n">8 children</td><td><code>http://localhost:3000/sitemap-jobs.xml</code></td></tr>
+<tr><td>sitemap-jobs.xml</td><td class="n">200</td><td class="n">106</td><td><code>http://localhost:3000</code></td></tr>
+<tr><td>sitemap-walkins.xml</td><td class="n">200</td><td class="n">8</td><td><code>http://localhost:3000/jobs/walkins</code></td></tr>
+<tr><td>sitemap-companies.xml</td><td class="n">200</td><td class="n">47</td><td><code>http://localhost:3000/companies/kalyan-infotech</code></td></tr>
+<tr><td>sitemap-skills.xml</td><td class="n">200</td><td class="n">12</td><td><code>http://localhost:3000/jobs/sql-jobs</code></td></tr>
+<tr><td>sitemap-roles.xml</td><td class="n">200</td><td class="n">8</td><td><code>http://localhost:3000/jobs/software-engineer-jobs</code></td></tr>
+<tr><td>sitemap-locations.xml</td><td class="n">200</td><td class="n">5</td><td><code>http://localhost:3000/jobs/bangalore-jobs</code></td></tr>
+<tr><td>sitemap-govt.xml</td><td class="n">200</td><td class="n">2</td><td><code>http://localhost:3000/govt</code></td></tr>
+<tr><td>sitemap-batches.xml</td><td class="n">200</td><td class="n">2</td><td><code>http://localhost:3000/jobs/2025-batch</code></td></tr>
+</tbody>
+</table>
+</div>
+
+<p class="note">190 URLs in total, all 190 localhost. Availability checked at the time:
+<code>fresherflow.in/</code> 503, <code>www.fresherflow.in</code> 503,
+<code>api.fresherflow.in/health</code> timed out, <code>cdn.fresherflow.in</code> 200.</p>
+
+<p><strong>Root cause, traced in source.</strong>
+<code>getPublicSiteUrl()</code> at <code>apps/api/src/utils/runtimeConfig.ts:75</code> resolves
+<code>PUBLIC_FRONTEND_URL || PUBLIC_WEB_URL || FRONTEND_URL</code>, then falls back to
+<code>getFallbackOrigin(3000)</code>, which is <code>http://localhost:3000</code>.
+<code>apps/api/.env.example</code> had lines 150 and 151 commented out, with line 15 set to localhost
+for local CORS. The published output proves the fallback fired.</p>
+
+<p><strong>Rewrite verification.</strong> The real broken <code>sitemap-jobs.xml</code> was fetched from
+the CDN and passed through the new rewrite: 106 URLs in, 106 out, all on the requested origin, with
+0 localhost and 0 <code>http://</code> remaining.</p>
+
+<p><strong>Escaping verification.</strong> The XML helper was run against <code>Larsen &amp; Toubro</code>,
+<code>AT&amp;T</code>, <code>&lt;script&gt;</code>, <code>O'Brien</code>, embedded newlines and tabs,
+and a literal <code>&amp;amp;</code> to confirm no double-escaping. All well-formed, confirmed with an
+XML parser rather than a regex.</p>
+
+<p><strong>Header pattern verification.</strong> The <code>(user)</code> noindex pattern was tested
+against the matcher Next.js actually bundles. All 11 sections plus their children match;
+<code>/jobs</code>, <code>/admin</code>, <code>/drives</code>, <code>/community</code> and
+<code>/u</code> do not.</p>
+
+<p><strong>Page families read.</strong> The full <code>(public)</code> route tree, the root layout,
+<code>robots.ts</code>, <code>next.config.ts</code>, the sitemap proxy route, the API feed generator,
+and three existing audit documents.</p>
+
+<p><strong>What was not checked.</strong> No Search Console, so no impressions, clicks, or current
+ranking data. No crawl of live pages. No backlink or keyword data. No competitor comparison, because
+the goal in the project context is still unstated, which is why recommendation 2 is a product decision
+rather than a targeted keyword plan.</p>
+
+<p><strong>Competitor code review, from local clones.</strong> Ten job-board repositories under
+<code>scratch/repos</code> were read for their SEO implementation. Only <code>freehire</code> has a
+real one: a sitemap index with chunked sub-sitemaps, XML escaping, keyset pagination, and a genuine
+<code>robots.txt</code>. <code>opensource-job-portal</code> has a three-line robots file and no
+sitemap. The rest have neither. Two findings came out of it. <code>freehire</code> builds every
+<code>&lt;loc&gt;</code> from the request origin rather than configuration, which makes the localhost
+bug structurally impossible and is worth adopting here. It also refuses to emit a
+<code>lastmod</code> it cannot justify, which is where the <code>lastmod</code> recommendation
+above came from. Note that <code>freehire</code> has no origin validation and no test for one;
+FresherFlow now has both.</p>
+
+</div>
+</details>
+
+<footer>
+  FresherFlow SEO audit &middot; 2026-09-29 &middot; code and live-CDN audit
+</footer>
+
+</main>
+</body>
+</html>
+

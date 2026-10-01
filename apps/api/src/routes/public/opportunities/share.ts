@@ -5,6 +5,7 @@ import { requireAuth } from '../../../middleware/auth';
 import { createRateLimiter } from '../../../middleware/rateLimit';
 import { updateOpportunityEngagement } from '../../../application/opportunity/engagement';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
+import { sendError, ErrorCode } from '../../../middleware/errorHandler';
 
 const router = Router();
 
@@ -27,7 +28,7 @@ router.post('/share', requireAuth, shareLimiter, async (req: Request, res: Respo
         const userId = req.userId as string;
 
         if (!url || typeof url !== 'string') {
-            return res.status(400).json({ message: 'URL is required' });
+            return sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'URL is required', req.requestId);
         }
 
         const normalizedUrl = normalizeOpportunityUrl(url);

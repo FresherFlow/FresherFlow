@@ -56,9 +56,20 @@ export async function saveJobsToDb(jobs: AtsJob[], target: SearchTarget): Promis
     return;
   }
 
+  // Never disable TLS verification by default. Managed Postgres providers
+  // should be configured via `?sslmode=require` in DATABASE_URL; an explicit
+  // opt-out remains available for local/dev proxies via PG_SSL_REJECT_UNAUTHORIZED=0.
+  const rejectUnauthorized = process.env.PG_SSL_REJECT_UNAUTHORIZED !== '0';
+
+  if (process.env.NODE_ENV === 'production' && !rejectUnauthorized) {
+    // Defence in depth: a stray env var must not silently expose the database
+    // to interception. Fail closed instead.
+    throw new Error('TLS verification must not be disabled in production');
+  }
+
   const pool = new Pool({
     connectionString,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized } : undefined,
   });
 
   const rows = jobs.map(job => ({

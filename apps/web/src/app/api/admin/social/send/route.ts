@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRateLimit } from '@/lib/api/rateLimit';
+import { withAdminAuth } from '@/lib/server/adminAuth';
 
 const WORKER_URL = process.env.WORKER_URL || '';
 const WORKER_SECRET = process.env.WORKER_SECRET ?? '';
@@ -63,4 +64,4 @@ async function sendSocial(req: NextRequest) {
     }
 }
 
-export const POST = withRateLimit(sendSocial, { windowMs: 60_000, max: 30, keyPrefix: 'social-send' });
+export const POST = withRateLimit(withAdminAuth(sendSocial), { windowMs: 60_000, max: 30, keyPrefix: 'social-send' });

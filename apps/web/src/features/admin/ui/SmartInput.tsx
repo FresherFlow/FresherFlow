@@ -1,5 +1,4 @@
 import * as React from "react";
-import { cn } from "@repo/ui/utils/cn";
 import { Field } from "@/ui/Field";
 import { Input } from "@/ui/Input";
 
@@ -19,13 +18,22 @@ const SmartInput = React.forwardRef<HTMLInputElement, SmartInputProps>(
         const fallbackId = React.useId();
         const inputId = id ?? fallbackId;
 
+        // Wire the help text and the error to the control that produced them, so
+        // a screen reader announces "<label>, <error>" together instead of
+        // reading the error as unrelated prose elsewhere on the page.
+        const descriptionId = helpText ? `${inputId}-description` : undefined;
+        const errorId = error ? `${inputId}-error` : undefined;
+        const describedBy = [descriptionId, errorId].filter(Boolean).join(' ') || undefined;
+
         return (
             <Field
                 className={containerClassName}
                 label={label}
                 icon={icon}
                 description={helpText}
+                descriptionId={descriptionId}
                 error={error}
+                errorId={errorId}
                 required={required}
                 labelClassName={labelClassName}
                 htmlFor={inputId}
@@ -35,6 +43,8 @@ const SmartInput = React.forwardRef<HTMLInputElement, SmartInputProps>(
                     id={inputId}
                     value={value}
                     required={required}
+                    aria-describedby={describedBy}
+                    aria-invalid={error ? true : undefined}
                     className={className}
                     {...props}
                 />

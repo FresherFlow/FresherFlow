@@ -8,6 +8,7 @@ import {
     type WalkinDrivePeriod,
 } from '@/features/jobs/utils/walkinMapUtils';
 import { getAtsName } from '@/features/jobs/utils/atsSource';
+import { getDeclaredPassoutYears, matchesDeclaredPassoutYear } from '@/features/jobs/domain/passoutYears';
 import { opportunityMatchesSearch } from '@/features/jobs/utils/searchUtils';
 import { matchesProfileFilters } from '@/features/jobs/hooks/useProfileFilters';
 import {
@@ -22,6 +23,62 @@ import {
  * counter both run these predicates — a filter change lands here once and
  * both follow. Never duplicate this logic at a callsite.
  */
+
+const opportunitySkillList = (opp: Opportunity): string[] =>
+    ((opp as any).skills || opp.requiredSkills || []) as string[];
+
+const matchesSkills = (opp: Opportunity, skills?: string[] | null): boolean => {
+    if (!skills || skills.length === 0) return true;
+    const listing = opportunitySkillList(opp);
+    if (listing.length === 0) return true;
+    return skills.some((s) =>
+        listing.some((os) => os.toLowerCase() === s.toLowerCase())
+    );
+};
+
+const matchesRoles = (opp: Opportunity, roles?: string[] | null): boolean => {
+    if (!roles || roles.length === 0) return true;
+    return roles.some((r) => {
+        const rLower = r.toLowerCase();
+        const titleMatch = (opp.title || '').toLowerCase().includes(rLower);
+        const normRoleMatch = ((opp.normalizedRole || '') as string).toLowerCase().includes(rLower);
+        const rolesMatch = ((opp as any).roles || []).some((or: string) => or.toLowerCase().includes(rLower));
+        return titleMatch || normRoleMatch || rolesMatch;
+    });
+};
+
+const matchesWorkMode = (opp: Opportunity, mode?: string[] | string | null): boolean => {
+    if (!mode) return true;
+    const modeArray = Array.isArray(mode) ? mode : [mode];
+    if (modeArray.length === 0) return true;
+    return modeArray.some((m) => {
+        const selectedMode = m.toLowerCase();
+        const isModeRemote = selectedMode === 'remote';
+        const isModeHybrid = selectedMode === 'hybrid';
+        const isModeOnsite = selectedMode === 'on_site' || selectedMode === 'onsite';
+
+        const oppWorkMode = String((opp as unknown as Record<string, unknown>).workMode || '').toLowerCase();
+
+        if (isModeRemote) {
+            return (opp.locations || []).some(loc => {
+                const l = loc.toLowerCase();
+                return l.includes('remote') || l.includes('wfh') || l.includes('work from home');
+            }) || oppWorkMode === 'remote' || (opp.title || '').toLowerCase().includes('remote');
+        }
+        if (isModeHybrid) {
+            return (opp.locations || []).some(loc => loc.toLowerCase().includes('hybrid'))
+                || oppWorkMode === 'hybrid' || (opp.title || '').toLowerCase().includes('hybrid');
+        }
+        if (isModeOnsite) {
+            return oppWorkMode === 'on_site' || oppWorkMode === 'onsite' ||
+                (!oppWorkMode && !((opp.locations || []).some(loc => {
+                    const l = loc.toLowerCase();
+                    return l.includes('remote') || l.includes('wfh') || l.includes('work from home') || l.includes('hybrid');
+                })) && !(opp.title || '').toLowerCase().includes('remote') && !(opp.title || '').toLowerCase().includes('hybrid'));
+        }
+        return false;
+    });
+};
 
 export interface FeedFilterCriteria {
     showOnlySaved: boolean;
@@ -96,44 +153,7 @@ export function filterOpportunities(opps: Opportunity[], criteria: FeedFilterCri
             return false;
         }
 
-        if (mode) {
-            const modeArray = Array.isArray(mode) ? mode : [mode];
-            const isRemoteOrHybrid = modeArray.some(m => {
-                const selectedMode = m.toLowerCase();
-                const isModeRemote = selectedMode === 'remote';
-                const isModeHybrid = selectedMode === 'hybrid';
-                const isModeOnsite = selectedMode === 'on_site' || selectedMode === 'onsite';
-
-                const oppWorkMode = String((opp as unknown as Record<string, unknown>).workMode || '').toLowerCase();
-
-                if (isModeRemote) {
-                    return (opp.locations || []).some(loc => {
-                        const l = loc.toLowerCase();
-                        return l.includes('remote') || l.includes('wfh') || l.includes('work from home');
-                    }) || oppWorkMode === 'remote' || (opp.title || '').toLowerCase().includes('remote');
-                }
-                if (isModeHybrid) {
-                    return (opp.locations || []).some(loc => loc.toLowerCase().includes('hybrid'))
-                    || oppWorkMode === 'hybrid' || (opp.title || '').toLowerCase().includes('hybrid');
-                }
-                if (isModeOnsite) {
-                    return oppWorkMode === 'on_site' || oppWorkMode === 'onsite' ||
-                    (!oppWorkMode && !((opp.locations || []).some(loc => {
-                        const l = loc.toLowerCase();
-                        return l.includes('remote') || l.includes('wfh') || l.includes('work from home') || l.includes('hybrid');
-                    })) && !(opp.title || '').toLowerCase().includes('remote') && !(opp.title || '').toLowerCase().includes('hybrid'));
-                }
-                return false;
-            });
-
-            if (!isRemoteOrHybrid) return false;
-        } else if (type === 'REMOTE') {
-            const isRemote = (opp.locations || []).some(loc => {
-                const l = loc.toLowerCase();
-                return l.includes('remote') || l.includes('wfh') || l.includes('work from home');
-            }) || (opp as unknown as Record<string, unknown>).workMode === 'REMOTE' || opp.title.toLowerCase().includes('remote');
-            if (!isRemote) return false;
-        }
+        if (!matchesWorkMode(opp, mode)) return false;
 
         if (source && source.length > 0) {
             const atsName = getAtsName(opp.applyLink || (opp as any).sourceLink || opp.companyWebsite);
@@ -200,32 +220,10 @@ export function filterOpportunities(opps: Opportunity[], criteria: FeedFilterCri
             }) ||
             (course === 'Diploma' && ((opp as any).allowedDegrees || []).includes(EducationLevel.DIPLOMA));
 
-        let passoutYears = [...((opp as any).allowedPassoutYears || [])];
-        if (passoutYears.length === 0 && opp.passoutYearMin && opp.passoutYearMax) {
-            const min = Number(opp.passoutYearMin);
-            const max = Number(opp.passoutYearMax);
-            if (!isNaN(min) && !isNaN(max) && min <= max) {
-                passoutYears = Array.from({ length: max - min + 1 }, (_, i) => min + i);
-            }
-        }
         // A listing that declares no batch requirement passes any batch filter —
         // the server's `allowedPassoutYears IS EMPTY` rule. The old title-regex
         // sniff only ever added exclusions for jobs that never stated a batch.
-        const matchesYear = !selectedYear ||
-            passoutYears.length === 0 ||
-            passoutYears.map(Number).includes(Number(selectedYear));
-
-        const matchesSkills = !skills || skills.length === 0 || skills.some((s: string) =>
-            ((opp as any).skills || opp.requiredSkills || []).some((os: string) => os.toLowerCase() === s.toLowerCase())
-        );
-
-        const matchesRoles = !roles || roles.length === 0 || roles.some((r: string) => {
-            const rLower = r.toLowerCase();
-            const titleMatch = (opp.title || '').toLowerCase().includes(rLower);
-            const normRoleMatch = ((opp.normalizedRole || '') as string).toLowerCase().includes(rLower);
-            const rolesMatch = ((opp as any).roles || []).some((or: string) => or.toLowerCase().includes(rLower));
-            return titleMatch || normRoleMatch || rolesMatch;
-        });
+        const matchesYear = !selectedYear || matchesDeclaredPassoutYear(opp, selectedYear);
 
         const matchesExperience = !experience || experience.length === 0 || experience.some(expStr => {
             const oppMin = opp.experienceMin ?? (opp as any).experienceRange?.min ?? 0;
@@ -255,7 +253,7 @@ export function filterOpportunities(opps: Opportunity[], criteria: FeedFilterCri
             (opp.company || '').toLowerCase() === c.toLowerCase()
         );
 
-        return matchesSearch && matchesLoc && matchesClosingSoon && matchesSector && matchesQualification && matchesCourse && matchesYear && matchesSkills && matchesRoles && matchesExperience && matchesCompany;
+        return matchesSearch && matchesLoc && matchesClosingSoon && matchesSector && matchesQualification && matchesCourse && matchesYear && matchesSkills(opp, skills) && matchesRoles(opp, roles) && matchesExperience && matchesCompany;
     });
 }
 
@@ -297,10 +295,9 @@ export interface LocalFilterInput {
 
 /** Pass 2: workMode/skills/role/saved/govt/drive scoping over pass-1 output. */
 export function applyLocalFilters(opps: Opportunity[], input: LocalFilterInput): Opportunity[] {
-    const { saved, workMode, skills, role, type, govtPhase, govtCategory, userLocation, driveDate, driveRadiusKm } = input;
+    const { workMode, skills, role, type, govtPhase, govtCategory, userLocation, driveDate, driveRadiusKm } = input;
 
     const filtered = opps.filter((opp) => {
-        if (saved) return true;
         if (
             type !== 'GOVERNMENT' &&
             opp.expiresAt &&
@@ -317,79 +314,9 @@ export function applyLocalFilters(opps: Opportunity[], input: LocalFilterInput):
                 return false;
         }
         if (type !== 'GOVERNMENT') {
-            if (workMode && workMode.length > 0) {
-                const isMatch = workMode.some((m) => {
-                    const sel = m.toLowerCase();
-                    const oppWorkMode = String(
-                        (opp as any).workMode || "",
-                    ).toLowerCase();
-                    if (sel === "remote") {
-                        return (
-                            (opp.locations || []).some((loc) => {
-                                const l = loc.toLowerCase();
-                                return (
-                                    l.includes("remote") ||
-                                    l.includes("wfh") ||
-                                    l.includes("work from home")
-                                );
-                            }) ||
-                            oppWorkMode === "remote" ||
-                            (opp.title || "").toLowerCase().includes("remote")
-                        );
-                    }
-                    if (sel === "hybrid") {
-                        return (
-                            (opp.locations || []).some((loc) =>
-                                loc.toLowerCase().includes("hybrid"),
-                            ) ||
-                            oppWorkMode === "hybrid" ||
-                            (opp.title || "").toLowerCase().includes("hybrid")
-                        );
-                    }
-                    if (sel === "on_site" || sel === "onsite") {
-                        return (
-                            oppWorkMode === "on_site" ||
-                            oppWorkMode === "onsite" ||
-                            (!oppWorkMode &&
-                                !((opp.locations || []).some((loc) => {
-                                    const l = loc.toLowerCase();
-                                    return (
-                                        l.includes("remote") ||
-                                        l.includes("wfh") ||
-                                        l.includes("work from home") ||
-                                        l.includes("hybrid")
-                                    );
-                                })) &&
-                                !(opp.title || "").toLowerCase().includes("remote") &&
-                                !(opp.title || "").toLowerCase().includes("hybrid"))
-                        );
-                    }
-                    return false;
-                });
-                if (!isMatch) return false;
-            }
-            if (skills && skills.length > 0) {
-                const hasAllSkills = skills.every((s) =>
-                    opp.requiredSkills?.some(
-                        (rs) => rs.toLowerCase() === s.toLowerCase(),
-                    ),
-                );
-                if (!hasAllSkills) return false;
-            }
-            if (role && role.length > 0) {
-                const matchesRole = role.some((r) => {
-                    const rLower = r.toLowerCase();
-                    const titleMatch = (opp.title || "").toLowerCase().includes(rLower);
-                    const normRoleMatch = ((opp.normalizedRole || "") as string)
-                        .toLowerCase()
-                        .includes(rLower);
-                    const rolesMatch = ((opp as any).roles || []).some(
-                        (roleItem: string) => roleItem.toLowerCase().includes(rLower),
-                    );
-                    return titleMatch || normRoleMatch || rolesMatch;
-                });
-                if (!matchesRole) return false;
-            }
+            if (!matchesWorkMode(opp, workMode)) return false;
+            if (!matchesSkills(opp, skills)) return false;
+            if (!matchesRoles(opp, role)) return false;
         }
 
         // Walk-in date filter: today, this week, or the next 30 days.
@@ -465,7 +392,7 @@ export function countFilterFacets(opps: Opportunity[], type?: string | null): Fa
             const l = loc.trim();
             if (l) locations[l] = (locations[l] || 0) + 1;
         });
-        ((opp as any).skills || opp.requiredSkills || []).forEach((s: string) => {
+        opportunitySkillList(opp).forEach((s) => {
             const skill = s.trim();
             if (skill) skills[skill] = (skills[skill] || 0) + 1;
         });
@@ -477,22 +404,19 @@ export function countFilterFacets(opps: Opportunity[], type?: string | null): Fa
         if (comp) {
             companies[comp] = (companies[comp] || 0) + 1;
         }
-        let passoutYears = [...((opp as any).allowedPassoutYears || [])];
-        if (passoutYears.length === 0 && opp.passoutYearMin && opp.passoutYearMax) {
-            const min = Number(opp.passoutYearMin);
-            const max = Number(opp.passoutYearMax);
-            if (!isNaN(min) && !isNaN(max) && min <= max) {
-                passoutYears = Array.from({ length: max - min + 1 }, (_, i) => min + i);
-            }
-        }
-        if (passoutYears.length === 0) {
-            const match = opp.title.match(/(202[0-9]|2030)/);
-            if (match) passoutYears = [Number(match[0])];
-        }
-        passoutYears.forEach((y: string | number) => {
-            const year = String(y).trim();
-            if (year) years[year] = (years[year] || 0) + 1;
-        });
+    });
+
+    // A listing that declares no batch matches every batch filter, so it belongs
+    // in every bucket: the count has to describe the same predicate
+    // `matchesDeclaredPassoutYear` applies. Inferring a year from the title (what
+    // this used to do) filed listings under a bucket the filter would never
+    // exclude them from, so the badge numbers and the resulting list disagreed.
+    const declaredYearsByJob = scoped.map((opp) => getDeclaredPassoutYears(opp));
+    const jobsWithoutDeclaredBatch = declaredYearsByJob.filter((declared) => declared.length === 0).length;
+    const yearBuckets = new Set(declaredYearsByJob.flat().map(String));
+    yearBuckets.forEach((year) => {
+        years[year] = jobsWithoutDeclaredBatch
+            + declaredYearsByJob.filter((declared) => declared.includes(Number(year))).length;
     });
 
     const filteredLocations: Record<string, number> = {};

@@ -3,6 +3,7 @@ import { body, validationResult } from 'express-validator';
 import prisma from '../infrastructure/database/prisma';
 import { ResourceItemType } from '@fresherflow/types';
 import { requireAuth } from '../middleware/auth';
+import { sendError, ErrorCode } from '../middleware/errorHandler';
 import { logger } from '@fresherflow/utils';
 import { isSafeUrlForFetch } from '@fresherflow/utils';
 
@@ -240,7 +241,7 @@ router.get('/mine', requireAuth, async (req: Request, res: Response, next: NextF
     try {
         const userId = req.userId || null;
         if (!userId) {
-            res.status(401).json({ error: 'Sign in required' });
+            sendError(res, 401, ErrorCode.UNAUTHENTICATED, 'Sign in required', req.requestId);
             return;
         }
         const collections = await prisma.resourceCollection.findMany({

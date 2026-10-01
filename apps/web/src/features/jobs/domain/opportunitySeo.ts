@@ -267,7 +267,18 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
     };
 }
 
-export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
+/** Real UGC input for the discussion node. Empty/null = no discussion node emitted. */
+export interface DiscussionJsonLdInput {
+    comments: { author: string; text: string; createdAt: string }[];
+    /** Only question→answer pairs; empty means no FAQPage node is emitted. */
+    faqs?: { question: string; answer: string }[];
+    total: number;
+}
+
+export const generateOpportunityJsonLd = (
+    opportunity: Opportunity,
+    discussion?: DiscussionJsonLdInput | null
+) => {
     const postedDate = opportunity.postedAt ? new Date(opportunity.postedAt) : null;
     const fallbackValidThrough = postedDate && !Number.isNaN(postedDate.getTime())
         ? new Date(postedDate.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString()
@@ -382,13 +393,90 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
     }
 
     const base = SITE_URL.replace(/\/+$/, '');
+    const breadcrumbs = buildCompanyBreadcrumbs(opportunity, base);
+    const graph: Record<string, unknown>[] = [breadcrumbs, schema];
+
+    // A job's discussion is real UGC, so it earns a truthfully-labeled
+    // DiscussionForumPosting node — never a synthesized FAQPage. A flat thread
+    // has answers with no questions, and inventing pairs for FAQPage is the
+    // kind of fabricated structured data Google penalises.
+    if (discussion && discussion.comments.length > 0) {
+        graph.push(buildDiscussionPosting(opportunity, discussion, base));
+    }
+
+    // FAQPage is emitted only when a question carries an explicit answer, and
+    // only because the job page renders that same Q&A visibly. Google requires
+    // the content to be on the page, not schema-only.
+    if (discussion?.faqs && discussion.faqs.length > 0) {
+        graph.push({
+            '@type': 'FAQPage',
+            mainEntity: discussion.faqs.map((faq) => ({
+                '@type': 'Question',
+                name: faq.question,
+                acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: faq.answer,
+                },
+            })),
+        });
+    }
+
+    return {
+        '@context': 'https://schema.org',
+        '@graph': graph
+    };
+};
+
+function buildDiscussionPosting(
+    opportunity: Opportunity,
+    discussion: DiscussionJsonLdInput,
+    base: string
+) {
+    const [first] = discussion.comments;
+    const path = getOpportunityPath(
+        isGovernmentOpportunity(opportunity) ? 'GOVERNMENT' : undefined,
+        opportunity.slug || opportunity.id
+    );
+
+    return {
+        '@type': 'DiscussionForumPosting',
+        headline: `${opportunity.title} discussion`,
+        text: `Freshers discussing ${opportunity.title} at ${opportunity.company}.`,
+        url: `${base}${path}#discussion`,
+        datePublished: first.createdAt,
+        author: { '@type': 'Person', name: first.author },
+        interactionStatistic: {
+            '@type': 'InteractionCounter',
+            interactionType: 'https://schema.org/CommentAction',
+            userInteractionCount: discussion.total,
+        },
+        comment: discussion.comments.map((comment) => ({
+            '@type': 'Comment',
+            text: comment.text,
+            datePublished: comment.createdAt,
+            author: { '@type': 'Person', name: comment.author },
+        })),
+    };
+}
+
+/**
+ * The breadcrumb list a job-detail JSON-LD graph carries. One builder, because
+ * this exact graph was previously emitted twice from the government route —
+ * once inside `generateOpportunityJsonLd` and once as a bare second script.
+ *
+ * The company link resolves through `CompanySlugger` on `/companies/{slug}`, so
+ * `slugify(company)` alone can name a page that route does not know. Detail
+ * routes attach the canonical `companySlug`; this falls back to the name slug
+ * only when the payload carries none.
+ */
+function buildCompanyBreadcrumbs(opportunity: Opportunity, base: string) {
     const isInternSeo = isInternshipOpportunity(opportunity);
     const isWalkinSeo = isWalkinOpportunity(opportunity);
     const typeLabel = isInternSeo ? 'Internships' : isWalkinSeo ? 'Walk-ins' : 'Jobs';
     const typePath = isInternSeo ? '/jobs/internships' : isWalkinSeo ? '/drives/walk-in' : '/jobs';
-    const companySlug = slugify(opportunity.company || '');
+    const companySlug = (opportunity as { companySlug?: string }).companySlug || slugify(opportunity.company || '');
 
-    const breadcrumbs = {
+    return {
         '@type': 'BreadcrumbList',
         itemListElement: [
             {
@@ -417,49 +505,4 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
             }
         ]
     };
-
-    return {
-        '@context': 'https://schema.org',
-        '@graph': [breadcrumbs, schema]
-    };
-};
-
-export const generateOpportunityBreadcrumbsJsonLd = (opportunity: Opportunity) => {
-    const base = SITE_URL.replace(/\/+$/, '');
-    const isInternSeo = isInternshipOpportunity(opportunity);
-    const isWalkinSeo = isWalkinOpportunity(opportunity);
-    const typeLabel = isInternSeo ? 'Internships' : isWalkinSeo ? 'Walk-ins' : 'Jobs';
-    const typePath = isInternSeo ? '/jobs/internships' : isWalkinSeo ? '/drives/walk-in' : '/jobs';
-    const companySlug = slugify(opportunity.company || '');
-    
-    return {
-        '@context': 'https://schema.org',
-        '@type': 'BreadcrumbList',
-        itemListElement: [
-            {
-                '@type': 'ListItem',
-                position: 1,
-                name: 'Home',
-                item: `${base}`
-            },
-            {
-                '@type': 'ListItem',
-                position: 2,
-                name: typeLabel,
-                item: `${base}${typePath}`
-            },
-            {
-                '@type': 'ListItem',
-                position: 3,
-                name: opportunity.company,
-                item: `${base}/companies/${companySlug}`
-            },
-            {
-                '@type': 'ListItem',
-                position: 4,
-                name: opportunity.title,
-                item: `${base}${getOpportunityPath(isGovernmentOpportunity(opportunity) ? 'GOVERNMENT' : undefined, opportunity.slug || opportunity.id)}`
-            }
-        ]
-    };
-};
+}

@@ -12,7 +12,6 @@ import {
   tokenSet,
   overlapRatio,
   extractDomain,
-  typeParamToEnum,
   normalizeEducationPayload,
   normalizeSalaryPeriodValue,
   normalizePassoutYears,
@@ -22,6 +21,7 @@ import {
   getDriveDetails,
   prettifyEmploymentTypes,
 } from "./formUtils";
+import { typeParamToEnum } from "@/lib/opportunity/typeParam";
 
 function parseExpiryDateTime(val: string | Date) {
   const expiresAtStr = typeof val === "string" ? val : val.toISOString();

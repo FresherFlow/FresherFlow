@@ -287,8 +287,14 @@ export function useCategoryPageState({
   const [draftExperience, setDraftExperience] = useState<string[]>([]);
 
   const [mounted, setMounted] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(20);
+  const [visibleCount, setVisibleCount] = useState(FEED_PAGE_SIZE);
   const replaceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /**
+   * The query string the pending `replaceState` will write, stashed here rather
+   * than captured in the timer closure so a timer that survives a re-render
+   * still writes the newest query instead of the one current when it was armed.
+   */
+  const pendingQueryRef = useRef<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -381,10 +387,15 @@ export function useCategoryPageState({
   });
 
   // Sync filter state FROM URL when searchParams change (e.g. sidebar link navigation).
-  // Skip the first render â€” state is already initialised from searchParams above.
-  const isFirstRender = React.useRef(true);
-  const appliedUrlSignature = React.useRef<string | null>(null);
+  // `appliedUrlSignature` is seeded with the CURRENT signature during render, not
+  // in the effect. A boolean "have I parsed yet" latch cannot distinguish the
+  // first pass from the StrictMode replay of the same mount (React does not
+  // reset refs between them), so the replay re-parsed the URL into fresh filter
+  // arrays and reset feed scroll + visible card count. Comparing the signature
+  // is idempotent instead: the first pass and its replay both no-op, while a
+  // real navigation still differs and syncs.
   const pathname = usePathname();
+  const appliedUrlSignature = React.useRef<string | null>(urlSignature(pathname, searchParams));
   useEffect(() => {
     const sp = searchParams;
     const signature = urlSignature(pathname, sp);
@@ -396,12 +407,6 @@ export function useCategoryPageState({
     if (urlJobKey !== jobParamRef.current) {
       jobParamRef.current = urlJobKey;
       if (!urlJobKey) setSelectedOpp(null);
-    }
-
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      appliedUrlSignature.current = signature;
-      return;
     }
 
     // useSearchParams() hands back a fresh object on every router restore, even
@@ -438,9 +443,12 @@ export function useCategoryPageState({
     });
   }, [searchParams, pathname]);
 
-  // Reset pagination when search or filters change
+  // Reset pagination when search or filters change. `type` is folded in here
+  // rather than kept in a second `[type]`-only effect: both fired on a feed
+  // switch and both wrote the same value, so the second was redundant work for
+  // no behavioural difference. Value comes from FEED_PAGE_SIZE, not a literal.
   useEffect(() => {
-    setVisibleCount(20);
+    setVisibleCount(FEED_PAGE_SIZE);
   }, [
     search,
     type,
@@ -602,28 +610,33 @@ export function useCategoryPageState({
     }
 
     if (changed) {
+      // The query is stashed in a ref, not captured in the closure, so a timer
+      // that outlives a re-render writes the newest query rather than the one
+      // that was current when it was armed.
+      pendingQueryRef.current = params.toString();
       if (replaceTimerRef.current) clearTimeout(replaceTimerRef.current);
       replaceTimerRef.current = setTimeout(() => {
+        replaceTimerRef.current = null;
+        const pending = pendingQueryRef.current;
+        pendingQueryRef.current = null;
+        if (pending === null) return;
+        const next = new URLSearchParams(pending);
         // The pane can open or close while this debounce is pending, so take
         // `job` from the live selection: a filter edit must neither drop it nor
         // resurrect a closed one. history.state is carried over so an open pane
         // keeps the marker that Back relies on.
         const job = jobParamRef.current;
         if (job) {
-          if (params.get("job") !== job) params.set("job", job);
-        } else if (params.has("job")) {
-          params.delete("job");
+          next.set("job", job);
+        } else {
+          next.delete("job");
         }
-        const newUrl = params.toString()
-          ? `?${params.toString()}`
+        const newUrl = next.toString()
+          ? `?${next.toString()}`
           : window.location.pathname;
         window.history.replaceState(window.history.state ?? null, "", newUrl);
       }, 300);
     }
-
-    return () => {
-      if (replaceTimerRef.current) clearTimeout(replaceTimerRef.current);
-    };
   }, [
     search,
     govtCategory,
@@ -644,6 +657,23 @@ export function useCategoryPageState({
     driveRadiusKm,
     mounted,
   ]);
+
+  // Unmount-only, deliberately NOT the writer effect's own cleanup. The writer
+  // has a `changed` guard, so its per-run cleanup used to clear a timer that the
+  // next run would only re-arm if `changed` was true again. A run where
+  // `changed` was false therefore cancelled a pending write and never re-armed
+  // it, silently losing that URL update. Letting the timer survive dep changes
+  // makes this a real trailing debounce: the last edit before the 300ms quiet
+  // period is the one that gets written, and the ref supplies the fresh value.
+  useEffect(() => {
+    return () => {
+      if (replaceTimerRef.current) {
+        clearTimeout(replaceTimerRef.current);
+        replaceTimerRef.current = null;
+      }
+      pendingQueryRef.current = null;
+    };
+  }, []);
 
   const {
     opportunities,
@@ -691,10 +721,6 @@ export function useCategoryPageState({
     // the disclosure row in CategoryPageView accounts for what they hide.
     personalize: true,
   });
-
-  useEffect(() => {
-    setVisibleCount(FEED_PAGE_SIZE);
-  }, [type]);
 
   const phaseCounts = useMemo(() => {
     if (type !== 'GOVERNMENT') return undefined;

@@ -71,8 +71,18 @@ export function errorHandler(
     err: ExtendedError,
     req: Request,
     res: Response,
-    _next: NextFunction
+    next: NextFunction
 ) {
+    // A handler that already started a response (a streamed file, a partially
+    // written body) cannot have its status or body replaced. Calling
+    // `res.status().json()` here would throw ERR_HTTP_HEADERS_SENT inside the
+    // error handler itself, which surfaces as an unhandled rejection and leaves
+    // the client with a truncated response. Delegate to Express, which closes
+    // the connection and destroys the socket.
+    if (res.headersSent) {
+        return next(err);
+    }
+
     // Only a genuinely unreachable database is 503. A missing column is a
     // deployment misconfiguration: the server is up and the database is
     // reachable, it just does not have the schema yet. Returning 503 for that
@@ -277,4 +287,58 @@ export class AppError extends Error {
         this.isAppError = true;
         this.isOperational = true;
     }
+}
+
+/**
+ * Stable, machine-readable error codes.
+ *
+ * `message` is for humans and may be reworded at any time; `code` is the
+ * contract a client branches on, so treat these as append-only. Anything not
+ * listed here reaches the client as `UNKNOWN_ERROR` (see `errorHandler`).
+ */
+export const ErrorCode = {
+    VALIDATION_FAILED: 'VALIDATION_FAILED',
+    BAD_REQUEST: 'BAD_REQUEST',
+    UNAUTHENTICATED: 'UNAUTHENTICATED',
+    FORBIDDEN: 'FORBIDDEN',
+    NOT_FOUND: 'NOT_FOUND',
+    CONFLICT: 'CONFLICT',
+    RATE_LIMITED: 'RATE_LIMITED',
+    SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
+    INTERNAL: 'INTERNAL',
+} as const;
+
+export type ErrorCodeValue = (typeof ErrorCode)[keyof typeof ErrorCode];
+
+/**
+ * Send an error using the one envelope every client already understands:
+ * `{ error: { code, message, requestId } }`.
+ *
+ * Route handlers were hand-rolling three incompatible shapes — a bare
+ * `{ message }`, a string `{ error: '...' }`, and the real envelope — and
+ * `packages/api-client` can only recover a message from the last one, so the
+ * string form silently degraded to "Request failed (400)" on mobile. Prefer
+ * throwing `new AppError(message, status)` inside a handler (the error handler
+ * then derives the code); use this helper for the early returns where a route
+ * responds directly.
+ */
+export function sendError(
+    res: Response,
+    statusCode: number,
+    code: ErrorCodeValue,
+    message: string,
+    requestId?: string,
+    details?: unknown
+): Response {
+    return res.status(statusCode).json({
+        error: {
+            code,
+            message,
+            requestId: requestId ?? 'unknown',
+            // Field-level validation detail for clients that can highlight the
+            // offending input. Omitted entirely when there is nothing to say, so
+            // the key never carries a misleading empty value.
+            ...(details === undefined ? {} : { details }),
+        },
+    });
 }

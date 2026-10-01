@@ -42,8 +42,8 @@ const STATUS_VARIANT: Record<string, string> = {
   PROCESSING: "bg-brand-facebook/10 text-brand-facebook dark:text-brand-telegram border-brand-facebook/30",
   PENDING: "bg-warning/10 text-warning dark:text-warning border-warning/30",
   PENDING_REVIEW: "bg-warning/10 text-warning dark:text-warning border-warning/30",
-  DRAFT: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/30",
-  EXPIRED: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/30",
+  DRAFT: "bg-muted/60 text-muted-foreground border-border",
+  EXPIRED: "bg-muted/60 text-muted-foreground border-border",
   DUPLICATE: "bg-warning/10 text-warning dark:text-warning border-warning/30",
   REJECTED: "bg-error/10 text-error dark:text-error border-error/30",
 }

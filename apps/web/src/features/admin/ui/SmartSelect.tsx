@@ -1,5 +1,4 @@
 import * as React from "react";
-import { cn } from "@repo/ui/utils/cn";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/ui/Select";
 import { Field } from "@/ui/Field";
 
@@ -64,7 +63,7 @@ export const SmartSelect = React.forwardRef<HTMLButtonElement, SmartSelectProps>
                 <SelectTrigger
                     ref={ref}
                     id={inputId}
-                    className={cn(!value && "", className)}
+                    className={className}
                     {...props}
                 >
                     <SelectValue placeholder={placeholder} />

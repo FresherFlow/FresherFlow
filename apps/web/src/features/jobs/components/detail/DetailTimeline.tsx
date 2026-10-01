@@ -1,6 +1,6 @@
 import { TimelineEventView } from '@/features/jobs/utils/detailUtils';
 import { cn } from '@/ui/cn';
-import { useState } from 'react';
+import { useMemo } from 'react';
 
 interface DetailTimelineProps {
     timelineEvents: TimelineEventView[];
@@ -8,7 +8,20 @@ interface DetailTimelineProps {
 }
 
 export function DetailTimeline({ timelineEvents, upcomingTimelineEvents }: DetailTimelineProps) {
-    const [now] = useState(() => Date.now());
+    /**
+     * Past/upcoming is taken from the parent's list rather than from a second
+     * clock here. A local `useState(() => Date.now())` froze at mount, so rows
+     * never re-shaded; and even a live second clock would be sampled at a
+     * different instant than the `upcoming` array, letting a row read as past
+     * while the header counted it as upcoming. `upcomingTimelineEvents` is
+     * exactly `timelineEvents` filtered against the one clock
+     * `useOpportunityDerivedState` keeps current, so membership is that same
+     * answer - no second source of time.
+     */
+    const upcomingIds = useMemo(
+        () => new Set(upcomingTimelineEvents.map((event) => event.id)),
+        [upcomingTimelineEvents]
+    );
 
     if (timelineEvents.length === 0) return null;
 
@@ -24,7 +37,7 @@ export function DetailTimeline({ timelineEvents, upcomingTimelineEvents }: Detai
             </div>
             <div className="space-y-2">
                 {timelineEvents.map((event) => {
-                    const isPast = event._dt.getTime() < now;
+                    const isPast = !upcomingIds.has(event.id);
                     return (
                         <div
                             key={event.id}

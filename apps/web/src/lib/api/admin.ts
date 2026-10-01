@@ -1,4 +1,28 @@
 import { apiClient } from './client';
+import type { Opportunity } from '@fresherflow/types';
+
+/**
+ * Body accepted by `POST /api/admin/opportunities` and
+ * `PUT /api/admin/opportunities/:id`.
+ *
+ * This is the declared return type of `buildOpportunityPayload`
+ * (`features/admin/opportunities/opportunityPayload.ts`). It is spelled out
+ * instead of imported because `lib/` must not depend on `features/` — see the
+ * import-direction rule in `apps/web/AGENTS.md`. The builder owns the shape;
+ * this names it at the transport boundary.
+ *
+ * Drift is still caught: a named `interface` is not assignable to
+ * `Record<string, unknown>`, so narrowing the builder's return type breaks the
+ * `useOpportunityFormHandlers` call site at compile time instead of silently
+ * diverging.
+ */
+export type OpportunityWritePayload = Record<string, unknown>;
+
+/** Response envelope both opportunity write endpoints return. */
+export type OpportunityWriteResponse = {
+    opportunity: Opportunity;
+    message?: string;
+};
 
 // Admin API methods using the centralized client (cookie-based auth)
 export const adminApi = {
@@ -137,8 +161,8 @@ export const adminApi = {
 
     // Create new opportunity
      
-    createOpportunity: (data: any) =>
-        apiClient('/api/admin/opportunities', {
+    createOpportunity: (data: OpportunityWritePayload) =>
+        apiClient<OpportunityWriteResponse>('/api/admin/opportunities', {
             method: 'POST',
             body: JSON.stringify(data)
         }),
@@ -186,8 +210,8 @@ export const adminApi = {
 
     // Update opportunity (full edit form)
      
-    updateOpportunity: (id: string, data: any) =>
-        apiClient(`/api/admin/opportunities/${id}`, {
+    updateOpportunity: (id: string, data: OpportunityWritePayload) =>
+        apiClient<OpportunityWriteResponse>(`/api/admin/opportunities/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data)
         }),

@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { requirePermission } from '../../../middleware/auth';
 import { withAdminAudit } from '../../../middleware/adminAudit';
+import { sendError, ErrorCode } from '../../../middleware/errorHandler';
 import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/opportunity/publicOpportunityCache.service';
 import { queueNewJobAlerts } from './_helpers';
 import { OpportunityService } from '../../../infrastructure/services/opportunity/opportunity.service';
@@ -37,10 +38,10 @@ router.post(
             const { ids, action, reason } = req.body;
 
             if (!ids || !Array.isArray(ids) || ids.length === 0) {
-                return res.status(400).json({ message: 'IDs array is required' });
+                return sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'IDs array is required', req.requestId);
             }
             if (!action || !['DELETE', 'ARCHIVE', 'PUBLISH', 'EXPIRE'].includes(action)) {
-                return res.status(400).json({ message: 'Valid action (DELETE, ARCHIVE, PUBLISH, EXPIRE) is required' });
+                return sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'Valid action (DELETE, ARCHIVE, PUBLISH, EXPIRE) is required', req.requestId);
             }
 
             const { result, idsNeedingAlerts, oppsForTags } = await OpportunityService.executeBulkAction(

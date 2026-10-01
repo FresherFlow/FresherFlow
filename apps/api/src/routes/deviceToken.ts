@@ -3,6 +3,7 @@ import { body, validationResult } from 'express-validator';
 import prisma from '../infrastructure/database/prisma';
 import { requireAuth } from '../middleware/auth';
 import { createRateLimiter } from '../middleware/rateLimit';
+import { sendError, ErrorCode } from '../middleware/errorHandler';
 
 const router = Router();
 
@@ -29,7 +30,7 @@ router.post('/', deviceTokenLimiter, requireAuth, validation, async (req: Reques
     try {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
-            res.status(400).json({ error: errors.array()[0]?.msg });
+            sendError(res, 400, ErrorCode.VALIDATION_FAILED, errors.array()[0]?.msg || 'Invalid request', req.requestId);
             return;
         }
 
@@ -67,7 +68,7 @@ router.delete('/', deviceTokenLimiter, requireAuth, async (req: Request, res: Re
     try {
         const { token } = req.body as { token: string };
         if (!token) {
-            res.status(400).json({ error: 'Token is required' });
+            sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'Token is required', req.requestId);
             return;
         }
 

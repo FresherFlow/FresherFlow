@@ -4,11 +4,8 @@ import { adminApi } from '@/lib/api/admin';
 import type { Opportunity } from '@fresherflow/types';
 import { getErrorMessage, toastError } from '@/lib/utils/error';
 import { useDebounce } from '@/hooks/useDebounce';
-import {
-    typeParamToEnum,
-    enumToTypeParam,
-    buildExportUrl
-} from '@/features/admin/opportunities/listUtils';
+import { typeParamToEnum, enumToTypeParam } from '@/lib/opportunity/typeParam';
+import { buildExportUrl } from '@/features/admin/opportunities/listUtils';
 import {
     ADMIN_OPPORTUNITY_DEFAULT_SORT,
     parseAdminOpportunitySearchParams

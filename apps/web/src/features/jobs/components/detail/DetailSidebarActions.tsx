@@ -45,14 +45,11 @@ interface DetailSidebarActionsProps {    user: User | null;
     isCampusDrive: boolean;
     timelineEvents: OpportunityEvent[];
     jumpToTimeline: () => void;
-    loginFromDetailHref: string;
     listingState: string;
     formatDeadline: (opp: Opportunity) => string | null;
-    isMobile?: boolean;
     handleApply: () => void;
     handleToggleSave: () => void;
     handleShare: () => void;
-    handleCopyLink: () => void;
 }
 
 export function DetailSidebarActions({

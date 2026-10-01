@@ -32,8 +32,29 @@ async function serveSitemap(request: NextRequest) {
         const proto = request.headers.get('x-forwarded-proto') || 'https';
         const currentDomain = `${proto}://${host}`;
 
-        // Dynamically replace all production links with the current requesting domain
+        // Rewrite every origin in the document to the domain actually being
+        // requested, so preview deployments serve their own URLs.
+        //
+        // This is a two-stage rewrite, and the second stage exists because of a
+        // real incident. `replaceAll(SITE_URL, …)` only fixes a *correct*
+        // production origin. A publish run with `PUBLIC_FRONTEND_URL` unset made
+        // the generator fall back to `http://localhost:3000`, so every `<loc>`
+        // was a localhost URL — and that value is not `SITE_URL`, so the first
+        // stage left it untouched and handed it straight to the crawler. Google
+        // cannot fetch localhost, so the whole sitemap was worth nothing while
+        // still returning 200.
+        //
+        // So rewrite any absolute origin found in a `<loc>`, not just the one we
+        // expect. The pattern is anchored on a scheme plus host and stops at the
+        // next `/`, so only the origin is replaced and the path is preserved.
+        // `assertSitemapBaseUrl` in the API now also refuses to *produce* such a
+        // file; this is the belt to that braces, and it means a bad sitemap
+        // already on the CDN still serves correctly.
         xml = xml.replaceAll(SITE_URL, currentDomain);
+        xml = xml.replace(
+            /<loc>https?:\/\/[^/\s<]+/g,
+            `<loc>${currentDomain}`
+        );
 
         return new NextResponse(xml, {
             headers: {

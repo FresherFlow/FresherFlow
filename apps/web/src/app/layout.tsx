@@ -52,11 +52,35 @@ const plexMono = IBM_Plex_Mono({
   display: 'swap',
 });
 
+// One home for the site description: it was pasted five times below (metadata,
+// openGraph, twitter, and the Organization JSON-LD), so an edit to one left the
+// others stale.
+const SITE_DESCRIPTION =
+  "FresherFlow is a community of freshers who share opportunities, discuss hiring, and keep each other informed — so no fresher applies blind.";
+
 const SITE_ORIGIN = SITE_URL;
 const METADATA_BASE = SITE_ORIGIN ? new URL(SITE_ORIGIN) : undefined;
 const OG_IMAGE_URL = SITE_ORIGIN ? `${SITE_ORIGIN}/opengraph-image` : '/opengraph-image';
 const TWITTER_IMAGE_URL = SITE_ORIGIN ? `${SITE_ORIGIN}/twitter-image` : '/twitter-image';
 const LOGO_URL = SITE_ORIGIN ? `${SITE_ORIGIN}/fresherflow-logo-v2.png` : '/fresherflow-logo-v2.png';
+
+/**
+ * Site-wide Organization node, emitted once from `<head>`.
+ *
+ * The homepage used to ship a *second*, divergent Organization node in the body
+ * — same `name`, extra `description`/`sameAs`, and a conditionally-nested
+ * `logo` — so Google saw two conflicting claims about one entity. This is now
+ * the only one, and it is the richer of the two.
+ */
+const ORGANIZATION_JSON_LD = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "FresherFlow",
+  ...(SITE_ORIGIN ? { url: SITE_ORIGIN } : {}),
+  logo: LOGO_URL,
+  description: SITE_DESCRIPTION,
+  sameAs: ['https://x.com/fresherflowin', 'https://linkedin.com/company/fresherflow'],
+};
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -71,12 +95,12 @@ export const metadata: Metadata = {
     default: "FresherFlow — Jobs, powered by freshers.",
     template: "%s | FresherFlow",
   },
-  description: "FresherFlow is a community of freshers who share opportunities, discuss hiring, and keep each other informed — so no fresher applies blind.",
+  description: SITE_DESCRIPTION,
   openGraph: {
     type: "website",
     siteName: "FresherFlow",
     title: "FresherFlow — Jobs, powered by freshers.",
-    description: "FresherFlow is a community of freshers who share opportunities, discuss hiring, and keep each other informed — so no fresher applies blind.",
+    description: SITE_DESCRIPTION,
     images: [
       {
         url: OG_IMAGE_URL,
@@ -90,7 +114,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "FresherFlow — Jobs, powered by freshers.",
-    description: "FresherFlow is a community of freshers who share opportunities, discuss hiring, and keep each other informed — so no fresher applies blind.",
+    description: SITE_DESCRIPTION,
     images: [TWITTER_IMAGE_URL],
   },
   icons: {
@@ -128,15 +152,7 @@ export default async function RootLayout({
         <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_API_URL || 'https://api.fresherflow.in'} />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "Organization",
-              name: "FresherFlow",
-              ...(SITE_ORIGIN ? { url: SITE_ORIGIN } : {}),
-              logo: LOGO_URL,
-            }),
-          }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(ORGANIZATION_JSON_LD) }}
         />
       </head>
       <body className={`${inter.variable} min-h-screen flex flex-col antialiased bg-background text-foreground selection:bg-primary/20`} suppressHydrationWarning>

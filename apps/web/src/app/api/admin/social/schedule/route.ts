@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withRateLimit } from '@/lib/api/rateLimit';
+import { withAdminAuth } from '@/lib/server/adminAuth';
 
 const WORKER_URL = process.env.WORKER_URL || '';
 const WORKER_SECRET = process.env.WORKER_SECRET ?? '';
@@ -88,5 +89,5 @@ async function cancelSchedule(req: NextRequest) {
     }
 }
 
-export const POST = withRateLimit(scheduleSocial, { windowMs: 60_000, max: 60, keyPrefix: 'social-schedule' });
-export const DELETE = withRateLimit(cancelSchedule, { windowMs: 60_000, max: 60, keyPrefix: 'social-schedule' });
+export const POST = withRateLimit(withAdminAuth(scheduleSocial), { windowMs: 60_000, max: 60, keyPrefix: 'social-schedule' });
+export const DELETE = withRateLimit(withAdminAuth(cancelSchedule), { windowMs: 60_000, max: 60, keyPrefix: 'social-schedule' });

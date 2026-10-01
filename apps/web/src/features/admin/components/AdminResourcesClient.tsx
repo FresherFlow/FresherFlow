@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Resource moderation queue for `/admin/resources` and `/moderation/resources`.
+ * Resource moderation queue for `/admin/resources` and `/moderator/resources`.
  *
  * Layout follows the reworked admin pages (`admin/audit`, `admin/users`,
  * `admin/profile-pages`): the page hands down a bounded height, this component
@@ -38,6 +38,7 @@ import {
 } from '@fresherflow/types';
 import { adminApi } from '@/lib/api/admin';
 import { getErrorMessage } from '@/lib/utils/error';
+import { toSafeOutboundUrl } from '@/lib/utils/safeOutboundUrl';
 import { useDebounce } from '@/hooks/useDebounce';
 import { SkillPill } from '@/features/jobs/components/SkillPill';
 import { SmartInput } from '@/features/admin/ui/SmartInput';
@@ -888,21 +889,36 @@ function ResourceForm({
 // ─── Grid columns ─────────────────────────────────────────────────────────────
 
 function ItemLinks({ items }: { items: ResourceItem[] }) {
+    // Resource URLs are admin-entered, so they get the same http(s)-only gate as
+    // every other outbound link. A rejected link renders as plain, non-clickable
+    // text rather than an anchor that can carry `javascript:` or `data:`.
     return (
         <div className="flex flex-wrap gap-1">
-            {items.slice(0, 2).map((item) => (
-                <a
-                    key={item.id}
-                    href={item.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex max-w-40 items-center gap-1 rounded-md border border-border/60 bg-secondary px-1.5 py-0.5 text-xs text-foreground hover:underline"
-                >
-                    <DocumentTextIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
-                    <span className="truncate">{item.title}</span>
-                    <ArrowTopRightOnSquareIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
-                </a>
-            ))}
+            {items.slice(0, 2).map((item) => {
+                const safeUrl = toSafeOutboundUrl(item.url);
+                return safeUrl ? (
+                    <a
+                        key={item.id}
+                        href={safeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex max-w-40 items-center gap-1 rounded-md border border-border/60 bg-secondary px-1.5 py-0.5 text-xs text-foreground hover:underline"
+                    >
+                        <DocumentTextIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{item.title}</span>
+                        <ArrowTopRightOnSquareIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
+                    </a>
+                ) : (
+                    <span
+                        key={item.id}
+                        title="Link rejected: not an http(s) URL"
+                        className="inline-flex max-w-40 items-center gap-1 rounded-md border border-border/60 bg-muted px-1.5 py-0.5 text-xs text-muted-foreground"
+                    >
+                        <DocumentTextIcon className="h-3 w-3 shrink-0" aria-hidden="true" />
+                        <span className="truncate">{item.title}</span>
+                    </span>
+                );
+            })}
             {items.length > 2 ? (
                 <span className="inline-flex items-center rounded-md border border-border/60 bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
                     +{items.length - 2} more

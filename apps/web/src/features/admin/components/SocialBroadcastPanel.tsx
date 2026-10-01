@@ -5,6 +5,7 @@ import { adminApi } from "@/lib/api/admin";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
+import { EmptyState } from "@/ui/EmptyState";
 import toast from 'react-hot-toast';
 import { Loader2, RefreshCw } from "lucide-react";
 import { SocialPost, SocialPostStatus, SocialPlatform } from "@fresherflow/types";
@@ -89,10 +90,14 @@ export default function SocialBroadcastPanel() {
                         <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                     </div>
                 ) : items.length === 0 ? (
-                    <div className="py-12 border-2 border-dashed rounded-lg text-center flex flex-col items-center justify-center space-y-2">
-                         <p className="text-sm font-medium text-muted-foreground">No posts found for this filter.</p>
-                         <Button variant="ghost" size="sm" onClick={() => { setStatusFilter("ALL"); setPlatformFilter("ALL"); }}>Clear filters</Button>
-                    </div>
+                    <EmptyState
+                        size="md"
+                        title="No posts found for this filter"
+                        description="Try adjusting your search or filters."
+                        action={
+                            <Button variant="ghost" size="sm" onClick={() => { setStatusFilter("ALL"); setPlatformFilter("ALL"); }}>Clear filters</Button>
+                        }
+                    />
                 ) : (
                     items.map((item) => (
                         <div key={item.id} className="rounded-lg border bg-card/50 p-4 transition-colors hover:bg-muted/20">

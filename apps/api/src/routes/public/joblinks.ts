@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import prisma from '../../infrastructure/database/prisma';
 import { createRateLimiter } from '../../middleware/rateLimit';
+import { sendError, ErrorCode } from '../../middleware/errorHandler';
 import TelegramService from '../../infrastructure/services/alerts/telegram.service';
 
 const router = express.Router();
@@ -18,7 +19,7 @@ router.post('/submit-job-link', submitLimiter, async (req: Request, res: Respons
         const { url, source = 'anonymous' } = req.body;
 
         if (!url || typeof url !== 'string' || !url.startsWith('http')) {
-            return res.status(400).json({ error: 'Valid URL is required' });
+            return sendError(res, 400, ErrorCode.VALIDATION_FAILED, 'Valid URL is required', req.requestId);
         }
 
         // Check if there is already a CROWDSOURCED IngestionSource

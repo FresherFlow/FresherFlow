@@ -18,6 +18,7 @@ import { extractExperience, extractSalary } from '@fresherflow/plugins';
 import {
     jobSchema,
     normalizeRawJson,
+    readJsonFileSafe,
     ExtractedJob,
     postProcessNormalize
 } from '@fresherflow/pipeline';
@@ -177,6 +178,10 @@ async function run(): Promise<void> {
 
         try {
             const rows = await fetchUnprocessedFromSupabase(limitArg);
+            if (!Array.isArray(rows) || rows.length === 0) {
+                console.log('No unprocessed jobs in discovered_jobs. Exiting.');
+                process.exit(0);
+            }
             
             // Mark all as PROCESSING so parallel runs don't double-pick them
             const ids = rows.map(r => r.id);
@@ -224,10 +229,24 @@ async function run(): Promise<void> {
             console.error('❌ Failed to fetch from Supabase:', e.message);
             process.exit(1);
         }
-    } else if (positionalArgs[0] && await fileExists(positionalArgs[0])) {
-        console.log(`Reading jobs from file: ${positionalArgs[0]}`);
-        const fileContent = await fs.readFile(positionalArgs[0], 'utf8');
-        const parsedData = JSON.parse(fileContent);
+    } else if (positionalArgs[0]) {
+        // A missing or malformed artifact is expected when the upstream discovery
+        // run produced nothing. Report it precisely and exit cleanly instead of
+        // crashing on a raw fs/JSON error.
+        const inputPath = positionalArgs[0];
+        if (!(await fileExists(inputPath))) {
+            console.warn(`Input file not found: ${inputPath}`);
+            console.warn('No discovered jobs to process (upstream discovery likely found nothing). Exiting.');
+            process.exit(0);
+        }
+
+        const parsedData = await readJsonFileSafe<any>(inputPath);
+        if (parsedData === null) {
+            console.error(`Input file is not valid JSON: ${inputPath}`);
+            process.exit(1);
+        }
+
+        console.log(`Reading jobs from file: ${inputPath}`);
         jobs = Array.isArray(parsedData) ? parsedData : (parsedData.jobs || []);
         jobs = jobs.filter((j: any) => !processedUrls.has(j.applyLink));
     } else {

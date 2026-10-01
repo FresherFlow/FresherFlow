@@ -1,5 +1,34 @@
 services:
 
+  # ── apps/ingestion is NOT declared here (deliberate, pending an owner) ──────
+  #
+  # `apps/ingestion` (Express, port 3005, `GET /health`) is a real buildable
+  # workspace package, and production callers assume it exists:
+  #   - apps/api/src/routes/admin/targets.ts        (INGESTION_URL, /run, /run/all)
+  #   - apps/web/src/app/api/search/route.ts       (INGESTION_SERVICE_URL)
+  #   - apps/web/src/app/api/admin/discovery/jobs/process/route.ts
+  #   - .github/workflows/cron.yml                 (Keep-Alive Ping)
+  #
+  # It is absent from this blueprint, so it is deployed by some route this
+  # repository cannot see. Its address is supplied only through deployment
+  # environment variables (GitHub `secrets.INGESTION_URL` / `vars.INGESTION_URL`,
+  # Render dashboard), whose values are not in the repo. The only concrete
+  # hostname found is in `files/planning/.archive/`, which is not a source of
+  # truth for production.
+  #
+  # A service entry was NOT added on purpose. Guessing a host here would create
+  # a second, empty ingestion service the next time this blueprint is synced,
+  # and the callers above would keep using the old address anyway.
+  #
+  # TO RESOLVE: confirm the real host and its owner, then either add the service
+  # below or delete this block. Until then treat `INGESTION_URL` as required
+  # configuration for fresherflow-api and fresherflow-web.
+  #
+  # Also note: the build commands below still use `npm ci` and
+  # `package-lock.json`, but the repo has no package-lock.json and pins
+  # `packageManager: pnpm@12.4.2`. Left as-is (out of scope) — these services
+  # cannot build until that is reconciled.
+
   # ── API ─────────────────────────────────────────────────────────────────────
   - type: web
     name: fresherflow-api
