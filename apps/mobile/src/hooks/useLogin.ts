@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNotifications, storage } from '@repo/frontend-core';
+import { useNotifications, storage } from '@fresherflow/frontend-core';
 import { z } from 'zod';
 import { auth, createAppleCredential, createGoogleCredential, getFirebaseAuthDomain } from '@/config/firebase';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';

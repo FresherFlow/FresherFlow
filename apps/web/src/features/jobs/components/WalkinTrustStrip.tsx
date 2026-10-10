@@ -7,7 +7,7 @@ import type { SignalState } from '@fresherflow/types';
 import { JobSignalType } from '@fresherflow/types';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { Skeleton } from '@/ui/Skeleton';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 
 /**
  * WalkinTrustStrip — the "is this drive real?" answer, inline.

@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 import CheckCircleIcon from '@heroicons/react/24/solid/CheckCircleIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import IdentificationIcon from '@heroicons/react/24/outline/IdentificationIcon';

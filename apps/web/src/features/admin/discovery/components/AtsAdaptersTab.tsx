@@ -6,7 +6,7 @@ import { DataGrid, DataGridColumn } from '@/ui/data-grid/DataGrid';
 import { EmptyState } from '@/ui/EmptyState';
 import { PluginEntry, IngestionTarget } from '../types';
 import { Button } from '@/ui/Button';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 
 const BOARD_PROVIDERS = new Set([
  'glassdoor',

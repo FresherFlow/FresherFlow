@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { } from 'react-native';
 import * as Linking from 'expo-linking';
 import auth, { isFirebaseAuthAvailable } from '@/config/firebase';
-import { storage } from '@repo/frontend-core';
+import { storage } from '@fresherflow/frontend-core';
 import { useToast } from '@/contexts/ToastContext';
 
 export const useEmailLinkSignIn = () => {

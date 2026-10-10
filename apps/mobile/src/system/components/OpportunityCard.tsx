@@ -6,7 +6,7 @@ import { getFeedBadgeLabel } from '@/utils/taxonomy';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { alpha } from '@/theme';
 import { SurfaceCard } from './PremiumPrimitives';
-import { CompanyLogo } from '@repo/ui';
+import { CompanyLogo } from '@fresherflow/ui';
 import { mScale, SPACING, RADIUS } from '../constants/dimensions';
 import { TYPOGRAPHY } from '../constants/typography';
 

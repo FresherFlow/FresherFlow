@@ -14,7 +14,7 @@ import { Send, Trash2, MessageSquare, ShieldCheck } from 'lucide-react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { alpha } from '@/theme';
-import { useNotifications } from '@repo/frontend-core';
+import { useNotifications } from '@fresherflow/frontend-core';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useComments } from '@/hooks/useComments';
 import { Section } from '@/system/layout/Layout';

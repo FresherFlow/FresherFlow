@@ -3,7 +3,7 @@
 import { ChevronDownIcon, RocketLaunchIcon, ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/ui/DropdownMenu';
 import { Button } from '@/ui/Button';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
 import { useTheme } from '@/lib/providers/ThemeContext';
 import { TelemetryStats } from '../types';

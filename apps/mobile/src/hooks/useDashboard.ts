@@ -3,7 +3,7 @@ import { Opportunity } from '@fresherflow/types';
 import { isWalkinOpportunity } from '@/utils/taxonomy';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFeedStore } from '@/store/useFeedStore';
-import { useSaved } from '@repo/frontend-core';
+import { useSaved } from '@fresherflow/frontend-core';
 import { useTracker } from '@/hooks/useTracker';
 import { getString, setString } from '@/utils/storage';
 

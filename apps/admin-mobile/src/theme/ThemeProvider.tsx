@@ -4,7 +4,7 @@ import { View, useColorScheme } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { typography, Typography } from './typography';
 import { componentSizes, ComponentSizes } from './componentSizes';
-import { UIThemeContext } from '@repo/ui';
+import { UIThemeContext } from '@fresherflow/ui';
 
 // ─── Premium Dark Colors ───────────────────────────────────────────
 const getPremiumDarkColors = (isAmoled: boolean) => ({
@@ -245,7 +245,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
     <ThemeContext.Provider value={{ themeMode, isAmoled, currentTheme, isReady, setThemeMode, toggleAmoled }}>
       <UIThemeContext.Provider value={{ 
-        colors: currentTheme.colors as unknown as import('@repo/ui').ThemeColors, 
+        colors: currentTheme.colors as unknown as import('@fresherflow/ui').ThemeColors, 
         spacing: currentTheme.spacing, 
         roundness: currentTheme.roundness 
       }}>

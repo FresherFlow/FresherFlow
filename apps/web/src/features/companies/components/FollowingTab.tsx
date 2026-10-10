@@ -8,7 +8,7 @@ import { useFirebaseFollowedCompanies } from '@/features/companies/hooks/useFire
 import { FollowedCompaniesPanel } from '@/features/companies/components/FollowedCompaniesPanel';
 import type { CompanyFollowSummary } from '@/features/companies/types';
 import { ArrowLeftIcon, BuildingOffice2Icon } from '@heroicons/react/24/outline';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 
 type Tab = 'all' | 'following';
 

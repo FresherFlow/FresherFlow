@@ -23,7 +23,7 @@
   not `db:push`.
 - `packages/types` is the shared surface: enums must match Prisma exactly.
 - Frontends consume `packages/api-client`; keep wrappers typed, no `any`.
-- `packages/ui` uses existing tokens + `@repo/ui/utils/cn`; no new design system.
+- `packages/ui` uses existing tokens + `@fresherflow/ui/utils/cn`; no new design system.
 - One home per fact: brand strings live only in `packages/constants/src/copy.ts`.
 
 ## Shared-file hazards

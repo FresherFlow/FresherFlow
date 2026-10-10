@@ -5,7 +5,7 @@ import { Opportunity, GovernmentApplicationStatus } from '@fresherflow/types';
 import { useTheme } from '@/contexts/ThemeContext';
 import { alpha } from '@/theme';
 import { SurfaceCard } from './PremiumPrimitives';
-import { CompanyLogo } from '@repo/ui';
+import { CompanyLogo } from '@fresherflow/ui';
 import { mScale, SPACING, RADIUS } from '../constants/dimensions';
 import { haptic } from '@/utils/haptics';
 import { format, parseISO, isValid } from 'date-fns';

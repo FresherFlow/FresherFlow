@@ -67,7 +67,7 @@ import { formatSalary } from '@/utils/formatters';
 import { openExternalURL } from '@/utils/browser';
 import { calculateOpportunityMatch } from '@fresherflow/utils';
 
-import { useNotifications } from '@repo/frontend-core';
+import { useNotifications } from '@fresherflow/frontend-core';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useUIStore } from '@/store/useUIStore';
@@ -102,7 +102,7 @@ import { PremiumSearchBar } from '@/system/components/PremiumSearchBar';
 import { ReportActionSheet, ReportActionSheetRef } from '@/system/components/ReportActionSheet';
 import { FeedbackReason, ActionType, Opportunity } from '@fresherflow/types';
 
-import { CompanyLogo } from '@repo/ui';
+import { CompanyLogo } from '@fresherflow/ui';
 import { mScale, SPACING, RADIUS } from '../../system/constants/dimensions';
 import { CommentSection } from '@/system/components/CommentSection';
 import { TrackerStatusSheet, TrackerStatusSheetRef } from '@/system/components/TrackerStatusSheet';

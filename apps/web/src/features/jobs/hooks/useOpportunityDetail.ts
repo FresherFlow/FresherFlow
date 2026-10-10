@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ActionType, type Opportunity, type User } from '@fresherflow/types';
 import toast from 'react-hot-toast';
-import { toastError } from '@repo/ui/utils/error-web';
+import { toastError } from '@fresherflow/ui/utils/error-web';
 import { getRecentViewedByIdOrSlug, saveRecentViewed } from '@/lib/cache/recentViewed';
 import { analytics } from '@/lib/api/analytics';
 import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';

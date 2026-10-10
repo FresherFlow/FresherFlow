@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import BookmarkSolidIcon from '@heroicons/react/24/solid/BookmarkIcon';

@@ -28,13 +28,13 @@ import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import React from 'react';
 
 // Import reusable UI components directly from files to avoid client-side package issues
-import { Timeline } from '@repo/ui/components/Timeline';
+import { Timeline } from '@fresherflow/ui/components/Timeline';
 import { DataTable } from '@/ui/data-table/DataTable';
 import { DataTableColumnHeader } from '@/ui/data-table/DataTableColumnHeader';
 import { DataTableToolbar } from '@/ui/data-table/DataTableToolbar';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/ui/Table';
 import { ColumnDef, StockFeatures } from '@tanstack/react-table';
-import { Tabs } from '@repo/ui/components/Tabs';
+import { Tabs } from '@fresherflow/ui/components/Tabs';
 
 interface GovernmentJobDetailViewProps {
     opp: Opportunity;

@@ -3,7 +3,7 @@ import { View } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useSaved } from '@repo/frontend-core';
+import { useSaved } from '@fresherflow/frontend-core';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';

@@ -27,7 +27,7 @@ import { Controller } from 'react-hook-form';
 import { useShare, ShareResult, ShareFormData } from '@/hooks/useShare';
 import { RootStackParamList } from '@/navigation/types';
 import { NavigationProp } from '@react-navigation/native';
-import { useNotifications } from '@repo/frontend-core';
+import { useNotifications } from '@fresherflow/frontend-core';
 import { useAuthStore } from '@/store/useAuthStore';
 import { profileApi } from '@fresherflow/api-client';
 import { useProfile } from '@/hooks/useProfile';

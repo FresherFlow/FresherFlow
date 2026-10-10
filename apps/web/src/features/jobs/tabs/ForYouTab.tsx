@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 import type { Opportunity } from '@fresherflow/types';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useFeedHeader } from '@/lib/providers/FeedHeaderProvider';

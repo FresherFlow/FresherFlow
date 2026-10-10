@@ -2,7 +2,7 @@ import React from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { AuthNavigator } from './AuthNavigator';
 import { AdminNavigator } from './AdminNavigator';
-import { useAdminAuth as useAuth } from '@repo/frontend-core';
+import { useAdminAuth as useAuth } from '@fresherflow/frontend-core';
 import { useTheme } from '../theme/ThemeProvider';
 
 export const AppNavigator = () => {

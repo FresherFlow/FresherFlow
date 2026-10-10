@@ -11,7 +11,7 @@ import {
 } from '@/features/jobs/utils/walkinEventUtils';
 import { WalkinDateChip } from '@/features/jobs/components/WalkinEventWidgets';
 import { getDriveDetails } from '@/features/jobs/utils/walkinMapUtils';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 
 /**
  * Walk-in date-grouped board — "This Saturday near me" view.

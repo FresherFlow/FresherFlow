@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 import { useMemo, useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useFeedHeader } from '@/lib/providers/FeedHeaderProvider';

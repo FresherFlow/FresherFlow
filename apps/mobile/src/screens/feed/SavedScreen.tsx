@@ -53,7 +53,7 @@ const alpha = (color: string, opacity: number) => {
 };
 
 import { useUI } from '@/contexts/UIContext';
-import { useSaved } from '@repo/frontend-core';
+import { useSaved } from '@fresherflow/frontend-core';
 import { useToast } from '@/contexts/ToastContext';
 
 const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {

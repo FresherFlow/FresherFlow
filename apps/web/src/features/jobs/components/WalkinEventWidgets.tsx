@@ -7,7 +7,7 @@ import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import { getGoogleCalendarUrl, getDriveDetails } from '@/features/jobs/utils/walkinMapUtils';
 import { formatNextWalkinLabel, getNextWalkinDate } from '@/features/jobs/utils/walkinEventUtils';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 
 /**
  * Walk-in event widgets — additive layer for cards, rows, and panes.

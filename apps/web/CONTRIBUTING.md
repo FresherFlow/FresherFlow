@@ -50,7 +50,7 @@ Every large codebase has a few quirks. Here is what you need to know about ours 
    The `src/app/` directory currently has a lot of root-level folders (`/about`, `/careers`, `/terms`, etc.). It can look a bit overwhelming. Just look for the specific URL path you need to edit.
 
 3. **UI Alias:**
-   You might see imports like `import { Button } from '@repo/ui'`. This is a custom alias in our `tsconfig.json` that points to the shared `packages/ui` folder.
+   You might see imports like `import { Button } from '@fresherflow/ui'`. This is a custom alias in our `tsconfig.json` that points to the shared `packages/ui` folder.
 
 ---
 

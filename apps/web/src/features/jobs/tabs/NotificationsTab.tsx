@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
@@ -10,7 +10,7 @@ import {
   ArrowLeftIcon,
   Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
-import { cn } from "@repo/ui/utils/cn";
+import { cn } from "@fresherflow/ui/utils/cn";
 import { Skeleton } from "@/ui/Skeleton";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { EmptyState } from "@/ui/EmptyState";

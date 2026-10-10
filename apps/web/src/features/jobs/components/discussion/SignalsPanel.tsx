@@ -6,7 +6,7 @@ import { communityApi } from '@/features/jobs/api/community';
 import { JobSignalType } from '@fresherflow/types';
 import type { SignalState } from '@fresherflow/types';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 
 const SIGNALS: { key: JobSignalType; label: string }[] = [
     { key: JobSignalType.APPLIED, label: 'Applied' },

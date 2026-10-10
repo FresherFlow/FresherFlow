@@ -21,7 +21,7 @@ import { useScrollTracker } from '@/hooks/useScrollTracker';
 import { GovtJobCard } from '@/system/components/GovtJobCard';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
-import { useSaved } from '@repo/frontend-core';
+import { useSaved } from '@fresherflow/frontend-core';
 import { PremiumHeader, ScrollToTopButton } from '@/system/components/PremiumPrimitives';
 
 // Premium System

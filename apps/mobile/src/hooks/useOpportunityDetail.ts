@@ -6,7 +6,7 @@ import axios from 'axios';
 import { Opportunity, ActionType, FeedbackReason } from '@fresherflow/types';
 import { getFeedBadgeLabel } from '@/utils/taxonomy';
 import { /* opportunityClicksApi, */ actionsApi, feedbackApi, opportunitiesApi } from '@fresherflow/api-client';
-import { useNotifications, useSaved, enqueueOfflineReport, enqueueOfflineClickTrack } from '@repo/frontend-core';
+import { useNotifications, useSaved, enqueueOfflineReport, enqueueOfflineClickTrack } from '@fresherflow/frontend-core';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Analytics, EventNames } from '@/utils/analytics';
 import { useTracker } from '@/hooks/useTracker';

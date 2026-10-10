@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { fresherNeedsApi } from '@fresherflow/api-client';
 import type { SalaryReportItem, SalaryReportListResult } from '@fresherflow/api-client';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { EmptyState } from '@/ui/EmptyState';
 import { ErrorMessage } from '@/ui/ErrorMessage';

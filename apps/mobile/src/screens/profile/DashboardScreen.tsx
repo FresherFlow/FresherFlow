@@ -44,7 +44,7 @@ import { useProfile } from '@/hooks/useProfile';
 import { useDashboard } from '@/hooks/useDashboard';
 import { JobCard } from '@/system/components/OpportunityCard';
 import { saveDetailCache } from '@/utils/cache/offlineCache';
-import { useSaved } from '@repo/frontend-core';
+import { useSaved } from '@fresherflow/frontend-core';
 
 import { useStreak } from '@/hooks/useStreak';
 import { Flame } from 'lucide-react-native';

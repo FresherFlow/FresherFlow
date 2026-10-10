@@ -20,7 +20,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useSectorStore } from '@/store/useSectorStore';
 import { Screen } from '@/system/layout/Layout';
 import { PremiumHeader, SurfaceCard, ScrollToTopButton } from '@/system/components/PremiumPrimitives';
-import { CompanyLogo } from '@repo/ui';
+import { CompanyLogo } from '@fresherflow/ui';
 import { mScale, SPACING, RADIUS } from '@/system/constants/dimensions';
 import { useToast } from '@/contexts/ToastContext';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';

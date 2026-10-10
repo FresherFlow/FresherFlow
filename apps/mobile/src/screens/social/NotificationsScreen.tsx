@@ -12,7 +12,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { SecondaryHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
 import { Screen } from '@/system/layout/Layout';
 import { BellOff, ArrowRight, Trash2, Settings, Sparkles, Compass } from 'lucide-react-native';
-import { CompanyLogo } from '@repo/ui';
+import { CompanyLogo } from '@fresherflow/ui';
 import { SPACING, RADIUS, mScale } from '@/system/constants/dimensions';
 import { TYPOGRAPHY } from '@/system/constants/typography';
 import { toTitleCase } from '@/utils/text';

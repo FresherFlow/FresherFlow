@@ -7,7 +7,7 @@ import { WifiOff, Wifi } from 'lucide-react-native';
 import { MotiView, AnimatePresence } from 'moti';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { flushOfflineActions } from '@repo/frontend-core';
+import { flushOfflineActions } from '@fresherflow/frontend-core';
 import { syncCommentQueue } from '@/utils/commentQueue';
 import { syncShareQueue } from '@/utils/shareQueue';
 import { useAuthStore } from '@/store/useAuthStore';

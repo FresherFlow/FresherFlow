@@ -60,13 +60,13 @@ import {
     NotificationProvider, 
     SavedProvider,
     secureStorage,
-} from '@repo/frontend-core';
+} from '@fresherflow/frontend-core';
 import { linking } from './src/config/linking';
 import { configureClient, HttpError } from '@fresherflow/api-client';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { ToastProvider } from './src/contexts/ToastContext';
 import { UIProvider } from './src/contexts/UIContext';
-import { UIThemeContext, theme } from '@repo/ui';
+import { UIThemeContext, theme } from '@fresherflow/ui';
 import { API_URL } from './src/config/api';
 
 import { QueryClientProvider } from '@tanstack/react-query';
@@ -97,7 +97,7 @@ configureApiClientForSector(initialSector || 'PRIVATE');
 import { getFirebaseDatabaseUrl } from './src/config/firebase';
 
 // Auth Bridge: Maps Zustand auth state to shared Provider props
-// This allows @repo/frontend-core providers to remain "pure" (prop-based) 
+// This allows @fresherflow/frontend-core providers to remain "pure" (prop-based) 
 // while the mobile app remains "Zustand-first".
 const AuthBridge = ({ children }: { children: React.ReactNode }) => {
   const { user, firebaseUser } = useAuthStore();

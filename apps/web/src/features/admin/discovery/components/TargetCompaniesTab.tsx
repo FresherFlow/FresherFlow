@@ -6,7 +6,7 @@ import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/ui/DropdownMenu';
 import { IngestionTarget, RunResult } from '../types';
 import { DataGrid, DataGridColumn } from '@/ui/data-grid/DataGrid';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 
 const COMPANY_PROVIDER_SET = new Set([
     'google', 'amazon', 'microsoft', 'ibm', 'apple', 'uber', 'stripe', 'meta', 'nvidia'

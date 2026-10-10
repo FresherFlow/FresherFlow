@@ -9,7 +9,7 @@ import {
     MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import type { FirebaseFollowedCompaniesMap } from '@/features/companies/hooks/useFirebaseFollowedCompanies';
 import type { CompanyFollowSummary } from '@/features/companies/types';

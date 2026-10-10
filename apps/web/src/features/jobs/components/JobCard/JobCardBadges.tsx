@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 import { SkillPill } from '@/features/jobs/components/SkillPill';
 import type { MetaItem } from './JobCardMetaConfig';
 

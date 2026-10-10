@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useNotifications } from '@repo/frontend-core';
+import { useNotifications } from '@fresherflow/frontend-core';
 
 // Basic theme tokens for toast
 const TOAST_THEME = {

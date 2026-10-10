@@ -27,7 +27,7 @@ import {
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { haptic } from '@/utils/haptics';
-import { useSaved } from '@repo/frontend-core';
+import { useSaved } from '@fresherflow/frontend-core';
 
 import { useGovtFeed, GOVT_FEED_TABS } from '@/hooks/useGovtFeed';
 import { useFeedStore } from '@/store/useFeedStore';

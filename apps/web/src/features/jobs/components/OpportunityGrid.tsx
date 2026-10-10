@@ -4,7 +4,7 @@ import { Opportunity, OpportunityCardDTO } from '@fresherflow/types';
 import { JobCardResponsive } from './JobCard';
 import { SkeletonJobCard } from '@/features/jobs/components/OpportunitySkeletons';
 import { ErrorMessage } from '@/ui/ErrorMessage';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 
 type OpportunityAction = { actionType: string };
 

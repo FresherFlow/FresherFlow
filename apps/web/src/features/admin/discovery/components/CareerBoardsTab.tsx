@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { PaginationControls } from '@/ui/data-table/DataTablePagination';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { PluginEntry } from '../types';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 
 interface CareerBoardsTabProps {
  boards: PluginEntry[];

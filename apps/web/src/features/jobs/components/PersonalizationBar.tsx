@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { deriveProfileFilterChips, useProfileFilterPrefs } from '@/features/jobs/hooks/useProfileFilters';
 import { NewSearchDialog } from '@/features/jobs/tabs/NewSearchDialog';

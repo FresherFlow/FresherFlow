@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 import { useState, useRef, useEffect } from 'react';
 import type { ResourceCollection } from '@fresherflow/types';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';

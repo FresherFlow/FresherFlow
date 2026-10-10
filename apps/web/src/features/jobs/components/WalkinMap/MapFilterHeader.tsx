@@ -6,7 +6,7 @@ import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import ArrowPathIcon from '@heroicons/react/24/outline/ArrowPathIcon';
 import SignalIcon from '@heroicons/react/24/outline/SignalIcon';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 import { CLUSTER_COORDS } from '@/features/jobs/utils/walkinMapUtils';
 
 interface MapFilterHeaderProps {

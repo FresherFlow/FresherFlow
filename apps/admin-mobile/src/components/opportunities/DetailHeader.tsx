@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { Edit3, ExternalLink, MessageSquare } from 'lucide-react-native';
-import { CompanyLogo } from '@repo/ui';
+import { CompanyLogo } from '@fresherflow/ui';
 import { theme } from '../../theme';
 import type { Opportunity } from '@fresherflow/api-client';
 import type { NavigationProp } from '@react-navigation/native';

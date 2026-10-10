@@ -7,7 +7,7 @@ import { EmptyState } from '@/ui/EmptyState';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { PluginEntry } from '../types';
 import { Button } from '@/ui/Button';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 
 
 interface JobBoardsTabProps {

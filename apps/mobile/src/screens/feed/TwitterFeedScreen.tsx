@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Opportunity } from '@fresherflow/types';
 import { isInternshipOpportunity, isWalkinOpportunity } from '@/utils/taxonomy';
 import { useFeed } from '@/hooks/useFeed';
-import { useSaved } from '@repo/frontend-core';
+import { useSaved } from '@fresherflow/frontend-core';
 import { JobPost } from './components/JobPost';
 import { FeedFilterBar, FilterCategory } from './components/FeedFilterBar';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';

@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLinkPreview } from '@/hooks/useLinkPreview';
 import { SurfaceCard } from './PremiumPrimitives';
-import { alpha } from '@repo/ui';
+import { alpha } from '@fresherflow/ui';
 import { Link2, Bookmark, Globe as Youtube, Globe as Github, FileText, Globe } from 'lucide-react-native';
 import { TouchableOpacity } from 'react-native';
 import { mScale } from '@/system/constants/dimensions';

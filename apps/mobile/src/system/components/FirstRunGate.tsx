@@ -19,7 +19,7 @@ import { SCREEN_WIDTH, SPACING, RADIUS, mScale } from '@/system/constants/dimens
 import { alpha } from '@/theme';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNotifications } from '@repo/frontend-core';
+import { useNotifications } from '@fresherflow/frontend-core';
 import { SurfaceCard } from '@/system/components/PremiumPrimitives';
 
 import LogoImage from '../../../assets/logo.png';

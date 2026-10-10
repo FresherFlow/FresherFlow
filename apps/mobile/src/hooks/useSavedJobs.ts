@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { } from 'react-native';
-import { useSaved } from '@repo/frontend-core';
+import { useSaved } from '@fresherflow/frontend-core';
 import { useToast } from '@/contexts/ToastContext';
 
 export const useSavedJobs = () => {

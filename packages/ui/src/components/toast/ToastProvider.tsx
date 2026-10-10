@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { _registerToastProvider, type ToastItem } from '@repo/frontend-core';
+import { _registerToastProvider, type ToastItem } from '@fresherflow/frontend-core';
 import ToastManager from './ToastManager';
 import { ToastProps } from './Toast';
 

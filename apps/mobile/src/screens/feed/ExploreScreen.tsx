@@ -22,8 +22,8 @@ import { JobCard } from '@/system/components/OpportunityCard';
 import { saveDetailCache } from '@/utils/cache/offlineCache';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
-import { useSaved } from '@repo/frontend-core';
-import { CompanyLogo } from '@repo/ui';
+import { useSaved } from '@fresherflow/frontend-core';
+import { CompanyLogo } from '@fresherflow/ui';
 import { SurfaceCard, PremiumHeader, PremiumRefreshControl, ScrollToTopButton } from '@/system/components/PremiumPrimitives';
 import { useScrollTracker } from '@/hooks/useScrollTracker';
 

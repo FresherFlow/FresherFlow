@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from 'react';
 import { useElementSize } from '@/hooks/useResizeObserver';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 import { JobCardBadges } from './JobCardBadges';
 import { computeVisibleSkillCount } from './skillAutoFit';
 import type { MetaItem } from './JobCardMetaConfig';

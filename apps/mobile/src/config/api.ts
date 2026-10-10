@@ -116,7 +116,7 @@ export function configureApiClientForSector(sector: string | null) {
     console.log(`[mobile] Re-configuring API client for sector ${sector}: ${finalApiUrl}`);
 
     const { configureClient, HttpError } = require('@fresherflow/api-client');
-    const { secureStorage } = require('@repo/frontend-core');
+    const { secureStorage } = require('@fresherflow/frontend-core');
     const { useAuthStore } = require('../store/useAuthStore');
 
     configureClient(finalApiUrl, secureStorage, {

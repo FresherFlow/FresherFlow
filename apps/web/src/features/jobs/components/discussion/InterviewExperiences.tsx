@@ -7,7 +7,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { communityApi } from '@/features/jobs/api/community';
 import type { InterviewExperience, InterviewExperienceListResult } from '@fresherflow/types';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 import { SkeletonInterviewRow } from '@/features/jobs/components/OpportunitySkeletons';
 
 const DIFFICULTY_COLORS: Record<string, string> = {

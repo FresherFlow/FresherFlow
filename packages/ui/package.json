@@ -1,5 +1,5 @@
 {
-  "name": "@repo/ui",
+  "name": "@fresherflow/ui",
   "version": "1.0.0",
   "type": "module",
   "main": "./src/index.tsx",
@@ -19,7 +19,7 @@
   "dependencies": {
     "@fresherflow/utils": "^1.0.0",
     "@radix-ui/react-slot": "^1.3.3",
-    "@repo/frontend-core": "^1.0.0",
+    "@fresherflow/frontend-core": "^1.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dompurify": "^3.4.13",

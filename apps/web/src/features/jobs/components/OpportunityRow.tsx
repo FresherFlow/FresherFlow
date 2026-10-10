@@ -1,7 +1,7 @@
 'use client';
 
 import { type Opportunity } from '@fresherflow/types';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import BookmarkSolidIcon from '@heroicons/react/24/solid/BookmarkIcon';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';

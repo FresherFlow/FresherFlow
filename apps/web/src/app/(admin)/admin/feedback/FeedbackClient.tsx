@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { adminApi } from '@/lib/api/admin';
 import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/lib/utils/error';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 import { AdminFeedbackSkeleton } from '@/features/admin/components/AdminSkeletons';
 import {
     ChatBubbleBottomCenterTextIcon,

@@ -8,7 +8,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { 
     AdminAuthProvider as AuthProvider, 
     secureStorage
-} from '@repo/frontend-core';
+} from '@fresherflow/frontend-core';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 import { ToastProvider } from './src/components/ToastProvider';

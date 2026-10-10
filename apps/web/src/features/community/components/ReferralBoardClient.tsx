@@ -6,7 +6,7 @@ import { fresherNeedsApi } from '@fresherflow/api-client';
 import type { ReferralRequestItem } from '@fresherflow/api-client';
 import { ReferralRequestStatus } from '@fresherflow/types';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 import { EmptyState } from '@/ui/EmptyState';
 import { ErrorMessage } from '@/ui/ErrorMessage';
 import { formatRelativeTime } from '@/lib/utils/relativeTime';

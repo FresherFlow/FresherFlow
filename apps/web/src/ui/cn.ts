@@ -1,1 +1,1 @@
-export { cn } from '@repo/ui/utils/cn';
+export { cn } from '@fresherflow/ui/utils/cn';

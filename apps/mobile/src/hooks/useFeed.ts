@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { Profile } from '@fresherflow/types';
 import { FeedType, isInternshipOpportunity, isWalkinOpportunity, matchesFeedType } from '@/utils/taxonomy';
-import { useSaved } from '@repo/frontend-core';
+import { useSaved } from '@fresherflow/frontend-core';
 import { useFollows } from '@/hooks/useFollows';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFeedStore } from '@/store/useFeedStore';

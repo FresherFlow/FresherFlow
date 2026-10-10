@@ -6,7 +6,7 @@ import { communityApi } from '@fresherflow/api-client';
 import { CommunityPostCategory } from '@fresherflow/types';
 import type { CommunityFeedResult } from '@fresherflow/types';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 import { EmptyState } from '@/ui/EmptyState';
 import { PostCard } from './PostCard';
 import { CATEGORIES } from './postCategories';

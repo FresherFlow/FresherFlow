@@ -6,7 +6,7 @@ import Animated, {
   withTiming, 
   Easing 
 } from 'react-native-reanimated';
-import { CompanyLogo } from '@repo/ui';
+import { CompanyLogo } from '@fresherflow/ui';
 import { Opportunity } from '@fresherflow/types';
 import { getFeedBadgeLabel, isWalkinOpportunity } from '@/utils/taxonomy';
 import { MapPin, IndianRupee, Bookmark, ExternalLink, Zap } from 'lucide-react-native';

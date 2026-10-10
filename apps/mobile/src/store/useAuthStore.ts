@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 import { User, Role } from '@fresherflow/types';
-import { secureStorage } from '@repo/frontend-core';
+import { secureStorage } from '@fresherflow/frontend-core';
 import auth, { FirebaseAuthTypes, initializeAuth, isFirebaseAuthAvailable } from '@/config/firebase';
 import { Analytics } from '@/utils/analytics';
 import { getString, setString, remove } from '@/utils/storage';

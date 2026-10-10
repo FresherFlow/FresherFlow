@@ -3,7 +3,7 @@ import { View, Text } from 'react-native';
 import { Image } from 'expo-image';
 import * as FileSystem from 'expo-file-system';
 import { Platform } from 'react-native';
-import { storage } from '@repo/frontend-core';
+import { storage } from '@fresherflow/frontend-core';
 import { useUITheme } from './theme';
 import { BRAND_DOMAINS, getRootDomain } from '@fresherflow/utils';
 

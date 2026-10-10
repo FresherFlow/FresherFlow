@@ -120,7 +120,7 @@ const nextConfig: NextConfig = {
     "@fresherflow/constants",
     "@fresherflow/utils",
     "@fresherflow/api-client",
-    "@repo/ui"
+    "@fresherflow/ui"
   ],
 
   // Node.js-only packages — must never land in the browser bundle.
@@ -158,7 +158,7 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: [
       "@fresherflow/api-client",
-      "@repo/ui",
+      "@fresherflow/ui",
       "@fresherflow/utils",
       "@fresherflow/types",
       "@fresherflow/constants",

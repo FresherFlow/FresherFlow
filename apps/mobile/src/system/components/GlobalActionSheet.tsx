@@ -10,7 +10,7 @@ import { RADIUS, SPACING, mScale } from '../constants/dimensions';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { useToast } from '@/contexts/ToastContext';
-import { CompanyLogo } from '@repo/ui';
+import { CompanyLogo } from '@fresherflow/ui';
 import { WhatsAppIcon, DiscordIcon, ArattaiIcon } from '@/system/components/SocialIcons';
 import { Copy, Send, Share2, X } from 'lucide-react-native';
 const Linkedin = Share2;

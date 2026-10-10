@@ -1,5 +1,5 @@
 import React from 'react';
-import { sanitizeHtml } from '@repo/ui/utils/sanitize';
+import { sanitizeHtml } from '@fresherflow/ui/utils/sanitize';
 import { Skeleton } from '@/ui/Skeleton';
 
 interface DescriptionSectionProps {

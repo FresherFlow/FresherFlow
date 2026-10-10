@@ -1,11 +1,11 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/ui/Button';
 import { SkillPill } from '@/features/jobs/components/SkillPill';
 import { FRESHER_EXPERIENCE_VALUE } from '@/features/jobs/components/JobFilterBar';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 import type { WalkinDrivePeriod } from '@/features/jobs/utils/walkinMapUtils';
 import {
     getTypeOptions,

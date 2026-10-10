@@ -176,7 +176,7 @@ Explicitly MISSING (do not assume they exist):
    (`useSavedJobs.ts:98,150`) and does NOT call the Prisma API in that hook.
    Prisma path exists separately (`lib/api/social.ts:61-68`,
    queued offline in `lib/api/offline/actionQueue.ts:145`).
-3. Mobile: `useSaved()` from `@repo/frontend-core`
+3. Mobile: `useSaved()` from `@fresherflow/frontend-core`
    (`packages/frontend-core/src/saved/index.tsx:69,203-210` writes RTDB,
    `:174-182` bootstraps from MMKV first).
 

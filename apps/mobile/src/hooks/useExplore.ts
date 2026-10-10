@@ -11,7 +11,7 @@ import { BOOTSTRAP_FEED_URL, GOVERNMENT_FEED_URL } from '@/config/api';
 import { normalizeQuery } from '@/utils/text';
 import { useUIStore } from '@/store/useUIStore';
 import { useSectorStore } from '@/store/useSectorStore';
-import { useSaved } from '@repo/frontend-core';
+import { useSaved } from '@fresherflow/frontend-core';
 import { getRecentSearchKeywords, saveRecentSearchKeyword } from '@/utils/userBehavior';
 import { getLocalProfile } from '@/utils/cache/localProfile';
 import { calculateOpportunityMatch } from '@fresherflow/utils';

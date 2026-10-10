@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { authApi, profileApi } from '@fresherflow/api-client';
 import { AuthResponse } from '@fresherflow/types';
-import { flushOfflineActions, secureStorage } from '@repo/frontend-core';
+import { flushOfflineActions, secureStorage } from '@fresherflow/frontend-core';
 import { flushOnboardingSyncQueue } from '@/utils/onboardingState';
 import { saveLocalProfile } from '@/utils/cache/localProfile';
 import { readFirebaseProfile, writeFirebaseProfile } from '@/utils/firebaseProfileDb';

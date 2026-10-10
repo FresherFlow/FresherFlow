@@ -43,7 +43,7 @@ import { alpha } from '@/theme';
 // Premium System
 import { Screen } from '@/system/layout/Layout';
 import { SecondaryHeader, SurfaceCard, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
-import { CompanyLogo } from '@repo/ui';
+import { CompanyLogo } from '@fresherflow/ui';
 import { SCREEN_WIDTH } from '@/system/constants/dimensions';
 import { TrackerStatusSheet, TrackerStatusSheetRef } from '@/system/components/TrackerStatusSheet';
 import { useToast } from '@/contexts/ToastContext';

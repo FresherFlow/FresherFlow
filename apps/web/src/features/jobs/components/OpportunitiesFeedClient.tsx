@@ -4,7 +4,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
 import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
-import { cn } from '@repo/ui/utils/cn';
+import { cn } from '@fresherflow/ui/utils/cn';
 import { OpportunityDetailPane } from './OpportunityDetailPane';
 import { OpportunityDetailPaneSkeleton } from './OpportunitySkeletons';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';

@@ -9,7 +9,7 @@ import { BRAND_DOMAINS, getRootDomain } from '@fresherflow/utils';
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { Image as ExpoImage } from 'expo-image';
-import { storage as coreStorage } from '@repo/frontend-core';
+import { storage as coreStorage } from '@fresherflow/frontend-core';
 
 const fsWithDir = FileSystem as any;
 

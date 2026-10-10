@@ -11,7 +11,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { Share2, Copy, Share2 as Linkedin, Share2 as Twitter, Send, Share2 as Instagram } from 'lucide-react-native';
 import { WhatsAppIcon, DiscordIcon } from '@/system/components/SocialIcons';
-import { CompanyLogo } from '@repo/ui';
+import { CompanyLogo } from '@fresherflow/ui';
 import { useTheme } from '@/contexts/ThemeContext';
 import { alpha } from '@/theme';
 import { RADIUS } from '@/system/constants/dimensions';
