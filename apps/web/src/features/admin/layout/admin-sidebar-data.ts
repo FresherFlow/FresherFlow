@@ -15,6 +15,7 @@ import {
     Building2,
     Cpu,
     ChartBar,
+    Activity,
     Search,
     Globe,
     ChevronLeft,
@@ -91,6 +92,10 @@ export const adminOverviewItems: AdminNavItemData[] = [
     { title: 'Audit log', href: '/admin/audit', icon: BadgeCheck },
     { title: 'New listing', href: '/admin/opportunities/create', icon: CirclePlus, permission: 'opportunity.create' },
     { title: 'Discovery Engine', icon: ShieldCheck, items: adminDiscoverySubItems },
+    // Standalone operational dashboard (NOT a Discovery view): per-site and
+    // per-channel yield + health. Top-level row so it never highlights — or
+    // groups under — Discovery Engine in the rail, drawer, or palette.
+    { title: 'Source Health', href: '/admin/sources', icon: Activity },
 ];
 
 /** Manage group: the Feedback item receives `feedbackBadge` at group-build time. */

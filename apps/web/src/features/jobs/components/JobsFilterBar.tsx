@@ -58,6 +58,8 @@ interface JobsFilterBarProps {
     driveRadiusKm?: number | null;
     onDriveRadiusChange?: (v: number | null) => void;
     hasUserLocation?: boolean;
+    /** Profile-owned dims (city/batch/workMode) — dotted so seeded pills read as profile-applied. */
+    profileOwnedDims?: string[];
     aggregates?: {
         locations: Record<string, number>;
         skills: Record<string, number>;
@@ -95,6 +97,7 @@ export function JobsFilterBar({
     driveRadiusKm = null,
     onDriveRadiusChange,
     hasUserLocation = false,
+    profileOwnedDims = [],
 }: JobsFilterBarProps) {
     const [open, setOpen] = useState<OpenPanel>(null);
     const [locSearch, setLocSearch] = useState('');
@@ -271,9 +274,13 @@ export function JobsFilterBar({
                     type="button"
                     onClick={() => { setOpen(prev => (prev === 'location' ? null : 'location')); setLocSearch(''); }}
                     aria-expanded={open === 'location'}
+                    title={(profileOwnedDims.includes('city') || profileOwnedDims.includes('workMode')) ? 'Location from your profile' : undefined}
                     className={cn(pillBase, locationCount > 0 ? pillActive : pillIdle)}
                 >
                     Location
+                    {(profileOwnedDims.includes('city') || profileOwnedDims.includes('workMode')) && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
+                    )}
                     <ChevronDownIcon className={cn('w-3.5 h-3.5 shrink-0 transition-transform duration-150', open === 'location' && 'rotate-180')} />
                 </button>
                 {open === 'location' && (
@@ -346,9 +353,13 @@ export function JobsFilterBar({
                     type="button"
                     onClick={() => setOpen(prev => (prev === 'batch' ? null : 'batch'))}
                     aria-expanded={open === 'batch'}
+                    title={profileOwnedDims.includes('batch') ? 'Batch from your profile' : undefined}
                     className={cn(pillBase, filters.year !== null ? pillActive : pillIdle)}
                 >
                     Batch
+                    {profileOwnedDims.includes('batch') && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
+                    )}
                     <ChevronDownIcon className={cn('w-3.5 h-3.5 shrink-0 transition-transform duration-150', open === 'batch' && 'rotate-180')} />
                 </button>
                 {open === 'batch' && (

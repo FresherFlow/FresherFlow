@@ -93,7 +93,7 @@ export function MapBottomDriveCard({
                             <span>{d.timeRange || d.reportingTime}</span>
                         )}
                         {transit?.station && (
-                            <span className="text-brand-discord dark:text-brand-discord">
+                            <span className="text-brand-discord">
                                 {transit.station}
                                 {transit.walkDistance && ` · ${transit.walkDistance}`}
                             </span>

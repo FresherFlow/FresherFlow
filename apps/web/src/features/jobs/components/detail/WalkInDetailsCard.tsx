@@ -1,4 +1,4 @@
-import type { Opportunity } from '@fresherflow/types';
+﻿import type { Opportunity } from '@fresherflow/types';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import CheckCircleIcon from '@heroicons/react/24/solid/CheckCircleIcon';
 import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
@@ -21,14 +21,22 @@ export function WalkInDetailsCard({ walkInDetails }: WalkInDetailsCardProps) {
     const embedUrl = getOsmEmbedUrl(walkInDetails);
     const documents = getDriveRequiredDocuments(walkInDetails);
 
+    /* Neutral surface, warning only as an accent tint.
+       This used to be `bg-warning/80 dark:bg-warning/20` with `text-warning`
+       headings — the same token as both surface and content. In light mode
+       that is amber text on an 80%-opaque amber panel (~2:1) and the heading
+       was unreadable; dark mode got a different treatment at /20 rather than
+       a matched pair. Now the panel is `bg-card`, warning carries only the
+       border and the icon, and every run of text is `text-foreground` — which
+       also fixes the amber-on-white contrast the old heading had. */
     return (
-        <div className="bg-warning/80 dark:bg-warning/20 border border-warning/80 dark:border-warning/60 rounded-2xl p-4 mb-4 space-y-3.5 shadow-sm">
+        <div className="bg-card border border-warning/30 rounded-2xl p-4 mb-4 space-y-3.5 shadow-sm">
             <div className="flex items-center justify-between">
-                <h3 className="font-bold text-sm text-warning dark:text-warning flex items-center gap-2">
-                    <MapPinIcon className="w-4 h-4 text-warning dark:text-warning" /> Walk-In Interview Details
+                <h3 className="font-bold text-sm text-foreground flex items-center gap-2">
+                    <MapPinIcon className="w-4 h-4 text-warning" /> Walk-In Interview Details
                 </h3>
                 {walkInDetails.techCluster && (
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-warning/60 dark:bg-warning/40 text-warning dark:text-warning border border-warning/60 dark:border-warning/60">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-warning/15 text-foreground border border-warning/30">
                         {walkInDetails.techCluster}
                     </span>
                 )}
@@ -36,7 +44,7 @@ export function WalkInDetailsCard({ walkInDetails }: WalkInDetailsCardProps) {
             
             {/* Venue & Directions */}
             {walkInDetails.venueAddress && (
-                <div className="flex flex-col gap-1 text-sm bg-background/60 dark:bg-background/40 p-3 rounded-xl">
+                <div className="flex flex-col gap-1 text-sm bg-muted/60 p-3 rounded-xl">
                     <div className="flex items-start justify-between gap-2">
                         <div>
                             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Venue Location</span>
@@ -73,14 +81,14 @@ export function WalkInDetailsCard({ walkInDetails }: WalkInDetailsCardProps) {
             {/* Date & Time Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                 {walkInDetails.dateRange && (
-                    <div className="bg-background/60 dark:bg-background/40 p-2.5 rounded-xl">
+                    <div className="bg-muted/60 p-2.5 rounded-xl">
                         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Drive Dates</span>
                         <span className="text-foreground font-bold mt-0.5 block">{walkInDetails.dateRange}</span>
                     </div>
                 )}
                 
                 {(walkInDetails.timeRange || walkInDetails.reportingTime) && (
-                    <div className="bg-background/60 dark:bg-background/40 p-2.5 rounded-xl">
+                    <div className="bg-muted/60 p-2.5 rounded-xl">
                         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block">Reporting Time</span>
                         <span className="text-foreground font-bold mt-0.5 block">{walkInDetails.timeRange || walkInDetails.reportingTime}</span>
                     </div>
@@ -88,7 +96,7 @@ export function WalkInDetailsCard({ walkInDetails }: WalkInDetailsCardProps) {
             </div>
 
             {/* Documents checklist */}
-            <div className="bg-background/60 dark:bg-background/40 p-3 rounded-xl">
+            <div className="bg-muted/60 p-3 rounded-xl">
                 <p className="text-xs font-bold text-foreground mb-2 flex items-center gap-1.5">
                     <ClipboardDocumentCheckIcon className="w-4 h-4 text-primary" />
                     <span>Mandatory Documents to Carry:</span>

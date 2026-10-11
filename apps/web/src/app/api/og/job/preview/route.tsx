@@ -1,3 +1,4 @@
+import { getOgAssetSrc } from '@/lib/utils/ogAssets';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 /* eslint-disable @next/next/no-img-element */
 import { ImageResponse } from 'next/og';
@@ -20,7 +21,7 @@ function renderCard(mode: 'job' | 'drive') {
   const badge = getBadgeColors(type);
   const titleSize = title.length > 52 ? 52 : title.length > 38 ? 62 : 74;
   const siteUrl = SITE_URL;
-  const siteLogoUrl = `${siteUrl}/logo-white-optimized.png`;
+  const siteLogoUrl = getOgAssetSrc('logo-white-optimized.png') ?? `${siteUrl}/logo-white-optimized.png`;
 
   return new ImageResponse(
     <div style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', justifyContent:'space-between', background:'#020404', color:'#F5F7F8', padding:'52px 60px', fontFamily:'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial' }}>

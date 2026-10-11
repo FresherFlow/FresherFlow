@@ -7,11 +7,17 @@ export const size = {
 };
 export const contentType = 'image/png';
 
+import { getOgAssetSrc } from '@/lib/utils/ogAssets';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
 export default function OpenGraphImage() {
     const siteOrigin = SITE_URL;
-    const logoUrl = siteOrigin ? `${siteOrigin}/logo-white-optimized.png` : null;
+    // Prefer the bytes we ship in public/: satori fetches remote <img> srcs
+    // at build time, and a 503 from the live domain made it log
+    // "Unsupported image type: unknown". The URL stays as a fallback.
+    const logoUrl =
+        getOgAssetSrc('logo-white-optimized.png') ??
+        (siteOrigin ? `${siteOrigin}/logo-white-optimized.png` : null);
     const displayHost = siteOrigin ? new URL(siteOrigin).hostname : 'fresherflow';
 
     return new ImageResponse(

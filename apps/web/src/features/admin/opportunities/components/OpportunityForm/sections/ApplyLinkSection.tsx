@@ -1,5 +1,5 @@
 import { LinkIcon } from '@heroicons/react/24/outline';
-import { SmartInput } from '@/features/admin/ui/SmartInput';
+import { SmartInput } from '@/features/admin/components/SmartInput';
 import { Card, CardDescription, CardContent } from '@/ui/Card';
 import { ErrorMessage } from '@/ui/ErrorMessage';
 import type { OpportunityFormApi } from '@/features/admin/opportunities/useOpportunityForm';

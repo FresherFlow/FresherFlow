@@ -166,7 +166,7 @@ export function JobFilterBar({ filters, setFilters, isLoggedIn, selectedType, on
 
     // Measure the open trigger so the portaled panel anchors under its pill.
     // freshOpen tracks fresh opens (animate the pop) vs pill-to-pill travel
-    // (content swaps with a soft fade â€” no close/open replay).
+    // (content swaps with a soft fade — no close/open replay).
     const prevOpenRef = useRef<OpenPanel>(null);
     const [freshOpen, setFreshOpen] = useState(false);
     useEffect(() => {
@@ -265,7 +265,7 @@ const isGovt = isGovtFeed(feedKind);
 const TYPE_OPTIONS = getTypeOptions(feedKind);
 
     // â”€â”€ Progressive disclosure â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    // Default bar: Type Â· Location Â· (Batch | Qualification) Â· All Filters.
+    // Default bar: Type · Location · (Batch | Qualification) · All Filters.
     // Wider screens (xl) reveal Role (and Batch on corp pages). The rest
     // (Skills, Course, Source, Company, Sector) live behind the All Filters
     // toggle. A pill always shows once it has an active selection so users
@@ -491,7 +491,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
     }, [filters, onTypeChange, setFilters]);
 
     // Reset activeIndex when open panel or search query changes (nothing
-    // pre-highlighted â€” highlight follows mouse or arrow keys only).
+    // pre-highlighted — highlight follows mouse or arrow keys only).
     useEffect(() => {
         setActiveIndex(-1);
     }, [open, locSearch, skillSearch, companySearch, roleSearch]);
@@ -576,7 +576,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                 </div>
             )}
 
-            {/* Fresher quick filter â€” explicit experience pill (V1 A5).
+            {/* Fresher quick filter — explicit experience pill (V1 A5).
                 Toggles filters.experience between [] and ['Fresher']; the feed
                 hook's existing matchesExperience logic treats 'Fresher' as
                 experienceMin === 0. Independent of the Type dropdown so it
@@ -604,7 +604,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                 );
             })()}
 
-            {/* Location pill â€” always visible (2nd default) */}
+            {/* Location pill — always visible (2nd default) */}
             <div className="relative" onMouseLeave={closeOnLeave}>
                 <button
                     ref={el => { triggerRefs.current.location = el; }}
@@ -802,7 +802,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                 </>
             )}
 
-            {/* When (drive date) â€” walk-in specific */}
+            {/* When (drive date) — walk-in specific */}
                     {supportsDimension(feedKind, 'driveDate') && onDriveDateChange && pillVisible('driveDate') && (
                 <div className="relative" onMouseLeave={closeOnLeave}>
                         <button
@@ -850,7 +850,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
             {/* Corporate specific dropdowns */}
             {!isGovt && (
                 <>
-                    {/* Role dropdown â€” inline from xl */}
+                    {/* Role dropdown — inline from xl */}
                     <div className={cn('relative', !pillVisible('role') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             ref={el => { triggerRefs.current.role = el; }}
@@ -1078,7 +1078,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                             </div>
                         , document.body)}
                     </div>
-                    {/* Passout year dropdown â€” inline from xl */}
+                    {/* Passout year dropdown — inline from xl */}
                     <div className={cn('relative', !pillVisible('year') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             ref={el => { triggerRefs.current.year = el; }}
@@ -1141,7 +1141,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                         })(), document.body)}
                     </div>
 
-                    {/* Company dropdown â€” behind All Filters */}
+                    {/* Company dropdown — behind All Filters */}
                     <div className={cn('relative', !pillVisible('company') && 'hidden')} onMouseLeave={closeOnLeave}>
                         <button
                             ref={el => { triggerRefs.current.company = el; }}
@@ -1206,7 +1206,7 @@ const TYPE_OPTIONS = getTypeOptions(feedKind);
                 </>
             )}
 
-            {/* All Filters toggle â€” reveals the rest of the pills inline.
+            {/* All Filters toggle — reveals the rest of the pills inline.
                 Badge counts active filters that only live behind this pill. */}
             <button
                 type="button"

@@ -1,491 +1,486 @@
 # FresherFlow Web — Design System
 
-This document is the single source of truth for all UI tokens, color usage, typography, spacing, and component patterns in the web app. All agents and contributors must reference this before building or editing any UI.
+The normative contract for UI in `apps/web`. Tokens, rules and component
+contracts here **outrank** any component's local habits. When code and this
+document disagree, the code is wrong.
 
 ---
 
-## Table of Contents
+## 0. Hard rules — read first
 
-1. [Overview](#overview)
-2. [Color System](#color-system)
-3. [Typography System](#typography-system)
-4. [Spacing System](#spacing-system)
-5. [Usage Guidelines](#usage-guidelines)
-
----
-
-## Overview
-
-The web app uses **Tailwind CSS v4** with OKLCH color tokens defined in a single `@theme` block.
-
-Key files:
-- **Design tokens**: `@theme` block in [`globals.css`](src/app/globals.css) — single source of truth for all colors, fonts, spacing, and radius
-- **Dark mode**: `.dark` block in the same file overrides `--color-*` tokens directly
-- **No JS config**: `tailwind.config.ts` has been removed; Tailwind v4 uses CSS-first configuration
-
-All color tokens are OKLCH values in `@theme`. Dark mode overrides them via `.dark { --color-*: ... }`. Component CSS references tokens via `var(--color-*)`. Alpha variants use `oklch(from var(--color-*) l c h / <alpha>)`.
-
-```tsx
-// Always use Tailwind utility classes — never inline styles for color/spacing
-<div className="bg-background text-foreground px-4 py-3 rounded-lg" />
-```
-
-### Token Architecture
-
-```
-@theme (OKLCH values) → generates --color-* CSS variables
-    ↓
-Tailwind utilities: bg-primary, text-muted-foreground, etc.
-    ↓
-@layer components: var(--color-primary), color-mix(...), etc.
-    ↓
-.dark overrides → same --color-* variables with dark OKLCH values
-```
-
-No more `hsl(var(--primary))` indirection. Colors are defined once in `@theme` and consumed everywhere.
+1. **Tokens are normative.** Values live in `@theme` in
+   [`src/app/globals.css`](src/app/globals.css). This document explains them; it
+   does not redefine them.
+2. **Component contracts override generic styling preference.** Use
+   `<Button>`, not a hand-built button.
+3. **Never invent a token** when an existing semantic token fits the meaning.
+4. **Never use a raw colour** (hex, `rgb()`, palette class) where a semantic
+   token exists.
+5. **One primary CTA per surface.** If two things both look like *the* action,
+   one of them is wrong.
+6. **Orange is never an ordinary application CTA.** `--color-ff-accent` is for
+   brand moments only.
+7. **Navy is never a surface tint.** `bg-primary/10` paints the *ink* colour onto
+   a plane. This is the single most common violation in the codebase.
+8. **Selected states use `surface-active` + `surface-active-foreground`** — never
+   a tint of the ink colour.
+9. **Preserve existing visual hierarchy** unless this document explicitly
+   changes it.
+10. **When the system is silent, prefer the simplest existing pattern** in
+    `src/ui/` over inventing a new one.
 
 ---
 
-## Color System
+## 1. Design contract
 
-Colors are OKLCH values in `@theme` — they automatically switch between light and dark via the `.dark` class on `<html>`.
+| Concern | Value |
+|---|---|
+| Purpose | Normative design + implementation contract for `apps/web` |
+| Source of truth | `@theme` in `src/app/globals.css` (values); this file (rules) |
+| Precedence | Hard rules → Component contracts → this prose → existing code |
+| Dark mode | `.dark` block in `globals.css` overrides `--color-*` directly |
+| Config style | Tailwind v4 CSS-first. There is no `tailwind.config.ts` |
+| Alpha variants | `oklch(from var(--color-*) l c h / <alpha>)` |
 
-### Semantic Color Tokens
+Token flow:
 
-| Tailwind Class | CSS Variable | Use Case |
-|---|---|---|
-| `bg-background` | `--color-background` | Page/screen background |
-| `text-foreground` | `--color-foreground` | Primary body text |
-| `bg-card` | `--color-card` | Card backgrounds |
-| `text-card-foreground` | `--color-card-foreground` | Text inside cards |
-| `bg-primary` | `--color-primary` | Primary buttons, active tabs |
-| `text-primary-foreground` | `--color-primary-foreground` | Text on primary backgrounds |
-| `bg-secondary` | `--color-secondary` | Secondary buttons, chips |
-| `text-secondary-foreground` | `--color-secondary-foreground` | Text on secondary backgrounds |
-| `bg-muted` | `--color-muted` | Skeleton loaders, disabled fields |
-| `text-muted-foreground` | `--color-muted-foreground` | Secondary labels, placeholders |
-| `bg-accent` | `--color-accent` | Hover states, highlights |
-| `text-accent-foreground` | `--color-accent-foreground` | Text on accent backgrounds |
-| `border-border` | `--color-border` | All borders and dividers |
-| `ring-ring` | `--color-ring` | Focus rings |
-
-### Status Tokens
-
-| Tailwind Class | CSS Variable | Use Case |
-|---|---|---|
-| `bg-success` | `--color-success` | Success states |
-| `bg-error` | `--color-error` | Error states |
-| `bg-warning` | `--color-warning` | Warning states |
-| `bg-destructive` | `--color-destructive` | Destructive actions |
-
-### Component Tokens
-
-| Tailwind Class | CSS Variable | Use Case |
-|---|---|---|
-| `bg-chip-active` | `--color-chip-active` | Active chip/pill background |
-| `text-chip-active-text` | `--color-chip-active-text` | Active chip text |
-| `border-chip-active-border` | `--color-chip-active-border` | Active chip border |
-| `bg-dropdown-hover` | `--color-dropdown-hover` | Dropdown item hover |
-| `text-dropdown-hover-text` | `--color-dropdown-hover-text` | Dropdown hover text |
-
-### Alpha Variants
-
-In component CSS, use `oklch(from var(--color-*) l c h / <alpha>)` for alpha:
-
-```css
-/* 60% opacity */
-box-shadow: 0 8px 20px -16px oklch(from var(--color-primary) l c h / 0.6);
-
-/* 35% opacity for borders */
-border: 1px solid oklch(from var(--color-primary) l c h / 0.35);
-
-/* 50% opacity for backgrounds */
-background-color: oklch(from var(--color-muted) l c h / 0.5);
 ```
-
-### Brand / Third-Party Tokens
-
-For social media buttons and brand-specific UI:
-
-| Tailwind Class | CSS Variable | Use Case |
-|---|---|---|
-| `bg-brand-telegram` | `--color-brand-telegram` | Telegram social button |
-| `bg-brand-whatsapp` | `--color-brand-whatsapp` | WhatsApp social button |
-| `bg-brand-whatsapp-hover` | `--color-brand-whatsapp-hover` | WhatsApp hover state |
-| `bg-brand-linkedin` | `--color-brand-linkedin` | LinkedIn social button |
-| `bg-brand-discord` | `--color-brand-discord` | Discord social button |
-| `bg-brand-facebook` | `--color-brand-facebook` | Facebook social button |
-| `bg-brand-google-red` | `--color-brand-google-red` | Google mark, red quadrant |
-| `bg-brand-google-yellow` | `--color-brand-google-yellow` | Google mark, yellow quadrant |
-| `bg-brand-google-blue` | `--color-brand-google-blue` | Google mark, blue quadrant |
-| `bg-brand-google-green` | `--color-brand-google-green` | Google mark, green quadrant |
-| `bg-brand-company-blue` | `--color-brand-company-blue` | Company logo fallback (TCS) |
-
-### Surface Tokens
-
-| Tailwind Class | CSS Variable | Use Case |
-|---|---|---|
-| `bg-surface-warm` | `--color-surface-warm` | Warm gray surfaces (CaptionsTool) |
-
-### Brand Accent (Landing / Marketing)
-
-| Token | Value | Use Case |
-|---|---|---|
-| `bg-ff-accent` / `text-ff-accent` | `--color-ff-accent` `#ff571a` | Hero CTA fill, marquee, section dots, accent text on paper |
-| `text-ff-accent-ink` | `--color-ff-accent-ink` navy | Label text **on** a `bg-ff-accent` fill |
-
-The brand orange is a bright field, so a light label on it does not reach WCAG AA:
-`--color-paper` on `--color-ff-accent` is **3.2:1** and fails the 4.5:1 required
-for the 13.5px semibold CTA labels. `--color-ff-accent-ink` (the same deep navy
-as `--color-primary`) is **4.97:1** on that fill, so every solid accent CTA pairs
-`bg-ff-accent` with `text-ff-accent-ink`.
-
-```tsx
-// Correct — solid accent CTA
-<Link className="bg-ff-accent text-ff-accent-ink" />
-
-// Wrong — 3.2:1, fails AA
-<Link className="bg-ff-accent text-paper" />
-```
-
-`text-ff-accent` as a **text colour on paper** is a separate, still-open problem
-worth knowing about: it is also 3.2:1, and it is currently used below the 4.5:1
-threshold at small sizes — `AuthModal`/`DidYouApplyCard` (`text-xs`),
-`ComparisonSection` (10.5px) and the `LandingMarquee`/`ProofSection` inline
-`<b>` values. The large `StatementBand` headline is fine (display size). Fixing
-those means darkening the *text* usage of the orange without changing the brand
-fill, which is a separate change; do not "fix" it by editing `--ff-accent`, since
-that would alter the CTA fill and the logo-adjacent brand marks at the same time.
-
-### Neutral Scale (Static)
-
-Used for decorative elements, illustrations, or when semantic tokens aren't appropriate.
-
-| Token | Value | Use Case |
-|---|---|---|
-| `neutral-50` | `#FAFAFA` | Lightest background tint |
-| `neutral-100` | `#F5F5F5` | Light surface |
-| `neutral-200` | `#E5E5E5` | Borders on light mode |
-| `neutral-300` | `#D4D4D4` | Dividers |
-| `neutral-400` | `#A3A3A3` | Muted icons |
-| `neutral-500` | `#737373` | Secondary text |
-| `neutral-600` | `#525252` | Body text light mode |
-| `neutral-700` | `#404040` | Headings light mode |
-| `neutral-800` | `#262626` | Dark surface |
-| `neutral-900` | `#171717` | Near-black background |
-
-### Usage
-
-```tsx
-// Correct — semantic tokens
-<div className="bg-card border border-border text-card-foreground" />
-
-// Correct — brand tokens for social buttons
-<a className="bg-brand-telegram text-white">Telegram</a>
-
-// Correct — neutral scale for decorative use
-<div className="bg-neutral-800" />
-
-// Wrong — never hardcode hex in className or style
-<div style={{ backgroundColor: '#1a1a1a' }} />
+@theme (OKLCH)  ->  --color-* CSS vars  ->  Tailwind utilities  ->  .dark overrides
 ```
 
 ---
 
-## Typography System
+## 2. Product visual intent
 
-Font: **Inter** loaded via `next/font/google`, applied as `font-sans` via `var(--font-inter)`.
+FresherFlow is a job and walk-in opportunity platform for Indian freshers. The
+interface is a **reading surface for data**, not a brand showcase.
 
-### Type Scale
+The UI should feel like **warm newsprint with ink on it** — calm, dense,
+legible, trustworthy. A user scanning 90 listings at 9am should feel the page is
+keeping up with them, not asking for attention.
 
-| Class | Size | Line Height | Use Case |
+**What it must not become:**
+
+- A marketing page with product UI bolted on. The landing hero may be
+  expressive; a job detail page may not.
+- A card-per-element dashboard. Density beats comfort here.
+- A purple/blue SaaS gradient wash. There is one accent and it is not doing
+  decoration.
+
+**The hard truth about differentiation:** warm newsprint is a common default, so
+it earns its place by being *decided*, not by looking pleasant. It is kept
+because it is the established foundation and the whole tonal ladder is built on
+hue 85 — **not** because it sets FresherFlow apart. The product's value is the
+opportunity and community information on the page. Any future palette change
+must clear that bar, not a taste argument.
+
+---
+
+## 3. Locked design decisions
+
+*Decided 2026-10-02.*
+
+### Navy is the action colour
+
+Every CTA, primary button, active nav item and interactive emphasis is navy
+(`--color-primary`). Rationale: orange is the highest-chroma colour in the
+system; spending it on ordinary CTAs exhausts it and leaves the hero with
+nothing to lead with. Navy already owns the ink, so a navy button and navy text
+are one visual family and reinforce each other.
+
+### Orange is a brand moment only
+
+`--color-ff-accent` appears in the hero, marquee, logo and brand marks. Never on
+an ordinary button. Consequence: `BrandButton`'s `solid` (orange) variant is
+**deprecated** — use `neutral` (navy) for actions.
+
+### Warm newsprint stays
+
+See §2. Recorded as a choice, not an accident.
+
+### Restrained visual hierarchy
+
+One accent, one action colour, four surfaces, four signals. Restraint is the
+point; if everything is emphasised, nothing is.
+
+---
+
+## 4. Colour tokens
+
+All OKLCH. Dark mode overrides the same names in `.dark`.
+
+### 4.1 Ink and action — one navy, two jobs
+
+`--color-primary` is the single navy. It serves exactly two roles, and which one
+is decided by **how** you use it:
+
+| Usage | Role |
+|---|---|
+| `text-primary`, `bg-foreground` | **Ink** — text and text-bearing surfaces |
+| `bg-primary` + `text-primary-foreground` | **Action** — the CTA |
+| `bg-primary/10` and similar tints | **Never.** That is ink painted on a plane |
+
+| Token | Light | Role |
+|---|---|---|
+| `--color-primary` | `oklch(20.6% 0.039 266)` | The navy: ink + action |
+| `--color-foreground` | → `primary` | Body text |
+| `--color-muted-foreground` | `oklch(29.5% 0.034 68)` | Secondary text. 4.9:1 on card, 5.3:1 on muted |
+
+`--color-foreground`, `--color-card-foreground`, `--color-popover-foreground`,
+`--color-accent-foreground`, `--color-secondary-foreground`, `--color-ring` and
+the sidebar ink tokens **all alias `--color-primary`**. Change the navy in one
+place.
+
+> **Dark mode inverts this token.** `--color-primary` is near-white in `.dark`.
+> So a `*-foreground` token is only correct when paired with its own surface:
+> `bg-primary` → `text-primary-foreground`, `bg-accent` →
+> `text-accent-foreground`, `bg-foreground` → `text-background`. Pairing a
+> surface with the wrong ink is the most common dark-mode defect.
+
+### 4.2 Surfaces — a four-step ladder
+
+Separated by **lightness, not hue**. Use the role names in new code.
+
+| Role token | Alias | Light | Use for |
 |---|---|---|---|
-| `text-xs` | 12px | 16px | Badges, timestamps, fine print |
-| `text-micro` | 11px | ~14px | Micro-labels, hint lines under a field |
-| `text-meta` | 13px | ~18px | Metadata rows, step lists, compact meta |
-| `text-sm` | 14px | 20px | Secondary labels, metadata |
-| `text-base` | 16px | 24px | Primary body copy |
-| `text-lg` | 18px | 26px | Card titles, list headings |
-| `text-xl` | 20px | 28px | Section headers |
-| `text-2xl` | 24px | 32px | Page sub-headers |
-| `text-3xl` | 30px | 38px | Page titles, hero text |
+| `--surface-page` | `background` | `#f4f1ea` | The page plane |
+| `--surface-raised` | `card` | `oklch(100% 0 0)` | Cards, panels, **the sidebar rail** |
+| `--surface-sunken` | `muted` | `oklch(91.5% 0.005 85)` | Inset panels, skeletons, disabled |
+| `--surface-active` | `accent` | `oklch(89.5% 0.005 85)` | **Selected / hover — the only active fill** |
 
-### Usage
+Plus `--surface-active-foreground` (→ `accent-foreground`). **Required** with
+`--surface-active`: in dark, `accent` is near-white and so is `foreground`, so
+`text-foreground` on `bg-surface-active` is invisible.
+
+**Legacy surface aliases.** These still exist and still render correctly, but
+they are not part of the ladder. **Do not use them in new code.**
+
+| Legacy token | Migrate to | Used in |
+|---|---|---|
+| `secondary` | `--surface-sunken` (or `raised` for a lighter fill) | 17 sites |
+| `popover` | `--surface-raised` + a border for elevation | 6 sites |
+| `paper` | `--surface-raised` / `--surface-page` | 5 sites |
+| `surface-warm` | `--surface-sunken` | 9 sites |
+| `chip-active` | `--surface-active` | 1 site |
+| `dropdown-hover` | `--surface-active` | **0 sites — dead, safe to alias** |
+
+**The sidebar is not a separate palette.** Every `--color-sidebar-*` token
+aliases the shared ladder, so the admin shell and the public job pages consume
+the same roles:
+
+| Sidebar token | Resolves to |
+|---|---|
+| `sidebar` | `--surface-raised` |
+| `sidebar-border` | `--color-border` |
+| `sidebar-accent` | `--surface-active` |
+| `sidebar-foreground`, `-primary`, `-ring` | the navy ink |
+| `sidebar-accent-foreground` | `--color-accent-foreground` (not `primary`) |
+
+There is also a `--color-logo-bg` for the logo tile only.
+
+**The neutral ramp is warm throughout** — hue 78–88, chroma 0.004–0.013. Chroma
+was deliberately dropped from `muted`/`accent`/`chip-active`/`dropdown-hover`
+(0.008–0.016 → 0.005): next to the warm page, two warm planes at similar
+lightness read as a mismatch, not hierarchy.
+
+**Removed: the second palette.** `globals.css` used to carry `--ff-paper`,
+`--ff-paper-raised`, `--ff-rule`, `--ff-ink`, `--ff-ink-soft`, `--ff-ink-faint`,
+`--ff-stamp` and `--ff-stamp-lift`. All eight were dead — one reference each,
+their own definition. `--ff-ink` (`#17181c`, near-black) competed with the navy
+ink and was a primary cause of admin and the job pages reading as two products.
+Only `--ff-accent` and the always-dark `--ff-band-*` instrument palette survive;
+they are a distinct marketing component, not a competing UI palette.
+
+### 4.3 Lines
+
+`--color-border` and `--color-input` both `oklch(79% 0.013 80)`. One hairline
+tone. Warmth on a hairline reads as intentional.
+
+### 4.4 Signals — four jobs, one red
+
+| Job | Token | Light |
+|---|---|---|
+| Confirmed live | `signal-live` → `success` | `oklch(61.1% 0.147 154)` |
+| Aging / unconfirmed | `signal-aging` → `warning` | `oklch(75.5% 0.17 64)` |
+| Dead / error / destructive | `signal-dead` → `destructive` | `oklch(63.6% 0.208 25)` |
+| Discussion heat | `signal-heat` | `oklch(60% 0.145 240)` |
+
+`--color-error` and `--color-pin` both alias `--color-destructive`. There is
+**one red**; three near-identical reds previously made "which red?" unanswerable.
+
+`signal-heat` was byte-identical to `--color-brand-telegram`. A semantic token
+and a third-party brand token are different jobs and must never share a value.
+
+### 4.5 Brand accent
+
+`--color-ff-accent` = `oklch(64.8% 0.22 32)` (≈ `#ff571a`). Marketing surfaces only.
+
+**Measured contrast:** paper on accent is **3.2:1** and fails AA at small sizes.
+Navy (`--color-ff-accent-ink`) on accent is **4.97:1** and passes. So every solid
+accent CTA pairs `bg-ff-accent` with `text-ff-accent-ink`.
+
+`text-ff-accent` **as text on paper** is still only 3.2:1 and remains an open
+problem below the 4.5:1 threshold at small sizes. Do not "fix" it by editing
+`--ff-accent` — that changes the fill and the logo-adjacent marks too. Fix the
+*text usage*.
+
+### 4.6 Third-party
+
+`brand-telegram`, `brand-whatsapp(+hover)`, `brand-linkedin`, `brand-discord`,
+`brand-facebook`, `brand-company-blue`, `brand-google-*`. These exist only for
+social/brand marks. **Never** use them for UI state.
+
+---
+
+## 5. Typography
+
+Inter via `next/font/google`, applied as `font-sans`.
+
+| Class | Size | Use |
+|---|---|---|
+| `text-micro` | 11px | Micro-labels |
+| `text-xs` | 12px | Badges, timestamps, fine print |
+| `text-meta` | 13px | Metadata rows, compact meta |
+| `text-sm` | 14px | Secondary text, form labels |
+| `text-base` | 16px | Body copy |
+| `text-lg` | 18px | Card titles |
+| `text-xl` | 20px | Section headers |
+| `text-2xl` | 24px | Sub-headers |
+| `text-3xl` | 30px | Page titles, hero |
+
+Do not add font sizes outside this scale without extending `@theme` **and** this
+table.
+
+---
+
+## 6. Spacing & layout
+
+Tailwind's 4-point scale. Extended: `p-18` / `m-18` = 4.5rem, `p-22` / `m-22` =
+5.5rem (hero/section scale only).
+
+Standard: `p-1` 4px · `p-2` 8px · `p-3` 12px · `p-4` 16px · `p-6` 24px ·
+`p-8` 32px. Page gutter `px-4`.
+
+Density beats comfort on listing surfaces. A job card is a **wide** row on
+desktop, **compact** on mobile — never a full-screen card on either.
+
+---
+
+## 7. Shape & depth
+
+| Token | Value |
+|---|---|
+| `--radius` | `10px` |
+| `--radius-xl` | `10px` |
+| `--radius-2xl` | `14px` |
+| `--radius-3xl` | `18px` |
+
+`rounded-sm/md/lg` are inherited from the shadcn base import. Buttons own
+`rounded-md`; pills use `rounded-full`; `BrandButton` uses `rounded-[2px]`
+(near-square, brand geometry).
+
+**There are no shadow tokens.** Elevation is expressed by hairline borders and
+surface steps. Do not introduce ad-hoc `box-shadow` values; if a surface needs
+lift, add a token first.
+
+---
+
+## 8. Interaction states
+
+| State | Treatment |
+|---|---|
+| Hover | `[@media(hover:hover)_and_(pointer:fine)]:` guard — never on touch |
+| Pressed | `active:scale-[0.97]` + `motion-reduce:transform-none` |
+| Selected | `bg-surface-active text-surface-active-foreground` |
+| Focus | `focus-visible:ring-2 ring-ring ring-offset-2` |
+| Disabled | `disabled:opacity-50 disabled:pointer-events-none` |
+| Loading | `Skeleton` or `aria-busy`; never a spinner-only button |
+| Error | `text-destructive` on a surface, or `ErrorMessage` |
+
+Hover must be wrapped in the pointer-fine media query so it cannot stick on
+touch devices.
+
+---
+
+## 9. Component contracts
+
+### 9.1 `Button` — `src/ui/Button.tsx`
+
+Material heights are a hard floor: **default `h-12` (48px), `sm` `h-10` (40px),
+`lg` `h-14` (56px)**, icon 48×48. Minimum text `text-sm`.
+
+**Variants**
+
+| Variant | Treatment |
+|---|---|
+| `default` | `bg-primary text-primary-foreground` — **the** action |
+| `secondary` | `bg-secondary text-secondary-foreground` |
+| `outline` | `border border-border bg-background` |
+| `ghost` | Transparent, hover `bg-muted` |
+| `ghostDanger` | Muted → red on hover (row deletes) |
+| `destructive` | `bg-destructive` — destructive confirmation only |
+| `admin` | `bg-muted/50` + input border |
+| `link` | Underlined text action |
+
+**Sizes** `default`(48) · `sm`(40) · `lg`(56) · `xs`(32) · `icon`(48) ·
+`iconSm`(32) · `chip`(40) · `cta`(48) · `ctaCompact`(44) · `ctaSmall`(40) ·
+`avatar`(32 circle) · `linkSm`(auto). **Label** `caps` for uppercase tracking.
+
+`ghost`/`admin` hover uses `muted`, **not** `accent` — in dark `accent` is
+near-white and would fill the button solid white.
+
+No arbitrary values outside this file.
+
+### 9.2 `BrandButton` — `src/ui/BrandButton.tsx`
+
+Landing/brand geometry: `rounded-[2px]`, semibold. Use only where brand
+geometry is wanted — job CTAs use `Button`.
+
+| Variant | Treatment |
+|---|---|
+| `neutral` | `bg-foreground text-background` — **the** action. Use this. |
+| `outline` | Hairline that darkens on hover |
+| `selected` | `bg-surface-active text-surface-active-foreground` — saved/toggled-on |
+| `ghost` | Icon-only, same height as labelled |
+| `solid` | **Deprecated** — orange. Was a second primary CTA. Use `neutral`. |
+
+`asChild` renders the child (e.g. a real `<a>`) so focus and semantics survive.
+
+### 9.3 `Badge` — `src/ui/Badge.tsx`
+
+A badge is **informational, not selected** — it takes a neutral surface, never
+`surface-active`.
+
+| Variant | Treatment |
+|---|---|
+| `default` | `bg-muted text-foreground` — category/tag/count |
+| `secondary` | `bg-secondary` — lighter neutral |
+| `muted` | Text + hairline only — de-emphasised context |
+| `outline` | Text + hairline |
+| `success` / `warning` / `destructive` | Signal fills |
+| `discord` | `brand-discord` — Discord only |
+
+**Sizes** `xs` · `sm` · `md`.
+
+### 9.4 Remaining primitives
+
+| Component | Path | Contract |
+|---|---|---|
+| `Card` | `ui/Card.tsx` | `CardHeader/Title/Description/Content/Footer`. Owns padding + border |
+| `Input` | `ui/Input.tsx` | Variants `default/search/searchGlow/form/mono`. Owns focus ring |
+| `Textarea` | `ui/Textarea.tsx` | Canonical textarea |
+| `Select` | `ui/Select.tsx` | Simple native-ish select. Use `Combobox` for search |
+| `NativeSelect` | `ui/NativeSelect.tsx` | Native `<select>`; `variant="compact"` for inline |
+| `Field` | `ui/Field.tsx` | Label/help/error wrapper for any input |
+| `Tabs` | `ui/Tabs.tsx` | Radix. `SimpleTabs`/`TabBar` for `items[]` APIs |
+| `Dialog` / `AlertDialog` | `ui/Dialog.tsx` | `AlertDialog` strictly for destructive confirmation |
+| `Sheet` | `ui/Sheet.tsx` | Mobile bottom / desktop side drawer |
+| `DropdownMenu` / `Popover` | `ui/` | Use `ResponsivePopover` for both breakpoints |
+| `Tooltip` | `ui/Tooltip.tsx` | Icon buttons, badges, truncated text |
+| `EmptyState` / `ErrorMessage` | `ui/` | Every data surface needs all three states |
+| `Skeleton` | `ui/Skeleton.tsx` | Preferred loading state |
+| `CompanyLogo` | `features/companies/components/CompanyLogo.tsx` | CDN → Google favicon → initials |
+| `JobCard` | `features/jobs/components/JobCard/` | `JobCardResponsive` switches wide/compact |
+
+Icon libraries: **Lucide** for new UI, **Heroicons** for existing code only — do
+not mass-migrate.
+
+---
+
+## 10. Patterns
+
+| Pattern | Rule |
+|---|---|
+| **Job card** | One wide row desktop / compact mobile. `JobCardResponsive` owns the switch. Never a full-screen card |
+| **Filters** | Active pill = `pillActive` in `JobFilterBar` → `surface-active`. Inactive = muted |
+| **Navigation** | Active item = neutral fill + `font-medium`, per `sidebar.tsx` `data-[active=true]` |
+| **Empty / error / loading** | All three required wherever data loads |
+| **Detail pages** | Apply CTA names its real destination (`Apply on {ATS}`), never "company website" |
+| **Forms** | `Field` + `Input`. Never a bare `<label>` + `<input>` pair |
+
+---
+
+## 11. Accessibility
+
+| Concern | Rule |
+|---|---|
+| Contrast | Body ≥ 4.5:1, large text/UI ≥ 3:1. Verify in **both** modes |
+| Ink pairing | A `*-foreground` token only works with its own surface (§4.1) |
+| Focus | Always `focus-visible`. Never `outline-none` without a replacement |
+| Target size | ≥ 40px for secondary actions, 48px default (see `Button`) |
+| Reduced motion | `motion-reduce:transform-none motion-reduce:transition-none` |
+| Colour is never the only signal | Status needs text or an icon too |
+
+---
+
+## 12. Do / Don't
+
+**Do**
 
 ```tsx
-// Page title
-<h1 className="text-3xl font-bold text-foreground" />
-
-// Section header
-<h2 className="text-xl font-semibold text-foreground" />
-
-// Card title
-<h3 className="text-lg font-medium text-foreground" />
-
-// Body copy
-<p className="text-base text-foreground" />
-
-// Secondary label / metadata
-<span className="text-sm text-muted-foreground" />
-
-// Timestamp / badge
-<span className="text-xs text-muted-foreground" />
+<div className="bg-card border border-border text-card-foreground" />       // semantic
+<div className="bg-surface-active text-surface-active-foreground" />        // selected
+<Button variant="default">Apply</Button>                                     // one action
+oklch(from var(--color-primary) l c h / 0.35)                                // alpha
 ```
 
----
-
-## Spacing System
-
-Tailwind's default 4-point spacing scale applies. Extended custom values:
-
-| Class | Value | Use Case |
-|---|---|---|
-| `p-18` / `m-18` | `4.5rem (72px)` | Large section spacing |
-| `p-22` / `m-22` | `5.5rem (88px)` | Hero/banner padding |
-
-Standard scale in use:
-
-| Class | Value | Use Case |
-|---|---|---|
-| `p-1` / `gap-1` | 4px | Hairline spacing |
-| `p-2` / `gap-2` | 8px | Tight inline gaps |
-| `p-3` / `gap-3` | 12px | Compact padding |
-| `p-4` / `gap-4` | 16px | Standard card padding |
-| `p-6` / `gap-6` | 24px | Section padding |
-| `p-8` / `gap-8` | 32px | Large section gaps |
-| `px-4` | 16px | Standard horizontal screen padding |
-
-### Usage
+**Don't**
 
 ```tsx
-// Standard job card
-<div className="p-4 rounded-lg border border-border bg-card gap-3 flex flex-col" />
-
-// Page section
-<section className="px-4 py-6" />
-
-// Inline row of chips
-<div className="flex gap-2 flex-wrap" />
+<div className="bg-primary/10 text-primary" />   // ink painted on a plane — rule 7
+<div style={{ backgroundColor: '#1a1a1a' }} />   // raw colour — rule 4
+<BrandButton variant="solid">Apply</BrandButton> // orange CTA — rule 6
+<div className="bg-amber-500/10 text-amber-600" /> // palette class, not a token
 ```
 
----
-
-## Usage Guidelines
-
-### Do
-
-- Use semantic color tokens (`bg-background`, `text-muted-foreground`) for all UI — they handle dark mode automatically
-- Use the `<Button>`, `<Card>`, `<Badge>`, `<Input>` React components for standard UI patterns
-- Use the Inter type scale consistently — match the size table above to heading hierarchy
-- Use `rounded-lg` (8px) for cards, `rounded-md` (6px) for buttons/inputs, `rounded-full` for pills
-- Use `border-border` for all dividers and input borders
-
-### Do Not
-
-- Do not hardcode hex values in `className` or `style` props
-- Do not use neutral scale (`neutral-*`) for text or backgrounds where semantic tokens exist
-- Do not add custom font sizes outside the defined scale — extend the `@theme` block in `globals.css` if needed and document here
-- Do not use `darkMode` conditionals in component code — the CSS variable layer handles it automatically
-- Do not use `hsl(var(--primary))` indirection — always use `var(--color-primary)` or Tailwind utilities
-- Do not use `slate-*`, `zinc-*`, `gray-*`, `stone-*` for UI colors — use semantic tokens instead
-- Do not add colors to `:root` — all color tokens belong in the `@theme` block
-- Do not create legacy CSS classes (`.premium-*`, `.btn-*`, `.admin-*`) — use the React components in `src/ui/` instead
-- Do not use `bg-[#hex]` for brand colors — use the `bg-brand-*` tokens defined in `@theme`
-
-## Component Ownership
-
-Where should a new component go?
-
-* **`src/ui/`**: Reusable generic UI components (buttons, inputs, dialogs, tables). Should not contain business logic.
-* **`src/features/<feature>/`**: Domain-specific UI composed of `src/ui/` primitives (e.g. `AdminOpportunitiesTable`).
-* **Route-local (`app/.../components/`)**: Single-page only UI composition.
-
-How to choose canonical components:
-
-* **Button vs CSS class**: Always use `<Button>` from `src/ui/Button.tsx`. The legacy `.premium-button`, `.btn-primary`, `.btn-outline` CSS classes have been removed.
-* **Card vs CSS class**: Always use `<Card>` from `src/ui/Card.tsx`. The legacy `.premium-card`, `.card` CSS classes have been removed.
-* **Input vs CSS class**: Always use `<Input>` from `src/ui/Input.tsx`. The legacy `.premium-input` CSS class has been removed.
-* **Badge vs CSS class**: Always use `<Badge>` from `src/ui/Badge.tsx`. The legacy `.badge`, `.badge-primary`, `.badge-success`, `.badge-warning`, `.badge-error` CSS classes have been removed.
-* **Table vs DataTable**: Use `Table` (`src/ui/Table.tsx`) for simple, static, read-only data. Use `DataTable` (`src/ui/data-table/DataTable.tsx`) when you need sorting, pagination, row selection, or filtering. Do not install new table libraries.
-* **Select vs Combobox**: Use `Select` for simple, native dropdowns. Use `Combobox` (when built via Popover+Command) for searchable options. Use Shadcn/Radix for generic selections.
-* **Dialog vs AlertDialog**: Use `Dialog` for normal modal interactions (forms, content). Use `AlertDialog` strictly for destructive confirmations (delete, warning).
-* **When to add a shadcn component?**: First check if we have the primitive in `src/ui/`. If missing, install it via shadcn (e.g. `AlertDialog`). Do not install them just to have them.
-* **Which icon library should I use?**:
-    - `Iconify`: Skill, technology, or domain-specific icons.
-    - `Lucide`: New generic UI icons (shadcn standard).
-    - `Heroicons`: Only for existing legacy/application usage. Do not mass-migrate.
-
----
-
-## Common Components & UI Catalog
-
-Always inspect `src/ui/` for existing components before building custom UI element wrappers.
-
-### UI Primitive Catalog (`src/ui/`)
-
-| Component | Import Path | Underlying Library | Use Case |
-|---|---|---|---|
-| `Button` | `src/ui/Button.tsx` | Custom / cva | Buttons with `default`, `secondary`, `outline`, `ghost`, `admin`, `link`, `destructive` variants and `default`, `sm`, `lg`, `icon`, `cta`, `ctaCompact`, `ctaSmall`, `chip` sizes. `chip` is the compact icon + label action (40px, 6px icon gap) |
-| `Card` | `src/ui/Card.tsx` | Custom | Styled card container with `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter` |
-| `Badge` | `src/ui/Badge.tsx` | Custom / cva | Status tags and pills (`default`, `secondary`, `destructive`, `outline`, `success`, `warning`) |
-| `Dialog` | `src/ui/Dialog.tsx` | `@radix-ui/react-dialog` | Modal dialogs with accessible backdrop blur, title, description, close button |
-| `Sheet` | `src/ui/Sheet.tsx` | `@radix-ui/react-dialog` | Slide-over drawer panels (`top`, `bottom`, `left`, `right`) for mobile nav and side detail views |
-| `DropdownMenu` | `src/ui/DropdownMenu.tsx` | `@radix-ui/react-dropdown-menu` | Action dropdowns, user menus, context options with keyboard accessibility |
-| `Popover` | `src/ui/Popover.tsx` | `@radix-ui/react-popover` | Lightweight floating cards, notification bell popups, contextual filters |
-| `Tabs` | `src/ui/Tabs.tsx` | `@radix-ui/react-tabs` | Segmented tab views with `TabsList`, `TabsTrigger`, `TabsContent` |
-| `Tooltip` | `src/ui/Tooltip.tsx` | `@radix-ui/react-tooltip` | Hover tooltips for icon buttons, badges, and truncated text |
-| `Command` | `src/ui/Command.tsx` | `cmdk` | Quick search command palette, comboboxes, and filter selectors |
-| `Input` | `src/ui/Input.tsx` | Custom | Standard form input with focus ring and semantic border tokens. Variants: `default`, `search`, `searchGlow`, `form` (normal placeholder tracking, primary focus border), `mono` (`form` plus monospaced bold type for handles) |
-| `Select` | `src/ui/Select.tsx` | Custom | Native/styled dropdown select input |
-| `Skeleton` | `src/ui/Skeleton.tsx` | Custom | Skeleton loading states for cards, text rows, avatars, list items |
-| `EmptyState` | `src/ui/EmptyState.tsx` | Custom | Contextual empty state with icon, headline, description, and action button |
-| `ErrorMessage` | `src/ui/ErrorMessage.tsx` | Custom | Error banner with retry callback |
-| `CompanyLogo` | `src/ui/CompanyLogo.tsx` | Custom | Company logo loader with Cloudflare R2 / Google favicon fallback |
-| `JobCard` | `src/ui/` / `src/features/` | Custom | Standard opportunity listing card with match score and fast actions |
-| `MatchScoreGauge` | `src/ui/MatchScoreGauge.tsx` | Custom | Visual match percentage ring/gauge |
-| `PageTagLinks` | `src/ui/PageTagLinks.tsx` | Custom | Linked skill, role, or location tag cloud |
-| `AppPromoBanner` | `src/ui/AppPromoBanner.tsx` | Custom | Mobile app download promotion banner |
-| `Breadcrumb` | `src/ui/Breadcrumb.tsx` | Custom | Navigation breadcrumb trails |
-| `ScrollToTop` | `src/ui/ScrollToTop.tsx` | Custom | Floating back-to-top button |
-| `ThemeToggle` | `src/ui/ThemeToggle.tsx` | Custom | Dark/light theme switcher |
-| `Toasts` | `sonner` / `react-hot-toast` | `sonner` | Toast notifications (notifications, success alerts, copy feedback) |
-
-### Icon Libraries
-- **Lucide Icons**: `lucide-react` (Primary line icon set for new UI components)
-- **Heroicons**: `@heroicons/react` (Legacy icon set)
-
----
-
-## Form Field Standards
-
-### Basic Input
-`src/ui/Input.tsx`
-Use for the underlying text input primitive.
-
-### Field + Input
-Use when building a new generic form field:
-```tsx
-<Field label="Name">
-  <Input />
-</Field>
-```
-
-### SmartInput
-Use only when its convenience API is genuinely useful, especially for existing admin code.
-
-### Select
-`src/ui/Select.tsx`
-Use for simple/native selections.
-
-### NativeSelect
-`src/ui/NativeSelect.tsx`
-The native `<select>` primitive. `variant="compact"` matches the compact `Input` field (44px, 1px rule, `rounded-xl`, `text-sm`); omit it for the Material 48px default.
-
-### SmartSelect
-Use only when its label/help/field wrapper is useful.
-
-### Textarea
-`src/ui/Textarea.tsx`
-Use as the canonical textarea primitive.
-
-### SmartTextarea
-Use only where the existing convenience API is needed.
-
-> Do not create another `CustomInput`, `CustomSelect`, `CustomTextarea`, `SmartField`, or feature-specific generic field component.
-
----
-
-## Animation & Motion System
-
-Motion in FresherFlow must be **fast**, **restrained**, and **purposeful**. Follow Emil Kowalski's UI principles and the gate rules in `find-animation-opportunities`.
-
-### Budget & Timing Guidelines
-
-| Surface | Duration | Easing Curve | CSS Utility / Config |
-|---|---|---|---|
-| Press feedback (`:active`) | 100–160ms | `ease-out` | `active:scale-[0.97] transition-all duration-150 ease-out` |
-| Tooltips & Popovers | 125–200ms | `cubic-bezier(0.16, 1, 0.3, 1)` | `animate-in fade-in-0 zoom-in-95 duration-150` |
-| Dropdowns & Menus | 150–200ms | `cubic-bezier(0.16, 1, 0.3, 1)` | `animate-in fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-2` |
-| Slide-over Sheets / Drawers | 250–350ms | `cubic-bezier(0.32, 0.72, 0, 1)` | `transition-transform duration-300 ease-out` |
-| Modals & Dialogs | 200–300ms | `cubic-bezier(0.16, 1, 0.3, 1)` | `animate-in fade-in-0 zoom-in-95 duration-200` |
-| Staggered list entrances | 30–60ms / item | `ease-out` | Staggered entrance on list load (max 5 items) |
-
-### Hard Animation Rules
-
-1. **Never animate from `scale(0)`**: Always enter from `scale(0.95)` or `scale(0.97)` to keep elements feeling solid.
-2. **High-frequency UI stays instant**: Never add open/close delay to command palettes, main tabs, or keyboard shortcuts.
-3. **Use transform & opacity only**: Avoid animating `width`, `height`, `margin`, or `padding` directly to prevent layout thrashing.
-4. **Respect Reduced Motion**: Always support `motion-reduce:transition-none` or `motion-reduce:animate-none` for accessibility.
-5. **No Sparkle icons**: Never use `✨` or `SparklesIcon`.
-
-### Code Pattern Examples
-
-```tsx
-// Micro-interaction button
-<button className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium active:scale-[0.97] hover:bg-primary/90 transition-all duration-150 ease-out" />
-
-// Glassmorphic Card Entrance
-<div className="rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl shadow-xl animate-in fade-in-0 zoom-in-95 duration-200" />
-```
-
----
-
-## Migration Guide (Hardcoded → Token)
-
-When fixing hardcoded values, use this table to replace them with tokens.
-
-### Legacy CSS Classes → React Components
-
-| Legacy CSS Class | Replacement | Import |
-|---|---|---|
-| `.premium-button` / `.btn-primary` | `<Button variant="default">` | `import { Button } from '@/ui/Button'` |
-| `.premium-button-outline` / `.btn-outline` | `<Button variant="outline">` | `import { Button } from '@/ui/Button'` |
-| `.btn-secondary-cta` | `<Button variant="secondary">` | `import { Button } from '@/ui/Button'` |
-| `.premium-card` / `.card` | `<Card>` | `import { Card } from '@/ui/Card'` |
-| `.premium-input` | `<Input>` | `import { Input } from '@/ui/Input'` |
-| `.badge` / `.badge-*` | `<Badge variant="...">` | `import { Badge } from '@/ui/Badge'` |
-| `.admin-*` | Tailwind utilities | N/A — use inline Tailwind classes |
-
-### Colors
-
-| Hardcoded | Token | Class / Utility |
-|---|---|---|
-| `#ffffff` / white | `--color-background` (light) | `bg-background` |
-| `#000000` / black | `--color-foreground` (dark) | `text-foreground` |
-| `#f5f5f5` | `--color-muted` | `bg-muted` |
-| `#6b7280` / gray-500 | `--color-muted-foreground` | `text-muted-foreground` |
-| `#e5e7eb` / gray-200 | `--color-border` | `border-border` |
-| card bg | `--color-card` | `bg-card` |
-| `bg-slate-200 dark:bg-zinc-800` (active chips) | `--color-chip-active-*` | Tailwind `bg-chip-active text-chip-active-text border-chip-active-border` |
-| `hover:bg-foreground/10` (dropdown hover) | `--color-dropdown-hover` | Tailwind `bg-dropdown-hover text-dropdown-hover-text` |
-| `bg-[#229ED9]` (Telegram) | `--color-brand-telegram` | `bg-brand-telegram` |
-| `bg-[#25D366]` (WhatsApp) | `--color-brand-whatsapp` | `bg-brand-whatsapp` |
-| `bg-[#0A66C2]` (LinkedIn) | `--color-brand-linkedin` | `bg-brand-linkedin` |
-| `bg-[#5865F2]` (Discord) | `--color-brand-discord` | `bg-brand-discord` |
-| `bg-[#1877F2]` (Facebook) | `--color-brand-facebook` | `bg-brand-facebook` |
-| `fill="#EA4335"` / `#FBBC05` / `#4285F4` / `#34A853` (Google G) | `--color-brand-google-*` | `fill-[var(--color-brand-google-red)]` etc. |
-| `bg-[#F5F4EF]` (warm gray) | `--color-surface-warm` | `bg-surface-warm` |
-| `bg-slate-*` / `text-slate-*` | Semantic tokens | Use `bg-card`, `text-foreground`, `text-muted-foreground`, `border-border` |
-| `bg-zinc-*` / `text-zinc-*` | Semantic tokens | Use `bg-card`, `text-foreground`, `text-muted-foreground`, `border-border` |
-
-### Spacing
+### Migration map (hardcoded → token)
 
 | Hardcoded | Token |
 |---|---|
-| `4px` / `0.25rem` | `p-1` / `gap-1` |
-| `8px` / `0.5rem` | `p-2` / `gap-2` |
-| `12px` / `0.75rem` | `p-3` / `gap-3` |
-| `16px` / `1rem` | `p-4` / `gap-4` |
-| `24px` / `1.5rem` | `p-6` / `gap-6` |
-| `32px` / `2rem` | `p-8` / `gap-8` |
+| `#f5f5f5` | `--surface-sunken` |
+| `#6b7280` / `gray-500` | `--color-muted-foreground` |
+| `#e5e7eb` / `gray-200` | `--color-border` |
+| `bg-[#229ED9]` | `--color-brand-telegram` |
+| `bg-[#25D366]` | `--color-brand-whatsapp` |
+| `bg-slate-*` / `text-zinc-*` / `bg-stone-*` | Semantic tokens |
+| old active chip surface | `--surface-active` |
+| old dropdown hover | `--surface-active` |
+| old muted surface | `--surface-sunken` |
+| old card / paper | `--surface-raised` (or `--surface-page` for the page plane) |
+| old sidebar accent | `--surface-active` |
+| old `secondary` surface | `--surface-sunken` |
 
-### Border Radius
+---
 
-| Hardcoded | Token |
+## 13. Implementation
+
+| Concern | Rule |
 |---|---|
-| `4px` | `rounded-sm` |
-| `6px` | `rounded-md` |
-| `8px` | `rounded-lg` |
-| `12px` | `rounded-xl` |
-| `9999px` / pill | `rounded-full` |
+| Config | Tailwind v4 CSS-first. No `tailwind.config.ts` |
+| Where things live | Generic → `src/ui/`. Product → `src/features/<domain>/`. Route-only → `src/app/<route>/_components/` |
+| Styling | Tailwind utilities. Inline `style` only for dynamic values (e.g. CDN signature) |
+| Icons | Lucide (new), Heroicons (existing) |
+| Adding a shadcn primitive | Check `src/ui/` first; never install a duplicate |
+| Creating a primitive | Not before checking `Field`, `Select`, `Button`, `Badge` |
 
+---
+
+## 14. Changelog
+
+Full migration detail lives in the git history. Batches are independently
+reversible; verify contrast in both modes before starting the next.
+
+- **2026-10-02 — Decision recorded.** Navy action, orange brand-only, warm
+  newsprint retained. `--surface-*` role tokens added. Four warm-neutral chroma
+  values corrected (0.008–0.016 → 0.005). 23 duplicated navy definitions
+  collapsed to `var(--color-primary)`. Three reds collapsed to one.
+  `signal-heat` unlinked from Telegram. Dark-mode signal tokens added.
+- **Batch 1 done.** `Badge.default`, `ModerationNav` active pills and `TopNav`
+  "Post a Job" moved onto the ladder; `BrandButton.selected` off `bg-primary/10`.
+- **Pending.** Filter pills → settings toggles → detail chips → `BrandButton.solid`
+  retirement (3 call sites) → nav icon containers.
+
+---
+
+*Single source of truth for values: [`src/app/globals.css`](src/app/globals.css).*
+*This file is the contract for how they may be used.*

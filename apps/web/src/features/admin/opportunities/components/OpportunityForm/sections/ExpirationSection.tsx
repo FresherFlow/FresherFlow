@@ -1,6 +1,6 @@
 import { ClockIcon } from '@heroicons/react/24/outline';
 import XMarkIcon from '@heroicons/react/20/solid/XMarkIcon';
-import { SmartInput } from '@/features/admin/ui/SmartInput';
+import { SmartInput } from '@/features/admin/components/SmartInput';
 import { Card, CardDescription, CardContent } from '@/ui/Card';
 import { Button } from '@/ui/Button';
 import type { OpportunityFormApi } from '@/features/admin/opportunities/useOpportunityForm';

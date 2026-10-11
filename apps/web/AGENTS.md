@@ -44,14 +44,23 @@ dashboards, contributors, or navigation, it is product code and belongs in `src/
 **The ownership test** (eliminates folder proliferation):
 
 - Route → `app/`
-- Job functionality → `features/opportunities/` (jobs, walk-ins, internships are one feature: opportunities)
+- Job functionality → `features/jobs/` (jobs, walk-ins, internships are one feature. `opportunities` is a planned consolidated name — do not use it for new paths until a rename is explicitly authorized)
 - Room functionality → `features/community/` 
 - Profile functionality → `features/profile/`
 - Generic UI → `ui/`
 - Generic browser hook → `hooks/`
 - Database/auth/API infrastructure → `lib/`
 
-If answer is "shared by everything" → shared code. If "used by jobs" → `features/opportunities/`. If "used by one component only" → beside that component.
+If answer is "shared by everything" → shared code. If "used by jobs" → `features/jobs/`. If "used by one component only" → beside that component.
+
+**New-file decision rule** (ask in order, stop at the first yes):
+
+1. One route only, never shared? → `src/app/<route>/_components/` (or `_hooks/`).
+2. One feature (component, hook, API fn, domain rule, util)? → `src/features/<domain>/` (flat file, or `components/` / `hooks/` / `api/` / `domain/` / `utils/` if that feature already earned the split).
+3. Generic primitive with no product knowledge (passes the product-knowledge test)? → `src/ui/` (component, `PascalCase.tsx`) or `src/hooks/` (hook).
+4. Shared infrastructure / I/O? → `src/lib/` (`api/`, `auth/`, `providers/`, `server/`, `storage/`, `utils/`).
+
+Never invent a new top-level folder type (`tabs/`, `ui/` inside a feature) — put it under the feature's `components/`.
 
 **When to split inside a feature** (Cal.com lesson — don't create folders for file types prematurely):
 
@@ -65,9 +74,9 @@ features/companies/
 ├── hooks.ts
 └── index.ts
 
-# Large feature (like opportunities, 95 files) — split is justified
-features/opportunities/
-├── components/   # UI
+# Large feature (like jobs) — split is justified
+features/jobs/
+├── components/   # UI (tab screens live in components/tabs/)
 ├── hooks/        # feature hooks
 ├── api/          # data fetching
 ├── domain/       # business rules (eligibility, taxonomy, matchScore)
@@ -76,7 +85,7 @@ features/opportunities/
 └── index.ts
 ```
 
-Do not create `components/`, `hooks/`, `utils/`, `lib/`, `api/`, `domain/`, `parser/`, `seo/` folders for a small feature just because the file type exists. Split only when files actually become large. Current `features/opportunities` had 8 subfolders (`api, components, domain, hooks, lib, parser, seo, utils`) — retain only `components, hooks, api, domain, utils`.
+Do not create `components/`, `hooks/`, `utils/`, `lib/`, `api/`, `domain/`, `parser/`, `seo/` folders for a small feature just because the file type exists. Split only when files actually become large. `features/jobs` currently holds `api, components, domain, hooks, tabs, utils` — retain; do not reintroduce `lib, parser, seo`. Flat features (`features/navigation/`, `features/settings/`) stay flat until they earn a split. `tabs/` is not a top-level folder type — tab screens live under their feature's `components/tabs/`.
 
 **What `lib` means** — infrastructure only, like `cal.com/packages/lib`:
 
@@ -270,7 +279,7 @@ Client code may read only `NEXT_PUBLIC_*`. Server code may read server-only env 
 | `src/lib/api/server-client.ts` | Server API client and cache policy |
 | `src/lib/api/cdnFeed.ts` | CDN bootstrap feed access |
 | `src/lib/api/client.ts` | Client API exports |
-| `src/features/opportunities/` | Feed, filters, cards, detail UI |
+| `src/features/jobs/` | Feed, filters, cards, detail UI (canonical jobs home; see ownership test) |
 | `src/features/dashboard/hooks/` | Dashboard-specific Firebase hooks |
 | `src/features/companies/components/CompanyLogo.tsx` | Logo rendering and fallback |
 

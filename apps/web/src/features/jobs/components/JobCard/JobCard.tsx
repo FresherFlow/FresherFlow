@@ -15,6 +15,7 @@ import { AutoFitBadges } from './AutoFitBadges';
 import { JobCardMenu } from './JobCardMenu';
 import { buildMetaItems } from './JobCardMetaConfig';
 import { WalkinDateChip } from '@/features/jobs/components/WalkinEventWidgets';
+import { AtsLogo } from '@/features/jobs/components/AtsLogo';
 import { getJobTypeLabel, isFreshlyPosted } from './jobCardUtils';
 import { useJobCardActions, type JobCardOpportunity } from './useJobCardActions';
 
@@ -164,6 +165,7 @@ export default function JobCard({
                                 <span className="hidden sm:inline text-xs font-semibold tracking-wide text-muted-foreground whitespace-nowrap shrink-0">
                                     {typeLabel}
                                 </span>
+                                <AtsLogo applyLink={job.applyLink} />
                                 {isWalkin && <WalkinDateChip opp={job} className="shrink-0 sm:ml-auto" />}
                             </div>
                         </div>

@@ -31,7 +31,7 @@ function SavedJobsPageContent() {
     useEffect(() => {
         async function loadFeed() {
             try {
-                // Card-only view Ã¢â‚¬â€ lightweight index instead of the 2MB bootstrap.
+                // Card-only view — lightweight index instead of the 2MB bootstrap.
                 const feed = await fetchFeedIndex();
                 if (feed?.opportunities) {
                     const cached = readFeedCache()?.opportunities || [];
@@ -66,7 +66,7 @@ function SavedJobsPageContent() {
                 found.push(existing);
             } else {
                 // The saved ID is no longer in the feed or cache: the listing
-                // expired or was removed. Keep only the ID Ã¢â‚¬â€ rendering a fake
+                // expired or was removed. Keep only the ID — rendering a fake
                 // title/company/apply link here would be a lie.
                 missing.push(id);
             }

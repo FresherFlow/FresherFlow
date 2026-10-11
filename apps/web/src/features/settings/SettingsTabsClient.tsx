@@ -1,11 +1,11 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
-import AccountTab from '@/features/settings/tabs/AccountTab';
-import AppearanceTab from '@/features/settings/tabs/AppearanceTab';
+import AccountTab from '@/features/settings/components/tabs/AccountTab';
+import AppearanceTab from '@/features/settings/components/tabs/AppearanceTab';
 import ProfileEditor from '@/features/profile/components/editor/ProfileEditor';
-import FeedbackTab from '@/features/settings/tabs/FeedbackTab';
-import ReferralTab from '@/features/settings/tabs/ReferralTab';
+import FeedbackTab from '@/features/settings/components/tabs/FeedbackTab';
+import ReferralTab from '@/features/settings/components/tabs/ReferralTab';
 import AccountOverview from '@/features/settings/AccountOverview';
 
 const SETTINGS_TABS = [

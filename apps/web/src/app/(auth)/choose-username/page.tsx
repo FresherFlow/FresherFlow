@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import LoginForm from '../login/_components/LoginForm';
+import LoginForm from '@/features/auth/components/LoginForm';
 import { AuthGate } from '@/features/auth/components/ProfileGate';
 import { RedirectHandoff } from './_components/redirect-handoff';
 

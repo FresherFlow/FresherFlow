@@ -1,5 +1,5 @@
 import { CurrencyRupeeIcon } from '@heroicons/react/24/outline';
-import { SmartInput } from '@/features/admin/ui/SmartInput';
+import { SmartInput } from '@/features/admin/components/SmartInput';
 import { Card, CardDescription, CardContent } from '@/ui/Card';
 import { Tabs, TabsList, TabsTrigger } from '@/ui/Tabs';
 import type { OpportunityFormApi } from '@/features/admin/opportunities/useOpportunityForm';

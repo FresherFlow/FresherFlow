@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import { cn } from '@fresherflow/ui/utils/cn';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { deriveProfileFilterChips, useProfileFilterPrefs } from '@/features/jobs/hooks/useProfileFilters';
-import { NewSearchDialog } from '@/features/jobs/tabs/NewSearchDialog';
+import { NewSearchDialog } from '@/features/jobs/components/tabs/NewSearchDialog';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import EyeIcon from '@heroicons/react/24/outline/EyeIcon';
 import EyeSlashIcon from '@heroicons/react/24/outline/EyeSlashIcon';
@@ -31,6 +32,8 @@ export function PersonalizationBar({
     saveCity,
     saveCompany,
     saveBatch,
+    profileFromCount = 0,
+    profileFromTotal = 0,
     className,
 }: {
     /** Jobs the profile layer hides or demotes right now. */
@@ -43,6 +46,9 @@ export function PersonalizationBar({
     saveCity?: string | null;
     saveCompany?: string | null;
     saveBatch?: number | null;
+    /** Chips currently seeded from the profile / profile dims available. */
+    profileFromCount?: number;
+    profileFromTotal?: number;
     /** Container styling — the parent row already owns padding and gaps. */
     className?: string;
 }) {
@@ -81,7 +87,34 @@ export function PersonalizationBar({
 
     const showNudge = !!user && filterCount >= 2 && !nudgeDismissed;
 
-    if (!mounted || !user || (allChips.length === 0 && mismatchCount === 0 && !showNudge)) return null;
+    if (!mounted) return null;
+
+    // Logged out: the bar only mounts when the chip row is visible (manual
+    // filters exist), so explain instead of rendering nothing.
+    if (!user) {
+        return (
+            <span className={cn('inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2 py-1 text-xs text-muted-foreground shrink-0', className)}>
+                <SparklesIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span>
+                    <Link href="/login" className="font-bold text-primary hover:underline">Sign in</Link>
+                    {' '}to personalize these filters
+                </span>
+            </span>
+        );
+    }
+
+    // Logged in but the profile contributes nothing: point at the fix.
+    if (allChips.length === 0 && mismatchCount === 0 && !showNudge) {
+        return (
+            <span className={cn('inline-flex items-center gap-1.5 rounded-lg border border-dashed border-border px-2 py-1 text-xs text-muted-foreground shrink-0', className)}>
+                <SparklesIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                <span>
+                    <Link href="/account" className="font-bold text-primary hover:underline">Add cities + batch</Link>
+                    {' '}to personalize this feed
+                </span>
+            </span>
+        );
+    }
 
     const initial = {
         city: saveCity || profile?.preferredCities?.[0] || '',
@@ -96,6 +129,7 @@ export function PersonalizationBar({
                 role="switch"
                 aria-checked={prefs.enabled}
                 onClick={() => setEnabled(!prefs.enabled)}
+                title={prefs.enabled && profileFromTotal > 0 ? `${profileFromCount} of ${profileFromTotal} profile filters applied as chips` : 'Toggle profile-based filtering'}
                 className={cn(
                     'inline-flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-bold transition-colors shrink-0',
                     prefs.enabled
@@ -105,6 +139,9 @@ export function PersonalizationBar({
             >
                 <SparklesIcon className="w-3.5 h-3.5" aria-hidden="true" />
                 {prefs.enabled ? 'Profile filters on' : 'Profile filters off'}
+                {prefs.enabled && profileFromTotal > 0 && (
+                    <span className="font-semibold opacity-80">· {profileFromCount}/{profileFromTotal} applied</span>
+                )}
             </button>
 
             {mismatchCount > 0 && (

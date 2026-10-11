@@ -1,5 +1,5 @@
 import { InformationCircleIcon } from '@heroicons/react/24/outline';
-import { SmartSelect } from '@/features/admin/ui/SmartSelect';
+import { SmartSelect } from '@/features/admin/components/SmartSelect';
 import { Input } from '@/ui/Input';
 import { Textarea } from '@/ui/Textarea';
 import { Button } from '@/ui/Button';

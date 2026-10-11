@@ -171,7 +171,7 @@ export function CategoryPageView({
 }) {
     const router = useRouter();
     const mobileGrid = isDesktop === false;
-    // Desktop renders the SAME row in both views â€” see the feed map below for
+    // Desktop renders the SAME row in both views — see the feed map below for
     // why the card tree is not used here.
     const desktopRows = type !== 'GOVERNMENT' && isDesktop === true;
     const config = (type ? CATEGORY_CONFIG[type] : undefined) ?? { title: 'Jobs', subtitle: '', icon: BriefcaseIcon };
@@ -222,7 +222,7 @@ export function CategoryPageView({
         };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Selecting a job must never move the list â€” if anything (remount,
+    // Selecting a job must never move the list — if anything (remount,
     // browser anchoring) resets the list scroll on select, put it back.
     // Only arms on row click, so filter/search resets still work.
     useEffect(() => {
@@ -387,10 +387,10 @@ export function CategoryPageView({
     const feedRef = useRef<HTMLDivElement>(null);
     // Keep the feed box exactly viewport-tall (no outer scroll), whatever height
     // the title row / filters / active chips take up. Panes fill the box with
-    // flex heights and scroll internally â€” no viewport math in the panes.
+    // flex heights and scroll internally — no viewport math in the panes.
     //
     // This writes the height of the box the observed header sits in, from that
-    // box's own offset â€” so it must never write the value it already applied.
+    // box's own offset — so it must never write the value it already applied.
     // `getBoundingClientRect()` reports fractional geometry, and re-writing a
     // height that layout then reflects back re-fires the observer on the
     // effect's own output; that is the ResizeObserver loop that pinned the List
@@ -419,7 +419,7 @@ export function CategoryPageView({
         };
     }, []);
     const [hoveredOppId, setHoveredOppId] = useState<string | null>(null);
-    // Sliding hover highlight geometry â€” glides between rows instead of snapping.
+    // Sliding hover highlight geometry — glides between rows instead of snapping.
     const [hoverRect, setHoverRect] = useState<{ top: number; height: number } | null>(null);
     const [mobileMapView, setMobileMapView] = useState(false);
     useEffect(() => {
@@ -438,7 +438,7 @@ export function CategoryPageView({
         });
     }, [handleCloseOpportunityPane]);
 
-    // Manual filters + search â€” what the save-this-search nudge reacts to.
+    // Manual filters + search — what the save-this-search nudge reacts to.
     const activeFilterTally = useMemo(
         () => mobileActiveCount + (search.trim().length > 0 ? 1 : 0),
         [mobileActiveCount, search],
@@ -448,11 +448,11 @@ export function CategoryPageView({
         <div id="feed-scroll-container" ref={feedRef} className="w-full max-w-7xl mx-auto flex flex-col" style={{ height: 'calc(100dvh - 3.5rem)' }}>
             {portalTarget && headerPortalContent ? createPortal(headerPortalContent, portalTarget) : null}
 
-            {/* Sticky header â€” transparent so it can never mismatch the page:
+            {/* Sticky header — transparent so it can never mismatch the page:
                 only blur + hairline remain, scrolled cards frost beneath.
                 relative z-20 is load-bearing: backdrop-blur traps the filter
                 panels' z-100 inside this header's stacking context, while the
-                detail pane paints at relative z-10 â€” without an explicit level
+                detail pane paints at relative z-10 — without an explicit level
                 here, page content renders ABOVE open filter dropdowns. z-20
                 clears detail content but stays under map view (30), sticky
                 action bars (40) and modals (100+). */}
@@ -460,7 +460,7 @@ export function CategoryPageView({
 
             {type === 'GOVERNMENT' ? (
                 /* Govt Compact Top Row: Title/Count left, Filters right.
-                   Search lives in the header on desktop (portaled above) â€”
+                   Search lives in the header on desktop (portaled above) —
                    the inline box below is mobile-only, like other feeds. */
                 <div className="flex items-center justify-between gap-3 pb-1">
                     {/* Left: Compact Search Bar (mobile only) + Title/Count */}
@@ -484,7 +484,7 @@ export function CategoryPageView({
                         </div>
                         <div className="hidden lg:flex items-center text-sm font-semibold text-muted-foreground whitespace-nowrap">
                             <span className="text-foreground font-bold mr-1.5">Government Jobs</span>
-                            â€¢ <span className="ml-1.5">{mounted && visibleOpps.length > 0 ? visibleOpps.length : '0'} found</span>
+                            • <span className="ml-1.5">{mounted && visibleOpps.length > 0 ? visibleOpps.length : '0'} found</span>
                         </div>
                     </div>
 
@@ -501,13 +501,13 @@ export function CategoryPageView({
 
                         {/* Desktop filter dropdowns */}
                         <div className="hidden lg:flex items-center gap-2 flex-wrap">
-                            <JobsFilterBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} aggregates={filterAggregates} driveDate={driveDate} onDriveDateChange={setDriveDate} driveRadiusKm={driveRadiusKm ?? null} onDriveRadiusChange={setDriveRadiusKm} hasUserLocation={!!userLocation} />
+                            <JobsFilterBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} profileOwnedDims={profileOwnedDims} pageType={type ?? undefined} aggregates={filterAggregates} driveDate={driveDate} onDriveDateChange={setDriveDate} driveRadiusKm={driveRadiusKm ?? null} onDriveRadiusChange={setDriveRadiusKm} hasUserLocation={!!userLocation} />
                         </div>
                     </div>
                 </div>
             ) : (
                 <>
-                    {/* Non-govt mobile search bar â€” inline, full width. Desktop search is portaled to TopHeaderBar */}
+                    {/* Non-govt mobile search bar — inline, full width. Desktop search is portaled to TopHeaderBar */}
                     <div className="relative group lg:hidden">
                         <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                         <Input
@@ -555,9 +555,9 @@ export function CategoryPageView({
 
                             {/* Desktop filter dropdowns + toggle */}
                             <div className="hidden lg:flex items-center gap-2 flex-wrap">
-                                <JobsFilterBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type ?? undefined} aggregates={filterAggregates} driveDate={driveDate} onDriveDateChange={setDriveDate} driveRadiusKm={driveRadiusKm ?? null} onDriveRadiusChange={setDriveRadiusKm} hasUserLocation={!!userLocation} />
+                                <JobsFilterBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} profileOwnedDims={profileOwnedDims} pageType={type ?? undefined} aggregates={filterAggregates} driveDate={driveDate} onDriveDateChange={setDriveDate} driveRadiusKm={driveRadiusKm ?? null} onDriveRadiusChange={setDriveRadiusKm} hasUserLocation={!!userLocation} />
                                 
-                                {/* View mode switcher (List vs Split) â€” icons only;
+                                {/* View mode switcher (List vs Split) — icons only;
                                     each icon always visible, state shown via highlight */}
                                 <div className="inline-flex items-center bg-muted rounded-lg border border-border/70 shrink-0 p-0.5">
                                     <button
@@ -593,7 +593,7 @@ export function CategoryPageView({
                 </>
             )}
 
-            {/* Govt tabs â€” phases only. Categories live in the sidebar
+            {/* Govt tabs — phases only. Categories live in the sidebar
                 (same URL-driven state); the ticker sits under the title row
                 now that search owns the header. */}
             {type === 'GOVERNMENT' && (
@@ -648,8 +648,11 @@ export function CategoryPageView({
                             // Profile-seeded chip: removing the last mode dismisses the
                             // dimension, so reload never re-seeds it.
                             if (rest.length === 0 && profileOwnedDims.includes('workMode')) dismissProfileFilterDims(['workMode']);
-                        }} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                        }} title={profileOwnedDims.includes('workMode') ? 'From your profile' : undefined} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
                             <HomeIcon className="w-3.5 h-3.5 shrink-0" />
+                            {profileOwnedDims.includes('workMode') && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
+                            )}
                             <span>{m === 'REMOTE' ? 'Remote' : m === 'HYBRID' ? 'Hybrid' : 'On-site'}</span>
                             <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
@@ -658,8 +661,11 @@ export function CategoryPageView({
                         <button onClick={() => {
                             setFilters({...filters, location: null});
                             if (profileOwnedDims.includes('city')) dismissProfileFilterDims(['city']);
-                        }} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                        }} title={profileOwnedDims.includes('city') ? 'From your profile' : undefined} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
                             <MapPinIcon className="w-3.5 h-3.5 shrink-0" />
+                            {profileOwnedDims.includes('city') && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
+                            )}
                             <span>{filters.location.split(',').map((c) => c.trim()).filter(Boolean).join(', ')}</span>
                             <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
@@ -723,8 +729,11 @@ export function CategoryPageView({
                         <button onClick={() => {
                             setFilters({...filters, year: null});
                             if (profileOwnedDims.includes('batch')) dismissProfileFilterDims(['batch']);
-                        }} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
+                        }} title={profileOwnedDims.includes('batch') ? 'From your profile' : undefined} className="bg-background border border-border hover:bg-muted/50 text-foreground rounded-lg px-2 py-1 text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0">
                             <CalendarIcon className="w-3.5 h-3.5 shrink-0" />
+                            {profileOwnedDims.includes('batch') && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
+                            )}
                             <span>{filters.year} Batch</span>
                             <XMarkIcon className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground shrink-0 transition-colors" />
                         </button>
@@ -752,7 +761,7 @@ export function CategoryPageView({
                     </button>
 
                     {/* Profile chips + switch + hidden-jobs disclosure live in
-                        THIS row with the manual chips â€” never a row of their own. */}
+                        THIS row with the manual chips — never a row of their own. */}
                     <PersonalizationBar
                         mismatchCount={profileMismatchCount}
                         showHidden={showHiddenProfile}
@@ -761,12 +770,14 @@ export function CategoryPageView({
                         saveCity={filters.location}
                         saveCompany={filters.company?.[0] ?? null}
                         saveBatch={filters.year}
+                        profileFromCount={profileChipCount}
+                        profileFromTotal={profileChipTotal}
                     />
                 </div>
             ) : null}
             </div>{/* end sticky header */}
 
-            {/* Scrollable content â€” locked in split mode, panes scroll internally */}
+            {/* Scrollable content — locked in split mode, panes scroll internally */}
             <div ref={scrollContainerRef} onScroll={handleScroll} className={cn(
                 "flex-1 overflow-y-auto px-3 md:px-6 pb-2 space-y-2",
                 type !== 'GOVERNMENT' && showDetail && "xl:overflow-hidden xl:pb-0 xl:space-y-0"
@@ -798,6 +809,7 @@ export function CategoryPageView({
   setDraftDriveRadiusKm={setDriveRadiusKm}
   hasUserLocation={!!userLocation}
   draftMatchCount={draftMatchCount}
+                    profileOwnedDims={profileOwnedDims}
                     onApply={applyMobileFilters}
                     onClear={() => {
                         setDraftLoc(null); setDraftYear(null); setDraftClosingSoon(false);
@@ -961,14 +973,14 @@ export function CategoryPageView({
                             )}
                             {visibleOpps.slice(0, visibleCount).map((opp, index) => (
                                 // One row implementation for the whole desktop
-                                // feed â€” List and Split render the same thing.
+                                // feed — List and Split render the same thing.
                                 //
                                 // List used to render the card tree here while
                                 // Split rendered this row, so the two views
                                 // disagreed about what a row costs. A card mounts
                                 // a hidden measurement strip, a ResizeObserver, a
                                 // synchronous layout pass over every badge and an
-                                // icon load per skill â€” per card â€” and the List
+                                // icon load per skill — per card — and the List
                                 // view hung while Split stayed smooth. The row has
                                 // no hooks at all.
                                 //
@@ -1031,7 +1043,7 @@ priority={index < 4}
                                         // Mobile opens the detail bottom sheet
                                         // (mobileGrid); desktop split selects into
                                         // its pane. The job page is never pushed
-                                        // from the feed â€” one paradigm per viewport.
+                                        // from the feed — one paradigm per viewport.
                                         if (type !== 'GOVERNMENT' && (showDetail || mobileGrid)) {
                                             e.preventDefault();
                                             handleSelectOpportunity(opp);
@@ -1113,7 +1125,7 @@ priority={index < 4}
                         </div>
                     )}
 
-                    {/* Mobile Detail Bottom Sheet â€” the mobile paradigm. Taps
+                    {/* Mobile Detail Bottom Sheet — the mobile paradigm. Taps
                         select (mobileGrid) and the job opens here, never as a
                         page push and never as desktop split rows. */}
                     <Drawer.Root
@@ -1216,7 +1228,7 @@ priority={index < 4}
  *
  * The feed above is a list of openings, so a missing one is best shown as an
  * unfilled slot: a dashed rule with a dashed plus tile standing in for the row
- * that should be there. Deliberately not a card â€” the rule is the structure
+ * that should be there. Deliberately not a card — the rule is the structure
  * and the tile is the only thing that moves, so the affordance reads as "add a
  * row" rather than "here is another module". The tile fills on hover and the
  * arrow nudges, so the row acknowledges the pointer without any animation on

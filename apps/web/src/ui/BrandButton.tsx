@@ -31,10 +31,18 @@ const VARIANTS: Record<BrandVariant, string> = {
     neutral: 'bg-foreground text-background hover:opacity-90 active:scale-[0.98]',
     // Secondary CTA: a hairline that darkens on hover.
     outline: 'border border-border text-foreground hover:border-foreground/40 active:scale-[0.98]',
-    // Selected/toggled-on state. Keyed to `primary`, NOT `foreground`: a
-    // `foreground/5` fill plus a `foreground/80` border glows white on the dark
-    // theme, so a saved button lit up like a primary CTA in dark mode.
-    selected: 'border-primary/40 bg-primary/10 text-primary active:scale-[0.98]',
+    // Selected/toggled-on state. Mirrors the sidebar's active row
+    // (`data-[active=true]:bg-sidebar-accent`): a near-neutral warm fill with
+    // navy ink, where the tonal step does the separating. It was
+    // `bg-primary/10` + `border-primary/40` — navy painted onto the surface,
+    // which put this button in a different colour league from the rail and
+    // left a washed grey-blue chip next to the solid Apply button.
+    //
+    // `text-accent-foreground`, NOT `text-foreground`: dark mode inverts the
+    // accent surface to near-white, and in dark `--color-foreground` is also
+    // near-white, so `text-foreground` on `bg-accent` would be invisible.
+    // `accent-foreground` is the paired ink (navy in light, dark in dark).
+    selected: 'border border-border bg-accent text-accent-foreground font-medium active:scale-[0.98]',
     // Icon-only control at the same height as a labelled button.
     ghost: 'border border-border text-foreground hover:border-foreground/40 active:scale-[0.98]',
 }

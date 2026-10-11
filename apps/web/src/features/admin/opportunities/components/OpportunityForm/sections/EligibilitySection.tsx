@@ -1,8 +1,8 @@
 import { AcademicCapIcon } from '@heroicons/react/24/outline';
 import { XMarkIcon } from '@heroicons/react/20/solid';
-import { SmartInput } from '@/features/admin/ui/SmartInput';
-import { SmartTextarea } from '@/features/admin/ui/SmartTextarea';
-import { SmartSelect } from '@/features/admin/ui/SmartSelect';
+import { SmartInput } from '@/features/admin/components/SmartInput';
+import { SmartTextarea } from '@/features/admin/components/SmartTextarea';
+import { SmartSelect } from '@/features/admin/components/SmartSelect';
 import { Card, CardDescription, CardContent } from '@/ui/Card';
 import { Badge } from '@/ui/Badge';
 import { Button } from '@/ui/Button';

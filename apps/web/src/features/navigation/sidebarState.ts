@@ -192,7 +192,8 @@ export function persistSpaceId(id: string) {
    other sidebar prefs; the Appearance picker writes it, the rail reads it.
    ────────────────────────────────────────────────────────────────────── */
 
-export type SidebarVariant = 'sidebar' | 'floating' | 'inset';
+import type { SidebarVariant } from '@/ui/SidebarVariantPicker';
+export type { SidebarVariant };
 
 const VARIANT_STORAGE_KEY = 'ff:sidebarVariant';
 const variantListeners = new Set<() => void>();

@@ -20,8 +20,9 @@ const SheetOverlay = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof SheetPrimitive.Overlay>
 >(({ className, ...props }, ref) => (
   <SheetPrimitive.Overlay
+    data-slot="sheet-overlay"
     className={cn(
-      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-black/80 transition-opacity duration-200 ease-out data-[state=closed]:opacity-0 data-[state=open]:opacity-100 starting:opacity-0",
       className
     )}
     {...props}
@@ -36,16 +37,19 @@ const sheetVariants = cva(
   // alongside the keyframes. Ours was missing `flex flex-col` and carried an
   // extra `p-6`, so the panel was not a flex column and its height was driven by
   // content — the drawer reflowed while it animated.
-  "fixed z-50 flex flex-col gap-4 bg-background shadow-lg transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:animate-in data-[state=open]:duration-500",
+  // Tailwind v4 drives translate-x/y utilities with the CSS `translate`
+  // property, not `transform` — so `translate` must be named in the
+  // transition list or the drawer teleports instead of sliding.
+  "fixed z-50 flex flex-col gap-4 bg-background shadow-lg transition-[opacity,translate,transform] data-[state=open]:duration-300 data-[state=closed]:duration-200 ease-out",
   {
     variants: {
       side: {
-        top: "inset-x-0 top-0 border-b data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top",
+        top: "inset-x-0 top-0 border-b data-[state=closed]:-translate-y-full data-[state=open]:translate-y-0 starting:-translate-y-full",
         bottom:
-          "inset-x-0 bottom-0 border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom",
-        left: "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
+          "inset-x-0 bottom-0 border-t data-[state=closed]:translate-y-full data-[state=open]:translate-y-0 starting:translate-y-full",
+        left: "inset-y-0 left-0 h-full w-3/4 border-r data-[state=closed]:-translate-x-full data-[state=open]:translate-x-0 starting:-translate-x-full sm:max-w-sm",
         right:
-          "inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
+          "inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:translate-x-full data-[state=open]:translate-x-0 starting:translate-x-full sm:max-w-sm",
       },
       nav: {
         // Full-bleed navigation drawer: own header/close inside, no panel padding.
@@ -72,6 +76,7 @@ const SheetContent = React.forwardRef<
     <SheetOverlay />
     <SheetPrimitive.Content
       ref={ref}
+      data-slot="sheet-content"
       className={cn(sheetVariants({ side, nav }), className)}
       {...props}
     >

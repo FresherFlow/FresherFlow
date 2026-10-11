@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { communityApi, resourcesApi } from '@/features/contribute/api/contributions';
 import { UnauthorizedError } from '@/lib/api/core';
@@ -48,6 +48,69 @@ interface HistoryRow {
     resubmitSource: string | null;
 }
 
+export interface ContributionStats {
+    pending: number;
+    live: number;
+    needsAttention: number;
+}
+
+export type HistoryFilter = 'ALL' | 'PENDING' | 'LIVE' | 'REJECTED';
+
+const FILTERS: Array<{ value: HistoryFilter; label: string }> = [
+    { value: 'ALL', label: 'All' },
+    { value: 'PENDING', label: 'Pending' },
+    { value: 'LIVE', label: 'Live' },
+    { value: 'REJECTED', label: 'Rejected' },
+];
+
+/**
+ * Track A coordination: ContributeHub wants Pending / Live / Needs-attention
+ * counts. needsAttention counts REJECTED rows only — MERGED rows are
+ * informational ("Matched to existing listing", nothing to fix) so they stay
+ * out of the attention count. Computed from the already-loaded `rows`, never
+ * a new fetch.
+ */
+export function getHistoryStats(rows: HistoryRow[]): ContributionStats {
+    let pending = 0;
+    let live = 0;
+    let needsAttention = 0;
+    for (const row of rows) {
+        if (row.chip.label === 'Pending') pending += 1;
+        else if (row.chip.label === 'Live') live += 1;
+        else if (row.chip.label === 'Rejected') needsAttention += 1;
+    }
+    return { pending, live, needsAttention };
+}
+
+/** Pure client-side filter over the loaded rows — no fetch, no pagination. */
+export function filterHistoryRows(rows: HistoryRow[], filter: HistoryFilter): HistoryRow[] {
+    switch (filter) {
+        case 'PENDING':
+            return rows.filter((row) => row.chip.label === 'Pending');
+        case 'LIVE':
+            return rows.filter((row) => row.chip.label === 'Live');
+        case 'REJECTED':
+            return rows.filter((row) => row.chip.label === 'Rejected');
+        case 'ALL':
+        default:
+            return rows;
+    }
+}
+
+export interface ContributionHistoryProps {
+    onContribute?: () => void;
+    refreshKey?: number;
+    onStatsChange?: (stats: ContributionStats) => void;
+    /**
+     * Optimistic composer entry (Track A): the hub sets this in `onSubmitted`
+     * alongside `refreshKey` with a generic label — the sheet's `onSubmitted`
+     * carries no title, so this never fabricates job details. Rendered as a
+     * top Pending card while the refetch lands; dropped when `rows` refreshes
+     * (see baselineRef below) and never counted in stats/filters.
+     */
+    justSubmitted?: { title: string; kind: string } | null;
+}
+
 function chipFor(status: string): HistoryRow['chip'] {
     return GENERIC_CHIP[status] ?? { label: status, variant: 'secondary' };
 }
@@ -77,7 +140,7 @@ function buildRows(
                 item.viewState === 'REJECTED' && item.rejectionReason
                     ? `Reason: ${item.rejectionReason}`
                     : item.viewState === 'MERGED'
-                      ? 'Your find, already here'
+                      ? 'Matched to existing listing'
                       : null,
             noticeTone: item.viewState === 'MERGED' ? 'muted' : 'danger',
             resubmitSource: item.viewState === 'REJECTED' ? item.sourceLink : null,
@@ -173,13 +236,26 @@ function formatWhen(iso: string): string {
     }
 }
 
-export function ContributionHistory({ onContribute, refreshKey }: { onContribute?: () => void; refreshKey?: number }) {
+export function ContributionHistory({ onContribute, refreshKey, onStatsChange, justSubmitted }: ContributionHistoryProps) {
     const { user } = useAuth();
     const [rows, setRows] = useState<HistoryRow[] | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [sessionExpired, setSessionExpired] = useState(false);
     const [unavailable, setUnavailable] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
+    const [filter, setFilter] = useState<HistoryFilter>('ALL');
+
+    // Optimistic insert: snapshot the rows identity the moment `justSubmitted`
+    // arrives. The card shows only while `rows` is still that snapshot — the
+    // next successful `setRows` (new array) hides it, so a fast refetch that
+    // already contains the real row never duplicates. Distinct key
+    // `just-submitted` below keeps React from reconciling it with real rows.
+    const normalizedSubmitted = justSubmitted ?? null;
+    const baselineRef = useRef<{ submitted: { title: string; kind: string } | null; rows: HistoryRow[] | null } | undefined>(undefined);
+    if (baselineRef.current?.submitted !== normalizedSubmitted) {
+        baselineRef.current = { submitted: normalizedSubmitted, rows };
+    }
+    const optimisticActive = !!normalizedSubmitted && baselineRef.current?.rows === rows && !error;
 
     const load = useCallback(async () => {
         if (!user) return;
@@ -225,11 +301,15 @@ export function ContributionHistory({ onContribute, refreshKey }: { onContribute
         void load();
     }, [load, refreshKey]);
 
+    useEffect(() => {
+        if (rows) onStatsChange?.(getHistoryStats(rows));
+    }, [rows, onStatsChange]);
+
     if (!user || sessionExpired) {
         return (
             <EmptyState
                 title="Sign in to track your submissions"
-                description="Your shares, their review status, and what got published — all in one place."
+                description=""
                 icon="inbox"
                 action={
                     sessionExpired ? (
@@ -247,6 +327,25 @@ export function ContributionHistory({ onContribute, refreshKey }: { onContribute
     if (loading && rows === null) {
         return (
             <div className="space-y-3">
+                {optimisticActive && normalizedSubmitted ? (
+                    <div
+                        key="just-submitted"
+                        className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-start sm:justify-between"
+                    >
+                        <div className="min-w-0 space-y-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant="warning">Pending</Badge>
+                                <span className="text-xs font-semibold text-muted-foreground">{normalizedSubmitted.kind}</span>
+                                <span className="text-xs text-muted-foreground">Just now</span>
+                            </div>
+                            <p className="break-words text-sm font-semibold text-foreground">{normalizedSubmitted.title}</p>
+                            <p className="text-xs text-muted-foreground">Waiting for moderator review.</p>
+                        </div>
+                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                            <span className="text-xs text-muted-foreground">In review</span>
+                        </div>
+                    </div>
+                ) : null}
                 <Skeleton className="h-20 w-full" />
                 <Skeleton className="h-20 w-full" />
                 <Skeleton className="h-20 w-full" />
@@ -264,6 +363,34 @@ export function ContributionHistory({ onContribute, refreshKey }: { onContribute
             : null;
 
     if (!rows || rows.length === 0) {
+        if (optimisticActive && normalizedSubmitted) {
+            return (
+                <div className="space-y-4">
+                    {partialNote && (
+                        <p className="rounded-xl bg-muted/50 px-3 py-2 text-xs text-muted-foreground">{partialNote}</p>
+                    )}
+                    <ul className="space-y-3">
+                        <li
+                            key="just-submitted"
+                            className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-start sm:justify-between"
+                        >
+                            <div className="min-w-0 space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <Badge variant="warning">Pending</Badge>
+                                    <span className="text-xs font-semibold text-muted-foreground">{normalizedSubmitted.kind}</span>
+                                    <span className="text-xs text-muted-foreground">Just now</span>
+                                </div>
+                                <p className="break-words text-sm font-semibold text-foreground">{normalizedSubmitted.title}</p>
+                                <p className="text-xs text-muted-foreground">Waiting for moderator review.</p>
+                            </div>
+                            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                                <span className="text-xs text-muted-foreground">In review</span>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+            );
+        }
         return (
             <div className="space-y-4">
                 {partialNote && (
@@ -279,61 +406,124 @@ export function ContributionHistory({ onContribute, refreshKey }: { onContribute
         );
     }
 
+    const stats = getHistoryStats(rows);
+    const counts: Record<HistoryFilter, number> = {
+        ALL: rows.length,
+        PENDING: stats.pending,
+        LIVE: stats.live,
+        REJECTED: stats.needsAttention,
+    };
+    const visibleRows = filterHistoryRows(rows, filter);
+
     return (
         <div className="space-y-4">
             {partialNote && (
                 <p className="rounded-xl bg-muted/50 px-3 py-2 text-xs text-muted-foreground">{partialNote}</p>
             )}
-            <ul className="space-y-3">
-            {rows.map((row) => {
-                return (
-                    <li
-                        key={row.key}
-                        className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-start sm:justify-between"
-                    >
-                        <div className="min-w-0 space-y-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <Badge variant={row.chip.variant}>{row.chip.label}</Badge>
-                                <span className="text-xs font-semibold text-muted-foreground">{row.kind}</span>
-                                <span className="text-xs text-muted-foreground">{formatWhen(row.createdAt)}</span>
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter contributions by status">
+                {FILTERS.map((option) => {
+                    const active = filter === option.value;
+                    return (
+                        <button
+                            key={option.value}
+                            type="button"
+                            aria-pressed={active}
+                            onClick={() => setFilter(option.value)}
+                            className={
+                                active
+                                    ? 'rounded-full bg-surface-active px-3 py-1.5 text-xs font-semibold text-surface-active-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2'
+                                    : 'rounded-full border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted'
+                            }
+                        >
+                            {option.label} · {counts[option.value]}
+                        </button>
+                    );
+                })}
+                <span className="ml-auto text-xs text-muted-foreground">Latest first</span>
+            </div>
+            {visibleRows.length === 0 ? (
+                <p className="rounded-2xl border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
+                    {filter === 'ALL'
+                        ? 'Nothing here yet.'
+                        : `No ${FILTERS.find((option) => option.value === filter)?.label.toLowerCase()} contributions yet.`}
+                </p>
+            ) : (
+                <ul className="space-y-3">
+                    {optimisticActive && normalizedSubmitted && (filter === 'ALL' || filter === 'PENDING') ? (
+                        <li
+                            key="just-submitted"
+                            className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-start sm:justify-between"
+                        >
+                            <div className="min-w-0 space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <Badge variant="warning">Pending</Badge>
+                                    <span className="text-xs font-semibold text-muted-foreground">{normalizedSubmitted.kind}</span>
+                                    <span className="text-xs text-muted-foreground">Just now</span>
+                                </div>
+                                <p className="break-words text-sm font-semibold text-foreground">{normalizedSubmitted.title}</p>
+                                <p className="text-xs text-muted-foreground">Waiting for moderator review.</p>
                             </div>
-                            <p className="truncate text-sm font-semibold text-foreground">{row.title}</p>
-                            {row.subtitle ? (
-                                <p className="truncate text-xs text-muted-foreground">{row.subtitle}</p>
-                            ) : null}
-
-                            {row.notice ? (
-                                <p
-                                    className={
-                                        row.noticeTone === 'muted'
-                                            ? 'text-xs text-muted-foreground'
-                                            : 'rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive'
-                                    }
-                                >
-                                    {row.notice}
-                                </p>
-                            ) : null}
-                        </div>
-
-                        <div className="flex shrink-0 flex-wrap items-center gap-2">
-                            {row.href ? (
-                                <Button asChild variant="outline" size="sm">
-                                    <Link href={row.href}>{row.hrefLabel ?? 'View'}</Link>
-                                </Button>
-                            ) : null}
-                            {row.resubmitSource ? (
-                                <Button asChild variant="outline" size="sm">
-                                    <a href={`/contribute?type=JOB&source=${encodeURIComponent(row.resubmitSource)}`}>Resubmit</a>
-                                </Button>
-                            ) : null}
-                            {!row.href && !row.resubmitSource ? (
+                            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
                                 <span className="text-xs text-muted-foreground">In review</span>
-                            ) : null}
-                        </div>
-                    </li>
-                );
-            })}
-            </ul>
+                            </div>
+                        </li>
+                    ) : null}
+                    {visibleRows.map((row) => {
+                        const pendingLine = row.chip.label === 'Pending' && !row.notice
+                            ? 'Waiting for moderator review.'
+                            : null;
+                        return (
+                            <li
+                                key={row.key}
+                                className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-4 sm:flex-row sm:items-start sm:justify-between"
+                            >
+                                <div className="min-w-0 space-y-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <Badge variant={row.chip.variant}>{row.chip.label}</Badge>
+                                        <span className="text-xs font-semibold text-muted-foreground">{row.kind}</span>
+                                        <span className="text-xs text-muted-foreground">{formatWhen(row.createdAt)}</span>
+                                    </div>
+                                    <p className="break-words text-sm font-semibold text-foreground">{row.title}</p>
+                                    {row.subtitle ? (
+                                        <p className="break-words text-xs text-muted-foreground">{row.subtitle}</p>
+                                    ) : null}
+                                    {pendingLine ? (
+                                        <p className="text-xs text-muted-foreground">{pendingLine}</p>
+                                    ) : null}
+
+                                    {row.notice ? (
+                                        <p
+                                            className={
+                                                row.noticeTone === 'muted'
+                                                    ? 'text-xs text-muted-foreground'
+                                                    : 'rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive'
+                                            }
+                                        >
+                                            {row.notice}
+                                        </p>
+                                    ) : null}
+                                </div>
+
+                                <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                                    {row.href ? (
+                                        <Button asChild variant="outline" size="sm">
+                                            <Link href={row.href}>{row.hrefLabel ?? 'View'}</Link>
+                                        </Button>
+                                    ) : null}
+                                    {row.resubmitSource ? (
+                                        <Button asChild variant="outline" size="sm">
+                                            <a href={`/contribute?type=JOB&source=${encodeURIComponent(row.resubmitSource)}`}>Resubmit</a>
+                                        </Button>
+                                    ) : null}
+                                    {!row.href && !row.resubmitSource ? (
+                                        <span className="text-xs text-muted-foreground">In review</span>
+                                    ) : null}
+                                </div>
+                            </li>
+                        );
+                    })}
+                </ul>
+            )}
         </div>
     );
 }

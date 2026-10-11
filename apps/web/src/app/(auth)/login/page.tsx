@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import LoginForm from './_components/LoginForm';
+import LoginForm from '@/features/auth/components/LoginForm';
 
 export const dynamic = 'force-dynamic';
 

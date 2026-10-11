@@ -7,6 +7,8 @@ import BookmarkSolidIcon from '@heroicons/react/24/solid/BookmarkIcon';
 import CheckIcon from '@heroicons/react/24/solid/CheckIcon';
 import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { JobCardBadges } from './JobCardBadges';
+import { AtsLogo } from '@/features/jobs/components/AtsLogo';
+import { detectAtsProvider } from '@/features/jobs/utils/atsProvider';
 import { ArrowUpRight } from 'lucide-react';
 import { useJobCardActions, type JobCardOpportunity } from './useJobCardActions';
 
@@ -68,6 +70,7 @@ export function JobCardMobile({
     // lists become full-screen cards — the whole card is 5 short rows.
     const mobileSkills = orderedSkills.slice(0, 2);
     const mobileOverflow = Math.max(0, orderedSkills.length - mobileSkills.length);
+    const atsProvider = detectAtsProvider(job.applyLink);
 
     return (
         <div
@@ -98,6 +101,12 @@ export function JobCardMobile({
                     </p>
                     <p className="truncate text-xs text-muted-foreground">
                         {locationInfo.shortLabel} · {postedLabel}
+                        {atsProvider ? (
+                            <>
+                                {' · '}
+                                <AtsLogo applyLink={job.applyLink} />
+                            </>
+                        ) : null}
                         {showApplied ? (
                             <>
                                 {' · '}

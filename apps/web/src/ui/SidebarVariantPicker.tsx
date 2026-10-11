@@ -4,7 +4,14 @@
 import { type SVGProps } from 'react';
 import { CircleCheck, RotateCcw } from 'lucide-react';
 import { cn } from '@/ui/cn';
-import type { SidebarVariant } from '@/features/navigation/sidebarState';
+
+/**
+ * Canonical owner of the sidebar-variant value type. `ui/` must not import
+ * from `features/` (import direction: features → ui), so the type lives here
+ * beside its picker; `features/navigation/sidebarState` re-exports it for
+ * existing importers.
+ */
+export type SidebarVariant = 'sidebar' | 'floating' | 'inset';
 
 /**
  * Faithful port of shadcn-admin's `SidebarConfig` section from

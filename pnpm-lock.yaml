@@ -243,9 +243,15 @@ importers:
       '@fresherflow/constants':
         specifier: ^1.0.0
         version: link:../../packages/constants
+      '@fresherflow/frontend-core':
+        specifier: ^1.0.0
+        version: link:../../packages/frontend-core
       '@fresherflow/types':
         specifier: ^1.0.0
         version: link:../../packages/types
+      '@fresherflow/ui':
+        specifier: ^1.0.0
+        version: link:../../packages/ui
       '@gorhom/bottom-sheet':
         specifier: ^5.2.14
         version: 5.2.14(c81e13cb4497c93bb399374083279d4e)
@@ -297,12 +303,6 @@ importers:
       '@react-navigation/native-stack':
         specifier: ^7.18.6
         version: 7.18.6(26c58145487412e7119e7cafcb543b45)
-      '@repo/frontend-core':
-        specifier: ^1.0.0
-        version: link:../../packages/frontend-core
-      '@repo/ui':
-        specifier: ^1.0.0
-        version: link:../../packages/ui
       '@shopify/flash-list':
         specifier: ^2.0.2
         version: 2.0.2(@babel/runtime@7.29.7)(react-native@0.86.3(@babel/core@7.25.2(supports-color@10.2.2))(@react-native/metro-config@0.86.3(@babel/core@7.25.2(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.3.0)(supports-color@10.2.2))(react@19.3.0)
@@ -757,9 +757,15 @@ importers:
       '@fresherflow/constants':
         specifier: ^1.0.0
         version: link:../../packages/constants
+      '@fresherflow/frontend-core':
+        specifier: ^1.0.0
+        version: link:../../packages/frontend-core
       '@fresherflow/types':
         specifier: ^1.0.0
         version: link:../../packages/types
+      '@fresherflow/ui':
+        specifier: ^1.0.0
+        version: link:../../packages/ui
       '@fresherflow/utils':
         specifier: ^1.0.0
         version: link:../../packages/utils
@@ -802,12 +808,6 @@ importers:
       '@react-navigation/native-stack':
         specifier: ^7.18.6
         version: 7.18.6(26c58145487412e7119e7cafcb543b45)
-      '@repo/frontend-core':
-        specifier: ^1.0.0
-        version: link:../../packages/frontend-core
-      '@repo/ui':
-        specifier: ^1.0.0
-        version: link:../../packages/ui
       '@sentry/react-native':
         specifier: ~7.11.0
         version: 7.11.0(expo@57.0.10)(react-native@0.86.3(@babel/core@7.25.2(supports-color@10.2.2))(@react-native/jest-preset@0.86.2(@babel/core@7.25.2(supports-color@10.2.2))(react@19.3.0)(supports-color@10.2.2))(@react-native/metro-config@0.86.3(@babel/core@7.25.2(supports-color@10.2.2))(supports-color@10.2.2))(@types/react@19.2.18)(react@19.3.0)(supports-color@10.2.2))(react@19.3.0)(supports-color@10.2.2)
@@ -1655,15 +1655,15 @@ importers:
 
   packages/ui:
     dependencies:
+      '@fresherflow/frontend-core':
+        specifier: ^1.0.0
+        version: link:../frontend-core
       '@fresherflow/utils':
         specifier: ^1.0.0
         version: link:../utils
       '@radix-ui/react-slot':
         specifier: ^1.3.3
         version: 1.3.3(@types/react@19.3.0)(react@19.3.0)
-      '@repo/frontend-core':
-        specifier: ^1.0.0
-        version: link:../frontend-core
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1

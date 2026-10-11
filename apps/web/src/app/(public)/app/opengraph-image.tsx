@@ -7,12 +7,19 @@ export const size = {
 };
 export const contentType = 'image/png';
 
+import { getOgAssetSrc } from '@/lib/utils/ogAssets';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
 export default function DownloadOpenGraphImage() {
     const siteOrigin = SITE_URL;
-    const logoUrl = siteOrigin ? `${siteOrigin}/logo-white-optimized.png` : null;
-    const screenshotUrl = siteOrigin ? `${siteOrigin}/screenshots/discover.png` : null;
+    // Prefer the bytes we ship in public/ so build-time satori renders never
+    // fetch the live domain; the URLs stay as fallbacks.
+    const logoUrl =
+        getOgAssetSrc('logo-white-optimized.png') ??
+        (siteOrigin ? `${siteOrigin}/logo-white-optimized.png` : null);
+    const screenshotUrl =
+        getOgAssetSrc('screenshots/discover.png') ??
+        (siteOrigin ? `${siteOrigin}/screenshots/discover.png` : null);
 
 
     return new ImageResponse(

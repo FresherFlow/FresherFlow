@@ -110,7 +110,7 @@ export function MapFilterHeader({
                         <button
                             type="button"
                             onClick={onLocationClear}
-                            className="px-2.5 py-1.5 rounded-full text-xs font-medium bg-brand-telegram/10 text-brand-linkedin dark:text-brand-telegram border border-border/30 backdrop-blur-md flex items-center gap-1 cursor-pointer"
+                            className="px-2.5 py-1.5 rounded-full text-xs font-medium bg-brand-telegram/10 text-brand-telegram border border-border/30 backdrop-blur-md flex items-center gap-1 cursor-pointer"
                             title="Clear location"
                         >
                             <SignalIcon className="w-3 h-3" />

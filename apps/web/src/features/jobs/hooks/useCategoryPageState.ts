@@ -27,11 +27,11 @@ import { FEED_PAGE_SIZE } from "@/lib/utils/feedPageSize";
 
 /**
  * Multi-value filters are encoded as repeated keys (`?company=A&company=B`) so
- * a value containing a comma â€” a company name or job title â€” survives a round
+ * a value containing a comma — a company name or job title — survives a round
  * trip. Older links used one comma-joined value, so a single occurrence is
  * still split on commas: links shared before this change keep working.
  */
-/** Set equality for work modes â€” profile seeds are order-insensitive. */
+/** Set equality for work modes — profile seeds are order-insensitive. */
 const sameModeSet = (a: string[] | null | undefined, b: string[] | null | undefined): boolean => {
   const left = (a ?? []).map((mode) => mode.toUpperCase()).sort();
   const right = (b ?? []).map((mode) => mode.toUpperCase()).sort();
@@ -109,7 +109,7 @@ export function useCategoryPageState({
   const sort = searchParams?.get("sort");
 
   const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
-  // Value the `?job=` param should hold â€” the pane's URL is written from this,
+  // Value the `?job=` param should hold — the pane's URL is written from this,
   // never read back from a possibly-stale searchParams.
   const jobParamRef = useRef<string | null>(searchParams?.get("job") ?? null);
 
@@ -183,7 +183,7 @@ export function useCategoryPageState({
     jobParamRef.current = jobKey;
     setSelectedOpp(opp);
     // The URL now carries `?job=<slug>`, so the list and the open pane share one
-    // addressable link â€” shareable, bookmarkable, and reproducible on reload.
+    // addressable link — shareable, bookmarkable, and reproducible on reload.
     // Next.js still hands useSearchParams a fresh object for a truthy URL, but
     // `urlSignature` ignores `job`, so no filter array is rebuilt and feed scroll
     // + pagination survive the click. That is why this used to push a bare
@@ -211,7 +211,7 @@ export function useCategoryPageState({
         // went on top of), popstate strips it below.
         window.history.back();
       } else {
-        // Deep link that loaded straight into an open pane â€” there is no pushed
+        // Deep link that loaded straight into an open pane — there is no pushed
         // entry to abandon, so drop the param from the current one.
         stripJobParam();
       }
@@ -303,7 +303,7 @@ export function useCategoryPageState({
   // â”€â”€ Profile â†’ URL seeding â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // The profile's preferences are written into the query string, so the
   // EXISTING chip row renders them: from then on the URL is the single source
-  // of truth â€” shareable, reload-stable, removable like any other filter.
+  // of truth — shareable, reload-stable, removable like any other filter.
   const profileSeed = useMemo(() => buildProfileFilterSeed(profile), [profile]);
 
   /** Fill only the slots the URL left empty; dismissed dimensions stay out. */
@@ -329,7 +329,7 @@ export function useCategoryPageState({
     });
   }, [profileFilterPrefs, profileSeed]);
 
-  /** Clear exactly the values the profile put there â€” anything the user
+  /** Clear exactly the values the profile put there — anything the user
    * typed themselves is untouched. */
   const removeProfileSeeds = useCallback(() => {
     setFilters((prev) => {
@@ -368,7 +368,7 @@ export function useCategoryPageState({
     }
   }, [mounted, profileFilterPrefs, applyProfileSeeds, removeProfileSeeds]);
 
-  /** Dimensions the profile currently owns â€” an X on one of these is a
+  /** Dimensions the profile currently owns — an X on one of these is a
    * dismissal, not just a cleared param, so reload never re-seeds it. */
   const profileOwnedDims = useMemo(() => {
     const owned: string[] = [];
@@ -400,7 +400,7 @@ export function useCategoryPageState({
     const sp = searchParams;
     const signature = urlSignature(pathname, sp);
 
-    // `?job=` mirrors the open pane, so reconcile it from the URL here â€” before
+    // `?job=` mirrors the open pane, so reconcile it from the URL here — before
     // the signature guard below, which deliberately ignores that param. Back and
     // forward navigation both arrive through this effect.
     const urlJobKey = sp?.get("job") ?? null;
@@ -589,7 +589,7 @@ export function useCategoryPageState({
     setMulti("experience", filters.experience);
 
     // Board pages (canonicalRedirect && initialFilters) encode their filter in
-    // the path â€” e.g. `/jobs/javascript` ~ skills=JavaScript. Final pass strips
+    // the path — e.g. `/jobs/javascript` ~ skills=JavaScript. Final pass strips
     // any board-implied param so the URL stays canonical (no `?skills=` echo),
     // which is what caused the filter to appear duplicated on taxonomy boards.
     if (canonicalRedirect && initialFilters) {
@@ -700,7 +700,7 @@ export function useCategoryPageState({
     mode,
     // Live UI state, not the URL snapshot: filters.source seeds from ?source=
     // but UI edits only touch state, and the silent history.replaceState sync
-    // never re-renders â€” so the URL value goes stale one edit behind. The
+    // never re-renders — so the URL value goes stale one edit behind. The
     // Source facet filtered nothing until reload.
     source: filters.source,
     company: filters.company,
@@ -717,7 +717,7 @@ export function useCategoryPageState({
     experience: filters.experience,
     search,
     initialData,
-    // The feed applies the signed-in profile preferences as visible filters â€”
+    // The feed applies the signed-in profile preferences as visible filters —
     // the disclosure row in CategoryPageView accounts for what they hide.
     personalize: true,
   });
@@ -858,7 +858,7 @@ export function useCategoryPageState({
       type !== 'GOVERNMENT' &&
       type !== 'WALKIN'
     ) {
-      // A `?job=` link names the row the pane must show â€” never replace it with
+      // A `?job=` link names the row the pane must show — never replace it with
       // row #1 just because that job sits outside the current filter view.
       if (jobKey && resolvedJobRef.current?.found) return;
       if (visibleOpps.length === 0) {
@@ -939,7 +939,7 @@ export function useCategoryPageState({
     // filters" still showed nothing for anyone outside the radius.
     setDriveRadiusKm(null);
     // Profile chips live in the same row as the manual ones, so "clear all"
-    // clears them too â€” the switch visibly flips to Off, nothing hides.
+    // clears them too — the switch visibly flips to Off, nothing hides.
     setProfileFiltersEnabled(false);
     setFilters({
       location: null,
@@ -959,8 +959,8 @@ export function useCategoryPageState({
   };
 
   // Live match count for the mobile filter sheet's commit button. Runs the
-  // exact applied pipeline â€” pass 1 with draft facets, profile gate, pass 2
-  // with draft facets â€” so the number on the button is precisely what Apply
+  // exact applied pipeline — pass 1 with draft facets, profile gate, pass 2
+  // with draft facets — so the number on the button is precisely what Apply
   // produces. Same shared predicates, zero duplication.
   const draftMatchCount = useMemo(() => {
     const base = draftBaseInputs.liveResults !== null ? draftBaseInputs.liveResults : opportunities;

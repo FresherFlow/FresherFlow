@@ -9,6 +9,7 @@ import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { getOpportunityPathFromItem } from '@/features/jobs/domain/opportunityPath';
 import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
 import { getPostedLabel } from '@/features/jobs/components/JobCard/jobCardUtils';
+import { AtsLogo } from '@/features/jobs/components/AtsLogo';
 import { toSafeOutboundUrl } from '@/lib/utils/safeOutboundUrl';
 
 export interface SavedJobCardProps {
@@ -61,7 +62,7 @@ export default function SavedJobCard({
                 ?? toSafeOutboundUrl((opp as { companyWebsite?: string }).companyWebsite);
     const locShort = parseOpportunityLocation(opp.locations).shortLabel;
     const age = getPostedLabel(opp) ?? '';
-    const metaText = showCompany ? `${companyName}${age ? ` Â· ${age}` : ''}` : age;
+    const metaText = showCompany ? `${companyName}${age ? ` · ${age}` : ''}` : age;
 
     return (
         /* Stacks below `sm`, single row from `sm` up. As one row it needed
@@ -96,6 +97,7 @@ export default function SavedJobCard({
                             </span>
                         ) : null}
                         <span className="min-w-0 truncate">{metaText}</span>
+                        <AtsLogo applyLink={(opp as { applyLink?: string }).applyLink} />
                     </div>
                 </div>
             </div>

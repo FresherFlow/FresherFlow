@@ -19,10 +19,12 @@ import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
 import ChatBubbleLeftRightIcon from '@heroicons/react/24/outline/ChatBubbleLeftRightIcon';
-import { useState, useId } from 'react';
+import { useState, useEffect, useId } from 'react';
 import { communityApi } from '@fresherflow/api-client';
 import type { Room } from '@fresherflow/types';
 import { getGroupedLocations } from '@/features/jobs/domain/opportunityDisplay';
+import { AtsLogo } from '@/features/jobs/components/AtsLogo';
+import { getApplyDestination } from '@/features/jobs/utils/atsProvider';
 import { getPrimaryEmploymentType } from '@/features/jobs/utils/walkinMapUtils';
 import { SkeletonListRow } from '@/features/jobs/components/OpportunitySkeletons';
 
@@ -70,6 +72,13 @@ export function DetailSidebarActions({
     handleShare,
 }: DetailSidebarActionsProps) {
     const statusSelectId = useId();
+    /* `user` hydrates from the client-side auth session *after* SSR, so any
+        branch on it renders different HTML on server vs first client paint.
+        Gate every user-dependent branch on mount — the same `isMounted`
+        pattern OpportunityDetailClient already uses for its own user-gated
+        blocks — so hydration always sees the logged-out tree first. */
+    const [isMounted, setIsMounted] = useState(false);
+    useEffect(() => { setIsMounted(true); }, []);
 
     /* `handleSetAction` toggles: clicking the value it already holds clears the
        row. So "Not set" resends the current value, which clears it for real
@@ -83,6 +92,10 @@ export function DetailSidebarActions({
         handleSetAction(value as ActionType);
     };
     const locationsGrouped = getGroupedLocations(opp.locations);
+    /* ATS-aware Apply label: "Apply on Greenhouse" + mark when the apply
+        link lives on a known ATS host, portal wording for government jobs,
+        generic company-site wording otherwise. */
+    const applyDest = getApplyDestination(opp.applyLink, Boolean(opp.governmentJobDetails));
     const hasSalary = !!opp.salaryMax;
     const salaryText = hasSalary ? `₹${opp.salaryMin} – ₹${opp.salaryMax}` : null;
     const experience = opp.experienceMax ? `${opp.experienceMin || 0}–${opp.experienceMax} yrs` : 'Freshers';
@@ -146,7 +159,8 @@ export function DetailSidebarActions({
                        flow continues" and loses the landing hero's meaning. The
                        label says where it goes. */
                     <BrandButton variant="neutral" onClick={handleApply} className="flex-1">
-                        Apply on company site
+                        <AtsLogo applyLink={opp.applyLink} />
+                        {applyDest.label}
                         <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
                     </BrandButton>
                 ) : hasApplyLink && listingState === 'EXPIRED' ? (
@@ -178,7 +192,7 @@ export function DetailSidebarActions({
                 CommunityPost into a room, so while community is paused it must
                 not be the way in. Same COMMUNITY_UI_ENABLED switch as the
                 sidebar, the hero CTA and the landing page's discuss links. */}
-            {user && COMMUNITY_UI_ENABLED && (
+            {isMounted && user && COMMUNITY_UI_ENABLED && (
                 <div className="space-y-2">
                     <button
                         type="button"
@@ -293,7 +307,7 @@ export function DetailSidebarActions({
                 select is content-width and the button is `shrink-0` so neither
                 stretches, and the label truncates before anything collides. */}
             <div className="flex flex-wrap items-center gap-2 border-t border-border/40 pt-4">
-                {user && trackerOptions.length > 0 && (
+                {isMounted && user && trackerOptions.length > 0 && (
                     <div className="flex min-w-0 items-center gap-2">
                         <label
                             htmlFor={statusSelectId}
@@ -329,7 +343,7 @@ export function DetailSidebarActions({
             </div>
 
             {/* -- Admin -- */}
-            {user?.role === 'ADMIN' && (
+            {isMounted && user?.role === 'ADMIN' && (
                 <div className="pt-3 border-t border-border/40">
                     <Link href={`/admin/opportunities/edit/${opp.id}`} className="block">
                         <Button size="sm" variant="outline" className="w-full">

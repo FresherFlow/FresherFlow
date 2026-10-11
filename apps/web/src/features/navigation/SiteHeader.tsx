@@ -99,7 +99,7 @@ function SiteHeaderContent() {
                 </div>
             </div>
 
-            {/* Utility cluster (was TopUtilityBar) â€” auth-dependent, must not hydrate-mismatch */}
+            {/* Utility cluster (was TopUtilityBar) — auth-dependent, must not hydrate-mismatch */}
             {!isAuthRoute && (
                 <div className="flex items-center gap-2 shrink-0" suppressHydrationWarning>
                     <ThemeSwitcher />
@@ -139,7 +139,7 @@ function SiteHeaderContent() {
                                 </span>
                             )}
 
-                            {/* Sidebar pages keep the notification bell â€” no avatar here. */}
+                            {/* Sidebar pages keep the notification bell — no avatar here. */}
                             <NotificationsDropdown />
                         </div>
                     )}

@@ -38,6 +38,8 @@ import {
 import { DetailTimeline } from '@/features/jobs/components/detail/DetailTimeline';
 import { DetailHeroSection } from '@/features/jobs/components/detail/DetailHeroSection';
 import { DetailSidebarActions } from '@/features/jobs/components/detail/DetailSidebarActions';
+import { AtsLogo } from '@/features/jobs/components/AtsLogo';
+import { getApplyDestination } from '@/features/jobs/utils/atsProvider';
 import { DescriptionSection } from '@/features/jobs/components/detail/DescriptionSection';
 import {
     CampusDriveInfoIfCampus,
@@ -570,7 +572,8 @@ export default function OpportunityDetailClient({
                                 onClick={handleApply}
                                 className="h-12 w-full"
                             >
-                                {isGovernmentJob ? 'Apply on official portal' : 'Apply on company site'}
+                                <AtsLogo applyLink={opp.applyLink} />
+                                {getApplyDestination(opp.applyLink, isGovernmentJob).label}
                                 <ArrowTopRightOnSquareIcon className="w-4 h-4" />
                             </BrandButton>
                         )}

@@ -1,6 +1,6 @@
 import { MapPinIcon } from '@heroicons/react/24/outline';
-import { SmartInput } from '@/features/admin/ui/SmartInput';
-import { SmartTextarea } from '@/features/admin/ui/SmartTextarea';
+import { SmartInput } from '@/features/admin/components/SmartInput';
+import { SmartTextarea } from '@/features/admin/components/SmartTextarea';
 import { Card, CardDescription, CardContent } from '@/ui/Card';
 import type { OpportunityFormApi } from '@/features/admin/opportunities/useOpportunityForm';
 

@@ -14,13 +14,13 @@ import {
     BreadcrumbPage,
     BreadcrumbSeparator,
 } from '@/ui/Breadcrumb';
-import ForYouTab from '@/features/jobs/tabs/ForYouTab';
-import SavedTab from '@/features/jobs/tabs/SavedTab';
-import AppliedTab from '@/features/jobs/tabs/AppliedTab';
-import AlertsTab from '@/features/jobs/tabs/AlertsTab';
-import SearchesTab from '@/features/jobs/tabs/SearchesTab';
+import ForYouTab from '@/features/jobs/components/tabs/ForYouTab';
+import SavedTab from '@/features/jobs/components/tabs/SavedTab';
+import AppliedTab from '@/features/jobs/components/tabs/AppliedTab';
+import AlertsTab from '@/features/jobs/components/tabs/AlertsTab';
+import SearchesTab from '@/features/jobs/components/tabs/SearchesTab';
 import FollowingTab from '@/features/companies/components/FollowingTab';
-import NotificationsTab from '@/features/jobs/tabs/NotificationsTab';
+import NotificationsTab from '@/features/jobs/components/tabs/NotificationsTab';
 import type { CompanyFollowSummary } from '@/features/companies/types';
 
 type FeedInitialData = ComponentProps<typeof CategoryPage>['initialData'];

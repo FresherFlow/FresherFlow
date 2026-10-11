@@ -15,6 +15,8 @@ import {
 import { Button } from '@/ui/Button';
 import { Input } from '@/ui/Input';
 import { Badge } from '@/ui/Badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/ui/Select';
+import { SuggestInput } from '@/ui/SuggestInput';
 
 export type ContributeType = 'JOB' | 'WALKIN' | 'INTERVIEW_EXPERIENCE';
 
@@ -85,7 +87,147 @@ const TYPE_META: Record<ContributeType, { title: string; description: string }> 
 };
 
 const inputClass =
-    'w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30';
+    'min-h-11 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30';
+
+// ONE field-height rule: every text control is 44px (h-11). Inputs get it
+// from the Input primitive (ui/Input.tsx h-11); textareas get it here via
+// min-h-11; Radix triggers get it via selectTriggerClass below (their
+// shadcn default is h-9 and Select.tsx is outside this file's ownership).
+// Never add per-field heights — fix the system, not the instance.
+const selectTriggerClass = 'h-11 rounded-xl px-4 text-sm';
+
+const labelClass = 'text-[13px] font-medium text-foreground';
+
+const sectionHeadingClass = 'text-[13px] font-semibold text-foreground';
+
+// ─── Client-side validation helpers (mirror API limits, keys frozen) ─────────
+
+function isValidHttpUrl(v: string): boolean {
+    try {
+        const u = new URL(v);
+        return (u.protocol === 'http:' || u.protocol === 'https:') && u.hostname.includes('.');
+    } catch {
+        return false;
+    }
+}
+
+function todayLocalISO(): string {
+    const d = new Date();
+    const m = `${d.getMonth() + 1}`.padStart(2, '0');
+    const day = `${d.getDate()}`.padStart(2, '0');
+    return `${d.getFullYear()}-${m}-${day}`;
+}
+
+// fieldError key → element id, in the order the form reads. Drives
+// scroll-to-first-error without touching the frozen payload keys
+// (drive pickers surface under dateRange/timeRange).
+const FIELD_ELEMENT_ID: Record<string, string> = {
+    sourceUrl: 'cs-sourceUrl',
+    opportunitySlug: 'cs-iex-opp',
+    title: 'cs-title',
+    iexRole: 'cs-iex-role',
+    dateRange: 'cs-driveStartDate',
+    timeRange: 'cs-driveStartTime',
+            venueAddress: 'cs-venueAddress',
+            salaryMax: 'cs-salaryMax',
+    experienceMax: 'cs-experienceMax',
+    experienceMin: 'cs-experienceMin',
+    allowedPassoutYears: 'cs-allowedPassoutYears',
+    expiresAt: 'cs-expiresAt',
+    iexBatch: 'cs-iex-batch',
+    rounds: 'cs-iex-round-0-name',
+};
+
+const FIELD_ERROR_ORDER = [
+    'sourceUrl',
+    'opportunitySlug',
+    'title',
+    'iexRole',
+    'dateRange',
+    'timeRange',
+    'venueAddress',
+    'salaryMax',
+    'experienceMin',
+    'experienceMax',
+    'allowedPassoutYears',
+    'expiresAt',
+    'iexBatch',
+    'rounds',
+];
+
+function scrollToFirstError(errors: Record<string, string>) {
+    if (typeof document === 'undefined') return;
+    const ordered = [
+        ...FIELD_ERROR_ORDER.filter((k) => errors[k]),
+        ...Object.keys(errors).filter((k) => !FIELD_ERROR_ORDER.includes(k)),
+    ];
+    const first = ordered[0];
+    if (!first) return;
+    const el = document.getElementById(FIELD_ELEMENT_ID[first] ?? '');
+    if (!el) return;
+    el.scrollIntoView({ block: 'center' });
+    (el as HTMLElement).focus?.({ preventScroll: true });
+}
+
+// Pure client string parsing — no fetch, no endpoint. Skips ATS / job-board
+// hosts (lever, greenhouse, …) where the hostname is the platform, not the
+// hirer, and generic TLD-second-levels (co in acme.co.uk).
+const ATS_HOSTS = new Set([
+    'lever',
+    'greenhouse',
+    'workday',
+    'myworkday',
+    'jobvite',
+    'bamboohr',
+    'ashby',
+    'workable',
+    'smartrecruiters',
+    'icims',
+    'taleo',
+    'successfactors',
+    'zoho',
+    'naukri',
+    'linkedin',
+    'indeed',
+    'foundit',
+    'internshala',
+    'cutshort',
+]);
+
+function guessCompanyFromUrl(raw: string): string {
+    const v = (raw ?? '').trim();
+    if (!v || v.length > 2000 || (!v.includes('://') && !v.startsWith('www.'))) return '';
+    try {
+        const url = new URL(v.startsWith('www.') ? `https://${v}` : v);
+        if (url.protocol !== 'http:' && url.protocol !== 'https:') return '';
+        const parts = url.hostname.replace(/^www\./i, '').toLowerCase().split('.').filter(Boolean);
+        if (parts.length === 0) return '';
+        const secondLevelSuffix = new Set(['co', 'com', 'org', 'net', 'gov', 'edu', 'ac', 'io', 'dev']);
+        const candidate =
+            parts.length >= 3 && secondLevelSuffix.has(parts[parts.length - 2])
+                ? parts[parts.length - 3]
+                : parts.length >= 2
+                  ? parts[parts.length - 2]
+                  : parts[0];
+        if (!candidate || ATS_HOSTS.has(candidate)) return '';
+        return candidate
+            .split('-')
+            .filter(Boolean)
+            .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' ');
+    } catch {
+        return '';
+    }
+}
+
+function FieldError({ id, message }: { id: string; message?: string }) {
+    if (!message) return null;
+    return (
+        <p id={id} className="text-xs font-medium text-destructive">
+            {message}
+        </p>
+    );
+}
 
 // ─── Draft persistence ───────────────────────────────────────────────────────
 
@@ -101,12 +243,25 @@ function readDraft(type: ContributeType): Record<string, string> | null {
     }
 }
 
+// A draft counts only when at least one field holds non-blank text. Without
+// this, typing one character and deleting it saves `{field: ''}` — keys
+// exist but the form is empty — and the sheet nags "Resume your draft?"
+// forever for a form the user never filled.
+function isBlankDraft(data: Record<string, string> | null | undefined): boolean {
+    if (!data) return true;
+    return !Object.values(data).some((v) => (v ?? '').trim() !== '');
+}
+
+function stripBlankDraft(data: Record<string, string>): Record<string, string> {
+    return Object.fromEntries(Object.entries(data).filter(([, v]) => (v ?? '').trim() !== ''));
+}
+
 function writeDraft(type: ContributeType, data: Record<string, string> | null) {
     if (typeof window === 'undefined') return;
     try {
         const all = JSON.parse(window.localStorage.getItem(DRAFT_KEY) ?? '{}');
-        if (data && Object.keys(data).length > 0) {
-            all[type] = data;
+        if (data && !isBlankDraft(data)) {
+            all[type] = stripBlankDraft(data);
         } else {
             delete all[type];
         }
@@ -128,8 +283,8 @@ function useDraft(type: ContributeType | null): HasDraft {
             return;
         }
         const draft = readDraft(type);
-        hasDraftRef.current = Boolean(draft);
-        setHasDraft(Boolean(draft));
+        hasDraftRef.current = Boolean(draft) && !isBlankDraft(draft);
+        setHasDraft(hasDraftRef.current);
     }, [type]);
 
     const clearDraft = useCallback(() => {
@@ -142,197 +297,72 @@ function useDraft(type: ContributeType | null): HasDraft {
     return { hasDraft: hasDraft && hasDraftRef.current, clearDraft, restoreDraft };
 }
 
-// ─── Job / walk-in fields (shared form core) ─────────────────────────────────
+// ─── Optional grouped fields (shared by JOB + WALKIN, inside <details>) ──────
 
-function JobFields({
-    type,
+function AdditionalDetails({
     values,
     setValue,
-    showDetails,
+    fieldErrors,
+    isInternship,
+    setCsv,
+    addedNew,
 }: {
-    type: ContributeType;
     values: Record<string, string>;
     setValue: (key: string, value: string) => void;
-    showDetails: boolean;
+    fieldErrors: Record<string, string>;
+    isInternship: boolean;
+    setCsv: (key: string, next: string[], an: string[]) => void;
+    addedNew: Record<string, string[]>;
 }) {
     return (
-        <div className="space-y-4">
-            <div className="space-y-1.5">
-                <label htmlFor="cs-sourceUrl" className="text-xs font-semibold text-foreground">
-                    Job link <span className="text-destructive">*</span>
-                </label>
-                <Input
-                    id="cs-sourceUrl"
-                    type="url"
-                    required
-                    value={values.sourceUrl ?? ''}
-                    onChange={(e) => setValue('sourceUrl', e.target.value)}
-                    placeholder="https://careers.example.com/jobs/123"
-                />
-            </div>
-
-            <div className="space-y-1.5">
-                <label htmlFor="cs-title" className="text-xs font-semibold text-foreground">
-                    Title <span className="text-destructive">*</span>
-                </label>
-                <Input
-                    id="cs-title"
-                    type="text"
-                    required
-                    value={values.title ?? ''}
-                    onChange={(e) => setValue('title', e.target.value)}
-                    placeholder="Software Engineer"
-                />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                    <label htmlFor="cs-company" className="text-xs font-semibold text-foreground">
-                        Company
-                    </label>
-                    <Input
-                        id="cs-company"
-                        type="text"
-                        value={values.company ?? ''}
-                        onChange={(e) => setValue('company', e.target.value)}
-                        placeholder="Acme"
-                    />
+        <details className="rounded-2xl border border-border">
+            <summary className="cursor-pointer list-none px-4 py-3 text-[13px] font-medium text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden">
+                Additional details <span className="font-normal text-muted-foreground">— optional</span>
+            </summary>
+            <div className="space-y-4 border-t border-border p-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                        <label htmlFor="cs-locations" className={labelClass}>
+                            Locations
+                        </label>
+                        <SuggestInput
+                            id="cs-locations"
+                            kind="cities"
+                            value={csv(values.locations ?? '')}
+                            addedNew={addedNew.locations ?? []}
+                            onChange={(next, an) => setCsv('locations', next, an)}
+                            placeholder="Start typing a city…"
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label htmlFor="cs-workMode" className={labelClass}>
+                            Work mode
+                        </label>
+                        <Select
+                            value={values.workMode || undefined}
+                            onValueChange={(v) => setValue('workMode', v)}
+                        >
+                            <SelectTrigger id="cs-workMode" className={selectTriggerClass}>
+                                <SelectValue placeholder="—" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ONSITE">Onsite</SelectItem>
+                                <SelectItem value="HYBRID">Hybrid</SelectItem>
+                                <SelectItem value="REMOTE">Remote</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
-                <div className="space-y-1.5">
-                    <label htmlFor="cs-applyUrl" className="text-xs font-semibold text-foreground">
-                        Apply link
-                    </label>
-                    <Input
-                        id="cs-applyUrl"
-                        type="url"
-                        value={values.applyUrl ?? ''}
-                        onChange={(e) => setValue('applyUrl', e.target.value)}
-                        placeholder="https://…"
-                    />
-                </div>
-            </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                    <label htmlFor="cs-type" className="text-xs font-semibold text-foreground">
-                        Type
-                    </label>
-                    <select
-                        id="cs-type"
-                        value={type === 'WALKIN' ? 'WALKIN' : (values.oppType ?? 'JOB')}
-                        onChange={(e) => setValue('oppType', e.target.value)}
-                        disabled={type === 'WALKIN'}
-                        className={inputClass}
-                    >
-                        <option value="JOB">Job</option>
-                        <option value="INTERNSHIP">Internship</option>
-                        {type === 'WALKIN' ? <option value="WALKIN">Walk-in</option> : null}
-                    </select>
-                </div>
-                <div className="space-y-1.5">
-                    <label htmlFor="cs-description" className="text-xs font-semibold text-foreground">
-                        Description
-                    </label>
-                    <textarea
-                        id="cs-description"
-                        rows={3}
-                        value={values.description ?? ''}
-                        onChange={(e) => setValue('description', e.target.value)}
-                        placeholder="Role, eligibility, how to apply…"
-                        className={inputClass}
-                    />
-                </div>
-            </div>
-
-            {showDetails ? (
-                <div className="space-y-4 rounded-2xl border border-border p-4">
+                {/* Pay — one concept, one input set. Internships pay a monthly
+                    stipend, jobs pay an annual salary range. The old free-text
+                    "Salary range" box duplicated min/max, and the free-text
+                    "Employment type" box duplicated the Type selector above,
+                    so both are gone (payload sends null; moderator sets it). */}
+                {isInternship ? (
                     <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-1.5">
-                            <label htmlFor="cs-locations" className="text-xs font-semibold text-foreground">
-                                Locations (comma separated)
-                            </label>
-                            <Input
-                                id="cs-locations"
-                                type="text"
-                                value={values.locations ?? ''}
-                                onChange={(e) => setValue('locations', e.target.value)}
-                                placeholder="Bangalore, Remote"
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label htmlFor="cs-workMode" className="text-xs font-semibold text-foreground">
-                                Work mode
-                            </label>
-                            <select
-                                id="cs-workMode"
-                                value={values.workMode ?? ''}
-                                onChange={(e) => setValue('workMode', e.target.value)}
-                                className={inputClass}
-                            >
-                                <option value="">—</option>
-                                <option value="ONSITE">Onsite</option>
-                                <option value="HYBRID">Hybrid</option>
-                                <option value="REMOTE">Remote</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-3">
-                        <div className="space-y-1.5">
-                            <label htmlFor="cs-salaryRange" className="text-xs font-semibold text-foreground">
-                                Salary range
-                            </label>
-                            <Input
-                                id="cs-salaryRange"
-                                type="text"
-                                value={values.salaryRange ?? ''}
-                                onChange={(e) => setValue('salaryRange', e.target.value)}
-                                placeholder="6-8 LPA"
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label htmlFor="cs-salaryMin" className="text-xs font-semibold text-foreground">
-                                Salary min
-                            </label>
-                            <Input
-                                id="cs-salaryMin"
-                                type="number"
-                                min={0}
-                                value={values.salaryMin ?? ''}
-                                onChange={(e) => setValue('salaryMin', e.target.value)}
-                                placeholder="600000"
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label htmlFor="cs-salaryMax" className="text-xs font-semibold text-foreground">
-                                Salary max
-                            </label>
-                            <Input
-                                id="cs-salaryMax"
-                                type="number"
-                                min={0}
-                                value={values.salaryMax ?? ''}
-                                onChange={(e) => setValue('salaryMax', e.target.value)}
-                                placeholder="800000"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-3">
-                        <div className="space-y-1.5">
-                            <label htmlFor="cs-employmentType" className="text-xs font-semibold text-foreground">
-                                Employment type
-                            </label>
-                            <Input
-                                id="cs-employmentType"
-                                type="text"
-                                value={values.employmentType ?? ''}
-                                onChange={(e) => setValue('employmentType', e.target.value)}
-                                placeholder="full-time"
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label htmlFor="cs-stipend" className="text-xs font-semibold text-foreground">
+                            <label htmlFor="cs-stipend" className={labelClass}>
                                 Stipend
                             </label>
                             <Input
@@ -343,189 +373,446 @@ function JobFields({
                                 placeholder="10k/month"
                             />
                         </div>
-                        <div className="space-y-1.5">
-                            <label htmlFor="cs-jobFunction" className="text-xs font-semibold text-foreground">
-                                Job function
-                            </label>
-                            <Input
-                                id="cs-jobFunction"
-                                type="text"
-                                value={values.jobFunction ?? ''}
-                                onChange={(e) => setValue('jobFunction', e.target.value)}
-                                placeholder="Engineering"
-                            />
-                        </div>
                     </div>
-
+                ) : (
                     <div className="grid gap-4 sm:grid-cols-2">
                         <div className="space-y-1.5">
-                            <label htmlFor="cs-experienceMin" className="text-xs font-semibold text-foreground">
-                                Experience min (yrs)
+                            <label htmlFor="cs-salaryMin" className={labelClass}>
+                                Min salary (₹/year)
                             </label>
                             <Input
-                                id="cs-experienceMin"
+                                id="cs-salaryMin"
                                 type="number"
                                 min={0}
-                                max={30}
-                                step="0.5"
-                                value={values.experienceMin ?? ''}
-                                onChange={(e) => setValue('experienceMin', e.target.value)}
+                                value={values.salaryMin ?? ''}
+                                onChange={(e) => setValue('salaryMin', e.target.value)}
+                                placeholder="e.g. 300000"
+                                aria-invalid={Boolean(fieldErrors.salaryMax)}
+                                aria-describedby={fieldErrors.salaryMax ? 'cs-salaryMax-error' : undefined}
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <label htmlFor="cs-experienceMax" className="text-xs font-semibold text-foreground">
-                                Experience max (yrs)
+                            <label htmlFor="cs-salaryMax" className={labelClass}>
+                                Max salary (₹/year)
                             </label>
                             <Input
-                                id="cs-experienceMax"
+                                id="cs-salaryMax"
                                 type="number"
                                 min={0}
-                                max={30}
-                                step="0.5"
-                                value={values.experienceMax ?? ''}
-                                onChange={(e) => setValue('experienceMax', e.target.value)}
+                                value={values.salaryMax ?? ''}
+                                onChange={(e) => setValue('salaryMax', e.target.value)}
+                                placeholder="e.g. 800000"
+                                aria-invalid={Boolean(fieldErrors.salaryMax)}
+                                aria-describedby={fieldErrors.salaryMax ? 'cs-salaryMax-error' : undefined}
                             />
+                            <FieldError id="cs-salaryMax-error" message={fieldErrors.salaryMax} />
                         </div>
                     </div>
+                )}
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="space-y-1.5">
-                            <label htmlFor="cs-requiredSkills" className="text-xs font-semibold text-foreground">
-                                Skills (comma separated)
-                            </label>
-                            <Input
-                                id="cs-requiredSkills"
-                                type="text"
-                                value={values.requiredSkills ?? ''}
-                                onChange={(e) => setValue('requiredSkills', e.target.value)}
-                                placeholder="react, node"
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label htmlFor="cs-tags" className="text-xs font-semibold text-foreground">
-                                Tags (comma separated)
-                            </label>
-                            <Input
-                                id="cs-tags"
-                                type="text"
-                                value={values.tags ?? ''}
-                                onChange={(e) => setValue('tags', e.target.value)}
-                                placeholder="fresher, 2025-batch"
-                            />
-                        </div>
-                    </div>
+                <div className="space-y-1.5">
+                    <label htmlFor="cs-jobFunction" className={labelClass}>
+                        Job function
+                    </label>
+                    <Input
+                        id="cs-jobFunction"
+                        type="text"
+                        value={values.jobFunction ?? ''}
+                        onChange={(e) => setValue('jobFunction', e.target.value)}
+                        placeholder="Engineering"
+                    />
+                </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="space-y-1.5">
-                            <label htmlFor="cs-allowedCourses" className="text-xs font-semibold text-foreground">
-                                Eligible courses (comma separated)
-                            </label>
-                            <Input
-                                id="cs-allowedCourses"
-                                type="text"
-                                value={values.allowedCourses ?? ''}
-                                onChange={(e) => setValue('allowedCourses', e.target.value)}
-                                placeholder="B.Tech, MCA"
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <label htmlFor="cs-allowedPassoutYears" className="text-xs font-semibold text-foreground">
-                                Pass-out years (comma separated)
-                            </label>
-                            <Input
-                                id="cs-allowedPassoutYears"
-                                type="text"
-                                value={values.allowedPassoutYears ?? ''}
-                                onChange={(e) => setValue('allowedPassoutYears', e.target.value)}
-                                placeholder="2024, 2025"
-                            />
-                        </div>
-                    </div>
-
+                <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                        <label htmlFor="cs-selectionProcess" className="text-xs font-semibold text-foreground">
-                            Selection process
-                        </label>
-                        <textarea
-                            id="cs-selectionProcess"
-                            rows={2}
-                            value={values.selectionProcess ?? ''}
-                            onChange={(e) => setValue('selectionProcess', e.target.value)}
-                            placeholder="Aptitude > Technical > HR"
-                            className={inputClass}
-                        />
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <label htmlFor="cs-notesHighlights" className="text-xs font-semibold text-foreground">
-                            Notes / highlights
-                        </label>
-                        <textarea
-                            id="cs-notesHighlights"
-                            rows={2}
-                            value={values.notesHighlights ?? ''}
-                            onChange={(e) => setValue('notesHighlights', e.target.value)}
-                            placeholder="Bond, training, shifts…"
-                            className={inputClass}
-                        />
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <label htmlFor="cs-expiresAt" className="text-xs font-semibold text-foreground">
-                            Apply by (date)
+                        <label htmlFor="cs-experienceMin" className={labelClass}>
+                            Experience min (yrs)
                         </label>
                         <Input
-                            id="cs-expiresAt"
-                            type="date"
-                            value={values.expiresAt ?? ''}
-                            onChange={(e) => setValue('expiresAt', e.target.value)}
+                            id="cs-experienceMin"
+                            type="number"
+                            min={0}
+                            max={30}
+                            step="0.5"
+                            value={values.experienceMin ?? ''}
+                            onChange={(e) => setValue('experienceMin', e.target.value)}
+                            aria-invalid={Boolean(fieldErrors.experienceMin || fieldErrors.experienceMax)}
+                            aria-describedby={
+                                fieldErrors.experienceMin
+                                    ? 'cs-experienceMin-error'
+                                    : fieldErrors.experienceMax
+                                      ? 'cs-experienceMax-error'
+                                      : undefined
+                            }
+                        />
+                        <FieldError id="cs-experienceMin-error" message={fieldErrors.experienceMin} />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label htmlFor="cs-experienceMax" className={labelClass}>
+                            Experience max (yrs)
+                        </label>
+                        <Input
+                            id="cs-experienceMax"
+                            type="number"
+                            min={0}
+                            max={30}
+                            step="0.5"
+                            value={values.experienceMax ?? ''}
+                            onChange={(e) => setValue('experienceMax', e.target.value)}
+                            aria-invalid={Boolean(fieldErrors.experienceMin || fieldErrors.experienceMax)}
+                            aria-describedby={
+                                fieldErrors.experienceMax
+                                    ? 'cs-experienceMax-error'
+                                    : fieldErrors.experienceMin
+                                      ? 'cs-experienceMin-error'
+                                      : undefined
+                            }
+                        />
+                        <FieldError id="cs-experienceMax-error" message={fieldErrors.experienceMax} />
+                    </div>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                        <label htmlFor="cs-requiredSkills" className={labelClass}>
+                            Skills
+                        </label>
+                        <SuggestInput
+                            id="cs-requiredSkills"
+                            kind="skills"
+                            value={csv(values.requiredSkills ?? '')}
+                            addedNew={addedNew.requiredSkills ?? []}
+                            onChange={(next, an) => setCsv('requiredSkills', next, an)}
+                            placeholder="Start typing a skill…"
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <label htmlFor="cs-tags" className={labelClass}>
+                            Tags
+                        </label>
+                        <SuggestInput
+                            id="cs-tags"
+                            kind="tags"
+                            value={csv(values.tags ?? '')}
+                            addedNew={addedNew.tags ?? []}
+                            onChange={(next, an) => setCsv('tags', next, an)}
+                            placeholder="Start typing a tag…"
                         />
                     </div>
                 </div>
-            ) : null}
 
-            {type === 'WALKIN' ? (
                 <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-1.5">
-                        <label htmlFor="cs-dateRange" className="text-xs font-semibold text-foreground">
-                            Date range <span className="text-destructive">*</span>
+                        <label htmlFor="cs-allowedCourses" className={labelClass}>
+                            Eligible courses
                         </label>
-                        <Input
-                            id="cs-dateRange"
-                            type="text"
-                            required
-                            value={values.dateRange ?? ''}
-                            onChange={(e) => setValue('dateRange', e.target.value)}
-                            placeholder="2nd Feb - 6th Feb"
+                        <SuggestInput
+                            id="cs-allowedCourses"
+                            kind="courses"
+                            value={csv(values.allowedCourses ?? '')}
+                            addedNew={addedNew.allowedCourses ?? []}
+                            onChange={(next, an) => setCsv('allowedCourses', next, an)}
+                            placeholder="Start typing a course…"
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <label htmlFor="cs-timeRange" className="text-xs font-semibold text-foreground">
-                            Time range
+                        <label htmlFor="cs-allowedPassoutYears" className={labelClass}>
+                            Pass-out years (comma separated)
                         </label>
                         <Input
-                            id="cs-timeRange"
+                            id="cs-allowedPassoutYears"
                             type="text"
-                            value={values.timeRange ?? ''}
-                            onChange={(e) => setValue('timeRange', e.target.value)}
-                            placeholder="11:00 AM - 1:00 PM"
+                            value={values.allowedPassoutYears ?? ''}
+                            onChange={(e) => setValue('allowedPassoutYears', e.target.value)}
+                            placeholder="2024, 2025"
+                            aria-invalid={Boolean(fieldErrors.allowedPassoutYears)}
+                            aria-describedby={fieldErrors.allowedPassoutYears ? 'cs-allowedPassoutYears-error' : undefined}
                         />
+                        <FieldError id="cs-allowedPassoutYears-error" message={fieldErrors.allowedPassoutYears} />
                     </div>
-                    <div className="space-y-1.5 sm:col-span-2">
-                        <label htmlFor="cs-venueAddress" className="text-xs font-semibold text-foreground">
-                            Venue address <span className="text-destructive">*</span>
+                </div>
+
+                <div className="space-y-1.5">
+                    <label htmlFor="cs-selectionProcess" className={labelClass}>
+                        Selection process
+                    </label>
+                    <textarea
+                        id="cs-selectionProcess"
+                        rows={2}
+                        value={values.selectionProcess ?? ''}
+                        onChange={(e) => setValue('selectionProcess', e.target.value)}
+                        placeholder="Aptitude > Technical > HR"
+                        className={inputClass}
+                    />
+                </div>
+
+                <div className="space-y-1.5">
+                    <label htmlFor="cs-notesHighlights" className={labelClass}>
+                        Notes / highlights
+                    </label>
+                    <textarea
+                        id="cs-notesHighlights"
+                        rows={2}
+                        value={values.notesHighlights ?? ''}
+                        onChange={(e) => setValue('notesHighlights', e.target.value)}
+                        placeholder="Bond, training, shifts…"
+                        className={inputClass}
+                    />
+                </div>
+
+                <div className="space-y-1.5">
+                    <label htmlFor="cs-expiresAt" className={labelClass}>
+                        Apply by (date)
+                    </label>
+                    <Input
+                        id="cs-expiresAt"
+                        type="date"
+                        value={values.expiresAt ?? ''}
+                        onChange={(e) => setValue('expiresAt', e.target.value)}
+                        aria-invalid={Boolean(fieldErrors.expiresAt)}
+                        aria-describedby={fieldErrors.expiresAt ? 'cs-expiresAt-error' : undefined}
+                    />
+                    <FieldError id="cs-expiresAt-error" message={fieldErrors.expiresAt} />
+                </div>
+            </div>
+        </details>
+    );
+}
+
+// ─── Job / walk-in fields (shared form core, variant order differs) ──────────
+
+function JobFields({
+    type,
+    values,
+    setValue,
+    fieldErrors,
+    setCsv,
+    addedNew,
+}: {
+    type: ContributeType;
+    values: Record<string, string>;
+    setValue: (key: string, value: string) => void;
+    fieldErrors: Record<string, string>;
+    setCsv: (key: string, next: string[], an: string[]) => void;
+    addedNew: Record<string, string[]>;
+}) {
+    const isWalkIn = type === 'WALKIN';
+    // Hostname → company suggestion (placeholder only, while company is
+    // empty — never writes into the value, always overridable).
+    const guessedCompany = useMemo(
+        () => ((values.company ?? '').trim() ? '' : guessCompanyFromUrl(values.sourceUrl ?? '')),
+        [values.company, values.sourceUrl]
+    );
+    return (
+        <div className="space-y-5">
+            {/* Required first: official link + title */}
+            <div className="space-y-4">
+                <div className="space-y-1.5">
+                    <label htmlFor="cs-sourceUrl" className={labelClass}>
+                        Official job link <span className="text-destructive" aria-hidden="true">*</span>
+                        <span className="sr-only">(required)</span>
+                    </label>
+                    <Input
+                        id="cs-sourceUrl"
+                        type="url"
+                        autoFocus
+                        inputMode="url"
+                        autoComplete="url"
+                        required
+                        value={values.sourceUrl ?? ''}
+                        onChange={(e) => setValue('sourceUrl', e.target.value)}
+                        placeholder="https://careers.example.com/jobs/123"
+                        aria-invalid={Boolean(fieldErrors.sourceUrl)}
+                        aria-describedby={fieldErrors.sourceUrl ? 'cs-sourceUrl-error' : 'cs-sourceUrl-hint'}
+                    />
+                    <FieldError id="cs-sourceUrl-error" message={fieldErrors.sourceUrl} />
+                    <p id="cs-sourceUrl-hint" className="text-xs text-muted-foreground">
+                        The original posting — moderators verify from this link. Applying happens here too.
+                    </p>
+                </div>
+
+                <div className="space-y-1.5">
+                    <label htmlFor="cs-title" className={labelClass}>
+                        Title <span className="text-destructive" aria-hidden="true">*</span>
+                        <span className="sr-only">(required)</span>
+                    </label>
+                    <Input
+                        id="cs-title"
+                        type="text"
+                        required
+                        autoComplete="organization-title"
+                        value={values.title ?? ''}
+                        onChange={(e) => setValue('title', e.target.value)}
+                        placeholder="Software Engineer"
+                        aria-invalid={Boolean(fieldErrors.title)}
+                        aria-describedby={fieldErrors.title ? 'cs-title-error' : undefined}
+                    />
+                    <FieldError id="cs-title-error" message={fieldErrors.title} />
+                </div>
+            </div>
+
+            {/* Walk-in only: dedicated drive details ABOVE general metadata.
+                Pickers write driveStartDate/driveEndDate/driveStartTime/
+                driveEndTime keys; the submit payload derives the dateRange /
+                timeRange free-text strings from them (API contract unchanged),
+                falling back to any legacy dateRange/timeRange text so old
+                drafts and resubmits still work. */}
+            {isWalkIn ? (
+                <section aria-labelledby="cs-drive-heading" className="space-y-3 rounded-2xl border border-border p-4">
+                    <h3 id="cs-drive-heading" className={sectionHeadingClass}>
+                        Drive details
+                    </h3>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                            <label htmlFor="cs-driveStartDate" className={labelClass}>
+                                Start date <span className="text-destructive" aria-hidden="true">*</span>
+                                <span className="sr-only">(required)</span>
+                            </label>
+                            <Input
+                                id="cs-driveStartDate"
+                                type="date"
+                                required
+                                value={values.driveStartDate ?? ''}
+                                onChange={(e) => setValue('driveStartDate', e.target.value)}
+                                aria-invalid={Boolean(fieldErrors.dateRange)}
+                                aria-describedby={fieldErrors.dateRange ? 'cs-dateRange-error' : undefined}
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label htmlFor="cs-driveEndDate" className={labelClass}>
+                                End date
+                            </label>
+                            <Input
+                                id="cs-driveEndDate"
+                                type="date"
+                                value={values.driveEndDate ?? ''}
+                                onChange={(e) => setValue('driveEndDate', e.target.value)}
+                                min={values.driveStartDate || undefined}
+                                aria-invalid={Boolean(fieldErrors.dateRange)}
+                                aria-describedby={fieldErrors.dateRange ? 'cs-dateRange-error' : undefined}
+                            />
+                        </div>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                            <label htmlFor="cs-driveStartTime" className={labelClass}>
+                                Start time
+                            </label>
+                            <Input
+                                id="cs-driveStartTime"
+                                type="time"
+                                value={values.driveStartTime ?? ''}
+                                onChange={(e) => setValue('driveStartTime', e.target.value)}
+                                aria-invalid={Boolean(fieldErrors.timeRange)}
+                                aria-describedby={fieldErrors.timeRange ? 'cs-timeRange-error' : undefined}
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label htmlFor="cs-driveEndTime" className={labelClass}>
+                                End time
+                            </label>
+                            <Input
+                                id="cs-driveEndTime"
+                                type="time"
+                                value={values.driveEndTime ?? ''}
+                                onChange={(e) => setValue('driveEndTime', e.target.value)}
+                                aria-invalid={Boolean(fieldErrors.timeRange)}
+                                aria-describedby={fieldErrors.timeRange ? 'cs-timeRange-error' : undefined}
+                            />
+                        </div>
+                    </div>
+                    <FieldError id="cs-dateRange-error" message={fieldErrors.dateRange} />
+                    <FieldError id="cs-timeRange-error" message={fieldErrors.timeRange} />
+                    <div className="space-y-1.5">
+                        <label htmlFor="cs-venueAddress" className={labelClass}>
+                            Venue address <span className="text-destructive" aria-hidden="true">*</span>
+                            <span className="sr-only">(required)</span>
                         </label>
-                        <Input
+                        <textarea
                             id="cs-venueAddress"
-                            type="text"
+                            rows={2}
                             required
                             value={values.venueAddress ?? ''}
                             onChange={(e) => setValue('venueAddress', e.target.value)}
-                            placeholder="Full walk-in venue"
+                            placeholder="Full walk-in venue address…"
+                            aria-invalid={Boolean(fieldErrors.venueAddress)}
+                            aria-describedby={fieldErrors.venueAddress ? 'cs-venueAddress-error' : undefined}
+                            className={inputClass}
+                        />
+                        <FieldError id="cs-venueAddress-error" message={fieldErrors.venueAddress} />
+                    </div>
+                </section>
+            ) : null}
+
+            {/* General metadata: company/apply/type row, then full-width description */}
+            <div className="space-y-4">
+                <div className={`grid gap-4 ${isWalkIn ? '' : 'sm:grid-cols-2'}`}>
+                    <div className="space-y-1.5">
+                        <label htmlFor="cs-company" className={labelClass}>
+                            Company <span className="font-normal text-muted-foreground">(optional)</span>
+                        </label>
+                        <SuggestInput
+                            id="cs-company"
+                            kind="companies"
+                            mode="single"
+                            value={csv(values.company ?? '').slice(0, 1)}
+                            addedNew={addedNew.company ?? []}
+                            onChange={(next, an) => setCsv('company', next, an)}
+                            placeholder={
+                                guessedCompany
+                                    ? `e.g. ${guessedCompany} (from the link)`
+                                    : 'Start typing a company…'
+                            }
                         />
                     </div>
+                    {isWalkIn ? null : (
+                        <div className="space-y-1.5">
+                            <label htmlFor="cs-type" className={labelClass}>
+                                Type <span className="font-normal text-muted-foreground">(optional)</span>
+                            </label>
+                            <Select
+                                value={values.oppType ?? 'JOB'}
+                                onValueChange={(v) => setValue('oppType', v)}
+                            >
+                                <SelectTrigger id="cs-type" className={selectTriggerClass}>
+                                    <SelectValue placeholder="Select type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="JOB">Job</SelectItem>
+                                    <SelectItem value="INTERNSHIP">Internship</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
                 </div>
-            ) : null}
+
+                <div className="space-y-1.5">
+                    <label htmlFor="cs-description" className={labelClass}>
+                        Description <span className="font-normal text-muted-foreground">(optional)</span>
+                    </label>
+                    <textarea
+                        id="cs-description"
+                        rows={5}
+                        value={values.description ?? ''}
+                        onChange={(e) => setValue('description', e.target.value)}
+                        placeholder="Role, eligibility, how to apply…"
+                        className={inputClass}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                        Supports line breaks, bullet lines like - Requirement, and bold
+                        headings like **Responsibilities**.
+                    </p>
+                </div>
+            </div>
+
+            <AdditionalDetails
+                values={values}
+                setValue={setValue}
+                fieldErrors={fieldErrors}
+                isInternship={type === 'JOB' && (values.oppType ?? 'JOB') === 'INTERNSHIP'}
+                setCsv={setCsv}
+                addedNew={addedNew}
+            />
         </div>
     );
 }
@@ -537,11 +824,13 @@ function InterviewFields({
     setValue,
     rounds,
     setRounds,
+    fieldErrors,
 }: {
     values: Record<string, string>;
     setValue: (key: string, value: string) => void;
     rounds: Array<{ name: string; questions: string }>;
     setRounds: React.Dispatch<React.SetStateAction<Array<{ name: string; questions: string }>>>;
+    fieldErrors: Record<string, string>;
 }) {
     const addRound = () => setRounds((prev) => [...prev, { name: '', questions: '' }]);
     const updateRound = (idx: number, field: 'name' | 'questions', value: string) =>
@@ -549,40 +838,57 @@ function InterviewFields({
     const removeRound = (idx: number) => setRounds((prev) => prev.filter((_, i) => i !== idx));
 
     return (
-        <div className="space-y-4">
-            <div className="space-y-1.5">
-                <label htmlFor="cs-iex-opp" className="text-xs font-semibold text-foreground">
-                    Job link on FresherFlow <span className="text-destructive">*</span>
-                </label>
-                <Input
-                    id="cs-iex-opp"
-                    type="text"
-                    required
-                    value={values.opportunitySlug ?? ''}
-                    onChange={(e) => setValue('opportunitySlug', e.target.value)}
-                    placeholder="Paste the /jobs/… link or slug"
-                />
-                <p className="text-xs text-muted-foreground">
-                    Experiences attach to a job listing, so others find them in context.
-                </p>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-5">
+            {/* 1) Job listing reference + role */}
+            <div className="space-y-4">
                 <div className="space-y-1.5">
-                    <label htmlFor="cs-iex-role" className="text-xs font-semibold text-foreground">
-                        Role <span className="text-destructive">*</span>
+                    <label htmlFor="cs-iex-opp" className={labelClass}>
+                        Job link on FresherFlow <span className="text-destructive" aria-hidden="true">*</span>
+                        <span className="sr-only">(required)</span>
+                    </label>
+                    <Input
+                        id="cs-iex-opp"
+                        type="text"
+                        autoFocus
+                        inputMode="url"
+                        autoComplete="url"
+                        required
+                        value={values.opportunitySlug ?? ''}
+                        onChange={(e) => setValue('opportunitySlug', e.target.value)}
+                        placeholder="Paste the /jobs/… link or slug"
+                        aria-invalid={Boolean(fieldErrors.opportunitySlug)}
+                        aria-describedby={fieldErrors.opportunitySlug ? 'cs-iex-opp-error' : 'cs-iex-opp-hint'}
+                    />
+                    <FieldError id="cs-iex-opp-error" message={fieldErrors.opportunitySlug} />
+                    <p id="cs-iex-opp-hint" className="text-xs text-muted-foreground">
+                        Experiences attach to a job listing, so others find them in context.
+                    </p>
+                </div>
+
+                <div className="space-y-1.5">
+                    <label htmlFor="cs-iex-role" className={labelClass}>
+                        Role <span className="text-destructive" aria-hidden="true">*</span>
+                        <span className="sr-only">(required)</span>
                     </label>
                     <Input
                         id="cs-iex-role"
                         type="text"
                         required
+                        autoComplete="organization-title"
                         value={values.iexRole ?? ''}
                         onChange={(e) => setValue('iexRole', e.target.value)}
                         placeholder="e.g. Software Engineer"
+                        aria-invalid={Boolean(fieldErrors.iexRole)}
+                        aria-describedby={fieldErrors.iexRole ? 'cs-iex-role-error' : undefined}
                     />
+                    <FieldError id="cs-iex-role-error" message={fieldErrors.iexRole} />
                 </div>
+            </div>
+
+            {/* 2) Batch / difficulty / result */}
+            <div className="grid gap-4 sm:grid-cols-3">
                 <div className="space-y-1.5">
-                    <label htmlFor="cs-iex-batch" className="text-xs font-semibold text-foreground">
+                    <label htmlFor="cs-iex-batch" className={labelClass}>
                         Batch
                     </label>
                     <Input
@@ -591,88 +897,111 @@ function InterviewFields({
                         value={values.iexBatch ?? ''}
                         onChange={(e) => setValue('iexBatch', e.target.value)}
                         placeholder="e.g. 2026"
+                        aria-invalid={Boolean(fieldErrors.iexBatch)}
+                        aria-describedby={fieldErrors.iexBatch ? 'cs-iex-batch-error' : undefined}
                     />
+                    <FieldError id="cs-iex-batch-error" message={fieldErrors.iexBatch} />
                 </div>
                 <div className="space-y-1.5">
-                    <label htmlFor="cs-iex-difficulty" className="text-xs font-semibold text-foreground">
+                    <label htmlFor="cs-iex-difficulty" className={labelClass}>
                         Difficulty
                     </label>
-                    <select
-                        id="cs-iex-difficulty"
-                        value={values.iexDifficulty ?? ''}
-                        onChange={(e) => setValue('iexDifficulty', e.target.value)}
-                        className={inputClass}
+                    <Select
+                        value={values.iexDifficulty || undefined}
+                        onValueChange={(v) => setValue('iexDifficulty', v)}
                     >
-                        <option value="">Select</option>
-                        <option value="EASY">Easy</option>
-                        <option value="MEDIUM">Medium</option>
-                        <option value="HARD">Hard</option>
-                        <option value="VERY_HARD">Very Hard</option>
-                    </select>
+                        <SelectTrigger id="cs-iex-difficulty" className={selectTriggerClass}>
+                            <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="EASY">Easy</SelectItem>
+                            <SelectItem value="MEDIUM">Medium</SelectItem>
+                            <SelectItem value="HARD">Hard</SelectItem>
+                            <SelectItem value="VERY_HARD">Very Hard</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
                 <div className="space-y-1.5">
-                    <label htmlFor="cs-iex-result" className="text-xs font-semibold text-foreground">
+                    <label htmlFor="cs-iex-result" className={labelClass}>
                         Result
                     </label>
-                    <select
-                        id="cs-iex-result"
-                        value={values.iexResult ?? ''}
-                        onChange={(e) => setValue('iexResult', e.target.value)}
-                        className={inputClass}
+                    <Select
+                        value={values.iexResult || undefined}
+                        onValueChange={(v) => setValue('iexResult', v)}
                     >
-                        <option value="">Select</option>
-                        <option value="SELECTED">Selected</option>
-                        <option value="REJECTED">Rejected</option>
-                        <option value="WAITING">Waiting</option>
-                        <option value="WITHDRAWN">Withdrawn</option>
-                    </select>
+                        <SelectTrigger id="cs-iex-result" className={selectTriggerClass}>
+                            <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="SELECTED">Selected</SelectItem>
+                            <SelectItem value="REJECTED">Rejected</SelectItem>
+                            <SelectItem value="WAITING">Waiting</SelectItem>
+                            <SelectItem value="WITHDRAWN">Withdrawn</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
 
+            {/* 3) Rounds — compact numbered sections */}
             <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-foreground">
-                        Rounds <span className="text-destructive">*</span>
-                    </label>
-                    <button
-                        type="button"
-                        onClick={addRound}
-                        className="text-xs font-semibold text-primary hover:underline"
-                    >
-                        + Add Round
-                    </button>
+                <div className="flex items-center justify-between gap-2">
+                    <span id="cs-iex-rounds-label" className={sectionHeadingClass}>
+                        Rounds <span className="text-destructive" aria-hidden="true">*</span>
+                    </span>
+                    <Button type="button" variant="ghost" size="sm" onClick={addRound}>
+                        + Add round
+                    </Button>
                 </div>
-                {rounds.map((round, idx) => (
-                    <div key={idx} className="space-y-1.5 rounded-lg bg-muted/20 p-2.5">
-                        <div className="flex items-center gap-2">
-                            <Input
-                                value={round.name}
-                                onChange={(e) => updateRound(idx, 'name', e.target.value)}
-                                placeholder={`Round ${idx + 1} name`}
-                            />
-                            {rounds.length > 1 ? (
-                                <button
-                                    type="button"
-                                    onClick={() => removeRound(idx)}
-                                    className="text-xs text-muted-foreground hover:text-destructive"
-                                >
-                                    
-                                </button>
-                            ) : null}
-                        </div>
-                        <textarea
-                            value={round.questions}
-                            onChange={(e) => updateRound(idx, 'questions', e.target.value)}
-                            rows={2}
-                            placeholder="Questions asked (one per line)"
-                            className={inputClass}
-                        />
-                    </div>
-                ))}
+                <div role="group" aria-labelledby="cs-iex-rounds-label" className="space-y-2">
+                    {rounds.map((round, idx) => {
+                        const nameId = `cs-iex-round-${idx}-name`;
+                        const questionsId = `cs-iex-round-${idx}-questions`;
+                        return (
+                            <div key={idx} className="space-y-2 rounded-xl border border-border p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                    <label htmlFor={nameId} className="text-[13px] font-semibold text-foreground">
+                                        Round {idx + 1}
+                                    </label>
+                                    {rounds.length > 1 ? (
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="xs"
+                                            onClick={() => removeRound(idx)}
+                                            aria-label={`Remove round ${idx + 1}`}
+                                        >
+                                            Remove
+                                        </Button>
+                                    ) : null}
+                                </div>
+                                <Input
+                                    id={nameId}
+                                    type="text"
+                                    value={round.name}
+                                    onChange={(e) => updateRound(idx, 'name', e.target.value)}
+                                    placeholder="Round name — e.g. Online Assessment"
+                                />
+                                <label htmlFor={questionsId} className="sr-only">
+                                    Questions asked in round {idx + 1}
+                                </label>
+                                <textarea
+                                    id={questionsId}
+                                    value={round.questions}
+                                    onChange={(e) => updateRound(idx, 'questions', e.target.value)}
+                                    rows={2}
+                                    placeholder="Questions asked (one per line)"
+                                    className={inputClass}
+                                />
+                            </div>
+                        );
+                    })}
+                </div>
+                <FieldError id="cs-iex-rounds-error" message={fieldErrors.rounds} />
             </div>
 
+            {/* 4) Overall notes */}
             <div className="space-y-1.5">
-                <label htmlFor="cs-iex-notes" className="text-xs font-semibold text-foreground">
+                <label htmlFor="cs-iex-notes" className={labelClass}>
                     Overall notes
                 </label>
                 <textarea
@@ -695,37 +1024,62 @@ export interface ContributeSheetProps {
     onOpenChange: (open: boolean) => void;
     initialType?: ContributeType | null;
     onSubmitted?: () => void;
+    /** Resubmit flow (`?source=`): seeds `sourceUrl` once on open, then ignored. */
+    prefillSourceUrl?: string | null;
 }
 
-export function ContributeSheet({ open, onOpenChange, initialType = 'JOB', onSubmitted }: ContributeSheetProps) {
+export function ContributeSheet({ open, onOpenChange, initialType = 'JOB', onSubmitted, prefillSourceUrl = null }: ContributeSheetProps) {
     const { user } = useAuth();
     const [type, setType] = useState<ContributeType | null>(initialType);
     const [values, setValues] = useState<Record<string, string>>({});
     const [rounds, setRounds] = useState<Array<{ name: string; questions: string }>>([
         { name: 'Online Assessment', questions: '' },
     ]);
-    const [showDetails, setShowDetails] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     const [outcome, setOutcome] = useState<SubmitOutcome>(null);
     const [draftBanner, setDraftBanner] = useState<'none' | 'offer' | 'restored'>('none');
+    // Display-only: which SuggestInput terms are outside the CDN vocabulary
+    // ("new — a moderator will map it" dotted chips). Never submitted,
+    // never drafted — recomputed from user picks each open.
+    const [addedNew, setAddedNew] = useState<Record<string, string[]>>({});
 
     const { hasDraft, clearDraft, restoreDraft } = useDraft(open ? type : null);
 
-    // Reset per open, seeding from the trigger's type.
+    // Guards + transient refs (not state: they must not re-render or re-fire effects).
+    const wasOpenRef = useRef(false);
+    const dirtyRef = useRef(false);
+    const submittingRef = useRef(false);
+    const errorRef = useRef<HTMLDivElement>(null);
+
+    const prefill = (prefillSourceUrl ?? '').trim();
+
+    // Reset per open transition only — never on unrelated prop churn (e.g. the
+    // hub clearing `?source=` while the sheet is open), so user input survives.
     useEffect(() => {
-        if (open) {
+        if (open && !wasOpenRef.current) {
             setType(initialType ?? 'JOB');
             setOutcome(null);
             setError(null);
-            setValues({});
+            setFieldErrors({});
+            setValues(prefill ? { sourceUrl: prefill } : {});
             setRounds([{ name: 'Online Assessment', questions: '' }]);
-            setShowDetails(false);
             setDraftBanner('none');
+            setAddedNew({});
+            dirtyRef.current = false;
         }
-    }, [open, initialType]);
+        wasOpenRef.current = open;
+    }, [open, initialType, prefillSourceUrl]);
 
     const setValue = useCallback((key: string, value: string) => {
+        dirtyRef.current = true;
+        setFieldErrors((prev) => {
+            if (!prev[key]) return prev;
+            const next = { ...prev };
+            delete next[key];
+            return next;
+        });
         setValues((prev) => {
             const next = { ...prev, [key]: value };
             if (type) writeDraft(type, next);
@@ -733,26 +1087,50 @@ export function ContributeSheet({ open, onOpenChange, initialType = 'JOB', onSub
         });
     }, [type]);
 
-    // Offer draft restore as soon as a type is chosen with a saved draft present.
+    // SuggestInput boundary: values stay comma strings (drafts + payload);
+    // the CDN-vocabulary "new" flags ride alongside as display-only state.
+    const setCsv = useCallback((key: string, next: string[], an: string[]) => {
+        setValue(key, next.join(', '));
+        setAddedNew((prev) => ({ ...prev, [key]: an }));
+    }, [setValue]);
+
+    // Offer draft restore when a saved draft exists and the user hasn't typed
+    // yet. Prefilling `sourceUrl` does not count as typing, so the resubmit
+    // flow can still offer the old draft alongside the prefilled link.
     useEffect(() => {
-        if (!open || !type || outcome) return;
+        if (!open || !type || outcome || dirtyRef.current) return;
         const draft = readDraft(type);
-        if (draft && Object.keys(draft).length > 0 && Object.keys(values).length === 0) {
+        if (draft && !isBlankDraft(draft)) {
             setDraftBanner('offer');
         }
-    }, [open, type, outcome, values]);
+    }, [open, type, outcome]);
+
+    // Bring a validation summary into view — it sits at the top of the scroll
+    // body while the submit button lives in the fixed footer.
+    useEffect(() => {
+        if (error) errorRef.current?.scrollIntoView({ block: 'nearest' });
+    }, [error]);
 
     const restore = () => {
         const draft = restoreDraft();
         if (draft) {
-            setValues(draft);
+            // A resubmit prefill always wins over a stale drafted link.
+            setValues(prefill ? { ...draft, sourceUrl: prefill } : draft);
             setDraftBanner('restored');
         }
     };
 
     const discard = () => {
+        // Explicit destructive action: confirm when the form holds user input
+        // so a stray tap never wipes a populated draft. Closing the sheet
+        // never clears — only success or this confirmed discard does.
+        if (Object.keys(values).some((k) => (values[k] ?? '').trim() !== '')) {
+            if (typeof window !== 'undefined' && !window.confirm('Discard this draft? This cannot be undone.')) {
+                return;
+            }
+        }
         clearDraft();
-        setValues({});
+        setValues(prefill ? { sourceUrl: prefill } : {});
         setDraftBanner('none');
     };
 
@@ -766,22 +1144,43 @@ export function ContributeSheet({ open, onOpenChange, initialType = 'JOB', onSub
         // internship is an employment type — never a single `type` enum.
         const isWalkIn = type === 'WALKIN';
         const oppType = isWalkIn ? 'WALKIN' : ((values.oppType ?? 'JOB').trim().toUpperCase());
-        const employmentTypeText = (values.employmentType ?? '').trim();
+        // No free-text employment-type input: the Type selector above is the
+        // single source (INTERNSHIP maps directly, else a moderator sets it).
+        // Same for the removed "Salary range" box — min/max carry the pay, and
+        // stale keys from old drafts are deliberately never sent.
+        // Walk-in pickers (driveStartDate/driveEndDate/driveStartTime/
+        // driveEndTime) derive the same free-text dateRange/timeRange string
+        // keys the submit API validates (max 120 chars). Empty pickers fall
+        // back to legacy text so old drafts and resubmits still validate.
+        const driveStartDate = (values.driveStartDate ?? '').trim();
+        const driveEndDate = (values.driveEndDate ?? '').trim();
+        const driveStartTime = (values.driveStartTime ?? '').trim();
+        const driveEndTime = (values.driveEndTime ?? '').trim();
+        const pickerDateRange = driveStartDate
+            ? driveEndDate && driveEndDate !== driveStartDate
+                ? `${driveStartDate} – ${driveEndDate}`
+                : driveStartDate
+            : '';
+        const pickerTimeRange = driveStartTime
+            ? driveEndTime && driveEndTime !== driveStartTime
+                ? `${driveStartTime} – ${driveEndTime}`
+                : driveStartTime
+            : '';
         return {
             sourceUrl: (values.sourceUrl ?? '').trim(),
-            applyUrl: (values.applyUrl ?? '').trim() || undefined,
+            // No apply-link input: the server falls back to the job link
+            // (community.service.ts: applyLink = applyUrl ?? sourceUrl), and
+            // stale keys from old drafts must never submit invisibly.
+            applyUrl: undefined,
             title: (values.title ?? '').trim(),
             company: (values.company ?? '').trim() || undefined,
             category: 'EMPLOYMENT',
             recruitmentMethod: isWalkIn ? 'WALK_IN' : 'REGULAR',
-            employmentTypes:
-                oppType === 'INTERNSHIP'
-                    ? 'INTERNSHIP'
-                    : employmentTypeText || null,
+            employmentTypes: oppType === 'INTERNSHIP' ? 'INTERNSHIP' : null,
             description: (values.description ?? '').trim() || undefined,
             locations: (values.locations ?? '').trim() ? csv(values.locations).slice(0, 15) : undefined,
             workMode: (values.workMode ?? '') as WorkMode | '' as WorkMode | null,
-            salaryRange: (values.salaryRange ?? '').trim() || null,
+            salaryRange: null,
             salaryMin: numOrNull(values.salaryMin ?? ''),
             salaryMax: numOrNull(values.salaryMax ?? ''),
             stipend: (values.stipend ?? '').trim() || null,
@@ -795,8 +1194,8 @@ export function ContributeSheet({ open, onOpenChange, initialType = 'JOB', onSub
             selectionProcess: (values.selectionProcess ?? '').trim() || null,
             notesHighlights: (values.notesHighlights ?? '').trim() || null,
             expiresAt: (values.expiresAt ?? '').trim() || null,
-            dateRange: (values.dateRange ?? '').trim() || null,
-            timeRange: (values.timeRange ?? '').trim() || null,
+            dateRange: pickerDateRange || (values.dateRange ?? '').trim() || null,
+            timeRange: pickerTimeRange || (values.timeRange ?? '').trim() || null,
             venueAddress: (values.venueAddress ?? '').trim() || null,
             submitterName: (values.submitterName ?? '').trim() || null,
             contact: (values.contact ?? '').trim() || null,
@@ -805,40 +1204,111 @@ export function ContributeSheet({ open, onOpenChange, initialType = 'JOB', onSub
 
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
-        if (!type) return;
-        setError(null);
-
-        if (type !== 'INTERVIEW_EXPERIENCE') {
-            if (!payload.sourceUrl || !payload.title) {
-                setError('A job link and a title are required.');
-                return;
-            }
-            if (payload.salaryMin !== null && payload.salaryMax !== null && payload.salaryMin > payload.salaryMax) {
-                setError('Salary min cannot be greater than max.');
-                return;
-            }
-        } else {
-            const { slug, error: slugError } = extractOpportunitySlug(values.opportunitySlug ?? '');
-            if (slugError) {
-                setError(slugError);
-                return;
-            }
-            if (!slug || !(values.iexRole ?? '').trim()) {
-                setError('The job link and role are required.');
-                return;
-            }
-            if (slug.length > 200) {
-                setError('Job link is too long.');
-                return;
-            }
-            if (rounds.length === 0 || !rounds[0].name.trim()) {
-                setError('At least one round is required.');
-                return;
-            }
-        }
-
+        if (!type || submittingRef.current) return;
+        submittingRef.current = true;
         setSubmitting(true);
+        setError(null);
+        setFieldErrors({});
+
         try {
+            if (type !== 'INTERVIEW_EXPERIENCE') {
+                const missing: Record<string, string> = {};
+                if (!payload.sourceUrl) missing.sourceUrl = 'Paste the official link for this opening.';
+                else if (!isValidHttpUrl(payload.sourceUrl))
+                    missing.sourceUrl = 'Enter a valid link starting with http(s)://.';
+                if (!payload.title) missing.title = 'Add a title for this opening.';
+                if (type === 'WALKIN') {
+                    if (!payload.dateRange) missing.dateRange = 'Add the drive dates.';
+                    if (!payload.venueAddress) missing.venueAddress = 'Add the venue address.';
+                }
+                // API string limits (validation.ts: dateRange/timeRange max 120,
+                // venueAddress max 2000) — payload keys unchanged.
+                if (payload.dateRange && payload.dateRange.length > 120)
+                    missing.dateRange = 'Drive dates must be under 120 characters.';
+                if (payload.timeRange && payload.timeRange.length > 120)
+                    missing.timeRange = 'Drive time must be under 120 characters.';
+                if (payload.venueAddress && payload.venueAddress.length > 2000)
+                    missing.venueAddress = 'Venue address must be under 2000 characters.';
+                const expiresRaw = (values.expiresAt ?? '').trim();
+                if (expiresRaw && expiresRaw < todayLocalISO())
+                    missing.expiresAt = 'Apply-by date cannot be in the past.';
+                const expMinRaw = (values.experienceMin ?? '').trim();
+                const expMaxRaw = (values.experienceMax ?? '').trim();
+                const expMin = expMinRaw === '' ? null : Number(expMinRaw);
+                const expMax = expMaxRaw === '' ? null : Number(expMaxRaw);
+                if (expMinRaw !== '' && !Number.isFinite(expMin))
+                    missing.experienceMin = 'Enter experience in years.';
+                else if (expMaxRaw !== '' && !Number.isFinite(expMax))
+                    missing.experienceMax = 'Enter experience in years.';
+                else if (expMin !== null && expMax !== null && expMin > expMax)
+                    missing.experienceMax = 'Experience min cannot be greater than max.';
+                if (payload.salaryMin !== null && payload.salaryMax !== null && payload.salaryMin > payload.salaryMax) {
+                    missing.salaryMax = 'Salary min cannot be greater than max.';
+                }
+                const passoutTokens = (values.allowedPassoutYears ?? '')
+                    .split(',')
+                    .map((s) => s.trim())
+                    .filter(Boolean);
+                if (
+                    passoutTokens.some(
+                        (t) => !/^\d{4}$/.test(t) || Number(t) < 1990 || Number(t) > 2100
+                    )
+                )
+                    missing.allowedPassoutYears = 'Use years like 2024, 2025 (1990–2100).';
+                if (Object.keys(missing).length > 0) {
+                    setFieldErrors(missing);
+                    const keys = Object.keys(missing);
+                    setError(
+                        !payload.sourceUrl || !payload.title
+                            ? 'A job link and a title are required.'
+                            : type === 'WALKIN' && (!payload.dateRange || !payload.venueAddress)
+                              ? 'Drive dates and venue address are required.'
+                              : keys.length === 1
+                                ? missing[keys[0]]
+                                : 'Fix the highlighted fields and try again.'
+                    );
+                    scrollToFirstError(missing);
+                    return;
+                }
+            } else {
+                const { slug, error: slugError } = extractOpportunitySlug(values.opportunitySlug ?? '');
+                if (slugError) {
+                    setFieldErrors({ opportunitySlug: slugError });
+                    setError(slugError);
+                    scrollToFirstError({ opportunitySlug: slugError });
+                    return;
+                }
+                if (!slug || !(values.iexRole ?? '').trim()) {
+                    const iexMissing = {
+                        ...(!slug ? { opportunitySlug: 'Paste the /jobs/ link this experience belongs to.' } : {}),
+                        ...(!(values.iexRole ?? '').trim() ? { iexRole: 'Add the role you interviewed for.' } : {}),
+                    };
+                    setFieldErrors(iexMissing);
+                    setError('The job link and role are required.');
+                    scrollToFirstError(iexMissing);
+                    return;
+                }
+                if (slug.length > 200) {
+                    setFieldErrors({ opportunitySlug: 'Job link is too long.' });
+                    setError('Job link is too long.');
+                    scrollToFirstError({ opportunitySlug: 'Job link is too long.' });
+                    return;
+                }
+                const batchRaw = (values.iexBatch ?? '').trim();
+                if (batchRaw && (!/^\d{4}$/.test(batchRaw) || Number(batchRaw) < 1990 || Number(batchRaw) > 2100)) {
+                    setFieldErrors({ iexBatch: 'Use a batch year like 2026 (1990–2100).' });
+                    setError('Use a batch year like 2026 (1990–2100).');
+                    scrollToFirstError({ iexBatch: 'Use a batch year like 2026 (1990–2100).' });
+                    return;
+                }
+                if (rounds.length === 0 || !rounds[0].name.trim()) {
+                    setFieldErrors({ rounds: 'Add at least one round with a name.' });
+                    setError('At least one round is required.');
+                    scrollToFirstError({ rounds: 'Add at least one round with a name.' });
+                    return;
+                }
+            }
+
             if (type === 'INTERVIEW_EXPERIENCE') {
                 const { slug: iexSlug } = extractOpportunitySlug(values.opportunitySlug ?? '');
                 await communityApi.createInterviewExperience({
@@ -875,9 +1345,12 @@ export function ContributeSheet({ open, onOpenChange, initialType = 'JOB', onSub
                 );
             }
             if (type) clearDraft();
+            // Refresh history: the hub bumps `refreshKey` from this callback.
+            onSubmitted?.();
         } catch (e) {
             setError(e instanceof Error ? e.message : 'Could not submit this. Try again.');
         } finally {
+            submittingRef.current = false;
             setSubmitting(false);
         }
     };
@@ -889,129 +1362,158 @@ export function ContributeSheet({ open, onOpenChange, initialType = 'JOB', onSub
             open={open}
             onOpenChange={(next) => {
                 if (!next && submitting) return; // don't close mid-submit
+                // Closing never clears the draft — only a success does.
                 onOpenChange(next);
             }}
         >
-            <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
-                <SheetHeader className="pr-8 text-left">
+            {/* Right drawer on desktop (~640px); full-screen sheet on mobile.
+                `cn` (tailwind-merge) lets these override the base
+                `w-3/4 … sm:max-w-sm` + `gap-4` from SheetContent. */}
+            <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-[640px]">
+                <SheetHeader className="shrink-0 border-b border-border px-6 pb-4 pr-12 pt-5 text-left">
                     <SheetTitle>{meta ? meta.title : 'Contribute'}</SheetTitle>
                     <SheetDescription>{meta ? meta.description : null}</SheetDescription>
                 </SheetHeader>
 
                 {outcome ? (
-                    <div className="mt-6 space-y-4">
-                        <div className="space-y-3 rounded-2xl border border-border bg-card p-5 text-left">
-                            <Badge variant={outcome.kind === 'existing' ? 'success' : 'warning'}>
-                                {outcome.kind === 'existing' ? 'Already listed' : 'Pending review'}
-                            </Badge>
-                            <h3 className="text-base font-bold text-foreground">
-                                {outcome.kind === 'existing'
-                                    ? 'Looks like we already have this one'
-                                    : outcome.kind === 'iex'
-                                      ? 'Experience received'
-                                      : 'Submission received'}
-                            </h3>
-                            <p className="text-xs text-muted-foreground">
-                                {outcome.kind === 'existing'
-                                    ? 'We folded your link into the existing listing.'
-                                    : 'It has not been published yet. It appears in listings only after a moderator approves it.'}
-                            </p>
-                            {outcome.kind === 'existing' ? (
-                                <Button asChild variant="outline" className="w-full">
-                                    <a href={`/jobs/${outcome.slug}`}>View listing</a>
-                                </Button>
-                            ) : (
-                                <p className="text-xs text-muted-foreground">
-                                    Your share appears under “Your contributions” with its review
-                                    status. The listing link unlocks once a moderator approves it.
+                    <>
+                        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+                            <div className="space-y-3 rounded-2xl border border-border bg-card p-5 text-left">
+                                <Badge variant={outcome.kind === 'existing' ? 'success' : 'warning'}>
+                                    {outcome.kind === 'existing' ? 'Already listed' : 'Pending review'}
+                                </Badge>
+                                <h3 className="text-base font-bold text-foreground">
+                                    {outcome.kind === 'existing'
+                                        ? 'Looks like we already have this one'
+                                        : outcome.kind === 'iex'
+                                          ? 'Experience received'
+                                          : 'Submission received'}
+                                </h3>
+                                <p className="text-[13px] text-muted-foreground">
+                                    {outcome.kind === 'existing'
+                                        ? 'We folded your link into the existing listing.'
+                                        : 'It has not been published yet. It appears in listings only after a moderator approves it.'}
                                 </p>
-                            )}
+                                {outcome.kind === 'existing' ? (
+                                    <Button asChild variant="outline" className="w-full">
+                                        <a href={`/jobs/${outcome.slug}`}>View listing</a>
+                                    </Button>
+                                ) : (
+                                    <p className="text-[13px] text-muted-foreground">
+                                        Your share appears under “Your contributions” with its review
+                                        status. The listing link unlocks once a moderator approves it.
+                                    </p>
+                                )}
+                            </div>
                         </div>
-                        <Button variant="secondary" className="w-full" onClick={() => onOpenChange(false)}>
-                            Done
-                        </Button>
+                        <div className="shrink-0 border-t border-border bg-background px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4">
+                            <Button variant="secondary" className="w-full" onClick={() => onOpenChange(false)}>
+                                Done
+                            </Button>
+                        </div>
+                    </>
+                ) : !type ? (
+                    /* Defensive only: the hub always opens with a type, so this
+                       path is not styled as a primary flow. */
+                    <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-6 py-5">
+                        {(Object.keys(TYPE_META) as ContributeType[]).map((t) => (
+                            <button
+                                key={t}
+                                type="button"
+                                onClick={() => setType(t)}
+                                className="w-full rounded-xl border border-border bg-card p-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            >
+                                <p className="text-sm font-semibold text-foreground">{TYPE_META[t].title}</p>
+                                <p className="text-xs text-muted-foreground">{TYPE_META[t].description}</p>
+                            </button>
+                        ))}
                     </div>
                 ) : (
-                    <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-                        {!user ? (
-                            <p className="rounded-xl border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-                                No account needed — guest posts are welcome. Sign in to track your
-                                submissions in history.
-                            </p>
-                        ) : null}
+                    <form
+                        onSubmit={handleSubmit}
+                        aria-describedby={error ? 'cs-form-error' : undefined}
+                        className="flex min-h-0 flex-1 flex-col"
+                    >
+                        {/* The ONLY scroll container. Header above and footer
+                            below stay fixed; nothing else sticks. */}
+                        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
+                            {!user ? (
+                                <p className="rounded-xl border border-border bg-muted/30 px-3 py-2 text-[13px] text-muted-foreground">
+                                    No account needed — guest posts are welcome. Sign in to track your
+                                    submissions in history.
+                                </p>
+                            ) : null}
 
-                        {!type ? (
-                            <div className="space-y-2">
-                                {(Object.keys(TYPE_META) as ContributeType[]).map((t) => (
-                                    <button
-                                        key={t}
-                                        type="button"
-                                        onClick={() => setType(t)}
-                                        className="w-full rounded-xl border border-border bg-card p-4 text-left transition-colors hover:border-primary/40"
-                                    >
-                                        <p className="text-sm font-semibold text-foreground">{TYPE_META[t].title}</p>
-                                        <p className="text-xs text-muted-foreground">{TYPE_META[t].description}</p>
-                                    </button>
-                                ))}
-                            </div>
-                        ) : (
-                            <>
-                                {draftBanner === 'offer' && hasDraft ? (
-                                    <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2">
-                                        <p className="text-xs text-muted-foreground">You have a draft for this.</p>
-                                        <div className="flex gap-2">
-                                            <Button
-                                                type="button"
-                                                variant="ghost"
-                                                size="sm"
-                                                onClick={discard}
-                                            >
-                                                Discard
-                                            </Button>
-                                            <Button
-                                                type="button"
-                                                variant="secondary"
-                                                size="sm"
-                                                onClick={restore}
-                                            >
-                                                Resume
-                                            </Button>
-                                        </div>
+                            {error ? (
+                                <div
+                                    ref={errorRef}
+                                    id="cs-form-error"
+                                    role="alert"
+                                    aria-live="assertive"
+                                    className="rounded-xl border border-destructive/40 bg-destructive/5 px-3 py-2.5"
+                                >
+                                    <p className="text-[13px] font-medium text-destructive">{error}</p>
+                                    <p className="mt-0.5 text-xs text-muted-foreground">
+                                        Fix the highlighted field below and try again.
+                                    </p>
+                                </div>
+                            ) : null}
+
+                            {draftBanner === 'offer' && hasDraft ? (
+                                <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-muted/30 px-3 py-2">
+                                    <p className="text-[13px] text-muted-foreground">Resume your draft?</p>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={discard}
+                                        >
+                                            Discard
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={restore}
+                                        >
+                                            Resume
+                                        </Button>
                                     </div>
-                                ) : null}
+                                </div>
+                            ) : null}
+                            {draftBanner === 'restored' ? (
+                                <p className="text-xs text-muted-foreground" role="status">
+                                    Draft restored.
+                                </p>
+                            ) : null}
 
-                                {type === 'INTERVIEW_EXPERIENCE' ? (
-                                    <InterviewFields
-                                        values={values}
-                                        setValue={setValue}
-                                        rounds={rounds}
-                                        setRounds={setRounds}
-                                    />
-                                ) : (
-                                    <>
-                                        <JobFields
-                                            type={type}
-                                            values={values}
-                                            setValue={setValue}
-                                            showDetails={showDetails}
-                                        />
-                                        {type === 'JOB' ? (
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowDetails((v) => !v)}
-                                                className="text-xs font-bold uppercase tracking-widest text-primary hover:underline"
-                                            >
-                                                {showDetails ? 'Hide job details −' : 'Add job details +'}
-                                            </button>
-                                        ) : null}
-                                    </>
-                                )}
+                            {type === 'INTERVIEW_EXPERIENCE' ? (
+                                <InterviewFields
+                                    values={values}
+                                    setValue={setValue}
+                                    rounds={rounds}
+                                    setRounds={setRounds}
+                                    fieldErrors={fieldErrors}
+                                />
+                            ) : (
+                                <JobFields
+                                    type={type}
+                                    values={values}
+                                    setValue={setValue}
+                                    fieldErrors={fieldErrors}
+                                    setCsv={setCsv}
+                                    addedNew={addedNew}
+                                />
+                            )}
 
-                                {!user ? (
-                                    <div className="grid gap-4 sm:grid-cols-2">
+                            {!user ? (
+                                <section aria-label="Your details (optional)" className="space-y-3 rounded-2xl border border-border p-4">
+                                    <p className={sectionHeadingClass}>Your details (optional)</p>
+                                    <div className="grid gap-3 sm:grid-cols-2">
                                         <div className="space-y-1.5">
-                                            <label htmlFor="cs-submitterName" className="text-xs font-semibold text-foreground">
-                                                Your name (optional)
+                                            <label htmlFor="cs-submitterName" className={labelClass}>
+                                                Your name
                                             </label>
                                             <Input
                                                 id="cs-submitterName"
@@ -1022,8 +1524,8 @@ export function ContributeSheet({ open, onOpenChange, initialType = 'JOB', onSub
                                             />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label htmlFor="cs-contact" className="text-xs font-semibold text-foreground">
-                                                Contact (optional)
+                                            <label htmlFor="cs-contact" className={labelClass}>
+                                                Contact
                                             </label>
                                             <Input
                                                 id="cs-contact"
@@ -1034,21 +1536,22 @@ export function ContributeSheet({ open, onOpenChange, initialType = 'JOB', onSub
                                             />
                                         </div>
                                     </div>
-                                ) : null}
+                                </section>
+                            ) : null}
+                        </div>
 
-                                {error ? <p className="text-xs text-destructive">{error}</p> : null}
-
-                                <div className="sticky bottom-0 -mx-6 border-t border-border bg-background px-6 py-3">
-                                    <Button type="submit" disabled={submitting} className="w-full">
-                                        {submitting
-                                            ? 'Sharing…'
-                                            : type === 'INTERVIEW_EXPERIENCE'
-                                              ? 'Submit experience'
-                                              : 'Share for review'}
-                                    </Button>
-                                </div>
-                            </>
-                        )}
+                        {/* Fixed footer: submit lives here, never inside the
+                            scroll body. Safe-area padding for mobile keyboards
+                            and home-indicator overlap. */}
+                        <div className="shrink-0 border-t border-border bg-background px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4">
+                            <Button type="submit" disabled={submitting} className="w-full">
+                                {submitting
+                                    ? 'Sharing…'
+                                    : type === 'INTERVIEW_EXPERIENCE'
+                                      ? 'Submit experience'
+                                      : 'Share for review'}
+                            </Button>
+                        </div>
                     </form>
                 )}
             </SheetContent>

@@ -437,5 +437,37 @@ export const adminApi = {
     getIngestionStats: () =>
         apiClient<import('@fresherflow/api-client').IngestionStats>('/api/admin/targets'),
 
+    // Source health dashboard — CDN/R2 only, no database. Shape owned by
+    // `app/api/admin/discovery/sources/route.ts` (SourcesPayload).
+    // Spelled out here (not imported) because `lib/` must not depend on
+    // `app/` — the route owns the shape; this names it at the transport
+    // boundary.
+    getSourceHealth: (days = 30) =>
+        apiClient<{
+            days: number;
+            generatedAt: string;
+            totals: { sites: number; channels: number; links7d: number; jobs7d: number; troubled: number };
+            ledgerAvailable: boolean;
+            census: {
+                sites: Array<{ name: string; urls: string[]; govtOnly: boolean }>;
+                channels: string[];
+            };
+            siteHealth: Array<{
+                id: string;
+                kind: 'site' | 'channel';
+                name: string;
+                configured: boolean;
+                govtOnly: boolean;
+                fetch: string | null;
+                lastRun: string | null;
+                links7d: number | null;
+                jobs7d: number;
+                jobsPrior7d: number;
+                totalLinks: number;
+                totalJobs: number;
+                daily: Array<{ d: string; jobs: number }>;
+            }>;
+        }>(`/api/admin/discovery/sources?days=${days}`),
+
 };
 

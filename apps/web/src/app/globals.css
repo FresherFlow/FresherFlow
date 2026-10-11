@@ -19,8 +19,21 @@
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 
   /* ── Core palette ─────────────────────────────────────────────── */
-  --color-primary: oklch(20.6% 0.039 266); /* Deep navy */
+  /* ONE navy, TWO jobs. `--color-primary` is the INK; `--color-action` is
+     the FILL. They were a single token doing four jobs — ink (14 aliases),
+     CTA fill, focus ring, and the tint on ~110 `bg-primary/10` "selected"
+     states — which is why a selected row reads as a button.
+
+     The values are identical for now, so NOTHING moves visually. The split
+     is structural: `bg-action` is the fill, `text-primary` is the ink, and
+     `bg-primary/10` becomes a violation rather than a habit. Migrating the
+     ~110 call sites is a separate, reviewable change.
+
+     See DESIGN.md for the full contract. */
+  --color-primary: oklch(20.6% 0.039 266); /* INK — deep navy. Text only. */
   --color-primary-foreground: var(--color-paper); /* Paper — never pure white */
+  --color-action: oklch(20.6% 0.039 266); /* ACTION — CTA fill. Same navy for now. */
+  --color-action-foreground: var(--color-paper);
 
   /* Neutral ramp. The page background is warm newsprint (#f4f1ea), so
      every neutral below sits on the same warm hue (~85) rather than the
@@ -50,30 +63,37 @@
   --color-muted: oklch(91.5% 0.010 85); /* Muted bg — one step off the page */
   --color-muted-foreground: oklch(29.5% 0.034 68); /* Muted text — 4.9:1 on card, 5.3:1 on muted */
 
-  /* ── Semantic states ─────────────────────────────────────────── */
-  --color-destructive: oklch(63.6% 0.208 25); /* Destructive red */
+  /* ── Semantic states ─────────────────────────────────────────────
+     ONE red. This used to be three near-identical ones — `error`
+     (L61.2 hue 27), `destructive` (L63.6 hue 25) and `pin` (L57.2 hue 27)
+     — a 6-point lightness spread across the same hue, so "which red do I
+     use?" had no answer. `destructive` is the shadcn-canonical name and
+     the survivor; `error` and `pin` now alias it. Values differ by <3%
+     lightness, so almost nothing shifts visually.
+
+     Note `signal-dead` aliases `error`, which aliases `destructive`, so
+     the whole failure family resolves to one value in both themes. */
+  --color-destructive: oklch(63.6% 0.208 25); /* The one red */
   --color-destructive-foreground: oklch(98.5% 0 90);
 
   --color-success: oklch(61.1% 0.147 154); /* Green */
-  --color-error: oklch(61.2% 0.228 27); /* Red */
+  --color-error: var(--color-destructive); /* alias — one red only */
   --color-warning: oklch(75.5% 0.17 64); /* Amber */
 
   /* ── Signal language (plan 17 §17.3, additive) ───────────────── */
   /* The truth system in type and color: used for stamps, board
      eyebrows, urgency chips and the hero signal strip. Hues reuse the
      existing success/warning/error palette so nothing new is invented. */
-  --color-signal-live: oklch(61.1% 0.147 154); /* emerald — confirmed live */
-  --color-signal-aging: oklch(75.5% 0.17 64); /* amber — aging / unconfirmed */
-  --color-signal-dead: oklch(61.2% 0.228 27); /* rose — reported dead */
-  --color-signal-heat: oklch(66.2% 0.133 236); /* sky — discussion heat */
-  --color-pin: oklch(
-    57.2% 0.213 27
-  ); /* pin red — LIVE indicators only (a listing that is open right now).
-        Deliberately NOT a second red next to --color-destructive: at the old
-        lightness the two were indistinguishable, so a "delete" action and a
-        "this job is live" dot read as the same signal. Anything that is a
-        status rather than a destructive action uses the --color-signal-* set
-        above; keep this for genuine live/pinned markers only. */
+  --color-signal-live: var(--color-success); /* emerald — confirmed live */
+  --color-signal-aging: var(--color-warning); /* amber — aging / unconfirmed */
+  --color-signal-dead: var(--color-error); /* rose — reported dead */
+  /* Was byte-identical to --color-brand-telegram. A semantic token and a
+     third-party brand token are different jobs, and "popular discussion"
+     should not be Telegram blue. */
+  --color-signal-heat: oklch(60% 0.145 240); /* sky — discussion heat */
+  --color-pin: var(--color-destructive); /* alias. The old separate "pin
+        red" existed to avoid reading as destructive, but the fix is role
+        discipline (DESIGN.md → Do's and Don'ts), not a fifth red. */
 
   /* ── Chip / pill active states ───────────────────────────────── */
   --color-chip-active: oklch(90% 0.012 84); /* Warm silver-gray */
@@ -150,22 +170,20 @@
      content by lightness instead of by adding more warmth. */
   --color-paper: oklch(99% 0.004 85);
 
-  /* ── Notice paper ─────────────────────────────────────────────────
-     The warm newsprint tone, now the site's light-mode page background
-     (--color-background above). Kept as named tokens as well so any
-     surface that should read as paper can reach the value directly with
-     `bg-[var(--ff-paper)]` instead of re-declaring the hex. */
-  --ff-paper: #f4f1ea;
-  --ff-paper-raised: #fbf9f4;
-  --ff-rule: #ded8cb;
-  --ff-ink: #17181c;
-  --ff-ink-soft: #57544d;
-  --ff-ink-faint: #6f6b61; /* ~4.9:1 on --ff-paper: safe for 11px meta text */
-  --ff-stamp: #bf3d0b;
-  /* The same ink lifted for dark surfaces. #bf3d0b on #0e1420 is only
-     3.45:1, which fails for 11px text; this reaches 7.5:1 without
-     shifting hue, so the accent stays one colour on both. */
-  --ff-stamp-lift: #f08a5d;
+  /* ── Legacy brand palette: REMOVED ─────────────────────────────────
+     This file used to carry a SECOND palette alongside the semantic
+     `--color-*` set: --ff-paper, --ff-paper-raised, --ff-rule, --ff-ink,
+     --ff-ink-soft, --ff-ink-faint, --ff-stamp, --ff-stamp-lift.
+
+     All eight were dead — exactly one reference each, their own definition.
+     `--ff-ink` (#17181c, a near-black) was the real damage: it competed with
+     the navy `--color-primary` ink, which is a large part of why the admin
+     shell and the job pages read as two products sharing components.
+
+     Warm newsprint is still the page: it is `--color-background` (#f4f1ea).
+     Nothing was lost but the duplicate name. `--ff-accent` and the
+     `--ff-band-*` instrument palette survive further down; they are a
+     distinct always-dark marketing component, not a competing UI palette. */
 
   /* ── Typography ──────────────────────────────────────────────── */
   --font-sans: "Inter", system-ui, -apple-system, sans-serif;
@@ -284,8 +302,16 @@
     --color-destructive-foreground: oklch(98.5% 0 90);
 
     --color-success: oklch(66.6% 0.134 157);
-    --color-error: oklch(66.7% 0.156 22);
-    --color-warning: oklch(80.1% 0.138 82);
+    --color-error: var(--color-destructive); /* one red, as in light mode */
+  --color-warning: oklch(80.1% 0.138 82);
+  /* Signal had no dark overrides at all, so the light values leaked through
+     in dark mode. Aliasing them to the dark semantic states fixes it. */
+  --color-signal-live: var(--color-success);
+  --color-signal-aging: var(--color-warning);
+  --color-signal-dead: var(--color-error);
+  --color-signal-heat: oklch(72% 0.12 240); /* lifted for dark; the light
+     value (L60) sits too close to the dark page */
+  --color-pin: var(--color-destructive);
 
     --color-chip-active: oklch(27.3% 0.009 220);
     --color-chip-active-text: oklch(97.7% 0.003 229);
@@ -641,8 +667,12 @@ body:has([data-nav-drawer]) > [data-radix-dialog-overlay] {
 
 /* Always-dark "instrument band" palette (mock: #0e1420 family).
    Theme-independent so light AND dark mode render the mock exactly.
-   Sidebar utilities resolve to OUR theme tokens (single source: @theme).
-   The legacy --sidebar-* names remain only as aliases for var() references. */
+
+   The `--sidebar-*` aliases that used to sit here are REMOVED. They were a
+   second name for every `--color-sidebar-*` token — eight tokens, eight
+   aliases, zero behavioural difference — so every sidebar colour had two
+   spellings and two places to change. shadcn's `bg-sidebar` utilities read
+   `--color-sidebar-*` directly, so nothing else needed them. */
 :root {
   --ff-band-bg: #0e1420;
   --ff-band-surface: #151d2e;
@@ -650,14 +680,6 @@ body:has([data-nav-drawer]) > [data-radix-dialog-overlay] {
   --ff-band-ink: #eef1f6;
   --ff-band-muted: #8b93a5;
   --ff-accent: #ff571a;
-  --sidebar: var(--color-sidebar);
-  --sidebar-foreground: var(--color-sidebar-foreground);
-  --sidebar-primary: var(--color-sidebar-primary);
-  --sidebar-primary-foreground: var(--color-sidebar-primary-foreground);
-  --sidebar-accent: var(--color-sidebar-accent);
-  --sidebar-accent-foreground: var(--color-sidebar-accent-foreground);
-  --sidebar-border: var(--color-sidebar-border);
-  --sidebar-ring: var(--color-sidebar-ring);
 }
 
 .ff-marquee-track {

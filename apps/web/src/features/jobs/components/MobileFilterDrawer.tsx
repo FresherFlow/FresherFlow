@@ -99,6 +99,8 @@ interface MobileFilterDrawerProps {
     onClear: () => void;
     /** Live match count for the current drafts (same pipeline as Apply). */
     draftMatchCount?: number | null;
+    /** Profile-owned dims (city/batch/workMode) — captioned so seeded sections read as profile-applied. */
+    profileOwnedDims?: string[];
 }
 
 function Section({
@@ -196,6 +198,7 @@ export function MobileFilterDrawer({
     onClear,
     isLoggedIn = false,
     draftMatchCount = null,
+    profileOwnedDims = [],
 }: MobileFilterDrawerProps) {
     const [openSection, setOpenSection] = useState<OpenSection>(setDraftType ? 'type' : 'location');
   // Per-feed type options, shared with the desktop bars so the three feeds
@@ -400,6 +403,12 @@ export function MobileFilterDrawer({
                         onToggle={() => setOpenSection(openSection === 'location' ? null : 'location')}
                     >
                         <div className="space-y-3">
+                            {profileOwnedDims.includes('city') && (
+                                <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
+                                    From your profile
+                                </p>
+                            )}
                             <input
                                 type="text"
                                 value={locSearch}
@@ -568,6 +577,12 @@ export function MobileFilterDrawer({
                                 isOpen={openSection === 'year'}
                                 onToggle={() => setOpenSection(openSection === 'year' ? null : 'year')}
                             >
+                                {profileOwnedDims.includes('batch') && (
+                                    <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground pb-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
+                                        From your profile
+                                    </p>
+                                )}
                                 <div className="flex flex-wrap gap-2">
                                     <Pill active={draftYear === null} onClick={() => setDraftYear(null)}>Any</Pill>
                                     {sortedYears.map(({ year, count }) => (
@@ -626,6 +641,12 @@ export function MobileFilterDrawer({
                                 isOpen={openSection === 'workMode'}
                                 onToggle={() => setOpenSection(openSection === 'workMode' ? null : 'workMode')}
                             >
+                                {profileOwnedDims.includes('workMode') && (
+                                    <p className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground pb-2">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" aria-hidden="true" />
+                                        From your profile
+                                    </p>
+                                )}
                                 <div className="flex flex-wrap gap-2">
                                     <Pill active={draftWorkMode === null} onClick={() => setDraftWorkMode(null)}>Any</Pill>
                                     <Pill active={draftWorkMode === 'REMOTE'} onClick={() => setDraftWorkMode('REMOTE')}>Remote</Pill>

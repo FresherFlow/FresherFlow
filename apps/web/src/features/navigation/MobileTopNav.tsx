@@ -80,7 +80,7 @@ export function MobileTopNav() {
 
     const mobileTitle = getMobileTitle(pathname);
     // /jobs is one page with ?tab= workspaces: the header must name the tab
-    // (Applied, Saved, â€¦), not the section. The in-page breadcrumb trail is
+    // (Applied, Saved, …), not the section. The in-page breadcrumb trail is
     // desktop-only, so this is the mobile user's only page label.
     const jobsTab = pathname === '/jobs' ? searchParams?.get('tab') : null;
     const headerTitle = (jobsTab && JOBS_TAB_TITLES[jobsTab]) || mobileTitle;
@@ -182,7 +182,7 @@ export function MobileTopNav() {
                 above sets it directly) instead of the sidebar provider's
                 `openMobile`. The rail is wrapped in `hidden lg:block`, so
                 `display:none` does not unmount it and the primitive's own
-                mobile Sheet still portals to <body> â€” binding both to one
+                mobile Sheet still portals to <body> — binding both to one
                 shared state opened two overlays per tap, and their exit
                 animations raced the body scroll lock, which is the hang. */}
             <Sheet open={menuOpen} onOpenChange={setMenuOpen}>

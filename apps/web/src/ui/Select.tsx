@@ -27,7 +27,7 @@ const selectTriggerVariants = {
 
 /**
  * Named `triggerVariant`, not `size`: consumers that spread arbitrary props into
- * `SelectTrigger` (see `features/admin/ui/SmartSelect.tsx`) forward the native
+ * `SelectTrigger` (see `features/admin/components/SmartSelect.tsx`) forward the native
  * `size` attribute, which is a number and would collide with a `size` union.
  */
 export type SelectTriggerVariant = keyof typeof selectTriggerVariants

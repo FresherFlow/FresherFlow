@@ -7,6 +7,7 @@ import { cn } from '@/ui/cn';
 import { AuthContext } from '@/lib/auth/AuthContext';
 import AuthDialog from '@/features/auth/components/AuthDialog';
 import { NotificationsDropdown } from '@/features/notifications/components/NotificationsDropdown';
+import { PUBLIC_PROFILES_ENABLED } from '@/lib/config/publicProfiles';
 
 export default function TopNav() {
     const pathname = usePathname();
@@ -79,6 +80,8 @@ export default function TopNav() {
                             >
                                 Walk-ins
                             </Link>
+                            {/* Hidden while public profiles are off (see lib/config/publicProfiles.ts). Code stays. */}
+                            {PUBLIC_PROFILES_ENABLED && (
                             <Link
                                 href="/recruiters"
                                 className={cn(
@@ -90,6 +93,7 @@ export default function TopNav() {
                             >
                                 Hire
                             </Link>
+                            )}
                         </div>
 
                         {isAdminRoute && (
@@ -109,7 +113,7 @@ export default function TopNav() {
                             {!isAdminRoute && (
                                 <Link
                                     href="/contribute"
-                                    className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/20 transition-all border border-primary/20"
+                                    className="hidden sm:inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all"
                                 >
                                     <span>+ Post a Job</span>
                                 </Link>

@@ -23,7 +23,7 @@ export function ModerationNav() {
                     href="/moderator"
                     className={cn(
                         'rounded-full px-3 py-1.5 text-sm font-semibold',
-                        pathname === '/moderator' ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+                        pathname === '/moderator' ? 'bg-accent text-accent-foreground' : 'text-muted-foreground'
                     )}
                 >
                     Overview
@@ -35,7 +35,7 @@ export function ModerationNav() {
                         className={cn(
                             'rounded-full px-3 py-1.5 text-sm',
                             pathname === item.href
-                                ? 'bg-primary/10 font-semibold text-primary'
+                                ? 'bg-accent font-semibold text-accent-foreground'
                                 : 'text-muted-foreground'
                         )}
                     >

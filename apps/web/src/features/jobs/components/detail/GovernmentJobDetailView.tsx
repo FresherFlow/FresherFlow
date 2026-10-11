@@ -301,6 +301,12 @@ export function GovernmentJobDetailView({
 
     const isOppSaved = Boolean(opp.isSaved);
 
+    /* Same SSR trap as DetailSidebarActions: `user` resolves client-side
+        after hydration, so the Track Application block must not render until
+        mount or the server HTML mismatches the first client paint. */
+    const [isMounted, setIsMounted] = React.useState(false);
+    React.useEffect(() => { setIsMounted(true); }, []);
+
     // Guests are handled by the handler itself: it opens the auth modal and
     // replays the intent on return. No toast here, that would double-prompt.
     const handleSaveClick = (e: React.MouseEvent) => {
@@ -866,7 +872,7 @@ export function GovernmentJobDetailView({
                 </div>
 
                 {/* Progress Tracking */}
-                {user && (
+                {isMounted && user && (
                     <div className="space-y-2 pt-3 border-t border-border/50">
                         <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Track Application</p>
                         <div className="grid grid-cols-2 gap-1.5">

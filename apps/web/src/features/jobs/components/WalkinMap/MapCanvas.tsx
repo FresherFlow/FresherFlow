@@ -135,14 +135,16 @@ export function MapCanvas({
 
     return (
         <div className="relative flex-1 w-full h-full min-h-100 overflow-hidden bg-background">
-            {/* 0ms GPU-accelerated Dark Mode CSS Filter */}
+            {/* Leaflet's own chrome is styled through theme tokens, not raw hex.
+                The tokens already flip under `.dark`, so each light/dark pair
+                below collapses into ONE rule that stays correct in both modes.
+                Previously every surface carried two hardcoded hex values that
+                had to be edited by hand in lockstep. Only the tile-pane filter
+                stays dark-scoped: it inverts raster map tiles, not a colour. */}
             <style jsx global>{`
                 .leaflet-container {
-                    background-color: #f4f4f5 !important;
+                    background-color: var(--color-background) !important;
                     font-family: inherit !important;
-                }
-                .dark .leaflet-container {
-                    background-color: #09090b !important;
                 }
                 .dark .leaflet-tile-pane {
                     filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7) !important;
@@ -157,29 +159,18 @@ export function MapCanvas({
                     justify-content: center !important;
                 }
                 .leaflet-control-zoom {
-                    border: 1px solid #e4e4e7 !important;
+                    border: 1px solid var(--color-border) !important;
                     border-radius: 12px !important;
                     overflow: hidden;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-                }
-                .dark .leaflet-control-zoom {
-                    border-color: #27272a !important;
+                    box-shadow: oklch(from var(--color-foreground) l c h / 0.15) !important;
                 }
                 .leaflet-control-zoom a {
-                    background-color: var(--color-paper) !important;
-                    color: #09090b !important;
-                    border-bottom: 1px solid #e4e4e7 !important;
-                }
-                .dark .leaflet-control-zoom a {
-                    background-color: #18181b !important;
-                    color: #f4f4f5 !important;
-                    border-bottom-color: #27272a !important;
+                    background-color: var(--color-card) !important;
+                    color: var(--color-foreground) !important;
+                    border-bottom: 1px solid var(--color-border) !important;
                 }
                 .leaflet-control-zoom a:hover {
-                    background-color: #f4f4f5 !important;
-                }
-                .dark .leaflet-control-zoom a:hover {
-                    background-color: #27272a !important;
+                    background-color: var(--color-muted) !important;
                 }
             `}</style>
 

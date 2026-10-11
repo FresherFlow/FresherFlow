@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ClipboardDocumentCheckIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { SmartSelect } from '@/features/admin/ui/SmartSelect';
-import { SmartInput } from '@/features/admin/ui/SmartInput';
+import { SmartSelect } from '@/features/admin/components/SmartSelect';
+import { SmartInput } from '@/features/admin/components/SmartInput';
 import { Card, CardDescription, CardContent } from '@/ui/Card';
 import { Badge } from '@/ui/Badge';
 import { Button } from '@/ui/Button';

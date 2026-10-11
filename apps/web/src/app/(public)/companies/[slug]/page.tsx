@@ -173,7 +173,7 @@ export async function generateMetadata(
     const { slug: rawSlug } = await params;
     const properSlug = slugify(decodeURIComponent(rawSlug));
     const base = SITE_URL.replace(/\/+$/, '');
-    // Metadata must declare the canonical URL we actually serve â€” resolve
+    // Metadata must declare the canonical URL we actually serve — resolve
     // aliases here too, so an old slug's canonical points at the live page
     // instead of endorsing itself.
     const canonicalSlug = resolveCompanySlugAlias(properSlug);
@@ -199,7 +199,7 @@ export async function generateMetadata(
     const hasJobs = Boolean(activeShard && activeShard.opportunities && activeShard.opportunities.length > 0);
 
     // SEO: keep the full <title> within 50-60 chars once the root layout
-    // template ("%s | FresherFlow", 13 chars) is applied â€” base stays â‰¤47.
+    // template ("%s | FresherFlow", 13 chars) is applied — base stays ≤47.
     // Long company names fall back to the shorter form, then truncate.
     let title = `${companyName} Jobs & Openings for Freshers`;
     if (title.length > 47) title = `${companyName} Fresher Jobs 2026`;
@@ -243,7 +243,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     let shouldRedirectTo: string | null = null;
     let matched: any = null;
 
-    // Explicit alias redirects (company renames) â€” checked before anything
+    // Explicit alias redirects (company renames) — checked before anything
     // else so a renamed company's old URL never 404s, even when the CDN
     // directory fetch fails.
     const aliasTarget = resolveCompanySlugAlias(properSlug);
@@ -313,7 +313,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
 
     if (companyJobs.length === 0) {
         // Audit fix (33x /companies/* 404s): a slug the directory knows but
-        // with zero live jobs is gone inventory, not a dead end â€” 301 to the
+        // with zero live jobs is gone inventory, not a dead end — 301 to the
         // closest live page (/companies). Unknown slugs 404 and stay out of
         // the sitemap and internal links (both are live-companies-only).
         if (matched) {
@@ -411,7 +411,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     // Header subtitle. Industry and team size are the only company-level
     // attributes the feed actually carries, so the hero states those rather
     // than inventing a description or headquarters line.
-    const headerMeta = [companyIndustries[0], companySize].filter(Boolean).join('  Â·  ');
+    const headerMeta = [companyIndustries[0], companySize].filter(Boolean).join('  ·  ');
 
     logRouteResult('/companies/[slug]', '200');
 

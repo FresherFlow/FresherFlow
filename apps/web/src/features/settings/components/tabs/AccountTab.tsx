@@ -1,12 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { authApi } from '@/lib/api/client';
 import { UsernameGate } from '@/features/auth/components/ProfileGate';
-import { isProfilePagePublished } from '@fresherflow/utils';
 import toast from 'react-hot-toast';
 import {
     ArrowLeftIcon,
@@ -67,28 +65,13 @@ function describeThisDevice(): string {
 function SettingsPageContent() {
     const router = useRouter();
     // profile is the already-cached useAuth value — reading it here adds no fetch.
-    const { user, profile, logout } = useAuth();
+    const { user, logout } = useAuth();
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [confirmInput, setConfirmInput] = useState('');
     const [isDeleting, setIsDeleting] = useState(false);
 
     const maskedEmail = user?.email ? maskEmail(user.email) : 'Not provided';
     const expectedConfirmText = user?.username || 'DELETE';
-    const publicPagePath = user?.username ? `/u/${user.username}` : null;
-    // Same reachability rule the public route enforces (visibility + published at least
-    // once): the View link must not point at a 404. A lapsed boost does not affect this.
-    const isPublicPageLive = isProfilePagePublished(profile?.profilePublishedAt ?? null);
-
-    // Copy-link toast pattern mirrors ProfilePreviewCard — never alert().
-    const copyPublicPageLink = async () => {
-        if (!publicPagePath) return;
-        try {
-            await navigator.clipboard.writeText(`https://fresherflow.in${publicPagePath}`);
-            toast.success('Profile link copied.');
-        } catch {
-            toast.error('Could not copy the link.');
-        }
-    };
 
     const handleDeleteAccount = async () => {
         if (confirmInput.trim().toLowerCase() !== expectedConfirmText.toLowerCase()) {
@@ -210,45 +193,6 @@ function SettingsPageContent() {
                             {user?.fullName || 'Active User'}
                         </span>
                     </div>
-
-                    {publicPagePath && (
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-border/40">
-                            <div>
-                                <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest block">
-                                    Public Page
-                                </span>
-                                <span className="text-sm font-semibold text-foreground font-mono mt-0.5 block">
-                                    fresherflow.in{publicPagePath}
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-2 self-start sm:self-auto">
-                                <button
-                                    type="button"
-                                    onClick={() => void copyPublicPageLink()}
-                                    className="px-3 py-1.5 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold rounded-xl transition-colors cursor-pointer"
-                                >
-                                    Copy link
-                                </button>
-                                {isPublicPageLive ? (
-                                    <a
-                                        href={publicPagePath}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="px-3 py-1.5 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold rounded-xl transition-colors"
-                                    >
-                                        View page
-                                    </a>
-                                ) : (
-                                    <Link
-                                        href="/account"
-                                        className="px-3 py-1.5 bg-muted hover:bg-muted/80 text-foreground text-xs font-bold rounded-xl transition-colors"
-                                    >
-                                        Publish page
-                                    </Link>
-                                )}
-                            </div>
-                        </div>
-                    )}
                 </div>
             </section>
 

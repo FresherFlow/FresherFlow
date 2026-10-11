@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BoltIcon, DocumentDuplicateIcon, CheckIcon } from '@heroicons/react/24/outline';
-import { SmartTextarea } from '@/features/admin/ui/SmartTextarea';
+import { SmartTextarea } from '@/features/admin/components/SmartTextarea';
 import { Button } from '@/ui/Button';
 import { Badge } from '@/ui/Badge';
 import { DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/ui/Dialog';

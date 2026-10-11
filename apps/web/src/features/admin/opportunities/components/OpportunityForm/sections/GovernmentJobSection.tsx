@@ -1,8 +1,8 @@
 import BuildingOffice2Icon from '@heroicons/react/24/outline/BuildingOffice2Icon';
 import { ChevronRight } from 'lucide-react';
-import { SmartInput } from '@/features/admin/ui/SmartInput';
-import { SmartTextarea } from '@/features/admin/ui/SmartTextarea';
-import { SmartSelect } from '@/features/admin/ui/SmartSelect';
+import { SmartInput } from '@/features/admin/components/SmartInput';
+import { SmartTextarea } from '@/features/admin/components/SmartTextarea';
+import { SmartSelect } from '@/features/admin/components/SmartSelect';
 import { Card } from '@/ui/Card';
 import { Checkbox } from '@/ui/Checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/ui/Collapsible';

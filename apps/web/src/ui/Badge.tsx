@@ -7,8 +7,13 @@ const badgeVariants = cva(
     {
         variants: {
             variant: {
+                // Informational chip (category, tag, count). A badge is NOT a selected
+                // state, so it does not get the active-surface step — it gets a
+                // neutral surface with ink text. It was `bg-primary/10
+                // text-primary`, which painted the ink colour onto a plane; the
+                // navy tint made every badge compete with actual action buttons.
                 default:
-                    "border-transparent bg-primary/10 text-primary hover:bg-primary/15",
+                    "border-transparent bg-muted text-foreground hover:bg-accent",
                 secondary:
                     "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
                 destructive:
