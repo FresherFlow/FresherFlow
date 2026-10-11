@@ -175,6 +175,7 @@ interface FeedJson {
 }
 
 async function run() {
+    const runStart = Date.now();
     console.log("Fetching CDN feed...");
     
     // Wake up the backend API (if serverless) so it's warm by the time we finish
@@ -295,11 +296,14 @@ async function run() {
 
     console.log(`Found ${totalAvailable} active opportunities to check (CDN feed: ${cdnOpportunityCount}).`);
 
-    // Message 1: Summary
-    await sendTelegramMessage(`🤖 <b>Job Sweeper Started</b>\n\nChecking ${totalAvailable} active jobs...`);
+    // One admin message per run, sent at the end (see Message block below).
+    // No "started" ping — the finished summary with duration is the message.
 
     const expiredJobs: FeedOpportunity[] = [];
     const reviewJobs: FeedOpportunity[] = [];
+    // Unique URLs actually swept (set once discovery dedupes; reported in
+    // the final message).
+    let totalUniqueUrls = 0;
     // Per-URL review causes: timeouts retry next run, content ambiguity needs
     // humans. Without this split every stuck page is reported as a bug.
     const reviewReasons = new Map<string, string>();
@@ -337,7 +341,7 @@ async function run() {
             }
             urlToOpps.get(normalizedUrl)!.push(opp);
         }
-        const totalUniqueUrls = activeOpps.length;
+        totalUniqueUrls = activeOpps.length;
 
         const worker = async () => {
             const context = await browser.newContext({
@@ -651,37 +655,54 @@ async function run() {
         }
     }
 
-    // Message 2: Results
-    if (expiredJobs.length > 0 || reviewJobs.length > 0) {
-        let msg = "";
-        
+    // Single admin message for the run: outcome + how long it took.
+    // Sent exactly once, even when everything is healthy (heartbeat).
+    function formatDuration(ms: number): string {
+        const s = Math.max(0, Math.round(ms / 1000));
+        const h = Math.floor(s / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        const sec = s % 60;
+        if (h > 0) return `${h}h ${m}m`;
+        if (m > 0) return `${m}m ${sec}s`;
+        return `${sec}s`;
+    }
+
+    {
+        const dur = formatDuration(Date.now() - runStart);
+        const liveCount = Math.max(0, opportunities.length - expiredJobs.length - reviewJobs.length);
+        let msg = `🧹 <b>Sweeper done in ${dur}</b>\n\n`;
+        msg += `Checked ${totalUniqueUrls} URLs (${opportunities.length} listings): ${liveCount} live`;
+        if (expiredJobs.length > 0 || reviewJobs.length > 0) {
+            msg += ` · ${expiredJobs.length} expired · ${reviewJobs.length} review`;
+        }
+
         if (expiredJobs.length > 0) {
             const expiredProduction = expiredJobs.filter(j => j.type !== 'discovered' && j.type !== 'processed');
             const expiredProcessed = expiredJobs.filter(j => j.type === 'processed');
             const expiredDiscovered = expiredJobs.filter(j => j.type === 'discovered');
-
-            msg += `🚨 <b>Found ${expiredJobs.length} Expired Jobs — Automatically Removed</b> 🚨\n`;
-            if (expiredProduction.length > 0) msg += `• Production Jobs: ${expiredProduction.length}\n`;
-            if (expiredProcessed.length > 0) msg += `• Processed (Pending): ${expiredProcessed.length}\n`;
-            if (expiredDiscovered.length > 0) msg += `• Discovered (New): ${expiredDiscovered.length}\n`;
-            msg += `\n`;
+            msg += `\n\n🚨 <b>${expiredJobs.length} expired — auto-removed</b>`;
+            if (expiredProduction.length > 0) msg += `\n• Production: ${expiredProduction.length}`;
+            if (expiredProcessed.length > 0) msg += `\n• Processed (pending): ${expiredProcessed.length}`;
+            if (expiredDiscovered.length > 0) msg += `\n• Discovered (new): ${expiredDiscovered.length}`;
         }
-        
+
         if (reviewJobs.length > 0) {
             // Timeouts are retried next run — report them apart from genuine
             // content ambiguity so stuck pages stop looking like verdict bugs.
             const timedOut = reviewJobs.filter(j =>
                 (reviewReasons.get(normalizeUrl(j.sourceLink || j.applyLink || '')) || '').includes('timed out'));
             const needsHuman = reviewJobs.length - timedOut.length;
-            if (timedOut.length > 0) msg += `⏱️ <b>${timedOut.length} timed out (retry next run — not verdicts)</b>\n`;
-            if (needsHuman > 0) msg += `⚠️ <b>Found ${needsHuman} Review Required Jobs (Generic Titles/Redirects)</b> ⚠️\n\n`;
-            if (needsHuman > 0) msg += `Please review these manually from the Admin Dashboard.`;
+            if (needsHuman > 0) msg += `\n\n⚠️ <b>${needsHuman} need a human look</b> (Admin Dashboard)`;
+            if (timedOut.length > 0) msg += `\n⏱️ ${timedOut.length} timed out — retried next run, not verdicts`;
         }
-        
+
+        const boardBit = externalSourceStatus.startsWith('ok')
+            ? externalSourceStatus
+            : externalSourceStatus === 'not configured' ? 'skipped' : 'error';
+        msg += `\n\nSources: CDN ${cdnFeed.ok ? `ok (${cdnOpportunityCount})` : 'down'} · Ingestion ${ingestionSuccess ? 'ok' : 'down'} · Board ${boardBit}`;
+
         console.log("Sending Telegram message:", msg);
         await sendTelegramMessage(msg);
-    } else {
-        await sendTelegramMessage(`✅ <b>Job Sweeper Finished</b>\n\nAll ${opportunities.length} jobs appear to be live! No expired or review jobs found.`);
     }
 
     // Write summary for GitHub Actions

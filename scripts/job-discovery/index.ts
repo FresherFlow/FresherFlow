@@ -13,6 +13,7 @@ import {
   writeGitHubSummary,
 } from "./src/pipeline/notifier.js";
 import { startRun, finishRun } from "@fresherflow/pipeline";
+import { saveHealthLedger } from "@fresherflow/pipeline";
 import { withTimeout, AGGREGATOR_RULES } from "@fresherflow/pipeline";
 
 await loadEnv();
@@ -66,6 +67,9 @@ async function run() {
     // sending notifications is what posts to social media.
     await saveFoundJobsSnapshot(state);
     await sendNotifications(state);
+    // Source health ledger: merges this run's per-source fetch records with
+    // verified jobs-out into R2 (best-effort, never throws, skipped in --test).
+    await saveHealthLedger(state.newJobsFound);
     await writeGitHubSummary(state);
     await uploadToDataLake(state, runId); // Pass runId to storage for upserts
   } catch (err) {

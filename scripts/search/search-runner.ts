@@ -140,10 +140,10 @@ async function runSearchEngine() {
       verifiedSourceCounts[src] = (verifiedSourceCounts[src] || 0) + 1;
     }
 
-    // DRY RUN: show what WOULD be posted, touch nothing â€” no DB write, no social
+    // DRY RUN: show what WOULD be posted, touch nothing — no DB write, no social
     // posts, no cache mutation. Safe for sample/local test runs.
     if (options.dryRun) {
-      console.log(`\nâš ï¸  DRY RUN â€” skipping DB persist + social posting + cache writes.`);
+      console.log(`\n⚠️  DRY RUN — skipping DB persist + social posting + cache writes.`);
       console.log(`ðŸŽ¯ Verified candidates that WOULD be posted (${verifiedJobs.length}):`);
       verifiedJobs.forEach((j, i) => {
         console.log(`   ${i + 1}. [${j.company || '?'}] ${j.title}\n      Apply: ${j.applyLink}`);

@@ -15,6 +15,16 @@
 --   drop+add ALTER TABLE statements apart so the old columns survive long
 --   enough to be read during the backfill.
 --
+-- PROD FIXES 2026-10-01 (verified against prod data via a Neon branch, not
+-- guessed from local): (1) prod holds a DEFENCE governmentLevel the new enum
+-- deletes -> mapped, not blind-cast; (2) areas/area_members tables were never
+-- created in prod (creating migration died of a BOM syntax error) -> created
+-- conditionally in current Room shape; (3) prod holds 34 WalkInDetails rows ->
+-- carried into DriveDetails instead of destroyed; (4) pre-norm backup tables
+-- still reference OpportunityType -> retyped to TEXT; (5) RoomType never
+-- existed in prod -> IF EXISTS; (6) legacy drops made IF EXISTS/conditional
+-- so staging (unknown shape) and retries do not abort on missing objects.
+--
 -- TRANSACTION
 --   The whole file runs inside one transaction. Any failure rolls the database
 --   back to its pre-migration state, so a partial backfill is not possible.
@@ -147,15 +157,35 @@ CREATE TYPE "RecruitmentStageKind" AS ENUM ('SCREENING', 'ASSESSMENT', 'INTERVIE
 -- the enum.
 
 
-ALTER TYPE "AlertKind" ADD VALUE 'CAMPUS_DRIVE';
-ALTER TYPE "AlertKind" ADD VALUE 'REGISTRATION_OPEN';
-ALTER TYPE "AlertKind" ADD VALUE 'REGISTRATION_CLOSING';
-ALTER TYPE "AlertKind" ADD VALUE 'APPLICATION_UPDATE';
+-- PROD FIX 2026-10-01: every ADD VALUE below is guarded. Two reasons: (1) a
+-- failed attempt leaves added values behind (they are not transactional), so
+-- any retry would die on duplicates; (2) partially-migrated environments may
+-- already carry some of them. Re-running is always safe; skipping present
+-- values is the desired end state, not an error.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'AlertKind' AND e.enumlabel = 'CAMPUS_DRIVE') THEN
+    ALTER TYPE "AlertKind" ADD VALUE 'CAMPUS_DRIVE';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'AlertKind' AND e.enumlabel = 'REGISTRATION_OPEN') THEN
+    ALTER TYPE "AlertKind" ADD VALUE 'REGISTRATION_OPEN';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'AlertKind' AND e.enumlabel = 'REGISTRATION_CLOSING') THEN
+    ALTER TYPE "AlertKind" ADD VALUE 'REGISTRATION_CLOSING';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'AlertKind' AND e.enumlabel = 'APPLICATION_UPDATE') THEN
+    ALTER TYPE "AlertKind" ADD VALUE 'APPLICATION_UPDATE';
+  END IF;
+END $$;
 
 -- AlterEnum
 -- BEGIN removed: nested transaction would commit the outer one.
 CREATE TYPE "GovernmentLevel_new" AS ENUM ('CENTRAL', 'STATE', 'PSU', 'LOCAL', 'OTHER');
-ALTER TABLE "GovernmentJobDetails" ALTER COLUMN "governmentLevel" TYPE "GovernmentLevel_new" USING ("governmentLevel"::text::"GovernmentLevel_new");
+-- PROD FIX 2026-10-01: prod holds governmentLevel = DEFENCE (1 row), which the
+-- new enum deletes. A blind ::text cast aborts the whole migration on it.
+-- Defence is Central government, so DEFENCE -> CENTRAL. Any other removed
+-- value keeps its text and fails LOUDLY instead of silently misbucketing;
+-- extend this CASE first if the enum ever loses another populated value.
+ALTER TABLE "GovernmentJobDetails" ALTER COLUMN "governmentLevel" TYPE "GovernmentLevel_new" USING ((CASE "governmentLevel"::text WHEN 'DEFENCE' THEN 'CENTRAL' ELSE "governmentLevel"::text END)::"GovernmentLevel_new");
 ALTER TYPE "GovernmentLevel" RENAME TO "GovernmentLevel_old";
 ALTER TYPE "GovernmentLevel_new" RENAME TO "GovernmentLevel";
 DROP TYPE "public"."GovernmentLevel_old";
@@ -169,11 +199,31 @@ DROP TYPE "public"."GovernmentLevel_old";
 -- the enum.
 
 
-ALTER TYPE "NotificationType" ADD VALUE 'CAMPUS_DRIVE_MATCH';
-ALTER TYPE "NotificationType" ADD VALUE 'REGISTRATION_OPEN';
-ALTER TYPE "NotificationType" ADD VALUE 'REGISTRATION_CLOSING';
-ALTER TYPE "NotificationType" ADD VALUE 'OPPORTUNITY_APPLIED';
-ALTER TYPE "NotificationType" ADD VALUE 'APPLICATION_STAGE_CHANGED';
+-- PROD FIX 2026-10-01: NotificationType was never created in prod (its
+-- creating migration never landed), so bare ADD VALUEs die with "type does
+-- not exist". Create the full current value set when missing; the guarded
+-- ADDs below then no-op. The Notification TABLE itself is out of scope here
+-- (no folder migration creates it); it comes with the converge repair.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'NotificationType') THEN
+    CREATE TYPE "NotificationType" AS ENUM ('COMMENT_REPLY', 'COMMENT_VOTE', 'JOB_SIGNAL_MILESTONE', 'JOB_UPDATED', 'JOB_CLOSED', 'NEW_MATCHING_JOB', 'EXPIRED_JOB', 'COMMENT_ON_EXPIRED', 'ROOM_HELPFUL', 'INTRO_REQUEST', 'CAMPUS_DRIVE_MATCH', 'REGISTRATION_OPEN', 'REGISTRATION_CLOSING', 'OPPORTUNITY_APPLIED', 'APPLICATION_STAGE_CHANGED', 'REFERRAL_RESPONSE');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'NotificationType' AND e.enumlabel = 'CAMPUS_DRIVE_MATCH') THEN
+    ALTER TYPE "NotificationType" ADD VALUE 'CAMPUS_DRIVE_MATCH';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'NotificationType' AND e.enumlabel = 'REGISTRATION_OPEN') THEN
+    ALTER TYPE "NotificationType" ADD VALUE 'REGISTRATION_OPEN';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'NotificationType' AND e.enumlabel = 'REGISTRATION_CLOSING') THEN
+    ALTER TYPE "NotificationType" ADD VALUE 'REGISTRATION_CLOSING';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'NotificationType' AND e.enumlabel = 'OPPORTUNITY_APPLIED') THEN
+    ALTER TYPE "NotificationType" ADD VALUE 'OPPORTUNITY_APPLIED';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'NotificationType' AND e.enumlabel = 'APPLICATION_STAGE_CHANGED') THEN
+    ALTER TYPE "NotificationType" ADD VALUE 'APPLICATION_STAGE_CHANGED';
+  END IF;
+END $$;
 
 -- AlterEnum
 -- This migration adds more than one value to an enum.
@@ -183,29 +233,38 @@ ALTER TYPE "NotificationType" ADD VALUE 'APPLICATION_STAGE_CHANGED';
 -- the enum.
 
 
-ALTER TYPE "OpportunityEventType" ADD VALUE 'ASSESSMENT_RELEASED';
-ALTER TYPE "OpportunityEventType" ADD VALUE 'SHORTLIST';
-ALTER TYPE "OpportunityEventType" ADD VALUE 'DRIVE_POSTPONED';
-ALTER TYPE "OpportunityEventType" ADD VALUE 'DRIVE_CLOSED';
-ALTER TYPE "OpportunityEventType" ADD VALUE 'REOPENED';
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'OpportunityEventType' AND e.enumlabel = 'ASSESSMENT_RELEASED') THEN
+    ALTER TYPE "OpportunityEventType" ADD VALUE 'ASSESSMENT_RELEASED';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'OpportunityEventType' AND e.enumlabel = 'SHORTLIST') THEN
+    ALTER TYPE "OpportunityEventType" ADD VALUE 'SHORTLIST';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'OpportunityEventType' AND e.enumlabel = 'DRIVE_POSTPONED') THEN
+    ALTER TYPE "OpportunityEventType" ADD VALUE 'DRIVE_POSTPONED';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'OpportunityEventType' AND e.enumlabel = 'DRIVE_CLOSED') THEN
+    ALTER TYPE "OpportunityEventType" ADD VALUE 'DRIVE_CLOSED';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid WHERE t.typname = 'OpportunityEventType' AND e.enumlabel = 'REOPENED') THEN
+    ALTER TYPE "OpportunityEventType" ADD VALUE 'REOPENED';
+  END IF;
+END $$;
 
 -- DropForeignKey
-ALTER TABLE "Opportunity" DROP CONSTRAINT "Opportunity_postedByUserId_fkey";
+ALTER TABLE "Opportunity" DROP CONSTRAINT IF EXISTS "Opportunity_postedByUserId_fkey";
 
 -- DropForeignKey
-ALTER TABLE "WalkInDetails" DROP CONSTRAINT "WalkInDetails_opportunityId_fkey";
+ALTER TABLE "WalkInDetails" DROP CONSTRAINT IF EXISTS "WalkInDetails_opportunityId_fkey";
 
 -- DropIndex
-DROP INDEX "Opportunity_companyId_idx";
+DROP INDEX IF EXISTS "Opportunity_companyId_idx";
 
 -- DropIndex
-DROP INDEX "Opportunity_status_deletedAt_type_postedAt_idx";
+DROP INDEX IF EXISTS "Opportunity_status_deletedAt_type_postedAt_idx";
 
 -- DropIndex
-DROP INDEX "RawOpportunity_sourceExternalId_idx";
-
--- DropIndex
-DROP INDEX "areas_type_idx";
+DROP INDEX IF EXISTS "RawOpportunity_sourceExternalId_idx";
 
 -- AlterTable
 ALTER TABLE "GovernmentJobDetails" ADD COLUMN     "domain" TEXT;
@@ -276,24 +335,124 @@ ALTER TABLE "RawOpportunity" ADD COLUMN     "suggestedCategory" "OpportunityCate
 -- the old role text to RoomMemberRole/RoomStatus, so any non-default value is
 -- destroyed. These tables are local-dev/community bookkeeping; this must be
 -- re-checked before running against staging.
+--
+-- PROD FIX 2026-10-01: the areas tables were NEVER created in prod. Their
+-- creating migration (20260803110000) died of a BOM syntax error at parse and
+-- was superseded by one that omits them; local DBs only have them via db push
+-- and no folder migration creates them (schema now calls them Room/RoomMember
+-- via @@map). So every statement touching them is conditional: missing tables
+-- are created in current Room/RoomMember shape (incl. indexes + FKs, matching
+-- schema.prisma); present tables take the original old-shape migration path.
+-- (DBs that already applied this file never re-run it. Post-deploy,
+-- `migrate diff` against the schema is the check that names/shapes match.)
+DO $$ BEGIN
+  IF to_regclass('public.areas') IS NULL THEN
+    CREATE TABLE "areas" (
+        "id" TEXT NOT NULL,
+        "slug" TEXT NOT NULL,
+        "name" VARCHAR(100) NOT NULL,
+        "description" TEXT,
+        "icon" VARCHAR(10),
+        "tags" TEXT[] DEFAULT ARRAY[]::TEXT[],
+        "memberCount" INTEGER NOT NULL DEFAULT 0,
+        "postCount" INTEGER NOT NULL DEFAULT 0,
+        "opportunityCount" INTEGER NOT NULL DEFAULT 0,
+        "isPublic" BOOLEAN NOT NULL DEFAULT true,
+        "status" "RoomStatus" NOT NULL DEFAULT 'ACTIVE',
+        "createdByUserId" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL,
+        CONSTRAINT "areas_pkey" PRIMARY KEY ("id")
+    );
+    CREATE UNIQUE INDEX "areas_slug_key" ON "areas"("slug");
+    CREATE INDEX "areas_slug_idx" ON "areas"("slug");
+    CREATE INDEX "areas_memberCount_idx" ON "areas"("memberCount" DESC);
+    CREATE INDEX "areas_createdAt_idx" ON "areas"("createdAt" DESC);
+    ALTER TABLE "areas" ADD CONSTRAINT "areas_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  ELSE
+    ALTER TABLE "areas" ADD COLUMN     "opportunityCount" INTEGER NOT NULL DEFAULT 0,
+    ADD COLUMN     "tags" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    DROP COLUMN "status",
+    ADD COLUMN     "status" "RoomStatus" NOT NULL DEFAULT 'ACTIVE';
+    UPDATE "areas" SET "opportunityCount" = "jobCount" WHERE "jobCount" IS NOT NULL;
+    ALTER TABLE "areas" DROP COLUMN "jobCount";
+    ALTER TABLE "areas" DROP COLUMN "type";
+    DROP INDEX IF EXISTS "areas_type_idx";
+  END IF;
+  IF to_regclass('public.area_members') IS NULL THEN
+    CREATE TABLE "area_members" (
+        "id" TEXT NOT NULL,
+        "roomId" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "role" "RoomMemberRole" NOT NULL DEFAULT 'MEMBER',
+        "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "area_members_pkey" PRIMARY KEY ("id")
+    );
+    CREATE UNIQUE INDEX "area_members_roomId_userId_key" ON "area_members"("roomId", "userId");
+    CREATE INDEX "area_members_userId_idx" ON "area_members"("userId");
+    ALTER TABLE "area_members" ADD CONSTRAINT "area_members_roomId_fkey" FOREIGN KEY ("roomId") REFERENCES "areas"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    ALTER TABLE "area_members" ADD CONSTRAINT "area_members_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  ELSE
+    ALTER TABLE "area_members" DROP COLUMN "role",
+    ADD COLUMN     "role" "RoomMemberRole" NOT NULL DEFAULT 'MEMBER';
+  END IF;
+END $$;
 
--- AlterTable
-ALTER TABLE "area_members" DROP COLUMN "role",
-ADD COLUMN     "role" "RoomMemberRole" NOT NULL DEFAULT 'MEMBER';
-
--- "areas"."jobCount" has a real backfill below, so it is copied into the new
--- "opportunityCount" before the drop at the end of this migration. The drop
--- of "jobCount" and of "type" is therefore deferred to the destructive
--- section, unlike the generated diff which drops them in this same statement.
--- AlterTable
-ALTER TABLE "areas" ADD COLUMN     "opportunityCount" INTEGER NOT NULL DEFAULT 0,
-ADD COLUMN     "tags" TEXT[] DEFAULT ARRAY[]::TEXT[],
-DROP COLUMN "status",
-ADD COLUMN     "status" "RoomStatus" NOT NULL DEFAULT 'ACTIVE';
+-- PROD FIX 2026-10-01: same story as areas — prod never received the
+-- SavedSearch table, but this migration's SavedSearchInstitution FK points
+-- at it. Create it in current shape when missing (empty everywhere it
+-- matters; saved searches are user-created at runtime).
+DO $$ BEGIN
+  IF to_regclass('public."SavedSearch"') IS NULL THEN
+    CREATE TABLE "SavedSearch" (
+        "id" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "name" VARCHAR(100) NOT NULL,
+        "filters" JSONB NOT NULL,
+        "alertEnabled" BOOLEAN NOT NULL DEFAULT true,
+        "lastMatchedAt" TIMESTAMP(3),
+        "lastNotifiedAt" TIMESTAMP(3),
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL,
+        CONSTRAINT "SavedSearch_pkey" PRIMARY KEY ("id")
+    );
+    CREATE INDEX "SavedSearch_userId_idx" ON "SavedSearch"("userId");
+    CREATE INDEX "SavedSearch_alertEnabled_lastNotifiedAt_idx" ON "SavedSearch"("alertEnabled", "lastNotifiedAt");
+    ALTER TABLE "SavedSearch" ADD CONSTRAINT "SavedSearch_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+  END IF;
+END $$;
 
 -- ===========================================================================
 -- HAND-WRITTEN: BACKFILL. Runs while every old column still exists.
 -- ===========================================================================
+-- PROD FIX 2026-10-01: DriveDetails is created HERE (moved up from the
+-- CreateTable section) because the WalkInDetails -> DriveDetails carry-over
+-- below needs the target to exist while the source still does. The CREATE is
+-- dependency-free (no enum columns), so the move is safe.
+-- CreateTable
+CREATE TABLE "DriveDetails" (
+    "id" TEXT NOT NULL,
+    "opportunityId" TEXT NOT NULL,
+    "dates" TIMESTAMP(3)[],
+    "dateRange" TEXT,
+    "timeRange" TEXT,
+    "venueAddress" TEXT NOT NULL,
+    "venueLink" TEXT,
+    "latitude" DOUBLE PRECISION,
+    "longitude" DOUBLE PRECISION,
+    "clusterName" TEXT,
+    "city" TEXT,
+    "reportingTime" TEXT NOT NULL,
+    "requiredDocuments" TEXT[],
+    "contactPerson" TEXT,
+    "contactPhone" TEXT,
+    "expiryDate" TIMESTAMP(3),
+    "landmark" TEXT,
+    "transitInfo" TEXT,
+    "selectionProcess" TEXT,
+
+    CONSTRAINT "DriveDetails_pkey" PRIMARY KEY ("id")
+);
 
 -- ---- Opportunity.type -> category + sector + recruitmentMethod -----------
 -- All four old types are employment listings, so category is EMPLOYMENT for
@@ -386,7 +545,20 @@ WHERE "_interestedIn_legacy_opportunitytype" IS NOT NULL
   AND array_length("_interestedIn_legacy_opportunitytype", 1) > 0;
 
 -- ---- areas.jobCount -> areas.opportunityCount ----------------------------
-UPDATE "areas" SET "opportunityCount" = "jobCount" WHERE "jobCount" IS NOT NULL;
+-- (Handled inside the conditional areas DO block above, which also covers
+-- environments where the tables never existed.)
+
+-- ---- WalkInDetails -> DriveDetails (preserve, do not destroy) ------------
+-- PROD FIX 2026-10-01: prod holds 34 venue rows with zero orphans; the
+-- generated plan drops the table with them. DriveDetails carries identical
+-- columns, so carry the rows across (0 rows locally: no-op). Conditional so
+-- environments without the legacy table do not abort. Runs before the
+-- destructive DROP below.
+DO $$ BEGIN
+  IF to_regclass('public."WalkInDetails"') IS NOT NULL THEN
+    EXECUTE 'INSERT INTO "DriveDetails" ("id","opportunityId","dates","dateRange","timeRange","venueAddress","venueLink","latitude","longitude","clusterName","city","reportingTime","requiredDocuments","contactPerson","contactPhone","expiryDate","landmark","transitInfo","selectionProcess") SELECT "id","opportunityId","dates","dateRange","timeRange","venueAddress","venueLink","latitude","longitude","clusterName","city","reportingTime","requiredDocuments","contactPerson","contactPhone","expiryDate","landmark","transitInfo","selectionProcess" FROM "WalkInDetails"';
+  END IF;
+END $$;
 
 -- ===========================================================================
 -- HAND-WRITTEN: DESTRUCTIVE DROPS. Everything above has already been read
@@ -396,50 +568,55 @@ UPDATE "areas" SET "opportunityCount" = "jobCount" WHERE "jobCount" IS NOT NULL;
 -- DESTRUCTIVE 1/8 - Opportunity."type" (94/94 rows populated).
 --   Re-derived into category / sector / recruitmentMethod above. Dropping the
 --   column also removes the last Opportunity reference to OpportunityType.
-ALTER TABLE "Opportunity" DROP COLUMN "type";
+ALTER TABLE "Opportunity" DROP COLUMN IF EXISTS "type";
 
 -- DESTRUCTIVE 2/8 - Opportunity."employmentType" (66/94 rows populated).
 --   Re-derived into "employmentTypes". Free-text values that matched no
 --   EmploymentType member became an empty array and are NOT recoverable.
-ALTER TABLE "Opportunity" DROP COLUMN "employmentType";
+ALTER TABLE "Opportunity" DROP COLUMN IF EXISTS "employmentType";
 
 -- DESTRUCTIVE 3/8 - Opportunity."companyId" (0 non-null rows locally).
 --   NO BACKFILL. The replacement is "organizationId" -> Organization, and
 --   nothing here maps a legacy companyId onto an Organization row. A
 --   non-null companyId in any other environment is silently LOST.
-ALTER TABLE "Opportunity" DROP COLUMN "companyId";
+ALTER TABLE "Opportunity" DROP COLUMN IF EXISTS "companyId";
 
 -- DESTRUCTIVE 4/8 - IngestionSource."defaultType" (1 row, JOB).
 --   Re-derived into "defaultCategory" above.
-ALTER TABLE "IngestionSource" DROP COLUMN "defaultType";
+ALTER TABLE "IngestionSource" DROP COLUMN IF EXISTS "defaultType";
 
 -- DESTRUCTIVE 5/8 - Profile."interestedIn" (legacy, renamed copy).
 --   Backfilled into the new OpportunityCategory[] column above. Dropping the
 --   legacy column is also what finally frees the OpportunityType enum.
-ALTER TABLE "Profile" DROP COLUMN "_interestedIn_legacy_opportunitytype";
+ALTER TABLE "Profile" DROP COLUMN IF EXISTS "_interestedIn_legacy_opportunitytype";
 
 -- DESTRUCTIVE 6/8 - RawOpportunity."suggestedType" (2 rows, both NULL).
 --   Re-derived into "suggestedCategory" above.
-ALTER TABLE "RawOpportunity" DROP COLUMN "suggestedType";
-
--- DESTRUCTIVE 7/8 - areas."jobCount" -> "opportunityCount" (backfilled above).
-ALTER TABLE "areas" DROP COLUMN "jobCount";
-
--- DESTRUCTIVE 8/8 - areas."type" (RoomType). NO BACKFILL, no replacement
---   column. Any value is DESTROYED. Confirmed 0 rows affected locally is not
---   asserted here; check before applying anywhere real.
-ALTER TABLE "areas" DROP COLUMN "type";
+ALTER TABLE "RawOpportunity" DROP COLUMN IF EXISTS "suggestedType";
 
 -- DESTRUCTIVE - DROP TABLE "WalkInDetails".
---   Confirmed 0 rows in fresherflow_local, so nothing is lost here. In an
---   environment with walk-in data this destroys every row; there is no archive
---   step. The Opportunity FK onto it was already dropped above.
-DROP TABLE "WalkInDetails";
+--   PROD FIX 2026-10-01: rows are carried into DriveDetails by the backfill
+--   above, so by the time this runs the table is either empty or already gone.
+DROP TABLE IF EXISTS "WalkInDetails";
+-- PROD FIX 2026-10-01: pre-norm backup tables still reference the old enum
+-- (203 rows in Opportunity_backup_pre_norm). Retype to TEXT so the real backup
+-- data survives and the DROP below succeeds. Conditional: not every
+-- environment kept these backups.
+DO $$ BEGIN
+  IF to_regclass('public."Opportunity_backup_pre_norm"') IS NOT NULL THEN
+    ALTER TABLE "Opportunity_backup_pre_norm" ALTER COLUMN "type" TYPE TEXT USING ("type"::text);
+  END IF;
+  IF to_regclass('public."Profile_backup_pre_norm"') IS NOT NULL THEN
+    ALTER TABLE "Profile_backup_pre_norm" ALTER COLUMN "interestedIn" TYPE TEXT[] USING ("interestedIn"::text::text[]);
+  END IF;
+END $$;
 -- DropEnum
 DROP TYPE "OpportunityType";
 
 -- DropEnum
-DROP TYPE "RoomType";
+-- PROD FIX 2026-10-01: RoomType was never created in prod (its tables never
+-- arrived either), so this must not fail when it is already absent.
+DROP TYPE IF EXISTS "RoomType";
 
 -- CreateTable
 CREATE TABLE "OpportunityCompensation" (
@@ -459,31 +636,6 @@ CREATE TABLE "OpportunityCompensation" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "OpportunityCompensation_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "DriveDetails" (
-    "id" TEXT NOT NULL,
-    "opportunityId" TEXT NOT NULL,
-    "dates" TIMESTAMP(3)[],
-    "dateRange" TEXT,
-    "timeRange" TEXT,
-    "venueAddress" TEXT NOT NULL,
-    "venueLink" TEXT,
-    "latitude" DOUBLE PRECISION,
-    "longitude" DOUBLE PRECISION,
-    "clusterName" TEXT,
-    "city" TEXT,
-    "reportingTime" TEXT NOT NULL,
-    "requiredDocuments" TEXT[],
-    "contactPerson" TEXT,
-    "contactPhone" TEXT,
-    "expiryDate" TIMESTAMP(3),
-    "landmark" TEXT,
-    "transitInfo" TEXT,
-    "selectionProcess" TEXT,
-
-    CONSTRAINT "DriveDetails_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -739,7 +891,7 @@ CREATE UNIQUE INDEX "Organization_institutionId_key" ON "Organization"("institut
 CREATE UNIQUE INDEX "RawOpportunity_sourceId_sourceExternalId_key" ON "RawOpportunity"("sourceId", "sourceExternalId");
 
 -- CreateIndex
-CREATE INDEX "areas_tags_idx" ON "areas" USING GIN ("tags");
+CREATE INDEX IF NOT EXISTS "areas_tags_idx" ON "areas" USING GIN ("tags");
 
 -- AddForeignKey
 ALTER TABLE "Profile" ADD CONSTRAINT "Profile_institutionId_fkey" FOREIGN KEY ("institutionId") REFERENCES "Institution"("id") ON DELETE SET NULL ON UPDATE CASCADE;
