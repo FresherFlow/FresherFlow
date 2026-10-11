@@ -72,10 +72,7 @@
             "dependsOn": [
                 "^build"
             ],
-            "outputs": [
-                ".tsbuildinfo",
-                "**/*.tsbuildinfo"
-            ]
+            "outputs": []
         },
         "test": {
             "dependsOn": [
