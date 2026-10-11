@@ -173,11 +173,21 @@ async function runProvider(
  * Main discovery entry point.
  * Loads company slugs from CDN registry and runs all providers with a 300s timeout per provider.
  */
+export interface AtsDiscoveryHooks {
+    /**
+     * Per-provider outcome. Optional — existing callers pass nothing and
+     * behaviour is unchanged. Used by the source health ledger to tell a
+     * failing provider (error/timeout) from a healthy-but-quiet one.
+     */
+    onProvider?: (name: string, info: { settled: 'fulfilled' | 'rejected' | 'timeout'; links: number }) => void;
+}
+
 export async function runAtsDiscovery(
     registry: AtsRegistry,
     stats: any,
     knownLinks: Set<string>,
-    visitedApplyLinks: string[]
+    visitedApplyLinks: string[],
+    hooks?: AtsDiscoveryHooks,
 ): Promise<AtsJob[]> {
     console.log(`\n--- Starting ATS Direct Discovery (parallel, 300s max per provider) ---`);
     const visitedSet = new Set(visitedApplyLinks);
@@ -193,6 +203,7 @@ export async function runAtsDiscovery(
     console.log(`  Running ${activeProviders.length} providers in parallel...`);
 
     // Run all providers concurrently with a 300-second timeout per provider
+    const timedOut = new Set<string>();
     const providerSettled = await Promise.allSettled(
         activeProviders.map(([key, data]) => {
             const providerTask = runProvider(key, key, data!, stats, knownLinks, visitedSet);
@@ -200,6 +211,7 @@ export async function runAtsDiscovery(
             const timeoutTask = new Promise<AtsJob[]>((resolve) => {
                 timeoutId = setTimeout(() => {
                     console.log(`  ⏱️ Provider ${key} reached ${providerTimeoutMs}ms timeout, moving on.`);
+                    timedOut.add(key);
                     resolve([]);
                 }, providerTimeoutMs);
             });
@@ -210,10 +222,17 @@ export async function runAtsDiscovery(
     );
 
     const allJobs: AtsJob[] = [];
-    for (const result of providerSettled) {
+    for (let i = 0; i < activeProviders.length; i++) {
+        const [key] = activeProviders[i];
+        const result = providerSettled[i];
         if (result.status === 'fulfilled') {
             allJobs.push(...result.value);
         }
+        const links = (stats && stats.ats_raw && Number(stats.ats_raw[key])) || 0;
+        hooks?.onProvider?.(key, {
+            settled: result.status === 'rejected' ? 'rejected' : timedOut.has(key) ? 'timeout' : 'fulfilled',
+            links,
+        });
     }
     console.log(`\n--- ATS Discovery Finished. Total roles found: ${allJobs.length} ---`);
     return allJobs;

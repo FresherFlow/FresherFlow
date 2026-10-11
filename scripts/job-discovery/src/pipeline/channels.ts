@@ -17,6 +17,7 @@ import { findActualApplyLink } from "@fresherflow/pipeline";
 import { isRejectedApplyUrl } from "@fresherflow/pipeline";
 import { fetchJsonWithRetry } from "@fresherflow/pipeline";
 import { extractAtsBoard, buildJobIdentity } from "@fresherflow/pipeline";
+import { recordSourceFetch, markConfigured } from "@fresherflow/pipeline";
 import { parseJobTextLite } from "@fresherflow/parser";
 import * as cheerio from "cheerio";
 import { maybeCheckpointState } from "./storage.js";
@@ -231,6 +232,9 @@ export async function discoverChannelJobs(state: DiscoveryState) {
   const { channels, priorityChannels } = await loadChannelList();
   if (channels.length === 0) return;
 
+  // Configured-channel census for the health ledger.
+  markConfigured(channels.map((c) => `channel:${c}`));
+
   // Build priority-first iteration list: priority channels that also appear in
   // telegram_channels, in declared priority order, then all remaining channels
   // in original order. Channels not in priority_channels are NEVER treated
@@ -291,13 +295,18 @@ export async function discoverChannelJobs(state: DiscoveryState) {
     maybeCheckpointState(state);
 
     console.log(`📡 Fetching channel: ${channel}`);
+    // Health ledger: posts parsed this run (all pages). Recorded at every
+    // exit below so a dead channel reads 'error', not silence.
+    let chPosts = 0;
     let html = await fetchChannelPage(channel);
     if (!html) {
       console.log(`  ❌ Failed to fetch channel page.`);
+      recordSourceFetch(`channel:${channel}`, 'error', 0, 't.me fetch failed');
       continue;
     }
 
     let posts = parseChannelPosts(html);
+    chPosts += posts.length;
     console.log(`  📄 Page 1: ${posts.length} posts`);
 
     const cursor = channelCursors.get(channel) ?? 0;
@@ -309,6 +318,7 @@ export async function discoverChannelJobs(state: DiscoveryState) {
     // older than the last post we processed, this channel has nothing new.
     if (firstPageMaxId > 0 && firstPageMaxId <= cursor) {
       console.log(`  ⏭️  No new posts since #${cursor} — skipping.`);
+      recordSourceFetch(`channel:${channel}`, 'ok', 0);
       await new Promise((r) => setTimeout(r, 1500));
       continue;
     }
@@ -351,6 +361,7 @@ export async function discoverChannelJobs(state: DiscoveryState) {
       html = await fetchChannelPage(channel, firstMsgId);
       if (!html) break;
       posts = parseChannelPosts(html);
+      chPosts += posts.length;
       console.log(`  📄 Page ${pageNum + 1}: ${posts.length} posts`);
       const olderMaxId = posts.reduce(
         (max, p) => Math.max(max, postIdNum(p.id)),
@@ -367,6 +378,7 @@ export async function discoverChannelJobs(state: DiscoveryState) {
       pageNum++;
     }
 
+    recordSourceFetch(`channel:${channel}`, 'ok', chPosts);
     await new Promise((r) => setTimeout(r, 1500));
   }
 

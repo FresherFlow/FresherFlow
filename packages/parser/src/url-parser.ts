@@ -402,8 +402,8 @@ function extractAtsBoard(urlStr: string): { provider: string, boardId: string } 
             }
         }
 
-        // Ashby: jobs.ashbyhq.com/company
-        if (host === 'jobs.ashbyhq.com' || host.endsWith('.jobs.ashbyhq.com')) {
+        // Ashby: jobs.ashby.com/company (canonical) and jobs.ashbyhq.com/company (legacy)
+        if (host === 'jobs.ashby.com' || host.endsWith('.jobs.ashby.com') || host === 'jobs.ashbyhq.com' || host.endsWith('.jobs.ashbyhq.com')) {
             const parts = path.split('/').filter(Boolean);
             if (parts.length > 0) return { provider: 'ashby', boardId: parts[0] };
         }

@@ -230,8 +230,8 @@ export async function collectWalkinDrives(options: {
                 });
 
                 // Extract company name from title
-                const companyMatch = post.title.match(/^([^|â€“â€”\-]+?)(?:\s+(?:Walk\s*in|Recruitment|Off\s*Campus|Hiring|Drive))/i) ||
-                                     post.title.match(/(?:at|for|by)\s+([^|â€“â€”\-]+)/i);
+                const companyMatch = post.title.match(/^([^|–—\-]+?)(?:\s+(?:Walk\s*in|Recruitment|Off\s*Campus|Hiring|Drive))/i) ||
+                                     post.title.match(/(?:at|for|by)\s+([^|–—\-]+)/i);
                 const company = companyMatch ? companyMatch[1].trim() : 'Corporate Walk-in';
 
                 const fingerprint = `${company.toLowerCase()}:${details.dateRange || 'active'}:${cluster.cluster.name}`.replace(/\s+/g, '-');
@@ -340,7 +340,7 @@ export async function collectWalkinDrives(options: {
             });
 
             const companyMatch = text.match(/(?:Company|Hiring|Drive|Walk-in|Walkin)\s*:\s*([^\n\r,]+)/i) ||
-                                 firstLine.match(/^([^|â€“â€”\-]+?)(?:\s+(?:Walk\s*in|Recruitment|Drive))/i);
+                                 firstLine.match(/^([^|–—\-]+?)(?:\s+(?:Walk\s*in|Recruitment|Drive))/i);
             const company = companyMatch ? companyMatch[1].trim() : 'Corporate';
 
             const fingerprint = `${company.toLowerCase()}:${details.dateRange || 'active'}:${cluster.cluster.name}`.replace(/\s+/g, '-');

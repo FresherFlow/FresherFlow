@@ -11,6 +11,7 @@ import { fetchSitemapPostUrls, listPostSitemapChildren } from './sitemap.js';
 import { maybeCheckpointState } from './storage.js';
 import { withTimeout } from '@fresherflow/pipeline';
 import { runAtsDiscovery, runDirectCompanyDiscovery } from '@fresherflow/pipeline';
+import { recordSourceFetch, markConfigured } from '@fresherflow/pipeline';
 
 const SITEMAP_SAFETY_WINDOW = 15;
 
@@ -93,8 +94,24 @@ export async function discoverAtsJobs(state: DiscoveryState) {
         state.atsRegistry,
         state.stats,
         state.knownLinks,
-        state.visited["__discovered_apply_links__"]
+        state.visited["__discovered_apply_links__"],
+        {
+            // Health ledger: a provider returning nothing (empty) reads
+            // differently from one that errored or timed out (error).
+            onProvider: (name, info) => {
+                if (info.settled === 'rejected') {
+                    recordSourceFetch(`ats:${name}`, 'error', info.links, 'provider failed');
+                } else if (info.settled === 'timeout') {
+                    recordSourceFetch(`ats:${name}`, 'error', info.links, 'provider timeout');
+                } else {
+                    recordSourceFetch(`ats:${name}`, info.links > 0 ? 'ok' : 'empty', info.links);
+                }
+            },
+        }
     );
+    // Configured-provider census for the ledger (detects providers that
+    // vanish from the registry vs ones that simply yield nothing).
+    markConfigured(Object.keys(state.atsRegistry).map((k) => `ats:${k}`));
 
     const allDiscoveredJobs = [...companyJobs, ...atsJobs];
     let atsQueued = 0, atsRejected = 0;
@@ -269,6 +286,9 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
         throw new Error("Browser is not initialized in DiscoveryState");
     }
 
+    // Configured-site census for the health ledger.
+    markConfigured(activeSites.map((s) => `site:${s.name}`));
+
     const SMAP_REFRESH_KEY = '__smap_refresh';
     const smapRefreshDue = (() => {
         const stamp = state.visited[SMAP_REFRESH_KEY]?.[0];
@@ -299,7 +319,15 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
 
             const site = activeSites.shift();
             if (!site) continue;
-            
+
+            // Health ledger outcome for this site. Default 'empty' upgrades
+            // to 'ok' in the finally block when posts were actually checked.
+            // (siteChecked is hoisted here — not inside try — so catch and
+            // finally can read it.)
+            let siteFetch: 'ok' | 'empty' | 'error' | 'skipped' = 'empty';
+            let siteErr: unknown = undefined;
+            let siteChecked = 0;
+
             let page = await context.newPage();
             try {
                 console.log(`🌐 Scraping site: ${site.name}`);
@@ -308,13 +336,13 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                 // Govt-only sites have empty urls (everything sits in govtUrls) — skip them
                 if (!site.urls || site.urls.length === 0) {
                     console.log(`⏭️  Skipped ${site.name}: govt-only (no non-govt URLs configured).`);
+                    siteFetch = 'skipped';
                     continue;
                 }
 
                 const jobLinks: string[] = [];
                 const siteDomain = new URL(site.urls[0]).hostname;
                 // Worker heartbeat: posts checked on this site (logged at site end).
-                let siteChecked = 0;
                 // Per-site safety-window URL set (normalized) for this run —
                 // filled during the sitemap pass below, read at queue time.
                 const safetyNorms = new Set<string>();
@@ -702,7 +730,19 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                 // Worker heartbeat: names the worker's site at completion so a
                 // future silence points at a site instead of needing an autopsy.
                 console.log(`✅ Done site: ${site.name} (${siteChecked} posts checked)`);
+            } catch (err) {
+                // Contain per-site crashes: one dying site must not kill the
+                // whole phase. The error is recorded for the health ledger.
+                siteFetch = 'error';
+                siteErr = err;
+                console.warn(`⚠️ Site ${site.name} crashed mid-scrape — continuing with next site:`, err instanceof Error ? err.message : err);
             } finally {
+                recordSourceFetch(
+                    `site:${site.name}`,
+                    siteFetch === 'empty' && siteChecked > 0 ? 'ok' : siteFetch,
+                    siteChecked,
+                    siteErr,
+                );
                 // Bounded teardown: must never hold Promise.all past the run.
                 if (await withTimeout(page.close().catch(() => {}), AGGREGATOR_RULES.pageCloseTimeout) === null) {
                     console.log(`  ⚠️ site-teardown page.close() stuck >${AGGREGATOR_RULES.pageCloseTimeout / 1000}s — abandoning`);

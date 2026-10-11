@@ -1,4 +1,5 @@
 import { normalizeUrl } from './url.js';
+import { parseJobUrl } from '@fresherflow/parser';
 
 // Shared social-media poster used by every bot that schedules individual job
 // posts (aggregator bot, external search bot, ...).
@@ -81,6 +82,93 @@ const NORMAL_STAGGER_MS = 10 * 60 * 1000;   // normal rhythm for small batches
 const MAX_SPREAD_MS = 6 * 60 * 60 * 1000;   // huge batches spread across ~6 hours max
 const MIN_STAGGER_MS = 2 * 60 * 1000;       // never faster than every ~2 minutes
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Optimal posting slots (Buffer 2026 studies, times = local IST for India audience)
+// ─────────────────────────────────────────────────────────────────────────────
+// X study: 8.7M tweets. Best = Tue 9am, then Wed 10am / Wed 9am.
+// Reliable window = weekdays 9–11am. Worst days = Sat, Fri. Avoid 6pm–11pm.
+// LinkedIn study: 4.8M posts. Peak = weekdays 3pm–8pm.
+// Top = Wed 4pm, Fri 3pm, Fri 4pm. Best days = Wed > Thu > Fri.
+// Worst = Mon/Tue mornings + weekends.
+// Source:
+//   https://buffer.com/resources/best-time-to-post-on-twitter-x/
+//   https://buffer.com/resources/best-time-to-post-on-linkedin
+//
+// Index = IST day-of-week (0 = Sunday, matches Date.getDay in IST).
+// Values = ranked best hours (24h IST) for that day.
+export const X_OPTIMAL_HOURS_IST: Readonly<Record<number, readonly number[]>> = {
+    0: [9, 10, 8],   // Sun
+    1: [9, 10, 8],   // Mon
+    2: [9, 10, 11],  // Tue — #1 day-hour: Tue 9am
+    3: [10, 9, 11],  // Wed — best day; 10am > 9am > 11am
+    4: [9, 10, 8],   // Thu
+    5: [9, 10, 11],  // Fri (weak day overall, mornings only)
+    6: [9, 10, 11],  // Sat (worst day, mornings only)
+};
+
+export const LINKEDIN_OPTIMAL_HOURS_IST: Readonly<Record<number, readonly number[]>> = {
+    0: [22, 21, 6],  // Sun (quiet — late evening only)
+    1: [22, 17, 21], // Mon (weak — after work)
+    2: [16, 17, 22], // Tue (weak — late afternoon + late evening)
+    3: [16, 15, 17], // Wed — best day; 4pm #1 overall
+    4: [17, 19, 21], // Thu — late afternoon into evening
+    5: [15, 16, 17], // Fri — 3pm #2, 4pm #3 overall
+    6: [9, 18, 22],  // Sat (quiet — morning only real slot)
+};
+
+const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000;
+const OPTIMAL_SLOT_LEAD_MS = 2 * 60 * 1000; // first slot strictly in future (worker API rule)
+
+/** IST calendar parts for a UTC timestamp. */
+function istParts(ts: number): { y: number; m: number; d: number; dow: number } {
+    const ist = new Date(ts + IST_OFFSET_MS);
+    return {
+        y: ist.getUTCFullYear(),
+        m: ist.getUTCMonth(),
+        d: ist.getUTCDate(),
+        dow: ist.getUTCDay(),
+    };
+}
+
+/** Convert an IST wall-clock time to a UTC unix timestamp. */
+function istToUtcMs(y: number, m: number, d: number, hour: number, minute: number): number {
+    return Date.UTC(y, m, d, hour, minute) - IST_OFFSET_MS;
+}
+
+function optimalHoursFor(platform: string, istDow: number): readonly number[] {
+    if (platform === 'x') return X_OPTIMAL_HOURS_IST[istDow] ?? [9, 10, 11];
+    if (platform === 'linkedin') return LINKEDIN_OPTIMAL_HOURS_IST[istDow] ?? [16, 17, 15];
+    return [];
+}
+
+/**
+ * Next `count` optimal Buffer slots for X / LinkedIn, chronological, IST-aware.
+ * Minute is jittered to :04–:14 past the hour so posts land inside the
+ * high-engagement hour without looking robotic at :00 sharp.
+ */
+export function getOptimalSlotsForPlatform(
+    platform: 'x' | 'linkedin',
+    count: number,
+    fromTs: number = Date.now(),
+): number[] {
+    if (count <= 0) return [];
+    const minTs = fromTs + OPTIMAL_SLOT_LEAD_MS;
+    const slots: number[] = [];
+    // 14-day horizon is plenty: 3 slots/day → 42 slots.
+    for (let dayOffset = 0; dayOffset < 14 && slots.length < count; dayOffset++) {
+        const probe = fromTs + dayOffset * 24 * 60 * 60 * 1000;
+        const { y, m, d, dow } = istParts(probe);
+        const hours = [...optimalHoursFor(platform, dow)].sort((a, b) => a - b);
+        for (const h of hours) {
+            if (slots.length >= count) break;
+            const minute = 4 + Math.floor(Math.random() * 11); // :04–:14
+            const slot = istToUtcMs(y, m, d, h, minute);
+            if (slot > minTs && !slots.includes(slot)) slots.push(slot);
+        }
+    }
+    return slots.sort((a, b) => a - b);
+}
+
 export function getFormattedDate(): string {
     const now = new Date();
     const months = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -108,22 +196,106 @@ function jitterStagger(ms: number): number {
     return Math.round(ms * (0.6 + Math.random() * 0.8));
 }
 
-// Caption style: emoji labels instead of "Company:" / "Apply Here:" prose.
-// X counts every URL as a fixed 23 chars, so the caption text is what we can
-// actually save — emoji labels cut ~27 chars per post and keep every field
-// scannable on mobile. One emoji per field, no emoji spam.
-const BOARD_LINK = 'https://fresherflow.github.io/India-Jobs-Internships';
+// Caption style: plain human sentences, no emoji, no hashtags, no board
+// link, no date, no fluff about us. Every line answers a seeker question:
+// what role, where, and — critically — WHERE the link goes. Naming the
+// destination (Greenhouse, Workday, company website) sets the expectation
+// before the tap: no surprise login walls, no aggregator maze. That is more
+// useful than any slogan about ourselves.
+// - Buffer (1M tweets): text-only 120–140 chars performs best; link posts get
+//   the least engagement, so exactly ONE link (the apply link) is kept.
+// - Buffer (LinkedIn): first 1–2 lines are the hook above the "see more" fold;
+//   concise, well-spaced posts with an authentic voice outperform formal ones.
+// - Buffer (72k LinkedIn posts): replying to comments boosts engagement ~30%,
+//   so LinkedIn captions end with a tag-a-friend CTA to seed replies.
+// - Date headers go stale (optimal slots can fire days after scheduling) and
+//   waste X's 280-char budget.
+// Voice: FresherFlow brand — confident, direct, human, specific. Never invent
+// job details (salary, batch, skills): SocialPostJob only carries title,
+// company, locations, applyLink, so the caption sticks to those plus the
+// destination detected by @fresherflow/parser.
 
-function companyLine(job: SocialPostJob): string {
-    const company = (job.company || '').trim();
-    return company ? `🏢 ${company}\n` : '';
-}
-
-function locationLine(job: SocialPostJob): string {
+function locationText(job: SocialPostJob): string {
     const locs = (job.locations || []).map(l => String(l).trim()).filter(Boolean);
     if (locs.length === 0) return '';
-    const shown = locs.slice(0, 2).join(' | ');
-    return `📍 ${shown}${locs.length > 2 ? ' | +more' : ''}\n`;
+    return locs.slice(0, 2).join(' / ') + (locs.length > 2 ? ' +' : '');
+}
+
+// ATS provider id (from @fresherflow/parser, the single owner of ATS URL
+// knowledge) → human label. Detection lives in the parser; this map is
+// presentation only.
+const ATS_DISPLAY_NAMES: Readonly<Record<string, string>> = {
+    greenhouse: 'Greenhouse',
+    lever: 'Lever',
+    workday: 'Workday',
+    ashby: 'Ashby',
+    smartrecruiters: 'SmartRecruiters',
+    workable: 'Workable',
+    recruitee: 'Recruitee',
+    teamtailor: 'Teamtailor',
+    icims: 'iCIMS',
+    oracle: 'Oracle HCM',
+    successfactors: 'SAP SuccessFactors',
+    eightfold: 'Eightfold',
+    darwinbox: 'Darwinbox',
+    keka: 'Keka',
+    freshteam: 'Freshteam',
+    zohorecruit: 'Zoho Recruit',
+    greythr: 'greytHR',
+    peoplestrong: 'PeopleStrong',
+    hrone: 'HROne',
+    turbohire: 'TurboHire',
+    oorwin: 'Oorwin',
+    zimyo: 'Zimyo',
+    zwayam: 'Zwayam',
+    ismartrecruit: 'iSmartRecruit',
+    hreasily: 'HREasily',
+    breezy: 'Breezy HR',
+    sap: 'SAP',
+};
+
+/**
+ * Where the apply link lands: "Greenhouse", "Workday", "the company website",
+ * or "" when unknown. ATS detection comes from parseJobUrl; the company-site
+ * fallback below only handles non-ATS links, which the parser returns null
+ * for by design.
+ */
+function applyDestination(job: SocialPostJob): string {
+    const parsed = parseJobUrl(job.applyLink);
+    const rawAdapter = parsed?.adapter?.trim() || '';
+    if (rawAdapter) {
+        const label = ATS_DISPLAY_NAMES[rawAdapter.toLowerCase()];
+        if (label) return label;
+        return rawAdapter.charAt(0).toUpperCase() + rawAdapter.slice(1);
+    }
+    let host = '';
+    try {
+        host = new URL(job.applyLink).hostname.toLowerCase();
+    } catch {
+        return '';
+    }
+    if (host.startsWith('www.')) host = host.slice(4);
+    // Company career site: hostname carries the company's name
+    // (e.g. careers.acme.com for "Acme Corp"). First name-token only, min
+    // 4 chars — short tokens ("ABC", "Tata") false-positive everywhere.
+    const firstWord = ((job.company || '').toLowerCase().match(/[a-z0-9]+/g) || [])[0] || '';
+    const hostSlug = host.replace(/[^a-z0-9]/g, '');
+    if (firstWord.length >= 4 && hostSlug.includes(firstWord)) return 'the company website';
+    return '';
+}
+
+/** "Apply on Greenhouse:" / "Apply on the company website:" / "Apply:" */
+function applyLine(job: SocialPostJob): string {
+    const dest = applyDestination(job);
+    return dest ? `Apply on ${dest}:` : 'Apply:';
+}
+
+function headline(job: SocialPostJob): string {
+    const company = (job.company || '').trim();
+    const title = job.title.trim();
+    const loc = locationText(job);
+    const where = loc ? ` (${loc})` : '';
+    return company ? `${company} is hiring ${title}${where}` : `Hiring ${title}${where}`;
 }
 
 function truncate(text: string, max: number): string {
@@ -140,34 +312,38 @@ function xLength(text: string): number {
 }
 
 export function formatSocialCaption(job: SocialPostJob, platform: string): string {
-    const date = getFormattedDate();
-    const company = companyLine(job);
-    const location = locationLine(job);
-    const title = job.title.trim();
     const link = job.applyLink;
+    const apply = applyLine(job);
 
     if (platform === 'x') {
-        // Build richest-first, then shed the least valuable pieces (board link →
-        // location → title length) while X's real 280-char budget is respected.
-        let caption = `🚀 New Job Opening | ${date}\n\n${company}${location}💼 ${title}\n🔗 ${link}\n\n🌐 ${BOARD_LINK}\n\n#FresherJobs #Hiring`;
-        if (xLength(caption) > 280) {
-            caption = `🚀 New Job Opening | ${date}\n\n${company}${location}💼 ${truncate(title, 60)}\n🔗 ${link}\n\n#FresherJobs #Hiring`;
-        }
-        if (xLength(caption) > 280) {
-            caption = `🚀 New Job Opening | ${date}\n\n${company}💼 ${truncate(title, 55)}\n🔗 ${link}\n\n#FresherJobs`;
-        }
-        if (xLength(caption) > 280) {
-            caption = `🚀 ${company ? 'Hiring' : 'New Job'} | ${date}\n\n💼 ${truncate(title, 45)}\n🔗 ${link}\n\n#FresherJobs`;
-        }
-        return caption;
+        // Hook first (company + role in the first 7 words), destination +
+        // link last. Shed location → title length while X's real 280-char
+        // budget is respected.
+        const title = job.title.trim();
+        const company = (job.company || '').trim();
+        const full = `${headline(job)}\n\n${apply}\n${link}`;
+        if (xLength(full) <= 280) return full;
+        const noLoc = `${company ? `${company} is hiring ${title}` : `Hiring ${title}`}\n\n${apply}\n${link}`;
+        if (xLength(noLoc) <= 280) return noLoc;
+        return `${company ? `${company} is hiring ${truncate(title, 60)}` : `Hiring ${truncate(title, 60)}`}\n${apply}\n${link}`;
     }
 
     if (platform === 'linkedin') {
-        return `🚀 New Job Opening | ${date}\n\n${company}${location}💼 ${title}\n\n🔗 Apply: ${link}\n\n🌐 More jobs: ${BOARD_LINK}\n\n#Freshers #Hiring #EntryLevel #Jobs`;
+        // Hook above the "see more" fold, blank-line spacing, tag CTA seeds
+        // the replies that drive LinkedIn reach.
+        const company = (job.company || '').trim();
+        const hook = company ? `${company} is hiring ${job.title.trim()}` : `Hiring ${job.title.trim()}`;
+        const loc = locationText(job);
+        const where = loc ? `${loc} · ` : '';
+        return `${hook}.\n\n${where}${apply}\n${link}\n\nKnow someone looking? Tag them below.`;
     }
 
-    // telegram / default
-    return `🚀 New Job Opening | ${date}\n\n${company}${location}💼 ${title}\n🔗 Apply: ${link}\n\n🌐 More jobs: ${BOARD_LINK}\n\n#Freshers #Hiring #EntryLevel`;
+    // telegram / default (broadcast channel: no tag CTA, same clean body)
+    const company = (job.company || '').trim();
+    const hook = company ? `${company} is hiring ${job.title.trim()}` : `Hiring ${job.title.trim()}`;
+    const loc = locationText(job);
+    const where = loc ? `${loc} · ` : '';
+    return `${hook}.\n\n${where}${apply}\n${link}`;
 }
 
 async function schedulePost(platform: string, text: string, scheduledAt: number): Promise<void> {
@@ -237,23 +413,48 @@ export async function postJobsToSocial(jobs: SocialPostJob[], postedLinks: strin
         return 0;
     }
 
-    const baseStagger = staggerForBatch(pending.length);
-    console.log(`[social] Scheduling ${pending.length} new jobs across ${SOCIAL_PLATFORMS.join(', ')} (base stagger ~${Math.round(baseStagger / 1000)}s with jitter)`);
+    // Optimal-time scheduling (Buffer 2026 data, IST):
+    // X → next weekday 9–11am slots, LinkedIn → next 3–8pm slots.
+    // Telegram has no study data — keeps the old stagger rhythm.
+    // Falls back to stagger if optimal generation ever comes up short.
+    const now = Date.now();
+    const xSlots = getOptimalSlotsForPlatform('x', pending.length, now);
+    const linkedinSlots = getOptimalSlotsForPlatform('linkedin', pending.length, now);
+    const useOptimal = xSlots.length === pending.length && linkedinSlots.length === pending.length;
+    if (useOptimal) {
+        console.log(`[social] Scheduling ${pending.length} new jobs at optimal IST times — X ~${new Date(xSlots[0]).toISOString()} → ~${new Date(xSlots[xSlots.length - 1]).toISOString()}, LinkedIn ~${new Date(linkedinSlots[0]).toISOString()} → ~${new Date(linkedinSlots[linkedinSlots.length - 1]).toISOString()}`);
+    } else {
+        const baseStagger = staggerForBatch(pending.length);
+        console.log(`[social] Optimal slots short — falling back to stagger ~${Math.round(baseStagger / 1000)}s`);
+    }
 
+    const baseStagger = staggerForBatch(pending.length);
     // Add a 2-minute buffer so the first post is strictly in the future for the worker API
-    let cursor = Date.now() + 2 * 60 * 1000;
+    let telegramCursor = now + 2 * 60 * 1000;
+    let fallbackCursor = now + 2 * 60 * 1000;
     let scheduled = 0;
 
-    for (const job of pending) {
-        for (const platform of SOCIAL_PLATFORMS) {
-            await schedulePost(platform, formatSocialCaption(job, platform), cursor);
+    for (let i = 0; i < pending.length; i++) {
+        const job = pending[i];
+        if (useOptimal) {
+            await schedulePost('x', formatSocialCaption(job, 'x'), xSlots[i]);
+            await schedulePost('linkedin', formatSocialCaption(job, 'linkedin'), linkedinSlots[i]);
+            await schedulePost('telegram', formatSocialCaption(job, 'telegram'), telegramCursor);
+            telegramCursor += jitterStagger(baseStagger);
+        } else {
+            for (const platform of SOCIAL_PLATFORMS) {
+                await schedulePost(platform, formatSocialCaption(job, platform), fallbackCursor);
+            }
+            fallbackCursor += jitterStagger(baseStagger);
         }
         // Remember this link so it is never posted again
         postedLinks.push(normalizeUrl(job.applyLink));
         scheduled++;
-        cursor += jitterStagger(baseStagger);
     }
 
-    console.log(`[social] Scheduled ${scheduled} new jobs — last post ~${new Date(cursor).toISOString()}`);
+    const lastTs = useOptimal
+        ? Math.max(xSlots[xSlots.length - 1], linkedinSlots[linkedinSlots.length - 1], telegramCursor)
+        : fallbackCursor;
+    console.log(`[social] Scheduled ${scheduled} new jobs — last post ~${new Date(lastTs).toISOString()}`);
     return scheduled;
 }
