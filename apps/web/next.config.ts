@@ -157,11 +157,6 @@ const nextConfig: NextConfig = {
   // Back button = instant, no reload
   experimental: {
     optimizePackageImports: [
-      "@fresherflow/api-client",
-      "@fresherflow/ui",
-      "@fresherflow/utils",
-      "@fresherflow/types",
-      "@fresherflow/constants",
       "@heroicons/react",
       "lucide-react",
     ],
