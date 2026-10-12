@@ -146,7 +146,7 @@ export function JobFilterBar({ filters, setFilters, isLoggedIn, selectedType, on
 
     // Portaled panels: panels render fixed under their pill (the scrollable bar
     // would clip absolutely-positioned panels). Hover continuity across the
-    // triggerâ†’panel gap is kept with a short delayed close.
+    // trigger→panel gap is kept with a short delayed close.
     const triggerRefs = useRef<Partial<Record<Exclude<OpenPanel, null>, HTMLButtonElement | null>>>({});
     const panelRef = useRef<HTMLDivElement | null>(null);
     const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
@@ -264,7 +264,7 @@ const isGovt = isGovtFeed(feedKind);
 // which filtered it to nothing.
 const TYPE_OPTIONS = getTypeOptions(feedKind);
 
-    // â”€â”€ Progressive disclosure â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Progressive disclosure ────────────────────────────────────────────
     // Default bar: Type · Location · (Batch | Qualification) · All Filters.
     // Wider screens (xl) reveal Role (and Batch on corp pages). The rest
     // (Skills, Course, Source, Company, Sector) live behind the All Filters

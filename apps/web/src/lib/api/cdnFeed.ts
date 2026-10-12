@@ -42,6 +42,26 @@ type CDNFetchOptions = RequestInit & {
     };
 };
 
+/**
+ * A production build prerenders every page from one machine, so a feed source
+ * that is down fails identically a few hundred times — one `fetch failed` line
+ * per page per worker — and the one fact that matters is buried in the noise:
+ *
+ *   FEED_SOURCE=db points at http://localhost:5000 and nothing is listening.
+ *
+ * During a build, log each distinct failure once instead of once per page.
+ * Runtime is deliberately unchanged: there an outage has to keep logging every
+ * occurrence, because the operator has no other signal.
+ */
+const SUPPRESS_REPEATED_FEED_FAILURES = process.env.NEXT_PHASE === 'phase-production-build';
+const FEED_FAILURES_LOGGED = new Set<string>();
+
+function logFeedFailure(label: string, err: unknown): void {
+    if (SUPPRESS_REPEATED_FEED_FAILURES && FEED_FAILURES_LOGGED.has(label)) return;
+    FEED_FAILURES_LOGGED.add(label);
+    console.warn(label, err instanceof Error ? err.message : err);
+}
+
 function cancelResponseBody(res: Response | null | undefined): void {
     if (!res) return;
     try {
@@ -153,9 +173,20 @@ function getCDNFetchOptions(options: CDNFetchOptions = {}): CDNFetchOptions {
  *   URL is version-busted (`?v=`) and the edge serves it forever.
  * - DB mode: a short number of seconds — refresh from Postgres on that
  *   interval so a DB edit surfaces without waiting for a publish/revalidate
- *   event. Tune with DB_FEED_REVALIDATE_SECONDS (default 60).
+ *   event. Tune with DB_FEED_REVALIDATE_SECONDS (default 60), or set it to
+ *   `false`/`0` for no timer at all — db mode then matches cdn mode and only a
+ *   publish/revalidate event moves a snapshot.
  */
-const DB_FEED_REVALIDATE_SECONDS = Number(process.env.DB_FEED_REVALIDATE_SECONDS) || 60;
+function readDbFeedRevalidate(): false | number {
+    const raw = (process.env.DB_FEED_REVALIDATE_SECONDS || '').trim().toLowerCase();
+    // `false` or `0` means "no timer": db mode then behaves exactly like cdn
+    // mode, where a snapshot changes only when the publish flow busts its tag.
+    // Unset keeps the documented 60s default, so an existing db-mode deploy
+    // does not silently change behaviour.
+    if (raw === 'false' || raw === '0') return false;
+    return Number(raw) || 60;
+}
+const DB_FEED_REVALIDATE_SECONDS = readDbFeedRevalidate();
 function feedRevalidate(): false | number {
     return IS_DB_FEED ? DB_FEED_REVALIDATE_SECONDS : false;
 }
@@ -196,7 +227,7 @@ const _fetchFeedVersion = async (untracked = false): Promise<FeedVersion> => {
         }
         cancelResponseBody(res);
     } catch (err) {
-        console.warn('Failed to fetch feed version, using uncached fallback:', err instanceof Error ? err.message : err);
+        logFeedFailure('Failed to fetch feed version, using uncached fallback:', err);
     }
 
     return { version: 'fallback', stable: false };
@@ -363,7 +394,7 @@ const _fetchBootstrapFeed = async (forceLive = false, customTags?: string[], unt
             }
         }
         if (IS_SERVER) {
-            console.warn('Bootstrap CDN fetch failed:', err instanceof Error ? err.message : err);
+            logFeedFailure('Bootstrap CDN fetch failed:', err);
         }
         return null;
     }
@@ -422,7 +453,7 @@ const _fetchFeedIndex = async (forceLive = false, customTags?: string[], untrack
 
         return data;
     } catch (err) {
-        console.warn('Feed index fetch failed, falling back to bootstrap:', err instanceof Error ? err.message : err);
+        logFeedFailure('Feed index fetch failed, falling back to bootstrap:', err);
         return _fetchBootstrapFeed(forceLive, customTags, untracked);
     }
 };
@@ -475,7 +506,7 @@ const _fetchExpiredFeed = async (customTags?: string[], untracked = false): Prom
 
         return data;
     } catch (err) {
-        console.warn('Expired CDN fetch failed:', err instanceof Error ? err.message : err);
+        logFeedFailure('Expired CDN fetch failed:', err);
         return null;
     }
 };
@@ -552,7 +583,7 @@ const _fetchGovernmentFeed = async (_forceLive = false, customTags?: string[], u
                 // Ignore fallback error
             }
         }
-        console.warn('Government CDN fetch failed:', err instanceof Error ? err.message : err);
+        logFeedFailure('Government CDN fetch failed:', err);
         return null;
     }
 };
@@ -641,7 +672,7 @@ const _fetchCategoryShard = async (id: string, customTags?: string[], untracked 
 
         return data;
     } catch (err) {
-        console.warn(`Failed to fetch shard ${id}:`, err);
+        logFeedFailure(`Failed to fetch shard ${id}:`, err);
         return null;
     }
 };
@@ -681,7 +712,7 @@ const _fetchCompanyShard = async (slug: string, customTags?: string[], untracked
 
         return data;
     } catch (err) {
-        console.warn(`Failed to fetch company shard ${slug}:`, err);
+        logFeedFailure(`Failed to fetch company shard ${slug}:`, err);
         return null;
     }
 };
@@ -724,7 +755,7 @@ const _fetchEducationMetadata = async (): Promise<EducationMetadata | null> => {
         }
         return await res.json() as EducationMetadata;
     } catch (err) {
-        console.warn('Failed to fetch education metadata from CDN:', err);
+        logFeedFailure('Failed to fetch education metadata from CDN:', err);
         return null;
     }
 };
@@ -749,7 +780,7 @@ const _fetchSkillsMetadata = async (): Promise<string[] | null> => {
         }
         return await res.json() as string[];
     } catch (err) {
-        console.warn('Failed to fetch skills metadata from CDN:', err);
+        logFeedFailure('Failed to fetch skills metadata from CDN:', err);
         return null;
     }
 };
@@ -785,7 +816,7 @@ const _fetchCompaniesMetadata = async (untracked = false): Promise<CompanyMetada
         }
         return await res.json() as CompanyMetadata[];
     } catch (err) {
-        console.warn('Failed to fetch companies metadata from CDN:', err);
+        logFeedFailure('Failed to fetch companies metadata from CDN:', err);
         return null;
     }
 };
@@ -838,7 +869,7 @@ const _fetchSitemapData = async (): Promise<SitemapDataResponse | null> => {
         }
         return data;
     } catch (err) {
-        console.warn('Sitemap CDN fetch failed:', err instanceof Error ? err.message : err);
+        logFeedFailure('Sitemap CDN fetch failed:', err);
         return null;
     }
 };

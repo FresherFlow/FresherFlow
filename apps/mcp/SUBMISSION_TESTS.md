@@ -8,7 +8,18 @@ No fixture account needed: read tools are public and anonymous.
 `submit_opportunity` is anonymous but gated by rate limiting (10/hour per IP)
 and moderation — it never publishes directly.
 
-All calls below assume the deployed endpoint `https://mcp.fresherflow.in/mcp`.
+Run every case below against a LOCAL stack, never production:
+
+```bash
+FRESHERFLOW_API_URL=http://localhost:5000 pnpm --filter fresherflow-mcp dev
+```
+
+Reads may optionally be smoke-checked against the deployed endpoint
+(`https://mcp.fresherflow.in/mcp`), but submission cases — especially
+Positive 7 ("have a moderator publish it") — must only run locally. Publishing
+a test row on production puts fixture data on the live site until someone
+removes it, so reject/never-approve anything TEST-named. The API also rejects
+obvious test payloads now ("TEST-MCP", "DELETE ME", TestCo*, TestGovt).
 
 ## Positive 1 — Fresher React jobs in Hyderabad
 

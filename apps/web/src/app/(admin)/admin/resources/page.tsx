@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import AdminResourcesClient from '@/features/admin/components/AdminResourcesClient';
-import { SKILLS_METADATA_URL, COMPANIES_METADATA_URL } from '@/lib/utils/runtimeConfig';
+import { fetchSkillsMetadata, fetchCompaniesMetadata } from '@/lib/api/cdnFeed';
 
 export const metadata: Metadata = {
     title: { absolute: 'Resources | FresherFlow Admin' },
@@ -11,25 +11,23 @@ export default async function AdminResourcesPage() {
     let initialSkills: string[] = [];
     let initialCompanies: string[] = [];
 
-    try {
-        const [skillsRes, companiesRes] = await Promise.all([
-            fetch(SKILLS_METADATA_URL, { next: { revalidate: 3600 } }),
-            fetch(COMPANIES_METADATA_URL, { next: { revalidate: 3600 } }),
-        ]);
-        if (skillsRes.ok) {
-            const data = await skillsRes.json();
-            if (Array.isArray(data)) initialSkills = data;
-        }
-        if (companiesRes.ok) {
-            const data = await companiesRes.json();
-            if (Array.isArray(data)) {
-                initialCompanies = data
-                    .map((c: { name?: string } | string) => (typeof c === 'string' ? c : c?.name || ''))
-                    .filter(Boolean);
-            }
-        }
-    } catch (err) {
-        console.error('Failed to fetch from CDN on server:', err);
+    // Use the shared CDN feed helpers, not raw fetch (apps/web/AGENTS.md: never
+    // raw-fetch when a wrapper exists, and CDN feed fetches must not be
+    // `no-store` in a production path). The helpers sign the URL, cache with
+    // `force-cache` under the `skills-metadata` / `companies-metadata` tags, and
+    // never throw — they resolve `null` on failure, which is the empty-list
+    // state below. There is no timer: a publish busts the tag via
+    // /api/revalidate.
+    const [skills, companies] = await Promise.all([
+        fetchSkillsMetadata(),
+        fetchCompaniesMetadata(),
+    ]);
+
+    if (Array.isArray(skills)) initialSkills = skills;
+    if (Array.isArray(companies)) {
+        initialCompanies = companies
+            .map((c) => (typeof c === 'string' ? c : c?.name || ''))
+            .filter(Boolean);
     }
 
     return (

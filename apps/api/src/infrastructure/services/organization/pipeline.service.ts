@@ -50,7 +50,7 @@ export interface ListApplicationsOptions {
     limit?: number;
 }
 
-/** Stages always come back in pipeline order â€” the order IS the process. */
+/** Stages always come back in pipeline order — the order IS the process. */
 const withStages = {
     stages: { orderBy: { order: 'asc' as const } },
 } satisfies Prisma.HiringPipelineInclude;

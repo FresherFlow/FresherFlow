@@ -4,8 +4,6 @@ on:
   schedule:
     # Run twice daily at 8 AM and 8 PM IST (2:30 UTC and 14:30 UTC) (Alerts)
     - cron: '30 2,14 * * *'
-    # Run at midnight IST (18:30 UTC) (Expiry)
-    - cron: '30 18 * * *'
     # Run at 2:30 AM IST (21:00 UTC) (Link Verification)
     - cron: '0 21 * * *'
   workflow_dispatch: # Allow manual triggering
@@ -28,15 +26,6 @@ jobs:
           curl -f -X POST "$API_BASE_URL/api/cron/alerts" \
             -H "Authorization: Bearer $CRON_SECRET"
             
-      - name: Trigger Daily Expiry (Midnight IST)
-        if: github.event.schedule == '30 18 * * *' || github.event_name == 'workflow_dispatch'
-        env:
-          API_BASE_URL: ${{ secrets.API_BASE_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        run: |
-          curl -f -X POST "$API_BASE_URL/api/cron/expire" \
-            -H "Authorization: Bearer $CRON_SECRET"
-            
       - name: Trigger Link Verification (2:30 AM IST)
         if: github.event.schedule == '0 21 * * *' || github.event_name == 'workflow_dispatch'
         env:
@@ -45,31 +34,6 @@ jobs:
         run: |
           curl -f -X POST "$API_BASE_URL/api/cron/verify" \
             -H "Authorization: Bearer $CRON_SECRET"
-
-      - name: Refresh Bootstrap Feed (After Daily Expiry)
-        # Runs after the daily expiry cron at midnight IST so the feed reflects newly expired jobs
-        if: github.event.schedule == '30 18 * * *' || github.event_name == 'workflow_dispatch'
-        env:
-          API_BASE_URL: ${{ secrets.API_BASE_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          echo "Fetching latest bootstrap feed from API..."
-          JSON_DATA=$(curl -f -X POST "$API_BASE_URL/api/cron/bootstrap-feed" \
-            -H "Authorization: Bearer $CRON_SECRET")
-          
-          echo "$JSON_DATA" > bootstrap-feed.min.json
-          
-          # Deployment: Cloudflare Pages Direct Upload
-          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
-            echo "Deploying to Cloudflare Pages..."
-            mkdir -p dist-cdn
-            mv bootstrap-feed.min.json dist-cdn/
-            npx wrangler pages deploy dist-cdn --project-name fresherflow-cdn --branch main
-          else
-            echo "CLOUDFLARE_API_TOKEN not found, skipping Pages deploy. JSON generated at bootstrap-feed.min.json"
-          fi
 
       - name: Keep-Alive Ping (Ingestion + API)
         # Warm up both services every scheduled run to prevent cold-start delays

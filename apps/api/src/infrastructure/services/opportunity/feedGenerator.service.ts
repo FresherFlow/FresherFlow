@@ -132,7 +132,15 @@ export class FeedGeneratorService {
             postedAt: true,
             publishedAt: true,
             expiresAt: true,
+            expiredAt: true,
+            registrationDeadline: true,
+            applicationDeadline: true,
             updatedAt: true,
+            // Drive-date mirror + event end, needed by the shared live filter.
+            // Without them the CDN snapshot path cannot apply the same rule
+            // as the DB generators (see baseLiveWhere / liveDriveWhere).
+            nextDriveAt: true,
+            endsAt: true,
 
             // Engagement stats (public)
             trendingScore: true,
@@ -169,6 +177,50 @@ export class FeedGeneratorService {
         };
     }
 
+    /**
+     * Single live-row predicate. Every live feed (bootstrap, index, govt,
+     * walkin, companies, skills, links, stats) must spread this instead of
+     * hand-rolling its own date checks, so the CDN snapshot and the
+     * FEED_SOURCE=db route cannot disagree about what counts as live.
+     *
+     * Covers: soft-delete, the sweeper's expiredAt stamp, the main deadline,
+     * and the three secondary deadline axes the old date cron used to own.
+     * Shape of the returned rows is unchanged — only membership tightens,
+     * and every consumer already hides rows past their deadline.
+     */
+    public static baseLiveWhere(now: Date = new Date()): Prisma.OpportunityWhereInput {
+        return {
+            status: OpportunityStatus.PUBLISHED,
+            deletedAt: null,
+            expiredAt: null,
+            OR: [
+                { expiresAt: null },
+                { expiresAt: { gt: now } },
+            ],
+            AND: [
+                { OR: [{ registrationDeadline: null }, { registrationDeadline: { gt: now } }] },
+                { OR: [{ applicationDeadline: null }, { applicationDeadline: { gt: now } }] },
+                { OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
+            ],
+        };
+    }
+
+    /**
+     * Drive-date rule. `nextDriveAt` is null both for listings with no
+     * DriveDetails and for drives whose last date has passed, so `null` on
+     * its own cannot mean "no drive". Only a row without DriveDetails passes
+     * on null. Applied to the index and walk-in feeds only — the bootstrap,
+     * govt, and metadata feeds keep their current membership.
+     */
+    public static liveDriveWhere(now: Date = new Date()): Prisma.OpportunityWhereInput {
+        return {
+            OR: [
+                { nextDriveAt: { gte: now } },
+                { AND: [{ nextDriveAt: null }, { driveDetails: null }] },
+            ],
+        };
+    }
+
     public static mapFeedOpportunities(opportunities: Record<string, unknown>[]) {
         return opportunities.map((opp: Record<string, unknown>) => {
             let isReferral = false;
@@ -201,14 +253,7 @@ export class FeedGeneratorService {
     public static async generateBootstrapFeed() {
         return this.withDbRetry(async () => {
             const opportunities = await prisma.opportunity.findMany({
-                where: {
-                    status: OpportunityStatus.PUBLISHED,
-                    deletedAt: null,
-                    OR: [
-                        { expiresAt: null },
-                        { expiresAt: { gt: new Date() } }
-                    ]
-                },
+                where: this.baseLiveWhere(),
                 orderBy: { postedAt: 'desc' },
                 select: this.getFeedSelectFields(),
             });
@@ -222,20 +267,15 @@ export class FeedGeneratorService {
         return this.withDbRetry(async () => {
             const opportunities = await prisma.opportunity.findMany({
                 where: {
-                    status: OpportunityStatus.PUBLISHED,
-                    deletedAt: null,
-                    OR: [
-                        { sector: Sector.GOVERNMENT },
-                        { governmentJobDetails: { isNot: null } }
-                    ],
                     AND: [
+                        this.baseLiveWhere(),
                         {
                             OR: [
-                                { expiresAt: null },
-                                { expiresAt: { gt: new Date() } }
-                            ]
-                        }
-                    ]
+                                { sector: Sector.GOVERNMENT },
+                                { governmentJobDetails: { isNot: null } }
+                            ],
+                        },
+                    ],
                 },
                 orderBy: { postedAt: 'desc' },
                 select: this.getFeedSelectFields(),
@@ -250,18 +290,13 @@ export class FeedGeneratorService {
         return this.withDbRetry(async () => {
             const opportunities = await prisma.opportunity.findMany({
                 where: {
-                    status: OpportunityStatus.PUBLISHED,
-                    deletedAt: null,
-                    OR: [
-                        { recruitmentMethod: RecruitmentMethod.WALK_IN },
-                        { driveDetails: { isNot: null } }
-                    ],
                     AND: [
+                        this.baseLiveWhere(),
                         {
                             OR: [
-                                { expiresAt: null },
-                                { expiresAt: { gt: new Date() } }
-                            ]
+                                { recruitmentMethod: RecruitmentMethod.WALK_IN },
+                                { driveDetails: { isNot: null } }
+                            ],
                         },
                         // Same rule as the feed index: a drive with
                         // DriveDetails must still have a future date. `null`
@@ -269,12 +304,7 @@ export class FeedGeneratorService {
                         // last date has passed also has `nextDriveAt = null` -
                         // that is the case this rule exists to catch. Only a
                         // listing with no DriveDetails at all passes.
-                        {
-                            OR: [
-                                { nextDriveAt: { gte: new Date() } },
-                                { AND: [{ nextDriveAt: null }, { driveDetails: null }] }
-                            ]
-                        }
+                        this.liveDriveWhere(),
                     ]
                 },
                 orderBy: { postedAt: 'desc' },
@@ -344,12 +374,6 @@ export class FeedGeneratorService {
         return this.withDbRetry(async () => {
             const opportunities = await prisma.opportunity.findMany({
                 where: {
-                    status: OpportunityStatus.PUBLISHED,
-                    deletedAt: null,
-                    OR: [
-                        { expiresAt: null },
-                        { expiresAt: { gt: new Date() } }
-                    ],
                     // A drive is only worth listing while it still has a date
                     // to attend. `nextDriveAt` is null both for listings with
                     // no DriveDetails and for drives whose last date has
@@ -357,12 +381,8 @@ export class FeedGeneratorService {
                     // that is exactly the row being filtered out here. A row
                     // without DriveDetails is the only safe pass.
                     AND: [
-                        {
-                            OR: [
-                                { nextDriveAt: { gte: new Date() } },
-                                { AND: [{ nextDriveAt: null }, { driveDetails: null }] }
-                            ]
-                        }
+                        this.baseLiveWhere(),
+                        this.liveDriveWhere(),
                     ]
                 },
                 orderBy: { postedAt: 'desc' },
@@ -405,14 +425,7 @@ export class FeedGeneratorService {
     public static async generateCompaniesMetadata() {
         return this.withDbRetry(async () => {
             const rows = await prisma.opportunity.findMany({
-                where: {
-                    status: OpportunityStatus.PUBLISHED,
-                    deletedAt: null,
-                    OR: [
-                        { expiresAt: null },
-                        { expiresAt: { gt: new Date() } }
-                    ]
-                },
+                where: this.baseLiveWhere(),
                 select: { company: true, companyWebsite: true, companyLogoUrl: true },
             });
 
@@ -445,14 +458,7 @@ export class FeedGeneratorService {
     public static async generateSkillsMetadata() {
         return this.withDbRetry(async () => {
             const rows = await prisma.opportunity.findMany({
-                where: {
-                    status: OpportunityStatus.PUBLISHED,
-                    deletedAt: null,
-                    OR: [
-                        { expiresAt: null },
-                        { expiresAt: { gt: new Date() } }
-                    ]
-                },
+                where: this.baseLiveWhere(),
                 select: { requiredSkills: true },
             });
 
@@ -473,14 +479,7 @@ export class FeedGeneratorService {
     public static async generateCompanyShards() {
         return this.withDbRetry(async () => {
             const opportunities = await prisma.opportunity.findMany({
-                where: {
-                    status: OpportunityStatus.PUBLISHED,
-                    deletedAt: null,
-                    OR: [
-                        { expiresAt: null },
-                        { expiresAt: { gt: new Date() } }
-                    ]
-                },
+                where: this.baseLiveWhere(),
                 orderBy: { postedAt: 'desc' },
                 select: this.getFeedSelectFields(),
             });
@@ -669,14 +668,7 @@ export class FeedGeneratorService {
     public static async generateLinksFeed() {
         return this.withDbRetry(async () => {
             const opportunities = await prisma.opportunity.findMany({
-                where: {
-                    status: OpportunityStatus.PUBLISHED,
-                    deletedAt: null,
-                    OR: [
-                        { expiresAt: null },
-                        { expiresAt: { gt: new Date() } }
-                    ]
-                },
+                where: this.baseLiveWhere(),
                 orderBy: { postedAt: 'desc' },
                 select: {
                     id: true,
@@ -712,14 +704,7 @@ export class FeedGeneratorService {
 
     public static async generateStats() {
         return this.withDbRetry(async () => {
-            const isLive: Prisma.OpportunityWhereInput = {
-                status: OpportunityStatus.PUBLISHED,
-                deletedAt: null,
-                OR: [
-                    { expiresAt: null },
-                    { expiresAt: { gt: new Date() } }
-                ]
-            };
+            const isLive: Prisma.OpportunityWhereInput = this.baseLiveWhere();
             const withFilter = (extra: Prisma.OpportunityWhereInput): Prisma.OpportunityWhereInput => ({
                 AND: [isLive, extra],
             });

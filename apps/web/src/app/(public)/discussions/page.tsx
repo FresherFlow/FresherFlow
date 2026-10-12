@@ -11,7 +11,14 @@ import type { DiscussionJobMeta } from '@/features/discussions/types';
  * company thread is titled from its slug (the directory read is not worth a
  * round-trip just for a label).
  */
-export const revalidate = 60;
+// On-demand only: no timer. Job titles come from the feed index, so the page
+// is rebuilt when the publish flow busts `feed-index` (see /api/revalidate).
+//
+// Known gap: the conversation rows come from the Firebase comment indexes,
+// which carry no Next cache tag — a brand new comment reaches this inbox on the
+// next feed bust rather than within a minute. If the inbox must move with
+// comment activity, bust a tag from the comment write path.
+export const revalidate = false;
 
 export const metadata: Metadata = {
     title: 'Discussions',

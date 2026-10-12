@@ -635,20 +635,38 @@ async function run() {
     const externalExpired = [...new Set(expiredJobs.filter(j => j.type === 'external' && j.applyLink).map(j => j.applyLink as string))];
     if (externalExpired.length > 0) {
         const boardToken = (process.env.JOBS_REPO_TOKEN || '').trim();
+        const boardRepo = (process.env.JOBS_REPO || 'FresherFlow/India-Jobs-Internships').trim();
         if (!boardToken) {
             console.warn(`JOBS_REPO_TOKEN not set — skipping board handoff for ${externalExpired.length} expired external job(s).`);
         } else {
             try {
                 const today = new Date().toISOString().slice(0, 10);
                 const body = `### Job Posting URLs\n${externalExpired.join('\n')}\n\n### Reason for marking as inactive\nExpired: confirmed dead by FresherFlow sweeper (${today}).`;
-                const res = await fetch('https://api.github.com/repos/FresherFlow/India-Jobs-Internships/issues', {
+                // Create the issue with bulk_mark_inactive only, so the board's
+                // `issues: [labeled]` workflow fires when we attach `approved`
+                // in the second call below (creating with both labels would
+                // only trigger `opened`, and the board workflow would never
+                // run — the expiry would never be applied).
+                const issueRes = await fetch(`https://api.github.com/repos/${boardRepo}/issues`, {
                     method: 'POST',
                     headers: { 'Accept': 'application/vnd.github+json', 'Authorization': `Bearer ${boardToken}`, 'X-GitHub-Api-Version': '2022-11-28' },
-                    body: JSON.stringify({ title: `Bulk Marking Roles as Inactive (sweeper ${today})`, body, labels: ['bulk_mark_inactive', 'approved'] }),
+                    body: JSON.stringify({ title: `Bulk Marking Roles as Inactive (sweeper ${today})`, body, labels: ['bulk_mark_inactive'] }),
                 });
-                console.log(res.ok
-                    ? `Board handoff: filed bulk_mark_inactive issue with ${externalExpired.length} URL(s).`
-                    : `Board handoff failed: status ${res.status} ${(await res.text()).slice(0, 200)}`);
+                if (!issueRes.ok) {
+                    console.warn(`Board handoff: failed to create issue: ${issueRes.status} ${(await issueRes.text()).slice(0, 200)}`);
+                } else {
+                    const issue = await issueRes.json() as { number: number };
+                    const labelRes = await fetch(`https://api.github.com/repos/${boardRepo}/issues/${issue.number}/labels`, {
+                        method: 'POST',
+                        headers: { 'Accept': 'application/vnd.github+json', 'Authorization': `Bearer ${boardToken}`, 'X-GitHub-Api-Version': '2022-11-28' },
+                        body: JSON.stringify({ labels: ['approved'] }),
+                    });
+                    if (labelRes.ok) {
+                        console.log(`Board handoff: filed bulk_mark_inactive issue #${issue.number} and added the approved label so the board workflow triggers.`);
+                    } else {
+                        console.warn(`Board handoff: issue #${issue.number} created but approved label failed (${labelRes.status}) — maintainer action needed.`);
+                    }
+                }
             } catch (err) {
                 console.warn('Board handoff failed (continuing):', err instanceof Error ? err.message : String(err));
             }

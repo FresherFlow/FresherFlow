@@ -141,13 +141,20 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
         }
         try {
             const text = await navigator.clipboard.readText();
-            if (text && text.trim().startsWith('{')) {
+            const trimmed = (text || '').trim();
+            if (trimmed.startsWith('{')) {
                 try {
-                    form.applyJsonData(JSON.parse(text));
+                    form.applyJsonData(JSON.parse(trimmed));
                     toast.success('Form updated from JSON clipboard.');
                 } catch {
                     toast.error('Clipboard does not contain valid JSON data.');
                 }
+            } else if (trimmed.startsWith('[')) {
+                // Bulk array: hand it to the parser dialog, which shows
+                // counts and creates every listing.
+                form.setPastedJson(text);
+                form.setShowParser(true);
+                toast.success('Bulk array detected — review and create all.');
             } else if (text) {
                 toast.error('Clipboard does not contain valid JSON data.');
             } else {

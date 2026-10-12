@@ -6,9 +6,11 @@ import CompaniesDirectoryClient from '@/features/companies/components/CompaniesD
 import CompaniesTabsClient from '@/features/companies/components/CompaniesTabsClient';
 import { buildCompanyDirectory } from '@/features/companies/utils/companyDirectory';
 
-// ISR: directory HTML is cached and revalidated hourly; the client tab
-// switch (?tab=following) never changes the served HTML.
-export const revalidate = 3600;
+// On-demand only: no timer. The directory HTML is rebuilt when the publish
+// flow busts the `companies-metadata` and `company-*` tags (see
+// /api/revalidate), matching /jobs, /govt and /drives. The client tab switch
+// (?tab=following) never changes the served HTML either way.
+export const revalidate = false;
 
 export const metadata: Metadata = {
     // 38 chars base + 13-char " | FresherFlow" template = 51 total (50-60).

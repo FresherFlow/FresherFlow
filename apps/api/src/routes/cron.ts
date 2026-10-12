@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { runExpiryCycle } from '../cron/expiryCron';
 import { runLinkVerification } from '../infrastructure/services/opportunity/verificationBot';
 import { runAlertsCycle } from '../infrastructure/services/alerts/alerts.service';
 import { runDueSources } from '../application/ingestion/scheduling';
@@ -88,23 +87,6 @@ router.post('/alerts', async (req, res) => {
             logger.warn('Failed to retry dispatches', error);
         }
         res.json({ success: true, message: 'Alerts cycle complete', results: { ...results, retried } });
-    } catch (error) {
-        logger.error('Failed to run cron', error);
-        res.status(500).json({ success: false, error: 'Internal server error' });
-    }
-});
-
-router.post('/expire', async (req, res) => {
-    try {
-        if (!isCronTaskEnabled('ENABLE_CRON_EXPIRE')) {
-            logger.info('Skipping expiry cycle because ENABLE_CRON_EXPIRE is disabled');
-            res.status(202).json({ success: true, skipped: true, reason: 'ENABLE_CRON_EXPIRE disabled' });
-            return;
-        }
-
-        logger.info('Starting expiry cycle via cron API');
-        const results = await runExpiryCycle();
-        res.json({ success: true, message: 'Expiry cycle complete', results });
     } catch (error) {
         logger.error('Failed to run cron', error);
         res.status(500).json({ success: false, error: 'Internal server error' });

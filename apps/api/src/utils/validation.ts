@@ -594,9 +594,44 @@ export const mcpSubmitOpportunitySchema = z.object({
         ctx.addIssue({ code: 'custom', path: ['sourceUrl'], message: 'sourceUrl must use https' });
     }
     // Never trust the URL as a server-side fetch target — it is stored only.
+
+    // Test payloads must never enter the moderation queue. This shape is what
+    // leaked fixture rows into a shared database once: MCP submission tests
+    // named "TEST-MCP … (DELETE ME)" and TestCo*/TestGovt companies that were
+    // then approved. Field lengths are capped above, so these patterns only
+    // ever run on ≤200-char values.
+    if (looksLikeTestOpportunity(data.title, data.companyName)) {
+        ctx.addIssue({
+            code: 'custom',
+            path: ['title'],
+            message:
+                'This looks like test data (TEST-MCP / DELETE ME / TestCo / TestGovt) and is rejected by the submission pipeline.',
+        });
+    }
 });
 
 export type McpSubmitOpportunityInput = z.infer<typeof mcpSubmitOpportunitySchema>;
+
+/**
+ * Shapes that only test fixtures use — deliberately narrow so real companies
+ * like "Testbook" are unaffected. The schema's length caps bound the input
+ * these patterns ever see.
+ */
+const TEST_OPPORTUNITY_PATTERNS = [
+    /test[-\s_]?mcp/i,
+    /delete\s*me/i,
+    /do\s*not\s*publish/i,
+    /^testco(\s|$)/i,
+    /^testgovt(\s|$)/i,
+] as const;
+
+function matchesTestOpportunityPattern(value: string): boolean {
+    return TEST_OPPORTUNITY_PATTERNS.some((pattern) => pattern.test(value));
+}
+
+export function looksLikeTestOpportunity(title: string, companyName: string): boolean {
+    return matchesTestOpportunityPattern(title) || matchesTestOpportunityPattern(companyName);
+}
 
 export const notificationReadSchema = z.object({
     ids: z.array(z.string().min(1).max(64)).max(200).optional(),

@@ -1,4 +1,4 @@
-﻿import * as cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 import { BOARD_SCRAPER_REGISTRY, ScraperInputDto, AtsJob } from '@fresherflow/plugins';
 import { parseWalkInDetails, matchTechCluster, ParsedWalkInDetails, MatchedClusterResult, isSeniorJob } from '@fresherflow/utils';
 import { unwrapRedirectors, isValidApplyLink } from '../../core/extractor.js';
@@ -137,14 +137,14 @@ export async function collectWalkinDrives(options: {
   const eventMap = new Map<string, WalkInJobOpportunity>();
   const seenUrls = new Set<string>();
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────────
   // 1. Channel 1: Dedicated Walk-in Category Feeds from Aggregators
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  console.log(`\nðŸ“¡ [Channel 1] Sweeping Dedicated Aggregator Walk-in Feeds...`);
+  // ─────────────────────────────────────────────────────────────────────────────
+  console.log(`\n📡 [Channel 1] Sweeping Dedicated Aggregator Walk-in Feeds...`);
 
   for (const feed of WALKIN_AGGREGATOR_FEEDS) {
     try {
-      console.log(`  â””â”€ Ingesting ${feed.name} (${feed.url})...`);
+      console.log(`  └─ Ingesting ${feed.name} (${feed.url})...`);
       const res = await fetch(feed.url, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -192,11 +192,11 @@ export async function collectWalkinDrives(options: {
               if (walkinScore >= 8 && mentionsCity) {
                 // 2-Step Verification: Scam check & Senior check
                 if (isScamWalkin(bodyText) || isScamWalkin(post.title)) {
-                  console.log(`     â›” Rejected Scam Walk-in: ${post.title}`);
+                  console.log(`     ⛔ Rejected Scam Walk-in: ${post.title}`);
                   continue;
                 }
                 if (isSeniorJob(`${post.title} ${bodyText}`)) {
-                  console.log(`     â›” Rejected Senior Walk-in: ${post.title}`);
+                  console.log(`     ⛔ Rejected Senior Walk-in: ${post.title}`);
                   continue;
                 }
 
@@ -268,7 +268,7 @@ export async function collectWalkinDrives(options: {
                     confidenceScore: 0.90,
                     sources: [post.url],
                   });
-                  console.log(`     âœ… Ingested: [${company}] in ${cluster.cluster.name}`);
+                  console.log(`     ✅ Ingested: [${company}] in ${cluster.cluster.name}`);
                 } else {
                   const existing = eventMap.get(fingerprint)!;
                   existing.sources = existing.sources || [];
@@ -283,14 +283,14 @@ export async function collectWalkinDrives(options: {
         }
       }
     } catch (e: any) {
-      console.warn(`  â””â”€ Feed error: ${feed.name}: ${e.message}`);
+      console.warn(`  └─ Feed error: ${feed.name}: ${e.message}`);
     }
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────────
   // 2. Channel 2: Public Telegram Recruitment Channels (Web Preview)
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  console.log(`\nðŸ“¢ [Channel 2] Sweeping Public Telegram Recruitment Feeds...`);
+  // ─────────────────────────────────────────────────────────────────────────────
+  console.log(`\n📢 [Channel 2] Sweeping Public Telegram Recruitment Feeds...`);
 
   for (const channel of TELEGRAM_PUBLIC_CHANNELS) {
     const tmeUrl = `https://t.me/s/${channel}`;
@@ -316,7 +316,7 @@ export async function collectWalkinDrives(options: {
             if (isScamWalkin(text)) return;
             if (isSeniorJob(text)) return;
 
-            const firstLine = text.split('\n')[0].replace(/[ðŸš¨ðŸ“¢ðŸ”¥âœ…]/gu, '').trim();
+            const firstLine = text.split('\n')[0].replace(/[🚨📢🔥✅]/gu, '').trim();
             const city = detectCity(text) || 'Hyderabad';
             const details = parseWalkInDetails(firstLine, text, city);
             if (!details.venueAddress || details.venueAddress.length < 8 || details.venueAddress === city) {
@@ -377,7 +377,7 @@ export async function collectWalkinDrives(options: {
                 confidenceScore: 0.88,
                 sources: [tmeUrl],
               });
-              console.log(`     âœ… Telegram Ingested: [${company}] in ${cluster.cluster.name}`);
+              console.log(`     ✅ Telegram Ingested: [${company}] in ${cluster.cluster.name}`);
             } else {
               const existing = eventMap.get(fingerprint)!;
               existing.sources = existing.sources || [];
@@ -392,9 +392,9 @@ export async function collectWalkinDrives(options: {
     }
   }
 
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────────
   // 3. Channel 3: Job Board Sweep (LinkedIn & Boards)
-  // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─────────────────────────────────────────────────────────────────────────────
   console.log(`\n[Channel 3] Sweeping job boards for walk-in posts across covered cities...`);
 
   // One generic query per covered city. The three Hyderabad-specific queries
@@ -476,12 +476,12 @@ export async function collectWalkinDrives(options: {
                 confidenceScore: 0.95,
                 sources: [job.jobUrl],
               });
-              console.log(`     âœ… Board Ingested: [${company}] ${title} (${cluster.cluster.name})`);
+              console.log(`     ✅ Board Ingested: [${company}] ${title} (${cluster.cluster.name})`);
             }
           }
         }
       } catch (err: any) {
-        console.warn(`  â””â”€ [LinkedIn] Error for "${query}": ${err.message}`);
+        console.warn(`  └─ [LinkedIn] Error for "${query}": ${err.message}`);
       }
     }
   }

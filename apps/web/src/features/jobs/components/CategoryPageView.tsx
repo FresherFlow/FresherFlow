@@ -60,7 +60,7 @@ const MobileFilterDrawer = dynamic(() =>
     import('@/features/jobs/components/MobileFilterDrawer').then(m => m.MobileFilterDrawer)
 );
 
-// â”€â”€â”€ Config â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Config ──────────────────────────────────────────────────────────────────
 
 const CATEGORY_CONFIG = {
     JOB:        { title: 'Jobs for Freshers',          subtitle: 'Full-time opportunities across India',            icon: BriefcaseIcon },
@@ -97,7 +97,7 @@ function formatFeedAge(tsMs?: number): string {
     if (days === 1) return 'yesterday';
     return `${days}d ago`;
 }
-// â”€â”€â”€ Sub-components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function LiveTicker({ items }: { items: { label: string; href: string; tag: string; tagColor: string }[] }) {
     if (items.length === 0) return null;
@@ -141,7 +141,7 @@ function LiveTicker({ items }: { items: { label: string; href: string; tag: stri
     );
 }
 
-// â”€â”€â”€ Presenter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── Presenter ────────────────────────────────────────────────────────────────
 
 export function CategoryPageView({
     type, user, opportunities, filteredOpps, visibleOpps, isLoading, error, profileIncomplete, mounted, isDesktop,
@@ -381,7 +381,7 @@ export function CategoryPageView({
         </>
     );
 
-    // â”€â”€ Detail pane toggle (persisted) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Detail pane toggle (persisted) ──────────────────────────────────────
     const [showDetail, setShowDetail] = useState(false);
     const headerRef = useRef<HTMLDivElement>(null);
     const feedRef = useRef<HTMLDivElement>(null);
@@ -938,7 +938,7 @@ export function CategoryPageView({
                     )}
                 </div>
             ) : (
-                // â”€â”€ Flat grid (filtered by phase / search) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+                // ── Flat grid (filtered by phase / search) ─────────────────────
                 <div className={cn(
                     "w-full grid gap-2 items-start",
                     (type !== 'GOVERNMENT' && showDetail)

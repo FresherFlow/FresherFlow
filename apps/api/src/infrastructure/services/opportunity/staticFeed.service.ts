@@ -285,15 +285,42 @@ export class StaticFeedService {
                 });
             });
 
-            const allMapped = FeedGeneratorService.mapFeedOpportunities(allOpportunities as unknown as Record<string, unknown>[]) as unknown as Array<Record<string, unknown> & { expiresAt?: string | Date | null }>;
+            const allMapped = FeedGeneratorService.mapFeedOpportunities(allOpportunities as unknown as Record<string, unknown>[]) as unknown as Array<Record<string, unknown> & { expiresAt?: string | Date | null; expiredAt?: string | Date | null; registrationDeadline?: string | Date | null; applicationDeadline?: string | Date | null; endsAt?: string | Date | null; nextDriveAt?: string | Date | null; driveDetails?: unknown; status?: string; deletedAt?: string | Date | null }>;
             const now = new Date();
+            const nowMs = now.getTime();
 
-            // 3. Filter Active/Unexpired Opportunities
-            const activeMapped = allMapped.filter(opp => {
-                if (!opp.expiresAt) return true;
-                const exp = new Date(opp.expiresAt as string | Date);
-                return exp > now;
-            });
+            // 3. Split live vs dead in memory. The consolidated query above
+            // intentionally still fetches every live-status row (dead rows are
+            // needed below for the expired feed + per-job shards), so this
+            // filter is what decides live membership. It mirrors
+            // FeedGeneratorService.baseLiveWhere: sweeper stamp, main
+            // deadline, and the three secondary deadline axes. Only
+            // membership tightens — row shape is unchanged.
+            const isBaseLive = (opp: { status?: string; deletedAt?: string | Date | null; expiredAt?: string | Date | null; expiresAt?: string | Date | null; registrationDeadline?: string | Date | null; applicationDeadline?: string | Date | null; endsAt?: string | Date | null }): boolean => {
+                if (opp.status !== OpportunityStatus.PUBLISHED) return false;
+                if (opp.deletedAt) return false;
+                if (opp.expiredAt) return false;
+                const deadlines = [opp.expiresAt, opp.registrationDeadline, opp.applicationDeadline, opp.endsAt];
+                for (const d of deadlines) {
+                    if (d == null) continue;
+                    const ms = new Date(d as string | Date).getTime();
+                    if (Number.isNaN(ms) || ms <= nowMs) return false;
+                }
+                return true;
+            };
+            // Drive-date rule, mirroring liveDriveWhere: a null nextDriveAt
+            // passes only when there is no DriveDetails at all. Applied to
+            // the index + walk-in subsets only, exactly like the generators.
+            const hasLiveDrive = (opp: { nextDriveAt?: string | Date | null; driveDetails?: unknown }): boolean => {
+                if (opp.nextDriveAt != null) {
+                    const ms = new Date(opp.nextDriveAt as string | Date).getTime();
+                    return !Number.isNaN(ms) && ms >= nowMs;
+                }
+                return opp.driveDetails == null;
+            };
+            // Filter Active/Unexpired Opportunities
+            const activeMapped = allMapped.filter(isBaseLive);
+            const indexMapped = activeMapped.filter(hasLiveDrive);
 
             // 4. Generate & Upload Master Bootstrap Feed & Daily Date-Based Feeds
             if (target === 'all' || target === 'bootstrap') {
@@ -312,8 +339,9 @@ export class StaticFeedService {
                 // Web /jobs pages fetch this instead of the full feed.
                 // Mobile and detail pages continue using the full bootstrap.
                 // Projection lives in FeedGeneratorService so the CDN snapshot
-                // and the FEED_SOURCE=db route cannot drift.
-                const indexOpps = FeedGeneratorService.projectFeedIndex(activeMapped);
+                // and the FEED_SOURCE=db route cannot drift. Past-date drives
+                // are excluded here exactly like generateFeedIndex().
+                const indexOpps = FeedGeneratorService.projectFeedIndex(indexMapped);
                 const feedIndex = {
                     opportunities: indexOpps,
                     timestamp: Date.now(),
@@ -341,7 +369,7 @@ export class StaticFeedService {
 
             // 5b. Generate & Upload Walk-ins Feed (including Hyderabad Tech Cluster Map Feed)
             if (target === 'all' || target === 'walkin' || target === 'bootstrap') {
-                const walkinMapped = activeMapped.filter(isWalkinRow);
+                const walkinMapped = activeMapped.filter(opp => isWalkinRow(opp) && hasLiveDrive(opp));
                 const walkins = {
                     opportunities: walkinMapped,
                     timestamp: Date.now(),

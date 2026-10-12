@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { Opportunity } from "@fresherflow/types";
 import type { CategoryFeedType } from "@/features/jobs/utils/walkinMapUtils";
@@ -300,7 +300,7 @@ export function useCategoryPageState({
     setMounted(true);
   }, []);
 
-  // â”€â”€ Profile â†’ URL seeding â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Profile → URL seeding ────────────────────────────────────────────────────
   // The profile's preferences are written into the query string, so the
   // EXISTING chip row renders them: from then on the URL is the single source
   // of truth — shareable, reload-stable, removable like any other filter.
