@@ -32,9 +32,8 @@
       "@repo/schemas/*": ["../../packages/schemas/*"],
       "@fresherflow/frontend-core": ["../../packages/frontend-core/src"],
       "@fresherflow/frontend-core/*": ["../../packages/frontend-core/src/*"],
-      "@fresherflow/ui": ["../../packages/ui/src"],
-      "@fresherflow/ui/*": ["../../packages/ui/src/*"],
-      "@fresherflow/types": ["../../packages/types/src"]
+"@fresherflow/ui": ["../../packages/ui/src"],
+      "@fresherflow/ui/*": ["../../packages/ui/src/*"]
     }
   },
     "include": [
