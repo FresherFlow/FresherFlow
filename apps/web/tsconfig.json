@@ -34,7 +34,7 @@
       "@fresherflow/frontend-core/*": ["../../packages/frontend-core/src/*"],
       "@fresherflow/ui": ["../../packages/ui/src"],
       "@fresherflow/ui/*": ["../../packages/ui/src/*"],
-      "@fresherflow/types": ["../../packages/types/index.ts"]
+      "@fresherflow/types": ["../../packages/types/src"]
     }
   },
     "include": [
