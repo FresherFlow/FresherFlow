@@ -1,6 +1,6 @@
 import { Job } from 'bullmq';
 import { prisma } from '@fresherflow/database';
-import { logger } from '@fresherflow/utils';
+import { logger, buildLinkedInCard, type LinkedInCard } from '@fresherflow/utils';
 import { SocialPlatform, SocialPostStatus } from '@prisma/client';
 import axios from 'axios';
 
@@ -51,7 +51,7 @@ export async function processSocialJob(job: Job<SocialJobData>): Promise<void> {
     if (post.platform === SocialPlatform.X) {
       externalPostId = await postToX(text);
     } else if (post.platform === SocialPlatform.LINKEDIN) {
-      externalPostId = await postToLinkedIn(text, true);
+      externalPostId = await postToLinkedIn(text, true, buildLinkedInCard(post.opportunity));
     } else if (post.platform === SocialPlatform.FACEBOOK) {
       externalPostId = await postToFacebook(text);
     }
@@ -110,7 +110,7 @@ export async function processSocialJob(job: Job<SocialJobData>): Promise<void> {
   }
 }
 
-export async function postToBuffer(channelId: string | undefined, text: string, attachLinkedInLink = false): Promise<string> {
+export async function postToBuffer(channelId: string | undefined, text: string, attachLinkedInLink = false, card?: LinkedInCard): Promise<string> {
   const apiKey = process.env.BUFFER_API_KEY;
   if (!apiKey) {
     throw new Error('Buffer API key is not configured. Set BUFFER_API_KEY in environment.');
@@ -136,11 +136,13 @@ export async function postToBuffer(channelId: string | undefined, text: string, 
   };
 
   if (extractedUrl && (attachLinkedInLink || channelId === process.env.BUFFER_LINKEDIN_CHANNEL_ID)) {
+    const linkAttachment: Record<string, unknown> = { url: extractedUrl };
+    if (card?.title) linkAttachment.title = card.title;
+    if (card?.description) linkAttachment.description = card.description;
+    if (card?.thumbnailUrl) linkAttachment.thumbnail = { url: card.thumbnailUrl };
     input.metadata = {
       linkedin: {
-        linkAttachment: {
-          url: extractedUrl
-        }
+        linkAttachment
       }
     };
   }
@@ -192,10 +194,10 @@ export async function postToX(text: string): Promise<string> {
   return postToBuffer(process.env.BUFFER_X_CHANNEL_ID, text);
 }
 
-export async function postToLinkedIn(text: string, attachLink = false): Promise<string> {
+export async function postToLinkedIn(text: string, attachLink = false, card?: LinkedInCard): Promise<string> {
   const channelId = process.env.BUFFER_LINKEDIN_CHANNEL_ID;
   if (!channelId) throw new Error('BUFFER_LINKEDIN_CHANNEL_ID not configured');
-  return postToBuffer(channelId, text, attachLink);
+  return postToBuffer(channelId, text, attachLink, card);
 }
 
 async function postToFacebook(text: string): Promise<string> {

@@ -22,7 +22,7 @@ export * from './core/dork-executor.js';
 export * from './core/state.js';
 export * from './utils/storage.js';
 export * from './utils/source-health.js';
-export * from './utils/social.js';
+export * from './utils/socialPoster.js';
 export * from './utils/board-issues.js';
 export * from './db/index.js';
 export * from './search/index.js';

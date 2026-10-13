@@ -1,6 +1,7 @@
 import { buildShareUrl, type SharePlatform } from '@/lib/utils/share';
 export type { SharePlatform };
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
+import { buildSocialCaption } from '@fresherflow/utils/social';
 
 import { getOpportunityPath } from '@/features/jobs/domain/opportunityPath';
 import {
@@ -336,32 +337,10 @@ export const buildAdminSharePack = (payload: {
     allowedDegrees: string[];
 }) => {
     const publicUrl = getPublicOpportunityUrl(payload.slugOrId, payload.type);
-    const normalizedLocations = (payload.locations || []).map((value) => value.trim()).filter(Boolean);
-    const locationLine = normalizedLocations.length > 1
-        ? normalizedLocations.join(' | ')
-        : (normalizedLocations[0] || 'Remote');
-    const locationTag = normalizedLocations.length === 1
-        ? `#${normalizedLocations[0].replace(/[^a-zA-Z0-9]/g, '')}Jobs`
-        : '';
-    const sortedYears = [...(payload.allowedPassoutYears || [])]
-        .filter((year) => Number.isFinite(year))
-        .sort((a, b) => a - b);
-    const batch = sortedYears.length > 0 ? sortedYears.join(', ') : 'Any';
-    const educationLine = payload.allowedCourses?.length
-        ? payload.allowedCourses.slice(0, 3).join(', ')
-        : (payload.allowedDegrees?.length ? payload.allowedDegrees.join(', ') : 'Any Graduate');
-
-    return [
-        `${payload.title} - at ${payload.company}`,
-        `location: ${locationLine}`,
-        '',
-        `Batch: ${batch}`,
-        `Education: ${educationLine}`,
-        '',
-        `Apply: ${publicUrl}`,
-        '',
-        ['#FresherJobs', locationTag, '#FresherFlow'].filter(Boolean).join(' '),
-    ].join('\n');
+    return buildSocialCaption(
+        { title: payload.title, company: payload.company, locations: payload.locations, applyLink: publicUrl },
+        'linkedin',
+    );
 };
 
 export const buildPlatformCaption = (platform: SharePlatform, payload: {
@@ -374,18 +353,10 @@ export const buildPlatformCaption = (platform: SharePlatform, payload: {
 }) => {
     const publicUrl = getPublicOpportunityUrl(payload.slugOrId, payload.type);
     const tracked = buildShareUrl(publicUrl, { platform, ref: 'admin_share', campaign: 'job_share' });
-    const label = payload.type === 'WALKIN' ? 'Walk-in' : payload.type === 'INTERNSHIP' ? 'Internship' : 'Job';
-    const educationLine = payload.allowedCourses?.length
-        ? payload.allowedCourses.slice(0, 3).join(', ')
-        : (payload.allowedDegrees?.length ? payload.allowedDegrees.join(', ') : 'Any Graduate');
-
-    return [
-        `${payload.title} at ${payload.company}`,
-        `${label} listing on FresherFlow`,
-        `Education: ${educationLine}`,
-        tracked,
-        '#FresherFlow #FresherJobs #OffCampus #Hiring',
-    ].join('\n');
+    return buildSocialCaption(
+        { title: payload.title, company: payload.company, locations: [], applyLink: tracked },
+        platform === 'linkedin' ? 'linkedin' : platform === 'x' ? 'x' : 'telegram',
+    );
 };
 
 const normalizeTextValue = (value: string) =>

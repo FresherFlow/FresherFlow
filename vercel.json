@@ -1,5 +1,6 @@
 {
   "framework": "nextjs",
+  "installCommand": "pnpm install",
   "buildCommand": "pnpm --filter fresherflow-web build",
   "outputDirectory": "apps/web/.next",
   "git": {

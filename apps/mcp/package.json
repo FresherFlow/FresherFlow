@@ -2,7 +2,7 @@
   "name": "fresherflow-mcp",
   "version": "1.0.0",
   "type": "module",
-  "description": "ChatGPT-facing MCP server exposing FresherFlow search_jobs, get_job and submit_opportunity over the existing API",
+  "description": "MCP server exposing FresherFlow submit_opportunity over the existing API",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",

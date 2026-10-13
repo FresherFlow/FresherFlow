@@ -11,6 +11,7 @@ export * from './user.js';
 export * from './username.js';
 export * from './auth.js';
 export * from './telegram.js';
+export * from './social.js';
 export * from './config.js';
 export * from './logger.js';
 

@@ -1,5 +1,6 @@
 import { normalizeUrl } from './url.js';
 import { parseJobUrl } from '@fresherflow/parser';
+import { buildSocialCaption } from '@fresherflow/utils/social';
 
 // Shared social-media poster used by every bot that schedules individual job
 // posts (aggregator bot, external search bot, ...).
@@ -196,30 +197,9 @@ function jitterStagger(ms: number): number {
     return Math.round(ms * (0.6 + Math.random() * 0.8));
 }
 
-// Caption style: plain human sentences, no emoji, no hashtags, no board
-// link, no date, no fluff about us. Every line answers a seeker question:
-// what role, where, and — critically — WHERE the link goes. Naming the
-// destination (Greenhouse, Workday, company website) sets the expectation
-// before the tap: no surprise login walls, no aggregator maze. That is more
-// useful than any slogan about ourselves.
-// - Buffer (1M tweets): text-only 120–140 chars performs best; link posts get
-//   the least engagement, so exactly ONE link (the apply link) is kept.
-// - Buffer (LinkedIn): first 1–2 lines are the hook above the "see more" fold;
-//   concise, well-spaced posts with an authentic voice outperform formal ones.
-// - Buffer (72k LinkedIn posts): replying to comments boosts engagement ~30%,
-//   so LinkedIn captions end with a tag-a-friend CTA to seed replies.
-// - Date headers go stale (optimal slots can fire days after scheduling) and
-//   waste X's 280-char budget.
-// Voice: FresherFlow brand — confident, direct, human, specific. Never invent
-// job details (salary, batch, skills): SocialPostJob only carries title,
-// company, locations, applyLink, so the caption sticks to those plus the
-// destination detected by @fresherflow/parser.
-
-function locationText(job: SocialPostJob): string {
-    const locs = (job.locations || []).map(l => String(l).trim()).filter(Boolean);
-    if (locs.length === 0) return '';
-    return locs.slice(0, 2).join(' / ') + (locs.length > 2 ? ' +' : '');
-}
+// Caption voice lives in @fresherflow/utils/social (buildSocialCaption) — one
+// template for all bots. This file keeps ATS detection (parser-owned) and
+// resolves it to the display label the shared builder takes.
 
 // ATS provider id (from @fresherflow/parser, the single owner of ATS URL
 // knowledge) → human label. Detection lives in the parser; this map is
@@ -282,68 +262,6 @@ function applyDestination(job: SocialPostJob): string {
     const hostSlug = host.replace(/[^a-z0-9]/g, '');
     if (firstWord.length >= 4 && hostSlug.includes(firstWord)) return 'the company website';
     return '';
-}
-
-/** "Apply on Greenhouse:" / "Apply on the company website:" / "Apply:" */
-function applyLine(job: SocialPostJob): string {
-    const dest = applyDestination(job);
-    return dest ? `Apply on ${dest}:` : 'Apply:';
-}
-
-function headline(job: SocialPostJob): string {
-    const company = (job.company || '').trim();
-    const title = job.title.trim();
-    const loc = locationText(job);
-    const where = loc ? ` (${loc})` : '';
-    return company ? `${company} is hiring ${title}${where}` : `Hiring ${title}${where}`;
-}
-
-function truncate(text: string, max: number): string {
-    return text.length > max ? text.slice(0, max - 3).trimEnd() + '...' : text;
-}
-
-/**
- * X counts every URL as a fixed 23 characters (t.co wrapping), so measuring the
- * raw string would over-count long job links and shed useful fields (company,
- * location) for no reason. This mirrors how X actually counts.
- */
-function xLength(text: string): number {
-    return text.replace(/https?:\/\/\S+/g, 'x'.repeat(23)).length;
-}
-
-export function formatSocialCaption(job: SocialPostJob, platform: string): string {
-    const link = job.applyLink;
-    const apply = applyLine(job);
-
-    if (platform === 'x') {
-        // Hook first (company + role in the first 7 words), destination +
-        // link last. Shed location → title length while X's real 280-char
-        // budget is respected.
-        const title = job.title.trim();
-        const company = (job.company || '').trim();
-        const full = `${headline(job)}\n\n${apply}\n${link}`;
-        if (xLength(full) <= 280) return full;
-        const noLoc = `${company ? `${company} is hiring ${title}` : `Hiring ${title}`}\n\n${apply}\n${link}`;
-        if (xLength(noLoc) <= 280) return noLoc;
-        return `${company ? `${company} is hiring ${truncate(title, 60)}` : `Hiring ${truncate(title, 60)}`}\n${apply}\n${link}`;
-    }
-
-    if (platform === 'linkedin') {
-        // Hook above the "see more" fold, blank-line spacing, tag CTA seeds
-        // the replies that drive LinkedIn reach.
-        const company = (job.company || '').trim();
-        const hook = company ? `${company} is hiring ${job.title.trim()}` : `Hiring ${job.title.trim()}`;
-        const loc = locationText(job);
-        const where = loc ? `${loc} · ` : '';
-        return `${hook}.\n\n${where}${apply}\n${link}\n\nKnow someone looking? Tag them below.`;
-    }
-
-    // telegram / default (broadcast channel: no tag CTA, same clean body)
-    const company = (job.company || '').trim();
-    const hook = company ? `${company} is hiring ${job.title.trim()}` : `Hiring ${job.title.trim()}`;
-    const loc = locationText(job);
-    const where = loc ? `${loc} · ` : '';
-    return `${hook}.\n\n${where}${apply}\n${link}`;
 }
 
 async function schedulePost(platform: string, text: string, scheduledAt: number): Promise<void> {
@@ -437,13 +355,13 @@ export async function postJobsToSocial(jobs: SocialPostJob[], postedLinks: strin
     for (let i = 0; i < pending.length; i++) {
         const job = pending[i];
         if (useOptimal) {
-            await schedulePost('x', formatSocialCaption(job, 'x'), xSlots[i]);
-            await schedulePost('linkedin', formatSocialCaption(job, 'linkedin'), linkedinSlots[i]);
-            await schedulePost('telegram', formatSocialCaption(job, 'telegram'), telegramCursor);
+            await schedulePost('x', buildSocialCaption(job, 'x', applyDestination(job)), xSlots[i]);
+            await schedulePost('linkedin', buildSocialCaption(job, 'linkedin', applyDestination(job)), linkedinSlots[i]);
+            await schedulePost('telegram', buildSocialCaption(job, 'telegram', applyDestination(job)), telegramCursor);
             telegramCursor += jitterStagger(baseStagger);
         } else {
             for (const platform of SOCIAL_PLATFORMS) {
-                await schedulePost(platform, formatSocialCaption(job, platform), fallbackCursor);
+                await schedulePost(platform, buildSocialCaption(job, platform, applyDestination(job)), fallbackCursor);
             }
             fallbackCursor += jitterStagger(baseStagger);
         }

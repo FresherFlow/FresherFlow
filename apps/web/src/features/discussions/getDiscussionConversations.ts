@@ -14,6 +14,38 @@ import type { DiscussionConversation, DiscussionThreadKind } from './types';
 
 const MAX_CONVERSATIONS = 120;
 
+/**
+ * Upper bound on the RTDB read.
+ *
+ * The `catch` below cannot save us on its own. When the service-account
+ * credentials are absent — which is the correct state for a client-facing
+ * deployment that has no business holding an admin key — the Admin SDK does not
+ * reject promptly. It retries credential discovery with backoff and the promise
+ * stays pending for the better part of a minute.
+ *
+ * That turns a missing dependency into a build failure instead of an empty
+ * inbox: the static export calls this while rendering `/discussions`, the read
+ * outlasts Next's 60s per-page budget, and the page is retried three times
+ * before the whole build exits:
+ *
+ *   Failed to build /(public)/discussions/page (attempt 1 of 3)
+ *   because it took more than 60 seconds
+ *
+ * Racing the read against a timer makes the degradation immediate and bounded:
+ * no credentials, a slow network, or an unreachable database all render the
+ * empty state in a few seconds rather than stalling the build.
+ */
+const READ_TIMEOUT_MS = 4000;
+
+function withTimeout<T>(read: Promise<T>, fallback: T): Promise<T> {
+    return Promise.race([
+        read.catch(() => fallback),
+        new Promise<T>((resolve) => {
+            setTimeout(() => resolve(fallback), READ_TIMEOUT_MS);
+        }),
+    ]);
+}
+
 type RawIndex = {
     count?: number;
     lastActivityAt?: number;
@@ -57,13 +89,13 @@ export async function getDiscussionConversations(): Promise<DiscussionConversati
     try {
         const db = getDatabase(app);
         const [jobIndex, companyIndex] = await Promise.all([
-            db.ref('/commentIndex').get(),
-            db.ref('/companyCommentIndex').get(),
+            withTimeout(db.ref('/commentIndex').get(), null),
+            withTimeout(db.ref('/companyCommentIndex').get(), null),
         ]);
 
         const rows = [
-            ...toConversations(jobIndex.val() as Record<string, RawIndex> | null, 'job'),
-            ...toConversations(companyIndex.val() as Record<string, RawIndex> | null, 'company'),
+            ...toConversations(jobIndex?.val() as Record<string, RawIndex> | null, 'job'),
+            ...toConversations(companyIndex?.val() as Record<string, RawIndex> | null, 'company'),
         ];
 
         rows.sort(

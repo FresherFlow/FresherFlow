@@ -164,8 +164,9 @@ export async function sendNotifications(state: DiscoveryState) {
 }
 
 // ─── Social Media Posting ───────────────────────────────────────────────────
-// The shared poster (packages/pipeline/src/utils/social.ts) owns captions,
-// adaptive stagger, dedup, the aggregator/board blocklist and the worker call.
+// The shared poster (packages/pipeline/src/utils/socialPoster.ts) owns adaptive
+// stagger, dedup, the aggregator/board blocklist and the worker call.
+// Caption text itself lives in @fresherflow/utils/social (buildSocialCaption).
 // Aggregator wrapper links are never passed to it — see the call site above.
 
 export async function writeGitHubSummary(state: DiscoveryState) {

@@ -26,7 +26,7 @@ services:
   #
   # Also note: the build commands below still use `npm ci` and
   # `package-lock.json`, but the repo has no package-lock.json and pins
-  # `packageManager: pnpm@12.4.2`. Left as-is (out of scope) — these services
+  # `packageManager: pnpm@10.34.7`. Left as-is (out of scope) — these services
   # cannot build until that is reconciled.
 
   # ── API ─────────────────────────────────────────────────────────────────────
@@ -89,8 +89,11 @@ services:
     runtime: node
     region: singapore
     plan: free
-    buildCommand: npm ci && npx turbo run build --filter=fresherflow-mcp
-    startCommand: npm run start --workspace=apps/mcp
+    # pnpm, not npm: the repo is pnpm-only and has no package-lock.json, so the
+    # previous `npm ci` could never install. Run from the repo root so the
+    # workspace graph resolves, then filter to this package.
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm --filter fresherflow-mcp build
+    startCommand: pnpm --filter fresherflow-mcp start
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
@@ -104,6 +107,7 @@ services:
     buildFilter:
       paths:
         - apps/mcp/**
+        - pnpm-lock.yaml
         - package.json
 
   # ── REDIS ────────────────────────────────────────────────────────────────────

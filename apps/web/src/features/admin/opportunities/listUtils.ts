@@ -2,6 +2,7 @@ import { getApiBaseForEndpoint } from '@/lib/api/client';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 import { enumToTypeParam } from '@/lib/opportunity/typeParam';
 import type { Opportunity } from '@fresherflow/types';
+import { buildSocialCaption as sharedBuildSocialCaption } from '@fresherflow/utils/social';
 
 export const buildExportUrl = (typeFilter: string, statusFilter: string) => {
     const params = new URLSearchParams();
@@ -85,35 +86,9 @@ export const getPublicOpportunityUrl = (opp: PublicOpportunityRef) => {
 
 export type SocialOpportunity = Pick<Opportunity, 'id' | 'slug' | 'title' | 'company' | 'locations' | 'allowedPassoutYears' | 'allowedCourses' | 'allowedDegrees' | 'category' | 'sector' | 'recruitmentMethod' | 'employmentTypes' | 'governmentJobDetails'>;
 
-export const getEducationSummary = (opp: SocialOpportunity) => {
-    const courses = (opp.allowedCourses || []).map((item) => String(item).trim()).filter(Boolean);
-    if (courses.length > 0) return courses.slice(0, 3).join(', ');
-    const degrees = (opp.allowedDegrees || []).map((item) => String(item).trim()).filter(Boolean);
-    if (degrees.length > 0) return degrees.join(', ');
-    return 'Any Graduate';
-};
-
 export const buildSocialCaption = (opp: SocialOpportunity) => {
-    const normalizedLocations = (opp.locations || []).map((value: string) => String(value).trim()).filter(Boolean);
-    const locationLine = normalizedLocations.length > 1 ? normalizedLocations.join(' | ') : (normalizedLocations[0] || 'Remote');
-    const years = Array.isArray(opp.allowedPassoutYears)
-        ? [...opp.allowedPassoutYears].filter((year: number) => Number.isFinite(year)).sort((a: number, b: number) => a - b)
-        : [];
-    const batch = years.length > 0 ? years.join(', ') : 'Any';
-    const locationTag = normalizedLocations.length === 1
-        ? `#${normalizedLocations[0].replace(/[^a-zA-Z0-9]/g, '')}Jobs`
-        : '';
-    const hashtags = ['#FresherJobs', locationTag, '#FresherFlow'].filter(Boolean).join(' ');
-
-    return [
-        `${opp.title} - at ${opp.company}`,
-        `location: ${locationLine}`,
-        '',
-        `Batch: ${batch}`,
-        `Education: ${getEducationSummary(opp)}`,
-        '',
-        `Apply: ${getPublicOpportunityUrl(opp)}`,
-        '',
-        hashtags,
-    ].join('\n');
+    return sharedBuildSocialCaption(
+        { title: opp.title, company: opp.company, locations: opp.locations, applyLink: getPublicOpportunityUrl(opp) },
+        'linkedin',
+    );
 };

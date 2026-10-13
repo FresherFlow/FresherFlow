@@ -45,6 +45,7 @@ import { useTheme } from '@/lib/providers/ThemeContext';
 import { ThemeSwitcher } from '@/ui/ThemeSwitcher';
 import { capitalizeSkill } from '@/features/jobs/domain/opportunityDisplay';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
+import { buildSocialCaption } from '@fresherflow/utils/social';
 import { isGovernmentOpportunity } from '@/features/admin/opportunities/formUtils';
 
 const PROD_SITE_URL = SITE_URL.includes('localhost') ? 'https://fresherflow.in' : SITE_URL;
@@ -278,12 +279,6 @@ export default function CaptionsTool({ isAdmin = false }: { isAdmin?: boolean })
         return '';
     };
 
-    const getCleanHashtag = (str?: string) => {
-        if (!str) return '';
-        const clean = str.replace(/[^a-zA-Z0-9]/g, '');
-        return clean ? `#${clean}` : '';
-    };
-
     // Caption formatters
     const formatSingleCaption = (opp: Opportunity, platform: 'whatsapp' | 'telegram' | 'twitter' | 'linkedin') => {
         const salary = getSalaryText(opp);
@@ -301,56 +296,13 @@ export default function CaptionsTool({ isAdmin = false }: { isAdmin?: boolean })
             ? opp.locations.join(' / ') 
             : 'India';
 
-        const companyHash = getCleanHashtag(opp.company);
-        const firstLocation = opp.locations && opp.locations.length > 0 ? opp.locations[0] : '';
-        const cleanLoc = firstLocation.replace(/[^a-zA-Z0-9]/g, '');
-        const locationHash = cleanLoc ? `#${cleanLoc}Jobs` : '';
-
-        if (platform === 'telegram') {
-            return `${opp.company} is hiring ${opp.title}
-
-• Batch: ${batchYears || 'Any'}
-• Eligibility: ${degrees}
-• Location: ${locations}
-• Experience: ${exp}${salary ? `\n• Salary: ${salary}` : ''}${skillsLine ? `\n• Skills: ${skillsLine}` : ''}
-
-Apply:
-${getOpportunityUrl(opp)}
-
-More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs`;
-        }
-
-        if (platform === 'twitter') {
-            const twHashtags = (companyHash && locationHash) ? `${companyHash} ${locationHash} #Freshers` : '#Jobs #Hiring #Freshers';
-
-            return `${opp.company} is hiring ${opp.title}
-
-• Batch: ${batchYears || 'Freshers'}
-• Location: ${locations}
-• Exp: ${exp}
-
-Apply:
-${getOpportunityUrl(opp)}
-
-${twHashtags}`;
-        }
-
-        if (platform === 'linkedin') {
-            const liHashtags = (companyHash && locationHash) ? `${companyHash} ${locationHash} #Careers` : '#Hiring #Freshers #Jobs';
-
-            return `${opp.company} is hiring ${opp.title}
-
-• Batch: ${batchYears || 'Any'}
-• Location: ${locations}
-• Eligibility: ${degrees}
-• Experience: ${exp}${salary ? `\n• CTC: ${salary}` : ''}${skillsLine ? `\n• Skills: ${skillsLine}` : ''}
-
-Apply:
-${getOpportunityUrl(opp)}
-
-More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/jobs
-
-${liHashtags}`;
+        // Single-job posts share one voice across every bot
+        // (@fresherflow/utils/social). WhatsApp keeps its markdown variant below.
+        if (platform === 'telegram' || platform === 'twitter' || platform === 'linkedin') {
+            return buildSocialCaption(
+                { title: opp.title, company: opp.company, locations: opp.locations, applyLink: getOpportunityUrl(opp) },
+                platform === 'twitter' ? 'x' : platform,
+            );
         }
 
         // Default: whatsapp

@@ -1,4 +1,5 @@
 import { SocialPlatform } from '@prisma/client';
+import { buildSocialCaption } from '@fresherflow/utils';
 
 interface CaptionInput {
   title: string;
@@ -9,52 +10,23 @@ interface CaptionInput {
   salaryRange?: string | null;
 }
 
-const HASHTAGS: Record<SocialPlatform, string> = {
-  X: '#Hiring #Fresher #Jobs',
-  LINKEDIN: '#Hiring #FresherJobs #Careers #JobOpening',
-  FACEBOOK: '#Hiring #Jobs #FreshersHiring',
-};
-
-const MAX_CAPTION_LENGTH: Record<SocialPlatform, number> = {
-  X: 260,
-  LINKEDIN: 2800,
-  FACEBOOK: 2000,
+// Single-job post captions share one voice across every bot
+// (@fresherflow/utils/social). Stored SocialPost text follows it too —
+// salary/type lines from the old format are intentionally retired.
+const PLATFORM_MAP: Record<SocialPlatform, 'x' | 'linkedin' | 'facebook'> = {
+  X: 'x',
+  LINKEDIN: 'linkedin',
+  FACEBOOK: 'facebook',
 };
 
 export function buildCaption(input: CaptionInput, platform: SocialPlatform): string {
-  const { title, company, type, locations, applyLink, salaryRange } = input;
-
-  const locationText = locations.slice(0, 3).join(' / ');
-  const salary = salaryRange ? `💰 ${salaryRange}` : '';
-  const tags = HASHTAGS[platform];
-
-  const footer = `\n\n🔗 Apply: ${applyLink}\n\n${tags}`;
-  const header = [
-    `🚀 ${title} @ ${company}`,
-    `📂 ${type} | 📍 ${locationText}`,
-    salary,
-  ].filter(Boolean).join('\n');
-
-  const maxLen = MAX_CAPTION_LENGTH[platform];
-
-  if (header.length + footer.length <= maxLen) {
-    return header + footer;
-  }
-
-  // If too long, truncate the header (descriptive part)
-  const availableHeaderLen = maxLen - footer.length - 3; // -3 for '...'
-  if (availableHeaderLen > 20) {
-    return header.slice(0, availableHeaderLen) + '...' + footer;
-  }
-
-  // Extreme case: footer itself is too long for platform (unlikely but possible with huge URLs/X)
-  // Just ensure the link is there even if hashtags are cut
-  const minimalFooter = `\n\n🔗 Apply: ${applyLink}`;
-  const extremeHeaderLen = maxLen - minimalFooter.length - 3;
-  if (extremeHeaderLen > 10) {
-    return header.slice(0, extremeHeaderLen) + '...' + minimalFooter;
-  }
-
-  // Fallback: Just the link if even that is hitting limits
-  return `🔗 Apply: ${applyLink}`.slice(0, maxLen);
+  return buildSocialCaption(
+    {
+      title: input.title,
+      company: input.company,
+      locations: input.locations,
+      applyLink: input.applyLink,
+    },
+    PLATFORM_MAP[platform],
+  );
 }
