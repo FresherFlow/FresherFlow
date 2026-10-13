@@ -1,5 +1,4 @@
-import app from '@/lib/firebase/admin';
-import { getDatabase } from 'firebase-admin/database';
+import { requireAdminDatabase } from '@/lib/firebase/admin';
 import type { DiscussionConversation, DiscussionThreadKind } from './types';
 
 /**
@@ -15,25 +14,11 @@ import type { DiscussionConversation, DiscussionThreadKind } from './types';
 const MAX_CONVERSATIONS = 120;
 
 /**
- * Upper bound on the RTDB read.
+ * Upper bound on the RTDB read, used only when a credential is present.
  *
- * The `catch` below cannot save us on its own. When the service-account
- * credentials are absent — which is the correct state for a client-facing
- * deployment that has no business holding an admin key — the Admin SDK does not
- * reject promptly. It retries credential discovery with backoff and the promise
- * stays pending for the better part of a minute.
- *
- * That turns a missing dependency into a build failure instead of an empty
- * inbox: the static export calls this while rendering `/discussions`, the read
- * outlasts Next's 60s per-page budget, and the page is retried three times
- * before the whole build exits:
- *
- *   Failed to build /(public)/discussions/page (attempt 1 of 3)
- *   because it took more than 60 seconds
- *
- * Racing the read against a timer makes the degradation immediate and bounded:
- * no credentials, a slow network, or an unreachable database all render the
- * empty state in a few seconds rather than stalling the build.
+ * With no credential `requireAdminDatabase()` returns null and this never runs.
+ * It stays for the other failure mode: a valid key against a slow or
+ * unreachable database, where a read must not outlive a request.
  */
 const READ_TIMEOUT_MS = 4000;
 
@@ -86,8 +71,13 @@ function toConversations(
 }
 
 export async function getDiscussionConversations(): Promise<DiscussionConversation[]> {
+    // See `requireAdminDatabase()`: with no service-account credential the read
+    // would hang on Application Default Credentials rather than throw, which is
+    // what failed the static export. No credential means an empty inbox.
+    const db = requireAdminDatabase();
+    if (!db) return [];
+
     try {
-        const db = getDatabase(app);
         const [jobIndex, companyIndex] = await Promise.all([
             withTimeout(db.ref('/commentIndex').get(), null),
             withTimeout(db.ref('/companyCommentIndex').get(), null),

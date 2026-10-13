@@ -1,5 +1,4 @@
-import app from '@/lib/firebase/admin';
-import { getDatabase } from 'firebase-admin/database';
+import { requireAdminDatabase } from '@/lib/firebase/admin';
 
 /**
  * Reads just enough of a job's discussion to emit structured data.
@@ -51,9 +50,20 @@ function authorOf(item: RawComment): string {
 export async function getJobDiscussionForSeo(jobId: string): Promise<DiscussionSeoData | null> {
     if (!jobId) return null;
 
-    try {
-        const db = getDatabase(app);
+    // Ask before reading. Without a service-account credential the Admin SDK
+    // probes Application Default Credentials and leaves the read pending for
+    // about a minute, so a `try/catch` never fires in time. This route is
+    // prerendered, and that stall exhausted the 60s export budget three times
+    // over and failed the build:
+    //
+    //   Failed to build /(public)/jobs/[slug]/page after 3 attempts.
+    //
+    // No credential is the expected state for this deployment, so the correct
+    // outcome is no structured data — the page still renders.
+    const db = requireAdminDatabase();
+    if (!db) return null;
 
+    try {
         const indexSnapshot = await db.ref(`/commentIndex/${jobId}`).get();
         const total = Number((indexSnapshot.val() as { count?: number } | null)?.count) || 0;
         if (total <= 0) return null;
