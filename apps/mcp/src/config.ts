@@ -14,4 +14,9 @@ export const config = {
     get port() {
         return Number(process.env.MCP_PORT || process.env.PORT || 5002);
     },
+    // No service key lives here on purpose. Every call this server makes is
+    // authenticated as the connected user's OAuth token; a shared
+    // INTERNAL_API_SECRET in this process would be a second, unattributable
+    // identity that any connected account could borrow. Pipeline scripts hold
+    // that secret directly and never go through this server.
 };

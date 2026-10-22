@@ -97,6 +97,15 @@ vi.mock('../infrastructure/services/publicOpportunityCache.service', () => ({
 vi.mock('../infrastructure/services/opportunity/publish.service', () => ({
     getGranularTagsForOpportunity: vi.fn(() => []),
 }));
+// The lifecycle routes rebuild the CDN feeds and announce the change to the
+// web app. Both are background side effects with their own I/O; this suite is
+// about the hard-delete SQL, so they are stubbed.
+vi.mock('../infrastructure/services/opportunity/feedRefresh', () => ({
+    scheduleDiscoveryFeedRefresh: vi.fn(async () => undefined),
+}));
+vi.mock('../infrastructure/services/opportunity/webRevalidation.service', () => ({
+    notifyWebFeedChanged: vi.fn(async () => undefined),
+}));
 vi.mock('../application/opportunity/publish', () => ({ publishOpportunity: vi.fn() }));
 vi.mock('../application/opportunity/moderation', () => ({ rejectOpportunity: vi.fn() }));
 

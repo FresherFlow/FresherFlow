@@ -1,51 +1,91 @@
-import { Router, Request, Response, NextFunction } from 'express';
-import crypto from 'crypto';
+import { Router, Request, Response, NextFunction, RequestHandler } from 'express';
 import prisma from '../../../infrastructure/database/prisma';
 import { validate } from '../../../middleware/validate';
 import { mcpSubmitOpportunitySchema } from '../../../utils/validation';
 import { createRateLimiter } from '../../../middleware/rateLimit';
-import { mcpSubmitLimiter, submitJob } from '../../../infrastructure/services/community/community.service';
+import { submitJob } from '../../../infrastructure/services/community/community.service';
+import { verifyAccessToken as verifyMcpAccessToken } from '../../../infrastructure/services/platform/mcpOAuth.service';
+import { resolveMcpIdentity } from '../../../application/mcp/identity';
+import { handleOpportunityPublished } from '../../../infrastructure/services/opportunity/publish.service';
+import { AppError } from '../../../middleware/errorHandler';
+import type { Opportunity } from '@fresherflow/types';
 
 const router = Router();
 
 /**
  * POST /api/opportunities/mcp-submit
- * Anonymous, strictly-typed opportunity submission for AI agents (ChatGPT MCP).
+ * Submission path for AI agents connected to FresherFlow.
  *
- * Design (plan 23 §7-9):
- * - No auth. Anonymous ≠ anonymous publishing: the submission lands in
- *   PENDING_REVIEW and is never visible until a moderator approves it.
- * - Strict schema: no arbitrary object payload, every field length-capped.
- * - URL fields are DATA ONLY. The server never fetches them.
- * - Tight rate limit (10/hour per IP) to prevent spam through the MCP channel.
- * - Bulk tier: requests carrying `x-api-key: <MCP_SUBMIT_KEY>` (the operator's
- *   own key, never INTERNAL_API_SECRET) get 300/hour for link-dump workflows.
- *   Anonymous callers stay on the 10/hour tier no matter what.
+ * Authentication is mandatory. The only credential this route accepts is an
+ * OAuth 2.1 bearer minted by the FresherFlow authorization server for a
+ * signed-in account — there is no anonymous tier and no API-key shortcut. That
+ * is what makes the next rule enforceable:
+ *
+ *   - a moderator (account holds `opportunity.publish`) publishes on submit;
+ *   - everyone else's submission is written as a DRAFT awaiting review.
+ *
+ * The publish decision is re-read from RBAC on every call, so granting or
+ * revoking the moderator role in the admin panel takes effect immediately.
+ *
+ * URL fields are DATA ONLY. The server never fetches them.
  */
-const mcpSubmitBulkLimiter = createRateLimiter({
-    windowMs: 60 * 60 * 1000,
-    max: 300,
-    message: 'Too many MCP submissions. Please slow down.',
-    keyPrefix: 'mcp_submit_key',
-});
 
-function mcpSubmitRateLimit(req: Request, res: Response, next: NextFunction) {
-    const presented = req.header('x-api-key') ?? '';
-    const expected = process.env.MCP_SUBMIT_KEY ?? '';
-    if (
-        presented &&
-        expected &&
-        presented.length === expected.length &&
-        crypto.timingSafeEqual(Buffer.from(presented), Buffer.from(expected))
-    ) {
-        return mcpSubmitBulkLimiter(req, res, next);
+/**
+ * Authenticate the caller before anything else runs.
+ *
+ * Kept as its own middleware so the rate limiter below can key on the resolved
+ * user rather than on the caller IP: every MCP request arrives from the single
+ * MCP server process, so an IP-keyed bucket would let one person's submissions
+ * exhaust everybody else's budget.
+ */
+const requireMcpUser: RequestHandler = async (req, res, next) => {
+    const header = req.headers.authorization;
+    const bearer = header?.toLowerCase().startsWith('bearer ') ? header.slice(7).trim() : '';
+
+    if (!bearer) {
+        res.status(401).json({
+            error: {
+                message:
+                    'Connect FresherFlow and sign in first — submissions from the FresherFlow tools '
+                    + 'must be made by a signed-in account.',
+            },
+        });
+        return;
     }
-    return mcpSubmitLimiter(req, res, next);
-}
+
+    try {
+        const identity = await verifyMcpAccessToken(bearer);
+        if (!identity) {
+            // Never fall back to a staged submission here: the caller believes it
+            // is signed in, and silently degrading would misreport who owns the row.
+            res.status(401).json({
+                error: {
+                    message: 'This connection\'s access token is invalid or expired. '
+                        + 'Reconnect FresherFlow in your AI client and sign in again.',
+                },
+            });
+            return;
+        }
+        req.userId = identity.userId;
+        req.isAnonymous = false;
+        next();
+    } catch (error) {
+        next(error);
+    }
+};
+
+const mcpSubmitLimiter = createRateLimiter({
+    windowMs: 60 * 60 * 1000,
+    max: 60,
+    message: 'Too many MCP submissions. Please slow down.',
+    keyPrefix: 'mcp_submit',
+    keyGenerator: (req) => req.userId ?? req.ip ?? 'unknown-user',
+});
 
 router.post(
     '/mcp-submit',
-    mcpSubmitRateLimit,
+    requireMcpUser,
+    mcpSubmitLimiter,
     validate(mcpSubmitOpportunitySchema),
     async (req: Request, res: Response, next: NextFunction) => {
         try {
@@ -64,9 +104,15 @@ router.post(
                 salary?: string;
                 description?: string;
                 eligibility?: string;
+                skills?: string[];
+                passoutYears?: number[];
                 sourceUrl?: string;
                 contactEmail?: string;
             };
+
+            const signedInUserId = req.userId as string;
+            const identity = await resolveMcpIdentity(signedInUserId);
+            const publishes = identity.capabilities.submitPublishes;
 
             // Walk-ins are a recruitment method (dated drive), government is a
             // sector — both ride on category EMPLOYMENT with dimensions set.
@@ -79,7 +125,7 @@ router.post(
             const employmentTypes = body.employmentTypes ?? body.employmentType ?? null;
 
             const result = await submitJob({
-                userId: null,
+                userId: signedInUserId,
                 sourceUrl: body.jobUrl,
                 applyUrl: body.jobUrl,
                 title: body.title,
@@ -94,45 +140,63 @@ router.post(
                 timeRange: body.timeRange ?? null,
                 venueAddress: body.venueAddress ?? null,
                 salaryRange: body.salary ?? null,
-                requiredSkills: [],
-                allowedPassoutYears: [],
+                // Passed through rather than hardcoded empty: the agent read the
+                // posting, so these are the only structured eligibility values
+                // this path can ever have. submitJob parses `eligibility` into
+                // degrees/batches when these are absent.
+                requiredSkills: body.skills ?? [],
+                allowedPassoutYears: body.passoutYears ?? [],
+                eligibility: body.eligibility ?? null,
                 contact: body.contactEmail ?? null,
-                submittedVia: 'mcp',
-                published: false,
+                submittedVia: 'mcp_user',
+                // The product rule, in one line: a moderator's submission is live,
+                // everyone else's is a draft a moderator still has to publish.
+                published: publishes,
             });
 
-            // PENDING_REVIEW: never claim publication. The MCP layer must
-            // communicate this state explicitly so ChatGPT cannot tell the
-            // user the job is live when it is only staged.
-            // Duplicates resolve against the LIVE row state, never a hardcoded
-            // flag: an already-live URL reports PUBLISHED, an already-staged
-            // URL reports PENDING_REVIEW. (submitJob's dedupe paths predate
-            // this contract, so the row is re-read here rather than trusting
-            // its return.)
-            if (result.existing) {
-                const live = await prisma.opportunity.findUnique({
-                    where: { id: result.id },
-                    select: { status: true, slug: true },
-                });
-                const isLive = live?.status === 'PUBLISHED';
-                return res.status(200).json({
-                    success: true,
-                    submissionId: result.id,
-                    slug: result.slug ?? live?.slug ?? null,
-                    status: isLive ? 'PUBLISHED' : 'PENDING_REVIEW',
-                    published: isLive,
-                    message: isLive
-                        ? 'This opportunity is already live on FresherFlow.'
-                        : 'This opportunity was already submitted and is awaiting moderator review. It is not live.',
-                });
+            // The row is read back rather than trusted: an already-live URL
+            // reports PUBLISHED, an already-staged one reports DRAFT, and the
+            // agent must never hear a status the database does not hold.
+            const stored = await prisma.opportunity.findUnique({
+                where: { id: result.id },
+                select: { status: true, slug: true },
+            });
+            const isLive = stored?.status === 'PUBLISHED';
+
+            if (!result.existing && isLive) {
+                // submitJob writes the row directly, so the publish side effects
+                // (feed regeneration, alerts, indexing) do not run for it. Without
+                // this the response would say "live" while the CDN feed still had
+                // no such listing — the exact class of lie this route exists to
+                // avoid. Best-effort on purpose: a feed failure must not turn a
+                // successful write into an error the agent retries.
+                try {
+                    const published = await prisma.opportunity.findUnique({ where: { id: result.id } });
+                    if (published) {
+                        await handleOpportunityPublished(published as unknown as Opportunity, { isNew: true });
+                    }
+                } catch {
+                    // Retried by the feed refresh flow.
+                }
             }
-            return res.status(201).json({
+
+            const status = isLive ? 'PUBLISHED' : 'DRAFT';
+            const slug = result.slug ?? stored?.slug ?? null;
+
+            return res.status(result.existing ? 200 : 201).json({
                 success: true,
                 submissionId: result.id,
-                slug: result.slug ?? null,
-                status: 'PENDING_REVIEW',
-                published: false,
-                message: 'Opportunity submitted for FresherFlow review. It has not been published yet.',
+                slug,
+                status,
+                published: isLive,
+                duplicate: Boolean(result.existing),
+                message: result.existing
+                    ? isLive
+                        ? 'This opportunity is already live on FresherFlow.'
+                        : 'This opportunity was already submitted and is saved as a draft awaiting review. It is not live.'
+                    : isLive
+                        ? 'Opportunity added and live on FresherFlow.'
+                        : 'Opportunity saved as a draft. A moderator will review it before it goes live — it is not live yet.',
             });
         } catch (error) {
             return next(error);

@@ -7,11 +7,13 @@ import ProfileEditor from '@/features/profile/components/editor/ProfileEditor';
 import FeedbackTab from '@/features/settings/components/tabs/FeedbackTab';
 import ReferralTab from '@/features/settings/components/tabs/ReferralTab';
 import AccountOverview from '@/features/settings/AccountOverview';
+import ConnectedAppsTab from '@/features/settings/components/tabs/ConnectedAppsTab';
 
 const SETTINGS_TABS = [
     { key: 'profile', label: 'Profile', href: '/account?tab=profile' },
     { key: 'settings', label: 'Settings', href: '/account?tab=settings' },
     { key: 'appearance', label: 'Appearance', href: '/account?tab=appearance' },
+    { key: 'connected', label: 'Connected apps', href: '/account?tab=connected' },
     { key: 'referral', label: 'Referrals', href: '/account?tab=referral' },
     { key: 'feedback', label: 'Feedback', href: '/account?tab=feedback' },
 ] as const;
@@ -22,6 +24,7 @@ const TAB_COMPONENTS: Record<SettingsTabKey, React.ComponentType> = {
     profile: ProfileEditor,
     settings: AccountTab,
     appearance: AppearanceTab,
+    connected: ConnectedAppsTab,
     referral: ReferralTab,
     feedback: FeedbackTab,
 };

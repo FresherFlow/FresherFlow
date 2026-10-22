@@ -5,7 +5,7 @@ import { withAdminAudit } from '../../../middleware/adminAudit';
 import { AppError } from '../../../middleware/errorHandler';
 import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/opportunity/publicOpportunityCache.service';
 import { getGranularTagsForOpportunity } from '../../../infrastructure/services/opportunity/publish.service';
-import { parseEventType } from './_helpers';
+import { parseEventType } from '../../../application/opportunity/listingPayload';
 import { requirePermission } from '../../../middleware/auth';
 import { Prisma } from '@fresherflow/database';
 import { Opportunity } from '@fresherflow/types';

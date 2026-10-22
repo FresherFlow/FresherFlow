@@ -413,6 +413,9 @@ model User {
    referrals          User[]               @relation("UserReferrals")
    earnedReferralBadges ReferralBadgeGrant[]
    userRoles          UserAccessRole[]
+  oauthAuthorizationCodes OAuthAuthorizationCode[]
+  oauthAccessTokens       OAuthAccessToken[]
+  oauthRefreshTokens      OAuthRefreshToken[]
 
    // Admin Relations (only for role=ADMIN)
   postedOpportunities Opportunity[]
@@ -479,6 +482,88 @@ model RefreshToken {
 
   @@index([userId])
   @@index([tokenHash])
+}
+
+/// An OAuth 2.1 client that connects to the FresherFlow MCP server — registered
+/// by the host through dynamic client registration, or by hand.
+///
+/// ChatGPT cannot send a static API key or a custom header: an authenticated
+/// connector must complete an OAuth 2.1 authorization-code + PKCE flow, so this
+/// is the only path to caller identity on that surface.
+model OAuthClient {
+  id           String    @id @default(uuid())
+  clientId     String    @unique
+  clientName   String?   @db.VarChar(120)
+  /// Exact redirect URIs this client registered. Never matched by prefix or
+  /// wildcard: an unlisted URI is refused, which is what stops a stolen code
+  /// being redirected somewhere else.
+  redirectUris String[]
+  createdAt    DateTime  @default(now())
+  lastUsedAt   DateTime?
+
+  authorizationCodes OAuthAuthorizationCode[]
+  accessTokens       OAuthAccessToken[]
+  refreshTokens      OAuthRefreshToken[]
+}
+
+/// Short-lived authorization code, PKCE-bound. Stored hashed and single-use:
+/// `usedAt` is set when it is exchanged, so a replayed code fails.
+model OAuthAuthorizationCode {
+  id            String    @id @default(uuid())
+  codeHash      String    @unique
+  clientId      String
+  userId        String
+  redirectUri   String
+  codeChallenge String
+  scope         String    @default("")
+  /// The MCP resource the token is being minted for (RFC 8707).
+  resource      String?
+  expiresAt     DateTime
+  usedAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  client OAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Bearer access token presented by the MCP client. Opaque and hashed, so
+/// revoking is one row update that takes effect on the caller's very next tool
+/// call — a signed JWT could not be withdrawn before it expired.
+model OAuthAccessToken {
+  id         String    @id @default(uuid())
+  tokenHash  String    @unique
+  clientId   String
+  userId     String
+  scope      String    @default("")
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  client OAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Refresh token for MCP clients. Separate from the web `RefreshToken` table on
+/// purpose: revoking an MCP connection must not sign the user out of the site.
+model OAuthRefreshToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  clientId  String
+  userId    String
+  scope     String    @default("")
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  client OAuthClient @relation(fields: [clientId], references: [clientId], onDelete: Cascade)
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model AdminDeliveryControl {

@@ -21,6 +21,15 @@ interface RateLimitOptions {
     max: number;
     message: string;
     keyPrefix?: string;
+    /**
+     * Overrides the bucket key. Defaults to `req.ip`.
+     *
+     * Only for routes that are already authenticated and where several distinct
+     * people share one caller IP — the MCP server is a single process forwarding
+     * every connected user's calls, so an IP-keyed bucket there would make one
+     * person's submissions exhaust everyone else's budget.
+     */
+    keyGenerator?: (req: Request) => string;
 }
 
 /**
@@ -34,8 +43,8 @@ export function createRateLimiter(options: RateLimitOptions) {
         // caller mint a fresh bucket per request by rotating the header, which
         // made every limiter built on this factory bypassable with one curl —
         // including the auth and OTP limiters.
-        const ip = req.ip || 'unknown-ip';
-        const key = `${options.keyPrefix || 'rl'}:${ip}`;
+        const bucket = options.keyGenerator ? options.keyGenerator(req) : (req.ip || 'unknown-ip');
+        const key = `${options.keyPrefix || 'rl'}:${bucket}`;
         const now = Date.now();
 
         if (isRedisEnabled()) {

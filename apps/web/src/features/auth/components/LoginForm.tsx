@@ -70,7 +70,11 @@ function LoginContent({ mode = 'auto' }: { mode?: AuthMode }) {
     }, [searchParams]);
     const source = searchParams.get('source') || undefined;
     const refCode = searchParams.get('ref') || undefined;
-    const redirectParam = searchParams.get('redirect');
+    // `next` is accepted as an alias: most in-app "sign in to continue" links
+    // are built as /login?next=…, while the API's OAuth connect flow sends
+    // `redirect`. Reading only one of the two silently dropped the other's
+    // destination and stranded the user on the default tab.
+    const redirectParam = searchParams.get('redirect') ?? searchParams.get('next');
     const isInviteFlow = source === 'dashboard_invite' || Boolean(refCode);
 
     const redirectTarget = useMemo(

@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../../../infrastructure/database/prisma';
 import { Prisma } from '@fresherflow/database';
-import { normalizeTypeParam, parseAdminStatusFilter, buildExpiredWhere, toCsvValue } from './_helpers';
+import { normalizeTypeParam, parseAdminStatusFilter, buildExpiredWhere, toCsvValue } from '../../../application/opportunity/listingPayload';
 import { requirePermission } from '../../../middleware/auth';
 
 const router = Router();

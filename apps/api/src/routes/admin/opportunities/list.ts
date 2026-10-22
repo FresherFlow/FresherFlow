@@ -8,7 +8,7 @@ import { parsePagination } from '../../../utils/pagination';
 import { sendError, ErrorCode } from '../../../middleware/errorHandler';
 import {
     normalizeTypeParam, parseAdminStatusFilter, buildExpiredWhere, buildIdOrSlugWhere,
-} from './_helpers';
+} from '../../../application/opportunity/listingPayload';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
 
 const router = Router();

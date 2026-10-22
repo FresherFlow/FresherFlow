@@ -123,6 +123,26 @@ export function getRootDomainHost(): string | null {
     return getRootDomainFromOrigins();
 }
 
+/**
+ * The API's own public origin. This is the OAuth 2.1 issuer identifier, and it
+ * must be byte-identical everywhere it appears (metadata `issuer`, the `iss`
+ * response parameter, and the protected-resource `authorization_servers` list):
+ * OpenAI hosts compare it with exact string comparison and reject a mismatch.
+ */
+export function getApiPublicUrl(): string {
+    return normalizeUrl(process.env.API_URL || process.env.PUBLIC_API_URL, getFallbackOrigin(5000));
+}
+
+/**
+ * The MCP server's public origin — the OAuth 2.1 resource identifier. Distinct
+ * from the API host: the MCP server is the resource server, the API is the
+ * authorization server. Unset in production means the discovery documents cannot
+ * name the resource, so `/oauth` reports it rather than guessing.
+ */
+export function getMcpPublicUrl(): string {
+    return normalizeUrl(process.env.MCP_PUBLIC_URL, '');
+}
+
 export function getCookieDomain(): string | undefined {
     const explicit = normalizeHost(process.env.AUTH_COOKIE_DOMAIN || process.env.ADMIN_COOKIE_DOMAIN || process.env.COOKIE_DOMAIN);
     if (explicit) {

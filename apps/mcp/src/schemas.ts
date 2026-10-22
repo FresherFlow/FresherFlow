@@ -37,13 +37,15 @@ export const SubmitOpportunityInput = z.object({
     description: z.string().trim().max(5000).optional()
         .describe('Short description of the opening'),
     eligibility: z.string().trim().max(2000).optional()
-        .describe('Eligibility: degrees, courses, pass-out years'),
+        .describe('Eligibility: degrees, courses, pass-out years. Send it in the source posting\'s own words — it is parsed into structured eligibility, so the listing is still filterable by degree and batch.'),
+    skills: z.array(z.string().trim().min(1).max(60)).max(30).optional()
+        .describe('Required skills, one entry each, e.g. ["React", "TypeScript"]. Read them off the posting; do not invent any.'),
+    passoutYears: z.array(z.number().int().min(1990).max(2100)).max(15).optional()
+        .describe('Eligible graduation years as numbers, e.g. [2025, 2026]. Use only when the posting states them, and spell out a range rather than sending it as text.'),
     sourceUrl: z.string().trim().url('sourceUrl must be a valid URL').max(2000).optional()
         .describe('Original source URL if different from jobUrl'),
     contactEmail: z.string().trim().email('contactEmail must be valid').max(200).optional()
         .describe('Optional contact email for follow-up'),
-    submitKey: z.string().trim().min(1).max(200).optional()
-        .describe('Optional operator bulk key. Without it (or the server key) this submission counts against the 10/hour anonymous tier. Never ask the user for this; only use it if they paste it themselves.'),
 }).superRefine((data, ctx) => {
     if (!data.jobUrl.startsWith('https://')) {
         ctx.addIssue({ code: 'custom', path: ['jobUrl'], message: 'jobUrl must use https' });
@@ -60,8 +62,12 @@ export type SubmitOpportunityInput = z.infer<typeof SubmitOpportunityInput>;
 export const SubmitOpportunityOutput = z.object({
     submissionId: z.string().describe('Internal submission id'),
     slug: z.string().nullable().describe('Generated slug, null if the opportunity already existed'),
-    status: z.enum(['PENDING_REVIEW', 'PUBLISHED']).describe('Current moderation state'),
+    status: z.enum(['DRAFT', 'PUBLISHED']).describe(
+        'DRAFT: saved and waiting for a moderator to publish it. PUBLISHED: live on FresherFlow.',
+    ),
     published: z.boolean().describe('true only when the opportunity is live on FresherFlow'),
+    /** Present when the job URL already existed on FresherFlow. */
+    duplicate: z.boolean().optional().describe('true when this URL already existed on FresherFlow'),
     message: z.string().describe('Human-readable status message'),
 });
 

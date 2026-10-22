@@ -1,10 +1,8 @@
 # FresherFlow agent guide
 
-This file is for AI coding agents working in the FresherFlow monorepo. Read the app-level `AGENTS.md` before touching app code.
-
 ## Start here
 
-[`company/README.md`](./company/README.md) is the company map: the front door for agents in this repo. It routes to decisions, people, projects, policies, skills, workers, and reviewed corrections without duplicating them. Read it before proposing any structural change.
+This file is the repo-wide source of truth. Read the app-level `AGENTS.md` before touching that app's code.
 
 | Area | Guide |
 |---|---|
@@ -14,6 +12,9 @@ This file is for AI coding agents working in the FresherFlow monorepo. Read the 
 | Admin mobile | `apps/admin-mobile/AGENTS.md` |
 | Job discovery | `scripts/job-discovery/AGENTS.md` |
 | Job processor | `scripts/job-processor/AGENTS.md` |
+| MCP server | no app guide yet — see the MCP section below |
+
+Tooling and workflow notes live in `docs/skills/` (`pnpm.md`, `turborepo.md`, `prisma.md`, `nextjs.md`, `expo.md`, `git-commit.md`, `security-review.md`). Dated architecture reviews live in `docs/reviews/<date>-<slug>/`.
 
 ## Core Principles
 
@@ -46,7 +47,9 @@ FresherFlow is a production job and walk-in opportunity platform.
 | Mobile | Expo, React Native, TypeScript, MMKV |
 | Admin mobile | Expo, React Native, internal admin operations |
 | API | Node.js, Express, Zod, Prisma, Redis, BullMQ |
-| MCP | Node.js, Express, MCP Streamable HTTP, read-only tools over the API |
+| MCP | Node.js, Express, MCP Streamable HTTP, OAuth 2.1 bearer, read/write over the API |
+| Worker | BullMQ processors run as a separate process (`apps/api/src/worker.ts`) |
+| Ingestion | Feed and job ingestion (`apps/ingestion`) |
 | Database | PostgreSQL via Prisma |
 | Storage | Cloudflare R2 and CDN |
 | Automation | Job discovery and processor scripts |
@@ -61,13 +64,16 @@ Use `pnpm`. Do not use `npm` or `yarn`.
 | Prisma client | `packages/database` |
 | Shared request and response types | `packages/types/src/index.ts` |
 | Frontend API wrappers | `packages/api-client/src/` |
-| Business rules | API application and infrastructure services, with pure helpers in `packages/utils` and `packages/types`. There is no `packages/domain` yet; see `docs/ARCHITECTURE-TRUTH.md` |
+| Business rules | API application and infrastructure services, with pure helpers in `packages/utils` and `packages/types`. There is no `packages/domain`; do not create one |
 | Shared utilities | `packages/utils/src/` |
-| Shared UI primitives | `packages/ui` |
+| Shared UI primitives | `packages/ui`, `packages/frontend-core` |
+| Parsing / ingestion logic | `packages/parser`, `apps/ingestion` |
 | Bootstrap feed | Cloudflare R2 object behind the FresherFlow CDN |
 | Mobile feed cache | `apps/mobile/src/utils/cache/syncModule.ts` and MMKV |
 | Queue contracts | `packages/queue` |
 | Redis clients | `packages/database/src/redis.ts`, re-exported by `packages/database/src/index.ts` |
+| Listing contract | `apps/api/src/utils/validation.ts` → `opportunitySchema` |
+| Shipped agent skills | `plugins/fresherflow/skills/<name>/SKILL.md` |
 
 ### One home per fact
 
@@ -101,6 +107,49 @@ Keep boundaries hard:
 - Feed regeneration starts from admin or publish flows, not public frontend routes
 
 Do not add new code under `apps/api/src/domain`. Move legacy logic to an application service, infrastructure, or a pure helper in `packages/utils` as you touch it.
+
+### Listing writes have one home
+
+Any code that writes a full listing — the admin form, draft ingester, or MCP — goes through `apps/api/src/application/opportunity/listingWrite.ts`. Pure payload builders (slug resolution, education normalisation, drive/government row construction) live in `listingPayload.ts`.
+
+Do not inline a `prisma.opportunity.create` or `.update` in a route to add a field. That duplication is what let the MCP path drift from the admin contract in the first place.
+
+Two traps in this area:
+
+- `opportunitySchema` is a **closed** `z.object`. Unknown keys are stripped, not rejected, so a misspelled field disappears silently. `AdminOpportunityRequest` in `apps/api/src/types/admin.ts` must mirror it; when the interface and the schema diverge, the interface is the thing that is wrong.
+- `applicationDetails` is a Prisma `Json` column. Setting it to bare `null` throws at runtime and 500s — use `Prisma.DbNull`.
+
+## MCP server
+
+`apps/mcp` is a thin Express server over the API. It holds no business logic and no database access; every tool is an HTTP call.
+
+| Concern | Where |
+|---|---|
+| Tool registration and the session `instructions` block | `apps/mcp/src/server.ts` |
+| One file per tool | `apps/mcp/src/tools/*.ts` |
+| HTTP transport, OAuth bearer gate | `apps/mcp/src/transport.ts` |
+| Caller role → which tools exist (cached briefly) | `apps/mcp/src/identity.ts` |
+| The one authenticated API fetch and error mapping | `apps/mcp/src/http/client.ts` |
+| API calls, one module per surface | `apps/mcp/src/api/{identity,jobs,listings,submissions}.ts` |
+| Backend routes | `apps/api/src/routes/internal/mcp/` |
+| Backend auth for that surface | `apps/api/src/middleware/mcpAccessToken.ts` |
+| OAuth issuance | `apps/api/src/routes/oauth.ts` |
+
+Every MCP caller is authenticated through the app. There is no anonymous tier, and the MCP server holds no service key of its own:
+
+| Caller | Credential | Can do |
+|---|---|---|
+| Signed-in user via AI client | OAuth 2.1 bearer | browse live jobs; submit a **DRAFT**; own submissions |
+| Moderator via AI client | OAuth 2.1 bearer + `opportunity.publish` | the above, **published on submit**; full listing writes; moderation |
+| Pipeline scripts (direct to the API) | `INTERNAL_API_SECRET` | full listing writes; no user identity |
+
+Role is resolved from the same RBAC grants the admin panel edits (`apps/api/src/application/mcp/identity.ts`), never from a client claim. `apps/mcp/src/transport.ts` resolves it per request, so the tool list a connection sees already reflects its role.
+
+`mcpSurfaceAuth` accepts a bearer *or* the service key and never falls back to anonymous; `apps/mcp` itself refuses any request without a bearer. Listing writes need `opportunity.create` **or** `opportunity.edit` (moderators hold `edit`), so the listing tools bypass the admin router rather than impersonating a super admin.
+
+`create_listing` defaults to `PUBLISHED` for a moderator connection and `DRAFT` for the service key. `submit_opportunity` publishes only when the account holds `opportunity.publish`. A tool must never report a listing as live unless the response says `published: true`.
+
+MCP clients cache the tool list. After changing any `inputSchema` or `outputSchema`, reconnect or refresh discovery or clients validate against the stale schema and reject valid results.
 
 ## Environment rules
 
@@ -160,59 +209,73 @@ Caching mistakes can publish stale or private data. Treat cache changes as produ
 
 ## Tooling rules
 
-Use the dedicated tools for reading and searching. They are faster, they
-respect ignore rules, and their output is directly citable.
+Use the dedicated tools for reading and searching. They are faster, they respect ignore rules, and their output is directly citable.
 
 **Do not, for code search or reading:**
 
-- `Select-String`, `Get-Content`, `Get-ChildItem` pipelines for finding or
-  reading source
+- `Select-String`, `Get-Content`, `Get-ChildItem` pipelines for finding or reading source
 - multi-clause PowerShell one-liners that string-match source
-- re-reading a file the `Read` tool already returned in full
+- re-reading a file the `read` tool already returned in full
 
 **Use instead:**
 
 | Task | Tool |
 |---|---|
-| find a symbol or string | `Grep` |
-| read a file, or a range of one | `Read` |
-| find a file by name | `Glob` |
-| edit | `Edit` |
-| create a file | `Write` |
-| plan or audit across many files | `Task` with `explore` |
+| find a symbol or string | `grep` |
+| read a file, or a range of one | `read` |
+| find a file by name | `glob` |
+| edit | `edit` |
+| create a file | `write` |
+| plan or audit across many files | `subagent` with `explore` |
 
-**Bash is for shell work only:** `git`, `pnpm`, builds, tests, migrations,
-starting or stopping processes, inspecting ports. It is not a search tool.
+**`shell` is for shell work only:** `git`, `pnpm`, builds, tests, migrations, starting or stopping processes, inspecting ports. It is not a search tool. This box is Windows, so it runs PowerShell, not bash.
 
-If a shell command grows past roughly one pipeline, it belongs in `Grep` or
-`Task`. Chained pipelines are slow, unreadable, and hide their own mistakes.
+If a shell command grows past roughly one pipeline, it belongs in `grep` or `subagent`. Chained pipelines are slow, unreadable, and hide their own mistakes.
 
 ## Validation
 
-Run validation from the repo root unless an app guide says otherwise.
+CI runs this order (`.github/workflows/deploy.yml`). Match it locally:
 
 ```bash
-pnpm typecheck
-pnpm build
+pnpm install --frozen-lockfile
+pnpm db:generate                 # postinstall deliberately skips this
+pnpm turbo lint --filter=fresherflow-api --filter=fresherflow-web
+pnpm turbo typecheck --filter=fresherflow-api --filter=fresherflow-web
+pnpm turbo build --filter=fresherflow-api --filter=fresherflow-web
+pnpm --filter fresherflow-api test
 ```
 
-For scoped work, prefer the workspace command if it exists:
+`postinstall` echoes "skipping prisma generate". After any `schema.prisma` change you must run `pnpm db:generate` yourself or typecheck fails on stale Prisma types. turbo's `typecheck` and `test` tasks depend on `^build` and `db:generate` respectively, but not on your local invocation of `pnpm typecheck`.
+
+For a single app or file:
 
 ```bash
-pnpm --filter ./apps/web typecheck
-pnpm --filter ./apps/api build
+pnpm --filter fresherflow-api typecheck
+pnpm --filter fresherflow-api exec vitest run src/__tests__/mcp-listing-write.test.ts
+pnpm --filter fresherflow-mcp typecheck
+pnpm --filter fresherflow-web check:structure:gate
 ```
+
+`apps/mcp` has no `test` script and no test files; MCP behaviour is covered by API tests over the write path it calls.
 
 Additional checks:
 
 | Change | Extra validation |
 |---|---|
 | API route | Hit success, validation error, unauthenticated, and unauthorized paths |
-| Prisma schema | Run `pnpm db:generate`; apply migrations or `db:push` only when requested |
+| Prisma schema | Write the migration and run `pnpm db:generate`. Applying it needs explicit approval |
+| Listing write path | `src/__tests__/mcp-listing-write.test.ts` asserts the exact object handed to Prisma |
+| MCP tool schema | Reconnect a client and re-run `tools/list` before trusting a result |
+| Agent skill | Edit under `plugins/fresherflow/skills/`, then `pnpm skills:sync`; `pnpm skills:check` fails on drift |
 | Web UI | Render route, loading state, error state, and empty state |
 | Mobile UI | Verify cold start, warm start, navigation, loading, error, and empty states |
 | Feed pipeline | Run dry-run or test mode before production upload |
-| Docs only | Run a targeted search for mojibake and forbidden punctuation |
+
+### Agent skills
+
+`plugins/fresherflow/skills/<name>/SKILL.md` is the tracked source and what ships in the plugin bundle. `.agents/skills/` is the local install and is gitignored, so it can never be the source. Edit the file under `plugins/`, then run `pnpm skills:sync`. The frontmatter `name` must match the directory name — a mismatch silently breaks discovery.
+
+Skills and MCP are separate channels. A skill is markdown loaded by whoever runs the agent; the MCP server can only deliver `instructions` and the tool list over the protocol. Tool names quoted in a skill are load-bearing — keep them in sync with `server.ts`.
 
 ### Turborepo workflow
 
@@ -295,10 +358,13 @@ When subagents are available, list active agents first, reuse matching roles, an
 
 | File | Risk |
 |---|---|
+| `apps/api/src/utils/validation.ts` | `opportunitySchema` is the listing contract; a closed object silently strips unknown keys |
+| `apps/api/src/application/opportunity/listingWrite.ts` | Every listing write on every path |
 | `packages/database/prisma/schema.prisma` | Schema changes affect every app |
 | `packages/types/src/index.ts` | Type changes cascade to all clients |
 | `packages/api-client/src/` | Frontend and backend contract |
-| `apps/api/src/index.ts` | Middleware order affects all requests |
+| `apps/api/src/index.ts` | Middleware order and route mounts affect all requests |
+| `apps/mcp/src/server.ts` | Tool registrations and session instructions |
 | `apps/mobile/src/navigation/RootNavigator.tsx` | Launch and auth routing |
 | `apps/mobile/src/utils/cache/syncModule.ts` | Offline feed sync |
 | `scripts/job-discovery/src/pipeline/state.ts` | Discovery state contract |

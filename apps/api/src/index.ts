@@ -40,6 +40,10 @@ import dashboardRoutes from './routes/dashboard';
 import alertsRoutes from './routes/alerts';
 import adminAuthRoutes from './routes/admin/auth';
 import adminOpportunitiesRoutes from './routes/admin/opportunities';
+import internalMcpListingRoutes from './routes/internal/mcp/listings';
+import internalMcpContributionRoutes from './routes/internal/mcp/contributions';
+import oauthRoutes from './routes/oauth';
+import { mcpSurfaceAuth } from './middleware/mcpAccessToken';
 import adminFeedbackRoutes from './routes/admin/feedback';
 import adminAppFeedbackRoutes from './routes/admin/appFeedback';
 import adminSystemRoutes from './routes/admin/system';
@@ -525,8 +529,29 @@ app.get(/^\/(sitemaps\/)?sitemap.*\.xml$/, async (req, res) => {
     }
 });
 
+// Full-payload listing API for the FresherFlow MCP server, gated on the
+// internal service key rather than an admin session: `opportunity.create` and
+// `opportunity.edit` are SUPER_ADMIN-only, so routing MCP writes through the
+// admin router would mean the MCP server holding super-admin credentials.
+// Mounted outside the mode split because it is infrastructure, not a
+// user-facing feature, and it is unreachable without INTERNAL_API_SECRET.
+// Credential: an OAuth 2.1 bearer token from a signed-in user (which sets
+// req.userId, so the RBAC checks below apply unchanged) or the first-party
+// service key for pipeline scripts. `mcpSurfaceAuth` owns that choice.
+app.use(
+    '/api/internal/mcp',
+    mcpSurfaceAuth,
+    internalMcpListingRoutes,
+    // Contributor + moderator tools (whoami, own submissions, review queue).
+    internalMcpContributionRoutes,
+);
+
+// OAuth 2.1 authorization server for AI clients: discovery documents, dynamic
+// client registration, consent, token exchange and revocation. Serves both
+// `/.well-known/*` and `/oauth/*` from this router.
+app.use(oauthRoutes);
+
 if (isUserMode) {
-    // User routes
     app.use('/api/auth/register', registerLimiter);
     app.use('/api/auth/login', authLimiter);
     app.use('/api/auth', authRoutes);

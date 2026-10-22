@@ -282,6 +282,10 @@ function isUserProtectedEndpoint(endpoint: string): boolean {
         '/api/updates',
         '/api/notifications',
         '/api/resources',
+        // Connected AI apps (list + revoke). Session-scoped: the Bearer header
+        // must be attached so the list is the signed-in user's own connections,
+        // never whatever a stale cookie happens to point at.
+        '/oauth',
     ];
     return protectedPrefixes.some((prefix) => endpoint.startsWith(prefix));
 }
@@ -344,6 +348,9 @@ function shouldBypassBrowserCache(endpoint: string, method: string): boolean {
         '/api/actions',
         '/api/tracker',
         '/api/feedback',
+        // Revocations must show up on the next load, so this list is never
+        // served from the browser cache.
+        '/oauth',
     ];
     return privatePrefixes.some((prefix) => endpoint.startsWith(prefix));
 }

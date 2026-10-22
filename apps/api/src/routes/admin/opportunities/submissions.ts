@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import prisma, { RawOpportunityStatus as DbRawStatus, OpportunityStatus as DbOpportunityStatus, } from '../../../infrastructure/database/prisma';
 import { RawOpportunityStatus, OpportunityStatus, Opportunity } from '@fresherflow/types';
-import { resolveOpportunityDimensions } from './_helpers';
+import { resolveOpportunityDimensions } from '../../../application/opportunity/listingPayload';
 import { generateSlug } from '@fresherflow/utils';
 import { handleOpportunityPublished } from '../../../infrastructure/services/opportunity/publish.service';
 import { actorId, requirePermission } from '../../../middleware/auth';

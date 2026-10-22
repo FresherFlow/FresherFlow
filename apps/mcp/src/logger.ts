@@ -14,6 +14,11 @@ export const logger = {
     info(message: string, meta?: Record<string, unknown>): void {
         console.log(JSON.stringify({ level: 'info', time: new Date().toISOString(), message, ...meta }));
     },
+    /** Expected-but-notable outcomes, e.g. a request rejected for missing auth. */
+    warn(message: string, meta?: Record<string, unknown>): void {
+        console.warn(JSON.stringify({ level: 'warn', time: new Date().toISOString(), message, ...meta }));
+    },
+
     error(message: string, meta?: Record<string, unknown>): void {
         const { error, ...rest } = meta ?? {};
         console.error(JSON.stringify({

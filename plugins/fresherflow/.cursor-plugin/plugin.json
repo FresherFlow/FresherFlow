@@ -1,0 +1,21 @@
+{
+  "name": "fresherflow",
+  "version": "0.2.0",
+  "description": "Add fresher jobs, internships and walk-in drives to FresherFlow from your AI assistant, using the FresherFlow MCP server.",
+  "author": {
+    "name": "FresherFlow"
+  },
+  "homepage": "https://fresherflow.in",
+  "repository": "https://github.com/FresherFlow/FresherFlow",
+  "license": "MIT",
+  "keywords": [
+    "jobs",
+    "internships",
+    "fresher",
+    "walk-in",
+    "government-jobs",
+    "mcp"
+  ],
+  "logo": "https://fresherflow.in/icon-512x512.png",
+  "skills": "skills"
+}

@@ -18,6 +18,8 @@
     "dev:stack": "concurrently -k -n API,WEB -c green,cyan \"pnpm dev:api\" \"pnpm dev:web\"",
     "dev:start": "pnpm kill:ports && concurrently -k -n API,WEB,WORKER -c green,cyan,yellow \"pnpm dev:api\" \"pnpm dev:web\" \"pnpm --filter ./apps/worker dev\"",
     "dev:check": "node scripts/check-local-dev.js",
+    "skills:sync": "node scripts/skills-sync.mjs",
+    "skills:check": "node scripts/skills-sync.mjs --check",
     "dev:api": "pnpm --filter ./apps/api dev",
     "dev:ingestion": "pnpm --filter ./apps/ingestion dev",
     "dev:worker": "pnpm --filter ./apps/worker dev",

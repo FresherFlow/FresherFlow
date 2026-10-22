@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { OpportunityStatus, EducationLevel, WorkMode, SalaryPeriod } from '@fresherflow/types';
+import { OpportunityStatus, EducationLevel, WorkMode, SalaryPeriod, Availability } from '@fresherflow/types';
 import type {
     GovernmentApplicationFee,
     GovernmentEligibilityDetails,
@@ -17,11 +17,23 @@ export interface AdminOpportunityRequest {
     company: string;
     customSlug?: string;           // If provided, used as-is (sanitized) instead of auto-generating
     companyWebsite?: string;
+    companyLogoUrl?: string;
+    sector?: string | null;
+    rawOpportunityId?: string;
+    applicationDetails?: {
+        method?: 'DIRECT' | 'FORM' | 'ASSESSMENT';
+        platform?: string;
+        estimatedMinutes?: number;
+        requiredItems?: string[];
+    } | null;
     description?: string;
     allowedDegrees?: EducationLevel[];
     allowedCourses?: string[];
     allowedSpecializations?: string[];
     allowedPassoutYears?: number[];
+    passoutYearMin?: number | null;
+    passoutYearMax?: number | null;
+    allowedAvailability?: Availability[] | null;
     requiredSkills?: string[];
     locations: string[];
     workMode?: WorkMode;

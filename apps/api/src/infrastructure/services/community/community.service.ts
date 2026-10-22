@@ -4,6 +4,7 @@ import { AppError } from '../../../middleware/errorHandler';
 import { createRateLimiter } from '../../../middleware/rateLimit';
 import { slugify } from '@fresherflow/utils';
 import { logger } from '@fresherflow/utils';
+import { extractDegreesFromQualifications } from '@fresherflow/constants';
 import {
     CommentType,
     CommentVoteValue,
@@ -847,6 +848,61 @@ function urlVariants(url: string): string[] {
     return [...new Set([url, `${url}/`])];
 }
 
+/**
+ * Map free-text eligibility onto EducationLevel.
+ *
+ * Reuses the shared qualification patterns from `@fresherflow/constants` so a
+ * community or MCP submission cannot drift from the taxonomy the admin form and
+ * the feed filters already use. Unknown wording yields no degrees rather than a
+ * guessed one.
+ */
+function degreesFromEligibilityText(text: string | null): DbEducationLevel[] {
+    if (!text) return [];
+    // The shared extractor stops at the first match within a value (most specific
+    // wins), which is correct for a single qualification field and wrong for one
+    // sentence naming several levels — "B.E/B.Tech and MCA" would report PG alone
+    // and lose the degree. Split on the separators postings actually use, then
+    // union, so every level the source names is kept. Bounded before matching.
+    const segments = text
+        .slice(0, 2000)
+        .split(/[,;|/\n]|\band\b|\bor\b/i)
+        .map((segment) => segment.trim())
+        .filter(Boolean)
+        .slice(0, 20);
+
+    const degrees = new Set<DbEducationLevel>();
+    for (const segment of segments) {
+        for (const degree of extractDegreesFromQualifications([{ qualification: segment }])) {
+            degrees.add(degree as unknown as DbEducationLevel);
+        }
+    }
+    return [...degrees];
+}
+
+/**
+ * Batches a posting names as eligible, e.g. "2024-2026 passouts" -> [2024, 2025, 2026].
+ *
+ * Bounded before matching (the column's own cap), and a range is only expanded when it
+ * is plausible, so a stray multi-decade span cannot mint an eligibility list. Years
+ * outside the accepted window are dropped.
+ */
+function passoutYearsFromEligibilityText(text: string | null): number[] {
+    if (!text) return [];
+    const bounded = text.slice(0, 2000);
+    const years = new Set<number>();
+    for (const match of bounded.matchAll(/\b(19\d{2}|20\d{2})\s*(?:-|–|to)\s*(19\d{2}|20\d{2})\b/gi)) {
+        const start = Number(match[1]);
+        const end = Number(match[2]);
+        if (end >= start && end - start <= 12) {
+            for (let year = start; year <= end; year++) years.add(year);
+        }
+    }
+    for (const match of bounded.matchAll(/\b(19\d{2}|20\d{2})\b/g)) {
+        years.add(Number(match[1]));
+    }
+    return [...years].filter((year) => year >= 1990 && year <= 2100).slice(0, 15);
+}
+
 export interface SubmitJobInput {
     userId?: string | null;
     sourceUrl: string;
@@ -890,6 +946,10 @@ export interface SubmitJobInput {
     submittedVia?: string | null;
     /** Sector for government-style postings (e.g. 'GOVERNMENT'). Unset otherwise. */
     sector?: string | null;
+    /** Free-text eligibility as the source states it ("B.E/B.Tech, 2024-2026 passouts").
+     *  Parsed into allowedDegrees/allowedPassoutYears when those are not given, and
+     *  kept verbatim on the submission so a moderator reads what the source said. */
+    eligibility?: string | null;
     /** When false, the opportunity is created as DRAFT and the submission as
      *  PENDING_REVIEW (anonymous MCP / guest submissions). Default true. */
     published?: boolean;
@@ -1030,10 +1090,21 @@ export async function submitJob(input: SubmitJobInput) {
     const tags = cleanList(input.tags, 20);
     const allowedCourses = cleanList(input.allowedCourses, 20);
     const allowedSpecializations = cleanList(input.allowedSpecializations, 20);
-    const allowedDegrees = ((input.allowedDegrees ?? []) as unknown as DbEducationLevel[]).slice(0, 10);
-    const allowedPassoutYears = (input.allowedPassoutYears ?? []).filter(
+    // Structured eligibility wins when the caller sent it; otherwise the free-text
+    // eligibility is parsed so the listing is still filterable and the moderator
+    // queue shows real degrees/batches rather than "Not specified".
+    const eligibilityText = input.eligibility?.trim() || null;
+    const explicitDegrees = (input.allowedDegrees ?? []) as unknown as DbEducationLevel[];
+    const allowedDegrees = (explicitDegrees.length > 0
+        ? explicitDegrees
+        : degreesFromEligibilityText(eligibilityText)
+    ).slice(0, 10);
+    const explicitPassoutYears = (input.allowedPassoutYears ?? []).filter(
         (y) => Number.isInteger(y) && y >= 1990 && y <= 2100
     ).slice(0, 15);
+    const allowedPassoutYears = explicitPassoutYears.length > 0
+        ? explicitPassoutYears
+        : passoutYearsFromEligibilityText(eligibilityText);
     const applicationDetails = input.applicationDetails ?? null;
     const companyWebsite = input.companyWebsite?.trim() || null;
     const companyLogoUrl = input.companyLogoUrl?.trim() || null;
@@ -1188,6 +1259,7 @@ export async function submitJob(input: SubmitJobInput) {
                     submittedVia: input.submittedVia || (isGuest ? 'community_guest' : 'community_web'),
                     submittedById: input.userId ?? null,
                     guest: isGuest,
+                    ...(eligibilityText ? { eligibility: eligibilityText.slice(0, 2000) } : {}),
                     ...(input.contact?.trim() ? { guestContact: input.contact.trim().slice(0, 200) } : {}),
                     ...(input.submitterName?.trim() ? { guestName: input.submitterName.trim().slice(0, 120) } : {}),
                     ...(hasDetailFields ? { withDetails: true } : {}),

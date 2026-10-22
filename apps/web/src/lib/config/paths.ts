@@ -59,10 +59,32 @@ export function isAuthEntryPath(pathname: string) {
 /**
  * Only same-origin, non-auth destinations are allowed through a `redirect` param.
  * Single home for the rule — used by the proxy and by client auth screens.
+ *
+ * One absolute destination is allowed: a URL on the configured API origin. The
+ * MCP connect flow hands the browser to `<api>/oauth/authorize` outside the web
+ * app, so a signed-out user who clicks Connect is sent to /login with that URL
+ * as the return target — and a same-origin-only rule stranded them at /login
+ * after signing in, with the authorization request abandoned.
+ *
+ * The origin is compared by parsing both URLs, never by substring: `includes()`
+ * on a full URL treats attacker-controlled text as a match.
  */
 export function isSafeInternalRedirect(path: string | null | undefined) {
     if (!path) return false;
     const clean = path.trim();
+
+    const apiBase = process.env.NEXT_PUBLIC_API_URL;
+    if (apiBase && /^https?:\/\//i.test(clean)) {
+        try {
+            const target = new URL(clean);
+            const api = new URL(apiBase);
+            if (target.protocol === api.protocol && target.origin === api.origin) return true;
+        } catch {
+            return false;
+        }
+        return false;
+    }
+
     if (!clean.startsWith('/') || clean.startsWith('//')) return false;
     if (clean === '/login' || clean.startsWith('/login?') || clean === '/logout' || clean.startsWith('/logout?')) return false;
     return true;

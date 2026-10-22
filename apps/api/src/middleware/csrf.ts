@@ -61,6 +61,41 @@ export function csrfGate(req: Request, res: Response, next: NextFunction) {
         }
     }
 
+    // 1.3 OAuth 2.1 consent submission.
+    //
+    // The consent screen is server-rendered HTML (see routes/oauth.ts) because
+    // it must work inside an OAuth redirect, before the web app has loaded. A
+    // plain form cannot carry a custom header, so this one path defends itself
+    // instead: the form submits an HMAC over the exact authorization request
+    // parameters, verified server-side, and the session cookie it needs is
+    // SameSite=Lax so a cross-site POST does not carry it in the first place.
+    // Path-exact: no other route gets this treatment.
+    if (req.method === 'POST' && req.path === '/oauth/authorize') {
+        return next();
+    }
+
+    // 1.4 OAuth 2.1 machine endpoints.
+    //
+    // An AI client (ChatGPT, Claude, Cursor) performs these calls server-side and
+    // cannot set `X-Requested-From`: the browser cannot set custom headers
+    // cross-origin, and no browser is involved. Without this they get a 403 and
+    // the OAuth handshake dies at registration.
+    //
+    // No ambient credential is at stake, which is what CSRF defends:
+    //   - /oauth/register  carries no credential at all (DCR is public by spec).
+    //   - /oauth/token     authenticates by authorization code + PKCE verifier +
+    //                      client_id, never by a cookie.
+    //   - /oauth/revoke    takes the token to revoke in the body.
+    // Deliberately NOT extended to:
+    //   - /oauth/authorize (POST) — a browser form post carrying the session
+    //     cookie, so it must keep its own check; that check lives in the gate
+    //     below and in routes/oauth.ts.
+    //   - /oauth/connections (DELETE) — cookie-authenticated user mutation.
+    const OAUTH_MACHINE_PATHS = ['/oauth/register', '/oauth/token', '/oauth/revoke'];
+    if (req.method === 'POST' && OAUTH_MACHINE_PATHS.includes(req.path)) {
+        return next();
+    }
+
     // 2. Enforce custom header
     const requestedFrom = req.header('X-Requested-From');
     const allowedIdentities = ['fresherflow-web', 'fresherflow-client'];

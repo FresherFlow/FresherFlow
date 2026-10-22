@@ -587,6 +587,10 @@ export const mcpSubmitOpportunitySchema = z.object({
     salary: z.string().trim().max(60).optional(),
     description: z.string().trim().max(5000).optional(),
     eligibility: z.string().trim().max(2000).optional(),
+    // Structured eligibility. The agent reads the posting, so it can send exact
+    // values instead of only the free-text blob above; both land on the listing.
+    skills: z.array(z.string().trim().min(1).max(60)).max(30).optional(),
+    passoutYears: z.array(z.number().int().min(1990).max(2100)).max(15).optional(),
     sourceUrl: z.string().trim().url('sourceUrl must be a valid URL').max(2000).optional(),
     contactEmail: z.string().trim().email('contactEmail must be valid').max(200).optional(),
 }).superRefine((data, ctx) => {

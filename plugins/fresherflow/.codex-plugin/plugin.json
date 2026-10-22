@@ -1,0 +1,43 @@
+{
+  "name": "fresherflow",
+  "version": "0.2.0",
+  "description": "Add fresher jobs, internships and walk-in drives to FresherFlow from your AI assistant, using the FresherFlow MCP server.",
+  "author": {
+    "name": "FresherFlow",
+    "url": "https://fresherflow.in"
+  },
+  "homepage": "https://fresherflow.in",
+  "repository": "https://github.com/FresherFlow/FresherFlow",
+  "license": "MIT",
+  "keywords": [
+    "jobs",
+    "internships",
+    "fresher",
+    "walk-in",
+    "government-jobs",
+    "job-listing",
+    "mcp"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "FresherFlow",
+    "shortDescription": "Add fresher jobs to FresherFlow.",
+    "longDescription": "FresherFlow lists fresher jobs, internships and walk-in drives in India.\n\nWith this plugin your assistant can turn a job posting you found into a correctly populated FresherFlow listing: the full field set the admin form accepts, with eligibility, salary, walk-in drive details and government vacancy details, and a read-back step so it reports what was actually stored rather than what it intended to send.\n\nA signed-in user's community submission goes live immediately; a submission that is not a full listing is staged for a human moderator only when the caller is not signed in.",
+    "developerName": "FresherFlow",
+    "category": "Productivity",
+    "capabilities": [
+      "Job listing creation",
+      "Job listing updates",
+      "Community submissions"
+    ],
+    "websiteURL": "https://fresherflow.in",
+    "privacyPolicyURL": "https://fresherflow.in/privacy",
+    "termsOfServiceURL": "https://fresherflow.in/terms",
+    "supportURL": "https://fresherflow.in/contact",
+    "defaultPrompt": [
+      "Add this job posting to FresherFlow.",
+      "Correct the salary and eligibility on the listing you just created.",
+      "Flag this job link for FresherFlow review."
+    ]
+  }
+}

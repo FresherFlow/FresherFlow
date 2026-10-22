@@ -1,0 +1,16 @@
+{
+  "name": "fresherflow",
+  "owner": {
+    "name": "FresherFlow",
+    "url": "https://fresherflow.in"
+  },
+  "description": "FresherFlow's Claude Code plugin marketplace.",
+  "plugins": [
+    {
+      "name": "fresherflow",
+      "source": "./plugins/fresherflow",
+      "description": "Turn a job posting into a correctly populated FresherFlow listing: fresher jobs, internships, walk-in drives and government vacancies.",
+      "category": "Productivity"
+    }
+  ]
+}

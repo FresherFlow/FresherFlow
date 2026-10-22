@@ -30,7 +30,7 @@ import {
     parseOrganizationId,
     buildCompensationCreates,
     buildEventDetailsCreate,
-} from '../routes/admin/opportunities/_helpers';
+} from '../application/opportunity/listingPayload';
 import {
     normalizeTypeParam as normalizePublicTypeParam,
     parseOpportunityTypeFilter,

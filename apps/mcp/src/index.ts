@@ -7,15 +7,21 @@ import { mcpRouter } from './transport.js';
 // FresherFlow MCP server.
 //
 // Any MCP client (ChatGPT, Claude, Cursor, Codex) -> this server -> FresherFlow API -> Postgres.
-// Tools live in src/tools/, registration in src/server.ts, HTTP transport in
-// src/transport.ts. No business logic and no database access live here.
+// No business logic and no database access live here.
 //
-// Scope: ONE tool, submit_opportunity ->
-//   POST /api/opportunities/mcp-submit
-//   (apps/api/src/routes/public/opportunities/mcpSubmit.ts)
-// That route is anonymous by design: it writes userId: null and stages every
-// submission as PENDING_REVIEW. Nothing that appears publicly does so without
-// moderator review.
+// Layout:
+//   index.ts        process entry, /health, JSON error shape
+//   transport.ts    the HTTP boundary: CORS, rate limit, OAuth 401 challenge
+//   server.ts       per-connection McpServer: role-filtered tools + instructions
+//   identity.ts     OAuth caller -> moderator/user, cached briefly
+//   http/           token context + the one authenticated fetch + error mapping
+//   api/            one module per API surface (identity, jobs, listings, submissions)
+//   tools/          one file per MCP tool (schema, description, annotations, handler)
+//   schemas.ts      the submit_opportunity payload contract
+//
+// Every request is authenticated: there is no anonymous path, and this process
+// holds no service key. A moderator's submission publishes; every other
+// account's is a draft a moderator must publish.
 
 const app = express();
 app.disable('x-powered-by');

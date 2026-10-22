@@ -18,6 +18,7 @@ import {
     GlobeAltIcon,
     ClipboardDocumentIcon,
     ArrowTopRightOnSquareIcon,
+    CpuChipIcon,
 } from '@heroicons/react/24/outline';
 
 const SECTIONS = [
@@ -41,6 +42,13 @@ const SECTIONS = [
         description: 'Sidebar style: inset, floating or standard.',
         href: '/account?tab=appearance',
         Icon: PaintBrushIcon,
+    },
+    {
+        key: 'connected',
+        title: 'Connected apps',
+        description: 'AI assistants connected to your account, and disconnect them.',
+        href: '/account?tab=connected',
+        Icon: CpuChipIcon,
     },
     {
         key: 'referral',

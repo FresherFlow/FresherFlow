@@ -2,7 +2,7 @@ import { Prisma, OpportunityEventType, OpportunityStatus as DbOpportunityStatus,
 import { OpportunityStatus, EducationLevel } from '@fresherflow/types';
 import { extractDegreesFromQualifications, deriveGovtLocations } from '@fresherflow/constants';
 import { normalizeEducationBuckets } from '@fresherflow/utils';
-import { AdminOpportunityRequest } from '../../../types/admin';
+import { AdminOpportunityRequest } from '../../types/admin';
 
 // ── Type normalisation ────────────────────────────────────────────────────────
 
@@ -497,7 +497,7 @@ export function toCsvValue(value: unknown): string {
 
 // ── Alert helpers ─────────────────────────────────────────────────────────────
 
-import { sendNewJobAlerts } from '../../../infrastructure/services/alerts/notification.service';
+import { sendNewJobAlerts } from '../../infrastructure/services/alerts/notification.service';
 import { logger } from '@fresherflow/utils';
 
 export function queueNewJobAlerts(opportunityId: string) {
@@ -538,11 +538,11 @@ function normaliseEmploymentTypes(input: unknown): EmploymentType[] {
  * raw-submission approval path from drifting apart.
  */
 export function resolveOpportunityDimensions(data: {
-    category?: string;
-    type?: string;
+    category?: string | null;
+    type?: string | null;
     employmentTypes?: unknown;
-    sector?: string;
-    recruitmentMethod?: string;
+    sector?: string | null;
+    recruitmentMethod?: string | null;
 }): {
     category: OpportunityCategory;
     recruitmentMethod: RecruitmentMethod;
