@@ -16,6 +16,15 @@ const withSentryConfig: (config: NextConfig, opts: unknown) => NextConfig =
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
+// MDX support for the documentation route. `@next/mdx` contributes a webpack
+// rule only, so it does not carry the production-only cost that Sentry does.
+// `mdx-components.tsx` at the root of `src` is what supplies the element
+// mapping and is required by App Router MDX.
+const createMDX = require("@next/mdx") as (
+  options?: Record<string, unknown>
+) => (config: NextConfig) => NextConfig;
+const withMDX = createMDX();
+
 const originalConsoleError = console.error;
 console.error = (...args: any[]) => {
   for (const arg of args) {
@@ -110,6 +119,12 @@ const APP_ORIGIN = resolveWebOrigin(
 );
 
 const nextConfig: NextConfig = {
+  // `.mdx` is here so the documentation route can be a page file rather than a
+  // component that renders a markdown string. It must sit on the Next config
+  // itself: passing it through `withSentryConfig`'s options object is silently
+  // ignored, which left /docs/* unrouted.
+  pageExtensions: ["tsx", "mdx", "jsx"],
+
   // `standalone` is needed for Docker/Vercel production only — it
   // adds a full copy of node_modules to .next/standalone and slows
   // dev startup. Disable in dev.
@@ -459,7 +474,7 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
+export default withSentryConfig(withMDX(nextConfig), {
   // For all available options, see:
   // https://github.com/getsentry/sentry-webpack-plugin#options
   silent: true,

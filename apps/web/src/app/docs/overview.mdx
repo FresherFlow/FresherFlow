@@ -1,0 +1,108 @@
+export const metadata = {
+  title: "Overview — FresherFlow Docs",
+  description:
+    "How FresherFlow is put together: the monorepo layers, the feed pipeline, and how a posting reaches a public page.",
+};
+
+# FresherFlow Documentation Overview
+
+FresherFlow is a production job and walk-in opportunity platform connecting freshers with job opportunities, walk-in drives, and government vacancies.
+
+## Architecture
+
+FresherFlow operates as a monorepo with the following layers:
+
+| Layer | Stack |
+|---|---|
+| Web | Next.js App Router, TypeScript, Tailwind CSS |
+| Mobile | Expo, React Native, MMKV |
+| Admin Mobile | Expo for moderation operations |
+| API | Node.js, Express, Zod, Prisma, Redis, BullMQ |
+| MCP | Express server over Streamable HTTP, OAuth 2.1 |
+| Worker | BullMQ processors |
+
+## Core Data Flow
+
+1. **Job Discovery**: Scripts scrape job postings from various sources
+2. **Ingestion**: Feed processing transforms raw data into normalized listings
+3. **Storage**: PostgreSQL via Prisma + Cloudflare R2 for binary feeds
+4. **CDN**: Cloudflare Workers protect and serve feed data
+5. **Frontend**: Next.js app displays opportunities to users
+
+## Key Packages
+
+- `@fresherflow/types` - Shared type definitions
+- `@fresherflow/utils` - Utility helpers
+- `@fresherflow/api-client` - API wrappers for frontend and MCP
+- `@fresherflow/queue` - BullMQ queue contracts
+- `@fresherflow/database` - Prisma database client
+- `@fresherflow/ui` - Shared UI primitives
+- `@fresherflow/parser` - Job parsing logic
+
+## Documentation Structure
+
+This documentation site is built with **MDX** and **Next.js**, allowing:
+
+- Markdown content with JSX interactivity
+- Code examples in multiple languages
+- Interactive components within docs
+- Search-friendly, versioned pages
+
+### Page Organization
+
+| Path | Description |
+|------|-------------|
+| `/docs/overview` | This page - project overview |
+| `/docs/api` | API reference and endpoints |
+| `/docs/architecture` | System architecture deep-dive |
+| `/guides/*` | Guides and tutorials |
+| `/references/*` | Reference material |
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 20+
+- pnpm package manager
+- PostgreSQL database
+- Cloudflare account (for R2/CDN)
+
+### Development Setup
+
+```bash
+# Install dependencies
+pnpm install
+
+# Generate Prisma client
+pnpm db:generate
+
+# Run migrations
+pnpm prisma migrate deploy
+
+# Start development server
+pnpm dev:web
+```
+
+### Available Scripts
+
+| Script | Description |
+|--------|-------------|
+| `pnpm dev:web` | Start Next.js dev server |
+| `pnpm build:web` | Build for production |
+| `pnpm typecheck` | Run TypeScript typecheck |
+| `pnpm lint` | Run ESLint |
+| `pnpm test:api` | Run API tests |
+
+## MCP Server
+
+The MCP (Model Context Protocol) server enables AI clients to interact with FresherFlow:
+
+- **Tools**: List available tools, submit opportunities, browse jobs
+- **Authentication**: OAuth 2.1 bearer tokens
+- **Roles**: User (draft submissions), Moderator (publish), Service key (full access)
+
+See the [MCP tools documentation](/docs/mcp) for details on available tools.
+
+## Feedback
+
+Contributions welcome! See the [contributing guide](/docs/contributing) for how to add new documentation.

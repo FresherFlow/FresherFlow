@@ -1,0 +1,154 @@
+export const metadata = {
+  title: "Architecture — FresherFlow Docs",
+  description:
+    "The modular-monolith layout of the FresherFlow monorepo: apps, shared packages, and the boundaries between them.",
+};
+
+# Architecture Documentation
+
+FresherFlow's architecture follows a modular-monolith pattern within a monorepo structure.
+
+## High-Level Architecture
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                    FresherFlow Monorepo                         │
+├─────────────────────┬─────────────────────┬─────────────────────┤
+│   apps/web          │   apps/api          │   apps/mcp          │
+│ (Next.js frontend)  | (Node/Express)      | (Express + MCP)     │
+└─────────────────────┴─────────────────────┴─────────────────────┘
+           │                       │                       │
+           │                       │                       │
+           ▼                       ▼                       ▼
+┌─────────────────────┐ ┌─────────────────────┐ ┌─────────────────────┐
+│  packages/          │ │  scripts/           │ │  plugins/           │
+│ (shared code)       │ │ (job discovery)     │ │ (fresherflow skills)│
+└─────────────────────┘ └─────────────────────┘ └─────────────────────┘
+           │                       │                       │
+           ▼                       ▼                       ▼
+┌─────────────────────┐ ┌─────────────────────┐ ┌─────────────────────┐
+│  Cloudflare R2      │ │  Redis + BullMQ     │ │  External Services  │
+│ (feed storage)      │ │ (job queues)        │ │ (DataForSEO, etc.)  │
+└─────────────────────┘ └─────────────────────┘ └─────────────────────┘
+```
+
+## Package Boundaries
+
+### Client-Ui Packages (must NOT import server-only)
+
+| Package | Tag | Dependencies |
+|---------|-----|------------|
+| `fresherflow-ui` | client-ui | Can import shared-neutral |
+| `fresherflow-mobile` | client-ui | Can import shared-neutral |
+| `fresherflow-admin-mobile` | client-ui | Can import shared-neutral |
+
+### Server-Only Packages
+
+| Package | Tag | Description |
+|---------|-----|-------------|
+| `@fresherflow/database` | server-only | Prisma + PostgreSQL |
+| `@fresherflow/queue` | server-only | BullMQ contracts |
+| `@fresherflow/parser` | server-only | Job parsing logic |
+
+### Shared-Neutral Packages
+
+| Package | Description |
+|---------|-------------|
+| `@fresherflow/types` | Shared type definitions |
+| `@fresherflow/utils` | Utility helpers |
+| `@fresherflow/constants` | Project constants |
+| `@fresherflow/api-client` | API wrappers |
+
+## Database Schema
+
+Core Prisma schema includes:
+
+- `Opportunity` - Job listings with all metadata
+- `User` - Registered accounts
+- `Company` - Company profiles
+- `Skill` - Canonical skill taxonomy
+- `Application` - Job applications
+
+### Key Schema Features
+
+- `Json` columns for flexible data (e.g., `applicationDetails`)
+- Proper null handling: use `Prisma.DbNull` instead of bare `null`
+- Transactions for multi-table writes: `prisma.$transaction`
+- Indexes for frequently queried fields
+
+## Data Flow
+
+### Job Ingestion Pipeline
+
+```text
+Scraper → Parser → Validator → Normalizer → Storage → CDN → Frontend
+```
+
+1. **Scraper**: Fetches job postings from source websites
+2. **Parser**: Extracts structured data from HTML
+3. **Validator**: Ensures payload matches schema
+4. **Normalizer**: Transforms to internal format
+5. **Storage**: Writes to PostgreSQL + R2
+6. **CDN**: Edge Worker protects and serves data
+7. **Frontend**: Next.js reads from CDN
+
+### Feed Refresh Cycle
+
+```text
+Worker triggers → Version bump → R2 upload → Cache invalidation → Frontend re-render
+```
+
+1. Worker processes pending jobs
+2. Feed version is bumped (`Date.now()`)
+3. Updated feeds uploaded to R2
+4. Edge Worker cache invalidated
+5. Frontend pages regenerate via tag-based invalidation
+6. Visitors see fresh data on next request
+
+## Security Model
+
+### Authentication
+
+- OAuth 2.1 bearer tokens for MCP and web flows
+- JWT-based auth for admin routes
+- Service key for pipeline scripts
+
+### Authorization
+
+- RBAC grants resolved from admin panel edits
+- Resource queries filtered by `req.user.id`
+- MCP role determines tool availability
+
+### Network Security
+
+- CORS configured per origin
+- Signed URLs for R2 private objects
+- Rate limiting on all public routes
+- Input validation with Zod
+
+## Deployment
+
+### Vercel
+
+- Frontend deployed to Vercel
+- Automatic preview deployments on PR
+- Environment variables via Vercel dashboard
+
+### Render
+
+- API and worker deployed to Render
+- `render.yaml` configures Node.js production
+- CDN signature secret managed separately
+
+### Cloudflare
+
+- R2 bucket for feed storage
+- Edge Worker for CDN protection
+- Manual Worker deployment from dashboard
+
+## Monitoring
+
+- Vercel Analytics for frontend
+- Sentry for error tracking
+- Custom metrics for feed performance
+- Worker execution timing

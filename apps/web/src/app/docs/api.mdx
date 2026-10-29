@@ -1,0 +1,149 @@
+export const metadata = {
+  title: "API Reference — FresherFlow Docs",
+  description:
+    "The FresherFlow REST API: authentication, the public feed and job endpoints, and the admin surface.",
+};
+
+# API Documentation
+
+FresherFlow provides a comprehensive REST API for managing job opportunities, users, and platform operations.
+
+## Base URL
+
+```
+https://api.fresherflow.in/api
+```
+
+## Authentication
+
+Most endpoints require authentication via bearer token in the `Authorization` header:
+
+```
+Authorization: Bearer <jwt_token>
+```
+
+Some public endpoints are available without auth (marked as `PUBLIC`).
+
+## API Versions
+
+The API is versioned. Current version: `v1`.
+
+## Endpoints
+
+### Opportunities
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/opportunities` | List all opportunities | |
+| `GET` | `/opportunities/:slug` | Get a specific opportunity | |
+| `POST` | `/opportunities` | Create a new opportunity | `opportunity.create` |
+| `PATCH` | `/opportunities/:slug` | Update an opportunity | `opportunity.edit` |
+| `DELETE` | `/opportunities/:slug` | Delete an opportunity | `opportunity.edit` |
+
+### Jobs
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/jobs` | List jobs with filtering | |
+| `GET` | `/jobs/browse` | Browse jobs by category | |
+| `GET` | `/jobs/:slug` | Get a specific job | |
+| `GET` | `/jobs/internships` | Internship opportunities | |
+| `GET` | `/jobs/remote` | Remote jobs | |
+| `GET` | `/jobs/walk-in` | Walk-in drive opportunities | |
+| `GET` | `/jobs/govt` | Government job opportunities | |
+
+### Users
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/user/profile` | Get user profile | |
+| `PUT` | `/user/profile` | Update user profile | |
+
+### Feeds
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/feed/bootstrap` | Get bootstrap feed | |
+| `GET` | `/feed/index` | Get feed index | |
+| `POST` | `/feed/revalidate` | Revalidate feed cache | `admin` |
+
+### MCP
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| `GET` | `/mcp/tools` | List available MCP tools | Bearer |
+| `POST` | `/mcp/call` | Call an MCP tool | Bearer |
+
+## Request Validation
+
+All POST/PUT endpoints use Zod schemas for input validation. The primary schema is:
+
+```typescript
+// apps/api/src/utils/validation.ts
+export const opportunitySchema = z.object({
+  title: z.string().min(1),
+  company: z.string().min(1),
+  location: z.string().optional(),
+  // ... more fields
+});
+```
+
+> **Note**: `opportunitySchema` is a **closed** `z.object`. Unknown keys are stripped, not rejected, so a misspelled field disappears silently.
+
+## Response Formats
+
+### Success Response
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "meta": {
+    "count": 10,
+    "page": 1,
+    "pageSize": 10
+  }
+}
+```
+
+### Error Response
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Validation failed",
+    "details": []
+  }
+}
+```
+
+## Rate Limiting
+
+All public API routes (GET and POST) have `express-rate-limit` middleware to prevent abuse.
+
+## Error Codes
+
+| Code | Meaning |
+|------|---------|
+| `VALIDATION_ERROR` | Input validation failed |
+| `AUTHENTICATION_ERROR` | Invalid or missing token |
+| `AUTHORIZATION_ERROR` | Insufficient permissions |
+| `NOT_FOUND` | Resource not found |
+| `RATE_LIMIT_EXCEEDED` | Too many requests |
+| `INTERNAL_ERROR` | Unexpected server error |
+
+## SDK Clients
+
+- `@fresherflow/api-client` - TypeScript wrapper for frontend and MCP
+- Available via `npm install @fresherflow/api-client`
+
+## Testing
+
+API endpoints are tested with Vitest and Supertest. Test coverage includes:
+
+- Success paths
+- Validation errors
+- Unauthenticated access
+- Unauthorized access

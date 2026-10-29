@@ -1,0 +1,99 @@
+export const metadata = {
+  title: "MCP Server — FresherFlow Docs",
+  description:
+    "Connecting an AI client to FresherFlow over MCP: OAuth, the tool list per role, and the listing-write contract.",
+};
+
+# MCP Server Documentation
+
+The FresherFlow MCP (Model Context Protocol) server provides a standardized way for AI clients to interact with the platform.
+
+## Server Configuration
+
+The MCP server runs on Express and handles authenticated requests through OAuth 2.1 bearer tokens.
+
+### Tool Registration
+
+Tools are registered in `apps/mcp/src/server.ts` and their availability depends on the caller's role:
+
+| Caller | Credential | Available Tools |
+|---|---|---|
+| Signed-in user | OAuth 2.1 bearer | Browse live jobs; submit DRAFT; own submissions |
+| Moderator | OAuth 2.1 + `opportunity.publish` | All user tools + published on submit; full listing writes; moderation |
+| Pipeline scripts | `INTERNAL_API_SECRET` | Full listing writes; no user identity |
+
+### Role Resolution
+
+Role is resolved from the same RBAC grants the admin panel edits, never from client claims. The tool list a connection sees already reflects its role.
+
+### Authentication
+
+- `mcpSurfaceAuth` accepts a bearer token or the service key
+- Never falls back to anonymous
+- MCP server refuses any request without a bearer token
+
+## Available Tools
+
+### Listing Tools
+
+| Tool | Description | Requirements |
+|------|-------------|------------|
+| `create_listing` | Create a new job listing | `opportunity.create` or `opportunity.edit` |
+| `submit_opportunity` | Submit an opportunity for publishing | `opportunity.publish` role required |
+| `list_jobs` | List available jobs | Browse access |
+| `get_listing` | Get a specific listing by ID | Read access |
+
+### Moderation Tools
+
+| Tool | Description | Requirements |
+|------|-------------|------------|
+| `update_listing` | Update an existing listing | `opportunity.edit` role |
+| `publish_listing` | Publish a draft listing | `opportunity.publish` role |
+| `moderate_listing` | Moderate listing status | Moderator role |
+
+### Submission Tools
+
+| Tool | Description | Requirements |
+|------|-------------|------------|
+| `submit_opportunity` | Submit opportunity (publishes if role allows) | `opportunity.publish` |
+
+## MCP Session
+
+Each connection has a session with:
+
+- `instructions` block - Context about available tools
+- `tool list` - Which tools are available based on role
+- `connection state` - Authenticated identity
+
+## Error Handling
+
+All tools return structured error responses. A tool must never report a listing as live unless the response says `published: true`.
+
+## MCP Client Workflow
+
+1. Connect with OAuth 2.1 bearer token
+2. Request tool list - role determines available tools
+3. Call tools based on your role and needs
+4. Verify responses, especially `published` status
+
+## Best Practices
+
+- **Never assume tool availability** - always check the tool list for your connection role
+- **Verify published status** - a listing is only live if the response says `published: true`
+- **Respect role boundaries** - moderators have `edit` access, users have `create` access for drafts
+- **Cache the tool list** - after changing input/output schemas, reconnect or refresh discovery
+
+## MCP Surface Auth
+
+```typescript
+// Accepts bearer OR service key, never falls back to anonymous
+mcpSurfaceAuth accepts a bearer *or* the service key and never falls back to anonymous;
+apps/mcp itself refuses any request without a bearer.
+```
+
+## Tool Schema Changes
+
+After changing any `inputSchema` or `outputSchema`:
+- Reconnect a client
+- Re-run `tools/list` before trusting a result
+- Clients validate against the stale schema and reject valid results
