@@ -24,6 +24,7 @@ import {
 import { sanitizeSearchQuery } from "@/features/jobs/utils/searchUtils";
 import { useProfileFilterPrefs, buildProfileFilterSeed, resetProfileFilterDims } from "@/features/jobs/hooks/useProfileFilters";
 import { FEED_PAGE_SIZE } from "@/lib/utils/feedPageSize";
+import { DESKTOP_MIN_WIDTH } from "@/hooks/useIsMobile";
 
 /**
  * Multi-value filters are encoded as repeated keys (`?company=A&company=B`) so
@@ -132,8 +133,14 @@ export function useCategoryPageState({
     // Touch devices only ever get the single mobile view. Width alone handed
     // landscape phones / tablets the desktop List + Split layout, so a tap on a
     // job card navigated to the job page instead of opening the detail drawer.
+    //
+    // The width gate must equal the shell's (`lg` — see DESKTOP_MIN_WIDTH), not
+    // a second number of its own. At 1280 a fine-pointer window between 1024
+    // and 1279 (a 1280 screen at 125% zoom, most 13" laptops) got the desktop
+    // header, sidebar and filter row from CSS while this flag still said
+    // "mobile" — compact cards, filter drawer and a bottom-sheet detail pane.
     const computeIsDesktop = () =>
-      window.innerWidth >= 1280 &&
+      window.innerWidth >= DESKTOP_MIN_WIDTH &&
       !(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
     setIsDesktop(computeIsDesktop());
     const handleResize = () => setIsDesktop(computeIsDesktop());

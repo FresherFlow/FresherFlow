@@ -6,6 +6,7 @@ import type { OpportunityCardDTO } from '@fresherflow/types';
 import { CommentCountsProvider, useCommentCount } from '@/features/jobs/hooks/useCommentCounts';
 import { COMMUNITY_UI_ENABLED } from '@/features/community/communityUi';
 import { toSafeOutboundUrl } from '@/lib/utils/safeOutboundUrl';
+import CompanyLogo from '@/features/companies/components/CompanyLogo';
 
 /**
  * Latest jobs with community actions (V1 checklist §G): every card exposes
@@ -13,20 +14,6 @@ import { toSafeOutboundUrl } from '@/lib/utils/safeOutboundUrl';
  * and Apply opens the verified outbound link (or the detail page when the
  * job has no external link).
  */
-
-function stampFor(o: OpportunityCardDTO): { label: 'LIVE' | 'AGING'; cls: string } {
-    const days = Math.floor((Date.now() - new Date(o.postedAt).getTime()) / 86400000);
-    if (days <= 2) {
-        return {
-            label: 'LIVE',
-            cls: 'text-[var(--color-signal-live)] border-[color-mix(in_srgb,var(--color-signal-live)_45%,transparent)] bg-[color-mix(in_srgb,var(--color-signal-live)_8%,transparent)]',
-        };
-    }
-    return {
-        label: 'AGING',
-        cls: 'text-[var(--color-signal-aging)] border-[color-mix(in_srgb,var(--color-signal-aging)_45%,transparent)] bg-[color-mix(in_srgb,var(--color-signal-aging)_8%,transparent)]',
-    };
-}
 
 function timeAgo(iso: string): string {
     const mins = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000));
@@ -47,19 +34,23 @@ function DiscussingCount({ id }: { id: string }) {
 }
 
 function LatestJobRow({ job }: { job: OpportunityCardDTO }) {
-    const stamp = stampFor(job);
     const detailHref = `/jobs/${job.slug}`;
     const discussHref = `${detailHref}#discussion`;
     const outbound = toSafeOutboundUrl(job.applyLink ?? job.companyWebsite);
 
     return (
-        <article className="border-b border-border px-5 py-4 transition-colors last:border-b-0 hover:bg-muted/40">
+        <article className="border-b border-border px-5 py-4 transition-colors last:border-b-0 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-muted/40">
             <div className="grid grid-cols-[56px_1fr_auto] items-center gap-4">
-                <span
-                    className={`border py-[3px] text-center font-record text-[10px] font-semibold tracking-[0.1em] ${stamp.cls}`}
-                >
-                    {stamp.label}
-                </span>
+                {/* Company mark, not a LIVE/AGING stamp: the logo is what the
+                    reader scans for, and the freshness signal already lives in
+                    the "posted" date on the right of the same row. */}
+                <CompanyLogo
+                    companyName={job.company}
+                    companyWebsite={job.companyWebsite}
+                    companyLogoUrl={job.companyLogoUrl}
+                    applyLink={job.applyLink}
+                    className="h-10 w-10 object-contain"
+                />
                 <span className="min-w-0">
                     <Link href={detailHref} className="block truncate text-[14.5px] font-semibold hover:underline">
                         {job.title}

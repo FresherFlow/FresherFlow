@@ -15,7 +15,7 @@ import { cn } from "@/ui/cn";
  * - Text: minimum text-sm (14px), prefer text-base (16px)
  */
 const buttonVariants = cva(
-    "inline-flex items-center justify-center cursor-pointer whitespace-nowrap rounded-md font-semibold gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-transparent transition-[transform,background-color,border-color,color] duration-150 ease-out active:scale-[0.97] motion-reduce:transform-none motion-reduce:transition-none",
+    "inline-flex items-center justify-center cursor-pointer whitespace-nowrap rounded-md font-semibold gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-transparent transition-[transform,background-color,border-color,color] duration-150 ease-out active-press motion-reduce:transform-none motion-reduce:transition-none",
     {
         variants: {
             variant: {

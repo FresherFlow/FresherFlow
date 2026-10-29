@@ -780,7 +780,7 @@ export function CategoryPageView({
             {/* Scrollable content — locked in split mode, panes scroll internally */}
             <div ref={scrollContainerRef} onScroll={handleScroll} className={cn(
                 "flex-1 overflow-y-auto px-3 md:px-6 pb-2 space-y-2",
-                type !== 'GOVERNMENT' && showDetail && "xl:overflow-hidden xl:pb-0 xl:space-y-0"
+                type !== 'GOVERNMENT' && showDetail && "lg:overflow-hidden lg:pb-0 lg:space-y-0"
             )}>
             {/* Mobile filter drawer */}
             <Suspense fallback={null}>
@@ -866,13 +866,13 @@ export function CategoryPageView({
                         {[1,2,3,4,5,6].map(i => <SkeletonJobCard key={i} variant={isDesktop === false ? 'compact' : 'wide'} />)}
                     </div>
                 ) : (
-                    <div className="w-full grid gap-6 items-start grid-cols-1 xl:ff-detail-split pt-3.5 xl:pt-0 xl:gap-0 xl:h-full xl:min-h-0">
-                        <div className="min-w-0 xl:h-full xl:min-h-0 xl:overflow-y-auto xl:px-6">
+                    <div className="w-full grid gap-6 items-start grid-cols-1 lg:ff-detail-split pt-3.5 lg:pt-0 lg:gap-0 lg:h-full lg:min-h-0">
+                        <div className="min-w-0 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:px-6">
                             <div className="grid grid-cols-1 gap-4 md:gap-6">
                                 {[1,2,3,4,5].map(i => <SkeletonJobCard key={i} variant="compact" />)}
                             </div>
                         </div>
-                        <div className="hidden xl:flex flex-col xl:h-full xl:min-h-0 bg-card border border-border/50 rounded-2xl p-6">
+                        <div className="hidden lg:flex flex-col lg:h-full lg:min-h-0 bg-card border border-border/50 rounded-2xl p-6">
                             <div className="animate-pulse rounded bg-muted h-8 w-1/2 mb-4" />
                             <div className="animate-pulse rounded bg-muted h-4 w-3/4 mb-8" />
                             <div className="space-y-4">
@@ -942,7 +942,7 @@ export function CategoryPageView({
                 <div className={cn(
                     "w-full grid gap-2 items-start",
                     (type !== 'GOVERNMENT' && showDetail)
-                        ? "grid-cols-1 xl:ff-detail-split xl:gap-0 xl:h-full xl:min-h-0 xl:bg-card xl:border xl:border-border/50 xl:rounded-2xl xl:overflow-hidden xl:shadow-sm [:root[data-show-detail='false']_&]:xl:grid-cols-1 [:root[data-show-detail='false']_&]:ff-reading-col [:root[data-show-detail='false']_&]:mx-auto [:root[data-show-detail='false']_&]:xl:bg-transparent [:root[data-show-detail='false']_&]:xl:border-0 [:root[data-show-detail='false']_&]:xl:shadow-none"
+                        ? "grid-cols-1 lg:ff-detail-split lg:gap-0 lg:h-full lg:min-h-0 lg:bg-card lg:border lg:border-border/50 lg:rounded-2xl lg:overflow-hidden lg:shadow-sm [:root[data-show-detail='false']_&]:lg:grid-cols-1 [:root[data-show-detail='false']_&]:ff-reading-col [:root[data-show-detail='false']_&]:mx-auto [:root[data-show-detail='false']_&]:lg:bg-transparent [:root[data-show-detail='false']_&]:lg:border-0 [:root[data-show-detail='false']_&]:lg:shadow-none"
                         : "grid-cols-1 ff-reading-col mx-auto"
                 )}>
                     {/* Left Column: list grid */}
@@ -952,18 +952,18 @@ export function CategoryPageView({
                         onScroll={handleScroll}
                         className={cn(
                             "min-w-0 pt-3.5",
-                            type !== 'GOVERNMENT' && showDetail && "xl:pt-4 xl:h-full xl:min-h-0 xl:overflow-y-auto xl:px-6 [:root[data-show-detail='false']_&]:xl:h-auto [:root[data-show-detail='false']_&]:xl:overflow-y-visible [:root[data-show-detail='false']_&]:xl:px-0"
+                            type !== 'GOVERNMENT' && showDetail && "lg:pt-4 lg:h-full lg:min-h-0 lg:overflow-y-auto lg:px-6 [:root[data-show-detail='false']_&]:lg:h-auto [:root[data-show-detail='false']_&]:lg:overflow-y-visible [:root[data-show-detail='false']_&]:lg:px-0"
                         )}
                     >
                         <div className={cn(
                             "grid grid-cols-1 gap-3",
                             desktopRows && !showDetail && "gap-0 divide-y divide-border/60",
-                            type !== 'GOVERNMENT' && showDetail && "gap-2 relative xl:gap-0 xl:divide-y xl:divide-border"
+                            type !== 'GOVERNMENT' && showDetail && "gap-2 relative lg:gap-0 lg:divide-y lg:divide-border"
                         )}>
                             {(type !== 'GOVERNMENT' && showDetail) && (
                                 <div
                                     aria-hidden
-                                    className="pointer-events-none absolute inset-x-0 top-0 z-0 hidden bg-muted/40 opacity-0 ff-pane-transition duration-200 ease-out xl:block"
+                                    className="pointer-events-none absolute inset-x-0 top-0 z-0 hidden bg-muted/40 opacity-0 ff-pane-transition duration-200 ease-out lg:block"
                                     style={{
                                         top: hoverRect?.top ?? 0,
                                         height: hoverRect?.height ?? 0,
@@ -992,6 +992,8 @@ export function CategoryPageView({
                                     <OpportunityRow
                                         key={opp.id}
                                         opp={opp}
+                                        // Split = narrow sidebar column; List = full-width desktop rows.
+                                        layout={showDetail ? 'stacked' : 'wide'}
                                         isSaved={isJobSaved(opp)}
                                         isApplied={isJobApplied(opp)}
                                         onToggleSave={() => toggleSave(opp.id)}
@@ -1084,7 +1086,7 @@ priority={index < 4}
 
                     {/* Right Column: Map for Walk-ins / Detail Panel for Jobs (desktop) */}
                     {type !== 'GOVERNMENT' && showDetail && (
-                        <div className="hidden xl:flex flex-col xl:h-full xl:min-h-0 bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm mt-3.5 xl:mt-0 xl:border-0 xl:border-l xl:rounded-none xl:shadow-none [:root[data-show-detail='false']_&]:!hidden">
+                        <div className="hidden lg:flex flex-col lg:h-full lg:min-h-0 bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm mt-3.5 lg:mt-0 lg:border-0 lg:border-l lg:rounded-none lg:shadow-none [:root[data-show-detail='false']_&]:!hidden">
                             {type === 'WALKIN' ? (
                                 <WalkinMapPane
                                     opportunity={selectedOpp}

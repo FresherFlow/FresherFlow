@@ -7,8 +7,10 @@
  * CDN directory fetch succeeds — otherwise they 404 and the ranking dies.
  * This map guarantees a permanent redirect regardless of CDN availability.
  *
- * Derived from ranked-keyword data (new.json) cross-checked against
- * companies.json. Entries resolve exactly once via resolveCompanySlugAlias.
+ * This is the SEED, not the source of truth. The API publishes the live map at
+ * `meta/company-slug-history.json` and `resolveCompanySlugAlias` unions the two,
+ * so renames recorded after this file was last edited are still honoured. Add
+ * entries here only when a crawled URL needs rescuing before the next API run.
  *
  * Deliberately NOT listed (suspect directory data, left to name-slug
  * fallback): 'deutsche-bank' (resolves to 'db'), 'saxo-bank' (resolves to
@@ -38,11 +40,17 @@ const COMPANY_SLUG_ALIASES: Record<string, string> = {
  * Resolves an already-slugified company slug through the alias map.
  * Follows at most 3 hops to guard against accidental chains/cycles,
  * then returns the final slug unchanged when no alias applies.
+ *
+ * `extraAliases` is the CDN-published history (`meta/company-slug-history.json`),
+ * which the API rebuilds from every company name, website and opportunity row
+ * it has ever seen. It is unioned over the static seed so a rename recorded
+ * after this file was last edited still redirects. Never passes null: the page
+ * must redirect on its own when the CDN is unreachable.
  */
-export function resolveCompanySlugAlias(slug: string): string {
+export function resolveCompanySlugAlias(slug: string, extraAliases?: Record<string, string> | null): string {
     let current = slug;
     for (let hop = 0; hop < 3; hop++) {
-        const next = COMPANY_SLUG_ALIASES[current];
+        const next = extraAliases?.[current] ?? COMPANY_SLUG_ALIASES[current];
         if (!next || next === current) break;
         current = next;
     }

@@ -109,14 +109,14 @@ function SiteHeaderContent() {
                             {resolvedUser ? (
                                 <Link
                                     href="/jobs?tab=for-you"
-                                    className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-95 shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                                    className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold [@media(hover:hover)_and_(pointer:fine)]:hover:opacity-90 transition-all duration-150 ease-out active:scale-[0.97] motion-reduce:transform-none shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                 >
                                     Dashboard
                                 </Link>
                             ) : (
                                 <Link
                                     href="/register"
-                                    className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all duration-150 ease-out active:scale-95 shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                                    className="inline-flex items-center h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold [@media(hover:hover)_and_(pointer:fine)]:hover:opacity-90 transition-all duration-150 ease-out active:scale-[0.97] motion-reduce:transform-none shadow-sm shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                 >
                                     Create Profile
                                 </Link>
@@ -126,7 +126,7 @@ function SiteHeaderContent() {
                         <div className="flex items-center gap-2">
                             <Link
                                 href="/login"
-                                className="px-3 py-1.5 text-xs font-semibold text-foreground hover:text-primary transition-all duration-150 ease-out active:scale-95 shrink-0"
+                                className="px-3 py-1.5 text-xs font-semibold text-foreground [@media(hover:hover)_and_(pointer:fine)]:hover:text-primary transition-all duration-150 ease-out active:scale-[0.97] motion-reduce:transform-none shrink-0"
                             >
                                 Log in
                             </Link>

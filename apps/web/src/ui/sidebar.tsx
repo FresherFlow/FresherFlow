@@ -27,9 +27,56 @@ import {
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "12rem"
+/**
+ * Expanded rail geometry — one home for the numbers.
+ *
+ * `default` is 224px (14rem), not 192px. At 192 a sub-row label box is ~86px
+ * wide (rail − padding − 25px sub indent − icon − gap) and "Browse Boards"
+ * needs 97px, so it shipped truncated. `min` is the floor at which every
+ * current label still fits, which is what stops a drag from reintroducing the
+ * ellipsis; `max` is the mobile drawer width so the rail never outgrows it.
+ */
+export const SIDEBAR_WIDTH = { default: 224, min: 208, max: 288 } as const
+const SIDEBAR_WIDTH_KEY = "ff:sidebarWidth"
+
+const SIDEBAR_WIDTH_CSS = `${SIDEBAR_WIDTH.default / 16}rem`
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
+
+function clampSidebarWidth(px: number): number {
+  return Math.min(SIDEBAR_WIDTH.max, Math.max(SIDEBAR_WIDTH.min, px))
+}
+
+/** Stored rail width in px, clamped to the current range. */
+export function readSidebarWidth(): number | null {
+  try {
+    const raw = localStorage.getItem(SIDEBAR_WIDTH_KEY)
+    if (!raw) return null
+    const value = Number(raw)
+    if (!Number.isFinite(value)) return null
+    return clampSidebarWidth(value)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Persist a rail width and apply it. Only applies while expanded — the
+ * collapsed rail stays 3rem, and `persistSidebarOpen` restores the stored
+ * width when it re-opens.
+ */
+export function persistSidebarWidth(px: number): number {
+  const clamped = clampSidebarWidth(px)
+  try {
+    localStorage.setItem(SIDEBAR_WIDTH_KEY, String(clamped))
+  } catch {}
+  try {
+    if (document.documentElement.getAttribute("data-sidebar") !== "collapsed") {
+      document.documentElement.style.setProperty("--sidebar-w", `${clamped}px`)
+    }
+  } catch {}
+  return clamped
+}
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
 type SidebarContextProps = {
@@ -148,7 +195,7 @@ const SidebarProvider = React.forwardRef<
           <div
             style={
               {
-                "--sidebar-width": SIDEBAR_WIDTH,
+                "--sidebar-width": SIDEBAR_WIDTH_CSS,
                 "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
                 ...style,
               } as React.CSSProperties
@@ -328,56 +375,56 @@ const SidebarRail = React.forwardRef<
   const isDraggingRef = React.useRef(false)
   const didDragRef = React.useRef(false)
   const startXRef = React.useRef(0)
-  const startWidthRef = React.useRef(192)
+  const startWidthRef = React.useRef<number>(SIDEBAR_WIDTH.default)
 
-  const handleMouseDown = React.useCallback(
-    (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handlePointerDown = React.useCallback(
+    (e: React.PointerEvent<HTMLButtonElement>) => {
       if (state === "collapsed") return
-      // Only left button
+      // Only the primary button / first touch.
       if (e.button !== 0) return
       isDraggingRef.current = true
       didDragRef.current = false
       startXRef.current = e.clientX
       const current = getComputedStyle(document.documentElement).getPropertyValue("--sidebar-w").trim()
-      let px = 192
-      if (current.endsWith("px")) px = parseInt(current, 10) || 192
-      else if (current.endsWith("rem")) px = parseFloat(current) * 16 || 192
+      let px: number = SIDEBAR_WIDTH.default
+      if (current.endsWith("px")) px = parseInt(current, 10) || SIDEBAR_WIDTH.default
+      else if (current.endsWith("rem")) px = parseFloat(current) * 16 || SIDEBAR_WIDTH.default
       else {
         // fallback from actual sidebar element
         const el = document.querySelector("[data-sidebar=sidebar]") as HTMLElement | null
-        if (el) px = el.getBoundingClientRect().width || 192
+        if (el) px = el.getBoundingClientRect().width || SIDEBAR_WIDTH.default
       }
       startWidthRef.current = px
       e.preventDefault()
       document.body.style.cursor = "col-resize"
       document.body.style.userSelect = "none"
 
-      const onMove = (ev: MouseEvent) => {
+      const onMove = (ev: PointerEvent) => {
         const dx = ev.clientX - startXRef.current
         if (Math.abs(dx) > 3) didDragRef.current = true
-        const next = Math.min(240, Math.max(192, startWidthRef.current + dx))
-        document.documentElement.style.setProperty("--sidebar-w", `${next}px`)
+        // Clamped by the shared range, so a drag can never land on a width
+        // where the rail's own labels truncate.
+        persistSidebarWidth(startWidthRef.current + dx)
       }
       const onUp = () => {
-        window.removeEventListener("mousemove", onMove)
-        window.removeEventListener("mouseup", onUp)
+        window.removeEventListener("pointermove", onMove)
+        window.removeEventListener("pointerup", onUp)
+        window.removeEventListener("pointercancel", onUp)
         document.body.style.cursor = ""
         document.body.style.userSelect = ""
         isDraggingRef.current = false
         const finalStr = getComputedStyle(document.documentElement).getPropertyValue("--sidebar-w").trim()
         let finalPx = parseInt(finalStr, 10)
         if (!Number.isFinite(finalPx)) finalPx = startWidthRef.current
-        finalPx = Math.min(240, Math.max(192, finalPx))
-        try {
-          localStorage.setItem("ff:sidebarWidth", String(finalPx))
-        } catch {}
-        // let click through only if not dragged
+        persistSidebarWidth(finalPx)
+        // Let the click fall through only when this was a toggle, not a drag.
         setTimeout(() => {
           didDragRef.current = false
         }, 0)
       }
-      window.addEventListener("mousemove", onMove)
-      window.addEventListener("mouseup", onUp)
+      window.addEventListener("pointermove", onMove)
+      window.addEventListener("pointerup", onUp)
+      window.addEventListener("pointercancel", onUp)
     },
     [state]
   )
@@ -400,7 +447,7 @@ const SidebarRail = React.forwardRef<
       data-sidebar="rail"
       aria-label="Toggle Sidebar"
       tabIndex={-1}
-      onMouseDown={handleMouseDown}
+      onPointerDown={handlePointerDown}
       onClick={handleClick}
       title="Toggle Sidebar"
       className={cn(

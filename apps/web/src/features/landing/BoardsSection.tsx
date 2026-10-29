@@ -44,7 +44,7 @@ export function BoardsSection({ data }: { data: BoardsData }) {
                         <Link
                             key={r.idx}
                             href={r.href}
-                            className="group grid grid-cols-[48px_1fr_auto] items-center gap-3 border-b border-border px-2 py-[22px] transition-colors hover:bg-card sm:grid-cols-[120px_1fr_auto] sm:gap-6 sm:px-2"
+                            className="group grid grid-cols-[48px_1fr_auto] items-center gap-3 border-b border-border px-2 py-[22px] transition-colors [@media(hover:hover)_and_(pointer:fine)]:hover:bg-card sm:grid-cols-[120px_1fr_auto] sm:gap-6 sm:px-2"
                         >
                             <span className="font-record text-[12px] tracking-[0.1em] text-muted-foreground/70">
                                 {r.idx}

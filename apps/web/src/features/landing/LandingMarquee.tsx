@@ -1,12 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-
 /**
  * Announcement marquee at the top of the landing page (mock: dark strip with
- * mono facts separated by ·). Feed facts come from the server; /api/stats is
- * fetched here and handed to the parent via onStats so the numbers can be
- * rendered on the page (LiveStatsBox) — NOT in the strip itself.
+ * mono facts separated by ·). Feed facts come from the server, so the strip
+ * renders from props and fetches nothing.
  *
  * Loop math: the CSS animation translates the track by -50%. To loop without
  * a visible gap the track must be TWO IDENTICAL HALVES. Reduced motion
@@ -19,17 +16,22 @@ import { useEffect, useState } from 'react';
  * and stays away (shared useMarqueeHidden hook, same number in DesktopNav).
  */
 
+/**
+ * Off switch for the announcement strip.
+ *
+ * The strip is currently hidden: on the landing it sat as a fixed 28px band
+ * above a fixed header, and the two together read as the page being cut off
+ * at the top. It stays in the tree rather than being deleted because
+ * `DesktopNav` (header offset) and `NavigationWrapper` (landing top padding)
+ * both read this flag. Flip it to `true` to bring the strip back — the nav
+ * offset and the landing padding follow it.
+ */
+export const MARQUEE_ENABLED = false;
+
 interface LandingMarqueeProps {
     newToday: number;
     refreshedAt: Date | null;
     walkins: number;
-    onStats?: (stats: { visitors: number | null; pageViews: number | null }) => void;
-}
-
-interface StatsResponse {
-    today?: { pageViews?: number; visitors?: number; requests?: number };
-    yesterday?: { pageViews?: number; visitors?: number };
-    updatedAt?: string;
 }
 
 function formatAge(date: Date): string {
@@ -43,27 +45,10 @@ function formatAge(date: Date): string {
 
 import { useMarqueeHidden } from '@/hooks/useMarqueeHidden';
 
-export function LandingMarquee({ newToday, refreshedAt, walkins, onStats }: LandingMarqueeProps) {
-    const hidden = useMarqueeHidden(true);
+export function LandingMarquee({ newToday, refreshedAt, walkins }: LandingMarqueeProps) {
+    const hidden = useMarqueeHidden(MARQUEE_ENABLED);
 
-    useEffect(() => {
-        let cancelled = false;
-        const base = process.env.NEXT_PUBLIC_API_URL || 'https://api.fresherflow.in';
-        fetch(`${base}/api/stats`, { signal: AbortSignal.timeout(6000) })
-            .then((r) => (r.ok ? (r.json() as Promise<StatsResponse>) : null))
-            .then((data) => {
-                if (!cancelled && data) {
-                    onStats?.({
-                        visitors: data.yesterday?.visitors ?? null,
-                        pageViews: data.today?.pageViews ?? null,
-                    });
-                }
-            })
-            .catch(() => {});
-        return () => {
-            cancelled = true;
-        };
-    }, [onStats]);
+    if (!MARQUEE_ENABLED) return null;
 
     const items = [
         newToday > 0 ? (

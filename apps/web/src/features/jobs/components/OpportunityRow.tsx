@@ -16,6 +16,13 @@ interface OpportunityRowProps {
     isApplied?: boolean;
     onToggleSave?: () => void;
     isSelected?: boolean;
+    /**
+     * `stacked` is the split pane's narrow column: four short lines that
+     * survive ~360px. `wide` is the full-width List view, where the same four
+     * lines read as a phone card stranded in a desktop column (DESIGN_SYSTEM
+     * §6: wide row on desktop). One row, two densities — not two components.
+     */
+    layout?: 'stacked' | 'wide';
     onClick?: (e: React.MouseEvent) => void;
     onMouseEnter?: (e: React.MouseEvent<HTMLDivElement>) => void;
     onMouseLeave?: (e: React.MouseEvent<HTMLDivElement>) => void;
@@ -44,10 +51,12 @@ export function OpportunityRow({
     isApplied = false,
     onToggleSave,
     isSelected = false,
+    layout = 'stacked',
     onClick,
     onMouseEnter,
     onMouseLeave,
 }: OpportunityRowProps) {
+    const wide = layout === 'wide';
     const location = parseOpportunityLocation(opp.locations);
     const posted = getPostedLabel(opp as Opportunity);
     // Reading the payload's actions needs no hook, so the row stays hook-less
@@ -65,7 +74,8 @@ export function OpportunityRow({
         <div
             onClick={onClick}
             className={cn(
-                'relative z-10 flex items-start gap-3 rounded-xl px-4 py-3.5 cursor-pointer transition-colors duration-200 ease-out',
+                'relative z-10 flex gap-3 rounded-xl px-4 cursor-pointer transition-colors duration-200 ease-out',
+                wide ? 'items-center py-3' : 'items-start py-3.5',
                 isSelected ? 'bg-chip-active text-chip-active-text' : 'bg-transparent'
             )}
             onMouseEnter={onMouseEnter}
@@ -90,21 +100,38 @@ export function OpportunityRow({
                 aria-current={isSelected ? 'true' : undefined}
                 className="min-w-0 flex-1 cursor-pointer text-left rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-                <span className="block text-sm font-semibold leading-snug text-foreground line-clamp-2">
+                <span
+                    className={cn(
+                        'font-semibold text-foreground',
+                        wide
+                            ? 'block truncate text-sm leading-snug'
+                            : 'block text-sm leading-snug line-clamp-2'
+                    )}
+                >
                     {opp.title}
                 </span>
-                <span className="mt-0.5 block truncate text-sm text-muted-foreground">
-                    {opp.company}
-                </span>
-                {meta && (
-                    <span className="mt-0.5 block truncate text-sm text-muted-foreground">
-                        {meta}
+                {wide ? (
+                    <span className="mt-0.5 block truncate text-meta text-muted-foreground">
+                        {[opp.company, meta, posted, showApplied ? 'Applied' : null]
+                            .filter(Boolean)
+                            .join(' · ')}
                     </span>
+                ) : (
+                    <>
+                        <span className="mt-0.5 block truncate text-sm text-muted-foreground">
+                            {opp.company}
+                        </span>
+                        {meta && (
+                            <span className="mt-0.5 block truncate text-sm text-muted-foreground">
+                                {meta}
+                            </span>
+                        )}
+                        <span className="mt-0.5 block text-sm text-muted-foreground">
+                            {posted}
+                            {showApplied ? ' · Applied' : ''}
+                        </span>
+                    </>
                 )}
-                <span className="mt-0.5 block text-sm text-muted-foreground">
-                    {posted}
-                    {showApplied ? ' · Applied' : ''}
-                </span>
             </button>
             <button
                 type="button"

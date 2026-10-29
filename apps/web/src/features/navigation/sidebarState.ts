@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { SIDEBAR_WIDTH, readSidebarWidth } from '@/ui/sidebar';
 
 /**
  * Single home for sidebar collapse persistence.
@@ -30,8 +31,14 @@ export function readSidebarOpen(): boolean {
     return true;
 }
 
-/** The single width token the shell and the fixed header both consume. */
-export const SIDEBAR_W = { expanded: '12rem', collapsed: '3rem' } as const;
+/**
+ * The single width token the shell and the fixed header both consume.
+ *
+ * Expanded derives from `SIDEBAR_WIDTH.default` in `@/ui/sidebar`, which the
+ * rail's drag handle also clamps against — the px numbers live there so the
+ * default, the rail's start width and the resize limits cannot disagree.
+ */
+export const SIDEBAR_W = { expanded: `${SIDEBAR_WIDTH.default / 16}rem`, collapsed: '3rem' } as const;
 
 /**
  * Single `var(--sidebar-w, …)` expression for every inline reader — the fixed
@@ -40,46 +47,6 @@ export const SIDEBAR_W = { expanded: '12rem', collapsed: '3rem' } as const;
  * ever falling back to two different widths.
  */
 export const SIDEBAR_W_VAR = `var(--sidebar-w, ${SIDEBAR_W.expanded})`;
-
-/** Resizable range: our small 12rem ↔ shadcn regular ~15rem (192px ↔ 240px) — decreased from 256px per feedback. */
-export const SIDEBAR_WIDTH_MIN = 192;
-export const SIDEBAR_WIDTH_MAX = 240;
-const SIDEBAR_WIDTH_STORAGE_KEY = 'ff:sidebarWidth';
-
-function clamp(n: number, min: number, max: number) {
-    return Math.min(max, Math.max(min, n));
-}
-
-export function readSidebarWidth(): number | null {
-    try {
-        const raw = localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
-        if (!raw) return null;
-        const v = Number(raw);
-        if (!Number.isFinite(v)) return null;
-        return clamp(v, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX);
-    } catch {
-        return null;
-    }
-}
-
-export function persistSidebarWidth(px: number) {
-    const clamped = clamp(px, SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX);
-    try {
-        localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(clamped));
-    } catch {}
-    try {
-        // Only apply when expanded — collapsed stays 3rem.
-        const isCollapsed = document.documentElement.getAttribute('data-sidebar') === 'collapsed';
-        if (!isCollapsed) {
-            document.documentElement.style.setProperty('--sidebar-w', `${clamped}px`);
-        }
-    } catch {}
-}
-
-export function getStoredSidebarWidthOrDefault(): string {
-    const w = readSidebarWidth();
-    return w ? `${w}px` : SIDEBAR_W.expanded;
-}
 
 export function persistSidebarOpen(next: boolean) {
     // Cookie first: it is the source of truth read on reload. Each store is

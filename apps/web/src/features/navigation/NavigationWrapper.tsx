@@ -10,6 +10,7 @@ import { SidebarProvider, useSidebar } from '@/ui/sidebar';
 import { AppLayoutProvider, useAppLayout } from '@/features/navigation/AppLayoutProvider';
 import { ensureSidebarRepeatGuard, SIDEBAR_W_VAR, useSidebarOpenState } from '@/features/navigation/sidebarState';
 import { SiteHeader } from '@/features/navigation/SiteHeader';
+import { MARQUEE_ENABLED } from '@/features/landing/LandingMarquee';
 
 // Module scope (not an effect): effects in the shadcn provider mount
 // before ours, so only import-time registration gets ahead of its
@@ -33,6 +34,11 @@ function AppShell({ children }: { children: React.ReactNode }) {
     const isSidebarRoute = isSidebarPage(normalizedPathname);
     const { collapsible, variant } = useAppLayout();
     const { open } = useSidebar();
+    // `pt-22` (88px) reserves the 60px header plus the 28px announcement band
+    // the landing sits under. With the band off, the landing reserves exactly
+    // the header, so the page stops starting 28px lower than the nav.
+    const landingTopPad =
+        normalizedPathname === '/' && !MARQUEE_ENABLED ? 'lg:pt-15' : 'lg:pt-22';
 
     const mainEl = (
         <main
@@ -40,7 +46,7 @@ function AppShell({ children }: { children: React.ReactNode }) {
             className={cn(
                 "relative w-full overflow-x-hidden flex-1 flex flex-col",
                 "pt-14",
-                isSidebarRoute ? "lg:pt-0" : "lg:pt-22",
+                isSidebarRoute ? "lg:pt-0" : landingTopPad,
                 isSidebarRoute ? "pb-0" : "pb-0 lg:pb-0",
             )}
         >

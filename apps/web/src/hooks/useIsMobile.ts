@@ -11,7 +11,9 @@ import * as React from "react";
  * (correct) rendered through the collapsed-rail branch (wrong) - icons with
  * no labels. Anything that must match the shell has to agree with `lg`.
  */
-const MOBILE_BREAKPOINT = 1024;
+export const DESKTOP_MIN_WIDTH = 1024;
+
+const MOBILE_BREAKPOINT = DESKTOP_MIN_WIDTH;
 
 export function useIsMobile(): boolean {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined);

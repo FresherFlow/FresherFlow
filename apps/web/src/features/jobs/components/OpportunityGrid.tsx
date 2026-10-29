@@ -41,7 +41,7 @@ export function OpportunityGrid({
         return (
             <div className={cn(
                 "grid gap-4 md:gap-6",
-                isSplitView ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"
+                isSplitView ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
             )} role="status" aria-label="Loading opportunities">
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((item) => (
                     <SkeletonJobCard key={item} variant={isSplitView ? "compact" : "wide"} />
@@ -75,13 +75,14 @@ export function OpportunityGrid({
     return (
         <div className={cn(
             "grid gap-4 md:gap-6",
-            isSplitView ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2"
+            isSplitView ? "grid-cols-1" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
         )} role="list" aria-label="Job listings">
                 {opportunities.map((opp, index) => (
                     <div 
                         key={opp.id} 
                         role="listitem" 
                         data-opp-id={opp.id}
+                        className="min-w-0"
                     >
                         <JobCardResponsive
                                 job={

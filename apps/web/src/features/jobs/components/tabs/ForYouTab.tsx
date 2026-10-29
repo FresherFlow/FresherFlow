@@ -173,6 +173,7 @@ export default function ForYouTab() {
                             {isRowLayout === true ? (
                                 <OpportunityRow
                                     opp={opp}
+                                    layout="wide"
                                     isSaved={opp.isSaved || false}
                                     onToggleSave={() => toggleSave(opp.id)}
                                     onClick={() => router.push(getOpportunityPathFromItem(opp))}

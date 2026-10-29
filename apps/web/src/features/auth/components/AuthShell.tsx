@@ -23,7 +23,7 @@ interface AuthShellProps {
  */
 export function AuthShell({ left, children }: AuthShellProps) {
     return (
-        <div className="flex h-full min-h-0 flex-1 justify-center overflow-y-auto bg-background p-4 lg:items-center lg:overflow-hidden lg:ff-shell-gutter lg:py-8">
+        <div className="flex h-full min-h-0 flex-1 justify-center overflow-y-auto bg-background p-4 lg:items-center lg:overflow-hidden lg:ff-shell-gutter xl:px-10 lg:py-8">
             <div className="relative m-auto w-full max-w-md animate-in fade-in duration-300 border border-transparent bg-transparent lg:h-150 lg:max-w-5xl lg:ff-shell-max-h lg:overflow-hidden lg:rounded-4xl lg:border-border lg:bg-background lg:shadow-lg">
                 <div className="hidden absolute right-4 top-4 z-10 lg:block lg:right-6 lg:top-6">
                     <ThemeSwitcher />

@@ -208,7 +208,8 @@ export function MobileNavTree({ onNavigate }: { onNavigate: () => void }) {
  * trigger lives in MobileTopNav, so both need the same provider. Collapse
  * open state is the existing `ff:sidebarCollapsed` / `sidebar_state` store;
  * variant + collapse mode come from `AppLayoutProvider` (same level as the
- * `SidebarProvider`), and layout width stays `12rem ↔ 3rem` via `--sidebar-w`.
+ * `SidebarProvider`), and layout width is `SIDEBAR_WIDTH.default ↔ 3rem` via
+ * `--sidebar-w` — draggable between `SIDEBAR_WIDTH.min` and `max` on the rail.
  *
  * The rail is wrapped in `hidden lg:block` to match the `lg:pl-[var(--sidebar-w)]`
  * content offset in NavigationWrapper — without it the rail renders from `md`

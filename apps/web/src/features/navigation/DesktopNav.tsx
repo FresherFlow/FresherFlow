@@ -10,6 +10,7 @@ import { LogoImage } from '@/features/shell/LogoImage';
 import { useOfflineActionQueue } from '@/hooks/useOfflineActionQueue';
 import { getNavRoutes } from './routeConfig';
 import { useMarqueeHidden } from '@/hooks/useMarqueeHidden';
+import { MARQUEE_ENABLED } from '@/features/landing/LandingMarquee';
 import { NavMegaMenu } from './NavMegaMenu';
 
 
@@ -54,8 +55,10 @@ export function DesktopNav() {
     }, [pathname]);
 
     const isLandingPage = pathname === '/';
-    // Landing rides the marquee: nav moves to top-0 when the marquee hides on scroll down
-    const marqueeHidden = useMarqueeHidden(isLandingPage);
+    // Landing rides the marquee: nav moves to top-0 when the marquee hides on scroll down.
+    // With the strip off there is no band to sit under, so the header stays at top-0.
+    const marqueeHidden = useMarqueeHidden(isLandingPage && MARQUEE_ENABLED);
+    const underMarquee = isLandingPage && MARQUEE_ENABLED && !marqueeHidden;
     const isCandidatePortfolioRoute = pathname.startsWith('/u/');
 
     // ONE header everywhere: same 60px height, same border, same actions.
@@ -63,7 +66,7 @@ export function DesktopNav() {
     return (
         <header className={cn(
             "select-none fixed left-0 right-0 z-50 h-15 items-center bg-background border-b border-border/60 hidden lg:flex transition-all duration-300 ease-out",
-            isLandingPage ? (marqueeHidden ? 'top-0' : 'top-7') : 'top-0'
+            underMarquee ? 'top-7' : 'top-0'
         )}>
             <nav className="mx-auto w-full max-w-7xl h-15 flex items-center justify-between gap-4 px-6">
 
@@ -86,11 +89,15 @@ export function DesktopNav() {
                 {/* Center Nav Links — left-aligned next to the brand (landing) */}
                 {!isCandidatePortfolioRoute && (
                 <div className={cn(
-                    'flex-1 flex items-center gap-1 md:gap-2 overflow-x-auto no-scrollbar',
+                    // Spacing is `lg`-tight and `xl`-roomy on purpose: at 1024
+                    // the seven desktop routes plus brand and actions need
+                    // ~40px more than the bar has, so the last link was clipped
+                    // by the overflow container with no scroll affordance.
+                    'flex-1 flex items-center gap-1 xl:gap-2 overflow-x-auto no-scrollbar',
                     !isLandingPage && 'justify-center px-2'
                 )}>
                     {!isAuthRoute && (
-                        <div className="mx-auto flex items-center gap-1 md:gap-2">
+                        <div className="mx-auto flex items-center gap-1 xl:gap-2">
                             <NavMegaMenu isLanding={isLandingPage} marqueeHidden={marqueeHidden} />
                             {desktopRoutes.map((route) => {
                         const isActive = pathname === route.href || pathname.startsWith(`${route.href}/`);
@@ -103,7 +110,7 @@ export function DesktopNav() {
                                 }}
                                 aria-current={isActive ? 'page' : undefined}
                                 className={cn(
-                                    'px-2.5 md:px-3 py-1.5 text-xs md:text-sm font-medium whitespace-nowrap transition-all duration-150 ease-out active:scale-95 relative shrink-0 after:absolute after:bottom-0 after:left-2.5 after:right-2.5 after:h-0.5 after:rounded-full after:bg-foreground/40 after:transition-transform after:duration-300 after:ease-out after:origin-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded',
+                                    'px-2 lg:px-2.5 xl:px-3 py-1.5 text-xs md:text-sm font-medium whitespace-nowrap transition-all duration-150 ease-out active:scale-95 relative shrink-0 after:absolute after:bottom-0 after:left-2.5 after:right-2.5 after:h-0.5 after:rounded-full after:bg-foreground/40 after:transition-transform after:duration-300 after:ease-out after:origin-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded',
                                     isActive
                                         ? 'text-foreground after:scale-x-100'
                                         : 'text-muted-foreground hover:text-foreground after:scale-x-0'

@@ -1219,8 +1219,8 @@ html.ff-smooth {
 }
 
 @utility ff-shell-gutter {
-  padding-left: 7%;
-  padding-right: 7%;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
 }
 
 @utility ff-shell-max-h {

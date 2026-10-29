@@ -43,7 +43,18 @@ export default function TopNav() {
 
     return (
         <>
-            <nav className="bg-background/80 backdrop-blur-xl sticky top-0 z-40 shadow-xs">
+            <nav
+                className={cn(
+                    // DesktopNav owns the desktop header (fixed, shown at `lg:flex`) and
+                    // MobileTopNav owns the mobile header (`lg:hidden`); together they
+                    // cover every breakpoint, so TopNav must not render at any width
+                    // alongside them — otherwise it doubles the header on desktop or
+                    // mobile. It stays mounted but invisible until it is given its own
+                    // route that renders neither of the other headers.
+                    "hidden",
+                    "bg-background/80 backdrop-blur-xl sticky top-0 z-40 shadow-xs"
+                )}
+            >
                 <div className="max-w-6xl mx-auto px-4 sm:px-6">
                     <div className="flex items-center justify-between h-16">
                         {/* Logo */}

@@ -75,7 +75,7 @@ export function JobCardMobile({
     return (
         <div
             className={cn(
-                'group relative bg-card text-card-foreground border rounded-lg p-2.5 flex flex-col gap-2 transition-colors duration-150 ease-out cursor-pointer',
+                'group relative min-w-0 bg-card text-card-foreground border rounded-lg p-2.5 flex flex-col gap-2 transition-colors duration-150 ease-out cursor-pointer',
                 'border-border hover:border-primary/30',
                 isExpired && 'opacity-60',
                 className

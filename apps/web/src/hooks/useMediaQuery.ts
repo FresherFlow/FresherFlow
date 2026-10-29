@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DESKTOP_MIN_WIDTH } from "./useIsMobile";
 
 // Re-export canonical hook so this file provides both hooks from one import.
 export { useIsMobile } from "./useIsMobile";
@@ -8,7 +9,7 @@ export { useIsMobile } from "./useIsMobile";
 function getDevice(): "mobile" | "tablet" | "desktop" | null {
   if (typeof window === "undefined") return null;
 
-  return window.matchMedia("(min-width: 1024px)").matches
+  return window.matchMedia(`(min-width: ${DESKTOP_MIN_WIDTH}px)`).matches
     ? "desktop"
     : window.matchMedia("(min-width: 640px)").matches
       ? "tablet"
