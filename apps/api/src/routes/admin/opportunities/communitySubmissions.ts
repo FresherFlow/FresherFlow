@@ -6,6 +6,8 @@ import { actorId, requirePermission } from '../../../middleware/auth';
 import { AppError } from '../../../middleware/errorHandler';
 import { approveSubmission, rejectOpportunity } from '../../../application/opportunity/moderation';
 import { handleOpportunityPublished } from '../../../infrastructure/services/opportunity/publish.service';
+import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/opportunity/publicOpportunityCache.service';
+import { refreshFeedsAndAnnounce } from '../../../infrastructure/services/opportunity/feedRefresh';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
 import type { Opportunity } from '@fresherflow/types';
 
@@ -134,7 +136,18 @@ router.post(
             : 'Rejected by moderator';
         const adminId = actorId(req) ?? 'system';
 
-        await rejectOpportunity(submission.opportunityId, adminId, reason);
+        const rejected = await rejectOpportunity(submission.opportunityId, adminId, reason);
+
+        // A submission that was published (a moderator can publish on submit)
+        // leaves the live set here, so the feed has to be rebuilt and the job
+        // shard collected — exactly like an admin archive.
+        void invalidatePublicOpportunityCache({
+            idsOrSlugs: [rejected.id as string, rejected.slug as string],
+            purgeFeed: true,
+            type: rejected.category as string,
+            tags: [],
+        });
+        void refreshFeedsAndAnnounce('submission-reject');
 
         adminCache.invalidateLists();
         return res.json({ success: true, submissionId: submission.id });

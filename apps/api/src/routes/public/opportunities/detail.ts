@@ -5,6 +5,8 @@ import { redis } from '@fresherflow/database';
 import prisma from '../../../infrastructure/database/prisma';
 import { AppError } from '../../../middleware/errorHandler';
 import { checkEligibility, calculateOpportunityMatch } from '@fresherflow/utils';
+import { liveOpportunityWhere } from '../../../utils/liveWhere';
+import { buildGuestDetailCacheKey } from '../../../infrastructure/services/opportunity/publicOpportunityCache.service';
 import {
     isLikelyBotTraffic, publicDetailLimiter, publicDetailBotLimiter,
     tryResolveUserIdFromCookie, buildPublicOpportunitySelect, isSupportedDetailId,
@@ -45,14 +47,34 @@ router.get('/:id', adaptiveDetailLimiter, async (req: Request, res: Response, ne
         const userId = tryResolveUserIdFromCookie(req);
         const isGuest = !userId;
         const redis_client = env.NODE_ENV === 'development' ? null : redis;
-        const guestDetailCacheKey = isGuest ? `opportunity_detail|v5|mode:${effectiveSiteMode}|id:${id}` : null;
+        // Built by the same helper the cache invalidation purges with, so the
+        // key a guest request writes is a key the purge can actually match.
+        const guestDetailCacheKey = isGuest ? buildGuestDetailCacheKey(effectiveSiteMode, id) : null;
 
         if (isGuest && guestDetailCacheKey && redis_client) {
             const cached = await redis_client.get(guestDetailCacheKey).catch(() => null);
             if (cached) {
-                res.setHeader('Cache-Control', GUEST_DETAIL_CACHE_CONTROL);
-                res.setHeader('X-Detail-Cache', 'HIT');
-                return res.json(JSON.parse(cached));
+                let parsed: unknown = null;
+                try {
+                    parsed = JSON.parse(cached);
+                } catch {
+                    // A corrupt entry must not turn every guest request into a
+                    // 500 until the TTL expires. Treat it as a miss.
+                    parsed = null;
+                }
+                if (parsed && typeof parsed === 'object' && (parsed as { is404?: unknown }).is404) {
+                    // A cached "not found" is a real 404 and is served as one,
+                    // with exactly the same envelope the fresh miss below
+                    // produces. Answering 200 with an error body would let a
+                    // client render an empty page instead of a not-found page.
+                    res.setHeader('X-Detail-Cache', 'HIT');
+                    throw new AppError('Opportunity not found', 404);
+                }
+                if (parsed) {
+                    res.setHeader('Cache-Control', GUEST_DETAIL_CACHE_CONTROL);
+                    res.setHeader('X-Detail-Cache', 'HIT');
+                    return res.json(parsed);
+                }
             }
         }
 
@@ -62,8 +84,19 @@ router.get('/:id', adaptiveDetailLimiter, async (req: Request, res: Response, ne
             return /^[a-f0-9]{6,12}$/i.test(last) ? last.toLowerCase() : '';
         };
 
+        // ONE liveness rule for every public read (see utils/liveWhere.ts).
+        // The lookup used to filter on `deletedAt` only, so a DRAFT, ARCHIVED
+        // or already-expired listing was publicly servable by slug or id even
+        // though the published feed and the CDN snapshot contain none of them.
+        const now = new Date();
+
         let opportunity = await prisma.opportunity.findFirst({
-            where: { OR: [{ slug: id }, { id: id }], deletedAt: null },
+            where: {
+                AND: [
+                    { OR: [{ slug: id }, { id: id }] },
+                    liveOpportunityWhere(now),
+                ],
+            },
             select: buildPublicOpportunitySelect(userId || undefined)
         });
 
@@ -73,7 +106,12 @@ router.get('/:id', adaptiveDetailLimiter, async (req: Request, res: Response, ne
                 // Slug suffix is the HEAD of the UUID (slugify.ts), so rescue
                 // drifted slugs with a head match, not a tail match.
                 opportunity = await prisma.opportunity.findFirst({
-                    where: { id: { startsWith: suffix }, deletedAt: null },
+                    where: {
+                        AND: [
+                            { id: { startsWith: suffix } },
+                            liveOpportunityWhere(now),
+                        ],
+                    },
                     select: buildPublicOpportunitySelect(userId || undefined)
                 });
             }

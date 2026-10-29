@@ -1,11 +1,14 @@
 import prisma from '../../database/prisma';
 import { Prisma } from '@prisma/client';
 import { OpportunityStatus, RecruitmentMethod, Sector, EmploymentType } from '@fresherflow/types';
-import { logger } from '@fresherflow/utils';
+import { logger, getCompanySlug as deriveCompanySlug } from '@fresherflow/utils';
 import { StorageService } from '../platform/storage.service';
 
 export class FeedGeneratorService {
     private static readonly companySlugMap = new Map<string, string>();
+    /** Company name -> website, so a company missing from companies.json can
+     *  still be slugged from its domain word instead of its legal name. */
+    private static readonly companyUrlMap = new Map<string, string>();
 
     public static getCompanySlugMap(): Map<string, string> {
         return this.companySlugMap;
@@ -21,21 +24,38 @@ export class FeedGeneratorService {
             .replace(/--+/g, '-');
     }
 
-    public static getCompanySlug(companyName: string): string {
+    /**
+     * The canonical slug for a company: `/companies/{slug}` must match
+     * companies.json, which is what the shard upload and the sitemap write.
+     *
+     * The fallback used to be a raw `slugify(companyName)`, which turned
+     * "LLT India Pvt Ltd" into `llt-india-pvt-ltd`. `deriveCompanySlug` reads
+     * the domain word first (`llt.com` -> `llt`) and only strips legal
+     * suffixes from the name when there is no usable URL, so a company always
+     * lands on its brand word rather than its registration string.
+     */
+    public static getCompanySlug(companyName: string, url?: string | null): string {
         if (!companyName) return '';
         const key = companyName.toLowerCase().trim();
-        return this.companySlugMap.get(key) || this.slugify(companyName);
+        const mapped = this.companySlugMap.get(key);
+        if (mapped) return mapped;
+        const resolvedUrl = url || this.companyUrlMap.get(key) || null;
+        return deriveCompanySlug(companyName, resolvedUrl);
     }
 
     public static async loadCompanySlugMap(): Promise<void> {
         const companiesContent = await StorageService.fetchFromR2('companies.json');
         this.companySlugMap.clear();
+        this.companyUrlMap.clear();
         if (companiesContent) {
             try {
                 const companiesList = JSON.parse(companiesContent);
                 for (const c of companiesList) {
                     if (c && c.name && c.slug) {
                         this.companySlugMap.set(c.name.toLowerCase().trim(), c.slug);
+                    }
+                    if (c && c.name && c.url) {
+                        this.companyUrlMap.set(c.name.toLowerCase().trim(), c.url);
                     }
                 }
             } catch (e) {

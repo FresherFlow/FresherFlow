@@ -20,6 +20,8 @@ import { logger } from '@fresherflow/utils';
  *     it lags, and that is logged.
  *   - it never blocks the caller: the fan-out happens after the caller's
  *     response, and bursts are collapsed into a single request.
+ *   - it retries: network errors and 5xx are attempted three times, because a
+ *     single dropped request is a stale site with no other signal.
  *   - it does not require configuration to be harmless: an unset secret or
  *     web URL is a warning, not an error.
  */
@@ -56,11 +58,30 @@ export const FEED_REVALIDATE_TAGS = [
 const REVALIDATE_PATH = '/api/revalidate';
 const REQUEST_TIMEOUT_MS = 5_000;
 /**
+ * A publish must not depend on the web being reachable on the first try.
+ * Delivery is retried on network errors and 5xx; a 4xx (bad secret, bad body)
+ * will not improve, so it stops immediately. Without this, every transient
+ * blip left the site serving the previous feed until an operator noticed.
+ */
+const MAX_ATTEMPTS = 3;
+const RETRY_BASE_DELAY_MS = 400;
+/**
  * Bursts are collapsed. A bulk publish of 100 listings would otherwise send
  * 100 requests to a route the web rate-limits to 60/minute, and the requests
  * that get rejected are exactly the ones that matter.
  */
 const COALESCE_WINDOW_MS = 1_000;
+/**
+ * How long a path-only change waits for a feed announcement to carry it.
+ *
+ * Detail paths must not reach the web BEFORE the rebuild that changes them:
+ * a revalidatePath makes Next render the page again from the same CDN URL, so
+ * announcing first re-caches the snapshot that is about to be replaced. The
+ * mutation paths schedule a rebuild within ~5s whose completion announcement
+ * flushes these paths with the tags. This fallback is for paths that have no
+ * rebuild (an event-timeline edit, for example) so they can never be stranded.
+ */
+const PATHS_FALLBACK_DELAY_MS = 30_000;
 
 /**
  * Parse a configured web origin before fetching it. Rejects non-http(s)
@@ -109,64 +130,148 @@ function resolveWebOrigins(): string[] {
     return origins;
 }
 
+export interface RevalidationDelivery {
+    ok: boolean;
+    status?: number;
+    /** Enough of the failure to act on: the status and the web's own message. */
+    reason?: string;
+}
+
+/**
+ * POST the feed tag bust to one web origin, with bounded retries.
+ *
+ * Never rejects — the caller decides what a failure means. This is the single
+ * implementation of "tell the web": the publish path, both admin buttons and
+ * the worker sweep all call it, so a retry added here is a retry everywhere.
+ */
+export async function deliverFeedRevalidation(
+    origin: string,
+    secret?: string,
+    paths?: string[],
+): Promise<RevalidationDelivery> {
+    const token = secret || process.env.REVALIDATE_SECRET_TOKEN;
+    if (!token) return { ok: false, reason: 'REVALIDATE_SECRET_TOKEN is not configured' };
+
+    const pathList = Array.from(new Set((paths ?? []).filter(Boolean)));
+
+    let last: RevalidationDelivery = { ok: false, reason: 'not attempted' };
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+        try {
+            const response = await fetch(`${origin}${REVALIDATE_PATH}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                // Tags bust the feed pages; paths are the individual detail
+                // slugs the web revalidates eagerly. The route hard-blocks the
+                // hub paths, so an over-broad path list cannot turn into the
+                // ISR write spike this design exists to avoid.
+                body: JSON.stringify({
+                    secret: token,
+                    tags: [...FEED_REVALIDATE_TAGS],
+                    ...(pathList.length > 0 ? { paths: pathList } : {}),
+                }),
+                signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+            });
+
+            if (response.ok) return { ok: true, status: response.status };
+
+            const body = await response.text().catch(() => 'No response body');
+            last = {
+                ok: false,
+                status: response.status,
+                reason: `${response.status} ${body}`.slice(0, 300),
+            };
+            // 4xx: the secret or the body is wrong. Repeating it changes nothing.
+            if (response.status < 500) return last;
+        } catch (error: unknown) {
+            last = { ok: false, reason: error instanceof Error ? error.message : String(error) };
+        }
+
+        if (attempt < MAX_ATTEMPTS) {
+            await new Promise((resolve) => setTimeout(resolve, RETRY_BASE_DELAY_MS * attempt));
+        }
+    }
+
+    return last;
+}
+
+export interface FeedAnnouncementResult {
+    /** Origins that were configured and attempted. */
+    targets: number;
+    delivered: number;
+    failures: string[];
+    /** Set when there was nothing to attempt (no secret / no origin). */
+    skipped: string | null;
+}
+
+const MISSING_SECRET_MESSAGE =
+    'REVALIDATE_SECRET_TOKEN is not configured on this API, so the web app was not told about the feed change. '
+    + 'The CDN feeds are current, but the web keeps serving the previous feed version until the token is set.';
+const MISSING_ORIGIN_MESSAGE =
+    'No public web origin is configured (PUBLIC_WEB_URL / PUBLIC_FRONTEND_URL / FRONTEND_URL), so the web app '
+    + 'was not told about the feed change.';
+
+/**
+ * Tell every configured web origin that the CDN feeds moved, and report what
+ * actually happened.
+ *
+ * Never rejects. `failures` is non-empty exactly when a configured origin did
+ * not acknowledge the bust — the only signal that separates "the site is
+ * fresh" from "the site is stale and nobody knows".
+ */
+export async function announceFeedChangeNow(
+    reason: string,
+    paths: string[] = [],
+): Promise<FeedAnnouncementResult> {
+    const secret = process.env.REVALIDATE_SECRET_TOKEN;
+    if (!secret) {
+        logger.warn(MISSING_SECRET_MESSAGE, { trigger: reason });
+        return { targets: 0, delivered: 0, failures: [], skipped: MISSING_SECRET_MESSAGE };
+    }
+
+    const origins = resolveWebOrigins();
+    if (origins.length === 0) {
+        logger.warn(MISSING_ORIGIN_MESSAGE, { trigger: reason });
+        return { targets: 0, delivered: 0, failures: [], skipped: MISSING_ORIGIN_MESSAGE };
+    }
+
+    const failures: string[] = [];
+    await Promise.all(
+        origins.map(async (origin) => {
+            const result = await deliverFeedRevalidation(origin, secret, paths);
+            if (result.ok) return;
+            failures.push(`${origin} (${result.reason ?? 'unknown error'})`);
+            logger.error('[webRevalidation] Feed revalidation was not delivered', {
+                origin,
+                status: result.status,
+                failure: result.reason,
+                trigger: reason,
+            });
+        }),
+    );
+
+    return {
+        targets: origins.length,
+        delivered: origins.length - failures.length,
+        failures,
+        skipped: null,
+    };
+}
+
 /**
  * Send the tag bust to every configured web origin.
  *
  * Never rejects: a failure here is a stale web cache, not a failed publish.
  */
-async function fanOut(reasons: string[]): Promise<void> {
-    const secret = process.env.REVALIDATE_SECRET_TOKEN;
-    if (!secret) {
-        logger.warn(
-            '[webRevalidation] REVALIDATE_SECRET_TOKEN is not configured on this API, so the web app '
-                + 'was not told about the feed change. The CDN feeds are current, but the web keeps '
-                + 'serving the previous feed version until the token is set.',
-            { reasons },
-        );
-        return;
-    }
-
-    const origins = resolveWebOrigins();
-    if (origins.length === 0) {
-        logger.warn(
-            '[webRevalidation] No public web origin is configured (PUBLIC_WEB_URL / PUBLIC_FRONTEND_URL '
-                + '/ FRONTEND_URL), so the web app was not told about the feed change.',
-            { reasons },
-        );
-        return;
-    }
-
-    await Promise.all(
-        origins.map(async (origin) => {
-            try {
-                const response = await fetch(`${origin}${REVALIDATE_PATH}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ secret, tags: [...FEED_REVALIDATE_TAGS] }),
-                    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-                });
-                if (!response.ok) {
-                    const body = await response.text().catch(() => 'No response body');
-                    logger.error('[webRevalidation] Feed revalidation request was refused', {
-                        origin,
-                        status: response.status,
-                        body,
-                        reasons,
-                    });
-                }
-            } catch (error: unknown) {
-                logger.error('[webRevalidation] Feed revalidation request could not be delivered', {
-                    origin,
-                    error: error instanceof Error ? error.message : String(error),
-                    reasons,
-                });
-            }
-        }),
-    );
+async function fanOut(reasons: string[], paths: string[]): Promise<void> {
+    await announceFeedChangeNow(reasons.join(',') || 'unknown', paths);
 }
 
 let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+let pendingDeadline = 0;
 let pendingReasons = new Set<string>();
+/** Individual listing paths to revalidate eagerly, coalesced with the tags. */
+let pendingPaths = new Set<string>();
 let pendingPromise: Promise<void> | null = null;
 let pendingResolve: (() => void) | null = null;
 
@@ -182,7 +287,28 @@ let pendingResolve: (() => void) | null = null;
  * web is stale because a listing was published".
  */
 export function notifyWebFeedChanged(reason: string): Promise<void> {
+    return notifyWeb(reason, [], COALESCE_WINDOW_MS);
+}
+
+/**
+ * Tell the web app that one or more listing detail pages changed.
+ *
+ * The caller (the guest-cache invalidation) already worked out the slug paths;
+ * this delivers them instead of leaving them in a Redis set that only the admin
+ * "Regenerate all" button ever drained. The tags are sent with them, so a burst
+ * of edits is one request, not two.
+ *
+ * Never rejects and never blocks: the mutation has already succeeded.
+ */
+export function notifyWebPathsChanged(paths: string[], reason: string): Promise<void> {
+    return notifyWeb(reason, paths, PATHS_FALLBACK_DELAY_MS);
+}
+
+function notifyWeb(reason: string, paths: string[], delayMs: number): Promise<void> {
     pendingReasons.add(reason);
+    for (const path of paths) {
+        if (typeof path === 'string' && path) pendingPaths.add(path);
+    }
 
     if (!pendingPromise) {
         pendingPromise = new Promise<void>((resolve) => {
@@ -191,26 +317,37 @@ export function notifyWebFeedChanged(reason: string): Promise<void> {
     }
     const promise = pendingPromise;
 
+    // The EARLIEST pending deadline wins. A feed announcement can therefore
+    // accelerate a path fallback (flush now, with everything batched), while
+    // a path added after a feed announcement is already queued cannot delay it.
+    const deadline = Date.now() + delayMs;
+    if (pendingTimer && pendingDeadline <= deadline) return promise;
+    pendingDeadline = deadline;
+
     if (pendingTimer) clearTimeout(pendingTimer);
     pendingTimer = setTimeout(() => {
         pendingTimer = null;
+        pendingDeadline = 0;
         const reasons = Array.from(pendingReasons);
+        const paths = Array.from(pendingPaths);
         pendingReasons = new Set<string>();
+        pendingPaths = new Set<string>();
         const resolve = pendingResolve;
         pendingPromise = null;
         pendingResolve = null;
 
-        void fanOut(reasons)
+        void fanOut(reasons, paths)
             .catch((error: unknown) => {
                 logger.error('[webRevalidation] Feed revalidation notification failed', {
                     reasons,
+                    pathCount: paths.length,
                     error: error instanceof Error ? error.message : String(error),
                 });
             })
             .finally(() => {
                 resolve?.();
             });
-    }, COALESCE_WINDOW_MS);
+    }, Math.max(0, pendingDeadline - Date.now()));
 
     return promise;
 }

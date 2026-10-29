@@ -11,6 +11,7 @@ import { StaticFeedService } from '../../infrastructure/services/opportunity/sta
 import { redis } from '@fresherflow/database';
 import { enqueueCacheRevalidation } from '@fresherflow/queue';
 import { logger } from '@fresherflow/utils';
+import { deliverFeedRevalidation } from '../../infrastructure/services/opportunity/webRevalidation.service';
 import { z } from 'zod';
 import { validate } from '../../middleware/validate';
 import { adminRateLimit } from '../../middleware/adminRateLimit';
@@ -53,6 +54,10 @@ const FEED_REVALIDATE_TAGS = [
     'government-feed',
     'expired-feed',
     'companies-metadata',
+    // Redirect/ever-published map for /companies/{slug}. Without this the web
+    // keeps serving a stale alias map and a renamed company's old URL 404s
+    // until the data cache entry is evicted some other way.
+    'company-slug-history',
     'category-shards',
     'company-shards',
     'skills-metadata',
@@ -158,6 +163,15 @@ router.post('/regenerate-feeds', requireAdmin, adminRateLimit, validate(regenera
         // DO NOT add paths here — see ⚠️ ISR WRITE SAFETY note at the top of this file.
         const secret = process.env.REVALIDATE_SECRET_TOKEN;
         const webUrl = process.env.PUBLIC_WEB_URL;
+
+        // The result is reported, not assumed. This endpoint used to answer
+        // `success: true` with "web cache revalidated" even when the webhook was
+        // skipped entirely because these env vars were unset — so a misconfigured
+        // deploy looked exactly like a working refresh button, and the operator
+        // kept clicking it while the site served stale feeds.
+        let webTargets = 0;
+        let webFailures = 0;
+
         if (secret && webUrl) {
             const urls = webUrl.split(',').map(u => u.trim()).filter(Boolean);
             await Promise.all(
@@ -165,27 +179,28 @@ router.post('/regenerate-feeds', requireAdmin, adminRateLimit, validate(regenera
                     const base = parseRevalidateBaseUrl(url);
                     if (!base) {
                         logger.error(`[Regenerate Feeds Revalidate] Skipping invalid PUBLIC_WEB_URL entry: ${url}`);
+                        webFailures += 1;
                         return;
                     }
-                    try {
-                        const response = await fetch(`${base}/api/revalidate`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ secret, tags: FEED_REVALIDATE_TAGS }),
-                        });
-                        if (!response.ok) {
-                            const errorText = await response.text().catch(() => 'No response body');
-                            logger.error(`[Regenerate Feeds Revalidate] Failed for ${url}/api/revalidate - Status: ${response.status} - Body: ${errorText}`);
-                        }
-                    } catch (err: unknown) {
-                        const message = err instanceof Error ? err.message : String(err);
-                        logger.error(`[Regenerate Feeds Revalidate] Network/Fetch error for ${url}/api/revalidate: ${message}`);
+                    webTargets += 1;
+                    // Retried delivery: a single blip here is the difference between
+                    // "the button worked" and "the site is stale until someone notices".
+                    const delivery = await deliverFeedRevalidation(base, secret);
+                    if (!delivery.ok) {
+                        logger.error(`[Regenerate Feeds Revalidate] Failed for ${url}/api/revalidate - ${delivery.reason ?? 'unknown error'}`);
+                        webFailures += 1;
                     }
                 })
             );
         }
 
-        // Drain Redis cache queues into BullMQ worker for trickle revalidation
+        // Drain Redis cache queues into the BullMQ worker for trickle
+        // revalidation.
+        //
+        // The writer is `invalidatePublicOpportunityCache`, which now delivers
+        // its paths to the web app directly, so a healthy deployment leaves
+        // this set empty. The drain stays for entries left behind by an older
+        // API instance during a rolling deploy.
         try {
             const pendingPaths = await redis.smembers('pending_cache_paths');
             // We ignore pending_cache_tags because tag busts cause Next.js data cache fragmentation
@@ -199,7 +214,34 @@ router.post('/regenerate-feeds', requireAdmin, adminRateLimit, validate(regenera
             logger.error('Failed to drain pending cache paths', { error: err instanceof Error ? err.message : String(err) });
         }
 
-        res.json({ success: true, message: `Static feeds (${targetStr}) successfully regenerated and web cache revalidated.` });
+        const webRevalidated = webTargets > 0 && webFailures === 0;
+        const warnings: string[] = [];
+        if (!secret || !webUrl) {
+            warnings.push(
+                'REVALIDATE_SECRET_TOKEN and/or PUBLIC_WEB_URL are not configured on this API, so the '
+                + 'web app was never told about this rebuild. The R2 feeds are current, but pages keep '
+                + "serving the previous feed version until those env vars are set and this button is run again.",
+            );
+        }
+        if (webFailures > 0) {
+            warnings.push(`${webFailures} of ${webTargets} web target(s) rejected the revalidation or could not be reached; see the API logs for the response body.`);
+        }
+
+        res.json({
+            success: true,
+            webRevalidated,
+            webTargets,
+            webFailures,
+            warnings,
+            // The target count is reported because it is the only way to see a
+            // half-configured deploy from here: with the public site and the
+            // admin dashboard on separate Vercel projects, each has its own Next
+            // data cache and both need the bust. "busted on 1 target" against a
+            // two-project setup means one site will stay stale.
+            message: webRevalidated
+                ? `Static feeds (${targetStr}) regenerated and the web cache busted on ${webTargets} target(s). Confirm that is one per deployed web project.`
+                : `Static feeds (${targetStr}) regenerated, but the web cache was NOT busted. ${warnings.join(' ')}`,
+        });
     } catch (error) {
         next(error);
     }
@@ -219,39 +261,27 @@ router.post('/revalidate-web', requireAdmin, async (req: Request, res: Response,
         }
 
         const urls = webUrl.split(',').map(u => u.trim()).filter(Boolean);
-        let hasError = false;
+        const failures: string[] = [];
 
         await Promise.all(
             urls.map(async (url) => {
                 const base = parseRevalidateBaseUrl(url);
                 if (!base) {
                     logger.error(`[Revalidate] Skipping invalid PUBLIC_WEB_URL entry: ${url}`);
-                    hasError = true;
+                    failures.push(`${url} (invalid origin)`);
                     return;
                 }
-                try {
-                    // Tags only — no paths. See ⚠️ ISR WRITE SAFETY note at the top of this file.
-                    const response = await fetch(`${base}/api/revalidate`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ secret, tags: FEED_REVALIDATE_TAGS }),
-                    });
-
-                    if (!response.ok) {
-                        const errorText = await response.text().catch(() => 'No response body');
-                        logger.error(`[Revalidate] Failed for ${url}/api/revalidate - Status: ${response.status} - Body: ${errorText}`);
-                        hasError = true;
-                    }
-                } catch (err: unknown) {
-                    const message = err instanceof Error ? err.message : String(err);
-                    logger.error(`[Revalidate] Network/Fetch error for ${url}/api/revalidate: ${message}`);
-                    hasError = true;
+                // Tags only — no paths. See ⚠️ ISR WRITE SAFETY note at the top of this file.
+                const delivery = await deliverFeedRevalidation(base, secret);
+                if (!delivery.ok) {
+                    logger.error(`[Revalidate] Failed for ${url}/api/revalidate - ${delivery.reason ?? 'unknown error'}`);
+                    failures.push(`${url} (${delivery.reason ?? 'unknown error'})`);
                 }
             })
         );
 
-        if (hasError) {
-            throw new Error(`One or more web servers responded with an error or could not be reached.`);
+        if (failures.length > 0) {
+            throw new Error(`Web cache was not busted on ${failures.length} target(s): ${failures.join('; ')}`);
         }
 
         res.json({ success: true, message: 'Next.js web cache successfully revalidated on all targets.' });

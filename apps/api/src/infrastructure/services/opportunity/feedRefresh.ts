@@ -1,4 +1,5 @@
 import { logger } from '@fresherflow/utils';
+import { notifyWebFeedChanged } from './webRevalidation.service';
 
 /**
  * Fire-and-forget feed rebuild for content-changing actions.
@@ -38,6 +39,34 @@ export function scheduleDiscoveryFeedRefresh(target: string = 'bootstrap'): Prom
         .then(({ StaticFeedService }) => Promise.resolve(StaticFeedService.scheduleRefresh(target)))
         .catch((error: unknown) => {
             logger.error('[feedRefresh] Failed to schedule a discovery feed rebuild', {
+                target,
+                error: error instanceof Error ? error.message : String(error),
+            });
+        });
+}
+
+/**
+ * Rebuild the discovery feeds and, once the new snapshot has landed, tell the
+ * web app that its cached copies are stale.
+ *
+ * Both halves are needed: the R2 files decide what the hub pages show, and the
+ * web app only re-reads those files when it is told. The announcement is
+ * chained onto the rebuild because a tag bust only makes Next re-read the SAME
+ * CDN URL — announcing before the upload re-caches the version that is about
+ * to be replaced.
+ *
+ * Never rejects: the caller has already written and audited the change, so a
+ * rebuild failure is logged, not returned to the operator.
+ */
+export function refreshFeedsAndAnnounce(
+    reason: string,
+    target: string = 'bootstrap',
+): Promise<void> {
+    return scheduleDiscoveryFeedRefresh(target)
+        .then(() => notifyWebFeedChanged(reason))
+        .catch((error: unknown) => {
+            logger.error('[feedRefresh] Rebuild or web announcement failed', {
+                reason,
                 target,
                 error: error instanceof Error ? error.message : String(error),
             });

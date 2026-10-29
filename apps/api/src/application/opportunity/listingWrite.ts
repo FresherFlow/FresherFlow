@@ -5,7 +5,7 @@ import { generateSlug, generateCompanyLogoUrl, normalizeSkills, sanitizeCustomSl
 import { normalizeOpportunityLinks } from '../../utils/opportunityLinks';
 import { handleOpportunityPublished } from '../../infrastructure/services/opportunity/publish.service';
 import { invalidatePublicOpportunityCache } from '../../infrastructure/services/opportunity/publicOpportunityCache.service';
-import { scheduleDiscoveryFeedRefresh } from '../../infrastructure/services/opportunity/feedRefresh';
+import { refreshFeedsAndAnnounce, scheduleDiscoveryFeedRefresh } from '../../infrastructure/services/opportunity/feedRefresh';
 import { notifyWebFeedChanged } from '../../infrastructure/services/opportunity/webRevalidation.service';
 import { adminCache } from '../../infrastructure/cache/adminCache';
 import type { ExtendedAdminOpportunityData } from './listingPayload';
@@ -513,6 +513,13 @@ export async function updateListing(
     const previousStatus = existing.status as string | null;
     const becamePublished =
         nextStatus === OpportunityStatus.PUBLISHED && previousStatus !== OpportunityStatus.PUBLISHED;
+    // A published listing edited back to DRAFT/ARCHIVED is a removal from the
+    // live set. Without this the feed kept listing it and its `jobs/<id>.json`
+    // shard stayed on the CDN, so a "draft" was still reachable at /jobs/<slug>
+    // until somebody pressed "Regenerate all".
+    const leftLiveSet =
+        previousStatus === OpportunityStatus.PUBLISHED
+        && listing.status !== OpportunityStatus.PUBLISHED;
 
     if (becamePublished) {
         await handleOpportunityPublished(listing as unknown as Opportunity, { isNew: true });
@@ -564,6 +571,22 @@ export async function updateListing(
                     error: err instanceof Error ? err.message : String(err),
                 });
             });
+    } else if (leftLiveSet) {
+        void invalidatePublicOpportunityCache({
+            idsOrSlugs: [
+                listing.id as string,
+                listing.slug as string,
+                ...(existing.slug !== listing.slug ? [existing.slug as string] : []),
+            ],
+            purgeFeed: true,
+            type: listing.category as string,
+            tags: [],
+        });
+
+        // The rebuild drops the listing from every feed and its collect step
+        // deletes the now-orphaned shard; the announcement then makes the
+        // web re-read the new snapshot.
+        void refreshFeedsAndAnnounce('listing-unpublish');
     }
 
     adminCache.invalidate(existing.id as string);

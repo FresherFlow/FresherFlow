@@ -4,6 +4,7 @@ import { z } from 'zod';
 import prisma from '../../infrastructure/database/prisma';
 import { requireInternalApiKey } from '../../middleware/auth';
 import { invalidatePublicOpportunityCache } from '../../infrastructure/services/opportunity/publicOpportunityCache.service';
+import { refreshFeedsAndAnnounce } from '../../infrastructure/services/opportunity/feedRefresh';
 import { adminCache } from '../../infrastructure/cache/adminCache';
 import { logger } from '@fresherflow/utils';
 
@@ -187,6 +188,15 @@ router.post(
             }
 
             logger.info(`[pipeline/expire-jobs] Done. expired=${expiredIds.length} skipped=${skippedIds.length} notFound=${notFoundIds.length} reason="${expiredReason}"`);
+
+            // A sweeper run is a removal from the live set, so the R2 feeds have
+            // to be rebuilt and the web told — exactly like an admin archive.
+            // Without this, jobs the sweeper expired by the hundred stayed on
+            // /jobs and in their per-job shards until an operator pressed
+            // "Regenerate all".
+            if (expiredIds.length > 0) {
+                void refreshFeedsAndAnnounce('pipeline-expire');
+            }
 
             return res.json({
                 success: true,

@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { Prisma, OpportunityStatus as DbOpportunityStatus } from '@fresherflow/database';
-import { OpportunityStatus, Profile, Opportunity, CompanyGroupedResponse } from '@fresherflow/types';
+import { Prisma } from '@fresherflow/database';
+import { Profile, Opportunity, CompanyGroupedResponse } from '@fresherflow/types';
 import { env } from '@fresherflow/utils';
 import { logger } from '@fresherflow/utils';
 import { toGroupedOpportunity, groupOpportunitiesByCompany } from '@fresherflow/utils';
@@ -8,6 +8,8 @@ import { redis } from '@fresherflow/database';
 import prisma from '../../../infrastructure/database/prisma';
 import { AppError } from '../../../middleware/errorHandler';
 import { rankOpportunitiesForUser } from '@fresherflow/utils';
+import { liveOpportunityWhere, liveDriveOpportunityWhere } from '../../../utils/liveWhere';
+import { buildGuestFeedCacheKey } from '../../../infrastructure/services/opportunity/publicOpportunityCache.service';
 import {
     isLikelyBotTraffic, publicFeedLimiter, publicFeedBotLimiter,
     GUEST_FEED_LIMIT, MAX_FEED_LIMIT, MAX_FEED_PAGE, GUEST_FEED_CACHE_TTL_SECONDS,
@@ -78,9 +80,21 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
         const oneMonthAgo = new Date();
         oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
 
+        // ONE liveness rule for every public read (see utils/liveWhere.ts).
+        // The feed used to roll its own weaker check — `expiresAt` in the
+        // future only — so it served rows the published CDN feed does not
+        // contain: soft-deleted rows, rows the expiry sweeper had stamped,
+        // and rows whose registration / application deadline had already
+        // passed. The shared rule is the same one the CDN snapshot builder
+        // uses, so the API feed and the published feed agree on membership.
+        const now = new Date();
         const andConditions: Prisma.OpportunityWhereInput[] = [
-            { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
-            { postedAt: { gte: oneMonthAgo } } // Lightweight 30-day expiry
+            liveOpportunityWhere(now),
+            // Drives are only worth listing while a date is still ahead;
+            // this is the rule the CDN feed index and walk-in feed use.
+            liveDriveOpportunityWhere(now),
+            // Recency window: the guest feed shows the live set, newest first.
+            { postedAt: { gte: oneMonthAgo } },
         ];
         if (minSal != null) andConditions.push({ OR: [{ salaryMin: { gte: minSal } }, { salaryMax: { gte: minSal } }] });
         if (maxSal != null) andConditions.push({ salaryMin: { lte: maxSal } });
@@ -110,8 +124,6 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
         }
 
         const whereClause: Prisma.OpportunityWhereInput = {
-            status: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus,
-            deletedAt: null,
             AND: andConditions,
             ...(effectiveSiteMode === 'govt'
                 ? { governmentJobDetails: { isNot: null } }
@@ -173,8 +185,21 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
 
         const effectiveGuestPage = 1;
         const effectiveGuestLimit = Math.min(l, GUEST_FEED_LIMIT);
+        // Built by the same helper the cache invalidation purges with, so the
+        // key a guest request writes is a key the purge can actually match.
         const guestCacheKey = isGuest
-            ? ['opportunities', 'v5', `mode:${effectiveSiteMode}`, `feed:${feedType || 'all'}`, `type:${typeValue || 'all'}`, `city:${cityValue || 'all'}`, `tag:${tagValue || 'all'}`, `min:${minSal ?? 'na'}`, `max:${maxSal ?? 'na'}`, `sort:${sortKey || 'default'}`, `page:${effectiveGuestPage}`, `limit:${effectiveGuestLimit}`].join('|')
+            ? buildGuestFeedCacheKey({
+                siteMode: effectiveSiteMode,
+                feedType: String(feedType || 'all'),
+                type: typeValue || 'all',
+                city: cityValue || 'all',
+                tag: tagValue || 'all',
+                minSalary: minSal ?? 'na',
+                maxSalary: maxSal ?? 'na',
+                sort: sortKey || 'default',
+                page: effectiveGuestPage,
+                limit: effectiveGuestLimit,
+            })
             : null;
 
         if (isGuest && guestCacheKey && redis_client) {

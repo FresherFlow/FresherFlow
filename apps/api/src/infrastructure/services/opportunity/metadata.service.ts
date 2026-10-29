@@ -465,9 +465,15 @@ export class MetadataService {
             let updatedCount = 0;
             for (const c of companies) {
                 if (c && c.name) {
-                    const newSlug = getCompanySlug(c.name, c.url);
-                    if (c.slug !== newSlug) {
-                        c.slug = newSlug;
+                    // Fill only a MISSING slug, never rewrite an existing one.
+                    // Rewriting moved a crawled /companies/{slug} to a 404
+                    // whenever a website URL or company name changed: the slug
+                    // is the page's identity once published, so it is assigned
+                    // once and frozen. getCompanySlug already prefers the
+                    // domain word, so a fresh entry reads `llt` rather than
+                    // `llt-india-pvt-ltd`.
+                    if (!c.slug) {
+                        c.slug = getCompanySlug(c.name, c.url);
                         updatedCount++;
                     }
                 }

@@ -4,6 +4,7 @@ import { OpportunityStatus, Opportunity } from '@fresherflow/types';
 import { logger } from '@fresherflow/utils';
 import TelegramService from '../alerts/telegram.service';
 import { calculateTrendingScore } from '@fresherflow/utils';
+import { refreshFeedsAndAnnounce } from './feedRefresh';
 
 // ── Bot Configuration ─────────────────────────────────────────────────────────
 const MAX_HARD_FAILURES = 5;
@@ -139,6 +140,14 @@ export async function runLinkVerification() {
 
         const duration = (Date.now() - startTime) / 1000;
         logger.info(`Verification Bot: done processed=${processed} healthy=${healthy} duration=${duration}s`);
+
+        // A dead link archived by the bot is a removal from the live set, and
+        // nobody pressed a button to cause it. Rebuild the R2 feeds so the
+        // listing and its per-job shard stop resolving, and announce the new
+        // snapshot to the web app. Debounced: a batch of archives is one run.
+        if (archived > 0) {
+            void refreshFeedsAndAnnounce('link-verification');
+        }
 
         const runResult = { processed, healthy, softFailures, hardFailures, archived, duration, runAt: new Date().toISOString() };
         verificationStats.totalRuns += 1;

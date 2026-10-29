@@ -11,6 +11,8 @@ import {
     createListing, updateListing, ListingWriteError,
 } from '../../../application/opportunity/listingWrite';
 import { handleOpportunityPublished } from '../../../infrastructure/services/opportunity/publish.service';
+import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/opportunity/publicOpportunityCache.service';
+import { refreshFeedsAndAnnounce } from '../../../infrastructure/services/opportunity/feedRefresh';
 import { buildIdOrSlugWhere } from '../../../application/opportunity/listingPayload';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
 
@@ -166,6 +168,19 @@ router.patch(
             // Fire publish pipeline if transitioning to PUBLISHED
             if (existing.status !== OpportunityStatus.PUBLISHED && status === OpportunityStatus.PUBLISHED) {
                 await handleOpportunityPublished(opportunity as unknown as import('@fresherflow/types').Opportunity, { isNew: true });
+            } else if (existing.status === OpportunityStatus.PUBLISHED && status !== OpportunityStatus.PUBLISHED) {
+                // Leaving the live set is a removal: the R2 feed still lists the
+                // listing and its job shard still resolves, so /jobs/<slug>
+                // stayed reachable after the admin set it back to draft or
+                // archived. Rebuild (which collects the shard), then announce
+                // the new snapshot once it exists.
+                void invalidatePublicOpportunityCache({
+                    idsOrSlugs: [existing.id as string, existing.slug as string],
+                    purgeFeed: true,
+                    type: existing.category as string,
+                    tags: [],
+                });
+                void refreshFeedsAndAnnounce('status-unpublish');
             }
 
             adminCache.invalidate(existing.id as string);

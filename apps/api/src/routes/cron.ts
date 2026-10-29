@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { runLinkVerification } from '../infrastructure/services/opportunity/verificationBot';
 import { runAlertsCycle } from '../infrastructure/services/alerts/alerts.service';
 import { runDueSources } from '../application/ingestion/scheduling';
+import { runPromote } from '../application/ingestion/promote';
 import { StaticFeedService } from '../infrastructure/services/opportunity/staticFeed.service';
 import { logger } from '@fresherflow/utils';
 import { sendError, ErrorCode } from '../middleware/errorHandler';
@@ -108,6 +109,39 @@ router.post('/ingestion', async (req, res) => {
         res.json({ success: true, message: 'Ingestion cycle complete', ran: results.length, succeeded, results });
     } catch (error) {
         logger.error('Failed to run ingestion cron', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
+/**
+ * Promote discovered jobs into live listings.
+ *
+ * The step that was missing between "discovery produced a row" and "the row
+ * is on the board". Every candidate passes a trust gate (first-party ATS host)
+ * and, for walk-in drives, a drive gate (a real date, a real venue, a real
+ * contact) before anything is published. A row that fails a gate is left
+ * alone for human review — see `application/ingestion/promote.ts`.
+ */
+router.post('/promote', async (req, res) => {
+    try {
+        if (!isCronTaskEnabled('ENABLE_PROMOTE_CRON')) {
+            logger.info('Skipping promote cycle because ENABLE_PROMOTE_CRON is disabled');
+            res.status(202).json({ success: true, skipped: true, reason: 'ENABLE_PROMOTE_CRON disabled' });
+            return;
+        }
+
+        const limit = Math.min(Math.max(Number(req.body?.limit) || 50, 1), 200);
+        const dryRun = req.body?.dryRun === true;
+        logger.info('Starting promote cycle via cron API', { limit, dryRun });
+
+        const report = await runPromote({ limit, dryRun });
+        res.json({
+            success: true,
+            message: dryRun ? 'Promote dry-run complete' : 'Promote cycle complete',
+            ...report,
+        });
+    } catch (error) {
+        logger.error('Failed to run promote cron', error);
         res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });

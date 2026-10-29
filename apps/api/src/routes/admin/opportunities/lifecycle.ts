@@ -10,8 +10,33 @@ import { getGranularTagsForOpportunity } from '../../../infrastructure/services/
 import { publishOpportunity } from '../../../application/opportunity/publish';
 import { rejectOpportunity } from '../../../application/opportunity/moderation';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
+import { scheduleDiscoveryFeedRefresh } from '../../../infrastructure/services/opportunity/feedRefresh';
+import { notifyWebFeedChanged } from '../../../infrastructure/services/opportunity/webRevalidation.service';
+import { logger } from '@fresherflow/utils';
 
 const router = Router();
+
+/**
+ * Rebuild the discovery feeds and, once the rebuild has landed, tell the web
+ * app that its cached copies are stale.
+ *
+ * Both halves are required for a job that enters or leaves the live set: the
+ * feed files decide what the hub pages show, and the web app only re-reads
+ * those files when it is told. The announcement is chained onto the rebuild
+ * because a tag bust only makes Next re-read the SAME CDN URL — telling the
+ * web before the new snapshot exists re-caches the version that is about to
+ * be replaced.
+ */
+function scheduleFeedRefreshAndRevalidate(reason: string): void {
+    void Promise.resolve(scheduleDiscoveryFeedRefresh())
+        .then(() => notifyWebFeedChanged(reason))
+        .catch((err) => {
+            logger.error('[lifecycle] Web feed revalidation announcement failed', {
+                reason,
+                error: err instanceof Error ? err.message : String(err),
+            });
+        });
+}
 
 /**
  * POST /api/admin/opportunities/:id/expire
@@ -47,7 +72,9 @@ router.post(
             adminCache.invalidateLists();
 
             void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.category as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
-            // void StaticFeedService.scheduleRefresh();
+            // Rebuild the R2 list feeds; tag invalidation above only re-reads
+            // copies of the files this produces. Debounced + fire-and-forget.
+            scheduleFeedRefreshAndRevalidate('expire');
         } catch (error) {
             next(error);
         }
@@ -89,7 +116,9 @@ router.post(
                 type: opportunity.category as string,
                 tags: getGranularTagsForOpportunity(opportunity as unknown as Partial<Opportunity>)
             });
-            // void StaticFeedService.scheduleRefresh();
+            // Rebuild the R2 list feeds; tag invalidation above only re-reads
+            // copies of the files this produces. Debounced + fire-and-forget.
+            scheduleFeedRefreshAndRevalidate('restore');
         } catch (error) {
             next(error);
         }
@@ -134,7 +163,9 @@ router.delete(
             adminCache.invalidateLists();
 
             void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.category as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
-            // void StaticFeedService.scheduleRefresh();
+            // Rebuild the R2 list feeds; tag invalidation above only re-reads
+            // copies of the files this produces. Debounced + fire-and-forget.
+            scheduleFeedRefreshAndRevalidate('archive');
         } catch (error) {
             next(error);
         }
@@ -233,6 +264,11 @@ router.delete(
             adminCache.invalidateLists();
 
             void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.category as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
+            // The row is gone, so the feed files still describe it and its
+            // per-job shard is still on the CDN. Rebuilding removes it from the
+            // feed and collects the shard; the announcement tells the web app
+            // to drop the copy it cached.
+            scheduleFeedRefreshAndRevalidate('hard-delete');
         } catch (error) {
             next(error);
         }
@@ -268,7 +304,9 @@ router.post(
             if (existing.slug) adminCache.invalidate(existing.slug as string);
             adminCache.invalidateLists();
 
-            // void StaticFeedService.scheduleRefresh();
+            // Rebuild the R2 list feeds; tag invalidation above only re-reads
+            // copies of the files this produces. Debounced + fire-and-forget.
+            scheduleFeedRefreshAndRevalidate('publish');
         } catch (error) {
             next(error);
         }
@@ -308,7 +346,9 @@ router.post(
             adminCache.invalidateLists();
 
             void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.category as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
-            // void StaticFeedService.scheduleRefresh();
+            // Rebuild the R2 list feeds; tag invalidation above only re-reads
+            // copies of the files this produces. Debounced + fire-and-forget.
+            scheduleFeedRefreshAndRevalidate('reject');
         } catch (error) {
             next(error);
         }
@@ -348,7 +388,9 @@ router.post(
             adminCache.invalidateLists();
 
             void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.category as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
-            // void StaticFeedService.scheduleRefresh();
+            // Rebuild the R2 list feeds; tag invalidation above only re-reads
+            // copies of the files this produces. Debounced + fire-and-forget.
+            scheduleFeedRefreshAndRevalidate('spam');
         } catch (error) {
             next(error);
         }

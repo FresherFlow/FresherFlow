@@ -8,6 +8,8 @@ import { createRateLimiter } from '../../../middleware/rateLimit';
 import { approveSubmission, rejectOpportunity } from '../../../application/opportunity/moderation';
 import { resolveMcpIdentity } from '../../../application/mcp/identity';
 import { handleOpportunityPublished } from '../../../infrastructure/services/opportunity/publish.service';
+import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/opportunity/publicOpportunityCache.service';
+import { refreshFeedsAndAnnounce } from '../../../infrastructure/services/opportunity/feedRefresh';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
 import { OpportunityStatus, type Opportunity } from '@fresherflow/types';
 
@@ -412,7 +414,19 @@ router.post(
             ? req.body.reason.trim()
             : 'Rejected by moderator';
 
-        await rejectOpportunity(submission.opportunityId, String(req.userId), reasonText);
+        const rejected = await rejectOpportunity(submission.opportunityId, String(req.userId), reasonText);
+
+        // The submission may have been published (a moderator connection can
+        // publish on submit), so rejecting it is a removal: rebuild the R2
+        // feeds, drop the shard, and bust the cached detail page. Without this
+        // the rejected listing stayed live on the site.
+        void invalidatePublicOpportunityCache({
+            idsOrSlugs: [rejected.id as string, rejected.slug as string],
+            purgeFeed: true,
+            type: rejected.category as string,
+            tags: [],
+        });
+        void refreshFeedsAndAnnounce('submission-reject');
 
         adminCache.invalidateLists();
         return res.json({

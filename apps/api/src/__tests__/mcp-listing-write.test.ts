@@ -80,6 +80,7 @@ vi.mock('../infrastructure/services/opportunity/publish.service', () => ({
 // they are stubbed here: this suite is about what the listing write stores.
 vi.mock('../infrastructure/services/opportunity/feedRefresh', () => ({
     scheduleDiscoveryFeedRefresh: vi.fn(async () => undefined),
+    refreshFeedsAndAnnounce: vi.fn(async () => undefined),
 }));
 vi.mock('../infrastructure/services/opportunity/staticFeed.service', () => ({
     StaticFeedService: { uploadSingleJob: vi.fn(async () => undefined) },
@@ -404,5 +405,27 @@ describe('updateListing', () => {
         );
         expect(scheduleDiscoveryFeedRefresh).toHaveBeenCalled();
         expect(notifyWebFeedChanged).toHaveBeenCalled();
+    });
+
+    it('rebuilds the feed when a live listing is edited out of the live set', async () => {
+        findFirstSpy.mockResolvedValue({
+            id: 'existing-id',
+            slug: 'existing-slug',
+            status: 'PUBLISHED',
+            title: 'Old Title',
+            company: 'Old Company',
+            governmentJobDetails: null,
+            driveDetails: null,
+        });
+
+        await updateListing('existing-slug', { ...FULL_JOB_PAYLOAD, status: 'DRAFT' });
+
+        // A published listing moved back to DRAFT is a removal: the feed still
+        // listed it and its shard stayed on the CDN, so it remained reachable
+        // at /jobs/<slug> until an operator pressed "Regenerate all".
+        const { refreshFeedsAndAnnounce } = await import(
+            '../infrastructure/services/opportunity/feedRefresh'
+        );
+        expect(refreshFeedsAndAnnounce).toHaveBeenCalled();
     });
 });

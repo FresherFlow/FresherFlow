@@ -2,10 +2,11 @@ import path from 'path';
 import prisma from '../../database/prisma';
 import { OpportunityStatus, RecruitmentMethod, Sector } from '@fresherflow/types';
 import { INDIAN_CITIES } from '@fresherflow/constants';
-import { logger } from '@fresherflow/utils';
+import { logger, getCompanySlug } from '@fresherflow/utils';
 import { getPublicSiteUrl } from '../../../utils/runtimeConfig';
 import { StorageService } from '../platform/storage.service';
 import { FeedGeneratorService } from './feedGenerator.service';
+import { notifyWebFeedChanged } from './webRevalidation.service';
 
 /**
  * `opp.type` no longer exists — the taxonomy split it into independent
@@ -125,23 +126,73 @@ function assertSitemapBaseUrl(baseUrl: string): void {
  * DEBOUNCE: scheduleRefresh() collapses rapid admin actions (bulk publish,
  * delete, expire) into a single DB query + R2 upload, saving Neon compute hours.
  * Tune via FEED_REFRESH_DEBOUNCE_MS env var (default: 5000ms).
+ *
+ * Target: the scheduled default is 'bootstrap' rather than 'all' — it rebuilds
+ * the discovery feeds a job change can affect (bootstrap, feed-index, walk-ins,
+ * expired, stats, sitemap) and skips the unrelated ones (resources). Callers
+ * that touch neither use refresh('all') explicitly.
  */
 export class StaticFeedService {
     private static refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    /**
+     * Everyone waiting for the pending rebuild to land.
+     *
+     * The debounce means several callers share ONE rebuild, and the caller that
+     * scheduled it last is the only one whose timer survives. Without this list
+     * the earlier callers would wait forever, and "tell the web app the feed
+     * moved" — which has to happen after the rebuild — would never be sent.
+     */
+    private static refreshWaiters: Array<() => void> = [];
 
     /**
      * Schedules a debounced feed refresh.
      * Multiple calls within the debounce window collapse into one refresh.
      * Use this from all admin action routes (publish/delete/expire/reject/spam/bulk).
      * Direct refresh() is reserved for cron/manual triggers.
+     *
+     * The returned promise settles when the rebuild has finished — successfully
+     * or not. It never rejects: a failed rebuild must not surface as an
+     * unhandled rejection in a route that only wanted to schedule one.
      */
-    static scheduleRefresh() {
-        const debounceMs = parseInt(process.env.FEED_REFRESH_DEBOUNCE_MS || '5000', 10);
-        if (this.refreshTimer) clearTimeout(this.refreshTimer);
-        this.refreshTimer = setTimeout(() => {
-            this.refreshTimer = null;
-            void this.refresh();
-        }, debounceMs);
+    static scheduleRefresh(target: string = 'bootstrap'): Promise<void> {
+        return new Promise<void>((resolve) => {
+            this.refreshWaiters.push(resolve);
+            const debounceMs = parseInt(process.env.FEED_REFRESH_DEBOUNCE_MS || '5000', 10);
+            if (this.refreshTimer) clearTimeout(this.refreshTimer);
+            this.refreshTimer = setTimeout(() => {
+                this.refreshTimer = null;
+                const waiters = this.refreshWaiters;
+                this.refreshWaiters = [];
+                void this.refresh(target).then(
+                    () => {
+                        waiters.forEach((notify) => notify());
+                    },
+                    (error: unknown) => {
+                        logger.error('[StaticFeedService] Scheduled feed rebuild failed', {
+                            target,
+                            error: error instanceof Error ? error.message : String(error),
+                        });
+                        waiters.forEach((notify) => notify());
+                    },
+                );
+            }, debounceMs);
+        });
+    }
+
+    /**
+     * Writes the CDN cache-buster (`meta/feed-version.json`).
+     *
+     * Every feed and job file the web app reads is version-addressed
+     * (`?v=<version>`), so this one small object is what makes a re-uploaded
+     * file reachable at all: with the version unchanged, the edge keeps
+     * answering the cached copy for that URL no matter what was written to R2.
+     * Invalidating Next.js tags does not help either — a tag bust only re-reads
+     * the same URL.
+     */
+    private static async bumpFeedVersion(): Promise<void> {
+        const versionBody = JSON.stringify({ version: Date.now().toString() });
+        StorageService.writeLocalFile(this.FEED_VERSION_PATH, versionBody);
+        await StorageService.uploadToR2('meta/feed-version.json', versionBody, 'application/json');
     }
 
     private static get PUBLIC_ROOT() { return StorageService.getPublicRoot(); }
@@ -172,6 +223,110 @@ export class StaticFeedService {
     private static get STATS_PATH() { return path.join(this.META_DIR, 'stats.json'); }
     private static get USERNAMES_PATH() { return path.join(this.META_DIR, 'taken-usernames.min.json'); }
     private static get GENERATED_HUBS_PATH() { return path.join(this.META_DIR, 'generated-hubs.json'); }
+    private static get COMPANY_SLUG_HISTORY_PATH() { return path.join(this.META_DIR, 'company-slug-history.json'); }
+
+    /**
+     * Builds the durable record of every /companies/{slug} this platform has
+     * ever published, so a crawled URL can never become a 404.
+     *
+     * The page reads this for two decisions: an entry in `aliases` means the
+     * requested slug is retired and must 308 to its replacement, and an entry
+     * in `everLive` means the slug once had jobs and must render (200) even
+     * when it has none now.
+     *
+     * Sources, unioned:
+     *  - every company name/slug/website in companies.json, which is append-only
+     *  - every company string that has ever appeared on an Opportunity row,
+     *    including expired and deleted ones, so a company that dropped out of
+     *    the directory is still recognised
+     *
+     * `aliases` also covers the pure name-slug form (`llt-india-pvt-ltd`), which
+     * is what the feed generator used to emit before the domain-word fix. Those
+     * URLs are in Google's index and must resolve, not 404.
+     */
+    private static async uploadCompanySlugHistory(
+        opportunities: Array<Record<string, unknown>>,
+        liveCompanyNames: Set<string>
+    ): Promise<void> {
+        const aliases: Record<string, string> = {};
+        const everLive = new Set<string>();
+
+        const previous = await StorageService.fetchFromR2('meta/company-slug-history.json');
+        if (previous) {
+            try {
+                const parsed = JSON.parse(previous);
+                // Carry forward: the file must only ever grow, or a regeneration
+                // that misses a company would erase its redirect history.
+                for (const [from, to] of Object.entries(parsed?.aliases || {})) {
+                    if (typeof from === 'string' && typeof to === 'string') aliases[from] = to;
+                }
+                for (const slug of Array.isArray(parsed?.everLive) ? parsed.everLive : []) {
+                    if (typeof slug === 'string' && slug) everLive.add(slug);
+                }
+            } catch (e) {
+                logger.error('[StaticFeedService] Failed to parse existing company-slug-history.json', e);
+            }
+        }
+
+        const directoryContent = await StorageService.fetchFromR2('companies.json');
+        if (directoryContent) {
+            try {
+                for (const c of JSON.parse(directoryContent) as Array<{ name?: string; slug?: string; url?: string | null }>) {
+                    if (!c || !c.name) continue;
+                    const url = typeof c.url === 'string' ? c.url : null;
+                    const canonical = c.slug || getCompanySlug(c.name, url);
+                    if (!canonical) continue;
+                    everLive.add(canonical);
+                    // The name-slug form was a real published URL before the
+                    // domain-word slug became canonical.
+                    const nameSlug = FeedGeneratorService.slugify(c.name);
+                    if (nameSlug && nameSlug !== canonical) {
+                        aliases[nameSlug] = canonical;
+                        everLive.add(nameSlug);
+                    }
+                    // A slug derived from a URL that has since changed.
+                    const derived = getCompanySlug(c.name, url);
+                    if (derived && derived !== canonical) {
+                        aliases[derived] = canonical;
+                        everLive.add(derived);
+                    }
+                }
+            } catch (e) {
+                logger.error('[StaticFeedService] Failed to fold companies.json into slug history', e);
+            }
+        }
+
+        for (const opp of opportunities) {
+            const name = opp?.company;
+            if (typeof name !== 'string' || !name.trim()) continue;
+            const website = typeof opp.companyWebsite === 'string' ? opp.companyWebsite : null;
+            const canonical = FeedGeneratorService.getCompanySlug(name, website);
+            if (!canonical) continue;
+            everLive.add(canonical);
+            const nameSlug = FeedGeneratorService.slugify(name);
+            if (nameSlug && nameSlug !== canonical) {
+                aliases[nameSlug] = canonical;
+                everLive.add(nameSlug);
+            }
+        }
+
+        for (const name of liveCompanyNames) everLive.add(name);
+
+        // Never point a slug at itself - the web resolver follows up to 3 hops
+        // and a self-alias is a pointless extra request.
+        for (const [from, to] of Object.entries(aliases)) {
+            if (from === to) delete aliases[from];
+        }
+
+        const body = JSON.stringify({
+            generatedAt: Date.now(),
+            aliases,
+            everLive: Array.from(everLive).sort(),
+        });
+        StorageService.writeLocalFile(this.COMPANY_SLUG_HISTORY_PATH, body);
+        await StorageService.uploadToR2('meta/company-slug-history.json', body, 'application/json');
+        logger.info(`[StaticFeedService] Company slug history: ${everLive.size} known slugs, ${Object.keys(aliases).length} aliases`);
+    }
 
     // Retain delegates for backwards compatibility
     static async generateBootstrapFeed() {
@@ -354,7 +509,13 @@ export class StaticFeedService {
             }
 
             // 5. Generate & Upload Government Feed
-            if (target === 'all' || target === 'govt') {
+            //
+            // `bootstrap` is included because that is the target every job
+            // mutation schedules (see feedRefresh.ts). Publishing, editing,
+            // expiring or deleting a government listing rebuilt every discovery
+            // feed except this one, so /govt kept serving the pre-change
+            // snapshot until somebody pressed "Regenerate all".
+            if (target === 'all' || target === 'govt' || target === 'bootstrap') {
                 const governmentMapped = activeMapped.filter(isGovernmentRow);
                 const government = {
                     opportunities: governmentMapped,
@@ -419,12 +580,6 @@ export class StaticFeedService {
                     logger.error('[StaticFeedService] Failed to sync syllabus.json from R2', err);
                 }
             }
-
-            // 8. Generate and upload dynamic feed-version.json cache buster
-            const feedVersion = Date.now().toString();
-            const versionBody = JSON.stringify({ version: feedVersion });
-            StorageService.writeLocalFile(this.FEED_VERSION_PATH, versionBody);
-            await StorageService.uploadToR2('meta/feed-version.json', versionBody, 'application/json');
 
             // 9. Generate & Upload Stats
             //
@@ -498,6 +653,18 @@ export class StaticFeedService {
                 const validCompanies = Array.from(activeCompaniesCounts.entries())
                     .filter(([_, count]) => count >= 1)
                     .map(([c]) => c);
+
+                // Website per company name. A company absent from companies.json
+                // must still be slugged from its domain word (`llt.com` -> `llt`)
+                // rather than from its legal name (`llt-india-pvt-ltd`), and the
+                // sitemap and sitemap-data must resolve the same slug the shards do.
+                const activeCompanyWebsite = new Map<string, string>();
+                activeMapped.forEach((opp) => {
+                    const website = (opp as { companyWebsite?: string | null }).companyWebsite;
+                    if (opp.company && typeof opp.company === 'string' && website && !activeCompanyWebsite.has(opp.company)) {
+                        activeCompanyWebsite.set(opp.company, website);
+                    }
+                });
 
                 // 2. Skills (Active opportunities only, count >= 5 - matches web SKILL_MIN_JOBS = 5 & dynamicParams = false)
                 const activeSkillsCounts = new Map<string, number>();
@@ -640,7 +807,7 @@ export class StaticFeedService {
                 // 2. sitemap-companies.xml
                 let companiesXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 companiesXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-                validCompanies.forEach(c => companiesXml += `  <url><loc>${xmlLoc(baseUrl)}/companies/${xmlLoc(FeedGeneratorService.getCompanySlug(c))}</loc><changefreq>daily</changefreq></url>\n`);
+                validCompanies.forEach(c => companiesXml += `  <url><loc>${xmlLoc(baseUrl)}/companies/${xmlLoc(FeedGeneratorService.getCompanySlug(c, activeCompanyWebsite.get(c) || null))}</loc><changefreq>daily</changefreq></url>\n`);
                 companiesXml += '</urlset>';
 
                 // 3. sitemap-skills.xml
@@ -751,7 +918,7 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${b
                 const sitemapData = {
                     companies: validCompanies.map(name => ({
                         name,
-                        slug: FeedGeneratorService.getCompanySlug(name)
+                        slug: FeedGeneratorService.getCompanySlug(name, activeCompanyWebsite.get(name) || null)
                     })),
                     opportunities: sitemapOpps.map(opp => ({
                         id: opp.id,
@@ -910,23 +1077,92 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${b
                 }
 
                 companyShardsCount = groupedCompanies.size;
-                for (const [company, jobs] of groupedCompanies.entries()) {
-                    const slug = FeedGeneratorService.getCompanySlug(company);
-                    const shardData = {
-                        company,
-                        slug,
-                        opportunities: jobs,
-                        count: jobs.length,
-                        timestamp: Date.now()
-                    };
-                    const body = JSON.stringify(shardData);
-                    StorageService.writeLocalFile(path.join(this.COMPANIES_DIR, `${slug}.json`), body);
-                    // TODO: company shards R2 upload disabled - not used by any consumer
-                    // await StorageService.uploadToR2(`companies/${slug}.json`, body, 'application/json');
+
+                // The company website decides the slug when the company is not in
+                // companies.json: `llt.com` must produce `llt`, not
+                // `llt-india-pvt-ltd` from the listing's legal name.
+                const slugFor = (company: string, jobs: typeof activeMapped): string => {
+                    let website: string | null = null;
+                    for (const j of jobs) {
+                        const w = j?.companyWebsite;
+                        if (typeof w === 'string' && w) { website = w; break; }
+                    }
+                    return FeedGeneratorService.getCompanySlug(company, website);
+                };
+
+                // Collect what is on the bucket BEFORE writing, so garbage
+                // collection compares against the real prior state. Runs before
+                // any delete regardless of outcome, so a later upload failure
+                // leaves the previous set intact.
+                const previousShardKeys = await StorageService.listR2Keys('companies/');
+                const uploadedKeys: string[] = [];
+
+                // Batched like the job shards below: an unthrottled await loop
+                // over every company hammers R2 and trips its rate limiter.
+                const SHARD_BATCH_SIZE = 10;
+                const shardEntries = Array.from(groupedCompanies.entries());
+                for (let i = 0; i < shardEntries.length; i += SHARD_BATCH_SIZE) {
+                    const chunk = shardEntries.slice(i, i + SHARD_BATCH_SIZE);
+                    await Promise.all(
+                        chunk.map(async ([company, jobs]) => {
+                            const slug = slugFor(company, jobs);
+                            const shardData = {
+                                company,
+                                slug,
+                                opportunities: jobs,
+                                count: jobs.length,
+                                timestamp: Date.now()
+                            };
+                            const body = JSON.stringify(shardData);
+                            StorageService.writeLocalFile(path.join(this.COMPANIES_DIR, `${slug}.json`), body);
+                            await StorageService.uploadToR2(`companies/${slug}.json`, body, 'application/json');
+                            uploadedKeys.push(`companies/${slug}.json`);
+                        })
+                    );
                 }
+
+                // Garbage collect shards for companies that no longer have live
+                // jobs. Only reached when every upload above succeeded, so a
+                // partial run can never orphan a live shard. A truncated listing
+                // means the bucket could not be fully enumerated, and deleting
+                // from an incomplete picture would remove shards that are still
+                // live - so a truncated list skips collection entirely.
+                if (groupedCompanies.size > 0 && !previousShardKeys.truncated) {
+                    const live = new Set(uploadedKeys);
+                    const stale = previousShardKeys.keys.filter(
+                        k => k.endsWith('.json') && !live.has(k)
+                    );
+                    let deleted = 0;
+                    for (const key of stale) {
+                        try {
+                            await StorageService.deleteFromR2(key);
+                            deleted++;
+                        } catch (e) {
+                            logger.warn(`[StaticFeedService] Failed to delete stale company shard ${key}`, e);
+                        }
+                    }
+                    if (deleted > 0) {
+                        logger.info(`[StaticFeedService] Removed ${deleted} stale company shard(s)`);
+                    }
+                }
+
+                // Written from `allMapped`, not `activeMapped`: a company whose
+                // last job expired must stay recognised as ever-published so its
+                // crawled page renders an archive instead of a 404.
+                await this.uploadCompanySlugHistory(
+                    allMapped as unknown as Array<Record<string, unknown>>,
+                    new Set(groupedCompanies.keys())
+                );
             }
 
-            // 15. Generate & Save Individual Job Shards locally (throttled R2 upload only when target === 'jobs')
+            // 15. Generate & Save Individual Job Shards locally, and upload them
+            //
+            // The shards used to be uploaded ONLY for the explicit 'jobs'
+            // target, so a 'bootstrap' or 'all' rebuild wrote them to local
+            // disk and left the CDN copy stale forever: /jobs/[slug] kept
+            // resolving the pre-edit listing from jobs/<id>.json while the
+            // list pages showed the new one. They are uploaded on every
+            // rebuild that writes them.
             if (target === 'all' || target === 'bootstrap' || target === 'jobs') {
                 StorageService.ensureDirectoryExists(this.JOBS_DIR);
                 for (const opp of allMapped) {
@@ -937,23 +1173,51 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${b
                     }
                 }
 
-                // If explicit 'jobs' target requested, upload to R2 with small batches to stay within free tier RAM/network limits
-                if (target === 'jobs') {
-                    const BATCH_SIZE = 5;
-                    for (let i = 0; i < allMapped.length; i += BATCH_SIZE) {
-                        const chunk = allMapped.slice(i, i + BATCH_SIZE);
-                        await Promise.all(
-                            chunk.map(opp => {
-                                const id = (opp as { id?: string }).id;
-                                if (!id) return Promise.resolve();
-                                const jobBody = JSON.stringify(opp);
-                                return StorageService.uploadToR2(`jobs/${id}.json`, jobBody, 'application/json');
-                            })
-                        );
-                        await new Promise(resolve => setTimeout(resolve, 50));
-                    }
+                // Collect what is on the bucket BEFORE writing, so garbage
+                // collection compares against the real prior state.
+                const previousShardKeys = await StorageService.listR2Keys('jobs/');
+                const uploadedKeys: string[] = [];
+
+                // Upload to R2 with small batches to stay within free tier
+                // RAM/network limits: an unthrottled await loop over every job
+                // hammers R2 and trips its rate limiter.
+                const BATCH_SIZE = 5;
+                for (let i = 0; i < allMapped.length; i += BATCH_SIZE) {
+                    const chunk = allMapped.slice(i, i + BATCH_SIZE);
+                    await Promise.all(
+                        chunk.map(opp => {
+                            const id = (opp as { id?: string }).id;
+                            if (!id) return Promise.resolve();
+                            const jobBody = JSON.stringify(opp);
+                            const key = `jobs/${id}.json`;
+                            return StorageService.uploadToR2(key, jobBody, 'application/json')
+                                .then(() => {
+                                    uploadedKeys.push(key);
+                                });
+                        })
+                    );
+                    await new Promise(resolve => setTimeout(resolve, 50));
                 }
+
+                // Garbage collect the shards of jobs that are no longer live.
+                // A shard that outlives its job keeps serving a live detail
+                // page for a listing that was archived or deleted: the object
+                // is still on the CDN and the web resolves /jobs/[slug] from
+                // it. The company shards have had this for a while; the job
+                // shards did not.
+                await this.collectStaleJobShards(previousShardKeys, uploadedKeys);
             }
+
+            // 16. Bump the feed version LAST.
+            //
+            // Every feed and job file is version-addressed (`?v=<version>`),
+            // so the version is the cache key. Bumping it in the middle of the
+            // run (step 8 before the company/job shards were uploaded) opened a
+            // window where a client read the new version and requested objects
+            // that still held the previous content — and the edge caches that
+            // mismatch for an hour. Bumping after the last upload means a new
+            // version can only ever point at the snapshot it names.
+            await this.bumpFeedVersion();
 
             logger.info('Static shards regenerated successfully', {
                 target,
@@ -961,6 +1225,19 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${b
                 jobsInBootstrap: activeMapped.length,
                 usernamesCount: usernamesLength
             });
+
+            // The snapshot on the CDN has moved, so the web app has to be told
+            // that its cached copies of the feeds are stale.
+            //
+            // This is the ONE place that knows the new snapshot exists: the
+            // feed version was bumped and every shard was uploaded above. A
+            // tag bust only makes Next re-read the SAME CDN URL, so the
+            // announcement has to happen after the upload — announcing it
+            // earlier re-caches the version that is about to be replaced.
+            //
+            // Fire-and-forget: a web app that cannot be reached must not fail
+            // the rebuild that already succeeded.
+            void notifyWebFeedChanged(`feed-refresh:${target}`);
         } catch (error) {
             // Rethrow: callers (the admin regenerate endpoint in particular)
             // need to know the regeneration failed. Swallowing here made
@@ -972,7 +1249,62 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${b
     }
 
     /**
-     * Upload an individual job JSON directly to R2 (atomic update on publish/edit - 1 small upload)
+     * Delete the per-job shards of jobs that are no longer in the feed.
+     *
+     * `allMapped` only holds PUBLISHED, not-deleted rows, so a job that was
+     * archived or deleted is missing from the uploaded set and its shard is
+     * collected here. Without this the CDN keeps serving `jobs/<id>.json` for
+     * a listing that no longer exists, and the web resolves /jobs/[slug] from
+     * it — a deleted job with a live detail page.
+     *
+     * Guards, in the same spirit as the company shard GC above:
+     *   - a truncated bucket listing means the bucket could not be fully
+     *     enumerated, and deleting from an incomplete picture would remove
+     *     shards that are still live, so collection is skipped entirely;
+     *   - an empty upload set means this run found no live job at all, which
+     *     is far more likely to be a broken query than an empty catalogue, so
+     *     nothing is deleted.
+     */
+    private static async collectStaleJobShards(
+        previousShardKeys: { keys: string[]; truncated: boolean },
+        uploadedKeys: string[],
+    ): Promise<void> {
+        if (previousShardKeys.truncated) {
+            logger.warn('[StaticFeedService] Skipping job shard cleanup: the bucket listing was truncated');
+            return;
+        }
+        if (uploadedKeys.length === 0) {
+            logger.warn('[StaticFeedService] Skipping job shard cleanup: no live job shard was written');
+            return;
+        }
+
+        const live = new Set(uploadedKeys);
+        const stale = previousShardKeys.keys.filter(
+            k => k.endsWith('.json') && !live.has(k)
+        );
+        let deleted = 0;
+        for (const key of stale) {
+            try {
+                await StorageService.deleteFromR2(key);
+                deleted++;
+            } catch (e) {
+                logger.warn(`[StaticFeedService] Failed to delete stale job shard ${key}`, e);
+            }
+        }
+        if (deleted > 0) {
+            logger.info(`[StaticFeedService] Removed ${deleted} stale job shard(s)`);
+        }
+    }
+
+    /**
+     * Upload an individual job JSON directly to R2 (atomic update on publish/edit - 1 small upload).
+     *
+     * The shard is only reachable at a NEW `?v=` URL, so the version has to move
+     * with it. Writing the file alone left the edit invisible: the web app kept
+     * requesting `jobs/<id>.json?v=<old version>`, which the edge served from
+     * cache. When a debounced refresh is already scheduled, that refresh bumps
+     * the version moments later, and two bumps in a row would only churn cache
+     * keys, so the bump is skipped in that case.
      */
     static async uploadSingleJob(opportunity: Record<string, unknown>): Promise<void> {
         try {
@@ -985,6 +1317,10 @@ validBatches.forEach(b => batchesXml += `  <url><loc>${xmlLoc(baseUrl)}/jobs/${b
             if (id) {
                 StorageService.writeLocalFile(path.join(this.JOBS_DIR, `${id}.json`), jobBody);
                 await StorageService.uploadToR2(`jobs/${id}.json`, jobBody, 'application/json');
+            }
+
+            if (!this.refreshTimer) {
+                await this.bumpFeedVersion();
             }
         } catch (error) {
             logger.error('[StaticFeedService] Failed to upload single job JSON to R2', error);

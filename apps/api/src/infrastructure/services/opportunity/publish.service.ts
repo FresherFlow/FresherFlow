@@ -4,6 +4,8 @@ import { invalidatePublicOpportunityCache } from './publicOpportunityCache.servi
 import { logger } from '@fresherflow/utils';
 import { MetadataService } from './metadata.service';
 import { generateAndUploadOgImage } from './ogImage.service';
+import { scheduleDiscoveryFeedRefresh } from './feedRefresh';
+import { notifyWebFeedChanged } from './webRevalidation.service';
 import { slugify } from '@fresherflow/utils';
 
 export function getGranularTagsForOpportunity(opportunity: Partial<Opportunity>): string[] {
@@ -126,9 +128,33 @@ export async function handleOpportunityPublished(
   });
 
   // 6. Debounced Feed Refresh
-  // import('./staticFeed.service').then(({ StaticFeedService }) => {
-  //   StaticFeedService.scheduleRefresh();
-  // });
+  //
+  // The list feeds are the source of truth for every hub page, and only
+  // StaticFeedService.refresh() produces them. Step 5 above invalidates cached
+  // COPIES (Next tags, Redis); without this line there is nothing new to copy,
+  // so a published job never appeared on /jobs no matter how often anyone
+  // clicked "Refresh cache". Debounced + fire-and-forget: a bulk publish
+  // collapses into one rebuild, and the publish response does not wait on it.
+  const feedRefresh = Promise.resolve(scheduleDiscoveryFeedRefresh());
+
+  // 6a. Tell the web app that its cached copies of the feeds are stale.
+  //
+  // Chained onto the rebuild on purpose. A tag bust only makes Next re-read
+  // the SAME CDN URL, so the web has to be told AFTER the new snapshot
+  // exists — announcing it earlier re-caches the feed version that is about
+  // to be replaced, and the new job stays invisible until the next publish.
+  //
+  // The rebuild itself sends the same announcement once the upload has
+  // landed (see StaticFeedService.refresh); the two land in the same
+  // millisecond and collapse into one request.
+  void feedRefresh
+    .then(() => notifyWebFeedChanged('publish'))
+    .catch((err) => {
+      logger.error('[publish] Web feed revalidation announcement failed', {
+        opportunityId: opportunity.id,
+        error: err instanceof Error ? err.message : String(err)
+      });
+    });
 
   // 6b. Per-job shard upload (atomic ~2.5KB object) — keeps /jobs/[slug] and
   // split-view detail panes resolvable from the CDN edge without falling back

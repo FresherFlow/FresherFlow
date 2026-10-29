@@ -6,6 +6,7 @@ import { hasPermission, requirePermission, requireStaff } from '../../middleware
 import { withAdminAudit } from '../../middleware/adminAudit';
 import { sendError, ErrorCode } from '../../middleware/errorHandler';
 import { ResourceItemStatus } from '@fresherflow/types';
+import { scheduleDiscoveryFeedRefresh } from '../../infrastructure/services/opportunity/feedRefresh';
 
 const router = Router();
 
@@ -143,7 +144,9 @@ router.post('/',
                 }
             });
 
-            // StaticFeedService.scheduleRefresh();
+            // The public resources feed is only rebuilt by the feed service, so
+            // cached copies alone would leave this change invisible.
+            scheduleDiscoveryFeedRefresh('resources');
 
             res.status(201).json({ resource: collection });
         } catch (error) {
@@ -248,7 +251,9 @@ router.patch('/:id',
                 });
             });
 
-            // StaticFeedService.scheduleRefresh();
+            // The public resources feed is only rebuilt by the feed service, so
+            // cached copies alone would leave this change invisible.
+            scheduleDiscoveryFeedRefresh('resources');
 
             res.json({ resource: collection });
         } catch (error) {
@@ -299,7 +304,7 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction): P
             // Audit write failures must not undo the moderation decision.
         }
 
-        // StaticFeedService.scheduleRefresh();
+        scheduleDiscoveryFeedRefresh('resources');
 
         res.status(204).send();
     } catch (error) {
@@ -344,7 +349,9 @@ router.post('/:id/items',
                 }
             });
 
-            // StaticFeedService.scheduleRefresh();
+            // The public resources feed is only rebuilt by the feed service, so
+            // cached copies alone would leave this change invisible.
+            scheduleDiscoveryFeedRefresh('resources');
 
             res.status(201).json({ item });
         } catch (error) {
@@ -386,7 +393,9 @@ router.patch('/:collectionId/items/:itemId',
                 data: updateData
             });
 
-            // StaticFeedService.scheduleRefresh();
+            // The public resources feed is only rebuilt by the feed service, so
+            // cached copies alone would leave this change invisible.
+            scheduleDiscoveryFeedRefresh('resources');
 
             res.json({ item });
         } catch (error) {
@@ -413,7 +422,7 @@ router.delete('/:collectionId/items/:itemId', requirePermission('resource.manage
             where: { id: itemId }
         });
 
-        // StaticFeedService.scheduleRefresh();
+        scheduleDiscoveryFeedRefresh('resources');
 
         res.status(204).send();
     } catch (error) {
