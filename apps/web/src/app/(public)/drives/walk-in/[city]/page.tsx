@@ -10,7 +10,12 @@ import { getNextWalkinDate, getWalkinDates } from '@/features/jobs/utils/walkinE
 import { getDriveDetails, isWalkinOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 import type { Opportunity } from '@fresherflow/types';
 
-export const revalidate = false; // on-demand only — busted via revalidateTag on publish
+// No timer, by design — see `lib/api/cdnFeed.ts` for the full policy.
+// Freshness arrives when the API says so: a rebuild calls /api/revalidate,
+// which marks the feed tags stale, and the next request regenerates this
+// page once. A worker sweep re-sends those tags if that call was lost.
+// A number here would make every visitor and crawler pay for a full render.
+export const revalidate = false;
 // dynamicParams = false blocks newly published jobs to be dynamically generated on their first visit,
 // but prevents cache poisoning by bots.
 export const dynamicParams = false;
@@ -18,9 +23,9 @@ export const dynamicParams = false;
 export async function generateStaticParams() {
     try {
         const [feed, govtFeed, expiredFeed] = await Promise.all([
-            fetchFeedIndex(false, undefined, true),
-            fetchGovernmentFeed(false, undefined, true),
-            fetchExpiredFeed(undefined, true)
+            fetchFeedIndex(),
+            fetchGovernmentFeed(),
+            fetchExpiredFeed()
         ]);
 
         const cities = new Set<string>();
@@ -104,7 +109,7 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
 
     try {
         // Validate city against feed to prevent cache poisoning by bots
-        const feed = await fetchFeedIndex(false, undefined, true);
+        const feed = await fetchFeedIndex();
         const hasCity = feed?.opportunities?.some(opp =>
             isWalkinOpportunity(opp) &&
             opp.locations?.some(loc => citySlugOf(loc) === city)
@@ -123,7 +128,7 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
     logRouteResult('/drives/walk-in/[city]', '200');
 
     // Full drive list for this city (upcoming first, then by date)
-    const feed = await fetchFeedIndex(false, undefined, true);
+    const feed = await fetchFeedIndex();
     const cityLabel = formatLabel(city);
     const cityDrives = ((feed?.opportunities ?? []) as Opportunity[])
         .filter(opp =>

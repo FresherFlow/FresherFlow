@@ -15,6 +15,11 @@
  *   3. routeLeaks  app/<route>/_components|_hooks imported from outside that route. If two
  *                  routes need the file it belongs in src/features/.
  *   4. uiOutward   src/ui/** importing anything but itself, src/hooks, and lib/utils.
+ *   5. isrTimers   a numeric `revalidate` on a public route, or on a feed read in
+ *                  lib/api/cdnFeed.ts. Next takes the lowest revalidate on a route as
+ *                  the route's ISR period, so one number there turns every visitor and
+ *                  crawler into a full page render. Public pages are invalidated by
+ *                  tag (see the policy comment in cdnFeed.ts), not by a clock.
  *
  * Usage:
  *   node scripts/check-web-structure.mjs          # report only, always exits 0
@@ -48,6 +53,24 @@ const FRAMEWORK_REEXPORT = /(?:twitter-image|opengraph-image|icon|apple-icon)\.(
  * `src/lib/api/rateLimit.ts`)."
  */
 const PERMANENT_BARRELS = new Set(['apps/web/src/ui/cn.ts', 'apps/web/src/lib/api/rateLimit.ts']);
+
+/**
+ * Public routes allowed to carry a numeric `revalidate`, and the ceiling for each.
+ *
+ * Profile data is the only content with no invalidation channel: no publish rebuild
+ * busts a tag for it and nothing tells the web when a profile is saved, so `false`
+ * would pin an edit until the next deploy. The ceiling is what stops those two files
+ * from drifting back to a job-feed-style 60s timer.
+ *
+ * Job or feed data must never be added here — it has tags, so it has no excuse.
+ */
+const REVALIDATE_ALLOWLIST = new Map([
+    ['apps/web/src/app/(public)/u/[username]/page.tsx', { max: 300, reason: 'profile page, no invalidation channel' }],
+    ['apps/web/src/app/(public)/u/page.tsx', { max: 3600, reason: 'profile directory, no invalidation channel' }],
+]);
+
+/** `export const revalidate = 60` — the segment config that starts an ISR clock. */
+const NUMERIC_REVALIDATE = /^export\s+const\s+revalidate\s*=\s*(\d+)\s*;?$/m;
 const IMPORT_SPEC = /(?:^|[^.\w])(?:import|export)\s[\s\S]*?from\s+['"]([^'"]+)['"]|import\s*\(\s*['"]([^'"]+)['"]\s*\)|(?:^|[\s;])import\s+['"]([^'"]+)['"]/g;
 
 const toPosix = (value) => value.split(sep).join('/');
@@ -124,14 +147,41 @@ function loadBaseline() {
 }
 
 const files = walk(SRC).filter((file) => !isTestFile(file));
-const findings = { deadShims: [], backEdges: [], routeLeaks: [], uiOutward: [] };
+const findings = { deadShims: [], backEdges: [], routeLeaks: [], uiOutward: [], isrTimers: [] };
 
 for (const file of files) {
     const posix = toPosix(relative(ROOT, file));
     const source = readFileSync(file, 'utf8');
     const specs = importSpecifiers(source);
 
-    const body = stripComments(source)
+    const withoutComments = stripComments(source);
+
+    if (posix.startsWith('apps/web/src/app/(public)/')) {
+        const match = withoutComments.match(NUMERIC_REVALIDATE);
+        if (match) {
+            const allowed = REVALIDATE_ALLOWLIST.get(posix);
+            const seconds = Number(match[1]);
+            if (!allowed) {
+                findings.isrTimers.push(
+                    `${posix} → revalidate = ${seconds} (a clock on a public page re-renders it for every visitor and crawler)`,
+                );
+            } else if (seconds > allowed.max) {
+                findings.isrTimers.push(
+                    `${posix} → revalidate = ${seconds} exceeds the ceiling of ${allowed.max} (${allowed.reason})`,
+                );
+            }
+        }
+    }
+
+    if (posix === 'apps/web/src/lib/api/cdnFeed.ts') {
+        for (const match of withoutComments.matchAll(/revalidate\s*:\s*(\d+)/g)) {
+            findings.isrTimers.push(
+                `${posix} → revalidate: ${match[1]} on a feed read (this becomes the ISR period of every page that reads it)`,
+            );
+        }
+    }
+
+    const body = withoutComments
         .split('\n')
         .map((line) => line.trim())
         .filter(Boolean);

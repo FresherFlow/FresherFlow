@@ -7,7 +7,7 @@ import { getOpportunityPath } from '@/features/jobs/domain/opportunityPath';
 import { parseOpportunityLocation } from '@/features/jobs/domain/opportunityDisplay';
 import { getDriveDates, isCampusDriveOpportunity } from '@/features/jobs/domain/driveTimeline';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
-import { fetchBootstrapFeed, fetchExpiredFeed, fetchGovernmentFeed, fetchOpportunityDetail } from '@/lib/api/cdnFeed';
+import { fetchBootstrapFeed, fetchExpiredFeed, fetchFeedIndex, fetchGovernmentFeed, fetchOpportunityDetail } from '@/lib/api/cdnFeed';
 import { slugify } from '@fresherflow/utils/slugify';
 import { truncateTitleByPixels, truncateDescription } from '@/lib/seo/seoMetrics';
 
@@ -118,17 +118,32 @@ function parseStructuredSalary(opportunity: Opportunity): ParsedSalary | null {
 // feed JSON separately. With cache(), the second call is free.
 export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<ExtendedOpportunity | null> => {    try {
         // 1. Try direct individual static JSON on CDN edge first (ultra-fast, ~2.5KB payload)
-        const directJob = await fetchOpportunityDetail(slugOrId, true);
+        const directJob = await fetchOpportunityDetail(slugOrId);
         if (directJob) {
             return directJob as ExtendedOpportunity;
         }
 
-        // 2. Fallback to bootstrap / govt / expired feeds if individual JSON is missing or cold
-        const [feed, govtFeed, expiredFeed] = await Promise.all([
-            fetchBootstrapFeed(false, undefined, true),
-            fetchGovernmentFeed(false, undefined, true),
-            fetchExpiredFeed(undefined, true),
+        // 2. Fallback when the individual JSON is missing or cold.
+        //
+        //    The index decides whether this is a real listing at all. A slug
+        //    that is not in the index, the government feed or the expired feed
+        //    is a 404 — and a 404 must not download the 1.9 MB bootstrap feed.
+        //    Crawlers invent thousands of slugs, and this used to pull
+        //    bootstrap + government + expired (~2.6 MB) for every one of them.
+        const [index, govtFeed, expiredFeed] = await Promise.all([
+            fetchFeedIndex(),
+            fetchGovernmentFeed(),
+            fetchExpiredFeed(),
         ]);
+
+        const inActiveFeed = (index?.opportunities ?? []).some(
+            (opp) => opp.id === slugOrId || opp.slug === slugOrId,
+        );
+
+        // Only a confirmed live listing is worth the full payload: the index
+        // carries card fields, the bootstrap feed carries the description and
+        // apply link the detail page renders.
+        const feed = inActiveFeed ? await fetchBootstrapFeed() : null;
 
         const oppMap = new Map<string, Opportunity>();
 
@@ -180,7 +195,7 @@ export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<E
 // Keeps generateMetadata cheap and cacheable on this high-cardinality route.
 export const fetchOpportunityForMetadata = cache(async (slugOrId: string): Promise<ExtendedOpportunity | null> => {
     try {
-        const directJob = await fetchOpportunityDetail(slugOrId, true);
+        const directJob = await fetchOpportunityDetail(slugOrId);
         return (directJob as ExtendedOpportunity) ?? null;
     } catch {
         return null;

@@ -11,6 +11,7 @@ import {
     EDUCATION_METADATA_URL, 
     SKILLS_METADATA_URL,
     COMPANIES_METADATA_URL,
+    COMPANY_SLUG_HISTORY_URL,
     SITEMAP_DATA_URL,
     API_URL,
     GOVERNMENT_FEED_URL,
@@ -169,32 +170,79 @@ function getCDNFetchOptions(options: CDNFetchOptions = {}): CDNFetchOptions {
 /**
  * Feed cache policy for `next.revalidate`.
  *
- * - CDN mode: `false` — immutable until an explicit revalidateTag, because the
- *   URL is version-busted (`?v=`) and the edge serves it forever.
- * - DB mode: a short number of seconds — refresh from Postgres on that
- *   interval so a DB edit surfaces without waiting for a publish/revalidate
- *   event. Tune with DB_FEED_REVALIDATE_SECONDS (default 60), or set it to
- *   `false`/`0` for no timer at all — db mode then matches cdn mode and only a
- *   publish/revalidate event moves a snapshot.
+ * Feed reads carry NO timer. Freshness is event-driven: the API rebuilds the
+ * CDN snapshot, then calls the web's /api/revalidate, which marks the feed
+ * tags stale. The next request to a page re-reads the new feed version and
+ * regenerates that page once. A worker sweep re-sends the same tags if a call
+ * was ever lost, so a missed webhook costs minutes, not days.
+ *
+ * A numeric bound here is NOT a small cache tweak. Next takes the LOWEST
+ * revalidate found on a route as the route's ISR period (see `patch-fetch`:
+ * the store keeps the minimum, and the collected value becomes the page's
+ * revalidate), so one `revalidate: 60` on this fetch puts every page that
+ * reads it on a 60-second timer. Each tick is a full render, and these
+ * renders are expensive (feed index, companies metadata, an opportunity
+ * shard, Firebase). That is the machine that exhausted the Vercel plan.
+ *
+ * - CDN mode: `false`. The URL is version-addressed AND the read is tagged,
+ *   so the tag bust is the invalidation. An unbounded read used to pin /jobs
+ *   to a two-job snapshot for eight days — but the cause was that the version
+ *   manifest was cached UNTRACKED, so no tag could reach it. It is tracked
+ *   now; that was the fix, not the timer.
+ * - DB mode: still env-tuned (DB_FEED_REVALIDATE_SECONDS, default 60), because
+ *   a db-mode deploy has no feed-version event to listen to. Set it to
+ *   `false`/`0` to make db mode event-driven as well.
  */
 function readDbFeedRevalidate(): false | number {
     const raw = (process.env.DB_FEED_REVALIDATE_SECONDS || '').trim().toLowerCase();
-    // `false` or `0` means "no timer": db mode then behaves exactly like cdn
-    // mode, where a snapshot changes only when the publish flow busts its tag.
+    // `false` or `0` means "no timer": db mode then behaves exactly like a
+    // deliberately unbounded CDN mode, where a snapshot changes only when the
+    // publish flow busts its tag.
     // Unset keeps the documented 60s default, so an existing db-mode deploy
     // does not silently change behaviour.
     if (raw === 'false' || raw === '0') return false;
     return Number(raw) || 60;
 }
 const DB_FEED_REVALIDATE_SECONDS = readDbFeedRevalidate();
+
+/**
+ * No timer on the version manifest either.
+ *
+ * This read is the one thing that is NOT version-addressed, so it is the read
+ * a stale site depends on. The tag is what makes that safe: /api/revalidate
+ * sends `feed-version`, the entry is marked stale, and the next render reads
+ * the live manifest and derives new signed URLs. Untracked (the old
+ * `cache: 'force-cache'` without a tag) is the failure mode that pinned the
+ * site to one snapshot for eight days.
+ */
+const FEED_VERSION_REVALIDATE_SECONDS: false | number = false;
+
+/**
+ * How long a feed body may be served from the Next Data Cache in CDN mode.
+ *
+ * `false`: the body is version-addressed and tagged. A rebuild changes the
+ * URL, and the tag makes the old entry reachable. A timer here would add no
+ * freshness and would re-render every page that reads the feed, every tick.
+ */
+const CDN_FEED_REVALIDATE_SECONDS: false | number = false;
+
 function feedRevalidate(): false | number {
-    return IS_DB_FEED ? DB_FEED_REVALIDATE_SECONDS : false;
+    return IS_DB_FEED ? DB_FEED_REVALIDATE_SECONDS : CDN_FEED_REVALIDATE_SECONDS;
 }
 
 /**
  * Fetches the centrally stored R2 feed version through Next's tagged cache.
+ *
+ * ALWAYS tracked, never timed. Untracked is the failure: the version is the
+ * cache buster for every other CDN artifact, so an untracked read pins the
+ * whole site to one snapshot — the signed URLs keep the same `?v=`, the CDN
+ * keeps serving the same bytes, and no tag can reach the entries.
+ *
+ * The tag is what re-reads it: /api/revalidate sends `feed-version`, and the
+ * next render reads the live manifest (uploaded `no-store`) and derives new
+ * URLs. No timer is involved or wanted.
  */
-const _fetchFeedVersion = async (untracked = false): Promise<FeedVersion> => {
+const _fetchFeedVersion = async (): Promise<FeedVersion> => {
     // FEED_SOURCE=db reads the API (Postgres) directly: there is no CDN
     // version to resolve, so skip the network round-trip entirely.
     if (IS_DB_FEED) {
@@ -212,12 +260,9 @@ const _fetchFeedVersion = async (untracked = false): Promise<FeedVersion> => {
     }
 
     try {
-        const res = await fetch(
-            FEED_VERSION_URL,
-            untracked
-                ? { cache: 'force-cache' }
-                : { next: { revalidate: false, tags: ['feed-version'] } },
-        );
+        const res = await fetch(FEED_VERSION_URL, {
+            next: { revalidate: FEED_VERSION_REVALIDATE_SECONDS, tags: ['feed-version'] },
+        });
         if (res.ok) {
             const data = await res.json() as { version?: string };
             if (data?.version) {
@@ -278,8 +323,12 @@ export function fetchFullFeedOnClient(scope: 'ALL' | 'GOVERNMENT' = 'ALL'): Prom
 /**
  * Fetches the static bootstrap feed from the CDN (or local API fallback in development).
  * Used for "Zero-Spinner" instant discovery and SEO.
+ *
+ * Always tagged, never timed — see the feed cache policy above. A caller can
+ * still ask for a live read (`forceLive`), which is the admin-only escape
+ * hatch.
  */
-const _fetchBootstrapFeed = async (forceLive = false, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> => {
+const _fetchBootstrapFeed = async (forceLive = false, customTags?: string[]): Promise<BootstrapFeedResponse | null> => {
     const IS_CLIENT = typeof window !== 'undefined';
     const IS_SERVER = typeof window === 'undefined';
 
@@ -301,7 +350,7 @@ const _fetchBootstrapFeed = async (forceLive = false, customTags?: string[], unt
     }
 
     try {
-        const feedVersion = await fetchFeedVersion(untracked);
+        const feedVersion = await fetchFeedVersion();
         const rawUrl = BOOTSTRAP_FEED_URL;
         const signedUrl = IS_SERVER
             ? await signUrlWithVersion(rawUrl, feedVersion.version)
@@ -313,7 +362,7 @@ const _fetchBootstrapFeed = async (forceLive = false, customTags?: string[], unt
 
         let res = await fetch(signedUrl, getCDNFetchOptions({
             cache: forceLive ? 'no-store' : 'force-cache',
-            ...(!forceLive && !untracked ? { next: { revalidate: feedRevalidate(), tags: customTags ?? ['homepage-feed'] } } : {}),
+            ...(!forceLive ? { next: { revalidate: feedRevalidate(), tags: customTags ?? ['homepage-feed'] } } : {}),
             signal: controller.signal,
         }));
 
@@ -405,8 +454,13 @@ export const fetchBootstrapFeed = cache(_fetchBootstrapFeed);
  * Fetches the lightweight feed index from CDN.
  * Contains only card-rendering fields (~700 bytes/job vs ~2.5KB in full bootstrap).
  * Falls back to the full bootstrap feed if the index is unavailable.
+ *
+ * Always tagged, never timed. The `feed-index` tag is what /api/revalidate
+ * busts after a regeneration; the worker sweep re-sends it if that call was
+ * lost. There is deliberately no TTL: a TTL here becomes the ISR period of
+ * every list page.
  */
-const _fetchFeedIndex = async (forceLive = false, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> => {
+const _fetchFeedIndex = async (forceLive = false, customTags?: string[]): Promise<BootstrapFeedResponse | null> => {
     if (typeof window !== 'undefined') {
         if (clientBootstrapCache && !forceLive) {
             return clientBootstrapCache;
@@ -425,7 +479,7 @@ const _fetchFeedIndex = async (forceLive = false, customTags?: string[], untrack
     }
 
     try {
-        const feedVersion = await fetchFeedVersion(untracked);
+        const feedVersion = await fetchFeedVersion();
         const rawUrl = FEED_INDEX_URL;
         const signedUrl = await signUrlWithVersion(rawUrl, feedVersion.version);
 
@@ -434,7 +488,7 @@ const _fetchFeedIndex = async (forceLive = false, customTags?: string[], untrack
 
         let res = await fetch(signedUrl, getCDNFetchOptions({
             cache: forceLive ? 'no-store' : 'force-cache',
-            ...(!forceLive && !untracked ? { next: { revalidate: feedRevalidate(), tags: customTags ?? ['feed-index'] } } : {}),
+            ...(!forceLive ? { next: { revalidate: feedRevalidate(), tags: customTags ?? ['feed-index'] } } : {}),
             signal: controller.signal,
         }));
 
@@ -443,18 +497,18 @@ const _fetchFeedIndex = async (forceLive = false, customTags?: string[], untrack
         if (!res.ok) {
             cancelResponseBody(res);
             console.warn(`Feed index returned ${res.status}, falling back to bootstrap feed`);
-            return _fetchBootstrapFeed(forceLive, customTags, untracked);
+            return _fetchBootstrapFeed(forceLive, customTags);
         }
 
         const data = await res.json() as BootstrapFeedResponse;
         if (!data || !Array.isArray(data.opportunities)) {
-            return _fetchBootstrapFeed(forceLive, customTags, untracked);
+            return _fetchBootstrapFeed(forceLive, customTags);
         }
 
         return data;
     } catch (err) {
         logFeedFailure('Feed index fetch failed, falling back to bootstrap:', err);
-        return _fetchBootstrapFeed(forceLive, customTags, untracked);
+        return _fetchBootstrapFeed(forceLive, customTags);
     }
 };
 export const fetchFeedIndex = cache(_fetchFeedIndex);
@@ -462,8 +516,13 @@ export const fetchFeedIndex = cache(_fetchFeedIndex);
 /**
  * Fetches the static expired feed from the CDN.
  * Used as a fallback by detail pages to prevent 404s for recently expired opportunities.
+ *
+ * Tracked, not timed: an expired listing is exactly the kind of thing a
+ * publish/expire event moves, and the detail pages that read this must not
+ * keep serving a snapshot from before the expiry — the `expired-feed` tag is
+ * what moves them.
  */
-const _fetchExpiredFeed = async (customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> => {
+const _fetchExpiredFeed = async (customTags?: string[]): Promise<BootstrapFeedResponse | null> => {
     if (typeof window !== 'undefined') {
         return null;
     }
@@ -474,7 +533,7 @@ const _fetchExpiredFeed = async (customTags?: string[], untracked = false): Prom
             return null;
         }
 
-        const feedVersion = await fetchFeedVersion(untracked);
+        const feedVersion = await fetchFeedVersion();
 
         const IS_SERVER = typeof window === 'undefined';
         const signedUrl = IS_SERVER
@@ -486,7 +545,7 @@ const _fetchExpiredFeed = async (customTags?: string[], untracked = false): Prom
 
         const res = await fetch(signedUrl, getCDNFetchOptions({
             cache: feedVersion.stable ? 'force-cache' : 'no-store',
-            ...(feedVersion.stable && !untracked ? { next: { revalidate: feedRevalidate(), tags: customTags ?? ['expired-feed'] } } : {}),
+            ...(feedVersion.stable ? { next: { revalidate: feedRevalidate(), tags: customTags ?? ['expired-feed'] } } : {}),
             signal: controller.signal,
         }));
 
@@ -514,14 +573,18 @@ export const fetchExpiredFeed = cache(_fetchExpiredFeed);
 
 /**
  * Fetches the static government jobs feed from the CDN.
+ *
+ * Tracked, not timed, for the same reason as the main index: government
+ * notices are published through the same flow, and the `government-feed` tag
+ * is what puts a newly published notice on /govt.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const _fetchGovernmentFeed = async (_forceLive = false, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> => {
+const _fetchGovernmentFeed = async (_forceLive = false, customTags?: string[]): Promise<BootstrapFeedResponse | null> => {
     if (typeof window !== 'undefined') {
         return null;
     }
     try {
-        const feedVersion = await fetchFeedVersion(untracked);
+        const feedVersion = await fetchFeedVersion();
 
         const IS_SERVER = typeof window === 'undefined';
         const signedUrl = IS_SERVER
@@ -533,7 +596,7 @@ const _fetchGovernmentFeed = async (_forceLive = false, customTags?: string[], u
 
         let res = await fetch(signedUrl, getCDNFetchOptions({
             cache: feedVersion.stable ? 'force-cache' : 'no-store',
-            ...(feedVersion.stable && !untracked ? { next: { revalidate: feedRevalidate(), tags: customTags ?? ['government-feed'] } } : {}),
+            ...(feedVersion.stable ? { next: { revalidate: feedRevalidate(), tags: customTags ?? ['government-feed'] } } : {}),
             signal: controller.signal,
         }));
 
@@ -592,23 +655,39 @@ export const fetchGovernmentFeed = cache(_fetchGovernmentFeed);
 /**
  * Fetches an individual opportunity JSON directly from R2/CDN edge.
  * Used by job detail pages (/jobs/[slug]) for ultra-fast, ~2.5KB payload loads.
+ *
+ * The shard is version-addressed like every other artifact, so it does not need
+ * a timer of its own — a new feed version produces a new URL. It DOES need a
+ * tag: /api/revalidate busts `opportunity-<slug>` when a listing is published
+ * or expires, and an entry written without a tag can never be reached.
  */
-const _fetchOpportunityDetail = async (idOrSlug: string, untracked = false): Promise<Opportunity | null> => {
+const _fetchOpportunityDetail = async (idOrSlug: string, customTags?: string[]): Promise<Opportunity | null> => {
     if (!idOrSlug) return null;
     try {
-        const feedVersion = await fetchFeedVersion(untracked);
-        
+        const feedVersion = await fetchFeedVersion();
+
         let targetId = idOrSlug;
+        let resolvedSlug: string | null = null;
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
-        
+
         if (!isUuid) {
             // Quick in-memory check against lightweight feed index (~20KB) to resolve slug -> id
-            const index = await fetchFeedIndex(false, undefined, untracked);
+            const index = await fetchFeedIndex();
             const matched = index?.opportunities?.find(o => o.slug === idOrSlug || o.id === idOrSlug);
             if (matched?.id) {
                 targetId = matched.id;
+                resolvedSlug = matched.slug || null;
             }
         }
+
+        // /api/revalidate derives `opportunity-<slug>` from the published path,
+        // so the shard entry has to carry the same name to be reachable. The
+        // requested id is kept as well: a request that came in by UUID still
+        // busts under the name the caller used.
+        const tags = customTags ?? [
+            `opportunity-${idOrSlug}`,
+            ...(resolvedSlug && resolvedSlug !== idOrSlug ? [`opportunity-${resolvedSlug}`] : []),
+        ];
 
         const rawUrl = `${FEED_CDN_BASE}/jobs/${encodeURIComponent(targetId)}.json`;
         const signedUrl = typeof window === 'undefined'
@@ -620,6 +699,7 @@ const _fetchOpportunityDetail = async (idOrSlug: string, untracked = false): Pro
 
         const res = await fetch(signedUrl, getCDNFetchOptions({
             cache: 'force-cache',
+            next: { revalidate: false, tags },
             signal: controller.signal,
         }));
         clearTimeout(timeoutId);
@@ -640,13 +720,16 @@ export const fetchOpportunityDetail = cache(_fetchOpportunityDetail);
 
 /**
  * Fetches a specific category shard (e.g. trending, remote, 2026)
+ *
+ * Version-addressed, so no timer of its own — but always tagged, so a
+ * regeneration can reach it.
  */
-const _fetchCategoryShard = async (id: string, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> => {
+const _fetchCategoryShard = async (id: string, customTags?: string[]): Promise<BootstrapFeedResponse | null> => {
     if (typeof window !== 'undefined') {
         return null;
     }
     try {
-        const feedVersion = await fetchFeedVersion(untracked);
+        const feedVersion = await fetchFeedVersion();
 
         const IS_SERVER = typeof window === 'undefined';
         const rawUrl = GET_CATEGORY_SHARD_URL(id);
@@ -659,7 +742,7 @@ const _fetchCategoryShard = async (id: string, customTags?: string[], untracked 
 
         const res = await fetch(url, getCDNFetchOptions({
             cache: feedVersion.stable ? 'force-cache' : 'no-store',
-            ...(feedVersion.stable && !untracked ? { next: { revalidate: false, tags: customTags ?? [`category-${id}`, 'category-shards'] } } : {}),
+            ...(feedVersion.stable ? { next: { revalidate: false, tags: customTags ?? [`category-${id}`, 'category-shards'] } } : {}),
             signal: controller.signal,
         }));
 
@@ -680,13 +763,16 @@ export const fetchCategoryShard = cache(_fetchCategoryShard);
 
 /**
  * Fetches a specific company shard (e.g. google, microsoft)
+ *
+ * Version-addressed, so no timer of its own — but always tagged, so a
+ * regeneration (or a publish that names the company) can reach it.
  */
-const _fetchCompanyShard = async (slug: string, customTags?: string[], untracked = false): Promise<BootstrapFeedResponse | null> => {
+const _fetchCompanyShard = async (slug: string, customTags?: string[]): Promise<BootstrapFeedResponse | null> => {
     if (typeof window !== 'undefined') {
         return null;
     }
     try {
-        const feedVersion = await fetchFeedVersion(untracked);
+        const feedVersion = await fetchFeedVersion();
 
         const IS_SERVER = typeof window === 'undefined';
         const rawUrl = GET_COMPANY_SHARD_URL(slug);
@@ -699,7 +785,7 @@ const _fetchCompanyShard = async (slug: string, customTags?: string[], untracked
 
         const res = await fetch(url, getCDNFetchOptions({
             cache: feedVersion.stable ? 'force-cache' : 'no-store',
-            ...(feedVersion.stable && !untracked ? { next: { revalidate: false, tags: customTags ?? [`company-${slug}`, 'company-shards'] } } : {}),
+            ...(feedVersion.stable ? { next: { revalidate: false, tags: customTags ?? [`company-${slug}`, 'company-shards'] } } : {}),
             signal: controller.signal,
         }));
 
@@ -728,8 +814,8 @@ export interface EducationMetadata {
  * Stably signs a CDN URL with the current feed version so edge/server caches hit 99.9%+
  * without rotating every 2 minutes.
  */
-async function signStableUrl(rawUrl: string, untracked = false): Promise<string> {
-    const feedVersion = await fetchFeedVersion(untracked);
+async function signStableUrl(rawUrl: string): Promise<string> {
+    const feedVersion = await fetchFeedVersion();
     const IS_SERVER = typeof window === 'undefined';
     return IS_SERVER
         ? await signUrlWithVersion(rawUrl, feedVersion.version)
@@ -795,18 +881,21 @@ export interface CompanyMetadata {
 
 /**
  * Fetches companies list from CDN.
+ *
+ * Version-addressed metadata: no timer of its own, but always tagged so a
+ * regeneration can reach it.
  */
-const _fetchCompaniesMetadata = async (untracked = false): Promise<CompanyMetadata[] | null> => {
+const _fetchCompaniesMetadata = async (): Promise<CompanyMetadata[] | null> => {
     if (typeof window !== 'undefined') {
         return null;
     }
     try {
-        const url = await signStableUrl(COMPANIES_METADATA_URL, untracked);
+        const url = await signStableUrl(COMPANIES_METADATA_URL);
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), getCDNTimeout());
         const res = await fetch(url, getCDNFetchOptions({
             cache: 'force-cache',
-            ...(!untracked ? { next: { revalidate: false, tags: ['companies-metadata'] } } : {}),
+            next: { revalidate: false, tags: ['companies-metadata'] },
             signal: controller.signal,
         }));
         clearTimeout(timeoutId);
@@ -821,6 +910,59 @@ const _fetchCompaniesMetadata = async (untracked = false): Promise<CompanyMetada
     }
 };
 export const fetchCompaniesMetadata = cache(_fetchCompaniesMetadata);
+
+export interface CompanySlugHistory {
+    generatedAt?: number;
+    /** retired slug -> the slug that replaced it */
+    aliases: Record<string, string>;
+    /** every slug that has ever had a live job */
+    everLive: Set<string>;
+}
+
+const EMPTY_SLUG_HISTORY: CompanySlugHistory = { aliases: {}, everLive: new Set() };
+
+/**
+ * Fetches the durable company slug history from the CDN.
+ *
+ * Never throws and never rejects: a company page that cannot reach this file
+ * must still render, because falling back to "unknown" is what turns a CDN blip
+ * into a 404 for a page Google has already crawled.
+ */
+const _fetchCompanySlugHistory = async (): Promise<CompanySlugHistory> => {
+    if (typeof window !== 'undefined') {
+        return EMPTY_SLUG_HISTORY;
+    }
+    try {
+        const url = await signStableUrl(COMPANY_SLUG_HISTORY_URL);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), getCDNTimeout());
+        const res = await fetch(url, getCDNFetchOptions({
+            cache: 'force-cache',
+            next: { revalidate: false, tags: ['company-slug-history'] },
+            signal: controller.signal,
+        }));
+        clearTimeout(timeoutId);
+        if (!res.ok) {
+            cancelResponseBody(res);
+            return EMPTY_SLUG_HISTORY;
+        }
+        const data = await res.json() as { generatedAt?: number; aliases?: Record<string, string>; everLive?: string[] };
+        const aliases: Record<string, string> = {};
+        for (const [from, to] of Object.entries(data?.aliases || {})) {
+            if (typeof from === 'string' && from && typeof to === 'string' && to && from !== to) {
+                aliases[from] = to;
+            }
+        }
+        const everLive = new Set<string>(
+            (Array.isArray(data?.everLive) ? data.everLive : []).filter(s => typeof s === 'string' && s)
+        );
+        return { generatedAt: data?.generatedAt, aliases, everLive };
+    } catch (err) {
+        logFeedFailure('Failed to fetch company slug history from CDN:', err);
+        return EMPTY_SLUG_HISTORY;
+    }
+};
+export const fetchCompanySlugHistory = cache(_fetchCompanySlugHistory);
 
 export interface SitemapDataResponse {
     companies: Array<{ name: string; slug: string }>;

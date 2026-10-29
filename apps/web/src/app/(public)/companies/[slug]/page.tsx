@@ -5,11 +5,12 @@ import CompanyLogo from '@/features/companies/components/CompanyLogo';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils/slugify';
 import { isGovernmentOpportunity } from '@/features/jobs/utils/walkinMapUtils';
-import { fetchCompanyShard, fetchCompaniesMetadata, fetchFeedIndex } from '@/lib/api/cdnFeed';
+import { fetchCompanyShard, fetchCompaniesMetadata, fetchFeedIndex, fetchCompanySlugHistory, fetchExpiredFeed } from '@/lib/api/cdnFeed';
 import { CompanySlugger } from '@/features/companies/utils/companySlugger';
 import { resolveCompanySlugAlias } from '@/features/companies/utils/companySlugAliases';
 import CompanyFollowButton from '@/features/companies/components/CompanyFollowButton';
 import CompanyRoleCard from './_components/CompanyRoleCard';
+import CompanyArchiveView from './_components/CompanyArchiveView';
 import { SkillPill } from '@/features/jobs/components/SkillPill';
 import { Card, CardContent } from '@/ui/Card';
 import { BrandButton } from '@/ui/BrandButton';
@@ -29,15 +30,31 @@ import {
 // wrapped in React cache() inside lib/api/cdnFeed.ts, so generateMetadata and
 // the page component share one set of CDN round-trips per request.
 
-// ISR: company pages serve cached HTML and revalidate hourly. A cold CDN
-// fetch per slug caused ~2s TTFB on /companies/microsoft (audit); cached
-// serves fix it without any per-request work.
-export const revalidate = 3600;
+// No timer, by design — see `lib/api/cdnFeed.ts` for the full policy.
+// Freshness arrives when the API says so: a rebuild calls /api/revalidate,
+// which marks the feed tags stale, and the next request regenerates this
+// page once. A worker sweep re-sends those tags if that call was lost.
+// A number here would make every visitor and crawler pay for a full render.
+export const revalidate = false;
 // dynamicParams = true: companies published after the last build (or slugs the
 // build-time feed snapshot missed) must render on demand instead of 404ing.
 // The page body itself is inventory-gated and calls notFound() when a company
 // has no live jobs, so this does not create thin or stale pages.
 export const dynamicParams = true;
+
+/**
+ * Never cache a miss.
+ *
+ * With `dynamicParams = true`, any slug a crawler invents renders through
+ * this route. Without this call the 404 is written to the ISR cache under
+ * that invented URL, and every later request re-renders it — an unbounded,
+ * bot-writable set of cached pages. `/jobs/[slug]` and `/govt/[slug]` already
+ * mark their miss paths this way; this route was the gap.
+ */
+async function markMissUncacheable(): Promise<void> {
+    const { unstable_noStore } = await import('next/cache');
+    unstable_noStore();
+}
 
 function getAtsProvider(url?: string): string {
     if (!url) return 'Custom / In-house';
@@ -109,14 +126,14 @@ function getLastHiringActivity(jobs: any[]): string | null {
 
 export async function generateStaticParams() {
     try {
-        const companyDirectory = await fetchCompaniesMetadata(true);
+        const companyDirectory = await fetchCompaniesMetadata();
         if (!companyDirectory) return [];
         const directory = companyDirectory || [];
         
         const slugger = new CompanySlugger(directory);
 
         // Only pre-build companies with at least 1 active job.
-        const feed = await fetchFeedIndex(false, undefined, true);
+        const feed = await fetchFeedIndex();
         const activeCompanySlugs = new Set(
             (feed?.opportunities || [])
                 .map((o: any) => slugger.getSlug(o))
@@ -173,16 +190,19 @@ export async function generateMetadata(
     const { slug: rawSlug } = await params;
     const properSlug = slugify(decodeURIComponent(rawSlug));
     const base = SITE_URL.replace(/\/+$/, '');
+
+    const [companyDirectory, shard, slugHistory] = await Promise.all([
+        fetchCompaniesMetadata(),
+        fetchCompanyShard(properSlug),
+        fetchCompanySlugHistory(),
+    ]);
+
     // Metadata must declare the canonical URL we actually serve — resolve
     // aliases here too, so an old slug's canonical points at the live page
-    // instead of endorsing itself.
-    const canonicalSlug = resolveCompanySlugAlias(properSlug);
+    // instead of endorsing itself. Runs after the history fetch so a rename
+    // recorded by the API is honoured, not just the static seed.
+    const canonicalSlug = resolveCompanySlugAlias(properSlug, slugHistory.aliases);
     const canonicalUrl = `${base}/companies/${canonicalSlug}`;
-
-    const [companyDirectory, shard] = await Promise.all([
-        fetchCompaniesMetadata(true),
-        fetchCompanyShard(properSlug, undefined, true),
-    ]);
 
     let activeShard = shard;
     let companyName = (shard as any)?.company || shard?.opportunities?.[0]?.company || properSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -192,11 +212,19 @@ export async function generateMetadata(
             companyName = matched.name;
         }
         if ((!activeShard || !activeShard.opportunities || activeShard.opportunities.length === 0) && matched?.slug && matched.slug !== properSlug) {
-            activeShard = await fetchCompanyShard(matched.slug, undefined, true);
+            activeShard = await fetchCompanyShard(matched.slug);
         }
     }
 
-    const hasJobs = Boolean(activeShard && activeShard.opportunities && activeShard.opportunities.length > 0);
+    // Indexability is about whether this company exists, not whether it is
+    // hiring right now. A company with zero live jobs still renders a real
+    // archive page at this URL, so noindexing it would trade a thin page for a
+    // dead one. Only a slug that was never published is noindex.
+    const isKnownCompany = Boolean(
+        companyDirectory?.some(c => c && (c.slug === properSlug || slugify(c.name || '') === properSlug)) ||
+        slugHistory.everLive.has(properSlug) ||
+        slugHistory.everLive.has(canonicalSlug)
+    );
 
     // SEO: keep the full <title> within 50-60 chars once the root layout
     // template ("%s | FresherFlow", 13 chars) is applied — base stays ≤47.
@@ -211,7 +239,7 @@ export async function generateMetadata(
         title,
         description,
         alternates: { canonical: canonicalUrl },
-        robots: hasJobs ? { index: true, follow: true } : { index: false, follow: true },
+        robots: isKnownCompany ? { index: true, follow: true } : { index: false, follow: true },
         openGraph: {
             title,
             description,
@@ -238,15 +266,19 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         permanentRedirect(`/companies/${properSlug}`);
     }
 
-    const companyDirectory = await fetchCompaniesMetadata(true);
+    const [companyDirectory, slugHistory] = await Promise.all([
+        fetchCompaniesMetadata(),
+        fetchCompanySlugHistory(),
+    ]);
     let targetSlug = properSlug;
     let shouldRedirectTo: string | null = null;
     let matched: any = null;
 
     // Explicit alias redirects (company renames) — checked before anything
     // else so a renamed company's old URL never 404s, even when the CDN
-    // directory fetch fails.
-    const aliasTarget = resolveCompanySlugAlias(properSlug);
+    // directory fetch fails. `slugHistory.aliases` is the API-maintained map;
+    // the static seed in companySlugAliases.ts is the fallback beneath it.
+    const aliasTarget = resolveCompanySlugAlias(properSlug, slugHistory.aliases);
     if (aliasTarget !== properSlug) {
         logRouteResult('/companies/[slug]', '308');
         permanentRedirect(`/companies/${aliasTarget}`);
@@ -274,6 +306,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
             );
             if (!knownSlugs.has(properSlug)) {
                 logRouteResult('/companies/[slug]', '404');
+                await markMissUncacheable();
                 notFound();
             }
         }
@@ -284,15 +317,15 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     }
 
     const [feedIndex, companyShard] = await Promise.all([
-        fetchFeedIndex(false, undefined, true),
-        fetchCompanyShard(targetSlug, undefined, true)
+        fetchFeedIndex(),
+        fetchCompanyShard(targetSlug)
     ]);
 
     let feed = companyShard;
     let companyJobs = feed?.opportunities || [];
 
     if (companyJobs.length === 0 && targetSlug !== properSlug) {
-        feed = await fetchCompanyShard(properSlug, undefined, true);
+        feed = await fetchCompanyShard(properSlug);
         companyJobs = feed?.opportunities || [];
         if (companyJobs.length > 0) {
             targetSlug = properSlug;
@@ -312,16 +345,41 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     }
 
     if (companyJobs.length === 0) {
-        // Audit fix (33x /companies/* 404s): a slug the directory knows but
-        // with zero live jobs is gone inventory, not a dead end — 301 to the
-        // closest live page (/companies). Unknown slugs 404 and stay out of
-        // the sitemap and internal links (both are live-companies-only).
-        if (matched) {
-            logRouteResult('/companies/[slug]', '301');
-            permanentRedirect('/companies');
+        // A company that has ever been published keeps its page. Google has
+        // already crawled this URL and earned its rankings; returning 301 to
+        // /companies was how those pages quietly disappeared from the index.
+        // Render the archive instead so the URL keeps its 200, canonical and
+        // internal links, and the company only 404s if it was never published.
+        const everPublished = Boolean(matched) || slugHistory.everLive.has(properSlug) || slugHistory.everLive.has(targetSlug);
+
+        if (!everPublished) {
+            logRouteResult('/companies/[slug]', '404');
+            await markMissUncacheable();
+            notFound();
         }
-        logRouteResult('/companies/[slug]', '404');
-        notFound();
+
+        // Archived roles: the most recent ones this company posted, so the page
+        // still has real content and the slug keeps matching search intent.
+        const [expiredFeed, dirForArchive] = await Promise.all([
+            fetchExpiredFeed(),
+            companyDirectory,
+        ]);
+        const archiveSlugger = new CompanySlugger(dirForArchive || []);
+        const archivedRoles = ((expiredFeed?.opportunities ?? []) as any[])
+            .filter((o: any) => archiveSlugger.getSlug(o) === targetSlug)
+            .sort((a: any, b: any) => {
+                const da = a.postedAt ? new Date(a.postedAt).getTime() : 0;
+                const db = b.postedAt ? new Date(b.postedAt).getTime() : 0;
+                return db - da;
+            })
+            .slice(0, 10);
+
+        const archiveName = matched?.name
+            || (dirForArchive || []).find(c => c && (c.slug === targetSlug || slugify(c.name || '') === targetSlug))?.name
+            || targetSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+        logRouteResult('/companies/[slug]', '200');
+        return <CompanyArchiveView companyName={archiveName} slug={targetSlug} archivedRoles={archivedRoles} />;
     }
 
     const companyName = (feed as any)?.company || companyJobs[0]?.company ||

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { withRateLimit } from '@/lib/api/rateLimit';
 
+// The route renders per request (force-dynamic) and its own response is
+// edge-cacheable. The INNER read used to be untracked, so it served one
+// snapshot forever; it is now tracked and bounded like every other feed read.
 export const revalidate = false;
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +31,7 @@ async function serveOpportunityDetail(request: NextRequest) {
     }
 
     try {
-        const feed = await fetchBootstrapFeed(false, undefined, true);
+        const feed = await fetchBootstrapFeed();
         const opportunities = feed?.opportunities ?? [];
         const match = opportunities.find(
             (opp) => opp.id === id || opp.slug === id
@@ -42,7 +45,7 @@ async function serveOpportunityDetail(request: NextRequest) {
             { opportunity: match },
             {
                 headers: {
-                    'Cache-Control': 'public, max-age=300, s-maxage=600, stale-while-revalidate=3600',
+                    'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=300',
                 },
             }
         );

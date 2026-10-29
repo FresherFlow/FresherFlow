@@ -6,7 +6,13 @@ import { type PublicProfile } from '@/features/profile/publicProfile';
 import { toPublicProfileData } from '@/features/profile/mapToPublicProfile';
 import { serverApiClient } from '@/lib/api/server-client';
 
-export const revalidate = 60;
+// The one intentionally timed public route. A profile is not feed data, so
+// no publish rebuild ever busts a tag for it, and there is no API→web
+// notification on profile save — `false` would mean an edit never appears
+// until the next deploy. Five minutes is the compromise: a profile edit
+// lands quickly, and the timer costs one render per profile per five
+// minutes instead of per minute. Keep it out of the job-feed policy.
+export const revalidate = 300;
 
 interface PageProps {
     params: Promise<{ username: string }>;

@@ -35,6 +35,38 @@ export interface DiscussionSeoData {
 const MAX_COMMENTS = 20;
 const MAX_TEXT = 300;
 
+/**
+ * Hard ceiling on a single Realtime Database read.
+ *
+ * This runs inside the `/jobs/[slug]` render. That render is what regenerates
+ * a cached page, so a read that hangs does not render slowly — it prevents the
+ * page from updating at all: Next keeps the previous version and retries on
+ * the following request. A tag bust that never lands is exactly the "admin
+ * pressed the button and the site did not change" failure. Structured data is
+ * an enhancement, so a slow read loses the schema, not the page.
+ */
+const READ_TIMEOUT_MS = 1_500;
+
+function withTimeout<T>(promise: Promise<T>, label: string): Promise<T | null> {
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+            console.warn(`[jobDiscussionSeo] ${label} exceeded ${READ_TIMEOUT_MS}ms; skipping discussion structured data`);
+            resolve(null);
+        }, READ_TIMEOUT_MS);
+
+        promise.then(
+            (value) => {
+                clearTimeout(timer);
+                resolve(value);
+            },
+            (error: unknown) => {
+                clearTimeout(timer);
+                reject(error);
+            },
+        );
+    });
+}
+
 type RawComment = {
     text?: string;
     createdAt?: string;
@@ -64,11 +96,18 @@ export async function getJobDiscussionForSeo(jobId: string): Promise<DiscussionS
     if (!db) return null;
 
     try {
-        const indexSnapshot = await db.ref(`/commentIndex/${jobId}`).get();
+        const indexSnapshot = await withTimeout(db.ref(`/commentIndex/${jobId}`).get(), 'commentIndex read');
+        if (!indexSnapshot) return null;
+
         const total = Number((indexSnapshot.val() as { count?: number } | null)?.count) || 0;
         if (total <= 0) return null;
 
-        const commentsSnapshot = await db.ref(`/comments/${jobId}`).limitToLast(MAX_COMMENTS).get();
+        const commentsSnapshot = await withTimeout(
+            db.ref(`/comments/${jobId}`).limitToLast(MAX_COMMENTS).get(),
+            'comments read',
+        );
+        if (!commentsSnapshot) return null;
+
         const raw = commentsSnapshot.val() as Record<string, RawComment> | null;
         if (!raw) return null;
 

@@ -118,7 +118,15 @@ export function OverviewTab() {
         try {
             const res = await adminApi.regenerateStaticFeeds(target);
             if (res && res.success) {
-                setRegenStatus({ type: 'success', message: `${target === 'all' ? 'All feeds' : target + ' feed'} successfully regenerated!` });
+                // Report what the server actually did. A hardcoded "successfully
+                // regenerated!" here hid a deploy where the web app was never
+                // notified, so the feeds were rebuilt but the site kept serving
+                // the old ones — the operator saw success and kept re-clicking.
+                setRegenStatus({
+                    type: res.webRevalidated === false ? 'error' : 'success',
+                    message: res.message
+                        || `${target === 'all' ? 'All feeds' : target + ' feed'} successfully regenerated!`,
+                });
                 // Invalidate lists and reload to pull new CDN feed timestamp
                 setTimeout(() => {
                     window.location.reload();
@@ -140,7 +148,14 @@ export function OverviewTab() {
         try {
             const res = await adminApi.revalidateWebsiteCache();
             if (res && res.success) {
-                setRegenStatus({ type: 'success', message: 'Website cache successfully refreshed.' });
+                // Deliberately not "the site is updated": this call only invalidates
+                // Next.js cache entries. The feed FILES those entries point at are
+                // produced by "Regenerate all" (and automatically on publish), so
+                // promising an update here is what sent operators in circles.
+                setRegenStatus({
+                    type: 'success',
+                    message: 'Cache entries invalidated. Content changes appear only after feeds are rebuilt — use "Regenerate all" for that.',
+                });
                 setTimeout(() => {
                     window.location.reload();
                 }, 1500);

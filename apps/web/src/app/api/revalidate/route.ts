@@ -52,6 +52,13 @@ function isHubPath(path: string): boolean {
 function deriveTagsFromPaths(paths: string[]): string[] {
     const tags: string[] = [];
 
+    // Every publish rewrites the lightweight feed index, and the index is what
+    // the list pages (/jobs, /drives, /govt, /companies, the taxonomy boards)
+    // actually read. Without this tag the index kept serving its old snapshot
+    // until the 60s ISR timer came round, so a published job took a minute to
+    // appear even though the webhook had arrived.
+    tags.push('feed-index');
+
     const hasGovt = paths.some(p => p.startsWith('/government-jobs') || p.startsWith('/govt'));
     const hasCompany = paths.some(p => p.startsWith('/companies/'));
     const hasWalkin = paths.some(p => p.includes('/walk-ins') || p.includes('/walkins'));
@@ -59,7 +66,12 @@ function deriveTagsFromPaths(paths: string[]): string[] {
 
     if (hasNormal || hasWalkin) tags.push('homepage-feed');
     if (hasGovt) tags.push('government-feed');
-    if (hasCompany) tags.push('companies-metadata');
+    if (hasCompany) {
+        tags.push('companies-metadata');
+        // The /companies/{slug} redirect decisions are read from this map, so
+        // any company path change must be able to retire a cached alias set.
+        tags.push('company-slug-history');
+    }
 
     // Granular slug-level tags
     for (const path of paths) {
@@ -165,4 +177,9 @@ async function handleRevalidate(request: NextRequest) {
     }
 }
 
-export const POST = withRateLimit(handleRevalidate, { windowMs: 60_000, max: 60, keyPrefix: 'revalidate' });
+// 300/min, not 60. The caller coalesces to at most one request per second
+// (exactly 60/min), and now retries twice on a 5xx — at the old ceiling a
+// single burst could exhaust the bucket and the drop would be silent, which
+// is the "web never updated" failure this route exists to prevent. The
+// secret still gates every request; this is only a flood guard.
+export const POST = withRateLimit(handleRevalidate, { windowMs: 60_000, max: 300, keyPrefix: 'revalidate' });

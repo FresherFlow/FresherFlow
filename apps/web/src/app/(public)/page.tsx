@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { HeroSection } from '@/features/landing/HeroSection';
-import { StatBand } from '@/features/landing/StatBand';
 import { BoardsSection } from '@/features/landing/BoardsSection';
 // Hidden for now — the comparison block claims things we don't do yet.
 // import { ComparisonSection } from '@/features/landing/ComparisonSection';
@@ -8,13 +7,15 @@ import { ProofSection } from '@/features/landing/ProofSection';
 import { CompanyRegister } from '@/features/landing/CompanyRegister';
 import { StatementBand } from '@/features/landing/StatementBand';
 import { SmoothScroll } from '@/features/landing/SmoothScroll';
-import { LandingMarquee } from '@/features/landing/LandingMarquee';
+
 import { fetchFeedIndex, fetchCompaniesMetadata } from '@/lib/api/cdnFeed';
 import { toOpportunityCardDTO } from '@fresherflow/types';
 import { matchesFeedType } from '@/features/jobs/utils/walkinMapUtils';
 
-// On-demand revalidation via /api/revalidate — called when jobs are published/expired.
-export const revalidate = false;
+// No timer, by design — see `lib/api/cdnFeed.ts` for the full policy.
+// Freshness arrives when the API says so: a rebuild calls /api/revalidate,
+// which marks the feed tags stale, and the next request regenerates this
+// page once. A worker sweep re-sends those tags if that call was lost.
 
 const LANDING_TITLE = 'FresherFlow — Jobs, powered by freshers';
 const LANDING_DESCRIPTION =
@@ -34,8 +35,6 @@ export const metadata: Metadata = {
     twitter: { card: 'summary_large_image', title: LANDING_TITLE, description: LANDING_DESCRIPTION, images: ['/twitter-image'] },
 };
 
-const MS_PER_DAY = 86_400_000;
-
 export default async function LandingPage() {
     const [feed, companies] = await Promise.all([fetchFeedIndex(), fetchCompaniesMetadata()]);
     const opps = feed?.opportunities ?? [];
@@ -53,16 +52,6 @@ export default async function LandingPage() {
     // New today (posted since local midnight, capped by feed freshness)
     const newToday = opps.filter((o) => new Date(o.postedAt).getTime() >= startOfToday.getTime()).length;
 
-
-    // 7-day posting pulse: oldest → today
-    const perDay = Array.from({ length: 7 }, (_, i) => {
-        const dayStart = startOfToday.getTime() - (6 - i) * MS_PER_DAY;
-        const dayEnd = dayStart + MS_PER_DAY;
-        return opps.filter((o) => {
-            const t = new Date(o.postedAt).getTime();
-            return t >= dayStart && t < dayEnd;
-        }).length;
-    });
 
     // Companies with live openings (top 8 by count)
     const companyCounts = new Map<string, { slug?: string; count: number }>();
@@ -102,11 +91,10 @@ export default async function LandingPage() {
             <SmoothScroll />
             {/* No Organization JSON-LD here: the root layout already emits one from
                 <head>, and this block duplicated it with a conflicting shape. */}
-            <LandingMarquee newToday={newToday} refreshedAt={refreshedAt} walkins={walkins} />
+
             <HeroSection newToday={newToday} refreshedAt={refreshedAt} discussHref={discussHref} />
-            <StatBand data={{ total: opps.length, internships, walkins, companies: companyCounts.size }} />
             <BoardsSection data={{ jobs, internships, walkins, govt }} />
-            <ProofSection perDay={perDay} latest={latest} />
+            <ProofSection latest={latest} />
             <CompanyRegister companies={companyRows} />
             <StatementBand />
         </>

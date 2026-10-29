@@ -7,7 +7,11 @@ import {
     yearBoardSlug,
 } from '@/features/jobs/domain/taxonomy';
 
-// On-demand revalidation via /api/revalidate — same policy as the feed routes.
+// No timer, by design — see `lib/api/cdnFeed.ts` for the full policy.
+// Freshness arrives when the API says so: a rebuild calls /api/revalidate,
+// which marks the feed tags stale, and the next request regenerates this
+// page once. A worker sweep re-sends those tags if that call was lost.
+// A number here would make every visitor and crawler pay for a full render.
 export const revalidate = false;
 
 // Single home for the sharable strings: the openGraph and twitter titles used to
@@ -71,7 +75,7 @@ function DirectorySection({ title, children }: { title: string; children: React.
 
 export default async function BrowseJobsPage() {
     // Lightweight index — board directory only needs count/card fields.
-    const feed = await fetchFeedIndex(false, undefined, true);
+    const feed = await fetchFeedIndex();
     const registry = buildTaxonomyRegistry(feed?.opportunities || []);
 
     const roles = Array.from(registry.roles.values()).sort(byCountDesc).slice(0, 12);

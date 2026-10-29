@@ -3,7 +3,13 @@ import { Sector } from '@fresherflow/types';
 import { fetchFeedIndex, fetchGovernmentFeed, fetchBootstrapFeed, type BootstrapFeedResponse } from '@/lib/api/cdnFeed';
 import { withRateLimit } from '@/lib/api/rateLimit';
 
-// On-demand revalidation via /api/revalidate — same policy as the feed routes.
+// The route itself is always rendered per request (force-dynamic) and its own
+// response is edge-cacheable below. The INNER read is the part that used to be
+// wrong: it fetched the feed untracked, so the Data Cache kept one snapshot
+// forever and this proxy served the same stale payload no matter how fresh the
+// CDN was. It is now a normal tracked + bounded read, so the body follows the
+// feed version and the shared cache below can only make it staler by its own
+// declared TTL.
 export const revalidate = false;
 export const dynamic = 'force-dynamic';
 
@@ -28,16 +34,16 @@ async function servePublicFeed(request: NextRequest) {
         let feed: BootstrapFeedResponse | null = null;
 
         if (isGovernment) {
-            feed = await fetchGovernmentFeed(false, undefined, true);
+            feed = await fetchGovernmentFeed();
             if (!feed?.opportunities?.length) {
-                feed = await fetchFeedIndex(false, undefined, true);
+                feed = await fetchFeedIndex();
             }
         } else {
             // Use lightweight feed-index (faster, has all card-rendering fields)
             // Fall back to bootstrap only if index is unavailable
-            feed = await fetchFeedIndex(false, undefined, true);
+            feed = await fetchFeedIndex();
             if (!feed?.opportunities?.length) {
-                feed = await fetchBootstrapFeed(false, undefined, true);
+                feed = await fetchBootstrapFeed();
             }
         }
 
@@ -53,7 +59,12 @@ async function servePublicFeed(request: NextRequest) {
             },
             {
                 headers: {
-                    'Cache-Control': 'public, max-age=300, s-maxage=600, stale-while-revalidate=3600',
+                    // Shared caches keep a fresh copy for 5 minutes and may serve
+                    // one stale copy for at most another 5 minutes while they
+                    // revalidate in the background. The previous 10-minute fresh
+                    // window plus a 1-hour stale window let a published job stay
+                    // invisible in the browser for over an hour.
+                    'Cache-Control': 'public, max-age=60, s-maxage=300, stale-while-revalidate=300',
                 },
             }
         );

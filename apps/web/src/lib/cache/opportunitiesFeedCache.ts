@@ -4,6 +4,19 @@ const FEED_CACHE_KEY = 'ff_feed_cache_v2';
 const MAX_ITEMS = 250;
 const LEGACY_SCOPE = 'all';
 
+/**
+ * How long a saved snapshot may be served without going to the network.
+ *
+ * This cache exists to paint the first list instantly, and it is read BEFORE
+ * any fetch. With no bound, a browser that loaded the feed once kept rendering
+ * that same snapshot indefinitely: publishing a job, rebuilding the R2 feed and
+ * busting every Next.js tag changed nothing on that device, because nothing ever
+ * asked for newer data. The bound turns "stale forever" into "stale for at most
+ * this long", which keeps the instant paint for a normal browsing session while
+ * making a months-old snapshot impossible. Tune with NEXT_PUBLIC_FEED_CACHE_TTL_MS.
+ */
+const FEED_CACHE_TTL_MS = Number(process.env.NEXT_PUBLIC_FEED_CACHE_TTL_MS) || 30 * 60 * 1000;
+
 type FeedCachePayload = {
     cachedAt: number;
     opportunities: Opportunity[];
@@ -88,6 +101,10 @@ export function readFeedCache(scope?: string | null): FeedCachePayload | null {
         if (!raw) return null;
         const parsed = JSON.parse(raw) as FeedCachePayload;
         if (!Array.isArray(parsed.opportunities) || typeof parsed.cachedAt !== 'number') return null;
+        // An expired snapshot is treated as absent, so every caller (including
+        // cdnFeed's client branch and getOpportunityFromCache) falls through to
+        // the network instead of painting stale listings.
+        if (Date.now() - parsed.cachedAt > FEED_CACHE_TTL_MS) return null;
         return parsed;
     } catch {
         return null;

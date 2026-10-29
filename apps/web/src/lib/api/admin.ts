@@ -399,8 +399,19 @@ export const adminApi = {
             })
     },
 
+    // `webRevalidated` distinguishes "the R2 feeds were rebuilt" from "the web
+    // app was actually told about it". Without it an operator sees success while
+    // the site keeps serving the previous feed version, which is what happened
+    // when REVALIDATE_SECRET_TOKEN / PUBLIC_WEB_URL were unset in the deploy.
     regenerateStaticFeeds: (target?: string) =>
-        apiClient<{ success: boolean; message: string }>('/api/admin/system/regenerate-feeds', {
+        apiClient<{
+            success: boolean;
+            message: string;
+            webRevalidated?: boolean;
+            webTargets?: number;
+            webFailures?: number;
+            warnings?: string[];
+        }>('/api/admin/system/regenerate-feeds', {
             method: 'POST',
             body: JSON.stringify({ target })
         }),

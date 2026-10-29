@@ -4,6 +4,11 @@ import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
 import { toOpportunityCardDTO } from '@fresherflow/types';
 import { WalkInsClient } from './WalkInsClient';
 
+// No timer, by design — see `lib/api/cdnFeed.ts` for the full policy.
+// Freshness arrives when the API says so: a rebuild calls /api/revalidate,
+// which marks the feed tags stale, and the next request regenerates this
+// page once. A worker sweep re-sends those tags if that call was lost.
+// A number here would make every visitor and crawler pay for a full render.
 export const revalidate = false;
 
 export const metadata: Metadata = {
@@ -40,8 +45,10 @@ export const metadata: Metadata = {
    visible page. Crawlers still get the title/description via `metadata` above. */
 
 export default async function WalkInDrivesPage() {
-    // untracked=true: server fetch without Next tagged cache (matches sibling routes)
-    const bootstrapData = await fetchFeedIndex(false, undefined, true);
+    // Tracked + bounded read: the `feed-index` tag lets a publish bust this
+    // page immediately, and the bound lets it pick the change up on its own
+    // when the publish webhook never arrives.
+    const bootstrapData = await fetchFeedIndex();
     const initialData = bootstrapData
         ? {
               opportunities: bootstrapData.opportunities

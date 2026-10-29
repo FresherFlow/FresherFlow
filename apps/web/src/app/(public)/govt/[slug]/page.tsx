@@ -17,6 +17,11 @@ import {
     ExtendedOpportunity
 } from '@/features/jobs/domain/opportunitySeo';
 
+// No timer, by design — see `lib/api/cdnFeed.ts` for the full policy.
+// Freshness arrives when the API says so: a rebuild calls /api/revalidate,
+// which marks the feed tags stale, and the next request regenerates this
+// page once. A worker sweep re-sends those tags if that call was lost.
+// A number here would make every visitor and crawler pay for a full render.
 export const revalidate = false;
 export const dynamicParams = true;
 
@@ -30,8 +35,8 @@ function isInvalidSlug(slug: string): boolean {
 export async function generateStaticParams() {
     try {
         const [feed, feedIndex] = await Promise.all([
-            fetchGovernmentFeed(false, undefined, true),
-            fetchFeedIndex(false, undefined, true),
+            fetchGovernmentFeed(),
+            fetchFeedIndex(),
         ]);
         const opps = [
             ...(feed?.opportunities || []),
@@ -142,7 +147,7 @@ export default async function GovernmentJobDetailPage({ params }: { params: Prom
     try {
         const [oppResult, govtFeed] = await Promise.all([
             fetchOpportunityForPage(slug),
-            fetchGovernmentFeed(false, undefined, true)
+            fetchGovernmentFeed()
         ]);
 
         opp = oppResult;

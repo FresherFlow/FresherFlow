@@ -6,10 +6,11 @@ import CompaniesDirectoryClient from '@/features/companies/components/CompaniesD
 import CompaniesTabsClient from '@/features/companies/components/CompaniesTabsClient';
 import { buildCompanyDirectory } from '@/features/companies/utils/companyDirectory';
 
-// On-demand only: no timer. The directory HTML is rebuilt when the publish
-// flow busts the `companies-metadata` and `company-*` tags (see
-// /api/revalidate), matching /jobs, /govt and /drives. The client tab switch
-// (?tab=following) never changes the served HTML either way.
+// No timer, by design — see `lib/api/cdnFeed.ts` for the full policy.
+// Freshness arrives when the API says so: a rebuild calls /api/revalidate,
+// which marks the feed tags stale, and the next request regenerates this
+// page once. A worker sweep re-sends those tags if that call was lost.
+// A number here would make every visitor and crawler pay for a full render.
 export const revalidate = false;
 
 export const metadata: Metadata = {
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
 export default async function CompaniesIndexPage() {
     const [companyList, feed] = await Promise.all([
         fetchCompaniesMetadata(),
-        fetchFeedIndex(false, undefined, true),
+        fetchFeedIndex(),
     ]);
 
     const opportunities = feed?.opportunities || [];

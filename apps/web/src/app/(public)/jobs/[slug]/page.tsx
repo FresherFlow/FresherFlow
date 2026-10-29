@@ -70,7 +70,7 @@ function getJobSlugs(
 /** One feed pass builds the board registry; registry slugs ∩ job slugs = ∅ asserted at build. */
 async function loadTaxonomyRegistry(): Promise<TaxonomyRegistry | null> {
     try {
-        const feed = await fetchFeedIndex(false, undefined, true);
+        const feed = await fetchFeedIndex();
         const registry = buildTaxonomyRegistry(feed?.opportunities || []);
         assertRegistryJobSlugCollision(registry, getJobSlugs(feed));
         return registry;
@@ -108,7 +108,11 @@ type Props = {
     params: Promise<{ slug: string }>;
 };
 
-// On-Demand Revalidation is used for this route via /api/revalidate
+// No timer, by design — see `lib/api/cdnFeed.ts` for the full policy.
+// Freshness arrives when the API says so: a rebuild calls /api/revalidate,
+// which marks the feed tags stale, and the next request regenerates this
+// page once. A worker sweep re-sends those tags if that call was lost.
+// A number here would make every visitor and crawler pay for a full render.
 export const revalidate = false;
 
 // dynamicParams = true: allows newly published jobs to be dynamically generated on their first visit,
@@ -120,8 +124,8 @@ export const dynamicParams = true;
 export async function generateStaticParams() {
     try {
         const [feed, govtFeed] = await Promise.all([
-            fetchFeedIndex(false, undefined, true),
-            fetchGovernmentFeed(false, undefined, true),
+            fetchFeedIndex(),
+            fetchGovernmentFeed(),
         ]);
 
         const slugs = new Set<string>();
@@ -158,7 +162,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         const registry = await loadTaxonomyRegistry();
         const resolved = registry ? resolveTaxonomySlug(registry, slugOrId) : null;
         if (resolved) {
-            const feed = await fetchFeedIndex(false, undefined, true);
+            const feed = await fetchFeedIndex();
             const liveCount = (feed?.opportunities || []).filter((opp) => matchTaxonomy(opp, resolved)).length;
             return {
                 title: boardTitle(resolved),
@@ -197,7 +201,7 @@ export default async function OpportunityDetailPage({ params }: Props) {
     const resolved = registry ? resolveTaxonomySlug(registry, slugOrId) : null;
     if (resolved) {
         // Board pages render card data only — lightweight index suffices.
-        const feed = await fetchFeedIndex(false, undefined, true);
+        const feed = await fetchFeedIndex();
         const allJobs = feed?.opportunities || [];
         const boardJobs = allJobs.filter(opp => matchTaxonomy(opp, resolved));
 
@@ -227,7 +231,7 @@ export default async function OpportunityDetailPage({ params }: Props) {
         // Parallelize opportunity details and lightweight feed index fetching
         const [oppResult, feed] = await Promise.all([
             fetchOpportunityForPage(slugOrId),
-            fetchFeedIndex(false, undefined, true)
+            fetchFeedIndex()
         ]);
 
         opportunityData = oppResult;

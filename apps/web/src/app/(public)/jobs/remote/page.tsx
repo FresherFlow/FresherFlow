@@ -6,7 +6,11 @@ import { toOpportunityCardDTO } from '@fresherflow/types';
 import type { Opportunity } from '@fresherflow/types';
 import { isRemoteOpportunity } from '@/features/jobs/utils/walkinMapUtils';
 
-// On-demand revalidation via /api/revalidate — called when jobs are published/expired.
+// No timer, by design — see `lib/api/cdnFeed.ts` for the full policy.
+// Freshness arrives when the API says so: a rebuild calls /api/revalidate,
+// which marks the feed tags stale, and the next request regenerates this
+// page once. A worker sweep re-sends those tags if that call was lost.
+// A number here would make every visitor and crawler pay for a full render.
 export const revalidate = false;
 
 const REMOTE_TITLE = 'Remote Jobs for Freshers | Work From Home Jobs';
@@ -38,7 +42,7 @@ export const metadata: Metadata = {
 
 export default async function RemotePage() {
     // Lightweight feed-index instead of full bootstrap — same card fields, ~4x lighter.
-    const feedIndexData = await fetchFeedIndex(false, undefined, true);
+    const feedIndexData = await fetchFeedIndex();
     const remoteOpps = (feedIndexData?.opportunities || []).filter((o: Opportunity) => isRemoteOpportunity(o));
     const initialData = remoteOpps.length ? {
         opportunities: remoteOpps.slice(0, FEED_PAGE_SIZE).map(toOpportunityCardDTO) as any,

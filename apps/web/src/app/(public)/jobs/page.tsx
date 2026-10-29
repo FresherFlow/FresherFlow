@@ -1,11 +1,16 @@
 import { Metadata } from 'next';
 import { Suspense } from 'react';
 import JobsPageClient from '@/features/jobs/components/JobsPageClient';
+import { Skeleton } from '@/ui/Skeleton';
 import { fetchCompaniesMetadata, fetchFeedIndex } from '@/lib/api/cdnFeed';
 import { FEED_PAGE_SIZE } from '@/lib/utils/feedPageSize';
 import { buildCompanyFollowMap } from '@/features/companies/utils/companyDirectory';
 
-// On-demand revalidation via /api/revalidate — called when jobs are published/expired.
+// No timer, by design — see `lib/api/cdnFeed.ts` for the full policy.
+// Freshness arrives when the API says so: a rebuild calls /api/revalidate,
+// which marks the feed tags stale, and the next request regenerates this
+// page once. A worker sweep re-sends those tags if that call was lost.
+// A number here would make every visitor and crawler pay for a full render.
 export const revalidate = false;
 
 export const metadata: Metadata = {
@@ -35,6 +40,44 @@ export const metadata: Metadata = {
     },
 };
 
+/**
+ * The route is statically prerendered and `JobsPageClient` reads
+ * `useSearchParams`, so the whole subtree sits behind Suspense and this
+ * fallback is what ships in the HTML. It was `null`: until the client bundle
+ * hydrated, /jobs served an empty <main>.
+ *
+ * This fallback mirrors the loaded desktop list rather than approximating it:
+ * same header height, same 832px reading column, same 64px row rhythm. The
+ * point is that hydration replaces rows in place — a differently-shaped
+ * skeleton read as the page loading twice.
+ */
+function JobsShellFallback() {
+    return (
+        <div className="w-full max-w-7xl mx-auto px-3 md:px-6" role="status" aria-label="Loading jobs">
+            <div className="flex h-[50px] items-center justify-between gap-3 border-b border-border/50">
+                <Skeleton className="h-4 w-28" />
+                <div className="flex items-center gap-2">
+                    <Skeleton className="h-8 w-24 rounded-xl" />
+                    <Skeleton className="h-8 w-20 rounded-xl" />
+                    <Skeleton className="h-8 w-24 rounded-xl" />
+                </div>
+            </div>
+            <div className="ff-reading-col mx-auto">
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                    <div key={i} className="flex items-center gap-3 border-b border-border/60 px-4 py-3">
+                        <Skeleton className="h-10 w-10 shrink-0 rounded-md" />
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                            <Skeleton className="h-3.5 w-2/5" />
+                            <Skeleton className="h-3 w-3/5" />
+                        </div>
+                        <Skeleton className="h-5 w-5 shrink-0 rounded" />
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 export default async function JobsPage() {
     // Single page of the bootstrap feed (not the whole thing): the
     // split-view detail pane renders the job description from its list item
@@ -55,7 +98,7 @@ export default async function JobsPage() {
     // CDN-cached and shared with the companies route, so this is a cache hit in
     // production.
     const [feedIndexData, companiesMetadata] = await Promise.all([
-        fetchFeedIndex(false, undefined, true),
+        fetchFeedIndex(),
         fetchCompaniesMetadata(),
     ]);
     const opportunities = feedIndexData?.opportunities || [];
@@ -68,7 +111,7 @@ export default async function JobsPage() {
     } : null;
 
     return (
-        <Suspense fallback={null}>
+        <Suspense fallback={<JobsShellFallback />}>
             <JobsPageClient initialData={initialData} companyDirectory={companyDirectory} />
         </Suspense>
     );

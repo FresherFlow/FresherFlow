@@ -176,5 +176,12 @@ export const SKILLS_METADATA_URL = `${FEED_CDN_BASE}/skills.json`;
 
 export const COMPANIES_METADATA_URL = `${FEED_CDN_BASE}/companies.json`;
 
+/**
+ * Every /companies/{slug} this platform has ever published, plus the retired
+ * slug -> replacement map. The company page reads it so a crawled URL can only
+ * ever 308 (renamed) or render (no jobs now) - never 404.
+ */
+export const COMPANY_SLUG_HISTORY_URL = `${FEED_CDN_BASE}/meta/company-slug-history.json`;
+
 export const CITIES_METADATA_URL = `${FEED_CDN_BASE}/cities.json`;
 
