@@ -2,6 +2,7 @@ import { ParsedJob } from './types.js';
 import { OpportunityCategory, EmploymentType, WorkMode, EducationLevel, SalaryPeriod } from '@fresherflow/types';
 import {
     NAV_PATTERNS, TITLE_KEYWORDS, COMMON_SKILLS, COMMON_CITIES,
+    KNOWN_COMPANIES, isPlausibleCompanyName,
 } from './heuristics.js';
 
 /**
@@ -57,15 +58,17 @@ export function parseJobTextLite(rawText: string): ParsedJob {
     }
 
     // Company
-    const companyPatterns = [
-        /(?:About|Join|At)\s+([A-Z][A-Za-z0-9\s.-]{2,30})/i,
-        /([A-Z][A-Za-z0-9\s.-]{2,30})\s+(?:is\s+a|is\s+an|makes|offers|provides|specializes)/i,
-        /Working\s+(?:at|with|for)\s+([A-Z][A-Za-z0-9\s.-]{2,30})/i,
-    ];
-    for (const pattern of companyPatterns) {
-        const m = text.match(pattern);
-        if (m?.[1]) { result.company = m[1].trim(); break; }
-    }
+    //
+    // The old pattern list started with `(?:About|Join|At)` and was matched
+    // case-insensitively, so any Telegram post containing "Join our WhatsApp
+    // group" reported the GROUP as the employer. That value was then written
+    // to the sheet, the company registry and the public listing. Extraction is
+    // now priority-ordered and every candidate has to survive
+    // `isPlausibleCompanyName`: an empty company is recoverable from the apply
+    // link, a wrong one silently poisons every downstream table.
+    // `result.title` is optional on ParsedJob; the title is only used here to
+    // reject a candidate that merely repeats it, so an absent title is ''.
+    result.company = extractCompanyFromPost(text, result.title ?? '');
 
     // Location
     const locations: string[] = [];
@@ -109,4 +112,78 @@ export function parseJobTextLite(rawText: string): ParsedJob {
     result.isFresherOnly = textLower.includes('fresher');
 
     return result;
+}
+
+/** Trailing words a greedy match leaves behind ("Acme is", "Acme and"). */
+const TRAILING_JOINERS = /\s+(?:is|are|was|were|and|or|the|a|an|we|our|you|with|for|from|has|have|will|to|at|in)$/i;
+/** Leading words that describe the post, never the employer. */
+const LEADING_NON_COMPANY = new Set([
+    'we', 'our', 'you', 'your', 'they', 'their', 'it', 'this', 'that', 'the',
+    'a', 'an', 'and', 'or', 'hiring', 'job', 'jobs', 'urgent', 'immediate',
+    'mega', 'free', 'new', 'all', 'apply', 'join', 'company', 'organization',
+    'organisation', 'employer',
+]);
+
+/**
+ * Clean a raw candidate and decide whether it can be an employer name.
+ * Returns null (not "") so callers can fall through to the next strategy.
+ */
+function cleanCompanyCandidate(raw: string | null | undefined): string | null {
+    if (!raw) return null;
+
+    // "Acme | Hyderabad" / "Acme • Chennai" carry the location after a pipe.
+    let value = raw.split(/[|•·\n]/)[0] ?? '';
+    value = value.replace(/\s*[-–—]\s*$/, '').replace(/\s+/g, ' ').trim();
+
+    const words = value.split(' ').filter(Boolean);
+    while (words.length > 0 && TRAILING_JOINERS.test(` ${words[words.length - 1]}`)) words.pop();
+    while (words.length > 0 && LEADING_NON_COMPANY.has(words[0].toLowerCase())) words.shift();
+
+    const cleaned = words.join(' ').replace(/^[^A-Za-z0-9]+/, '').replace(/[^A-Za-z0-9)]+$/, '').trim();
+    return isPlausibleCompanyName(cleaned) ? cleaned : null;
+}
+
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Priority-ordered company extraction for a channel/Telegram post.
+ *
+ *   1. an explicit label — `Company: Acme`
+ *   2. a known employer mentioned anywhere in the text
+ *   3. `<Employer> is hiring / is looking for / invites applications`
+ *   4. `<Employer> hiring …` at the start of a line
+ *   5. a title that ends in `at <Employer>`
+ *
+ * Every candidate is validated; nothing is taken from a URL, a group name or
+ * a "join the channel" line.
+ */
+function extractCompanyFromPost(text: string, title: string): string {
+    const labeled = text.match(
+        /(?:^|\n)\s*(?:company(?:\s+name)?|organization|organisation|employer|hiring\s+for)\s*[:\-–]\s*([^\n]{2,60})/i,
+    );
+    const fromLabel = cleanCompanyCandidate(labeled?.[1]);
+    if (fromLabel) return fromLabel;
+
+    for (const known of KNOWN_COMPANIES) {
+        const pattern = new RegExp(`\\b${escapeRegExp(known)}\\b`, 'i');
+        if (pattern.test(text)) return known;
+    }
+
+    const hiringSentence = text.match(
+        /(?:^|\n)\s*([A-Za-z0-9&.'()\-]+(?:\s+[A-Za-z0-9&.'()\-]+){0,4})\s+(?:is\s+)?(?:hiring|is\s+looking\s+for|is\s+seeking|invites|recruiting|walk[- ]?in)\b/i,
+    );
+    const fromSentence = cleanCompanyCandidate(hiringSentence?.[1]);
+    if (fromSentence) return fromSentence;
+
+    const titleAt = title.match(/(?:\bat|\bwith|\bfor)\s+([A-Za-z0-9&.'()\-]+(?:\s+[A-Za-z0-9&.'()\-]+){0,3})\s*$/i);
+    const fromTitle = cleanCompanyCandidate(titleAt?.[1]);
+    if (fromTitle) return fromTitle;
+
+    const titlePrefix = title.match(/^([A-Za-z0-9&.'()\-]+(?:\s+[A-Za-z0-9&.'()\-]+){0,3})\s*[-–—:|]\s+/);
+    const fromPrefix = cleanCompanyCandidate(titlePrefix?.[1]);
+    if (fromPrefix) return fromPrefix;
+
+    return '';
 }

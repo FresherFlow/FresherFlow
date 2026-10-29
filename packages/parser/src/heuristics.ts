@@ -59,6 +59,56 @@ export const KNOWN_COMPANIES = [
     'Cognizant', 'HCL', 'Capgemini', 'IBM',
 ];
 
+/**
+ * Phrases that describe how a post is distributed, not who is hiring.
+ *
+ * Telegram/WhatsApp job posts are mostly "Join our WhatsApp group", "Follow
+ * the channel", "Apply link below". A loose `Join <X>` / `At <X>` pattern
+ * reads those as the employer, and the name then reaches the sheet, the
+ * company registry and the public listing. A candidate that matches any of
+ * these is not a company.
+ */
+const NON_COMPANY_PATTERNS: RegExp[] = [
+    /\bwhats?\s*app\b/i, /\btelegram\b/i, /\binstagram\b/i, /\bfacebook\b/i,
+    /\blinkedin\b/i, /\byoutube\b/i, /\bthreads\b/i, /\bx\s*\(twitter\)/i,
+    /\bgroup\b/i, /\bchannel\b/i, /\bcommunity\b/i, /\bnewsletter\b/i,
+    /\bsubscribe\b/i, /\bfollow\b/i, /\bjoin\b/i, /\bclick\b/i,
+    /\bapply\b/i, /\bapply\s+now\b/i, /\bsend\b/i, /\bregister\b/i,
+    /\bdownload\b/i, /\bwebsite\b/i, /\blink\b/i, /\bcomment\b/i,
+    /\bshare\b/i, /\bupdates?\b/i, /\balerts?\b/i, /\bnotifications?\b/i,
+    /\bjobs?\b/i, /\bhiring\b/i, /\bcareers?\b/i, /\bfreshers?\b/i,
+    /\bstudents?\b/i, /\bcandidates?\b/i, /\bbatch\b/i, /\bwalk[- ]?in\b/i,
+    /\bdrive\b/i, /\bsalary\b/i, /\blocation\b/i, /\bcompany\b/i,
+    /\borgani[sz]ation\b/i, /\bemployer\b/i, /\bopportunit(y|ies)\b/i,
+    /\binternship\b/i, /\bvacanc(y|ies)\b/i, /\brecruitment\b/i,
+];
+
+/**
+ * Is this string usable as an employer name?
+ *
+ * Deliberately conservative: an empty company is recoverable (the verifier and
+ * the company registry derive one from the apply link), but a wrong one is not
+ * — it is copied to the sheet, creates a bogus company row and shows on the
+ * public listing.
+ */
+export function isPlausibleCompanyName(value: string | null | undefined): boolean {
+    if (!value) return false;
+
+    let candidate = String(value).replace(/\s+/g, ' ').trim();
+    candidate = candidate.replace(/^[^A-Za-z0-9]+/, '').replace(/[^A-Za-z0-9)]+$/, '').trim();
+
+    if (candidate.length < 2 || candidate.length > 60) return false;
+    if (!/[A-Za-z]/.test(candidate)) return false;
+    // Phone numbers, job ids and long numeric runs are never names.
+    if (/\d{6,}/.test(candidate)) return false;
+    // URLs, handles and emails are links, not employers.
+    if (/https?:|www\.|@|\.(?:com|in|org|net)\b/i.test(candidate)) return false;
+    // Six words is already an unusual company name; more is a sentence.
+    if (candidate.split(' ').length > 6) return false;
+
+    return !NON_COMPANY_PATTERNS.some((pattern) => pattern.test(candidate));
+}
+
 export const TITLE_KEYWORDS = [
     'Engineer', 'Developer', 'Manager', 'Designer', 'Analyst', 'Specialist',
     'Lead', 'Architect', 'Director', 'Consultant', 'Administrator', 'Scientist',

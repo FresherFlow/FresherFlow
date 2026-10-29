@@ -8,7 +8,7 @@ import { City } from '@fresherflow/constants';
 import {
     COMMON_SKILLS, COMMON_CITIES, KNOWN_COMPANIES, TITLE_KEYWORDS,
     STOP_WORDS, GENERIC_TITLES,
-    splitMergedWords, isValidSkill,
+    splitMergedWords, isValidSkill, isPlausibleCompanyName,
 } from './heuristics.js';
 import { CANONICAL_SKILLS_MAP } from './metadata.js';
 
@@ -39,7 +39,10 @@ export function extractCompany(text: string): string | undefined {
     }
     const doc = nlp(text);
     const organizations = doc.organizations().out('array') as string[];
-    return organizations.length > 0 ? organizations[0] : undefined;
+    // compromise happily labels "WhatsApp Group" or "Telegram Channel" as an
+    // organization. The same guard the channel parser uses keeps those out of
+    // the company registry and the public listing.
+    return organizations.find((name) => isPlausibleCompanyName(name));
 }
 
 // ── Opportunity classification ────────────────────────────────────────────────

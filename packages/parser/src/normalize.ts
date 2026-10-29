@@ -305,6 +305,7 @@ export function extractCompanyFromUrl(url: string | null | undefined): string | 
   try {
     const u = new URL(url);
     const host = u.hostname.toLowerCase();
+    const pathParts = u.pathname.split('/').filter(Boolean);
     if (host.includes('microsoft.com')) return 'Microsoft';
     if (host.includes('amazon.jobs') || host.includes('amazon.com')) return 'Amazon';
     if (host.includes('wipro.com')) return 'Wipro';
@@ -325,9 +326,55 @@ export function extractCompanyFromUrl(url: string | null | undefined): string | 
     if (host.includes('myworkdayjobs.com')) {
       const subdomain = host.split('.')[0];
       if (subdomain && !subdomain.startsWith('wd')) {
-        return subdomain.charAt(0).toUpperCase() + subdomain.slice(1);
+        return titleCaseSlug(subdomain);
+      }
+    }
+
+    // ATS boards whose company is the FIRST PATH SEGMENT. The domain list
+    // above only covered a dozen employers; everything else fell through and
+    // the caller stored an empty or junk company. The slug is factual — it is
+    // the tenant the listing belongs to — so it is safe to use as a name.
+    if (/(^|\.)greenhouse\.io$|(^|\.)lever\.co$|(^|\.)ashbyhq\.com$|(^|\.)recruitee\.com$|(^|\.)workable\.com$|(^|\.)breezy\.hr$|(^|\.)teamtailor\.com$|(^|\.)freshteam\.com$/.test(host)) {
+      // Path form: boards.greenhouse.io/acme/jobs/123
+      const fromPath = pathParts[0];
+      // Subdomain form: acme.recruitee.com, acme.workable.com
+      const sub = host.split('.')[0];
+      const slug = fromPath && !GENERIC_ATS_SEGMENTS.has(fromPath) ? fromPath : sub;
+      if (slug && !GENERIC_ATS_HOSTS.has(slug)) return titleCaseSlug(slug);
+      // A platform host with no tenant in the URL: the host is the platform's
+      // name, not the employer's, so do not fall through to the generic rule.
+      return undefined;
+    }
+
+    // careers.acme.com / jobs.acme.com / apply.acme.com - the employer's own
+    // site. Strip the generic labels, keep the rest as the name.
+    const labels = host.split('.').slice(0, -1);
+    if (labels.length >= 2) {
+      const nonGeneric = labels.filter((label) => !GENERIC_ATS_HOSTS.has(label));
+      if (nonGeneric.length > 0 && nonGeneric.length < labels.length) {
+        return titleCaseSlug(nonGeneric.join(' '));
       }
     }
   } catch {}
   return undefined;
+}
+
+const GENERIC_ATS_SEGMENTS = new Set(['jobs', 'job', 'careers', 'career', 'apply', 'positions', 'openings']);
+
+/** Subdomains/labels that name a platform, not an employer. */
+const GENERIC_ATS_HOSTS = new Set([
+  'www', 'careers', 'career', 'jobs', 'job', 'apply', 'boards', 'board', 'recruit',
+  'recruiting', 'ats', 'api', 'cdn', 'secure', 'my', 'portal', 'hire', 'hiring',
+  'talent', 'people', 'hr', 'work', 'app', 'static', 'assets',
+  'co', 'com', 'net', 'org', 'in',
+]);
+
+function titleCaseSlug(value: string): string {
+  return value
+    .replace(/[._-]+/g, ' ')
+    .trim()
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }

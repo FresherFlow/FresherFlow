@@ -43,6 +43,11 @@ export type { TemplateParseResult } from './template-parser.js';
 
 export { parseHtmlToMarkdown, cleanClickbait } from './html-to-markdown.js';
 
+// Shared predicate, exported so a writer can decide "is this a real employer?"
+// without re-implementing the dictionary. Package-local today, part of the
+// public surface as of the pipeline's company gate.
+export { isPlausibleCompanyName } from './heuristics.js';
+
 // metadata intentionally excluded from barrel — Node.js-only (node:fs/promises).
 // Import directly: import { ... } from '@fresherflow/parser/metadata'
 

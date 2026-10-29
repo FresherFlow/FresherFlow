@@ -1,5 +1,6 @@
 import { pool } from '../pool.js';
 import { parseJobUrl } from '@fresherflow/parser';
+import { isPlausibleCompanyName } from '@fresherflow/parser';
 import { DiscoveredJobEntry, RunStats } from '../../core/state.js';
 
 function toAtsProviderEnum(source: string): string {
@@ -80,9 +81,14 @@ export async function resolveAndAttachCompanies(
             const boardId = parsed ? parsed.company : null;
             const providerEnum = toAtsProviderEnum(providerStr);
 
-            // Determine candidate company name
+            // Determine candidate company name.
+            //
+            // A channel/Telegram parser used to hand this function values like
+            // "Join our WhatsApp group", which then became a real company row.
+            // Anything that is not a plausible employer is treated as missing
+            // and derived from the ATS board or the apply-link host instead.
             let rawName = (job.company || '').trim();
-            if (!rawName || /^company$/i.test(rawName) || /^unknown$/i.test(rawName)) {
+            if (!isPlausibleCompanyName(rawName) || /^unknown$/i.test(rawName)) {
                 if (boardId) {
                     rawName = capitalize(boardId);
                 } else {
@@ -199,6 +205,11 @@ export async function resolveAndAttachCompanies(
                 } catch {
                     // Ignore statistics upsert non-critical errors
                 }
+
+                // Write the resolved name back: the sheet push and the
+                // template enricher read `job.company`, and they ran on the
+                // raw (possibly empty or junk) value before.
+                job.company = rawName;
 
                 // Attach company_id to job
                 job.companyId = companyId;
