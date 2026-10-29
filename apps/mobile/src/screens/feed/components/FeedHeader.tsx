@@ -5,6 +5,9 @@ import { PremiumHeader } from '@/system/components/PremiumPrimitives';
 import { mScale, SPACING, SCREEN_WIDTH, RADIUS } from '@/system/constants/dimensions';
 import { AppTheme } from '@/contexts/ThemeContext';
 import { haptic } from '@/utils/haptics';
+import { useFeedStore } from '@/store/useFeedStore';
+import { formatRelativeAge } from '@/utils/formatters';
+import { FEED_CACHE_STALE_AFTER_MS } from '@/utils/cache/offlineCache';
 
 const alpha = (color: string, opacity: number) => {
     if (color.startsWith('rgba')) return color;
@@ -38,6 +41,19 @@ export const FeedHeader = memo(({
     handleTabPress, handleTabLayout, indicatorLeft, indicatorWidth,
     indicatorReady, tabListRef, insets, navigation
 }: FeedHeaderProps) => {
+    const feedBuiltAt = useFeedStore((s) => s.feedBuiltAt);
+    const feedCachedAt = useFeedStore((s) => s.feedCachedAt);
+
+    // Age of the DATA, not of the sync. A snapshot built at 03:00 that the
+    // device synced at 10:00 is still three hours old — showing "just now"
+    // would tell the user a stale feed is fresh.
+    const dataTimestamp = feedBuiltAt ?? feedCachedAt;
+    const dataAge = formatRelativeAge(dataTimestamp);
+    const isStale = dataTimestamp !== null && Date.now() - dataTimestamp > FEED_CACHE_STALE_AFTER_MS;
+    const freshnessLabel = dataAge
+        ? (isStale ? `Showing jobs updated ${dataAge}` : `Jobs updated ${dataAge}`)
+        : null;
+
     return (
         <View style={{ backgroundColor: currentTheme.colors.background }}>
             <View style={{ paddingTop: insets.top + 30 }}>
@@ -161,6 +177,20 @@ export const FeedHeader = memo(({
                         />
                     </ScrollView>
                 </View>
+
+                {freshnessLabel ? (
+                    <View style={styles.freshnessRow}>
+                        <Text
+                            style={[
+                                styles.freshnessText,
+                                { color: isStale ? currentTheme.colors.warning : currentTheme.colors.textMuted },
+                            ]}
+                            numberOfLines={1}
+                        >
+                            {freshnessLabel}
+                        </Text>
+                    </View>
+                ) : null}
             </View>
         </View>
     );
@@ -235,5 +265,14 @@ const styles = StyleSheet.create({
         fontSize: mScale(14),
         fontWeight: '800',
         letterSpacing: 0.5,
+    },
+    freshnessRow: {
+        paddingHorizontal: SPACING.lg,
+        paddingBottom: SPACING.sm,
+    },
+    freshnessText: {
+        fontSize: mScale(11),
+        fontWeight: '700',
+        letterSpacing: 0.3,
     },
 });

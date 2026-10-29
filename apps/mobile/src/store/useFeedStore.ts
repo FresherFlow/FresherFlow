@@ -1,11 +1,20 @@
 import { create } from 'zustand';
 import { Opportunity, ActionType } from '@fresherflow/types';
 import { useNotificationStore } from './useNotificationStore';
-import { saveLastSyncTimestamp, readTrackerCacheSync, readFeedCacheSync } from '@/utils/cache/offlineCache';
+import {
+    saveLastSyncTimestamp,
+    saveFeedBuiltAt,
+    getLastSyncKey,
+    getLastSyncTimestampSync,
+    getFeedBuiltAtSync,
+    getFeedCacheTimestamp,
+    readTrackerCacheSync,
+    readFeedCacheSync,
+} from '@/utils/cache/offlineCache';
 import { diffAndNotify } from '@/utils/cache/localNotifications';
 import { getLocalProfile } from '@/utils/cache/localProfile';
 import { useSectorStore } from './useSectorStore';
-import { getString, setString } from '@/utils/storage';
+import { getString } from '@/utils/storage';
 import { getSeenIds, getOpenedIds, getSeenIdsSync, getOpenedIdsSync, markJobAsOpened, markJobAsSeen } from '@/utils/cache/seenJobs';
 import { getRecentSearchKeywords } from '@/utils/userBehavior';
 import { useAuthStore } from './useAuthStore';
@@ -24,6 +33,18 @@ interface FeedStoreState {
     isRefreshing: boolean;
     syncError: string | null;
     hasHydrated: boolean;
+    /**
+     * Epoch ms at which this device last completed a feed sync.
+     * Device clock — not the build time of the feed snapshot.
+     */
+    lastSyncedAt: number | null;
+    /**
+     * Epoch ms at which the cached CDN snapshot was built upstream.
+     * `null` when the payload did not carry a build time.
+     */
+    feedBuiltAt: number | null;
+    /** Epoch ms at which the feed cache was written to MMKV. */
+    feedCachedAt: number | null;
 
     cleanupOrphanedLogos: () => Promise<void>;
     hydrate: () => Promise<void>;
@@ -70,6 +91,9 @@ const getInitialFeedState = () => {
             recentKeywords: keywords,
             isBootstrapping: activeItems.length === 0,
             hasHydrated: true,
+            lastSyncedAt: getLastSyncTimestampSync(storedSector === 'GOVERNMENT' ? 'GOVERNMENT' : 'PRIVATE'),
+            feedBuiltAt: getFeedBuiltAtSync(storedSector === 'GOVERNMENT' ? 'GOVERNMENT' : 'PRIVATE'),
+            feedCachedAt: getFeedCacheTimestamp(storedSector === 'GOVERNMENT' ? 'GOVERNMENT' : 'PRIVATE'),
         };
     } catch (e) {
         return {
@@ -82,6 +106,9 @@ const getInitialFeedState = () => {
             recentKeywords: [],
             isBootstrapping: true,
             hasHydrated: false,
+            lastSyncedAt: null,
+            feedBuiltAt: null,
+            feedCachedAt: null,
         };
     }
 };
@@ -164,7 +191,7 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
         if (isSyncing) return; // Prevent concurrent syncs
 
         const activeSector = useSectorStore.getState().sector || 'PRIVATE';
-        const lastSyncKey = `fresherflow_last_sync_timestamp_${activeSector.toLowerCase()}`;
+        const lastSyncKey = getLastSyncKey(activeSector);
         const lastSyncStr = getString(lastSyncKey);
         const lastSync = lastSyncStr ? parseInt(lastSyncStr, 10) : 0;
         const now = Date.now();
@@ -209,8 +236,18 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
                     });
                 }
 
-                await saveLastSyncTimestamp((feedData.timestamp || now).toString());
-                setString(lastSyncKey, now.toString());
+                // Two different clocks, kept apart on purpose:
+                //  - `now` is when THIS DEVICE synced. It answers "is my cache fresh".
+                //  - `feedData.builtAt` is when the CDN snapshot was produced. It
+                //    answers "how old is the data itself". Showing the build time
+                //    as the sync time tells a user their 03:00 feed synced at 10:00.
+                await saveLastSyncTimestamp(now.toString(), activeSector);
+                set({ lastSyncedAt: now, feedCachedAt: Date.now() });
+
+                if (feedData.builtAt) {
+                    await saveFeedBuiltAt(feedData.builtAt, activeSector);
+                    set({ feedBuiltAt: feedData.builtAt });
+                }
             }
         } catch (e) {
             const errMsg = (e as Error).message;

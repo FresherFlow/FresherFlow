@@ -187,3 +187,72 @@ export function generateVersionedCdnSignature(
     const sig = hmacSHA256(message, secret);
     return { v: version, sig };
 }
+
+/**
+ * The pathname a CDN request will actually use.
+ *
+ * The edge Worker recomputes the HMAC over `new URL(request.url).pathname`,
+ * so the client has to sign exactly that string. `/bootstrap-feed.min.json`
+ * and `/feeds/bootstrap-feed.min.json` are different messages and therefore
+ * produce different signatures — signing a hand-written constant that the
+ * request does not use yields a signature the edge can never verify.
+ */
+export const getCdnPathname = (url: string): string => {
+    try {
+        return new URL(url).pathname;
+    } catch {
+        // Relative or malformed input: fall back to a root-relative path.
+        return url.startsWith('/') ? url : `/${url}`;
+    }
+};
+
+export interface SignedCdnUrl {
+    /** The URL to request, including any signature query parameters. */
+    url: string;
+    /** The pathname that was signed. */
+    pathname: string;
+    /** Which validation token was attached to the request. */
+    mode: 'v' | 't' | 'none';
+}
+
+/**
+ * Builds the URL to request for a CDN document, signing the path the request
+ * will actually use.
+ *
+ * `version` selects the stable mode (`?v=`): the edge recomputes the HMAC
+ * over the version we send, so the signature stays valid as long as that
+ * version is current. Without a version the legacy timestamp mode (`?t=`) is
+ * used, which the edge only accepts inside a five minute window.
+ */
+export function buildSignedCdnUrl(url: string, options: { version?: string } = {}): SignedCdnUrl {
+    const pathname = getCdnPathname(url);
+    const separator = url.includes('?') ? '&' : '?';
+
+    // No signing secret is baked into this build. The feed objects the app
+    // reads are served publicly by the CDN (the edge shields a different set
+    // of paths), so request them unsigned instead of failing the whole sync.
+    // Set CDN_SIGNATURE_SECRET in the EAS build environment and reference it
+    // from app.config.js to turn signing back on.
+    if (!getCdnSecret()) {
+        if (__DEV__) {
+            console.warn('[cdnSignature] No CDN signature secret configured; requesting unsigned:', pathname);
+        }
+        return { url, pathname, mode: 'none' };
+    }
+
+    if (options.version) {
+        const { v, sig } = generateVersionedCdnSignature(pathname, options.version);
+        return {
+            url: `${url}${separator}v=${encodeURIComponent(v)}&sig=${encodeURIComponent(sig)}`,
+            pathname,
+            mode: 'v',
+        };
+    }
+
+    const { t, sig } = generateCdnSignature(pathname);
+    return {
+        url: `${url}${separator}t=${t}&sig=${encodeURIComponent(sig)}`,
+        pathname,
+        mode: 't',
+    };
+}

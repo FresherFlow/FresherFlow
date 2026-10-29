@@ -81,6 +81,12 @@ module.exports = ({ config }) => {
       ...(config.extra || {}),
       appEnv: appEnv,
       firebaseRtdbUrl: process.env.EXPO_PUBLIC_FIREBASE_RTDB_URL || '',
+      // CDN signature secret. Baked into the binary at build time on purpose:
+      // an EXPO_PUBLIC_ variable would be inlined into the JS bundle and
+      // trivially extractable. Set CDN_SIGNATURE_SECRET in the EAS build
+      // environment. Without it the app requests the public CDN feed
+      // unsigned (see src/utils/cdnSignature.ts).
+      cdnSignatureSecret: process.env.CDN_SIGNATURE_SECRET || '',
     },
   };
 

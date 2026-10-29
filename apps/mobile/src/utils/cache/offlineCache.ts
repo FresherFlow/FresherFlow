@@ -14,18 +14,67 @@ const getALERTS_CACHE_KEY = () => getSectorKey('fresherflow_alerts_cache', getAc
 const getDETAIL_CACHE_PREFIX = () => getSectorKey('fresherflow_detail_cache_', getActiveSector());
 const getCOMPANY_JOBS_CACHE_PREFIX = () => getSectorKey('fresherflow_company_jobs_cache_', getActiveSector());
 const getLAST_SYNC_KEY = () => getSectorKey('fresherflow_last_sync_timestamp', getActiveSector());
+const getFEED_BUILT_AT_KEY = () => getSectorKey('fresherflow_feed_built_at', getActiveSector());
 const getTRACKER_CACHE_KEY = () => getSectorKey('fresherflow_tracker_cache', getActiveSector());
 const getCONTRIBUTIONS_CACHE_KEY = () => getSectorKey('fresherflow_contributions_cache', getActiveSector());
 const getINVITES_CACHE_KEY = () => getSectorKey('fresherflow_invites_cache', getActiveSector());
 const getREPORTED_JOBS_KEY = () => getSectorKey('fresherflow_reported_jobs', getActiveSector());
 const getSIMILAR_CACHE_PREFIX = () => getSectorKey('fresherflow_similar_cache_', getActiveSector());
 
-export const saveLastSyncTimestamp = async (timestamp: string) => {
-    setString(getLAST_SYNC_KEY(), timestamp);
+/**
+ * A cached feed older than this is reported as stale in the UI.
+ *
+ * The cache itself has no maximum age on purpose: the app has to stay
+ * useful without a network. Staleness is surfaced, never hidden.
+ */
+export const FEED_CACHE_STALE_AFTER_MS = 6 * 60 * 60 * 1000;
+
+/** Key holding the time the device last completed a feed sync. */
+export const getLastSyncKey = (sector?: JobSector) =>
+    getSectorKey('fresherflow_last_sync_timestamp', sector || getActiveSector());
+
+/** Key holding the build time of the feed snapshot currently cached. */
+export const getFeedBuiltAtKey = (sector?: JobSector) =>
+    getSectorKey('fresherflow_feed_built_at', sector || getActiveSector());
+
+/**
+ * Records the moment the device finished syncing the feed.
+ *
+ * This is the device clock at sync time — NOT the build time of the CDN
+ * snapshot. The two answer different questions and are stored separately.
+ */
+export const saveLastSyncTimestamp = async (timestamp: string, sector?: JobSector) => {
+    setString(getLastSyncKey(sector), timestamp);
 };
 
 export const getLastSyncTimestamp = async (): Promise<string | null> => {
     return getString(getLAST_SYNC_KEY());
+};
+
+/** Synchronous read of the last sync time, for store hydration. */
+export const getLastSyncTimestampSync = (sector?: JobSector): number | null => {
+    const raw = getString(getLastSyncKey(sector));
+    if (!raw) return null;
+    const parsed = parseInt(raw, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
+/**
+ * Records the build time of the CDN snapshot that was just downloaded.
+ *
+ * This is the feed's own `timestamp` field — the moment the snapshot was
+ * produced upstream, which can be hours before the device synced it.
+ */
+export const saveFeedBuiltAt = async (builtAt: number, sector?: JobSector) => {
+    setString(getFeedBuiltAtKey(sector), builtAt.toString());
+};
+
+/** Synchronous read of the cached feed's build time, for store hydration. */
+export const getFeedBuiltAtSync = (sector?: JobSector): number | null => {
+    const raw = getString(getFeedBuiltAtKey(sector));
+    if (!raw) return null;
+    const parsed = parseInt(raw, 10);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
 /**
@@ -102,6 +151,34 @@ export const readFeedCacheSync = (sector?: JobSector): { items: Opportunity[], t
         items,
         timestamp: index.timestamp
     };
+};
+
+/**
+ * Timestamp of the cached feed index — the moment the device wrote the feed
+ * to MMKV. Reads a single key, so it is cheap enough for render paths.
+ */
+export const getFeedCacheTimestamp = (sector?: JobSector): number | null => {
+    const index = getJSON<FeedIndex>(getFEED_INDEX_KEY(sector || getActiveSector()));
+    return index?.timestamp ?? null;
+};
+
+/**
+ * Age of the cached feed in ms, or `null` when nothing is cached.
+ *
+ * The feed cache has no maximum age: the app must stay useful without a
+ * network. Callers surface this age so an old feed is never presented as if
+ * it were live.
+ */
+export const getFeedCacheAge = (sector?: JobSector): number | null => {
+    const timestamp = getFeedCacheTimestamp(sector);
+    if (!timestamp) return null;
+    return Math.max(0, Date.now() - timestamp);
+};
+
+/** True when the cached feed is older than {@link FEED_CACHE_STALE_AFTER_MS}. */
+export const isFeedCacheStale = (sector?: JobSector): boolean => {
+    const age = getFeedCacheAge(sector);
+    return age !== null && age > FEED_CACHE_STALE_AFTER_MS;
 };
 
 export const saveSharesCache = async (shares: unknown[], resources: unknown[], stats: unknown) => {

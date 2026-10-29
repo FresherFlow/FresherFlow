@@ -2,12 +2,9 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Opportunity, WorkMode, Profile, ActionType } from '@fresherflow/types';
 import { FeedType, isGovernmentOpportunity, matchesFeedType } from '@/utils/taxonomy';
-import { readFeedCache, saveFeedCache, saveLastSyncTimestamp, readTrackerCacheSync, readFeedCacheSync } from '@/utils/cache/offlineCache';
-import { generateCdnSignature } from '@/utils/cdnSignature';
+import { readTrackerCacheSync, readFeedCacheSync } from '@/utils/cache/offlineCache';
 import debounce from 'lodash.debounce';
 import Fuse from 'fuse.js';
-import axios from 'axios';
-import { BOOTSTRAP_FEED_URL, GOVERNMENT_FEED_URL } from '@/config/api';
 import { normalizeQuery } from '@/utils/text';
 import { useUIStore } from '@/store/useUIStore';
 import { useSectorStore } from '@/store/useSectorStore';
@@ -138,21 +135,12 @@ export function useExplore() {
         } else {
             setIsBootstrapping(true);
             try {
-                const path = sector === 'GOVERNMENT' ? '/government-feed.json' : '/bootstrap-feed.min.json';
-                const url = sector === 'GOVERNMENT' ? GOVERNMENT_FEED_URL : BOOTSTRAP_FEED_URL;
-                // Generate secure signatures to bypass Cloudflare Worker block
-                const sigParams = generateCdnSignature(path);
-                const signedUrl = `${url}?t=${sigParams.t}&sig=${sigParams.sig}`;
-
-                // If cache is empty, bootstrap directly from CDN
-                const response = await axios.get(signedUrl, { 
-                    timeout: 4000
-                });
-                if (response.data?.opportunities) {
-                    const ops = response.data.opportunities as Opportunity[];
-                    setCachedItems(ops);
-                    await saveFeedCache(ops, sector || undefined);
-                }
+                // The CDN feed is only ever downloaded by the sync module.
+                // `performSync` fetches it, scores it and writes it to MMKV —
+                // this hook must not build its own feed URL.
+                await useFeedStore.getState().performSync(true);
+                const synced = readFeedCacheSync(sector || undefined);
+                setCachedItems(synced?.items || []);
             } catch (e) {
                 if (__DEV__) { console.warn('[useExplore] Cache hydration failed:', (e as Error).message) }
             } finally {
@@ -177,25 +165,18 @@ export function useExplore() {
             loadAppliedIds();
             loadRecentKeywords();
 
-            const path = sector === 'GOVERNMENT' ? '/government-feed.json' : '/bootstrap-feed.min.json';
-            const url = sector === 'GOVERNMENT' ? GOVERNMENT_FEED_URL : BOOTSTRAP_FEED_URL;
-            const sigParams = generateCdnSignature(path);
-            const signedUrl = `${url}?t=${sigParams.t}&sig=${sigParams.sig}`;
+            // Refresh goes through the feed store so the CDN feed is signed,
+            // cached in MMKV and reflected in the shared store — exactly like
+            // the app-start sync.
+            await useFeedStore.getState().performSync(true, true);
 
-            const response = await axios.get(signedUrl, { 
-                timeout: 5000,
-                headers: {
-                    'Cache-Control': 'no-cache',
-                    'Pragma': 'no-cache'
-                }
-            });
-
-            if (response.data?.opportunities) {
-                const opportunities = response.data.opportunities as Opportunity[];
-                setCachedItems(opportunities);
-                await saveFeedCache(opportunities, sector || undefined);
-                await saveLastSyncTimestamp(response.data.timestamp || Date.now());
+            const synced = readFeedCacheSync(sector || undefined);
+            if (synced?.items.length) {
+                setCachedItems(synced.items);
             }
+
+            const storeError = useFeedStore.getState().syncError;
+            if (storeError) setSyncError(storeError);
         } catch (e) {
             const errMsg = (e as Error).message;
             if (__DEV__) { console.warn('[useExplore] CDN static sync failed:', errMsg) }

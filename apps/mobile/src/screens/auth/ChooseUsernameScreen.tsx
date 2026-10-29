@@ -27,7 +27,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import axios from 'axios';
 import { TAKEN_USERNAMES_URL } from '@/config/api';
-import { generateCdnSignature } from '@/utils/cdnSignature';
+import { buildSignedCdnUrl } from '@/utils/cdnSignature';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChooseUsername' | 'ProfileChooseUsername'>;
 
@@ -80,8 +80,9 @@ export const ChooseUsernameScreen: React.FC<Props & { isOnboarding?: boolean }> 
     useEffect(() => {
         const loadTakenUsernames = async () => {
             try {
-                const signatureParams = generateCdnSignature('/taken-usernames.min.json');
-                const signedUrl = `${TAKEN_USERNAMES_URL}?t=${signatureParams.t}&sig=${signatureParams.sig}`;
+                // Sign the path the request actually uses (/meta/taken-usernames.min.json),
+                // not a hand-written root path the CDN does not serve.
+                const signedUrl = buildSignedCdnUrl(TAKEN_USERNAMES_URL).url;
                 const res = await axios.get(signedUrl, { 
                     timeout: 4000
                 });

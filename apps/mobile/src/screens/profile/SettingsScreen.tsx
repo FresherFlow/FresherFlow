@@ -54,6 +54,7 @@ import { useUI } from '@/contexts/UIContext';
 import { getDisplayHandle } from '@fresherflow/utils';
 import { ShareAppBottomSheet } from '@/system/components/ShareAppBottomSheet';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
+import { formatRelativeAge } from '@/utils/formatters';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProfileMain'>;
 
@@ -100,6 +101,8 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const isFocused = useIsFocused();
   
   const cachedItems = useFeedStore(s => s.cachedItems);
+  const lastSyncedAt = useFeedStore(s => s.lastSyncedAt);
+  const feedBuiltAt = useFeedStore(s => s.feedBuiltAt);
   const uniqueCompanies = React.useMemo(() => {
      if (!cachedItems || cachedItems.length === 0) return 0;
      const set = new Set<string>();
@@ -111,6 +114,15 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
   const jobsStr = cachedItems?.length > 0 ? cachedItems.length.toString() : '- -';
   const compStr = uniqueCompanies > 0 ? uniqueCompanies.toString() : '- -';
+
+  // Two different facts, deliberately shown apart:
+  //  - when the CDN snapshot behind the cache was built
+  //  - when this device last synced it
+  const feedBuiltLabel = formatRelativeAge(feedBuiltAt);
+  const lastSyncedLabel = formatRelativeAge(lastSyncedAt);
+  const feedSyncLabel = feedBuiltLabel
+      ? `Feed built ${feedBuiltLabel} · Last synced ${lastSyncedLabel ?? 'never'}`
+      : (lastSyncedLabel ? `Last synced ${lastSyncedLabel}` : null);
 
   useEffect(() => {
     if (isFocused && user && !user.isAnonymous) {
@@ -385,6 +397,19 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                           </Text>
                       </View>
                   </SurfaceCard>
+
+                  {feedSyncLabel ? (
+                      <Text style={{
+                          fontSize: 12,
+                          fontWeight: '700',
+                          color: currentTheme.colors.textMuted,
+                          textAlign: 'center',
+                          letterSpacing: 0.3,
+                          marginTop: 10,
+                      }}>
+                          {feedSyncLabel}
+                      </Text>
+                  ) : null}
 
                   {/* Community Impact Card */}
                   <SurfaceCard style={{ marginTop: 24, marginBottom: 24, padding: 24, alignItems: 'center', justifyContent: 'center' }}>

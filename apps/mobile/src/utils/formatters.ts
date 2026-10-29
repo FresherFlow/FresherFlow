@@ -2,6 +2,35 @@ import { Opportunity, SalaryPeriod } from '@fresherflow/types';
 import { isInternshipOpportunity } from '@/utils/taxonomy';
 
 /**
+ * Formats how long ago a timestamp was, in the compact form the app uses
+ * for freshness labels ("just now", "12m ago", "3h ago", "2d ago").
+ *
+ * Returns `null` when there is no usable timestamp, so callers can decide
+ * what to show instead of rendering a misleading "just now".
+ */
+export const formatRelativeAge = (timestampMs: number | null | undefined, now: number = Date.now()): string | null => {
+    if (!timestampMs || timestampMs <= 0) return null;
+
+    const diffMs = now - timestampMs;
+    // Device clock moved backwards: report it as current rather than negative.
+    if (diffMs < 0) return 'just now';
+
+    const seconds = Math.floor(diffMs / 1000);
+    if (seconds < 60) return 'just now';
+
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+
+    return new Date(timestampMs).toLocaleDateString();
+};
+
+/**
  * Formats salary or stipend based on period and available values.
  * Standardizes output to include "LPA" for yearly and "/month" for monthly.
  */

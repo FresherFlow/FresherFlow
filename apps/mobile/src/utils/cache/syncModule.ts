@@ -1,7 +1,7 @@
 import { Opportunity, Profile } from '@fresherflow/types';
 import axios from 'axios';
 import { BOOTSTRAP_FEED_URL, FEED_VERSION_URL, GOVERNMENT_FEED_URL } from '@/config/api';
-import { generateCdnSignature, generateVersionedCdnSignature } from '@/utils/cdnSignature';
+import { buildSignedCdnUrl } from '@/utils/cdnSignature';
 import { calculateOpportunityMatch } from '@fresherflow/utils';
 import { saveFeedCache } from '@/utils/cache/offlineCache';
 import { getString, setString, storage } from '@/utils/storage';
@@ -14,6 +14,89 @@ import { storage as coreStorage } from '@fresherflow/frontend-core';
 const fsWithDir = FileSystem as any;
 
 const RESOLVED_IDS_KEY = 'ff_logo_resolved_ids_v1';
+
+/** A feed document downloaded from the CDN. */
+export interface FetchedFeed {
+    opportunities: Opportunity[];
+    /**
+     * Epoch ms at which the CDN snapshot was built (the feed's own
+     * `timestamp` field). `null` when the payload did not carry one — the
+     * build time is then unknown and must not be guessed at.
+     */
+    builtAt: number | null;
+    /** Feed version the request was signed with, when one was available. */
+    version: string | null;
+}
+
+/** How long a resolved feed version is reused before it is fetched again. */
+const FEED_VERSION_TTL_MS = 60 * 1000;
+
+let cachedFeedVersion: { version: string; fetchedAt: number } | null = null;
+let inFlightVersionRequest: Promise<string | null> | null = null;
+
+/**
+ * Resolves the current feed version used to sign CDN feed requests.
+ *
+ * The version doubles as the cache-busting token of the signed URL, so it is
+ * memoised for a minute to avoid one extra request per feed document.
+ */
+const resolveFeedVersion = async (): Promise<string | null> => {
+    const now = Date.now();
+    if (cachedFeedVersion && now - cachedFeedVersion.fetchedAt < FEED_VERSION_TTL_MS) {
+        return cachedFeedVersion.version;
+    }
+    if (inFlightVersionRequest) return inFlightVersionRequest;
+
+    const request = (async (): Promise<string | null> => {
+        try {
+            const versionRes = await axios.get(FEED_VERSION_URL, {
+                timeout: 3000,
+                headers: { 'Cache-Control': 'no-cache' }
+            });
+            const version = typeof versionRes.data?.version === 'string' ? versionRes.data.version : null;
+            if (version) {
+                cachedFeedVersion = { version, fetchedAt: Date.now() };
+            }
+            return version;
+        } catch (e) {
+            if (__DEV__) console.warn('[mobile] Failed to fetch feed version:', e);
+            return null;
+        } finally {
+            inFlightVersionRequest = null;
+        }
+    })();
+
+    inFlightVersionRequest = request;
+    return request;
+};
+
+/**
+ * Downloads a single CDN feed document and signs the path the request
+ * actually uses.
+ */
+const fetchFeedDocumentInternal = async (url: string): Promise<FetchedFeed | null> => {
+    const resolvedVersion = await resolveFeedVersion();
+    // The edge recomputes the HMAC over the version we send, so any stable
+    // token is acceptable. When the version endpoint is unreachable, fall
+    // back to a coarse time bucket instead of the legacy `t=` mode, whose
+    // five minute window would expire mid-request on a slow connection.
+    const version = resolvedVersion ?? Math.floor(Date.now() / 300000).toString();
+    const signed = buildSignedCdnUrl(url, { version });
+
+    const response = await axios.get(signed.url, {
+        timeout: 5000,
+        headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+    });
+
+    if (!response.data?.opportunities) return null;
+
+    const rawTimestamp = response.data.timestamp;
+    return {
+        opportunities: response.data.opportunities as Opportunity[],
+        builtAt: typeof rawTimestamp === 'number' && rawTimestamp > 0 ? rawTimestamp : null,
+        version,
+    };
+};
 
 const _loadResolvedIds = (): Set<string> => {
     try {
@@ -82,49 +165,38 @@ export const getLogoCacheKey = (opp: Opportunity): string => {
 };
 
 export const OfflineSyncModule = {
-    async fetchRawFeed(sector: 'PRIVATE' | 'GOVERNMENT'): Promise<{ opportunities: Opportunity[], timestamp: number } | null> {
+    async fetchRawFeed(sector: 'PRIVATE' | 'GOVERNMENT'): Promise<FetchedFeed | null> {
         try {
             const isGovt = sector === 'GOVERNMENT';
-            let feedVersion = '';
-            
-            try {
-                const versionRes = await axios.get(FEED_VERSION_URL, {
-                    timeout: 3000,
-                    headers: { 'Cache-Control': 'no-cache' }
-                });
-                if (versionRes.data?.version) feedVersion = versionRes.data.version;
-            } catch (e) {
-                if (__DEV__) console.warn('[mobile] Failed to fetch feed version, using timestamp:', e);
-                feedVersion = Math.floor(Date.now() / 300000).toString();
-            }
-
-            const signaturePath = isGovt ? '/government-feed.json' : '/bootstrap-feed.min.json';
-            const signatureParams = feedVersion
-                ? generateVersionedCdnSignature(signaturePath, feedVersion)
-                : generateCdnSignature(signaturePath);
-                
             const baseUrl = isGovt ? GOVERNMENT_FEED_URL : BOOTSTRAP_FEED_URL;
-            const signedUrl = 'v' in signatureParams
-                ? `${baseUrl}?v=${signatureParams.v}&sig=${signatureParams.sig}`
-                : `${baseUrl}?t=${signatureParams.t}&sig=${signatureParams.sig}`;
 
-            const response = await axios.get(signedUrl, {
-                timeout: 5000,
-                headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
-            });
+            const feed = await fetchFeedDocumentInternal(baseUrl);
 
-            if (response.data?.opportunities) {
-                return {
-                    opportunities: response.data.opportunities as Opportunity[],
-                    timestamp: response.data.timestamp || Date.now()
-                };
-            }
+            if (feed) return feed;
         } catch (e) {
             const errMsg = (e as Error).message;
             if (__DEV__) console.warn('[OfflineSyncModule] Feed fetch failed:', errMsg);
             throw e;
         }
         return null;
+    },
+
+    /**
+     * Downloads a CDN feed document that is not the main sector feed (for
+     * example the expired feed).
+     *
+     * The CDN is only ever read from here: callers must not build their own
+     * feed URLs, because a URL whose path does not match the signed path is
+     * rejected by the edge.
+     */
+    async fetchFeedDocument(url: string): Promise<FetchedFeed | null> {
+        try {
+            return await fetchFeedDocumentInternal(url);
+        } catch (e) {
+            const errMsg = (e as Error).message;
+            if (__DEV__) console.warn('[OfflineSyncModule] Feed document fetch failed:', errMsg);
+            throw e;
+        }
     },
 
     async scoreAndCacheFeed(opportunities: Opportunity[], profile: Profile | null, sector: 'PRIVATE' | 'GOVERNMENT'): Promise<Opportunity[]> {

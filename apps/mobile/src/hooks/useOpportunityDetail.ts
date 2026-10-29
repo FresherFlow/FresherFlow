@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState, useRef } from 'react';
 import { Share } from 'react-native';
 import { openExternalURL } from '@/utils/browser';
 import { formatOpportunityShareText } from '@/utils/shareTargets';
-import axios from 'axios';
 import { Opportunity, ActionType, FeedbackReason } from '@fresherflow/types';
 import { getFeedBadgeLabel } from '@/utils/taxonomy';
 import { /* opportunityClicksApi, */ actionsApi, feedbackApi, opportunitiesApi } from '@fresherflow/api-client';
@@ -13,8 +12,11 @@ import { useTracker } from '@/hooks/useTracker';
 import { readDetailCache, saveDetailCache, readSimilarCache, saveSimilarCache, readFeedCache, isJobReportedLocally, saveReportedJobLocally } from '@/utils/cache/offlineCache';
 import { markJobAsSeen, isJobOpened, markJobAsOpened } from '@/utils/cache/seenJobs';
 import { getLocalProfile } from '@/utils/cache/localProfile';
-import { generateCdnSignature } from '@/utils/cdnSignature';
-import { BOOTSTRAP_FEED_URL, EXPIRED_FEED_URL } from '@/config/api';
+import { EXPIRED_FEED_URL } from '@/config/api';
+import { OfflineSyncModule } from '@/utils/cache/syncModule';
+import { useSectorStore } from '@/store/useSectorStore';
+import { useFeedStore } from '@/store/useFeedStore';
+import type { JobSector } from '@/utils/storage/scopedKeys';
 import { calculateOpportunityMatch } from '@fresherflow/utils';
 import { MOBILE_SITE_URL } from '@/utils/runtime';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -89,55 +91,54 @@ export const useOpportunityDetail = (
             try {
                 let foundOpportunity: Opportunity | null = null;
 
+                const findInFeed = (items: Opportunity[]): Opportunity | null =>
+                    items.find((opp: Opportunity) => opp.id === opportunityId || opp.slug === opportunityId) || null;
+
+                const findInCachedFeeds = async (): Promise<Opportunity | null> => {
+                    const activeSector: JobSector = useSectorStore.getState().sector || 'PRIVATE';
+                    const otherSector: JobSector = activeSector === 'PRIVATE' ? 'GOVERNMENT' : 'PRIVATE';
+                    for (const sector of [activeSector, otherSector]) {
+                        const feedCache = await readFeedCache(sector);
+                        if (feedCache && feedCache.items.length > 0) {
+                            const match = findInFeed(feedCache.items);
+                            if (match) return match;
+                        }
+                    }
+                    return null;
+                };
 
                 // 2. Fallback: Try resolving from local offline feed cache
                 if (!foundOpportunity) {
-                    const feedCache = await readFeedCache();
-                    if (feedCache && feedCache.items.length > 0) {
-                        foundOpportunity = feedCache.items.find(
-                            (opp: Opportunity) => opp.id === opportunityId || opp.slug === opportunityId
-                        ) || null;
-                    }
+                    foundOpportunity = await findInCachedFeeds();
                 }
 
-                // 3. Fallback: Fetch signed master bootstrap feed from CDN Pop
+                // 3. Fallback: refresh the cached feed through the sync module and
+                //    look again. The CDN feed is only ever downloaded by the sync
+                //    module — this hook must not fetch the bootstrap feed itself.
+                //    Offline, the sync fails and the cached feed above is used.
                 if (!foundOpportunity) {
                     try {
-                        const signatureParams = generateCdnSignature('/bootstrap-feed.min.json');
-                        const signedUrl = `${BOOTSTRAP_FEED_URL}?t=${signatureParams.t}&sig=${signatureParams.sig}`;
-                        const response = await axios.get(signedUrl, { 
-                             timeout: 5000
-                        });
-
-                        if (response.data?.opportunities) {
-                            const ops = response.data.opportunities as Opportunity[];
-                            foundOpportunity = ops.find(
-                                (opp: Opportunity) => opp.id === opportunityId || opp.slug === opportunityId
-                            ) || null;
+                        await useFeedStore.getState().performSync(true);
+                        if (!cancelled) {
+                            foundOpportunity = await findInCachedFeeds();
                         }
-                    } catch (cdnErr) {
-                        console.warn('[useOpportunityDetail] CDN fallback failed:', cdnErr);
+                    } catch (syncErr) {
+                        if (__DEV__) { console.warn('[useOpportunityDetail] Feed sync failed:', (syncErr as Error).message) }
                     }
                 }
 
-                // 3.5. Fallback: Fetch expired feed if missed from main feed
+                // 3.5. Fallback: expired jobs live in a separate CDN feed document.
+                //      It goes through the sync module too, so the request is
+                //      signed with the path it actually uses.
                 if (!foundOpportunity) {
                     try {
                         if (!cancelled) setCheckingExpired(true);
-                        const signatureParams = generateCdnSignature('/expired-feed.min.json');
-                        const signedUrl = `${EXPIRED_FEED_URL}?t=${signatureParams.t}&sig=${signatureParams.sig}`;
-                        const response = await axios.get(signedUrl, { 
-                             timeout: 5000
-                        });
-
-                        if (response.data?.opportunities) {
-                            const ops = response.data.opportunities as Opportunity[];
-                            foundOpportunity = ops.find(
-                                (opp: Opportunity) => opp.id === opportunityId || opp.slug === opportunityId
-                            ) || null;
+                        const expiredFeed = await OfflineSyncModule.fetchFeedDocument(EXPIRED_FEED_URL);
+                        if (expiredFeed) {
+                            foundOpportunity = findInFeed(expiredFeed.opportunities);
                         }
                     } catch (cdnErr) {
-                        console.warn('[useOpportunityDetail] Expired CDN fallback failed:', cdnErr);
+                        if (__DEV__) { console.warn('[useOpportunityDetail] Expired feed lookup failed:', cdnErr) }
                     } finally {
                         if (!cancelled) setCheckingExpired(false);
                     }

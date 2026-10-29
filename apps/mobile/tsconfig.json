@@ -3,6 +3,12 @@
   "compilerOptions": {
     "strict": true,
     "baseUrl": ".",
+    // TypeScript 6 deprecates `baseUrl`; keep it until the path mapping is
+    // migrated so `tsc --noEmit` still runs.
+    "ignoreDeprecations": "6.0",
+    // TypeScript 6 no longer auto-includes every @types package. Declare the
+    // global type packages this app relies on (same convention as apps/api).
+    "types": ["jest", "node", "react"],
     "paths": {
       "@/*": [
         "src/*"
